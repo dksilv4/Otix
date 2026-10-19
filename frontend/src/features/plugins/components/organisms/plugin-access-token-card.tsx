@@ -42,20 +42,20 @@ export const PluginAccessTokenCard = ({ pluginId, pluginName, enabled }: PluginA
   }
 
   return (
-    <div className="flex items-start gap-3 rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
+    <div className="flex items-start gap-3 rounded-xl border border-[var(--dk-separator)] bg-[var(--dk-surface-field)] p-4">
       <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
         <KeyRound className="h-4.5 w-4.5" />
       </div>
 
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-semibold text-white">API access</p>
+        <p className="text-sm font-semibold text-foreground">API access</p>
 
         {reveal && (
           <div className="mt-3 rounded-xl border border-emerald-500/25 bg-emerald-500/[0.07] p-3.5">
-            <p className="flex items-center gap-1.5 text-sm font-semibold text-emerald-300">
+            <p className="flex items-center gap-1.5 text-sm font-semibold text-emerald-600 dark:text-emerald-400">
               <Check className="h-4 w-4" /> New token issued — copy it now
             </p>
-            <p className="mt-1 text-xs leading-relaxed text-white/55">
+            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
               The full secret is only shown this once and can’t be retrieved later. The previous token is already
               retired.
             </p>
@@ -65,7 +65,7 @@ export const PluginAccessTokenCard = ({ pluginId, pluginName, enabled }: PluginA
                 readOnly
                 value={reveal.token}
                 onFocus={(e) => e.target.select()}
-                className="h-9 min-w-0 flex-1 rounded-lg border border-emerald-500/20 bg-black/30 px-3 font-mono text-xs text-emerald-200 outline-none"
+                className="h-9 min-w-0 flex-1 rounded-lg border border-emerald-500/30 bg-[var(--dk-surface-field)] px-3 font-mono text-xs text-emerald-700 dark:text-emerald-300 outline-none"
               />
               <Button
                 variant="secondary"
@@ -79,7 +79,7 @@ export const PluginAccessTokenCard = ({ pluginId, pluginName, enabled }: PluginA
                 Done
               </Button>
             </div>
-            <p className="mt-2 flex items-center gap-1.5 text-[11px] text-amber-300/80">
+            <p className="mt-2 flex items-center gap-1.5 text-[11px] text-amber-600 dark:text-amber-400">
               <ShieldAlert className="h-3.5 w-3.5 shrink-0" />
               Anyone with this token can call every method {pluginName} exposes.
             </p>
@@ -89,16 +89,16 @@ export const PluginAccessTokenCard = ({ pluginId, pluginName, enabled }: PluginA
         {!reveal &&
           (enabled ? (
             <>
-              <p className="mt-0.5 text-xs leading-relaxed text-white/45">
+              <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
                 {pluginName} is enabled, so external tools can call its data methods with its scoped token.
               </p>
-              <p className="mt-1.5 text-[11px] leading-relaxed text-white/35">
+              <p className="mt-1.5 text-[11px] leading-relaxed text-muted-foreground">
                 The secret is shown once at rotate time — rotate to reveal it or replace the current credential.
               </p>
             </>
           ) : (
-            <p className="mt-0.5 flex items-center gap-1.5 text-xs leading-relaxed text-white/45">
-              <PowerOff className="h-3.5 w-3.5 shrink-0 text-white/25" />
+            <p className="mt-0.5 flex items-center gap-1.5 text-xs leading-relaxed text-muted-foreground">
+              <PowerOff className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
               API access is off. Enable {pluginName} to activate its scoped token.
             </p>
           ))}

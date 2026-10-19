@@ -161,6 +161,9 @@ def upsert_omdb_ratings(media_item_id: int, raw: dict[str, Any]) -> int:
             changed = True
     if changed:
         recompute_completeness(media)
+        from apps.media.services.rating import compute_and_store_overall_rating
+
+        compute_and_store_overall_rating(media.pk)
     return added
 
 

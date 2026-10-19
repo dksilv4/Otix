@@ -138,7 +138,7 @@ export const LauncherLibraryPage = () => {
   }, [navigate])
 
   return (
-    <div className="w-full h-screen bg-neutral-950 bg-grid-pattern text-white select-none overflow-hidden relative">
+    <div className="w-full h-screen bg-background bg-grid-pattern text-foreground select-none overflow-hidden relative">
 
       {offline && (
         <div className="absolute top-14 right-6 z-40">
@@ -298,13 +298,13 @@ export const LauncherLibraryPage = () => {
           {/* ────────── Toolbar ────────── */}
           <div className="glass-card flex items-center gap-3 px-4 py-2.5 mb-6">
             <div className="relative flex-1 min-w-0">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-white/25" size={14} />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={14} />
               <input
                 type="text"
                 placeholder="Search games..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)] focus:bg-[var(--dk-surface-ghost-active)] rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder-white/25 outline-none transition-colors border-none"
+                className="w-full bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)] focus:bg-[var(--dk-surface-ghost-active)] rounded-xl pl-9 pr-3 py-2 text-xs text-foreground placeholder:text-muted-foreground outline-none transition-colors border-none"
               />
             </div>
             <div className="w-px self-stretch bg-[var(--dk-separator)]" />
@@ -314,7 +314,7 @@ export const LauncherLibraryPage = () => {
                   key={plat}
                   onClick={() => setSelectedPlatform(plat)}
                   className={`glass-tab px-2.5 py-1 rounded-lg text-[9px] font-semibold uppercase tracking-wider cursor-pointer transition-all whitespace-nowrap ${
-                    selectedPlatform === plat ? 'glass-tab-active text-black' : 'text-white/40 hover:text-white/70'
+                    selectedPlatform === plat ? 'glass-tab-active bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
                   }`}
                 >
                   {plat === 'all' ? 'All' : (PLATFORM_LABELS[plat] ?? plat)}
@@ -325,19 +325,19 @@ export const LauncherLibraryPage = () => {
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as SortMode)}
-              className="appearance-none bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)] text-[9px] text-white/50 rounded-lg px-2.5 py-1.5 outline-none cursor-pointer transition-colors font-semibold uppercase tracking-wider border-none shrink-0"
+              className="appearance-none bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)] text-[9px] text-muted-foreground rounded-lg px-2.5 py-1.5 outline-none cursor-pointer transition-colors font-semibold uppercase tracking-wider border-none shrink-0"
             >
               <option value="recent">Recent</option>
               <option value="title">A – Z</option>
               <option value="platform">Platform</option>
             </select>
-            <span className="text-[9px] text-white/25 font-semibold tabular-nums shrink-0">
+            <span className="text-[9px] text-muted-foreground font-semibold tabular-nums shrink-0">
               {filteredGames.length} game{filteredGames.length !== 1 ? 's' : ''}
             </span>
             <div className="w-px self-stretch bg-[var(--dk-separator)]" />
             <button
               onClick={() => navigate({ to: '/settings/launcher' })}
-              className="flex items-center justify-center w-7 h-7 rounded-lg text-white/30 hover:text-white/70 hover:bg-white/[0.06] transition-all active:scale-95 cursor-pointer"
+              className="flex items-center justify-center w-7 h-7 rounded-lg text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-field)] transition-all active:scale-95 cursor-pointer"
               title="Settings"
             >
               <Settings size={14} />
@@ -364,12 +364,12 @@ export const LauncherLibraryPage = () => {
               ))}
             </MediaGrid>
           ) : foundGames.length === 0 ? (
-            <div className="glass-card flex flex-col items-center justify-center py-24 text-white/30 gap-4">
+            <div className="glass-card flex flex-col items-center justify-center py-24 text-muted-foreground gap-4">
               <Gamepad2 size={44} className="animate-pulse" style={{ animationDuration: '3s' }} />
-              <h3 className="text-xs font-bold uppercase tracking-wider">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-foreground">
                 {rawGames.length === 0 ? 'No Games Yet' : 'No Games Found'}
               </h3>
-              <p className="text-[10px] text-white/35 max-w-sm text-center leading-relaxed">
+              <p className="text-[10px] text-muted-foreground max-w-sm text-center leading-relaxed">
                 {rawGames.length === 0
                   ? isDesktop
                     ? 'Connect a platform like Epic or Steam in Integrations, or scan a game folder, and your library will appear here.'
@@ -381,7 +381,7 @@ export const LauncherLibraryPage = () => {
               {rawGames.length === 0 ? (
                 <button
                   onClick={() => navigate({ to: '/settings/connections' })}
-                  className="flex items-center gap-2 mt-1 px-4 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider text-white cursor-pointer transition-all active:scale-95 bg-white/[0.08] hover:bg-white/[0.14] border border-white/10"
+                  className="flex items-center gap-2 mt-1 px-4 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider text-foreground cursor-pointer transition-all active:scale-95 bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-field)] border border-[var(--dk-separator)]"
                 >
                   <Settings size={12} />
                   Open Connections
@@ -389,7 +389,7 @@ export const LauncherLibraryPage = () => {
               ) : (
                 <button
                   onClick={() => { setSearchQuery(''); setSelectedPlatform('all') }}
-                  className="flex items-center gap-2 mt-1 px-4 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider text-white cursor-pointer transition-all active:scale-95 bg-white/[0.08] hover:bg-white/[0.14] border border-white/10"
+                  className="flex items-center gap-2 mt-1 px-4 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider text-foreground cursor-pointer transition-all active:scale-95 bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-field)] border border-[var(--dk-separator)]"
                 >
                   Clear Filters
                 </button>

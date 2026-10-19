@@ -91,7 +91,7 @@ describe('useMediaDetailPluginActions', () => {
     })
 
     expect(apiClient.get).toHaveBeenCalledWith('/integrations/plex/connect-info/157336', {
-      params: { tmdbId: '157336' },
+      params: { tmdbId: '157336', mediaType: 'movie' },
     })
     expect(result.current.playWidgets.length).toBe(1)
     expect(result.current.playWidgets[0].label).toBe('Plex')

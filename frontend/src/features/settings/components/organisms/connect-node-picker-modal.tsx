@@ -109,7 +109,7 @@ export const ConnectNodePickerModal = ({
                 return (
                   <div
                     key={edge.id}
-                    className="flex items-center justify-between p-2.5 rounded-xl bg-white/[0.04] border border-white/[0.06] gap-2"
+                    className="flex items-center justify-between p-2.5 rounded-xl bg-[var(--dk-surface-field)] border border-[var(--dk-separator)] gap-2"
                   >
                     <div className="flex items-center gap-2 min-w-0">
                       <div className="h-7 w-7 rounded-lg bg-primary/15 text-primary flex items-center justify-center shrink-0">
@@ -145,7 +145,7 @@ export const ConnectNodePickerModal = ({
           </p>
 
           {compatibleOptions.length === 0 ? (
-            <div className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.05] text-center space-y-1">
+            <div className="p-4 rounded-xl bg-[var(--dk-surface-field)] border border-[var(--dk-separator)] text-center space-y-1">
               <p className="text-xs text-muted-foreground">No compatible nodes available to connect right now.</p>
               <p className="text-[11px] text-muted-foreground/80">
                 Add a Home Environment, Server Machine, or Samba share first.
@@ -159,10 +159,10 @@ export const ConnectNodePickerModal = ({
                 return (
                   <div
                     key={targetItem.id}
-                    className="flex items-center justify-between p-2.5 rounded-xl bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.05] gap-3 transition-colors"
+                    className="flex items-center justify-between p-2.5 rounded-xl bg-[var(--dk-surface-field)] hover:bg-[var(--dk-surface-hover)] border border-[var(--dk-separator)] gap-3 transition-colors"
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
-                      <div className="h-8 w-8 rounded-lg bg-white/[0.04] text-primary flex items-center justify-center shrink-0">
+                      <div className="h-8 w-8 rounded-lg bg-[var(--dk-surface-field)] text-primary flex items-center justify-center shrink-0">
                         {targetType === 'home' && <HomeIcon size={15} />}
                         {targetType === 'server' && <Server size={15} />}
                         {targetType === 'node' && <Cpu size={15} />}
@@ -215,7 +215,7 @@ export const ConnectNodePickerModal = ({
 
         {/* Add & Connect New Node */}
         {creationOptions.length > 0 && (
-          <div className="space-y-2 pt-1 border-t border-white/[0.06]">
+          <div className="space-y-2 pt-1 border-t border-[var(--dk-separator)]">
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-0.5">
               Add &amp; Connect New Node
             </p>
@@ -223,7 +223,7 @@ export const ConnectNodePickerModal = ({
               {creationOptions.map((opt) => (
                 <div
                   key={opt.type}
-                  className="flex flex-col justify-between p-2.5 rounded-xl bg-white/[0.03] hover:bg-white/[0.05] border border-white/[0.05] gap-2 transition-colors"
+                  className="flex flex-col justify-between p-2.5 rounded-xl bg-[var(--dk-surface-field)] hover:bg-[var(--dk-surface-hover)] border border-[var(--dk-separator)] gap-2 transition-colors"
                 >
                   <div className="flex items-start gap-2.5 min-w-0">
                     <div className="h-7 w-7 rounded-lg bg-primary/15 text-primary flex items-center justify-center shrink-0 mt-0.5">

@@ -34,13 +34,13 @@ export const BlueprintCard = ({ blueprint, showActions, onCopy, onEdit, onDelete
   return (
     <div
       onClick={onClick}
-      className="glass-inset rounded-xl p-3.5 space-y-3 transition-all duration-200 hover:bg-white/[0.04] cursor-pointer group"
+      className="glass-inset rounded-xl p-3.5 space-y-3 transition-all duration-200 hover:bg-[var(--dk-surface-glass)] cursor-pointer group"
     >
       {/* Header */}
       <div className="flex items-start gap-3">
         <BlueprintIcon icons={blueprint.icons || []} size="md" />
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-white truncate">
+          <p className="text-sm font-medium text-foreground truncate">
             {blueprint.label}
           </p>
           {blueprint.description && (
@@ -70,12 +70,12 @@ export const BlueprintCard = ({ blueprint, showActions, onCopy, onEdit, onDelete
       {entityEntries.length > 0 && (
         <div className="flex flex-wrap gap-1">
           {entityEntries.map(([name, count]) => (
-            <span key={name} className="text-[10px] px-1.5 py-0.5 rounded bg-white/5 text-muted-foreground">
+            <span key={name} className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--dk-surface-glass)] text-muted-foreground">
               {name}: {count}
             </span>
           ))}
           {extraCount > 0 && (
-            <span className="text-[10px] px-1.5 py-0.5 rounded bg-white/5 text-muted-foreground">
+            <span className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--dk-surface-glass)] text-muted-foreground">
               +{extraCount} more
             </span>
           )}
@@ -84,11 +84,11 @@ export const BlueprintCard = ({ blueprint, showActions, onCopy, onEdit, onDelete
 
       {/* Actions */}
       {showActions && (
-        <div className="flex items-center gap-1 pt-1 border-t border-white/[0.04] opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="flex items-center gap-1 pt-1 border-t border-[var(--dk-separator)] opacity-0 group-hover:opacity-100 transition-opacity">
           {onCopy && (
             <button
               onClick={(e) => { e.stopPropagation(); onCopy(blueprint.raw) }}
-              className="flex items-center gap-1 px-2 py-1 text-[10px] rounded-md hover:bg-white/10 text-muted-foreground hover:text-white transition-all"
+              className="flex items-center gap-1 px-2 py-1 text-[10px] rounded-md hover:bg-[var(--dk-surface-glass)] text-muted-foreground hover:text-foreground transition-all"
               title="Copy blueprint string"
             >
               <Copy className="h-3 w-3" /> Copy
@@ -97,7 +97,7 @@ export const BlueprintCard = ({ blueprint, showActions, onCopy, onEdit, onDelete
           {onEdit && blueprint.id && (
             <button
               onClick={(e) => { e.stopPropagation(); onEdit(blueprint.id!) }}
-              className="flex items-center gap-1 px-2 py-1 text-[10px] rounded-md hover:bg-white/10 text-muted-foreground hover:text-white transition-all"
+              className="flex items-center gap-1 px-2 py-1 text-[10px] rounded-md hover:bg-[var(--dk-surface-glass)] text-muted-foreground hover:text-foreground transition-all"
               title="Edit metadata"
             >
               <Edit3 className="h-3 w-3" /> Edit
@@ -106,7 +106,7 @@ export const BlueprintCard = ({ blueprint, showActions, onCopy, onEdit, onDelete
           {onDelete && blueprint.id && (
             <button
               onClick={(e) => { e.stopPropagation(); onDelete(blueprint.id!) }}
-              className="flex items-center gap-1 px-2 py-1 text-[10px] rounded-md hover:bg-red-500/10 text-muted-foreground hover:text-red-400 transition-all ml-auto"
+              className="flex items-center gap-1 px-2 py-1 text-[10px] rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-all ml-auto"
               title="Delete blueprint"
             >
               <Trash2 className="h-3 w-3" /> Delete

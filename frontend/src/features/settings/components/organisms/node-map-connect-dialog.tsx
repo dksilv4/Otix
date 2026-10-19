@@ -46,7 +46,7 @@ export const NodeMapConnectDialog = ({
     >
       <div className="space-y-4 pt-2">
         {/* Source -> Target Visual preview */}
-        <div className="flex items-center justify-between p-3.5 rounded-2xl bg-white/[0.03] border border-white/[0.04]">
+        <div className="flex items-center justify-between p-3.5 rounded-2xl bg-[var(--dk-surface-field)] border border-[var(--dk-separator)]">
           <div className="flex items-center gap-2.5 min-w-0">
             <div className="h-9 w-9 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
               {source.type === 'home' && <HomeIcon size={16} />}
@@ -82,7 +82,7 @@ export const NodeMapConnectDialog = ({
 
         {/* Choice between connection types */}
         {allowedTypes.includes('home') ? (
-          <div className="p-3.5 rounded-xl bg-white/[0.02] border border-white/[0.04] space-y-1">
+          <div className="p-3.5 rounded-xl bg-[var(--dk-surface-field)] border border-[var(--dk-separator)] space-y-1">
             <p className="text-xs font-semibold text-foreground">Home Assignment</p>
             <p className="text-[11px] text-muted-foreground">
               Assigns this instance to the home network environment. Nodes and server machines
@@ -102,7 +102,7 @@ export const NodeMapConnectDialog = ({
                 className={`p-3.5 rounded-xl cursor-pointer text-left transition-all border ${
                   selectedType === 'host'
                     ? 'bg-primary/10 border-primary/40 ring-1 ring-primary/20'
-                    : 'bg-white/[0.02] border-white/[0.04] hover:bg-white/[0.04]'
+                    : 'bg-[var(--dk-surface-field)] border-[var(--dk-separator)] hover:bg-[var(--dk-surface-hover)]'
                 }`}
               >
                 <div className="flex items-start gap-3">
@@ -129,7 +129,7 @@ export const NodeMapConnectDialog = ({
                 className={`p-3.5 rounded-xl cursor-pointer text-left transition-all border ${
                   selectedType === 'smb'
                     ? 'bg-primary/10 border-primary/40 ring-1 ring-primary/20'
-                    : 'bg-white/[0.02] border-white/[0.04] hover:bg-white/[0.04]'
+                    : 'bg-[var(--dk-surface-field)] border-[var(--dk-separator)] hover:bg-[var(--dk-surface-hover)]'
                 }`}
               >
                 <div className="flex items-start gap-3">

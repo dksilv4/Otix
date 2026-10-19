@@ -244,3 +244,25 @@ class GoogleLoginCallbackTests(TestCase):
         self.assertEqual(
             response.data["detail"], "Failed to sign in with Google. Please try again."
         )
+
+    @override_settings(**GOOGLE_SETTINGS)
+    def test_login_flow_with_desktop_source(self) -> None:
+        init_resp = self.client.post(
+            "/api/v1/auth/google/initiate",
+            {"source": "desktop"},
+            format="json",
+        )
+        self.assertEqual(init_resp.status_code, 200)
+        state = init_resp.data["state"]
+        row = OAuthState.objects.get(key=state)
+        self.assertEqual(row.payload["source"], "desktop")
+
+        with self._mock_google():
+            cb_resp = self.client.post(
+                "/api/v1/auth/google/callback",
+                {"code": "auth-code", "state": state},
+                format="json",
+            )
+        self.assertEqual(cb_resp.status_code, 200)
+        self.assertEqual(cb_resp.data["source"], "desktop")
+        self.assertTrue(cb_resp.data["access_token"])

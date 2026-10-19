@@ -47,7 +47,7 @@ const FreeClaimCard = ({ game }: { game: EpicFreeGame }) => {
     <button
       type="button"
       onClick={handleClaim}
-      className="group relative block w-full text-left aspect-[3/4] overflow-hidden rounded-2xl bg-white/[0.04] ring-1 ring-white/10 transition-all duration-300 hover:-translate-y-1 hover:ring-emerald-400/50 hover:shadow-[0_12px_40px_-10px_rgba(16,185,129,0.45)]"
+      className="group relative block w-full text-left aspect-[3/4] overflow-hidden rounded-2xl bg-[var(--dk-surface-field)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_12px_40px_-10px_rgba(16,185,129,0.45)]"
     >
       {/* Poster art */}
       {game.posterUrl && !posterError ? (
@@ -59,21 +59,21 @@ const FreeClaimCard = ({ game }: { game: EpicFreeGame }) => {
           onError={() => setPosterError(true)}
         />
       ) : (
-        <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-white/5 to-white/[0.02]">
-          <Gamepad2 className="h-10 w-10 text-white/10" />
+        <div className="absolute inset-0 flex items-center justify-center bg-[var(--dk-surface-field)]">
+          <Gamepad2 className="h-10 w-10 text-muted-foreground" />
         </div>
       )}
 
       {/* Contrast gradient */}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/25 to-black/10" />
+      <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/35 to-transparent" />
 
       {/* Top row: FREE badge + Epic logo */}
       <div className="absolute top-2.5 left-2.5 right-2.5 z-10 flex items-center justify-between gap-1.5">
-        <span className="inline-flex items-center gap-1 rounded-lg bg-emerald-500 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-white shadow-[0_2px_14px_rgba(16,185,129,0.55)]">
+        <span className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 dark:bg-emerald-500 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-white shadow-[0_2px_14px_rgba(16,185,129,0.55)]">
           <Gift className="h-3 w-3" />
           Free
         </span>
-        <span className="inline-flex items-center rounded-lg bg-black/50 px-1.5 py-1 backdrop-blur-sm">
+        <span className="inline-flex items-center rounded-lg bg-black/60 px-1.5 py-1 backdrop-blur-sm">
           <ProviderLogo platform="epic" className="h-3 w-3" />
         </span>
       </div>
@@ -85,12 +85,12 @@ const FreeClaimCard = ({ game }: { game: EpicFreeGame }) => {
         </h4>
         <div className="mt-1.5 flex items-center gap-2">
           {game.originalPrice && (
-            <span className="text-[10px] font-medium text-white/50 line-through">{game.originalPrice}</span>
+            <span className="text-[10px] font-medium text-white/60 line-through">{game.originalPrice}</span>
           )}
           <span className="text-[10px] font-bold text-emerald-400">FREE</span>
         </div>
         {endDate && (
-          <span className="mt-1 inline-flex items-center gap-1 text-[10px] font-medium text-white/70">
+          <span className="mt-1 inline-flex items-center gap-1 text-[10px] font-medium text-white/80">
             <CalendarDays className="h-3 w-3" />
             Ends {endDate}
           </span>
@@ -98,8 +98,8 @@ const FreeClaimCard = ({ game }: { game: EpicFreeGame }) => {
       </div>
 
       {/* Hover claim CTA */}
-      <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/45 opacity-0 backdrop-blur-[2px] transition-opacity duration-200 group-hover:opacity-100">
-        <span className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-500 px-4 py-2 text-xs font-bold text-white shadow-[0_4px_20px_rgba(16,185,129,0.55)] transition-transform duration-200 group-hover:scale-105">
+      <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/50 opacity-0 backdrop-blur-[2px] transition-opacity duration-200 group-hover:opacity-100">
+        <span className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-xs font-bold text-primary-foreground shadow-lg transition-transform duration-200 group-hover:scale-105">
           <ExternalLink className="h-3.5 w-3.5" />
           Claim Now
         </span>
@@ -155,10 +155,10 @@ export const SettingsFreeGamesSection = () => {
   if (games === null) {
     return (
       <SettingsCard compact className="space-y-4">
-        <div className="h-5 w-40 rounded bg-white/5 animate-pulse" />
+        <div className="h-5 w-40 rounded bg-[var(--dk-surface-ghost)] animate-pulse" />
         <div className="flex gap-3">
           {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="shrink-0 w-[160px] aspect-[3/4] rounded-2xl bg-white/5 animate-pulse" />
+            <div key={i} className="shrink-0 w-[160px] aspect-[3/4] rounded-2xl bg-[var(--dk-surface-ghost)] animate-pulse" />
           ))}
         </div>
       </SettingsCard>
@@ -179,9 +179,9 @@ export const SettingsFreeGamesSection = () => {
           <button
             type="button"
             onClick={() => openSessionWindow(EPIC_FREE_PAGE)}
-            className="inline-flex items-center gap-1.5 rounded-xl bg-white/[0.06] px-3 py-1.5 text-xs font-semibold text-white/80 transition-all hover:bg-white/[0.12] hover:text-white"
+            className="inline-flex items-center gap-1.5 rounded-xl bg-[var(--dk-surface-ghost)] px-3 py-1.5 text-xs font-semibold text-foreground transition-all hover:bg-[var(--dk-surface-ghost-hover)]"
           >
-            <Sparkles className="h-3.5 w-3.5 text-emerald-400" />
+            <Sparkles className="h-3.5 w-3.5 text-emerald-500 dark:text-emerald-400" />
             Open Epic Store
           </button>
         }

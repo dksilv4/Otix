@@ -1,14 +1,14 @@
 // Simple deterministic color from entity name
 export const colorFromName = (name: string): string => {
   const colors = [
-    'bg-blue-500/20 text-blue-400',
-    'bg-green-500/20 text-green-400',
-    'bg-yellow-500/20 text-yellow-400',
-    'bg-red-500/20 text-red-400',
-    'bg-purple-500/20 text-purple-400',
-    'bg-pink-500/20 text-pink-400',
-    'bg-indigo-500/20 text-indigo-400',
-    'bg-teal-500/20 text-teal-400',
+    'bg-blue-500/15 text-blue-700 dark:text-blue-300',
+    'bg-green-500/15 text-green-700 dark:text-green-300',
+    'bg-amber-500/15 text-amber-700 dark:text-amber-300',
+    'bg-red-500/15 text-red-700 dark:text-red-300',
+    'bg-purple-500/15 text-purple-700 dark:text-purple-300',
+    'bg-pink-500/15 text-pink-700 dark:text-pink-300',
+    'bg-indigo-500/15 text-indigo-700 dark:text-indigo-300',
+    'bg-teal-500/15 text-teal-700 dark:text-teal-300',
   ]
   let hash = 0
   for (let i = 0; i < name.length; i++) {

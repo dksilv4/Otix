@@ -32,7 +32,7 @@ export const ListsPreviewSection = () => {
           <button
             type="button"
             onClick={() => navigate({ to: "/library/lists" })}
-            className="flex items-center justify-center rounded-3xl border border-dashed border-white/[0.08] bg-[var(--dk-surface-glass)]/50 hover:bg-[var(--dk-surface-elevated)] transition-all duration-200 p-6"
+            className="flex items-center justify-center rounded-3xl border border-dashed border-[var(--dk-separator)] bg-[var(--dk-surface-glass)]/50 hover:bg-[var(--dk-surface-elevated)] transition-all duration-200 p-6"
           >
             <span className="text-sm text-muted-foreground">
               +{listItems.length - 3} more lists

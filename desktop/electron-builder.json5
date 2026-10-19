@@ -54,8 +54,7 @@
         "arch": ["x64"]
       }
     ],
-    "icon": "assets/icon.ico",
-    "artifactName": "${productName}-Setup-${version}.${ext}"
+    "icon": "assets/icon.ico"
   },
   "nsis": {
     "oneClick": false,
@@ -63,7 +62,11 @@
     "createDesktopShortcut": true,
     "createStartMenuShortcut": true,
     "shortcutName": "Otix",
-    "uninstallDisplayName": "Otix Launcher"
+    "uninstallDisplayName": "Otix Launcher",
+    "artifactName": "${productName}-Setup-${version}.${ext}"
+  },
+  "portable": {
+    "artifactName": "${productName}-Portable-${version}.${ext}"
   },
   "mac": {
     "target": [
@@ -113,7 +116,7 @@
   },
   "publish": {
     "provider": "github",
-    "owner": "Otix",
+    "owner": "dksilv4",
     "repo": "Otix"
   }
 }

@@ -93,17 +93,17 @@ export function getPluginIcon(icon?: string): LucideIcon {
 }
 
 const CATEGORY_STYLES: Record<string, { label: string; color: string; badge: string }> = {
-  Scanners: { label: 'Scanners', color: 'text-cyan-400', badge: 'bg-cyan-500/10 text-cyan-400' },
-  Pipelines: { label: 'Pipelines', color: 'text-violet-400', badge: 'bg-violet-500/10 text-violet-400' },
-  Providers: { label: 'Providers', color: 'text-blue-400', badge: 'bg-blue-500/10 text-blue-400' },
-  Services: { label: 'Services', color: 'text-amber-400', badge: 'bg-amber-500/10 text-amber-400' },
-  Utility: { label: 'Utility', color: 'text-white/40', badge: 'bg-white/5 text-white/40' },
+  Scanners: { label: 'Scanners', color: 'text-cyan-600 dark:text-cyan-400', badge: 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20' },
+  Pipelines: { label: 'Pipelines', color: 'text-violet-600 dark:text-violet-400', badge: 'bg-violet-500/10 text-violet-600 dark:text-violet-400 border border-violet-500/20' },
+  Providers: { label: 'Providers', color: 'text-blue-600 dark:text-blue-400', badge: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20' },
+  Services: { label: 'Services', color: 'text-amber-600 dark:text-amber-400', badge: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20' },
+  Utility: { label: 'Utility', color: 'text-muted-foreground', badge: 'bg-[var(--dk-surface-glass)] text-muted-foreground border border-[var(--dk-separator)]' },
 }
 
 export const CATEGORY_ORDER = ['Scanners', 'Pipelines', 'Providers', 'Services', 'Utility']
 
 export function getCategoryStyle(category: string): { label: string; color: string; badge: string } {
-  return CATEGORY_STYLES[category] || { label: category, color: 'text-white/40', badge: 'text-white/40 bg-white/5' }
+  return CATEGORY_STYLES[category] || { label: category, color: 'text-muted-foreground', badge: 'text-muted-foreground bg-[var(--dk-surface-glass)] border border-[var(--dk-separator)]' }
 }
 
 export function getPluginCategory(plugin: PluginInfo): string {

@@ -74,21 +74,21 @@ export const LauncherGameChangelog = ({ game }: LauncherGameChangelogProps) => {
   return (
     <div className="space-y-6">
       {/* ── Version & Update Status Header ── */}
-      <div className="p-4 rounded-2xl bg-white/[0.04] border border-white/[0.08] flex flex-wrap items-center justify-between gap-4">
+      <div className="p-4 rounded-2xl bg-[var(--dk-surface-ghost)] border border-[var(--dk-separator)] flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-primary/15 border border-primary/30 flex items-center justify-center text-primary shrink-0">
             <Sparkles size={18} />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-sm font-bold text-white">
+              <span className="text-sm font-bold text-foreground">
                 {versionInfo?.installedVersion || 'v1.0.0'}
               </span>
-              <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-md bg-white/10 text-white/70 border border-white/10">
+              <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-md bg-[var(--dk-surface-field)] text-muted-foreground border border-[var(--dk-separator)]">
                 {PLATFORM_LABELS[raw.platform] || raw.platform}
               </span>
             </div>
-            <p className="text-xs text-white/50">
+            <p className="text-xs text-muted-foreground">
               {versionInfo?.hasLocalUpdate
                 ? `${versionInfo.localUpdateFiles.length} local update installer(s) available`
                 : 'Current installed release'}
@@ -98,11 +98,11 @@ export const LauncherGameChangelog = ({ game }: LauncherGameChangelogProps) => {
 
         <div className="flex items-center gap-2">
           {versionInfo?.hasLocalUpdate ? (
-            <span className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl bg-amber-500/15 text-amber-300 border border-amber-500/30">
+            <span className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30">
               <AlertCircle size={14} /> Update Available
             </span>
           ) : (
-            <span className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+            <span className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
               <CheckCircle2 size={14} /> Up to date
             </span>
           )}
@@ -112,21 +112,21 @@ export const LauncherGameChangelog = ({ game }: LauncherGameChangelogProps) => {
       {/* ── Pending Local Patches / Updates (if any) ── */}
       {versionInfo && versionInfo.hasLocalUpdate && (
         <div className="p-4 rounded-2xl bg-amber-500/5 border border-amber-500/20 space-y-3">
-          <h4 className="text-xs font-bold uppercase tracking-wider text-amber-300 flex items-center gap-1.5">
+          <h4 className="text-xs font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
             <Download size={14} /> Detected Update Installers ({versionInfo.localUpdateFiles.length})
           </h4>
           <div className="space-y-2">
             {versionInfo.localUpdateFiles.map((file, idx) => (
               <div
                 key={idx}
-                className="flex items-center justify-between gap-3 p-2.5 rounded-xl bg-black/40 border border-white/5 text-xs"
+                className="flex items-center justify-between gap-3 p-2.5 rounded-xl bg-[var(--dk-surface-field)] border border-[var(--dk-separator)] text-xs"
               >
                 <div className="min-w-0 flex-1">
-                  <p className="font-semibold text-white/90 truncate flex items-center gap-1.5">
-                    <FileCode size={13} className="text-white/40 shrink-0" />
+                  <p className="font-semibold text-foreground truncate flex items-center gap-1.5">
+                    <FileCode size={13} className="text-muted-foreground shrink-0" />
                     {file.name}
                   </p>
-                  <p className="text-[11px] text-white/40 font-mono truncate">
+                  <p className="text-[11px] text-muted-foreground font-mono truncate">
                     {file.kind === 'dlc' ? 'DLC' : file.version ? `Update ${file.version}` : file.path}
                   </p>
                 </div>
@@ -147,7 +147,7 @@ export const LauncherGameChangelog = ({ game }: LauncherGameChangelogProps) => {
       {/* ── Changelog & Release Notes Feed ── */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-white/40 flex items-center gap-1.5">
+          <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
             <Layers size={13} /> Version History & Release Notes
           </h3>
 
@@ -155,8 +155,8 @@ export const LauncherGameChangelog = ({ game }: LauncherGameChangelogProps) => {
             onClick={() => setFilterPatchesOnly((prev) => !prev)}
             className={`flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-lg border transition-all cursor-pointer ${
               filterPatchesOnly
-                ? 'bg-white/15 text-white border-white/20'
-                : 'bg-white/[0.04] text-white/60 hover:text-white border-white/10'
+                ? 'bg-primary text-primary-foreground border-primary'
+                : 'bg-[var(--dk-surface-ghost)] text-muted-foreground hover:text-foreground border-[var(--dk-separator)]'
             }`}
           >
             <Filter size={12} />
@@ -165,14 +165,14 @@ export const LauncherGameChangelog = ({ game }: LauncherGameChangelogProps) => {
         </div>
 
         {isLoading && (
-          <div className="py-12 flex flex-col items-center justify-center text-white/40 text-xs gap-2">
-            <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+          <div className="py-12 flex flex-col items-center justify-center text-muted-foreground text-xs gap-2">
+            <div className="w-5 h-5 border-2 border-[var(--dk-separator)] border-t-primary rounded-full animate-spin" />
             <span>Fetching patch notes & changelogs...</span>
           </div>
         )}
 
         {!isLoading && filteredChangelogs.length === 0 && (
-          <div className="py-8 px-4 rounded-xl bg-white/[0.02] border border-white/5 text-center text-white/40 text-xs">
+          <div className="py-8 px-4 rounded-xl bg-[var(--dk-surface-ghost)] border border-[var(--dk-separator)] text-center text-muted-foreground text-xs">
             No specific changelogs found matching this filter.
           </div>
         )}
@@ -185,7 +185,7 @@ export const LauncherGameChangelog = ({ game }: LauncherGameChangelogProps) => {
               return (
                 <div
                   key={item.id}
-                  className="rounded-xl bg-white/[0.03] hover:bg-white/[0.05] border border-white/[0.06] overflow-hidden transition-colors"
+                  className="rounded-xl bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-field)] border border-[var(--dk-separator)] overflow-hidden transition-colors"
                 >
                   {/* Header */}
                   <div
@@ -199,28 +199,28 @@ export const LauncherGameChangelog = ({ game }: LauncherGameChangelogProps) => {
                             {item.version}
                           </span>
                         ) : item.isPatchNote ? (
-                          <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-blue-500/15 text-blue-300 border border-blue-500/25">
+                          <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/25">
                             Update
                           </span>
                         ) : null}
 
-                        <span className="text-[11px] text-white/50 flex items-center gap-1">
+                        <span className="text-[11px] text-muted-foreground flex items-center gap-1">
                           <Calendar size={11} /> {formatDate(item.date)}
                         </span>
 
                         {item.feedLabel && (
-                          <span className="text-[10px] text-white/40 font-medium">
+                          <span className="text-[10px] text-muted-foreground font-medium">
                             • {item.feedLabel}
                           </span>
                         )}
                       </div>
 
-                      <h4 className="text-sm font-semibold text-white/95 leading-snug">
+                      <h4 className="text-sm font-semibold text-foreground leading-snug">
                         {item.title}
                       </h4>
                     </div>
 
-                    <button className="text-white/40 hover:text-white mt-1 p-1 shrink-0">
+                    <button className="text-muted-foreground hover:text-foreground mt-1 p-1 shrink-0">
                       {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                     </button>
                   </div>
@@ -233,10 +233,10 @@ export const LauncherGameChangelog = ({ game }: LauncherGameChangelogProps) => {
                         animate={{ height: 'auto', opacity: 1 }}
                         exit={{ height: 0, opacity: 0 }}
                         transition={{ duration: 0.2 }}
-                        className="overflow-hidden border-t border-white/[0.04]"
+                        className="overflow-hidden border-t border-[var(--dk-separator)]"
                       >
-                        <div className="p-3.5 pt-2.5 space-y-3 bg-black/20">
-                          <p className="text-xs text-white/80 leading-relaxed whitespace-pre-line font-normal">
+                        <div className="p-3.5 pt-2.5 space-y-3 bg-[var(--dk-surface-field)]/40">
+                          <p className="text-xs text-foreground/90 leading-relaxed whitespace-pre-line font-normal">
                             {item.content}
                           </p>
 

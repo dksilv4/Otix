@@ -19,10 +19,10 @@ const StarRow = ({ count, filled }: { count: number; filled: number }) => {
         const fill = Math.min(1, Math.max(0, filled - i))
         return (
           <span key={i} className="dk-review-ratings__star">
-            <Star className="w-5 h-5 text-white/[0.06]" fill="currentColor" />
+            <Star className="w-5 h-5 text-muted-foreground/20" fill="currentColor" />
             {fill > 0 && (
               <Star
-                className="w-5 h-5 absolute inset-0 text-amber-400"
+                className="w-5 h-5 absolute inset-0 text-amber-500 dark:text-amber-400"
                 fill="currentColor"
                 style={{
                   clipPath: fill === 1 ? undefined : `inset(0 ${(1 - fill) * 100}% 0 0)`,

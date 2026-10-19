@@ -100,7 +100,7 @@ export const SetupWizardModal = ({
                   ? 'bg-primary shadow-[0_0_8px_var(--primary)]'
                   : idx + 1 < step
                   ? 'bg-primary/50'
-                  : 'bg-white/[0.08]'
+                  : 'bg-[var(--dk-surface-ghost-active)]'
               }`}
             />
           ))}
@@ -161,7 +161,7 @@ export const SetupWizardModal = ({
 
         {/* Navigation Footer (for steps 1 to 4) */}
         {step < 5 && (
-          <div className="flex items-center justify-between pt-4 border-t border-white/[0.04]">
+          <div className="flex items-center justify-between pt-4 border-t border-[var(--dk-separator)]">
             <DkButton
               type="button"
               variant="ghost"

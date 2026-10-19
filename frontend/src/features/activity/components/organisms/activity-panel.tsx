@@ -12,6 +12,7 @@ import { usePlexSessions } from '../../hooks/use-plex-sessions'
 import { useNotifications } from '@/features/notifications/hooks/use-notifications'
 import { notificationQueries } from '@/features/notifications/queries'
 import { Feature } from '@/features/_config'
+import { PANEL_WIDTH, PANEL_MARGIN } from '../../constants/activity-panel-constants'
 
 import { ActivityModuleGame } from '../molecules/activity-module-game'
 import { ActivityModulePlayer } from '../molecules/activity-module-player'
@@ -19,24 +20,23 @@ import { ActivityModuleDownloads } from '../molecules/activity-module-downloads'
 import { ActivityModuleInstalls } from '../molecules/activity-module-installs'
 import { ActivityModulePlexSection } from '../molecules/activity-module-plex-section'
 import { ActivityModuleNotifications } from '../molecules/activity-module-notifications'
+import { ActivityModuleFriends } from '../molecules/activity-module-friends'
+import { useFriends } from '@/features/friends/hooks/use-friends'
 import { ActivityModulePlugins } from '../molecules/activity-module-plugins'
 import { ActivityModuleEmpty } from '../molecules/activity-module-empty'
 import { staggerVariants } from '../molecules/activity-module-section'
 
-const PANEL_WIDTH = 360
-const PANEL_MARGIN = 16
-
-export interface ActivityModuleProps {
-  open: boolean
-  onClose: () => void
+export interface ActivityPanelContentProps {
+  onClose?: () => void
 }
 
-/** Animated slide-in activity panel containing player, notifications, Plex, downloads, and games. */
-export const ActivityModule = ({ open, onClose }: ActivityModuleProps) => {
-  const { isUserMenuOpen } = usePanelContext()
+/**
+ * Inner body of the activity panel containing active game, player,
+ * transfers, Plex sessions, active friends, and notifications.
+ */
+export const ActivityPanelContent = ({ onClose }: ActivityPanelContentProps) => {
+  const handleClose = onClose ?? (() => {})
   const { togglePlay, source, currentTrack } = usePlayer()
-  const panelRef = useRef<HTMLDivElement>(null)
-  const desktop = isDesktop()
   const { user: currentUser } = useAuth()
 
   // Live sources for activity status and category counts
@@ -51,20 +51,16 @@ export const ActivityModule = ({ open, onClose }: ActivityModuleProps) => {
   const { sessions: plexSessions, isAdmin: isPlexAdmin } = usePlexSessions()
   const { allItems: notifications } = useNotifications()
 
+  const { activeNowFriends } = useFriends()
   const { data: unreadData } = useQuery({
     ...notificationQueries.unreadCount(),
     enabled: !!currentUser,
   })
   const unreadCount = unreadData?.count ?? 0
 
-  // Keyboard shortcuts
+  // Keyboard shortcut for media play/pause
   useEffect(() => {
-    if (!open) return
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        onClose()
-        return
-      }
       if (e.key === ' ' && !(e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement)) {
         e.preventDefault()
         void togglePlay()
@@ -72,7 +68,81 @@ export const ActivityModule = ({ open, onClose }: ActivityModuleProps) => {
     }
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
-  }, [open, togglePlay, onClose])
+  }, [togglePlay])
+
+  // Active status calculation
+  const hasGame = Boolean(runningGame)
+  const hasMusic = hasLocalPlayback
+  const hasTransfers = activeDownloads.length > 0 || activeInstalls.length > 0
+  const hasPlex = isPlexAdmin && plexSessions.length > 0
+  const hasAlerts = unreadCount > 0
+  const hasFriendsActivity = activeNowFriends.length > 0
+
+  const hasAnyActivity =
+    hasGame || hasMusic || hasTransfers || hasPlex || hasAlerts || notifications.length > 0 || hasFriendsActivity
+
+  return (
+    <div className="w-full flex flex-col gap-2.5">
+      {!hasAnyActivity ? (
+        <ActivityModuleEmpty onClose={handleClose} />
+      ) : (
+        <motion.div
+          variants={staggerVariants}
+          initial="hidden"
+          animate="visible"
+          className="flex flex-col gap-2.5"
+        >
+          {/* Gaming module */}
+          <ActivityModuleGame onClose={handleClose} />
+
+          {/* Music Player */}
+          <ActivityModulePlayer />
+
+          {/* Downloads & Installs */}
+          <ActivityModuleDownloads />
+          <ActivityModuleInstalls />
+
+          {/* Plex Streaming (Admin-only) */}
+          <Feature name="integration:plex">
+            <ActivityModulePlexSection onClose={handleClose} />
+          </Feature>
+
+          {/* Plugin Activities */}
+          <ActivityModulePlugins />
+
+          {/* Active Friends */}
+          <ActivityModuleFriends onClose={handleClose} />
+
+          {/* Notifications & Alerts */}
+          <ActivityModuleNotifications onClose={handleClose} />
+        </motion.div>
+      )}
+    </div>
+  )
+};
+
+export interface ActivityModuleProps {
+  open: boolean
+  onClose: () => void
+}
+
+/** Animated slide-in activity panel containing player, notifications, Plex, downloads, and games. */
+export const ActivityModule = ({ open, onClose }: ActivityModuleProps) => {
+  const { isUserMenuOpen } = usePanelContext()
+  const panelRef = useRef<HTMLDivElement>(null)
+  const desktop = isDesktop()
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    if (!open) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose()
+      }
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [open, onClose])
 
   // Click outside handler
   const handleClickOutside = useCallback(
@@ -102,16 +172,6 @@ export const ActivityModule = ({ open, onClose }: ActivityModuleProps) => {
     }
   }, [open])
 
-  // Active status calculation
-  const hasGame = Boolean(runningGame)
-  const hasMusic = hasLocalPlayback
-  const hasTransfers = activeDownloads.length > 0 || activeInstalls.length > 0
-  const hasPlex = isPlexAdmin && plexSessions.length > 0
-  const hasAlerts = unreadCount > 0
-
-  const hasAnyActivity =
-    hasGame || hasMusic || hasTransfers || hasPlex || hasAlerts || notifications.length > 0
-
   if (!open) return null
 
   const topOffset = desktop ? (isUserMenuOpen ? 236 : 100) : (isUserMenuOpen ? 208 : 72)
@@ -132,8 +192,11 @@ export const ActivityModule = ({ open, onClose }: ActivityModuleProps) => {
             right: PANEL_MARGIN,
             top: topOffset,
             maxHeight: `calc(100vh - ${topOffset}px - ${PANEL_MARGIN}px)`,
-            background: 'rgba(18, 19, 24, 0.94)',
-            boxShadow: '0 24px 60px rgba(0, 0, 0, 0.75)',
+            background: 'color-mix(in oklch, var(--dk-surface-root) 88%, transparent)',
+            backgroundImage:
+              'linear-gradient(to bottom right, var(--dk-surface-glass), var(--dk-surface-glass-hover))',
+            border: '1px solid var(--dk-separator)',
+            boxShadow: 'var(--dk-shadow-dialog)',
             zIndex: 9998,
           }}
           className="fixed flex flex-col rounded-3xl backdrop-blur-2xl will-change-transform overflow-hidden select-none"
@@ -148,37 +211,7 @@ export const ActivityModule = ({ open, onClose }: ActivityModuleProps) => {
         >
           {/* Scrollable body with custom scrollbar */}
           <div className="flex-1 overflow-y-auto p-3.5 flex flex-col gap-2.5 custom-scrollbar min-h-0">
-            {!hasAnyActivity ? (
-              <ActivityModuleEmpty onClose={onClose} />
-            ) : (
-              <motion.div
-                variants={staggerVariants}
-                initial="hidden"
-                animate="visible"
-                className="flex flex-col gap-2.5"
-              >
-                {/* Gaming module */}
-                <ActivityModuleGame onClose={onClose} />
-
-                {/* Music Player */}
-                <ActivityModulePlayer />
-
-                {/* Downloads & Installs */}
-                <ActivityModuleDownloads />
-                <ActivityModuleInstalls />
-
-                {/* Plex Streaming (Admin-only) */}
-                <Feature name="integration:plex">
-                  <ActivityModulePlexSection onClose={onClose} />
-                </Feature>
-
-                {/* Plugin Activities */}
-                <ActivityModulePlugins />
-
-                {/* Notifications & Alerts */}
-                <ActivityModuleNotifications onClose={onClose} />
-              </motion.div>
-            )}
+            <ActivityPanelContent onClose={onClose} />
           </div>
         </motion.div>
       )}

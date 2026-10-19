@@ -77,7 +77,7 @@ export const PluginSlot = ({ location, pluginApi }: Props) => {
   }, [location, pluginApi])
 
   if (loading) {
-    return <div className="flex items-center gap-2 text-sm text-white/50 py-4"><Loader2 className="h-4 w-4 animate-spin" /> Loading...</div>
+    return <div className="flex items-center gap-2 text-sm text-muted-foreground py-4"><Loader2 className="h-4 w-4 animate-spin" /> Loading...</div>
   }
 
   const isLibraryScan = location === 'library:scan'
@@ -208,7 +208,7 @@ const SteamScanSlotCard = () => {
   }
 
   return (
-    <div className="rounded-2xl p-4 bg-white/5 border border-white/10 space-y-3">
+    <div className="rounded-2xl p-4 bg-[var(--dk-surface-card)] border border-[var(--dk-separator)] space-y-3">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <div className="h-10 w-10 rounded-2xl bg-sky-500/10 flex items-center justify-center shrink-0 border border-sky-500/20">
@@ -216,19 +216,18 @@ const SteamScanSlotCard = () => {
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h4 className="text-sm font-bold text-white">Steam Provider</h4>
+              <h4 className="text-sm font-bold text-foreground">Steam Provider</h4>
               {steamConnected ? (
-                <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                <span className="inline-flex items-center text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
                   Connected
                 </span>
               ) : (
-                <span className="inline-flex items-center gap-1 text-[10px] font-medium text-white/50 bg-white/5 px-2 py-0.5 rounded-full border border-white/10">
+                <span className="inline-flex items-center text-[10px] font-medium text-muted-foreground bg-[var(--dk-surface-glass)] px-2 py-0.5 rounded-full border border-[var(--dk-separator)]">
                   Not Linked
                 </span>
               )}
             </div>
-            <p className="text-xs text-white/50 mt-0.5">
+            <p className="text-xs text-muted-foreground mt-0.5">
               {steamConnected && steamProfile?.personaname
                 ? `Linked as ${steamProfile.personaname}${steamId ? ` (${steamId})` : ''}`
                 : 'Scan and sync your Steam games library, wishlist, and auto-matches.'}
@@ -239,7 +238,7 @@ const SteamScanSlotCard = () => {
         {!steamConnected && (
           <button
             onClick={handleConnectSteam}
-            className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-sky-500/15 hover:bg-sky-500/25 text-sky-400 text-xs font-semibold transition-colors cursor-pointer self-start sm:self-auto"
+            className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-sky-500/15 hover:bg-sky-500/25 text-sky-600 dark:text-sky-400 text-xs font-semibold transition-colors cursor-pointer self-start sm:self-auto"
           >
             <ProviderLogo platform="steam" className="h-3.5 w-3.5" />
             Connect Steam
@@ -248,20 +247,20 @@ const SteamScanSlotCard = () => {
       </div>
 
       {steamConnected && (
-        <div className="pt-2 space-y-3 border-t border-white/10">
+        <div className="pt-2 space-y-3 border-t border-[var(--dk-separator)]">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
             <button
               onClick={handleScanSteamGames}
               disabled={steamScanning}
-              className="flex flex-col p-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-left transition-all group cursor-pointer disabled:opacity-50"
+              className="flex flex-col p-3 rounded-xl bg-[var(--dk-surface-card)] hover:bg-[var(--dk-surface-card-hover)] border border-[var(--dk-separator)] text-left transition-all group cursor-pointer disabled:opacity-50"
             >
               <div className="flex items-center justify-between w-full mb-1">
-                <span className="text-xs font-semibold text-white group-hover:text-primary transition-colors flex items-center gap-1.5">
-                  <RefreshCw className={`h-3.5 w-3.5 text-sky-400 ${steamScanning ? 'animate-spin' : ''}`} />
+                <span className="text-xs font-semibold text-foreground group-hover:text-primary transition-colors flex items-center gap-1.5">
+                  <RefreshCw className={`h-3.5 w-3.5 text-sky-600 dark:text-sky-400 ${steamScanning ? 'animate-spin' : ''}`} />
                   Scan Steam Games
                 </span>
               </div>
-              <p className="text-[11px] text-white/40 leading-relaxed">
+              <p className="text-[11px] text-muted-foreground leading-relaxed">
                 {scanResult ? `${scanResult.matchedInOtix} matched / ${scanResult.totalInSteam} total` : 'Import & match owned Steam titles'}
               </p>
             </button>
@@ -269,15 +268,15 @@ const SteamScanSlotCard = () => {
             <button
               onClick={handleScanSteamWishlist}
               disabled={wishlistScanning}
-              className="flex flex-col p-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-left transition-all group cursor-pointer disabled:opacity-50"
+              className="flex flex-col p-3 rounded-xl bg-[var(--dk-surface-card)] hover:bg-[var(--dk-surface-card-hover)] border border-[var(--dk-separator)] text-left transition-all group cursor-pointer disabled:opacity-50"
             >
               <div className="flex items-center justify-between w-full mb-1">
-                <span className="text-xs font-semibold text-white group-hover:text-primary transition-colors flex items-center gap-1.5">
-                  <Sparkles className={`h-3.5 w-3.5 text-amber-400 ${wishlistScanning ? 'animate-spin' : ''}`} />
+                <span className="text-xs font-semibold text-foreground group-hover:text-primary transition-colors flex items-center gap-1.5">
+                  <Sparkles className={`h-3.5 w-3.5 text-amber-600 dark:text-amber-400 ${wishlistScanning ? 'animate-spin' : ''}`} />
                   Scan Wishlist
                 </span>
               </div>
-              <p className="text-[11px] text-white/40 leading-relaxed">
+              <p className="text-[11px] text-muted-foreground leading-relaxed">
                 {wishlistResult ? `${wishlistResult.matched} matched / ${wishlistResult.total} wishlist` : 'Sync public Steam wishlist'}
               </p>
             </button>
@@ -285,29 +284,29 @@ const SteamScanSlotCard = () => {
             <button
               onClick={handleResolveUnmatchedSteam}
               disabled={resolvingUnmatched}
-              className="flex flex-col p-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-left transition-all group cursor-pointer disabled:opacity-50"
+              className="flex flex-col p-3 rounded-xl bg-[var(--dk-surface-card)] hover:bg-[var(--dk-surface-card-hover)] border border-[var(--dk-separator)] text-left transition-all group cursor-pointer disabled:opacity-50"
             >
               <div className="flex items-center justify-between w-full mb-1">
-                <span className="text-xs font-semibold text-white group-hover:text-primary transition-colors flex items-center gap-1.5">
-                  <Link2 className={`h-3.5 w-3.5 text-emerald-400 ${resolvingUnmatched ? 'animate-spin' : ''}`} />
+                <span className="text-xs font-semibold text-foreground group-hover:text-primary transition-colors flex items-center gap-1.5">
+                  <Link2 className={`h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 ${resolvingUnmatched ? 'animate-spin' : ''}`} />
                   Resolve Unmatched
                 </span>
               </div>
-              <p className="text-[11px] text-white/40 leading-relaxed">
+              <p className="text-[11px] text-muted-foreground leading-relaxed">
                 {resolveResult ? `${resolveResult.resolved} linked / ${resolveResult.total} pending` : 'Auto-link unmapped games to IGDB'}
               </p>
             </button>
           </div>
 
           {steamMessage && (
-            <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-400 flex items-center gap-2">
+            <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-2">
               <CheckCircle2 className="h-4 w-4 shrink-0" />
               <span>{steamMessage}</span>
             </div>
           )}
 
           {steamError && (
-            <div className="p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-xs text-rose-400 flex items-center gap-2">
+            <div className="p-2.5 rounded-xl bg-destructive/10 border border-destructive/20 text-xs text-destructive flex items-center gap-2">
               <AlertCircle className="h-4 w-4 shrink-0" />
               <span>{steamError}</span>
             </div>
@@ -441,27 +440,26 @@ const EpicScanSlotCard = () => {
   }
 
   return (
-    <div className="rounded-2xl p-4 bg-white/5 border border-white/10 space-y-3">
+    <div className="rounded-2xl p-4 bg-[var(--dk-surface-card)] border border-[var(--dk-separator)] space-y-3">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-2xl bg-white/10 flex items-center justify-center shrink-0 border border-white/20 text-white">
+          <div className="h-10 w-10 rounded-2xl bg-[var(--dk-surface-glass)] flex items-center justify-center shrink-0 border border-[var(--dk-separator)] text-foreground">
             <ProviderLogo platform="epic" className="h-5 w-5" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h4 className="text-sm font-bold text-white">Epic Games Provider</h4>
+              <h4 className="text-sm font-bold text-foreground">Epic Games Provider</h4>
               {epicConnected ? (
-                <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                <span className="inline-flex items-center text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
                   Connected
                 </span>
               ) : (
-                <span className="inline-flex items-center gap-1 text-[10px] font-medium text-white/50 bg-white/5 px-2 py-0.5 rounded-full border border-white/10">
+                <span className="inline-flex items-center text-[10px] font-medium text-muted-foreground bg-[var(--dk-surface-glass)] px-2 py-0.5 rounded-full border border-[var(--dk-separator)]">
                   Not Linked
                 </span>
               )}
             </div>
-            <p className="text-xs text-white/50 mt-0.5">
+            <p className="text-xs text-muted-foreground mt-0.5">
               {epicConnected && epicDisplayName
                 ? `Linked as ${epicDisplayName}${epicAccountId ? ` (${epicAccountId})` : ''}`
                 : !hasOnlineNode
@@ -475,7 +473,7 @@ const EpicScanSlotCard = () => {
           <button
             onClick={handleConnectEpic}
             disabled={epicConnecting || !hasOnlineNode}
-            className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/15 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-semibold transition-colors cursor-pointer self-start sm:self-auto"
+            className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-[var(--dk-surface-card)] hover:bg-[var(--dk-surface-card-hover)] border border-[var(--dk-separator)] disabled:opacity-40 disabled:cursor-not-allowed text-foreground text-xs font-semibold transition-colors cursor-pointer self-start sm:self-auto"
           >
             <ProviderLogo platform="epic" className="h-3.5 w-3.5" />
             Connect Epic Games
@@ -484,20 +482,20 @@ const EpicScanSlotCard = () => {
       </div>
 
       {epicConnected && (
-        <div className="pt-2 space-y-3 border-t border-white/10">
+        <div className="pt-2 space-y-3 border-t border-[var(--dk-separator)]">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
             <button
               onClick={handleScanEpicGames}
               disabled={epicScanning}
-              className="flex flex-col p-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-left transition-all group cursor-pointer disabled:opacity-50"
+              className="flex flex-col p-3 rounded-xl bg-[var(--dk-surface-card)] hover:bg-[var(--dk-surface-card-hover)] border border-[var(--dk-separator)] text-left transition-all group cursor-pointer disabled:opacity-50"
             >
               <div className="flex items-center justify-between w-full mb-1">
-                <span className="text-xs font-semibold text-white group-hover:text-primary transition-colors flex items-center gap-1.5">
-                  <RefreshCw className={`h-3.5 w-3.5 text-white/80 ${epicScanning ? 'animate-spin' : ''}`} />
+                <span className="text-xs font-semibold text-foreground group-hover:text-primary transition-colors flex items-center gap-1.5">
+                  <RefreshCw className={`h-3.5 w-3.5 text-muted-foreground ${epicScanning ? 'animate-spin' : ''}`} />
                   Scan Epic Games
                 </span>
               </div>
-              <p className="text-[11px] text-white/40 leading-relaxed">
+              <p className="text-[11px] text-muted-foreground leading-relaxed">
                 {scanResult ? `${scanResult.matchedInOtix} matched / ${scanResult.totalInEpic} total` : 'Import & match owned Epic titles'}
               </p>
             </button>
@@ -505,29 +503,29 @@ const EpicScanSlotCard = () => {
             <button
               onClick={handleResolveSteamGrid}
               disabled={resolvingSteamGrid || epicScanning}
-              className="flex flex-col p-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-left transition-all group cursor-pointer disabled:opacity-50"
+              className="flex flex-col p-3 rounded-xl bg-[var(--dk-surface-card)] hover:bg-[var(--dk-surface-card-hover)] border border-[var(--dk-separator)] text-left transition-all group cursor-pointer disabled:opacity-50"
             >
               <div className="flex items-center justify-between w-full mb-1">
-                <span className="text-xs font-semibold text-white group-hover:text-primary transition-colors flex items-center gap-1.5">
-                  <Sparkles className={`h-3.5 w-3.5 text-purple-400 ${resolvingSteamGrid ? 'animate-spin' : ''}`} />
+                <span className="text-xs font-semibold text-foreground group-hover:text-primary transition-colors flex items-center gap-1.5">
+                  <Sparkles className={`h-3.5 w-3.5 text-purple-500 dark:text-purple-400 ${resolvingSteamGrid ? 'animate-spin' : ''}`} />
                   Resolve with SteamGrid
                 </span>
               </div>
-              <p className="text-[11px] text-white/40 leading-relaxed">
+              <p className="text-[11px] text-muted-foreground leading-relaxed">
                 {resolveResult ? `${resolveResult.matched} matched / ${resolveResult.total} total` : 'Auto-match artwork from SteamGridDB'}
               </p>
             </button>
           </div>
 
           {epicMessage && (
-            <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-400 flex items-center gap-2">
+            <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-2">
               <CheckCircle2 className="h-4 w-4 shrink-0" />
               <span>{epicMessage}</span>
             </div>
           )}
 
           {epicError && (
-            <div className="p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-xs text-rose-400 flex items-center gap-2">
+            <div className="p-2.5 rounded-xl bg-destructive/10 border border-destructive/20 text-xs text-destructive flex items-center gap-2">
               <AlertCircle className="h-4 w-4 shrink-0" />
               <span>{epicError}</span>
             </div>
@@ -536,7 +534,7 @@ const EpicScanSlotCard = () => {
       )}
 
       {!epicConnected && epicError && (
-        <div className="p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-xs text-rose-400 flex items-center gap-2">
+        <div className="p-2.5 rounded-xl bg-destructive/10 border border-destructive/20 text-xs text-destructive flex items-center gap-2">
           <AlertCircle className="h-4 w-4 shrink-0" />
           <span>{epicError}</span>
         </div>
@@ -811,20 +809,13 @@ const ScanSlotCard = ({ entry, pluginApi }: { entry: SlotEntry; pluginApi: Plugi
 
   const lowerName = (data.label || entry.label || entry.pluginId || '').toLowerCase()
   const providerIcon = lowerName.includes('local') || lowerName.includes('folder') || lowerName.includes('file') ? FolderOpen : Gamepad2
-  const iconColor = lowerName.includes('steam') ? 'text-sky-400 bg-sky-500/15' : lowerName.includes('epic') ? 'text-purple-400 bg-purple-500/15' : lowerName.includes('local') || lowerName.includes('folder') ? 'text-amber-400 bg-amber-500/15' : 'text-primary bg-primary/15'
+  const iconColor = lowerName.includes('steam') ? 'text-sky-600 dark:text-sky-400 bg-sky-500/15' : lowerName.includes('epic') ? 'text-purple-600 dark:text-purple-400 bg-purple-500/15' : lowerName.includes('local') || lowerName.includes('folder') ? 'text-amber-600 dark:text-amber-400 bg-amber-500/15' : 'text-primary bg-primary/15'
   const ProviderIcon = providerIcon
 
   return (
     <div
-      className={`rounded-2xl p-5 flex flex-col justify-between backdrop-blur-2xl transition-all duration-200 relative overflow-hidden space-y-3.5 hover:bg-white/[0.04] ${isScanning ? 'ring-2 ring-primary/60 animate-pulse' : ''}`}
-      style={{
-        backgroundColor: 'oklch(from var(--dk-surface-base) l c h / 0.18)',
-        boxShadow: 'inset 0 1px 1px 0 rgba(255, 255, 255, 0.1), inset 0 0 0 1px rgba(255, 255, 255, 0.04)',
-      }}
+      className={`rounded-2xl p-5 flex flex-col justify-between backdrop-blur-2xl transition-all duration-200 relative overflow-hidden space-y-3.5 bg-[var(--dk-surface-card)] hover:bg-[var(--dk-surface-card-hover)] border border-[var(--dk-separator)] ${isScanning ? 'ring-2 ring-primary/60 animate-pulse' : ''}`}
     >
-      {/* Layered Glass Gradient Overlay */}
-      <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-white/[0.05] via-transparent to-black/[0.2]" />
-
       {/* Top Row: Icon Badge & Connection Status */}
       <div className="flex items-center justify-between gap-2 relative z-10">
         <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${iconColor}`}>
@@ -832,13 +823,11 @@ const ScanSlotCard = ({ entry, pluginApi }: { entry: SlotEntry; pluginApi: Plugi
         </div>
 
         {hasAuth ? (
-          <span className={`inline-flex items-center gap-1.5 text-xs font-medium whitespace-nowrap shrink-0 ${connected ? 'text-emerald-400' : 'text-amber-400/90'}`}>
-            <span className={`h-2 w-2 rounded-full shrink-0 ${connected ? 'bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.7)]' : 'bg-amber-400'}`} />
+          <span className={`inline-flex items-center text-xs font-medium whitespace-nowrap shrink-0 ${connected ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
             {connected ? 'Connected' : 'Disconnected'}
           </span>
         ) : (
-          <span className="inline-flex items-center gap-1.5 text-xs font-medium whitespace-nowrap shrink-0 text-white/40">
-            <span className="h-2 w-2 rounded-full shrink-0 bg-white/30" />
+          <span className="inline-flex items-center text-xs font-medium whitespace-nowrap shrink-0 text-muted-foreground">
             Local
           </span>
         )}
@@ -846,9 +835,9 @@ const ScanSlotCard = ({ entry, pluginApi }: { entry: SlotEntry; pluginApi: Plugi
 
       {/* Middle: Title & Description */}
       <div className="flex-1 min-w-0">
-        <h4 className="text-sm font-bold text-white tracking-tight">{data.label || entry.label}</h4>
+        <h4 className="text-sm font-bold text-foreground tracking-tight">{data.label || entry.label}</h4>
         {data.description && (
-          <p className="text-xs text-white/50 mt-1 line-clamp-2 leading-relaxed">{data.description}</p>
+          <p className="text-xs text-muted-foreground mt-1 line-clamp-2 leading-relaxed">{data.description}</p>
         )}
       </div>
 
@@ -858,13 +847,13 @@ const ScanSlotCard = ({ entry, pluginApi }: { entry: SlotEntry; pluginApi: Plugi
           connected ? (
             <>
               <button onClick={() => handleAction('scan')} disabled={loading || !!isScanning}
-                className="flex-1 inline-flex items-center justify-center gap-1.5 h-8.5 rounded-xl text-xs font-semibold bg-white/10 text-white hover:bg-white/20 transition-all disabled:opacity-50 cursor-pointer">
+                className="flex-1 inline-flex items-center justify-center gap-1.5 h-8.5 rounded-xl text-xs font-semibold bg-[var(--dk-surface-glass)] text-foreground hover:bg-[var(--dk-surface-card-hover)] border border-[var(--dk-separator)] transition-all disabled:opacity-50 cursor-pointer">
                 {loading && !isScanning ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
                 <span>Scan</span>
               </button>
               {data.actions?.logout && (
                 <button onClick={() => handleAction('logout')} disabled={loading}
-                  className="inline-flex items-center justify-center h-8.5 w-8.5 rounded-xl text-white/40 hover:text-red-400 hover:bg-white/10 transition-all disabled:opacity-50 cursor-pointer"
+                  className="inline-flex items-center justify-center h-8.5 w-8.5 rounded-xl text-muted-foreground hover:text-destructive hover:bg-[var(--dk-surface-card-hover)] transition-all disabled:opacity-50 cursor-pointer"
                   title="Sign out">
                   <LogOut className="h-4 w-4" />
                 </button>
@@ -879,7 +868,7 @@ const ScanSlotCard = ({ entry, pluginApi }: { entry: SlotEntry; pluginApi: Plugi
         ) : (
           <div className="flex items-center gap-2 flex-1">
             <button onClick={() => handleAction('scan')} disabled={loading || !!isScanning}
-              className="flex-1 inline-flex items-center justify-center gap-1.5 h-8.5 rounded-xl text-xs font-semibold bg-white/10 text-white hover:bg-white/20 transition-all disabled:opacity-50 cursor-pointer">
+              className="flex-1 inline-flex items-center justify-center gap-1.5 h-8.5 rounded-xl text-xs font-semibold bg-[var(--dk-surface-glass)] text-foreground hover:bg-[var(--dk-surface-card-hover)] border border-[var(--dk-separator)] transition-all disabled:opacity-50 cursor-pointer">
               {loading && !isScanning ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
               <span>Scan</span>
             </button>
@@ -887,8 +876,8 @@ const ScanSlotCard = ({ entry, pluginApi }: { entry: SlotEntry; pluginApi: Plugi
               onClick={handleReset}
               className={`inline-flex items-center justify-center h-8.5 px-2.5 rounded-xl text-xs font-medium transition-colors cursor-pointer ${
                 resetConfirm
-                  ? 'bg-red-500/20 text-red-400'
-                  : 'text-white/30 hover:text-red-400 hover:bg-white/10'
+                  ? 'bg-destructive/15 text-destructive'
+                  : 'text-muted-foreground hover:text-destructive hover:bg-[var(--dk-surface-card-hover)]'
               }`}
               title="Remove scanned games for this plugin"
             >
@@ -902,7 +891,7 @@ const ScanSlotCard = ({ entry, pluginApi }: { entry: SlotEntry; pluginApi: Plugi
           <button
             onClick={() => setExpanded(!expanded)}
             className={`inline-flex items-center justify-center h-8.5 w-8.5 rounded-xl transition-all cursor-pointer ${
-              expanded ? 'bg-primary/20 text-primary' : 'bg-white/5 text-white/40 hover:text-white hover:bg-white/10'
+              expanded ? 'bg-primary/20 text-primary' : 'bg-[var(--dk-surface-glass)] text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-card-hover)] border border-[var(--dk-separator)]'
             }`}
             title="Configure paths"
           >
@@ -923,12 +912,12 @@ const ScanSlotCard = ({ entry, pluginApi }: { entry: SlotEntry; pluginApi: Plugi
         <div className="px-4 pb-3 pt-3">
           <div className="flex items-center gap-2 mb-2">
             {scanProgress.phase !== 'done' && <Loader2 className="h-3 w-3 animate-spin text-primary" />}
-            {scanProgress.phase === 'done' && scanProgress.matched > 0 && <CheckCircle2 className="h-3.5 w-3.5 text-green-400" />}
-            {scanProgress.phase === 'done' && scanProgress.matched === 0 && scanProgress.scanned > 0 && <AlertCircle className="h-3.5 w-3.5 text-amber-400" />}
+            {scanProgress.phase === 'done' && scanProgress.matched > 0 && <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />}
+            {scanProgress.phase === 'done' && scanProgress.matched === 0 && scanProgress.scanned > 0 && <AlertCircle className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />}
             <div className="flex-1 min-w-0">
-              <span className="text-xs text-white/60 truncate block">{scanProgress.message}</span>
+              <span className="text-xs text-muted-foreground truncate block">{scanProgress.message}</span>
               {scanProgress.currentDir && (
-                <span className="text-[10px] text-white/30 truncate block">{scanProgress.currentDir}</span>
+                <span className="text-[10px] text-muted-foreground/70 truncate block">{scanProgress.currentDir}</span>
               )}
             </div>
           </div>
@@ -936,49 +925,41 @@ const ScanSlotCard = ({ entry, pluginApi }: { entry: SlotEntry; pluginApi: Plugi
           {/* Unified triple-section progress bar */}
           {scanProgress.total > 0 && (
             <div className="space-y-1.5">
-              <div className="flex gap-0.5 h-2.5 rounded-full overflow-hidden bg-white/5">
+              <div className="flex gap-0.5 h-2.5 rounded-full overflow-hidden bg-[var(--dk-surface-field)] border border-[var(--dk-separator)]">
                 {/* Scan section (blue) — 0 to 33% */}
                 <div
-                  className="h-full transition-all duration-500"
+                  className="h-full transition-all duration-500 bg-sky-500"
                   style={{
                     width: '33.3%',
-                    backgroundColor: scanProgress.phase === 'scanning' ? '#3b82f6'
-                      : scanProgress.phase === 'done' || scanProgress.phase === 'matching' || scanProgress.phase === 'hydrating' ? '#3b82f6'
-                      : '#3b82f630',
-                    opacity: 1,
+                    opacity: scanProgress.phase === 'scanning' || scanProgress.phase === 'done' || scanProgress.phase === 'matching' || scanProgress.phase === 'hydrating' ? 1 : 0.25,
                   }}
                 />
                 {/* Match section (purple) — 33% to 66% */}
                 <div
-                  className="h-full transition-all duration-500"
+                  className="h-full transition-all duration-500 bg-violet-500"
                   style={{
                     width: '33.3%',
-                    backgroundColor: scanProgress.phase === 'matching' ? '#8b5cf6'
-                      : scanProgress.phase === 'done' ? '#8b5cf680'
-                      : scanProgress.phase === 'hydrating' ? '#8b5cf660'
-                      : '#8b5cf620',
+                    opacity: scanProgress.phase === 'matching' ? 1 : scanProgress.phase === 'done' ? 0.8 : scanProgress.phase === 'hydrating' ? 0.6 : 0.2,
                   }}
                 />
                 {/* Hydrate section (green) — 66% to 100% */}
                 <div
-                  className="h-full transition-all duration-500"
+                  className="h-full transition-all duration-500 bg-emerald-500"
                   style={{
                     width: '33.3%',
-                    backgroundColor: scanProgress.phase === 'hydrating' ? '#22c55e'
-                      : scanProgress.phase === 'done' ? '#22c55e80'
-                      : '#22c55e30',
+                    opacity: scanProgress.phase === 'hydrating' ? 1 : scanProgress.phase === 'done' ? 0.8 : 0.25,
                   }}
                 />
               </div>
               {/* Labels + counts */}
               <div className="flex text-[9px]">
-                <span className="text-center" style={{ width: '33.3%', color: scanProgress.phase === 'scanning' ? '#3b82f6' : '#3b82f680' }}>
+                <span className={`text-center w-1/3 ${scanProgress.phase === 'scanning' ? 'text-sky-600 dark:text-sky-400 font-semibold' : 'text-sky-600/70 dark:text-sky-400/70'}`}>
                   Scan {scanProgress.total > 0 ? `${scanProgress.scanned}/${scanProgress.total}` : ''}
                 </span>
-                <span className="text-center" style={{ width: '33.3%', color: scanProgress.phase === 'matching' ? '#8b5cf6' : scanProgress.phase === 'done' || scanProgress.phase === 'hydrating' ? '#8b5cf680' : '#8b5cf640' }}>
+                <span className={`text-center w-1/3 ${scanProgress.phase === 'matching' ? 'text-violet-600 dark:text-violet-400 font-semibold' : 'text-violet-600/70 dark:text-violet-400/70'}`}>
                   Match {scanProgress.matched > 0 ? `${scanProgress.matched}/${scanProgress.scanned}` : ''}
                 </span>
-                <span className="text-center" style={{ width: '33.3%', color: scanProgress.phase === 'hydrating' ? '#22c55e' : scanProgress.phase === 'done' ? '#22c55e80' : '#22c55e40' }}>
+                <span className={`text-center w-1/3 ${scanProgress.phase === 'hydrating' ? 'text-emerald-600 dark:text-emerald-400 font-semibold' : 'text-emerald-600/70 dark:text-emerald-400/70'}`}>
                   Hydrate {scanProgress.phase === 'hydrating' ? '...' : scanProgress.phase === 'done' ? '✓' : ''}
                 </span>
               </div>
@@ -991,19 +972,19 @@ const ScanSlotCard = ({ entry, pluginApi }: { entry: SlotEntry; pluginApi: Plugi
       {scanResult && (
         <div className="px-4 pb-3 pt-3">
           <div className="flex items-center gap-4 text-xs">
-            <span className="text-white/50">{scanResult.total} scanned</span>
+            <span className="text-muted-foreground">{scanResult.total} scanned</span>
             {scanResult.matched > 0 && (
-              <span className="text-green-400 flex items-center gap-1">
+              <span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
                 <CheckCircle2 className="h-3 w-3" /> {scanResult.matched} matched
               </span>
             )}
             {scanResult.suggested > 0 && (
-              <span className="text-blue-400 flex items-center gap-1">
+              <span className="text-sky-600 dark:text-sky-400 flex items-center gap-1">
                 <Star className="h-3 w-3" /> {scanResult.suggested} suggested
               </span>
             )}
             {scanResult.matched === 0 && scanResult.suggested === 0 && scanResult.total > 0 && (
-              <span className="text-amber-400 flex items-center gap-1">
+              <span className="text-amber-600 dark:text-amber-400 flex items-center gap-1">
                 <AlertCircle className="h-3 w-3" /> No matches — is the backend API running?
               </span>
             )}
@@ -1014,29 +995,29 @@ const ScanSlotCard = ({ entry, pluginApi }: { entry: SlotEntry; pluginApi: Plugi
       {/* Remove directory confirmation */}
       {removeDirConfirm && (
         <div className="px-4 pb-4 pt-2">
-          <div className="rounded-xl p-3.5 bg-red-500/10 space-y-2">
-            <p className="text-xs text-white/80">
-              Remove <span className="text-white font-semibold">{removeDirConfirm.path}</span>?
+          <div className="rounded-xl p-3.5 bg-destructive/10 border border-destructive/20 space-y-2">
+            <p className="text-xs text-foreground">
+              Remove <span className="font-semibold">{removeDirConfirm.path}</span>?
             </p>
-            <p className="text-[11px] text-white/50 leading-relaxed">
+            <p className="text-[11px] text-muted-foreground leading-relaxed">
               Games scanned from this directory will remain unless you choose to delete them.
             </p>
             <div className="flex items-center gap-2 pt-1">
               <button
                 onClick={() => executeRemovePath(true)}
-                className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-all cursor-pointer"
+                className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-all cursor-pointer"
               >
                 Remove &amp; Delete Games
               </button>
               <button
                 onClick={() => executeRemovePath(false)}
-                className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-white/10 text-white/80 hover:bg-white/20 transition-all cursor-pointer"
+                className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-[var(--dk-surface-glass)] text-foreground hover:bg-[var(--dk-surface-card-hover)] border border-[var(--dk-separator)] transition-all cursor-pointer"
               >
                 Keep Games
               </button>
               <button
                 onClick={() => setRemoveDirConfirm(null)}
-                className="px-3 py-1.5 rounded-xl text-xs text-white/40 hover:text-white transition-all ml-auto cursor-pointer"
+                className="px-3 py-1.5 rounded-xl text-xs text-muted-foreground hover:text-foreground transition-all ml-auto cursor-pointer"
               >
                 Cancel
               </button>
@@ -1053,7 +1034,7 @@ const ScanSlotCard = ({ entry, pluginApi }: { entry: SlotEntry; pluginApi: Plugi
             return (
               <div key={field.key}>
                 <div className="flex items-center justify-between mb-1.5">
-                  <label className="text-xs font-medium text-white/60">{field.label}</label>
+                  <label className="text-xs font-medium text-muted-foreground">{field.label}</label>
                   <button
                     onClick={() => addPath(field.key)}
                     className="inline-flex items-center gap-1 text-xs text-primary hover:underline font-semibold transition-colors cursor-pointer"
@@ -1062,7 +1043,7 @@ const ScanSlotCard = ({ entry, pluginApi }: { entry: SlotEntry; pluginApi: Plugi
                   </button>
                 </div>
                 {field.description && (
-                  <p className="text-[11px] text-white/40 mb-2">{field.description}</p>
+                  <p className="text-[11px] text-muted-foreground mb-2">{field.description}</p>
                 )}
                 <div className="space-y-1.5">
                   {values.map((val, idx) => (
@@ -1073,11 +1054,11 @@ const ScanSlotCard = ({ entry, pluginApi }: { entry: SlotEntry; pluginApi: Plugi
                         onChange={(next) => updatePath(field.key, idx, next)}
                         placeholder={field.placeholder || `C:\\Games\\...`}
                         className="min-w-0 flex-1"
-                        inputClassName="h-8.5 rounded-xl bg-white/5 px-3 text-xs text-white outline-none placeholder:text-white/30 focus:bg-white/10"
+                        inputClassName="h-8.5 rounded-xl bg-[var(--dk-surface-field)] border border-[var(--dk-separator)] px-3 text-xs text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
                       />
                       <button
                         onClick={() => confirmRemovePath(field.key, idx)}
-                        className="flex items-center justify-center h-8.5 w-8.5 rounded-xl text-white/40 hover:text-red-400 hover:bg-white/10 transition-all cursor-pointer"
+                        className="flex items-center justify-center h-8.5 w-8.5 rounded-xl text-muted-foreground hover:text-destructive hover:bg-[var(--dk-surface-card-hover)] transition-all cursor-pointer"
                         title="Remove directory"
                       >
                         <X className="h-4 w-4" />
@@ -1085,7 +1066,7 @@ const ScanSlotCard = ({ entry, pluginApi }: { entry: SlotEntry; pluginApi: Plugi
                     </div>
                   ))}
                   {values.length === 0 && (
-                    <p className="text-xs text-white/30 italic py-1">No directories configured</p>
+                    <p className="text-xs text-muted-foreground italic py-1">No directories configured</p>
                   )}
                 </div>
               </div>

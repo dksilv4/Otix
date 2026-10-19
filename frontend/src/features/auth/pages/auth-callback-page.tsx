@@ -6,6 +6,7 @@ import { AuthBackground } from '@auth/components/atoms/auth-background'
 import { AuthCard } from '@auth/components/molecules/auth-card'
 import { extractErrorMessage } from '@auth/utils'
 
+import { ACCESS_TOKEN_KEY } from '@/lib/config'
 import { PENDING_LOGIN_SYNC_KEY } from '@/features/interaction/offline-watchlist'
 import { SERVICES, handleCallback } from '../utils/callback'
 
@@ -24,15 +25,17 @@ export const CallbackPage = () => {
     const params = new URLSearchParams(window.location.search)
 
     handleCallback(cfg, params)
-      .then(() => {
+      .then((data) => {
         // OAuth login flows reload the app after this page, so the renderer
         // can't catch a login event — flag it for the sync prompt instead.
         if (cfg.isLogin) {
           try { localStorage.setItem(PENDING_LOGIN_SYNC_KEY, '1') } catch { /* ignore */ }
         }
-        const source = params.get('source')
+        const source = (data?.source as string) || params.get('source')
         if (source === 'desktop') {
-          window.location.href = `otix://auth/callback/${service}?success=true`
+          const token = (data?.accessToken as string) || (cfg.isLogin ? localStorage.getItem(ACCESS_TOKEN_KEY) : null)
+          const tokenParam = token ? `&accessToken=${encodeURIComponent(token)}` : ''
+          window.location.href = `otix://auth/callback/${service}?success=true${tokenParam}`
           return
         }
 
@@ -55,29 +58,51 @@ export const CallbackPage = () => {
     )
   }
 
-  const title = done ? `${cfg.name} Linked` : error ? 'Link Failed' : `Linking ${cfg.name} Account`
-  const desc = error ? error : done ? (cfg.successMsg ?? `Your ${cfg.name} account has been linked successfully.`) : (cfg.loadingMsg ?? `Verifying with ${cfg.name}...`)
+  const title = done
+    ? (cfg.isLogin ? 'Signed In' : `${cfg.name} Linked`)
+    : error
+      ? (cfg.isLogin ? 'Sign In Failed' : 'Link Failed')
+      : (cfg.isLogin ? `Signing in with ${cfg.name}` : `Linking ${cfg.name} Account`)
+
+  const desc = error
+    ? error
+    : done
+      ? (cfg.successMsg ?? (cfg.isLogin ? 'Signed in successfully.' : `Your ${cfg.name} account has been linked successfully.`))
+      : (cfg.loadingMsg ?? (cfg.isLogin ? `Signing in with ${cfg.name}...` : `Verifying with ${cfg.name}...`))
 
   return (
     <div id="auth-callback-page" className="relative flex min-h-screen items-center justify-center p-4">
       <AuthBackground />
-      <Helmet><title>{error ? 'Link Failed' : title} - Otix</title></Helmet>
+      <Helmet><title>{title} - Otix</title></Helmet>
       <AuthCard>
-        <div className={`mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl ${done ? 'bg-green-500/10' : error ? 'bg-red-500/10' : 'bg-white/5'}`}>
-          {done ? <Check className="h-7 w-7 text-green-500" /> : error ? <XCircle className="h-7 w-7 text-red-500" /> : <Loader2 className="h-7 w-7 animate-spin" style={{ color: cfg.loadingColor ?? 'var(--primary)' }} />}
+        <div
+          className={`mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl ${
+            done
+              ? 'bg-primary/10 text-primary'
+              : error
+                ? 'bg-destructive/10 text-destructive'
+                : 'bg-muted/10 text-primary'
+          }`}
+        >
+          {done ? (
+            <Check className="h-7 w-7" />
+          ) : error ? (
+            <XCircle className="h-7 w-7" />
+          ) : (
+            <Loader2 className="h-7 w-7 animate-spin" />
+          )}
         </div>
-        <h2 className="mb-2 text-xl font-bold">{error ? 'Link Failed' : title}</h2>
-        {error ? (
-          <p className="mb-6 text-sm" style={{ color: 'var(--muted-foreground)' }}>{desc}</p>
-        ) : (
-          <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>{desc}</p>
-        )}
+        <h2 className="mb-2 text-xl font-bold">{title}</h2>
+        <p className="text-sm text-muted-foreground">{desc}</p>
         {done && !error && (
-          <p className="mt-1 text-xs" style={{ color: 'color-mix(in srgb, var(--muted-foreground) 60%, transparent)' }}>Close this tab and return to Otix.</p>
+          <p className="mt-1 text-xs text-muted-foreground/60">Close this tab and return to Otix.</p>
         )}
         {error && cfg.errorNav && (
           <div className="mt-6">
-            <button onClick={() => navigate(cfg.errorNav!)} className="rounded-full bg-primary px-5 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90">
+            <button
+              onClick={() => navigate(cfg.errorNav!)}
+              className="rounded-full bg-primary px-5 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+            >
               {cfg.isLogin ? 'Back to Sign In' : 'Back to Settings'}
             </button>
           </div>

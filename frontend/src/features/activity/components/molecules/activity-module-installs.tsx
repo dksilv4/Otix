@@ -18,23 +18,23 @@ export const ActivityModuleInstalls = () => {
               <CheckCircle2 className="h-4 w-4 text-emerald-400" />
             )}
           </div>
-          <span className="text-xs font-semibold uppercase tracking-wider text-white/50">
+          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             Game Installs ({installs.length})
           </span>
         </div>
         <div className="space-y-4">
           {installs.map((inst) => (
-            <div key={inst.isoPath} className="flex flex-col gap-2">
+            <div key={inst.isoPath} className="flex flex-col gap-2 p-2.5 rounded-xl bg-[var(--dk-surface-overlay)]/60 border border-[var(--dk-separator)]">
               <div className="flex items-center gap-3">
                 {inst.active ? (
-                  <Loader2 className="h-4 w-4 text-emerald-400 animate-spin shrink-0" />
+                  <Loader2 className="h-4 w-4 text-emerald-500 dark:text-emerald-400 animate-spin shrink-0" />
                 ) : inst.result?.success ? (
-                  <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
+                  <CheckCircle2 className="h-4 w-4 text-emerald-500 dark:text-emerald-400 shrink-0" />
                 ) : (
-                  <AlertCircle className="h-4 w-4 text-rose-400 shrink-0" />
+                  <AlertCircle className="h-4 w-4 text-rose-500 dark:text-rose-400 shrink-0" />
                 )}
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold truncate text-white/90" title={inst.gameTitle ?? ''}>
+                  <p className="text-sm font-semibold truncate text-foreground" title={inst.gameTitle ?? ''}>
                     {inst.gameTitle ?? 'Game'}
                   </p>
                 </div>
@@ -43,7 +43,7 @@ export const ActivityModuleInstalls = () => {
                     <button
                       type="button"
                       onClick={() => cancelInstall(inst.isoPath)}
-                      className="h-7 w-7 flex items-center justify-center rounded-full transition-all cursor-pointer text-white/30 hover:text-red-400 hover:bg-red-400/10"
+                      className="h-7 w-7 flex items-center justify-center rounded-full transition-all cursor-pointer text-muted-foreground hover:text-red-500 hover:bg-red-500/10"
                       title="Cancel Install"
                     >
                       <X className="h-4 w-4" />
@@ -52,7 +52,7 @@ export const ActivityModuleInstalls = () => {
                     <button
                       type="button"
                       onClick={() => dismissInstall(inst.isoPath)}
-                      className="h-7 w-7 flex items-center justify-center rounded-full transition-all cursor-pointer text-white/30 hover:text-red-400 hover:bg-red-400/10"
+                      className="h-7 w-7 flex items-center justify-center rounded-full transition-all cursor-pointer text-muted-foreground hover:text-red-500 hover:bg-red-500/10"
                       title="Dismiss"
                     >
                       <X className="h-4 w-4" />
@@ -63,26 +63,26 @@ export const ActivityModuleInstalls = () => {
 
               {inst.active && inst.progress && (
                 <div className="flex items-center gap-3">
-                  <div className="h-1.5 rounded-full overflow-hidden flex-1 bg-white/[0.06]">
+                  <div className="h-1.5 rounded-full overflow-hidden flex-1 bg-muted">
                     <div
                       className="h-full rounded-full transition-all duration-700 bg-gradient-to-r from-blue-500 to-indigo-500"
                       style={{ width: `${inst.progress.progress}%` }}
                     />
                   </div>
-                  <span className="text-[10px] font-mono tabular-nums font-medium text-white/40">
+                  <span className="text-[10px] font-mono tabular-nums font-medium text-muted-foreground">
                     {inst.progress.progress}%
                   </span>
                 </div>
               )}
 
               {inst.active && inst.progress && (
-                <p className="text-[11px] rounded-xl px-3 py-2 leading-relaxed break-words font-medium text-rose-400/80 bg-rose-400/5">
+                <p className="text-[11px] rounded-xl px-3 py-2 leading-relaxed break-words font-medium text-rose-500 dark:text-rose-400/80 bg-rose-500/10">
                   {inst.progress.message || inst.progress.phase}
                 </p>
               )}
 
               {inst.error && !inst.active && (
-                <p className="text-[11px] rounded-xl px-3 py-2 leading-relaxed break-words font-medium text-rose-400/80 bg-rose-400/5">
+                <p className="text-[11px] rounded-xl px-3 py-2 leading-relaxed break-words font-medium text-rose-500 dark:text-rose-400/80 bg-rose-500/10">
                   {inst.error}
                 </p>
               )}

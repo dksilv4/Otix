@@ -19,22 +19,23 @@
 /* ═══════════════════════════════════════════════
    Surface Tokens
    ═══════════════════════════════════════════════ */
-:root {
-  --dk-surface-root: oklch(0.96 0 0);
-  --dk-surface-base: oklch(0.92 0 0);
-  --dk-surface-raised: oklch(0.88 0 0);
-  --dk-surface-overlay: oklch(0.85 0 0);
-  --dk-surface-glass: oklch(0 0 0 / 0.03);
-  --dk-surface-glass-hover: oklch(0 0 0 / 0.06);
-  --dk-surface-ghost-hover: oklch(0 0 0 / 0.06);
-  --dk-surface-ghost-active: oklch(0 0 0 / 0.1);
+:root,
+[data-theme='light'] {
+  --dk-surface-root: oklch(0.968 0.003 285.823);
+  --dk-surface-base: oklch(1 0 0);
+  --dk-surface-raised: oklch(0.952 0.004 285.823);
+  --dk-surface-overlay: oklch(1 0 0);
+  --dk-surface-glass: oklch(1 0 0 / 0.78);
+  --dk-surface-glass-hover: oklch(1 0 0 / 0.92);
+  --dk-surface-ghost-hover: oklch(0 0 0 / 0.065);
+  --dk-surface-ghost-active: oklch(0 0 0 / 0.09);
   --dk-surface-ghost: oklch(0 0 0 / 0.04);
-  --dk-surface-field: oklch(0.9 0 0);
-  --dk-surface-elevated: oklch(0.85 0 0);
-  --dk-separator: oklch(0 0 0 / 0.08);
-  --dk-border: oklch(0 0 0 / 0.12);
+  --dk-surface-field: oklch(0.945 0.004 285.823);
+  --dk-surface-elevated: oklch(1 0 0);
+  --dk-separator: oklch(0 0 0 / 0.07);
+  --dk-border: oklch(0 0 0 / 0.08);
   --dk-border-accent: oklch(0.705 0.213 47.604 / 0.3);
-  --dk-muted-foreground: oklch(0.552 0.016 285.938);
+  --dk-muted-foreground: oklch(0.48 0.015 285.938);
   --dk-blur-sm: 4px;
   --dk-blur-2xl: 40px;
 }
@@ -60,15 +61,16 @@
 /* ═══════════════════════════════════════════════
    Elevation (Shadow) Scale
    ═══════════════════════════════════════════════ */
-:root {
+:root,
+[data-theme='light'] {
   --dk-shadow-none: 0 0 0 0 transparent;
-  --dk-shadow-xs: 0 1px 2px oklch(0 0 0 / 0.06);
-  --dk-shadow-sm: 0 1px 3px oklch(0 0 0 / 0.08), 0 1px 2px oklch(0 0 0 / 0.05);
-  --dk-shadow-md: 0 4px 6px oklch(0 0 0 / 0.06), 0 2px 4px oklch(0 0 0 / 0.05);
-  --dk-shadow-lg: 0 8px 24px oklch(0 0 0 / 0.1), 0 2px 8px oklch(0 0 0 / 0.06);
-  --dk-shadow-xl: 0 16px 48px oklch(0 0 0 / 0.12), 0 4px 16px oklch(0 0 0 / 0.08);
-  --dk-shadow-glass: inset 0 1px 0 oklch(1 0 0 / 0.1), 0 8px 32px oklch(0 0 0 / 0.14);
-  --dk-shadow-dialog: 0 24px 80px oklch(0 0 0 / 0.22), 0 8px 32px oklch(0 0 0 / 0.14);
+  --dk-shadow-xs: 0 1px 2px oklch(0 0 0 / 0.04);
+  --dk-shadow-sm: 0 1px 3px oklch(0 0 0 / 0.06), 0 1px 2px oklch(0 0 0 / 0.04);
+  --dk-shadow-md: 0 4px 12px -2px oklch(0 0 0 / 0.08), 0 2px 4px -2px oklch(0 0 0 / 0.04);
+  --dk-shadow-lg: 0 12px 28px -4px oklch(0 0 0 / 0.1), 0 4px 12px -2px oklch(0 0 0 / 0.04);
+  --dk-shadow-xl: 0 20px 40px -6px oklch(0 0 0 / 0.12), 0 8px 18px -4px oklch(0 0 0 / 0.05);
+  --dk-shadow-glass: inset 0 1px 0 oklch(1 0 0 / 0.6), 0 8px 24px -4px oklch(0 0 0 / 0.08), 0 2px 6px -1px oklch(0 0 0 / 0.04);
+  --dk-shadow-dialog: inset 0 1px 0 oklch(1 0 0 / 0.8), 0 24px 60px -12px oklch(0 0 0 / 0.16), 0 8px 24px -6px oklch(0 0 0 / 0.06);
 }
 
 [data-theme='dark'] {

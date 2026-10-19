@@ -175,7 +175,7 @@ export const ShowSection = ({
               onMarkSeasonWatched(currentSeason.seasonNumber, true)
               close()
             }}
-            className="px-4 py-2 rounded-xl text-sm font-medium transition-colors text-white bg-emerald-600 hover:bg-emerald-500"
+            className="px-4 py-2 rounded-xl text-sm font-medium transition-colors text-primary-foreground bg-primary hover:bg-primary/90"
           >
             Mark {currentUnwatched} as Watched
           </button>
@@ -283,7 +283,7 @@ export const ShowSection = ({
    })
  }
  disabled={loadingKey === `${data?.id ? String(data.id) : mediaId}-s${currentSeason.seasonNumber}-e${firstPlayableEpisode.episodeNumber}`}
- className="text-xs font-semibold transition-all text-white flex items-center gap-1.5 bg-brand-primary/90 hover:bg-brand-primary active:scale-95 px-3.5 py-1.5 rounded-full shadow-sm hover:shadow-md hover:-translate-y-0.5 disabled:opacity-50"
+ className="text-xs font-semibold transition-all text-primary-foreground flex items-center gap-1.5 bg-primary hover:bg-primary/90 active:scale-95 px-3.5 py-1.5 rounded-full shadow-sm hover:shadow-md hover:-translate-y-0.5 disabled:opacity-50"
  >
  {loadingKey === `${data?.id ? String(data.id) : mediaId}-s${currentSeason.seasonNumber}-e${firstPlayableEpisode.episodeNumber}` ? (
    <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -297,7 +297,7 @@ export const ShowSection = ({
  {hasEpisodes && currentUnwatched > 0 && currentSeason.seasonNumber !== 0 && (
  <button
  onClick={handleMarkSeasonWatchedConfirm}
- className="text-xs font-medium transition-all text-muted-foreground hover:text-emerald-400 flex items-center gap-1.5 bg-[var(--dk-surface-glass)] px-3 py-1.5 rounded-full hover:bg-[var(--dk-surface-glass-hover)] shadow-sm hover:shadow-md hover:-translate-y-0.5"
+ className="text-xs font-medium transition-all text-muted-foreground hover:text-emerald-600 dark:hover:text-emerald-400 flex items-center gap-1.5 bg-[var(--dk-surface-glass)] px-3 py-1.5 rounded-full hover:bg-[var(--dk-surface-glass-hover)] shadow-sm hover:shadow-md hover:-translate-y-0.5"
  >
  <CheckCircle2 className="w-3.5 h-3.5" />
  Mark all as watched
@@ -306,7 +306,7 @@ export const ShowSection = ({
  {hasEpisodes && seasonProgress.watched === seasonProgress.total && seasonProgress.total > 0 && currentSeason.seasonNumber !== 0 && (
  <button
  onClick={() => onMarkSeasonWatched(currentSeason.seasonNumber, false)}
- className="text-xs font-medium transition-all text-muted-foreground hover:text-red-400 flex items-center gap-1.5 bg-[var(--dk-surface-glass)] px-3 py-1.5 rounded-full hover:bg-[var(--dk-surface-glass-hover)] shadow-sm hover:shadow-md hover:-translate-y-0.5"
+ className="text-xs font-medium transition-all text-muted-foreground hover:text-destructive flex items-center gap-1.5 bg-[var(--dk-surface-glass)] px-3 py-1.5 rounded-full hover:bg-[var(--dk-surface-glass-hover)] shadow-sm hover:shadow-md hover:-translate-y-0.5"
  >
  <Circle className="w-3.5 h-3.5" />
  Mark all as unwatched
@@ -366,7 +366,7 @@ export const ShowSection = ({
                     />
                   )
                 }}
- className={`glass-episode-card group shrink-0 flex flex-col w-[260px] text-left rounded-2xl overflow-hidden relative transition-all hover:-translate-y-0.5 hover:shadow-xl ${isActive ? "bg-[var(--dk-surface-glass-hover)] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.12)]" : ""}`}
+ className={`glass-episode-card group shrink-0 flex flex-col w-[260px] text-left rounded-2xl overflow-hidden relative transition-all hover:-translate-y-0.5 hover:shadow-xl ${isActive ? "bg-[var(--dk-surface-glass-hover)] border border-[var(--dk-separator)]" : ""}`}
  >
  <div data-thumb className="relative aspect-video bg-black/10 overflow-hidden">
  <Image
@@ -396,10 +396,10 @@ export const ShowSection = ({
    episodeTitle: episode.name,
  })
  }}
- className="pointer-events-auto w-9 h-9 rounded-full bg-white/95 text-black flex items-center justify-center shadow-xl hover:scale-110 active:scale-95 transition-transform cursor-pointer"
+ className="pointer-events-auto w-9 h-9 rounded-full bg-foreground text-background flex items-center justify-center shadow-xl hover:scale-110 active:scale-95 transition-transform cursor-pointer"
  >
  {isEpLoading ? (
-   <Loader2 className="w-4 h-4 animate-spin text-brand-primary" />
+   <Loader2 className="w-4 h-4 animate-spin text-primary" />
  ) : (
    <Play className="w-4 h-4 fill-current ml-0.5" />
  )}

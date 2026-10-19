@@ -22,7 +22,7 @@
 
 .dk-title-bar__app-title {
   @apply text-xs font-semibold select-none;
-  color: hsl(var(--muted-foreground) / 0.5);
+  color: color-mix(in srgb, var(--muted-foreground) 50%, transparent);
 }
 
 /* ── Drag Region ── */
@@ -51,7 +51,7 @@
 
 .dk-title-bar__button {
   @apply flex items-center justify-center;
-  color: var(--dk-text-primary);
+  color: var(--foreground);
   transition: color 150ms, background-color 150ms;
 
   &:hover {

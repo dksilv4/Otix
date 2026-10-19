@@ -87,6 +87,9 @@ export const ActivityModuleNotifications = ({ onClose }: ActivityModuleNotificat
   if (!isAuthenticated || notifications.length === 0) return null
 
   const handleCardClick = (notification: Notification, link: string | null | undefined) => {
+    if (!notification.isRead) {
+      markRead.mutate(notification.id)
+    }
     if (link) {
       onClose()
       navigate({ to: link })
@@ -99,7 +102,7 @@ export const ActivityModuleNotifications = ({ onClose }: ActivityModuleNotificat
       <div className="flex items-center justify-between pb-1">
         <div className="flex items-center gap-2">
           <BellRing className="h-4 w-4 text-primary" />
-          <span className="text-xs font-bold uppercase tracking-wider text-white/80">
+          <span className="text-xs font-bold uppercase tracking-wider text-foreground">
             Notifications
           </span>
           {unreadCount > 0 && (
@@ -127,22 +130,25 @@ export const ActivityModuleNotifications = ({ onClose }: ActivityModuleNotificat
           const config = getTypeConfig(n.type)
           const link = config?.getLink?.(n)
           const actions = config?.getActions?.(n, actionCallbacks)
+          const isClickable = Boolean(link || !n.isRead)
 
           return (
             <div
               key={n.id}
-              role={link ? 'button' : undefined}
-              tabIndex={link ? 0 : undefined}
-              onClick={() => handleCardClick(n, link)}
+              role={isClickable ? 'button' : undefined}
+              tabIndex={isClickable ? 0 : undefined}
+              onClick={() => {
+                if (isClickable) handleCardClick(n, link)
+              }}
               onKeyDown={(e) => {
-                if (e.key === 'Enter' && link) handleCardClick(n, link)
+                if (e.key === 'Enter' && isClickable) handleCardClick(n, link)
               }}
               className={
                 'group relative flex items-start gap-2.5 p-2.5 rounded-xl transition-all duration-150 ' +
                 (!n.isRead
-                  ? 'bg-white/[0.04]'
-                  : 'bg-white/[0.015] hover:bg-white/[0.04]') +
-                (link ? ' cursor-pointer' : '')
+                  ? 'bg-[var(--dk-surface-overlay)]/85 border border-[var(--dk-separator)]'
+                  : 'bg-[var(--dk-surface-overlay)]/45 hover:bg-[var(--dk-surface-overlay)]/75 border border-transparent') +
+                (isClickable ? ' cursor-pointer' : '')
               }
             >
               <div className="shrink-0 mt-0.5">
@@ -151,14 +157,14 @@ export const ActivityModuleNotifications = ({ onClose }: ActivityModuleNotificat
 
               <div className="min-w-0 flex-1">
                 <div className="flex items-start justify-between gap-1.5">
-                  <p className="text-xs font-semibold text-white/90 leading-tight">
+                  <p className="text-xs font-semibold text-foreground leading-tight">
                     {n.title}
                   </p>
                   <NotificationTime createdAt={n.createdAt} />
                 </div>
 
                 {n.body && (
-                  <p className="text-[11px] text-white/50 mt-0.5 line-clamp-2 leading-relaxed">
+                  <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-2 leading-relaxed">
                     {n.body}
                   </p>
                 )}
@@ -181,7 +187,7 @@ export const ActivityModuleNotifications = ({ onClose }: ActivityModuleNotificat
                     e.stopPropagation()
                     markRead.mutate(n.id)
                   }}
-                  className="shrink-0 mt-1 p-1 -mr-1 rounded-full text-white/20 hover:text-primary transition-colors cursor-pointer"
+                  className="shrink-0 mt-1 p-1 -mr-1 rounded-full text-muted-foreground/50 hover:text-primary transition-colors cursor-pointer"
                   title="Mark as read"
                   aria-label="Mark as read"
                 >
@@ -196,7 +202,7 @@ export const ActivityModuleNotifications = ({ onClose }: ActivityModuleNotificat
       <Link
         to="/notifications"
         onClick={onClose}
-        className="flex items-center justify-center gap-1.5 w-full py-2 text-center text-xs font-medium text-white/50 hover:text-white transition-colors rounded-xl bg-white/[0.03] hover:bg-white/[0.07]"
+        className="flex items-center justify-center gap-1.5 w-full py-2 text-center text-xs font-medium text-muted-foreground hover:text-foreground transition-colors rounded-xl bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)]"
       >
         <span>View all notifications</span>
         <ExternalLink className="h-3 w-3 opacity-60" />

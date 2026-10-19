@@ -187,10 +187,10 @@ export const IsoInstallerModal = ({
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 20 }}
           transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-          className="relative max-h-[90vh] w-full max-w-lg overflow-hidden rounded-[2rem] bg-[var(--dk-surface-overlay)] shadow-[var(--dk-shadow-dialog)] backdrop-blur-xl ring-1 ring-white/[0.04] flex flex-col"
+          className="relative max-h-[90vh] w-full max-w-lg overflow-hidden rounded-[2rem] bg-[var(--dk-surface-overlay)] shadow-[var(--dk-shadow-dialog)] backdrop-blur-xl border border-[var(--dk-separator)] flex flex-col"
         >
           {/* Header */}
-          <div className="flex items-center justify-between border-b border-white/[0.04] px-6 py-4 flex-none">
+          <div className="flex items-center justify-between border-b border-[var(--dk-separator)] px-6 py-4 flex-none">
             <div className="flex items-center gap-3">
               <Disc className="h-5 w-5 text-primary" />
               <h2 className="text-lg font-semibold text-foreground">
@@ -370,7 +370,7 @@ export const IsoInstallerModal = ({
           </div>
 
           {/* Footer */}
-          <div className="flex-none border-t border-white/[0.04] bg-[var(--dk-surface-overlay)]/60 backdrop-blur-md px-6 py-4 flex items-center justify-end gap-3">
+          <div className="flex-none border-t border-[var(--dk-separator)] bg-[var(--dk-surface-overlay)]/60 backdrop-blur-md px-6 py-4 flex items-center justify-end gap-3">
             {isIdle && (
               <DkButton onClick={handleInstall} disabled={!isoPath || !targetDir} className="w-full gap-2">
                 <Download className="h-4 w-4" />

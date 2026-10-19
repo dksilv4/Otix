@@ -440,7 +440,8 @@ export function usePendingNodes(options?: { enabled?: boolean }) {
       return remoteList
     },
     enabled: options?.enabled ?? true,
-    refetchInterval: 10_000,
+    staleTime: 15_000,
+    refetchInterval: options?.enabled === false ? false : 15_000,
   })
 }
 

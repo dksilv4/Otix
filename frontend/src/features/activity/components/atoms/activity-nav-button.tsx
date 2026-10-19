@@ -10,7 +10,7 @@ import { usePlexSessions } from '../../hooks/use-plex-sessions'
 
 const GLASS_STYLE: React.CSSProperties = {
   background: `linear-gradient(135deg, var(--dk-surface-glass), var(--dk-surface-glass-hover))`,
-  backgroundColor: 'oklch(from var(--dk-surface-raised) r g b / 0.25)',
+  backgroundColor: 'color-mix(in oklch, var(--dk-surface-raised) 25%, transparent)',
   boxShadow: 'var(--dk-shadow-glass)',
   backdropFilter: 'blur(16px)',
   WebkitBackdropFilter: 'blur(16px)',
@@ -87,7 +87,7 @@ export const ActivityModuleButton = ({
           'relative gap-1 transition-all flex items-center justify-center rounded-full outline-none focus:outline-none focus-visible:outline-none' +
           (!bare ? ' flex items-center p-1.5' : '') +
           (!isPinned ? ' cursor-pointer' : '') +
-          (isSidebarOpen ? ' bg-purple-500/[0.06]' : '') +
+          (isSidebarOpen ? ' bg-[var(--dk-surface-ghost-active)] text-foreground' : '') +
           (!hasLocalPlayback && hasPlex ? ' bg-amber-600/[0.06]' : '') +
           (bare ? ' w-8 h-8 hover:bg-[var(--dk-surface-ghost-hover)] active:bg-[var(--dk-surface-ghost-active)]' : '')
         }

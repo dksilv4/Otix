@@ -21,9 +21,9 @@ export const EmptyState = ({
 }) => {
   return (
     <div className={cn('flex flex-col items-center justify-center py-12 text-center', className)}>
-      <Icon className="h-9 w-9 text-white/20 mb-3" />
-      <p className="text-sm text-white/40">{title}</p>
-      {message && <p className="text-xs text-white/30 mt-1 max-w-xs">{message}</p>}
+      <Icon className="h-9 w-9 text-muted-foreground/30 mb-3" />
+      <p className="text-sm text-muted-foreground">{title}</p>
+      {message && <p className="text-xs text-muted-foreground/80 mt-1 max-w-xs">{message}</p>}
       {action && <div className="mt-4">{action}</div>}
     </div>
   )
@@ -31,9 +31,9 @@ export const EmptyState = ({
 
 export const Progress = ({ value, tone = 'primary', className }: { value: number; tone?: 'primary' | 'success' | 'error'; className?: string }) => {
   const clamped = Math.max(0, Math.min(100, value))
-  const color = tone === 'success' ? 'bg-emerald-400' : tone === 'error' ? 'bg-red-400' : 'bg-primary'
+  const color = tone === 'success' ? 'bg-emerald-500' : tone === 'error' ? 'bg-destructive' : 'bg-primary'
   return (
-    <div className={cn('h-1.5 w-full rounded-full bg-white/5 overflow-hidden', className)}>
+    <div className={cn('h-1.5 w-full rounded-full bg-[var(--dk-surface-field)] border border-[var(--dk-separator)] overflow-hidden', className)}>
       <div className={cn('h-full rounded-full transition-all duration-500', color)} style={{ width: `${clamped}%` }} />
     </div>
   )
@@ -41,7 +41,7 @@ export const Progress = ({ value, tone = 'primary', className }: { value: number
 
 export const SectionTitle = ({ children, className }: { children: ReactNode; className?: string }) => {
   return (
-    <h3 className={cn('text-xs font-semibold uppercase tracking-wider text-white/40', className)}>
+    <h3 className={cn('text-xs font-semibold uppercase tracking-wider text-muted-foreground', className)}>
       {children}
     </h3>
   )

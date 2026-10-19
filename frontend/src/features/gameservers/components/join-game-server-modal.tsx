@@ -55,16 +55,16 @@ export const JoinGameServerModal = ({ server, isOpen, onClose }: JoinGameServerM
     >
       <div className="space-y-5 pt-2">
         {/* Status card */}
-        <div className="p-4 rounded-2xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-between">
+        <div className="p-4 rounded-2xl bg-[var(--dk-surface-ghost)] border border-[var(--dk-separator)] flex items-center justify-between">
           <div className="flex items-center gap-3">
             <span
               className={`w-3 h-3 rounded-full ${
-                isOnline ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]' : 'bg-red-500'
+                isOnline ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]' : 'bg-destructive'
               }`}
             />
             <div>
-              <div className="text-sm font-semibold text-white capitalize">{server.status}</div>
-              <div className="text-xs text-white/50">
+              <div className="text-sm font-semibold text-foreground capitalize">{server.status}</div>
+              <div className="text-xs text-muted-foreground">
                 {server.currentMap ? `Map: ${server.currentMap}` : server.serverType}
               </div>
             </div>
@@ -72,12 +72,12 @@ export const JoinGameServerModal = ({ server, isOpen, onClose }: JoinGameServerM
 
           <div className="flex items-center gap-3 text-right">
             {server.pingMs != null && (
-              <div className="flex items-center gap-1 text-xs text-white/60">
+              <div className="flex items-center gap-1 text-xs text-muted-foreground">
                 <Wifi size={13} className="text-primary" />
                 <span>{server.pingMs}ms</span>
               </div>
             )}
-            <div className="flex items-center gap-1 text-xs font-semibold text-white/80">
+            <div className="flex items-center gap-1 text-xs font-semibold text-foreground">
               <Users size={13} className="text-primary" />
               <span>
                 {server.currentPlayers} / {server.maxPlayers || '—'}
@@ -88,9 +88,9 @@ export const JoinGameServerModal = ({ server, isOpen, onClose }: JoinGameServerM
 
         {/* Server Address */}
         <div>
-          <label className="text-xs font-semibold text-white/70 block mb-1.5">Server Address (IP:Port)</label>
-          <div className="flex items-center gap-2 p-2 rounded-xl bg-white/5 border border-white/10">
-            <span className="flex-1 px-2 font-mono text-sm text-white select-all">
+          <label className="text-xs font-semibold text-foreground block mb-1.5">Server Address (IP:Port)</label>
+          <div className="flex items-center gap-2 p-2 rounded-xl bg-[var(--dk-surface-ghost)] border border-[var(--dk-separator)]">
+            <span className="flex-1 px-2 font-mono text-sm text-foreground select-all">
               {server.connectionAddress}
             </span>
             <DkButton
@@ -109,12 +109,12 @@ export const JoinGameServerModal = ({ server, isOpen, onClose }: JoinGameServerM
         {/* Server Password (if any) */}
         {server.password && (
           <div>
-            <label className="text-xs font-semibold text-white/70 block mb-1.5 flex items-center gap-1">
-              <Key size={13} className="text-amber-400" />
+            <label className="text-xs font-semibold text-foreground block mb-1.5 flex items-center gap-1">
+              <Key size={13} className="text-amber-500 dark:text-amber-400" />
               <span>Server Password</span>
             </label>
-            <div className="flex items-center gap-2 p-2 rounded-xl bg-white/5 border border-white/10">
-              <span className="flex-1 px-2 font-mono text-sm text-white select-all">
+            <div className="flex items-center gap-2 p-2 rounded-xl bg-[var(--dk-surface-ghost)] border border-[var(--dk-separator)]">
+              <span className="flex-1 px-2 font-mono text-sm text-foreground select-all">
                 {server.password}
               </span>
               <DkButton
@@ -134,14 +134,14 @@ export const JoinGameServerModal = ({ server, isOpen, onClose }: JoinGameServerM
         {/* Player List (if any) */}
         {server.playerList && server.playerList.length > 0 && (
           <div>
-            <label className="text-xs font-semibold text-white/70 block mb-1.5">
+            <label className="text-xs font-semibold text-foreground block mb-1.5">
               Online Players ({server.playerList.length})
             </label>
-            <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto p-2 rounded-xl bg-white/5 border border-white/10">
+            <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto p-2 rounded-xl bg-[var(--dk-surface-ghost)] border border-[var(--dk-separator)]">
               {server.playerList.map((player, idx) => (
                 <span
                   key={idx}
-                  className="px-2 py-0.5 rounded-md bg-white/10 text-xs font-medium text-white/80"
+                  className="px-2 py-0.5 rounded-md bg-[var(--dk-surface-raised)] text-xs font-medium text-foreground border border-[var(--dk-separator)]"
                 >
                   {player}
                 </span>
@@ -151,7 +151,7 @@ export const JoinGameServerModal = ({ server, isOpen, onClose }: JoinGameServerM
         )}
 
         {/* Action Buttons */}
-        <div className="flex items-center justify-end gap-3 pt-3 border-t border-white/10">
+        <div className="flex items-center justify-end gap-3 pt-3 border-t border-[var(--dk-separator)]">
           <DkButton type="button" variant="ghost" onClick={onClose}>
             Close
           </DkButton>
@@ -159,9 +159,9 @@ export const JoinGameServerModal = ({ server, isOpen, onClose }: JoinGameServerM
           {isSteam && (
             <a
               href={steamConnectUrl}
-              className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-primary hover:bg-primary/90 text-white text-xs font-bold transition-all shadow-md active:scale-95"
+              className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-bold transition-all shadow-md active:scale-95"
             >
-              <Play size={14} fill="white" />
+              <Play size={14} fill="currentColor" />
               <span>1-Click Steam Join</span>
             </a>
           )}

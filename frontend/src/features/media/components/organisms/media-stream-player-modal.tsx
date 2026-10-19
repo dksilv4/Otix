@@ -671,55 +671,55 @@ export const MediaStreamPlayerModal = () => {
                 }}
               >
                 <div
-                  className="w-full max-w-md rounded-3xl bg-[var(--dk-surface-glass)] border border-white/15 p-6 shadow-2xl space-y-4 text-white"
+                  className="w-full max-w-md rounded-3xl bg-[var(--dk-surface-base)]/95 border border-[var(--dk-separator)] p-6 shadow-2xl space-y-4 text-foreground"
                   onClick={(e) => e.stopPropagation()}
                 >
-                  <div className="flex items-center justify-between pb-3 border-b border-white/10">
+                  <div className="flex items-center justify-between pb-3 border-b border-[var(--dk-separator)]">
                     <div className="flex items-center gap-2 font-bold text-sm">
-                      <Keyboard className="w-4 h-4 text-brand-primary" />
+                      <Keyboard className="w-4 h-4 text-primary" />
                       <span>Keyboard Shortcuts</span>
                     </div>
                     <button
                       type="button"
                       onClick={() => setShowShortcutsModal(false)}
-                      className="p-1 rounded-full text-white/60 hover:text-white hover:bg-white/10 transition-colors"
+                      className="p-1 rounded-full text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-glass)] transition-colors"
                     >
                       <X className="w-4 h-4" />
                     </button>
                   </div>
 
                   <div className="grid grid-cols-2 gap-3 text-xs">
-                    <div className="flex items-center justify-between p-2 rounded-xl bg-white/5">
-                      <span className="text-white/70">Play / Pause</span>
-                      <kbd className="px-2 py-0.5 rounded bg-white/10 font-mono font-bold text-[11px]">Space / K</kbd>
+                    <div className="flex items-center justify-between p-2 rounded-xl bg-[var(--dk-surface-glass)]">
+                      <span className="text-foreground">Play / Pause</span>
+                      <kbd className="px-2 py-0.5 rounded bg-[var(--dk-surface-glass-hover)] font-mono font-bold text-[11px]">Space / K</kbd>
                     </div>
-                    <div className="flex items-center justify-between p-2 rounded-xl bg-white/5">
-                      <span className="text-white/70">Seek 10s</span>
-                      <kbd className="px-2 py-0.5 rounded bg-white/10 font-mono font-bold text-[11px]">← / →</kbd>
+                    <div className="flex items-center justify-between p-2 rounded-xl bg-[var(--dk-surface-glass)]">
+                      <span className="text-foreground">Seek 10s</span>
+                      <kbd className="px-2 py-0.5 rounded bg-[var(--dk-surface-glass-hover)] font-mono font-bold text-[11px]">← / →</kbd>
                     </div>
-                    <div className="flex items-center justify-between p-2 rounded-xl bg-white/5">
-                      <span className="text-white/70">Volume</span>
-                      <kbd className="px-2 py-0.5 rounded bg-white/10 font-mono font-bold text-[11px]">↑ / ↓</kbd>
+                    <div className="flex items-center justify-between p-2 rounded-xl bg-[var(--dk-surface-glass)]">
+                      <span className="text-foreground">Volume</span>
+                      <kbd className="px-2 py-0.5 rounded bg-[var(--dk-surface-glass-hover)] font-mono font-bold text-[11px]">↑ / ↓</kbd>
                     </div>
-                    <div className="flex items-center justify-between p-2 rounded-xl bg-white/5">
-                      <span className="text-white/70">Mute</span>
-                      <kbd className="px-2 py-0.5 rounded bg-white/10 font-mono font-bold text-[11px]">M</kbd>
+                    <div className="flex items-center justify-between p-2 rounded-xl bg-[var(--dk-surface-glass)]">
+                      <span className="text-foreground">Mute</span>
+                      <kbd className="px-2 py-0.5 rounded bg-[var(--dk-surface-glass-hover)] font-mono font-bold text-[11px]">M</kbd>
                     </div>
-                    <div className="flex items-center justify-between p-2 rounded-xl bg-white/5">
-                      <span className="text-white/70">Fullscreen</span>
-                      <kbd className="px-2 py-0.5 rounded bg-white/10 font-mono font-bold text-[11px]">F</kbd>
+                    <div className="flex items-center justify-between p-2 rounded-xl bg-[var(--dk-surface-glass)]">
+                      <span className="text-foreground">Fullscreen</span>
+                      <kbd className="px-2 py-0.5 rounded bg-[var(--dk-surface-glass-hover)] font-mono font-bold text-[11px]">F</kbd>
                     </div>
-                    <div className="flex items-center justify-between p-2 rounded-xl bg-white/5">
-                      <span className="text-white/70">Theater</span>
-                      <kbd className="px-2 py-0.5 rounded bg-white/10 font-mono font-bold text-[11px]">T</kbd>
+                    <div className="flex items-center justify-between p-2 rounded-xl bg-[var(--dk-surface-glass)]">
+                      <span className="text-foreground">Theater</span>
+                      <kbd className="px-2 py-0.5 rounded bg-[var(--dk-surface-glass-hover)] font-mono font-bold text-[11px]">T</kbd>
                     </div>
-                    <div className="flex items-center justify-between p-2 rounded-xl bg-white/5">
-                      <span className="text-white/70">Picture in Pic</span>
-                      <kbd className="px-2 py-0.5 rounded bg-white/10 font-mono font-bold text-[11px]">P</kbd>
+                    <div className="flex items-center justify-between p-2 rounded-xl bg-[var(--dk-surface-glass)]">
+                      <span className="text-foreground">Picture in Pic</span>
+                      <kbd className="px-2 py-0.5 rounded bg-[var(--dk-surface-glass-hover)] font-mono font-bold text-[11px]">P</kbd>
                     </div>
-                    <div className="flex items-center justify-between p-2 rounded-xl bg-white/5">
-                      <span className="text-white/70">Subtitles</span>
-                      <kbd className="px-2 py-0.5 rounded bg-white/10 font-mono font-bold text-[11px]">C</kbd>
+                    <div className="flex items-center justify-between p-2 rounded-xl bg-[var(--dk-surface-glass)]">
+                      <span className="text-foreground">Subtitles</span>
+                      <kbd className="px-2 py-0.5 rounded bg-[var(--dk-surface-glass-hover)] font-mono font-bold text-[11px]">C</kbd>
                     </div>
                   </div>
                 </div>
@@ -737,7 +737,7 @@ export const MediaStreamPlayerModal = () => {
             {/* Top Bar: Floating Glass Header */}
             <div className="flex items-center justify-between gap-4 pointer-events-auto">
               <div className="flex items-center gap-3 min-w-0 max-w-[80%]">
-                <div className="h-9 w-9 rounded-2xl bg-white/10 border border-white/15 flex items-center justify-center shrink-0 shadow-lg text-brand-primary">
+                <div className="h-9 w-9 rounded-2xl bg-white/10 border border-white/15 flex items-center justify-center shrink-0 shadow-lg text-primary">
                   <Clapperboard className="h-4 w-4" />
                 </div>
                 <div className="min-w-0">
@@ -746,7 +746,6 @@ export const MediaStreamPlayerModal = () => {
 
                     {/* Server & Live status badge */}
                     <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 text-[10px] font-semibold uppercase tracking-wider">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                       {session.source}
                     </span>
 

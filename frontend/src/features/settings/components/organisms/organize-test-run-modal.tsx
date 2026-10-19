@@ -164,7 +164,7 @@ export const OrganizeTestRunModal = ({
     >
       <div className="flex flex-col flex-1 min-h-0 space-y-4">
         {/* Header & Template Review Bar */}
-        <div className="p-3.5 rounded-2xl bg-white/[0.03] space-y-2.5">
+        <div className="p-3.5 rounded-2xl bg-[var(--dk-surface-ghost)] border border-[var(--dk-separator)] space-y-2.5">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
               Active Folder Structure
@@ -198,24 +198,24 @@ export const OrganizeTestRunModal = ({
 
         {/* Metrics Overview Pill Bar */}
         <div className={cn('grid gap-3', metrics.healable > 0 ? 'grid-cols-5' : 'grid-cols-4')}>
-          <div className="p-3 rounded-xl bg-white/[0.02] text-center">
+          <div className="p-3 rounded-xl bg-[var(--dk-surface-ghost)] border border-[var(--dk-separator)] text-center">
             <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Items Scanned</p>
             <p className="text-lg font-bold text-foreground mt-0.5">{metrics.total}</p>
           </div>
-          <div className="p-3 rounded-xl bg-primary/10 text-center">
+          <div className="p-3 rounded-xl bg-primary/10 border border-primary/20 text-center">
             <p className="text-[10px] font-semibold text-primary uppercase tracking-wider">Matched</p>
             <p className="text-lg font-bold text-primary mt-0.5">{metrics.matched}</p>
           </div>
-          <div className="p-3 rounded-xl bg-white/[0.02] text-center">
+          <div className="p-3 rounded-xl bg-[var(--dk-surface-ghost)] border border-[var(--dk-separator)] text-center">
             <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">New Folders</p>
             <p className="text-lg font-bold text-foreground mt-0.5">+{metrics.foldersCount}</p>
           </div>
-          <div className="p-3 rounded-xl bg-white/[0.02] text-center">
+          <div className="p-3 rounded-xl bg-[var(--dk-surface-ghost)] border border-[var(--dk-separator)] text-center">
             <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Packages</p>
             <p className="text-lg font-bold text-foreground mt-0.5">{metrics.packages}</p>
           </div>
           {metrics.healable > 0 && (
-            <div className="p-3 rounded-xl bg-primary/15 text-center">
+            <div className="p-3 rounded-xl bg-primary/15 border border-primary/20 text-center">
               <p className="text-[10px] font-semibold text-primary uppercase tracking-wider">Healable</p>
               <p className="text-lg font-bold text-primary mt-0.5">{metrics.healable}</p>
             </div>
@@ -223,7 +223,7 @@ export const OrganizeTestRunModal = ({
         </div>
 
         {executedCount !== null && (
-          <div className="p-3 rounded-xl bg-primary/15 flex items-center gap-2 text-xs text-primary font-medium">
+          <div className="p-3 rounded-xl bg-primary/15 border border-primary/20 flex items-center gap-2 text-xs text-primary font-medium">
             <CheckCircle2 size={16} className="shrink-0" />
             <span>Successfully organized {executedCount} game artifacts.</span>
           </div>
@@ -237,7 +237,7 @@ export const OrganizeTestRunModal = ({
               <span className="text-xs">Scanning directory and computing target paths...</span>
             </div>
           ) : activeList.length === 0 ? (
-            <div className="p-8 text-center rounded-2xl bg-white/[0.02] space-y-2">
+            <div className="p-8 text-center rounded-2xl bg-[var(--dk-surface-ghost)] border border-[var(--dk-separator)] space-y-2">
               <Info size={24} className="mx-auto text-muted-foreground" />
               <p className="text-sm font-semibold text-foreground">No matching files found in this folder</p>
               <p className="text-xs text-muted-foreground max-w-sm mx-auto">
@@ -258,7 +258,7 @@ export const OrganizeTestRunModal = ({
               return (
                 <div
                   key={`${item.sourceFilename}-${idx}`}
-                  className="p-4 rounded-2xl bg-white/[0.025] hover:bg-white/[0.04] transition-all space-y-3"
+                  className="p-4 rounded-2xl bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-hover)] border border-[var(--dk-separator)] transition-all space-y-3"
                 >
                   {/* Status header & Badge */}
                   <div className="flex items-center justify-between gap-2">
@@ -289,7 +289,7 @@ export const OrganizeTestRunModal = ({
 
                   {/* Archive Diagnostics & Healing Details */}
                   {item.anomalies && item.anomalies.length > 0 && (
-                    <div className="p-2.5 rounded-xl bg-white/[0.02] space-y-1.5 border border-white/[0.04]">
+                    <div className="p-2.5 rounded-xl bg-[var(--dk-surface-raised)] space-y-1.5 border border-[var(--dk-separator)]">
                       <div className="flex items-center gap-1.5 text-[11px] font-semibold text-primary">
                         <Wrench size={12} className="shrink-0" />
                         <span>Archive Integrity Diagnostic</span>
@@ -361,7 +361,7 @@ export const OrganizeTestRunModal = ({
                       if (!value) return null
                       const def = TOKEN_COLOR_MAP[tokenKey]
                       const colorClass = def?.colorClass ?? 'text-foreground'
-                      const bgClass = def?.bgClass ?? 'bg-white/5'
+                      const bgClass = def?.bgClass ?? 'bg-[var(--dk-surface-raised)] border border-[var(--dk-separator)]'
 
                       return (
                         <span
@@ -414,4 +414,4 @@ export const OrganizeTestRunModal = ({
       </div>
     </DkDialog>
   )
-}
+};

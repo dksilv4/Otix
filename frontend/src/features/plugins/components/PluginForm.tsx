@@ -1,5 +1,5 @@
 import { useId, useMemo, useState } from 'react'
-import { Eye, EyeOff, GripVertical, Plus, Trash2 } from 'lucide-react'
+import { Eye, EyeOff, GripVertical, Plus, Trash2, ChevronRight } from 'lucide-react'
 import type { PluginAPI } from '@/features/plugins/api'
 import type { PluginConfigField } from '@/features/plugins/types/plugins'
 import { Button, Field, Input, Select, Switch } from '@/features/plugins/ui'
@@ -57,8 +57,8 @@ const ConfigFieldInput = ({
       return (
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
-            <span className="text-sm text-white/85">{field.label}</span>
-            {field.description && <p className="text-[11px] text-white/35 mt-0.5">{field.description}</p>}
+            <span className="text-sm text-foreground">{field.label}</span>
+            {field.description && <p className="text-[11px] text-muted-foreground mt-0.5">{field.description}</p>}
           </div>
           <Switch checked={Boolean(value)} onCheckedChange={onChange} />
         </div>
@@ -117,8 +117,8 @@ const ConfigFieldInput = ({
 
     case 'object':
       return (
-        <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
-          <p className="text-xs font-medium text-white/60 mb-3">{field.label}</p>
+        <div className="rounded-xl border border-[var(--dk-separator)] bg-[var(--dk-surface-glass)] p-4">
+          <p className="text-xs font-medium text-muted-foreground mb-3">{field.label}</p>
           {field.items && (
             <div className="space-y-4">
               {Object.entries(field.items).map(([subKey, subField]) => (
@@ -183,7 +183,7 @@ const SecretInput = ({
           type="button"
           onClick={() => setRevealed((r) => !r)}
           aria-label={revealed ? 'Hide secret' : 'Reveal secret'}
-          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-white/30 hover:text-white transition-colors"
+          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
           tabIndex={-1}
         >
           {revealed ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -224,18 +224,18 @@ const ListEditor = ({
   return (
     <Field label={field.label} description={field.description} error={error} required={field.required}>
       <div className="space-y-2">
-        {items.length === 0 && <p className="text-xs text-white/30 italic">No items yet</p>}
+        {items.length === 0 && <p className="text-xs text-muted-foreground italic">No items yet</p>}
         {items.map((item, idx) => (
-          <div key={idx} className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3">
+          <div key={idx} className="rounded-xl border border-[var(--dk-separator)] bg-[var(--dk-surface-glass)] p-3">
             <div className="flex items-center justify-between mb-2">
-              <span className="inline-flex items-center gap-1.5 text-[11px] text-white/40 font-medium">
+              <span className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground font-medium">
                 <GripVertical className="h-3.5 w-3.5" />
                 Item {idx + 1}
               </span>
               <button
                 type="button"
                 onClick={() => remove(idx)}
-                className="text-white/30 hover:text-red-400 transition-colors"
+                className="text-muted-foreground hover:text-destructive transition-colors"
               >
                 <Trash2 className="h-3.5 w-3.5" />
               </button>
@@ -292,7 +292,7 @@ const PathListEditor = ({
   return (
     <Field label={field.label} description={field.description} error={error} required={field.required}>
       <div className="space-y-1.5">
-        {paths.length === 0 && <p className="text-xs text-white/30 italic">No paths configured</p>}
+        {paths.length === 0 && <p className="text-xs text-muted-foreground italic">No paths configured</p>}
         {paths.map((path, idx) => (
           <div key={idx} className="flex items-center gap-2">
             <PathInput
@@ -307,7 +307,7 @@ const PathListEditor = ({
               variant="ghost"
               size="sm"
               onClick={() => remove(idx)}
-              className="shrink-0 h-9 w-9 p-0 text-white/30 hover:text-red-400"
+              className="shrink-0 h-9 w-9 p-0 text-muted-foreground hover:text-destructive"
               title="Remove path"
             >
               <Trash2 className="h-4 w-4" />
@@ -390,7 +390,7 @@ export const PluginForm = ({
         return (
           <section key={name}>
             {sections.length > 1 && (
-              <h4 className="text-[11px] font-semibold uppercase tracking-wider text-white/35 mb-3">{name}</h4>
+              <h4 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-3">{name}</h4>
             )}
             <div className="space-y-4">
               {visible.map(renderField)}
@@ -404,9 +404,9 @@ export const PluginForm = ({
           <button
             type="button"
             onClick={() => setShowAdvanced((s) => !s)}
-            className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-white/40 hover:text-white/70 transition-colors"
+            className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
           >
-            <span className={cn('inline-block w-1.5 h-1.5 rounded-full bg-white/30 transition-transform', showAdvanced && 'rotate-90')} />
+            <ChevronRight className={cn('h-3.5 w-3.5 transition-transform duration-200', showAdvanced && 'rotate-90')} />
             Advanced
           </button>
           {showAdvanced && (
@@ -420,8 +420,8 @@ export const PluginForm = ({
           className={cn(
             'rounded-xl border px-3.5 py-3 text-xs',
             testState.result.success
-              ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-400'
-              : 'border-red-500/20 bg-red-500/10 text-red-400',
+              ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+              : 'border-destructive/20 bg-destructive/10 text-destructive',
           )}
         >
           {testState.result.message}
@@ -429,7 +429,7 @@ export const PluginForm = ({
       )}
 
       {!inline && (
-        <div className="flex items-center justify-end gap-2 pt-2 border-t border-white/[0.06]">
+        <div className="flex items-center justify-end gap-2 pt-2 border-t border-[var(--dk-separator)]">
           {onTest && (
             <Button type="button" variant="outline" size="md" onClick={onTest} loading={testState?.loading}>
               Test Connection

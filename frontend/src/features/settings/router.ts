@@ -5,8 +5,12 @@ import type { PluginSettingsTab } from '@/features/_config/slots'
 import { safeLazy, safePrefetchChunk } from '@/lib/utils/chunk-reload'
 import { DEFAULT_SETTINGS_SECTION, getLastSettingsSection, NAV_ITEMS } from './constants'
 
-import { SettingsLayout } from './pages/settings-layout'
-import { SettingsSectionPending } from './components/molecules/settings-section-pending'
+const SettingsLayout = safeLazy(() =>
+  import('./pages/settings-layout').then((m) => ({ default: m.SettingsLayout })),
+)
+const SettingsSectionPending = safeLazy(() =>
+  import('./components/molecules/settings-section-pending').then((m) => ({ default: m.SettingsSectionPending })),
+)
 const PluginSettingsPage = safeLazy(() =>
   import('@/features/plugins/components/PluginSettingsPage').then((m) => ({ default: m.PluginSettingsPage })),
 )
@@ -20,8 +24,14 @@ const SettingsProfilePage = safeLazy(() =>
 const SettingsAccountPage = safeLazy(() =>
   import('./pages/settings-account-page').then((m) => ({ default: m.SettingsAccountPage })),
 )
+const SettingsGeneralPage = safeLazy(() =>
+  import('./pages/settings-general-page').then((m) => ({ default: m.SettingsGeneralPage })),
+)
 const SettingsAppearancePage = safeLazy(() =>
   import('./pages/settings-appearance-page').then((m) => ({ default: m.SettingsAppearancePage })),
+)
+const SettingsRecommendationsPage = safeLazy(() =>
+  import('./pages/settings-recommendations-page').then((m) => ({ default: m.SettingsRecommendationsPage })),
 )
 const SettingsLauncherPage = safeLazy(() =>
   import('./pages/settings-launcher-page').then((m) => ({ default: m.SettingsLauncherPage })),
@@ -71,6 +81,7 @@ export function createSettingsRoutes(rootRoute: AnyRoute, pluginTabs?: PluginSet
     path: '/settings',
     component: SettingsLayout,
     pendingComponent: SettingsSectionPending,
+    loader: preload(() => import('./pages/settings-layout')),
     beforeLoad: ({ location }) => {
       const rest = location.pathname.replace(/^\/settings\/?/, '')
       if (!rest) {
@@ -95,12 +106,20 @@ export function createSettingsRoutes(rootRoute: AnyRoute, pluginTabs?: PluginSet
     },
   })
 
-  const settingsGeneralRedirect = createRoute({
+  const settingsGeneralRoute = createRoute({
     getParentRoute: () => settingsRoute,
     path: '/general',
-    beforeLoad: () => {
-      throw redirect({ to: '/settings/appearance', hash: 'general' })
-    },
+    component: SettingsGeneralPage,
+    pendingComponent: SettingsSectionPending,
+    loader: preload(() => import('./pages/settings-general-page')),
+  })
+
+  const settingsRecommendationsRoute = createRoute({
+    getParentRoute: () => settingsRoute,
+    path: '/recommendations',
+    component: SettingsRecommendationsPage,
+    pendingComponent: SettingsSectionPending,
+    loader: preload(() => import('./pages/settings-recommendations-page')),
   })
 
   const settingsDesktopRedirect = createRoute({
@@ -261,7 +280,8 @@ export function createSettingsRoutes(rootRoute: AnyRoute, pluginTabs?: PluginSet
     settingsRoute.addChildren([
       settingsIndexRoute,
       settingsOverviewRedirect,
-      settingsGeneralRedirect,
+      settingsGeneralRoute,
+      settingsRecommendationsRoute,
       settingsDesktopRedirect,
       settingsNodesRoute,
       settingsNodeDetailRoute,

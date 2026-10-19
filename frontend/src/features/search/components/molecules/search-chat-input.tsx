@@ -12,11 +12,11 @@ const MEDIA_TYPE_LABEL: Record<string, string> = {
 }
 
 const MEDIA_TYPE_CLASS: Record<string, string> = {
-  movie: 'text-rose-400 bg-rose-400/10 border-rose-400/20',
-  show: 'text-violet-400 bg-violet-400/10 border-violet-400/20',
-  game: 'text-emerald-400 bg-emerald-400/10 border-emerald-400/20',
-  people: 'text-blue-400 bg-blue-400/10 border-blue-400/20',
-  users: 'text-teal-400 bg-teal-400/10 border-teal-400/20',
+  movie: 'text-rose-600 dark:text-rose-400 bg-rose-500/10 border-rose-500/20',
+  show: 'text-violet-600 dark:text-violet-400 bg-violet-500/10 border-violet-500/20',
+  game: 'text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border-emerald-500/20',
+  people: 'text-blue-600 dark:text-blue-400 bg-blue-500/10 border-blue-500/20',
+  users: 'text-teal-600 dark:text-teal-400 bg-teal-500/10 border-teal-500/20',
 }
 
 interface SearchInputProps {
@@ -135,7 +135,7 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(({
   return (
     <div className={`relative w-full ${className}`}>
       <div
-        className={'relative flex items-center gap-3 px-5 py-3 rounded-[2rem] backdrop-blur-xl ring-1 ring-white/[0.04] transition-all duration-300 bg-gradient-to-br from-[var(--dk-surface-glass)] to-[var(--dk-surface-glass-hover)] shadow-[var(--dk-shadow-glass)] focus-within:scale-[1.01] focus-within:ring-primary/20'}
+        className={'relative flex items-center gap-3 px-5 py-3 rounded-[2rem] backdrop-blur-xl ring-1 ring-[var(--dk-separator)] transition-all duration-300 bg-gradient-to-br from-[var(--dk-surface-glass)] to-[var(--dk-surface-glass-hover)] shadow-[var(--dk-shadow-glass)] focus-within:scale-[1.01] focus-within:ring-primary/20'}
       >
         <Search className="h-5 w-5 shrink-0 text-muted-foreground/50" />
 
@@ -146,7 +146,7 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(({
             {MEDIA_TYPE_LABEL[displayType]}
             <button
               onClick={handleRemoveType}
-              className="rounded-full p-0.5 hover:bg-white/[0.1] transition-colors"
+              className="rounded-full p-0.5 hover:bg-[var(--dk-surface-ghost-hover)] transition-colors"
               aria-label={`Remove ${MEDIA_TYPE_LABEL[displayType]} filter`}
             >
               <X className="h-3 w-3" />

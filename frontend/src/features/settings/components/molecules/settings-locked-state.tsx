@@ -33,8 +33,8 @@ export const SettingsLockedState = ({
         <Icon className="h-7 w-7" />
       </div>
       <div className="space-y-1.5">
-        <h3 className="text-lg font-bold text-white tracking-tight">{title}</h3>
-        <p className="text-xs text-white/60 leading-relaxed max-w-md mx-auto">{description}</p>
+        <h3 className="text-lg font-bold text-foreground tracking-tight">{title}</h3>
+        <p className="text-xs text-muted-foreground leading-relaxed max-w-md mx-auto">{description}</p>
       </div>
       {action ?? (
         <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">

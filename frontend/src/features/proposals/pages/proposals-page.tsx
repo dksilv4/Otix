@@ -115,9 +115,9 @@ export const ProposalsPage = () => {
       />
 
       {error && (
-        <div className="rounded-xl p-4 mb-4 bg-red-500/5">
-          <p className="text-xs text-red-400">{error}</p>
-          <DkButton size="sm" variant="ghost" onClick={fetchProposals} className="mt-1 text-red-300">
+        <div className="rounded-xl p-4 mb-4 bg-destructive/10 border border-destructive/20">
+          <p className="text-xs text-destructive">{error}</p>
+          <DkButton size="sm" variant="ghost" onClick={fetchProposals} className="mt-1 text-destructive hover:bg-destructive/15">
             Retry
           </DkButton>
         </div>
@@ -125,38 +125,38 @@ export const ProposalsPage = () => {
 
       {loading && (
         <div className="flex items-center justify-center py-16">
-          <Loader2 className="h-6 w-6 animate-spin text-white/40" />
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
         </div>
       )}
 
       {!loading && !error && proposals.length === 0 && (
         <div className="flex flex-col items-center gap-3 py-16 text-center">
-          <Star className="h-10 w-10 text-white/20" />
-          <p className="text-sm text-white/40">No {filter} proposals</p>
-          <p className="text-xs text-white/30">Scan a game library to generate match proposals</p>
+          <Star className="h-10 w-10 text-muted-foreground/30" />
+          <p className="text-sm text-muted-foreground">No {filter} proposals</p>
+          <p className="text-xs text-muted-foreground/70">Scan a game library to generate match proposals</p>
         </div>
       )}
 
       <div className="space-y-3">
         {proposals.map((p) => (
-          <div key={p.id} className="rounded-xl bg-white/[0.03] p-4">
+          <div key={p.id} className="rounded-xl bg-[var(--dk-surface-card)] border border-[var(--dk-separator)] p-4">
             <div className="flex items-stretch gap-4">
               <div className="flex-1 min-w-0 flex flex-col items-center gap-2">
-                <div className="w-24 h-32 shrink-0 rounded-lg overflow-hidden bg-white/5">
+                <div className="w-24 h-32 shrink-0 rounded-lg overflow-hidden bg-[var(--dk-surface-glass)] border border-[var(--dk-separator)]">
                   {p.posterUrl ? (
                     <img src={p.posterUrl} alt="" className="w-full h-full object-cover" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">
-                      <Gamepad2 className="h-8 w-8 text-white/10" />
+                      <Gamepad2 className="h-8 w-8 text-muted-foreground/20" />
                     </div>
                   )}
                 </div>
                 <div className="text-center min-w-0 w-full">
-                  <span className="text-[9px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-white/5 text-white/40">
+                  <span className="text-[9px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-[var(--dk-surface-glass)] border border-[var(--dk-separator)] text-muted-foreground">
                     {p.source}
                   </span>
-                  <p className="text-xs font-medium text-white mt-1 truncate">{p.sourceTitle}</p>
-                  <p className="text-[10px] text-white/30 mt-0.5">
+                  <p className="text-xs font-medium text-foreground mt-1 truncate">{p.sourceTitle}</p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">
                     {[p.releaseYear, p.developer].filter(Boolean).join(' · ') || '—'}
                   </p>
                 </div>
@@ -167,35 +167,35 @@ export const ProposalsPage = () => {
                   <p className="text-sm font-bold">{Math.round(p.otixConfidence * 100)}%</p>
                   <p className="text-[8px] opacity-60">{p.matchType}</p>
                 </div>
-                <ArrowRight className="h-4 w-4 text-white/20" />
+                <ArrowRight className="h-4 w-4 text-muted-foreground/30" />
               </div>
 
               <div className="flex-1 min-w-0 flex flex-col items-center gap-2">
-                <div className="w-24 h-32 shrink-0 rounded-lg overflow-hidden bg-white/5">
+                <div className="w-24 h-32 shrink-0 rounded-lg overflow-hidden bg-[var(--dk-surface-glass)] border border-[var(--dk-separator)]">
                   {p.otixPosterUrl ? (
                     <img src={p.otixPosterUrl} alt="" className="w-full h-full object-cover" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">
-                      <Gamepad2 className="h-8 w-8 text-white/10" />
+                      <Gamepad2 className="h-8 w-8 text-muted-foreground/20" />
                     </div>
                   )}
                 </div>
                 <div className="text-center min-w-0 w-full">
-                  <span className="text-[9px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-green-500/10 text-green-400">
+                  <span className="text-[9px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400">
                     Otix
                   </span>
                   <div className="flex items-center justify-center gap-1 mt-1">
-                    <p className="text-xs font-medium text-green-400/90 truncate">{p.otixTitle}</p>
+                    <p className="text-xs font-medium text-emerald-600 dark:text-emerald-400 truncate">{p.otixTitle}</p>
                     <a
                       href={`/media/game/${p.otixMediaId}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="p-0.5 rounded text-white/15 hover:text-white/40 transition-colors shrink-0"
+                      className="p-0.5 rounded text-muted-foreground hover:text-foreground transition-colors shrink-0"
                     >
                       <ExternalLink className="h-3 w-3" />
                     </a>
                   </div>
-                  <p className="text-[10px] text-white/30 mt-0.5">
+                  <p className="text-[10px] text-muted-foreground mt-0.5">
                     {p.otixReleaseYear ? `${p.otixReleaseYear}` : '—'}
                   </p>
                 </div>
@@ -208,7 +208,7 @@ export const ProposalsPage = () => {
                       size="sm"
                       onClick={() => handleAction(p.id, 'approve')}
                       disabled={!!acting}
-                      className="bg-green-500/15 text-green-400 hover:bg-green-500/25"
+                      className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/25"
                     >
                       <CheckCircle2 className="h-4 w-4" /> Accept
                     </DkButton>
@@ -217,19 +217,19 @@ export const ProposalsPage = () => {
                       variant="ghost"
                       onClick={() => handleAction(p.id, 'reject')}
                       disabled={!!acting}
-                      className="text-white/30 hover:text-red-400 hover:bg-red-500/10"
+                      className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
                     >
                       <XCircle className="h-4 w-4" />
                     </DkButton>
                   </>
                 )}
                 {p.status === 'approved' && (
-                  <span className="text-xs text-green-400 font-medium flex items-center gap-1">
+                  <span className="text-xs text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1">
                     <CheckCircle2 className="h-3.5 w-3.5" /> Approved
                   </span>
                 )}
                 {p.status === 'rejected' && (
-                  <span className="text-xs text-red-400/60 font-medium flex items-center gap-1">
+                  <span className="text-xs text-destructive/80 font-medium flex items-center gap-1">
                     <XCircle className="h-3.5 w-3.5" /> Rejected — skipped on future scans
                   </span>
                 )}

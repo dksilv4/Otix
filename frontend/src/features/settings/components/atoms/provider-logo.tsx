@@ -1,6 +1,7 @@
 import EpicLogo from '@/assets/provider-logos/epic.svg?react'
 import SteamLogo from '@/assets/provider-logos/steam.svg?react'
 import GOGLogo from '@/assets/provider-logos/gog.svg?react'
+import { cn } from '@/lib/utils'
 
 interface ProviderLogoProps {
   platform: string
@@ -12,15 +13,15 @@ export const ProviderLogo = ({ platform, className = 'h-4 w-4', showTextFallback
   const p = (platform || '').toLowerCase().trim()
 
   if (p === 'epic' || p === 'egs' || p === 'epic games' || p === 'epic games store') {
-    return <EpicLogo className={className + ' text-white/90 shrink-0'} />
+    return <EpicLogo className={cn('shrink-0 text-foreground', className)} />
   }
 
   if (p === 'steam') {
-    return <SteamLogo className={className + ' text-sky-400 shrink-0'} />
+    return <SteamLogo className={cn('shrink-0 text-sky-400', className)} />
   }
 
   if (p === 'gog' || p === 'gog galaxy') {
-    return <GOGLogo className={className + ' shrink-0'} />
+    return <GOGLogo className={cn('shrink-0', className)} />
   }
 
   if (p === 'xbox' || p === 'microsoft' || p === 'game pass') {
@@ -88,11 +89,11 @@ export const ProviderLogo = ({ platform, className = 'h-4 w-4', showTextFallback
 
   // Default PC / Desktop / Custom
   if (showTextFallback) {
-    return <span className={className + ' text-white/60 text-xs font-mono uppercase'}>{platform || 'PC'}</span>
+    return <span className={className + ' text-muted-foreground text-xs font-mono uppercase'}>{platform || 'PC'}</span>
   }
 
   return (
-    <svg className={className + ' text-white/60 shrink-0'} viewBox="0 0 24 24" fill="currentColor">
+    <svg className={className + ' text-muted-foreground shrink-0'} viewBox="0 0 24 24" fill="currentColor">
       <title>{platform || 'PC'}</title>
       <path d="M20 3H4c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h6l-2 3v1h8v-1l-2-3h6c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 12H4V5h16v10z" />
     </svg>

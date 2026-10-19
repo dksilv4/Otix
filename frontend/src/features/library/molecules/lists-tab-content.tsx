@@ -137,7 +137,7 @@ export const ListsTabContent = () => {
     <div className="space-y-6">
       {/* Action / Selection toolbar */}
       {isSelecting ? (
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-[var(--dk-surface-glass)] p-3">
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[var(--dk-separator)] bg-[var(--dk-surface-glass)] p-3">
           <div className="flex items-center gap-3">
             <span className="text-sm font-semibold text-foreground">
               {selectedIds.size} of {listItems.length} selected
@@ -154,7 +154,7 @@ export const ListsTabContent = () => {
           <div className="flex items-center gap-2">
             {isConfirmingDelete ? (
               <div className="flex items-center gap-2">
-                <span className="text-xs text-red-400 font-medium">
+                <span className="text-xs text-destructive font-medium">
                   Delete {selectedIds.size} {selectedIds.size === 1 ? 'list' : 'lists'}?
                 </span>
                 <button
@@ -169,7 +169,7 @@ export const ListsTabContent = () => {
                   type="button"
                   onClick={() => setIsConfirmingDelete(false)}
                   disabled={deleteLists.isPending}
-                  className="rounded-xl px-3 py-1.5 text-xs font-semibold bg-white/5 hover:bg-white/10 text-foreground transition-all"
+                  className="rounded-xl px-3 py-1.5 text-xs font-semibold bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-glass-hover)] text-foreground transition-all"
                 >
                   Cancel
                 </button>
@@ -180,7 +180,7 @@ export const ListsTabContent = () => {
                   type="button"
                   onClick={() => setIsConfirmingDelete(true)}
                   disabled={selectedIds.size === 0}
-                  className="inline-flex items-center gap-1.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 px-3 py-1.5 text-sm font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-destructive/10 hover:bg-destructive/20 text-destructive border border-destructive/20 px-3 py-1.5 text-sm font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   <Trash2 className="h-4 w-4" />
                   Delete ({selectedIds.size})
@@ -188,7 +188,7 @@ export const ListsTabContent = () => {
                 <button
                   type="button"
                   onClick={cancelSelection}
-                  className="rounded-xl px-3 py-1.5 text-sm font-medium bg-white/5 hover:bg-white/10 text-foreground transition-all"
+                  className="rounded-xl px-3 py-1.5 text-sm font-medium bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-glass-hover)] text-foreground transition-all"
                 >
                   Done
                 </button>
@@ -205,7 +205,7 @@ export const ListsTabContent = () => {
             <button
               type="button"
               onClick={() => setIsSelecting(true)}
-              className="inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-sm font-medium bg-white/5 hover:bg-white/10 text-foreground border border-white/10 transition-all"
+              className="inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-sm font-medium bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-glass-hover)] text-foreground border border-[var(--dk-separator)] transition-all"
             >
               <CheckSquare className="h-4 w-4 text-muted-foreground" />
               Select

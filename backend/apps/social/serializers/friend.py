@@ -19,6 +19,8 @@ class FriendUserSerializer(serializers.Serializer):
     avatar_url = serializers.CharField(read_only=True, allow_null=True)
     steam_id = serializers.CharField(read_only=True, allow_null=True)
     plex_id = serializers.CharField(read_only=True, allow_null=True)
+    total_xp = serializers.IntegerField(read_only=True, required=False, default=0)
+    bio = serializers.CharField(read_only=True, allow_null=True, required=False)
 
 
 class FriendRequestOutSerializer(serializers.Serializer):
@@ -40,6 +42,9 @@ class FriendOutSerializer(serializers.Serializer):
     username = serializers.CharField(read_only=True)
     avatar_url = serializers.CharField(read_only=True, allow_null=True)
     friends_since = serializers.DateTimeField(read_only=True, allow_null=True)
+    last_login = serializers.DateTimeField(read_only=True, allow_null=True, required=False)
+    total_xp = serializers.IntegerField(read_only=True, required=False, default=0)
+    bio = serializers.CharField(read_only=True, allow_null=True, required=False)
 
 
 class FriendshipStatusSerializer(serializers.Serializer):

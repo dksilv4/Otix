@@ -123,17 +123,17 @@ export const getStatusBadgeInfo = (status: PreviewItem['status']) => {
     case 'container_package':
       return { label: 'Folder Package', className: 'text-primary bg-primary/10 border-primary/20' }
     case 'secondary_update':
-      return { label: 'Update', className: 'text-foreground/90 bg-white/10 border-white/15' }
+      return { label: 'Update', className: 'text-foreground/90 bg-[var(--dk-surface-field)] border border-[var(--dk-separator)]' }
     case 'secondary_dlc':
-      return { label: 'DLC', className: 'text-foreground/90 bg-white/10 border-white/15' }
+      return { label: 'DLC', className: 'text-foreground/90 bg-[var(--dk-surface-field)] border border-[var(--dk-separator)]' }
     case 'secondary_crack':
       return { label: 'Crack Supplement', className: 'text-primary bg-primary/15 border-primary/25' }
     case 'already_organized':
-      return { label: 'Organized', className: 'text-muted-foreground bg-white/5 border-white/10' }
+      return { label: 'Organized', className: 'text-muted-foreground bg-[var(--dk-surface-ghost)] border border-[var(--dk-separator)]' }
     case 'conflict':
       return { label: 'Collision', className: 'text-destructive bg-destructive/10 border-destructive/20' }
     case 'sample':
-      return { label: 'Sample', className: 'text-muted-foreground bg-white/5 border-white/10' }
+      return { label: 'Sample', className: 'text-muted-foreground bg-[var(--dk-surface-ghost)] border border-[var(--dk-separator)]' }
     case 'rename_and_move':
     default:
       return { label: 'Move & Rename', className: 'text-primary bg-primary/15 border-primary/25' }
@@ -147,7 +147,7 @@ export const getHealthBadgeInfo = (health?: string) => {
     case 'INCOMPLETE_DOWNLOAD':
       return { label: 'Incomplete Part', className: 'text-destructive bg-destructive/10 border-destructive/20' }
     case 'HEALTHY':
-      return { label: 'Healthy Archive', className: 'text-foreground/80 bg-white/5 border-white/10' }
+      return { label: 'Healthy Archive', className: 'text-foreground/80 bg-[var(--dk-surface-ghost)] border border-[var(--dk-separator)]' }
     default:
       return null
   }

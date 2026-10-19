@@ -13,16 +13,16 @@ export const CalendarTimelinePage = () => {
       </Helmet>
 
       {isLoading && (
-        <div className="min-h-0 flex-1 animate-pulse bg-white/[0.03]" />
+        <div className="min-h-0 flex-1 animate-pulse bg-[var(--dk-surface-ghost)]" />
       )}
 
       {isError && !events && (
         <div className="flex flex-1 flex-col items-center justify-center px-4 text-center">
-          <p className="text-sm text-white/50">Failed to load the calendar.</p>
+          <p className="text-sm text-destructive">Failed to load the calendar.</p>
           <button
             type="button"
             onClick={() => void refetch()}
-            className="mt-3 rounded-md border border-white/10 px-3 py-1.5 text-xs font-medium text-white/70 transition-colors hover:border-white/20 hover:text-white"
+            className="mt-3 rounded-md border border-[var(--dk-separator)] px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground hover:bg-[var(--dk-surface-ghost)]"
           >
             Retry
           </button>
@@ -33,8 +33,8 @@ export const CalendarTimelinePage = () => {
 
       {events && events.length === 0 && (
         <div className="flex flex-1 flex-col items-center justify-center px-4 text-center">
-          <p className="text-sm text-white/30">No upcoming or recent releases</p>
-          <p className="mt-1 text-xs text-white/20">Add items to your watchlist to track them here.</p>
+          <p className="text-sm text-muted-foreground">No upcoming or recent releases</p>
+          <p className="mt-1 text-xs text-muted-foreground/60">Add items to your watchlist to track them here.</p>
         </div>
       )}
     </div>

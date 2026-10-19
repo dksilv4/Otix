@@ -121,10 +121,10 @@ export const HomeManageModal = ({
             <HomeIcon className="h-5 w-5" />
           </div>
           <div>
-            <h2 className="text-base font-semibold leading-tight text-white">
+            <h2 className="text-base font-semibold leading-tight text-foreground">
               {home ? `Edit ${home.name}` : 'New Home Location'}
             </h2>
-            <p className="text-xs text-white/50">
+            <p className="text-xs text-muted-foreground">
               Group nodes, server machines, and instances by household or environment.
             </p>
           </div>
@@ -133,7 +133,7 @@ export const HomeManageModal = ({
     >
       <div className="space-y-4 pt-3">
         <div>
-          <label className="block text-xs font-medium text-white/70 mb-1.5">
+          <label className="block text-xs font-medium text-foreground mb-1.5">
             Home Name *
           </label>
           <DkInput
@@ -144,7 +144,7 @@ export const HomeManageModal = ({
         </div>
 
         <div>
-          <label className="block text-xs font-medium text-white/70 mb-1.5">
+          <label className="block text-xs font-medium text-foreground mb-1.5">
             Description (Optional)
           </label>
           <DkInput
@@ -155,7 +155,7 @@ export const HomeManageModal = ({
         </div>
 
         <div>
-          <label className="block text-xs font-medium text-white/70 mb-1.5">
+          <label className="block text-xs font-medium text-foreground mb-1.5">
             Subnet CIDR (Optional)
           </label>
           <DkInput
@@ -165,10 +165,10 @@ export const HomeManageModal = ({
           />
         </div>
 
-        <div className="flex items-center justify-between p-3 rounded-xl bg-white/[0.03]">
+        <div className="flex items-center justify-between p-3 rounded-xl bg-[var(--dk-surface-ghost)] border border-[var(--dk-separator)]">
           <div>
-            <p className="text-xs font-medium text-white/90">Default Home</p>
-            <p className="text-[10px] text-white/40">New nodes and servers will automatically assign here.</p>
+            <p className="text-xs font-medium text-foreground">Default Home</p>
+            <p className="text-[10px] text-muted-foreground">New nodes and servers will automatically assign here.</p>
           </div>
           <DkSwitch checked={isDefault} onCheckedChange={setIsDefault} />
         </div>

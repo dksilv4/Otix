@@ -79,7 +79,12 @@ def send_friend_request(sender_id: int, receiver_id: int) -> FriendRequest:
         type="friend_request",
         title="New Friend Request",
         body=f"{sender.username if sender else 'Someone'} sent you a friend request",
-        metadata_json={"sender_id": sender_id, "request_id": request.id},
+        metadata_json={
+            "sender_id": sender_id,
+            "sender_username": sender.username if sender else None,
+            "username": sender.username if sender else None,
+            "request_id": request.id,
+        },
     )
     return request
 
@@ -111,7 +116,11 @@ def accept_friend_request(request_id: int, user_id: int) -> FriendRequest:
         type="friend_accepted",
         title="Friend Request Accepted",
         body=f"{receiver.username if receiver else 'Someone'} accepted your friend request",
-        metadata_json={"sender_id": request.sender_id, "receiver_id": request.receiver_id},
+        metadata_json={
+            "sender_id": request.sender_id,
+            "receiver_id": request.receiver_id,
+            "username": receiver.username if receiver else None,
+        },
     )
     _resolve_friend_request_notifications(user_id, request_id, FR_ACCEPTED)
     return request
@@ -144,7 +153,11 @@ def reject_friend_request(request_id: int, user_id: int) -> FriendRequest:
         type="friend_rejected",
         title="Friend Request Declined",
         body=f"{receiver.username if receiver else 'Someone'} declined your friend request",
-        metadata_json={"receiver_id": user_id, "request_id": request.id},
+        metadata_json={
+            "receiver_id": user_id,
+            "request_id": request.id,
+            "username": receiver.username if receiver else None,
+        },
     )
     _resolve_friend_request_notifications(user_id, request_id, FR_REJECTED)
     return request
@@ -228,6 +241,9 @@ def remove_friend(user_id: int, friend_id: int) -> bool:
             type="friend_removed",
             title="Friend Removed",
             body=f"{remover.username if remover else 'Someone'} removed you from friends",
-            metadata_json={"remover_id": user_id},
+            metadata_json={
+                "remover_id": user_id,
+                "username": remover.username if remover else None,
+            },
         )
     return deleted > 0

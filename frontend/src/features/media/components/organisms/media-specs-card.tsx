@@ -116,7 +116,7 @@ export const MediaSpecsCard = ({ detail, className = '' }: MediaSpecsCardProps) 
               Box Office Result
             </dt>
             <dd
-              className={`mt-0.5 font-semibold ${isProfitable ? 'text-emerald-400' : 'text-red-400'}`}
+              className={`mt-0.5 font-semibold ${isProfitable ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}
             >
               {isProfitable ? '+' : '-'}{formatCurrency(Math.abs(profitAbs))} ({isProfitable ? 'Profit' : 'Loss'})
             </dd>
@@ -137,7 +137,7 @@ export const MediaSpecsCard = ({ detail, className = '' }: MediaSpecsCardProps) 
                 key={ic.id}
                 to="/company/$companyId"
                 params={{ companyId: ic.company.id }}
-                className="glass-inset inline-flex items-center gap-2 px-2.5 py-1.5 rounded-xl hover:bg-white/[0.08] transition-colors max-w-full"
+                className="glass-inset inline-flex items-center gap-2 px-2.5 py-1.5 rounded-xl hover:bg-[var(--dk-surface-glass-hover)] transition-colors max-w-full"
                 title={ic.company.name}
               >
                 {ic.company.logoUrl ? (

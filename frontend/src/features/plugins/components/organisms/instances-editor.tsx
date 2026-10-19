@@ -282,12 +282,12 @@ export const InstancesEditor = ({
   }
 
   return (
-    <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
+    <div className="rounded-xl border border-[var(--dk-separator)] bg-[var(--dk-surface-field)] p-4">
       <div className="mb-3 flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <h4 className="text-sm font-semibold text-white">{field.label}</h4>
+          <h4 className="text-sm font-semibold text-foreground">{field.label}</h4>
           {instances && (
-            <span className="rounded-full bg-white/5 px-2 py-0.5 text-[11px] text-white/40">{instances.length}</span>
+            <span className="rounded-full bg-[var(--dk-surface-field)] border border-[var(--dk-separator)] px-2 py-0.5 text-[11px] text-muted-foreground">{instances.length}</span>
           )}
         </div>
         {!adding && (
@@ -298,7 +298,7 @@ export const InstancesEditor = ({
       </div>
 
       {loadError && (
-        <p className="mb-2 text-xs text-red-400 inline-flex items-center gap-1">
+        <p className="mb-2 text-xs text-destructive inline-flex items-center gap-1">
           <XCircle className="h-3 w-3" /> {loadError}
         </p>
       )}
@@ -308,33 +308,33 @@ export const InstancesEditor = ({
           <Loader2 className="h-4 w-4 animate-spin text-primary" />
         </div>
       ) : instances.length === 0 && !adding ? (
-        <p className="py-2 text-xs text-white/30 italic">No instances configured yet.</p>
+        <p className="py-2 text-xs text-muted-foreground italic">No instances configured yet.</p>
       ) : (
         <div className="space-y-1.5">
           {instances.map((inst) => {
             const id = inst.id as string
             const test = testResults[id]
             return (
-              <div key={id} className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2.5">
+              <div key={id} className="rounded-lg border border-[var(--dk-separator)] bg-[var(--dk-surface-field)] px-3 py-2.5">
                 <div className="flex items-center gap-3">
                   <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
                     <Server className="h-4 w-4" />
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      <p className="truncate text-sm font-medium text-white">{inst.name || id || 'Unnamed'}</p>
+                      <p className="truncate text-sm font-medium text-foreground">{inst.name || id || 'Unnamed'}</p>
                       {typeof inst.enabled === 'boolean' && (
-                        <Badge tone={inst.enabled ? 'success' : 'default'} dot>
+                        <Badge tone={inst.enabled ? 'success' : 'default'}>
                           {inst.enabled ? 'enabled' : 'disabled'}
                         </Badge>
                       )}
                     </div>
-                    <p className="truncate font-mono text-[11px] text-white/40">{instanceSummary(items, inst)}</p>
+                    <p className="truncate font-mono text-[11px] text-muted-foreground">{instanceSummary(items, inst)}</p>
                   </div>
                   <div className="flex shrink-0 items-center gap-1.5">
                     {test && (
                       <span
-                        className={cn('max-w-[180px] truncate text-[11px]', test.ok ? 'text-emerald-400' : 'text-red-400')}
+                        className={cn('max-w-[180px] truncate text-[11px]', test.ok ? 'text-emerald-600 dark:text-emerald-400' : 'text-destructive')}
                       >
                         {test.message}
                       </span>
@@ -362,7 +362,7 @@ export const InstancesEditor = ({
                       variant="ghost"
                       onClick={() => handleRemove(inst)}
                       loading={busyKey === `remove:${id}`}
-                      className="text-white/30 hover:text-red-400"
+                      className="text-muted-foreground hover:text-destructive"
                       title="Remove"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
@@ -376,10 +376,10 @@ export const InstancesEditor = ({
       )}
 
       {adding && (
-        <div className="mt-4 space-y-4 rounded-xl border border-primary/20 bg-white/[0.02] p-5">
+        <div className="mt-4 space-y-4 rounded-xl border border-primary/20 bg-[var(--dk-surface-field)] p-5">
           {hasConnect && (
             <>
-              <p className="text-[11px] font-medium uppercase tracking-wider text-white/30">Connection</p>
+              <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Connection</p>
               <div className="space-y-3">
                 {connectKeys.map((k) => {
                   const sub = items[k]
@@ -416,13 +416,13 @@ export const InstancesEditor = ({
                   <Plug className="h-3.5 w-3.5" /> {connecting ? 'Connecting...' : 'Connect & fetch'}
                 </Button>
                 {probe?.ok && (
-                  <span className="inline-flex items-center gap-1 text-[11px] text-emerald-400">
+                  <span className="inline-flex items-center gap-1 text-[11px] text-emerald-600 dark:text-emerald-400">
                     <Check className="h-3 w-3" />
                     Connected{probe.version ? ` — v${probe.version}` : ''}
                   </span>
                 )}
                 {probe && !probe.ok && (
-                  <span className="inline-flex items-center gap-1 text-[11px] text-red-400">
+                  <span className="inline-flex items-center gap-1 text-[11px] text-destructive">
                     <XCircle className="h-3 w-3" /> {probe.error}
                   </span>
                 )}
@@ -432,7 +432,7 @@ export const InstancesEditor = ({
 
           {(probe?.ok || !hasConnect) && detailKeys.length > 0 && (
             <>
-              <p className="text-[11px] font-medium uppercase tracking-wider text-white/30">Details</p>
+              <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Details</p>
               <div className="grid gap-4 sm:grid-cols-2">
                 {detailKeys.map((k) => (
                   <SubFieldInput
@@ -448,7 +448,7 @@ export const InstancesEditor = ({
             </>
           )}
 
-          <div className="flex items-center justify-end gap-2 border-t border-white/[0.06] pt-3">
+          <div className="flex items-center justify-end gap-2 border-t border-[var(--dk-separator)] pt-3">
             <Button size="sm" variant="ghost" onClick={closeForm}>
               Cancel
             </Button>
@@ -501,7 +501,7 @@ const SubFieldInput = ({
     case 'boolean':
       return (
         <div className="sm:col-span-2 flex items-center gap-3">
-          <span className="flex-1 text-sm text-white/70">{subField.label}</span>
+          <span className="flex-1 text-sm text-foreground">{subField.label}</span>
           <Switch checked={Boolean(value)} onCheckedChange={onChange} />
         </div>
       )

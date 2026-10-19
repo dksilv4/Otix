@@ -34,7 +34,7 @@ export const SectionHeader = ({ title, description, action, className, icon: Ico
           <div className="flex flex-wrap items-center gap-2">
             <h3
               className={cn(
-                'font-bold text-white tracking-tight',
+                'font-bold text-foreground tracking-tight',
                 isPage ? 'text-lg' : 'text-sm sm:text-base',
               )}
             >
@@ -43,7 +43,7 @@ export const SectionHeader = ({ title, description, action, className, icon: Ico
             {badges}
           </div>
           {description && (
-            <p className={cn('text-white/60 mt-0.5 leading-relaxed', isPage ? 'text-sm' : 'text-xs')}>
+            <p className={cn('text-muted-foreground mt-0.5 leading-relaxed', isPage ? 'text-sm' : 'text-xs')}>
               {description}
             </p>
           )}

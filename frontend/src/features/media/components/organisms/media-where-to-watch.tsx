@@ -19,20 +19,20 @@ const COMMERCIAL_MAP: Record<CommercialCategory, { label: string; types: string[
   stream: {
     label: 'Stream',
     types: ['flatrate', 'free', 'ads'],
-    color: 'text-emerald-400',
-    badge: 'bg-emerald-500/15 text-emerald-400',
+    color: 'text-emerald-600 dark:text-emerald-400',
+    badge: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400',
   },
   rent: {
     label: 'Rent',
     types: ['rent'],
-    color: 'text-amber-400',
-    badge: 'bg-amber-500/15 text-amber-400',
+    color: 'text-amber-600 dark:text-amber-400',
+    badge: 'bg-amber-500/15 text-amber-600 dark:text-amber-400',
   },
   buy: {
     label: 'Buy',
     types: ['buy'],
-    color: 'text-sky-400',
-    badge: 'bg-sky-500/15 text-sky-400',
+    color: 'text-sky-600 dark:text-sky-400',
+    badge: 'bg-sky-500/15 text-sky-600 dark:text-sky-400',
   },
 }
 
@@ -81,7 +81,7 @@ export const WhereToWatch = ({ watchProviders = [], className = '', mediaType }:
       {/* ── Header ── */}
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/5 text-primary">
+          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--dk-surface-glass)] text-primary">
             <Tv className="h-3.5 w-3.5" />
           </div>
           <h3 className="text-sm font-semibold tracking-tight">Where to Watch</h3>
@@ -89,7 +89,7 @@ export const WhereToWatch = ({ watchProviders = [], className = '', mediaType }:
 
         {/* Commercial Tabs */}
         {availableCategories.length > 1 && (
-          <div className="flex items-center gap-1 rounded-xl bg-white/[0.04] p-0.5">
+          <div className="flex items-center gap-1 rounded-xl bg-[var(--dk-surface-glass)] p-0.5">
             {availableCategories.map((cat) => {
               const count = categorized[cat]?.length ?? 0
               const isActive = currentTab === cat
@@ -101,7 +101,7 @@ export const WhereToWatch = ({ watchProviders = [], className = '', mediaType }:
                   className={cn(
                     'rounded-lg px-2.5 py-1 text-xs font-medium transition-all',
                     isActive
-                      ? 'bg-white/10 text-foreground shadow-sm'
+                      ? 'bg-primary text-primary-foreground shadow-sm'
                       : 'text-muted-foreground hover:text-foreground',
                   )}
                 >
@@ -116,17 +116,17 @@ export const WhereToWatch = ({ watchProviders = [], className = '', mediaType }:
 
       {/* ── Spotlight: Personal Library Highlight Banner ── */}
       {personalProviders.length > 0 && (
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-amber-500/15 via-amber-500/10 to-transparent p-3.5 shadow-lg shadow-amber-500/5">
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-amber-500/15 via-amber-500/10 to-transparent p-3.5 shadow-lg shadow-amber-500/5 border border-amber-500/20">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3 min-w-0">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#e5a00d] text-black shadow-md shrink-0">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-500 text-black shadow-md shrink-0">
                 <PlexIcon className="h-5 w-5 fill-current" />
               </div>
               <div className="min-w-0">
                 <div className="flex items-center gap-1.5">
-                  <span className="text-xs font-bold text-amber-300">In Your Library</span>
+                  <span className="text-xs font-bold text-amber-700 dark:text-amber-300">In Your Library</span>
                 </div>
-                <p className="text-[11px] text-white/70 truncate">Ready to stream on your private server</p>
+                <p className="text-[11px] text-muted-foreground truncate">Ready to stream on your private server</p>
               </div>
             </div>
 
@@ -135,7 +135,7 @@ export const WhereToWatch = ({ watchProviders = [], className = '', mediaType }:
                 href={resolveProviderUrl(personalProviders[0].url) || '#'}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 rounded-xl bg-amber-400 px-3 py-1.5 text-xs font-bold text-black shadow hover:bg-amber-300 transition-colors shrink-0"
+                className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-3 py-1.5 text-xs font-bold text-primary-foreground shadow hover:bg-primary/90 transition-colors shrink-0"
               >
                 <Play className="h-3.5 w-3.5 fill-current" />
                 <span>Play</span>
@@ -155,16 +155,16 @@ export const WhereToWatch = ({ watchProviders = [], className = '', mediaType }:
             const url = resolveProviderUrl(provider.url)
 
             const chipContent = (
-              <div className="glass-inset group flex items-center justify-between gap-2.5 p-2.5 rounded-xl hover:bg-white/[0.08] transition-all">
+              <div className="glass-inset group flex items-center justify-between gap-2.5 p-2.5 rounded-xl hover:bg-[var(--dk-surface-glass-hover)] transition-all">
                 <div className="flex items-center gap-2.5 min-w-0">
                   {wp.logoUrl ? (
                     <img
                       src={wp.logoUrl}
                       alt=""
-                      className="h-7 w-7 rounded-lg object-contain bg-black/30 shrink-0"
+                      className="h-7 w-7 rounded-lg object-contain bg-[var(--dk-surface-glass)] shrink-0"
                     />
                   ) : (
-                    <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/[0.06] text-[10px] font-bold text-muted-foreground shrink-0">
+                    <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--dk-surface-glass)] text-[10px] font-bold text-muted-foreground shrink-0">
                       {wp.name.slice(0, 2)}
                     </div>
                   )}

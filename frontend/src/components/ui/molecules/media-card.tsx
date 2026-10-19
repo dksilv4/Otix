@@ -186,7 +186,7 @@ const DkMediaCard = memo(({
           )}
           style={{ transition: 'opacity 500ms var(--dk-ease-out)' }}
         >
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold text-white bg-primary/80 backdrop-blur-sm">
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold text-primary-foreground bg-primary/80 backdrop-blur-sm">
             <Star className="h-3 w-3 fill-current" />
             {avgRating.toFixed(1)}
           </span>

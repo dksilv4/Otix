@@ -6,7 +6,7 @@ import { LauncherFpsStats } from '@/features/launcher/components/molecules/launc
 export const LauncherGameStats = () => {
   return (
     <div className="flex items-center gap-4">
-      <div className="bg-white/5 backdrop-blur-2xl rounded-2xl px-6 py-4 shadow-2xl flex items-stretch gap-6">
+      <div className="bg-[var(--dk-surface-glass)] backdrop-blur-2xl rounded-2xl px-6 py-4 border border-[var(--dk-separator)] shadow-[var(--dk-shadow-glass)] flex items-stretch gap-6">
         <LauncherPlaytimeStats />
         <LauncherRatingStats />
         <LauncherCloudSyncStat />

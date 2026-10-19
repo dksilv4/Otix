@@ -24,19 +24,19 @@
     transition: color 0.15s ease;
 
     &--high {
-      @apply text-emerald-400;
+      @apply text-emerald-600 dark:text-emerald-400;
     }
 
     &--medium {
-      @apply text-sky-400;
+      @apply text-sky-600 dark:text-sky-400;
     }
 
     &--low {
-      @apply text-amber-400;
+      @apply text-amber-600 dark:text-amber-400;
     }
 
     &--critical {
-      @apply text-red-400;
+      @apply text-red-600 dark:text-red-400;
     }
 
     &--muted {

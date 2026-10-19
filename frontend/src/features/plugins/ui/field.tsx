@@ -31,17 +31,17 @@ export const Field = ({ label, description, error, required, htmlFor, children, 
       {label && (
         <label
           htmlFor={id}
-          className="flex items-baseline justify-between gap-2 text-xs font-medium text-white/60"
+          className="flex items-baseline justify-between gap-2 text-xs font-medium text-foreground"
         >
           <span>
             {label}
-            {required && <span className="ml-0.5 text-red-400">*</span>}
+            {required && <span className="ml-0.5 text-destructive">*</span>}
           </span>
         </label>
       )}
-      {description && <p className="text-[11px] text-white/35 leading-relaxed">{description}</p>}
+      {description && <p className="text-[11px] text-muted-foreground leading-relaxed">{description}</p>}
       {control}
-      {error && <p className="text-[11px] text-red-400">{error}</p>}
+      {error && <p className="text-[11px] text-destructive">{error}</p>}
     </div>
   )
 };

@@ -6,7 +6,7 @@ import { useMediaStreamPlayer } from './use-media-stream-player'
 import type { StreamPlaybackSession } from '../types/stream-player'
 import {
   buildPlexPlaybackSession,
-  type PlexConnectInfoData,
+  fetchPlexConnectInfoCached,
 } from '../utils/plex-stream'
 import type {
   RequestInstance,
@@ -196,15 +196,12 @@ export function useMediaDetailPluginActions(
       const primaryTarget = mediaId || requestId || tmdbId
       if (primaryTarget) {
         try {
-          const params: Record<string, string> = {}
           const numericTmdb = tmdbId || (requestId !== mediaId ? requestId : undefined)
-          if (numericTmdb) params.tmdbId = String(numericTmdb)
-          if (mediaTitle) params.title = mediaTitle
-
-          const { data: plexInfo } = await apiClient.get<PlexConnectInfoData>(
-            `/integrations/plex/connect-info/${encodeURIComponent(primaryTarget)}`,
-            { params },
-          )
+          const plexInfo = await fetchPlexConnectInfoCached(primaryTarget, {
+            tmdbId: numericTmdb ? String(numericTmdb) : undefined,
+            title: mediaTitle || undefined,
+            mediaType,
+          })
           const ratingKey = String(plexInfo?.ratingKey || plexInfo?.rating_key || '')
           const baseUrl = String(plexInfo?.baseUrl || plexInfo?.base_url || '')
           const token = String(plexInfo?.token || '')
@@ -360,15 +357,12 @@ export function useMediaDetailPluginActions(
         if (!baseUrl || !token || !ratingKey) {
           const primaryTarget = mediaId || requestId || tmdbId
           if (primaryTarget) {
-            const params: Record<string, string> = {}
             const numericTmdb = tmdbId || (requestId !== mediaId ? requestId : undefined)
-            if (numericTmdb) params.tmdbId = String(numericTmdb)
-            if (mediaTitle) params.title = mediaTitle
-
-            const { data: plexInfo } = await apiClient.get<PlexConnectInfoData>(
-              `/integrations/plex/connect-info/${encodeURIComponent(primaryTarget)}`,
-              { params },
-            )
+            const plexInfo = await fetchPlexConnectInfoCached(primaryTarget, {
+              tmdbId: numericTmdb ? String(numericTmdb) : undefined,
+              title: mediaTitle || undefined,
+              mediaType,
+            })
             if (plexInfo) {
               const session = buildPlexPlaybackSession(plexInfo, {
                 title: instance.title || mediaTitle || 'Movie',

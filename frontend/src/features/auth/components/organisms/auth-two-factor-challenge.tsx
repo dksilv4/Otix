@@ -36,8 +36,8 @@ export const TwoFactorChallenge = ({ onSuccess, onCancel }: TwoFactorChallengePr
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
       <div className="flex justify-center">
-        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/5">
-          <Shield className="h-7 w-7 text-white/50" />
+        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--dk-surface-ghost)] border border-[var(--dk-separator)]">
+          <Shield className="h-7 w-7 text-muted-foreground" />
         </div>
       </div>
 
@@ -66,11 +66,10 @@ export const TwoFactorChallenge = ({ onSuccess, onCancel }: TwoFactorChallengePr
           onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
           placeholder="000000"
           autoFocus
-          className="h-14 w-36 rounded-xl text-center text-2xl tracking-[0.25em] outline-none"
+          className="h-14 w-36 rounded-xl text-center text-2xl tracking-[0.25em] outline-none text-foreground border border-[var(--dk-separator)] focus:border-primary/50 focus:ring-1 focus:ring-primary/50 transition-colors"
           style={{
             backgroundColor: 'var(--dk-surface-glass)',
             backdropFilter: 'blur(12px)',
-            boxShadow: 'inset 0 1px 0 oklch(1 0 0 / 0.06)',
           }}
         />
       </div>
@@ -81,14 +80,14 @@ export const TwoFactorChallenge = ({ onSuccess, onCancel }: TwoFactorChallengePr
           id="totp-submit"
           disabled={code.length !== 6 || isSubmitting || showSuccess}
           className={
-            'flex h-14 w-14 items-center justify-center rounded-full transition-all ' +
-            (showSuccess ? 'bg-green-500' : 'bg-white/10 hover:bg-white/20') +
+            'cursor-pointer flex h-14 w-14 items-center justify-center rounded-full transition-all ' +
+            (showSuccess ? 'bg-emerald-500 text-primary-foreground' : 'bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-glass-hover)] border border-[var(--dk-separator)] text-foreground') +
             ' disabled:opacity-50'
           }
           aria-label="Verify code"
         >
           {showSuccess ? (
-            <Check className="h-6 w-6 text-black" />
+            <Check className="h-6 w-6 text-primary-foreground" />
           ) : isSubmitting ? (
             <Loader2 className="h-6 w-6 animate-spin" />
           ) : (
@@ -101,7 +100,7 @@ export const TwoFactorChallenge = ({ onSuccess, onCancel }: TwoFactorChallengePr
         <button
           type="button"
           onClick={onCancel}
-          className="flex items-center gap-1.5 text-xs text-muted-foreground transition-colors hover:text-white/80"
+          className="flex items-center gap-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
         >
           <ArrowLeft className="h-3.5 w-3.5" />
           Back to sign in

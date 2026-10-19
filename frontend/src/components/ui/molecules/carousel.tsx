@@ -106,7 +106,7 @@ export const Carousel = forwardRef((
           <div className="flex items-center gap-2">
             {title ? (
               <>
-                <h2 className="text-xl font-bold text-white/90">{title}</h2>
+                <h2 className="text-xl font-bold text-foreground">{title}</h2>
                 {subtitle && (
                   <span className="text-sm text-muted-foreground/60 mt-1">
                     {subtitle}
@@ -138,7 +138,7 @@ export const Carousel = forwardRef((
             className="absolute left-6 top-1/2 -translate-y-1/2 z-[3] opacity-0 group-hover/carousel:opacity-100 transition-opacity duration-200 cursor-pointer"
             aria-label="Previous items"
           >
-            <div className="bg-background/15 backdrop-blur-xl rounded-full p-2 shadow-xl ring-1 ring-white/20 hover:bg-background/30 transition-all">
+            <div className="bg-[var(--dk-surface-overlay)] text-foreground backdrop-blur-xl rounded-full p-2 shadow-xl border border-[var(--dk-separator)] hover:bg-[var(--dk-surface-raised)] transition-all">
               <ChevronLeftIcon className="h-5 w-5" />
             </div>
           </button>
@@ -181,7 +181,7 @@ export const Carousel = forwardRef((
             className="absolute right-6 top-1/2 -translate-y-1/2 z-[3] opacity-0 group-hover/carousel:opacity-100 transition-opacity duration-200 cursor-pointer"
             aria-label="Next items"
           >
-            <div className="bg-background/15 backdrop-blur-xl rounded-full p-2 shadow-xl ring-1 ring-white/20 hover:bg-background/30 transition-all">
+            <div className="bg-[var(--dk-surface-overlay)] text-foreground backdrop-blur-xl rounded-full p-2 shadow-xl border border-[var(--dk-separator)] hover:bg-[var(--dk-surface-raised)] transition-all">
               <ChevronRightIcon className="h-5 w-5" />
             </div>
           </button>

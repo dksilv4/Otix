@@ -147,10 +147,10 @@ export const SettingsNodeSharingSection = ({ server }: SettingsNodeSharingSectio
           <select
             value={selectedFriendId ?? ''}
             onChange={(e) => setSelectedFriendId(e.target.value ? Number(e.target.value) : null)}
-            className="flex-1 h-10 px-3 rounded-xl bg-white/5 text-sm text-foreground focus:outline-none focus:bg-white/10 cursor-pointer"
+            className="flex-1 h-10 px-3 rounded-xl bg-[var(--dk-surface-ghost)] text-sm text-foreground focus:outline-none cursor-pointer"
             disabled={isLoadingFriends || unsharedFriends.length === 0}
           >
-            <option value="" className="bg-neutral-900">
+            <option value="" className="bg-[var(--dk-surface-overlay)] text-foreground">
               {isLoadingFriends
                 ? 'Loading friends...'
                 : unsharedFriends.length === 0
@@ -158,7 +158,7 @@ export const SettingsNodeSharingSection = ({ server }: SettingsNodeSharingSectio
                 : 'Select an Otix friend...'}
             </option>
             {unsharedFriends.map((friend) => (
-              <option key={friend.id} value={friend.id} className="bg-neutral-900">
+              <option key={friend.id} value={friend.id} className="bg-[var(--dk-surface-overlay)] text-foreground">
                 {friend.displayName || friend.username} (@{friend.username})
               </option>
             ))}
@@ -177,7 +177,7 @@ export const SettingsNodeSharingSection = ({ server }: SettingsNodeSharingSectio
         </div>
 
         {/* List of current friend shares */}
-        <div className="rounded-2xl bg-white/[0.03] overflow-hidden">
+        <div className="rounded-2xl bg-[var(--dk-surface-ghost)] divide-y divide-[var(--dk-separator)] overflow-hidden">
           <div className="px-3.5 py-2 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
             Shared with Friends ({shares.filter((s) => s.sharedWith != null).length})
           </div>
@@ -208,7 +208,7 @@ export const SettingsNodeSharingSection = ({ server }: SettingsNodeSharingSectio
                   </div>
 
                   <div className="flex items-center gap-2">
-                    <span className="px-2 py-0.5 rounded-md bg-white/10 text-[10px] font-medium text-muted-foreground uppercase">
+                    <span className="px-2 py-0.5 rounded-md bg-[var(--dk-surface-raised)] text-[10px] font-medium text-muted-foreground uppercase">
                       {sh.permission}
                     </span>
                     <button
@@ -249,12 +249,12 @@ export const SettingsNodeSharingSection = ({ server }: SettingsNodeSharingSectio
         </p>
 
         {publicLinkShare && shareableUrl && (
-          <div className="flex items-center gap-2 p-2 rounded-xl bg-white/5">
+          <div className="flex items-center gap-2 p-2 rounded-xl bg-[var(--dk-surface-ghost)]">
             <input
               type="text"
               readOnly
               value={shareableUrl}
-              className="flex-1 bg-transparent text-xs text-foreground/90 focus:outline-none px-2 select-all font-mono"
+              className="flex-1 bg-transparent text-xs text-foreground focus:outline-none px-2 select-all font-mono"
             />
             <DkButton
               type="button"

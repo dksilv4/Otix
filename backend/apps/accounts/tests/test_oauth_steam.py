@@ -360,7 +360,7 @@ class SteamLoginCallbackTests(TestCase):
         self.assertTrue(user.is_verified)
         self.assertFalse(OAuthState.objects.filter(key="steam-login-a").exists())
 
-    @override_settings(FRONTEND_BASE_URL="http://localhost:5173")  # no steam key
+    @override_settings(FRONTEND_BASE_URL="http://localhost:5173", STEAM_API_KEY="")  # no steam key
     def test_callback_no_api_key_uses_fallback_username(self) -> None:
         _store_state(key="steam-login-b", link=False)
         body = _openid_callback(state="steam-login-b", callback="/auth/callback/steam")
@@ -434,3 +434,22 @@ class SteamLoginCallbackTests(TestCase):
             response.data["detail"],
             "Steam authentication session expired. Please try signing in again.",
         )
+
+    @override_settings(**STEAM_SETTINGS)
+    def test_login_flow_with_desktop_source(self) -> None:
+        init_resp = APIClient().post(
+            "/api/v1/auth/steam/initiate",
+            {"source": "desktop"},
+            format="json",
+        )
+        self.assertEqual(init_resp.status_code, 200)
+        state = init_resp.data["state"]
+        row = OAuthState.objects.get(key=state)
+        self.assertEqual(row.payload["source"], "desktop")
+
+        body = _openid_callback(state=state, callback="/auth/callback/steam")
+        with _mock_steam():
+            cb_resp = APIClient().post("/api/v1/auth/steam/callback", body, format="json")
+        self.assertEqual(cb_resp.status_code, 200)
+        self.assertEqual(cb_resp.data["source"], "desktop")
+        self.assertTrue(cb_resp.data["access_token"])

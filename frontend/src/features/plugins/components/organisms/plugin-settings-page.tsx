@@ -74,14 +74,14 @@ const ConnectionsCards = ({ pluginId }: { pluginId: string }) => {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-10">
-        <Loader2 className="h-5 w-5 animate-spin text-white/30" />
+        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
       </div>
     )
   }
 
   if (!status) {
     return (
-      <p className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3 text-xs text-white/40">
+      <p className="rounded-xl border border-[var(--dk-separator)] bg-[var(--dk-surface-field)] px-4 py-3 text-xs text-muted-foreground">
         Couldn&apos;t load connection status for this plugin.
       </p>
     )
@@ -185,14 +185,14 @@ const AuthCard = ({
   }
 
   return (
-    <div data-testid={`auth-card-${provider.id}`} className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-5">
+    <div data-testid={`auth-card-${provider.id}`} className="rounded-xl border border-[var(--dk-separator)] bg-[var(--dk-surface-field)] p-5">
       <div className="flex items-center gap-2">
-        {connected ? <Check className="h-4 w-4 text-emerald-400" /> : <XCircle className="h-4 w-4 text-white/30" />}
-        <span className="text-sm font-semibold text-white">{provider.label}</span>
+        {connected ? <Check className="h-4 w-4 text-emerald-600 dark:text-emerald-400" /> : <XCircle className="h-4 w-4 text-muted-foreground" />}
+        <span className="text-sm font-semibold text-foreground">{provider.label}</span>
         <span
           className={cn(
             'ml-auto rounded-full px-2.5 py-0.5 text-xs font-medium',
-            connected ? 'bg-emerald-500/10 text-emerald-300' : 'bg-white/[0.06] text-white/50',
+            connected ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400' : 'bg-[var(--dk-surface-field)] border border-[var(--dk-separator)] text-muted-foreground',
           )}
         >
           {connected ? 'Connected' : 'Not connected'}
@@ -203,10 +203,10 @@ const AuthCard = ({
         <div className="mt-3 space-y-1 text-xs">
           {creds && (
             <div className="flex items-center justify-between">
-              <span className="text-white/40">Credentials</span>
+              <span className="text-muted-foreground">Credentials</span>
               <span
                 className={cn(
-                  creds === 'valid' ? 'text-emerald-300' : creds === 'rejected' ? 'text-red-400' : 'text-white/60',
+                  creds === 'valid' ? 'text-emerald-600 dark:text-emerald-400' : creds === 'rejected' ? 'text-destructive' : 'text-muted-foreground',
                 )}
               >
                 {creds}
@@ -215,14 +215,14 @@ const AuthCard = ({
           )}
           {source && source !== 'not connected' && (
             <div className="flex items-center justify-between">
-              <span className="text-white/40">Connected via</span>
-              <span className="text-white/80">{source}</span>
+              <span className="text-muted-foreground">Connected via</span>
+              <span className="text-foreground">{source}</span>
             </div>
           )}
         </div>
       )}
       {providerError && providerError !== 'Google not linked' && (
-        <p className="mt-2 text-xs text-amber-400/90">{providerError}</p>
+        <p className="mt-2 text-xs text-amber-600 dark:text-amber-400">{providerError}</p>
       )}
 
       {hasFields && (
@@ -230,7 +230,7 @@ const AuthCard = ({
           <button
             type="button"
             onClick={() => setShowCreds((v) => !v)}
-            className="flex items-center gap-1.5 text-xs text-white/45 transition-colors hover:text-white/75"
+            className="flex items-center gap-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground cursor-pointer"
           >
             {showCreds ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
             {showCreds ? 'Hide credentials' : connected ? 'Manage credentials' : 'Configure credentials'}
@@ -394,9 +394,9 @@ const SyncCard = ({ pluginId }: { pluginId: string }) => {
   }
 
   return (
-    <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-5">
+    <div className="rounded-xl border border-[var(--dk-separator)] bg-[var(--dk-surface-field)] p-5">
       <div className="flex items-center gap-3">
-        <h3 className="text-sm font-semibold text-white">Sync to Otix</h3>
+        <h3 className="text-sm font-semibold text-foreground">Sync to Otix</h3>
         {(status?.instances?.length ?? 0) > 1 ? (
           <div className="ml-auto flex flex-wrap items-center justify-end gap-1.5">
             <Button size="sm" variant="outline" disabled={running || syncing || !hasInstances} onClick={() => handleSync(undefined)}>
@@ -426,47 +426,47 @@ const SyncCard = ({ pluginId }: { pluginId: string }) => {
       </div>
 
       {!hasInstances && !syncing && (
-        <p className="mt-2 text-xs text-white/40">Add an enabled instance in the Settings section to sync.</p>
+        <p className="mt-2 text-xs text-muted-foreground">Add an enabled instance in the Settings section to sync.</p>
       )}
 
       {running && (
         <div className="mt-4 space-y-1.5 rounded-lg border border-emerald-500/15 bg-emerald-500/[0.04] p-3 text-xs">
           <div className="flex items-center gap-2">
-            <Loader2 className="h-3.5 w-3.5 animate-spin text-emerald-400" />
-            <span className="text-white/80">
+            <Loader2 className="h-3.5 w-3.5 animate-spin text-emerald-600 dark:text-emerald-400" />
+            <span className="text-foreground">
               {status?.playlistTitle
                 ? `Syncing playlist ${status.current ?? 0} of ${status.total ?? 0}`
                 : `Importing ${status?.current ?? 0} of ${status?.total ?? 0}`}
             </span>
           </div>
-          {status?.playlistTitle && <p className="text-white/60">→ {status.playlistTitle}</p>}
+          {status?.playlistTitle && <p className="text-muted-foreground">→ {status.playlistTitle}</p>}
           {status?.trackTotal ? (
-            <p className="text-white/50">
+            <p className="text-muted-foreground">
               Track {status.track ?? 0} of {status.trackTotal}
             </p>
           ) : null}
-          {status?.lastTrack && <p className="truncate text-white/40">{status.lastTrack}</p>}
+          {status?.lastTrack && <p className="truncate text-muted-foreground">{status.lastTrack}</p>}
           {total > 0 && (
             <div className="pt-1">
-              <div className="h-1.5 overflow-hidden rounded-full bg-white/[0.08]">
+              <div className="h-1.5 overflow-hidden rounded-full bg-[var(--dk-surface-field)] border border-[var(--dk-separator)]">
                 <div
                   className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-indigo-500 transition-all duration-300"
                   style={{ width: `${pct}%` }}
                 />
               </div>
-              <p className="mt-1 text-right text-[11px] tabular-nums text-white/50">{pct}%</p>
+              <p className="mt-1 text-right text-[11px] tabular-nums text-muted-foreground">{pct}%</p>
             </div>
           )}
         </div>
       )}
 
       {!running && paused && (
-        <div className="mt-4 flex items-center gap-2 rounded-lg border border-amber-500/15 bg-amber-500/[0.04] p-3 text-xs text-amber-300">
+        <div className="mt-4 flex items-center gap-2 rounded-lg border border-amber-500/15 bg-amber-500/[0.04] p-3 text-xs text-amber-600 dark:text-amber-400">
           <WifiOff className="h-3.5 w-3.5 shrink-0" />
           <span>
             Sync paused — offline. It will resume automatically when you're back online.
             {summary?.deferred != null && summary.deferred > 0 && (
-              <span className="text-white/60"> {summary.deferred} movie(s) queued.</span>
+              <span className="text-muted-foreground"> {summary.deferred} movie(s) queued.</span>
             )}
           </span>
         </div>
@@ -474,10 +474,10 @@ const SyncCard = ({ pluginId }: { pluginId: string }) => {
 
       {!running && summary && !paused && (
         <div className="mt-4 space-y-1.5 text-xs">
-          <p className={summary.success ? 'text-emerald-300' : 'text-red-400'}>
+          <p className={summary.success ? 'text-emerald-600 dark:text-emerald-400' : 'text-destructive'}>
             {summary.success ? 'Sync complete' : 'Sync failed'}
           </p>
-          <div className="flex flex-wrap gap-3 text-white/60">
+          <div className="flex flex-wrap gap-3 text-muted-foreground">
             {summary.imported !== undefined && <span>{summary.imported} imported</span>}
             {summary.added !== undefined && <span>{summary.added} added</span>}
             {summary.skipped !== undefined && <span>{summary.skipped} skipped</span>}
@@ -486,44 +486,44 @@ const SyncCard = ({ pluginId }: { pluginId: string }) => {
             {summary.failed !== undefined && <span>{summary.failed} failed</span>}
             {summary.errorCount !== undefined && <span>{summary.errorCount} errors</span>}
             {Array.isArray(summary.errors) && summary.errors.length > 0 && (
-              <span className="text-red-400">{summary.errors.length} error(s)</span>
+              <span className="text-destructive">{summary.errors.length} error(s)</span>
             )}
           </div>
         </div>
       )}
 
-      {error && <p className="mt-3 text-xs text-red-400">{error}</p>}
+      {error && <p className="mt-3 text-xs text-destructive">{error}</p>}
 
       {items && items.length > 0 && (
         <div className="mt-4 space-y-2">
           {items.map((it) => (
-            <div key={it.title || it.key} className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-3 text-xs">
+            <div key={it.title || it.key} className="rounded-lg border border-[var(--dk-separator)] bg-[var(--dk-surface-field)] p-3 text-xs">
               <div className="flex items-center justify-between gap-2">
-                <span className="truncate text-white/80">{it.title || it.key}</span>
+                <span className="truncate text-foreground">{it.title || it.key}</span>
                 {it.ok === false ? (
-                  <span className="shrink-0 text-red-400">failed</span>
+                  <span className="shrink-0 text-destructive">failed</span>
                 ) : it.upToDate ? (
-                  <span className="shrink-0 text-emerald-300">up to date</span>
+                  <span className="shrink-0 text-emerald-600 dark:text-emerald-400">up to date</span>
                 ) : (
-                  <span className="shrink-0 text-emerald-300">done</span>
+                  <span className="shrink-0 text-emerald-600 dark:text-emerald-400">done</span>
                 )}
               </div>
               {it.ok !== false && !it.upToDate && (
-                <div className="mt-1 flex flex-wrap gap-3 text-white/50">
+                <div className="mt-1 flex flex-wrap gap-3 text-muted-foreground">
                   <span>+{it.added ?? 0} added</span>
                   <span>{it.skipped ?? 0} skipped</span>
                   <span>{it.pruned ?? 0} pruned</span>
                   <span>{(it.unmatched || []).length} unmatched</span>
                 </div>
               )}
-              {it.ok === false && it.error && <p className="mt-1 text-red-400">{it.error}</p>}
+              {it.ok === false && it.error && <p className="mt-1 text-destructive">{it.error}</p>}
             </div>
           ))}
         </div>
       )}
 
       {!paused && last && (
-        <p className="mt-3 text-[11px] text-white/40">
+        <p className="mt-3 text-[11px] text-muted-foreground">
           Last sync {last.at || last.lastSyncAt ? new Date(last.at ?? last.lastSyncAt!).toLocaleString() : 'just now'}
           {lastChips.length ? ` · ${lastChips.join(', ')}` : ''}
         </p>
@@ -584,13 +584,13 @@ const MovieStatusBadge = ({ status }: { status: string | null }) => {
   }
   if (status === 'downloaded') {
     return (
-      <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold text-emerald-400 bg-emerald-950/75 border border-emerald-500/30 backdrop-blur-md">
+      <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/15 border border-emerald-500/30 backdrop-blur-md">
         Downloaded
       </span>
     )
   }
   return (
-    <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold text-white/50 bg-black/50 border border-white/10 backdrop-blur-md">
+    <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold text-muted-foreground bg-[var(--dk-surface-field)] border border-[var(--dk-separator)] backdrop-blur-md">
       Missing
     </span>
   )
@@ -644,27 +644,27 @@ interface ArrDetail {
 const DetailStatusBadge = ({ status }: { status: string | null }) => {
   if (status === 'downloaded') {
     return (
-      <span className="inline-flex items-center gap-1 rounded-md bg-emerald-500/15 px-2 py-0.5 text-[11px] font-medium text-emerald-300">
+      <span className="inline-flex items-center gap-1 rounded-md bg-emerald-500/15 border border-emerald-500/20 px-2 py-0.5 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
         <Check className="h-3 w-3" /> Downloaded
       </span>
     )
   }
   if (status === 'downloading') {
     return (
-      <span className="inline-flex items-center gap-1 rounded-md bg-sky-500/15 px-2 py-0.5 text-[11px] font-medium text-sky-300">
+      <span className="inline-flex items-center gap-1 rounded-md bg-sky-500/15 border border-sky-500/20 px-2 py-0.5 text-[11px] font-medium text-sky-600 dark:text-sky-400">
         <Loader2 className="h-3 w-3 animate-spin" /> Downloading
       </span>
     )
   }
   if (status === 'requested') {
     return (
-      <span className="inline-flex items-center gap-1 rounded-md bg-amber-500/15 px-2 py-0.5 text-[11px] font-medium text-amber-300">
+      <span className="inline-flex items-center gap-1 rounded-md bg-amber-500/15 border border-amber-500/20 px-2 py-0.5 text-[11px] font-medium text-amber-600 dark:text-amber-400">
         Requested
       </span>
     )
   }
   return (
-    <span className="inline-flex items-center gap-1 rounded-md bg-white/10 px-2 py-0.5 text-[11px] font-medium text-white/50">
+    <span className="inline-flex items-center gap-1 rounded-md bg-[var(--dk-surface-field)] border border-[var(--dk-separator)] px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
       Missing
     </span>
   )
@@ -674,8 +674,8 @@ const DetailRow = ({ label, value }: { label: string; value?: ReactNode }) => {
   if (value == null || value === '' || value === false) return null
   return (
     <div className="flex items-start justify-between gap-3 py-2">
-      <span className="shrink-0 text-[11px] font-medium uppercase tracking-wide text-white/35">{label}</span>
-      <span className="min-w-0 text-right text-xs text-white/80">{value}</span>
+      <span className="shrink-0 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{label}</span>
+      <span className="min-w-0 text-right text-xs text-foreground">{value}</span>
     </div>
   )
 };
@@ -734,16 +734,16 @@ const ArrMediaDetailDrawer = ({
 
   return (
     <SlidePanel onClose={onClose}>
-      <div className="flex items-center justify-between gap-3 border-b border-white/[0.06] px-6 py-4">
+      <div className="flex items-center justify-between gap-3 border-b border-[var(--dk-separator)] px-6 py-4">
         <div className="min-w-0">
-          <h2 className="truncate text-base font-semibold text-white">{title}</h2>
-          <p className="truncate text-[11px] text-white/40">
+          <h2 className="truncate text-base font-semibold text-foreground">{title}</h2>
+          <p className="truncate text-[11px] text-muted-foreground">
             {[year ? String(year) : null, source].filter(Boolean).join(' · ')}
           </p>
         </div>
         <button
           onClick={onClose}
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-white/40 transition-colors hover:bg-white/5 hover:text-white"
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-[var(--dk-surface-hover)] hover:text-foreground cursor-pointer"
           aria-label="Close details"
         >
           <X className="h-4 w-4" />
@@ -756,13 +756,13 @@ const ArrMediaDetailDrawer = ({
             <Loader2 className="h-5 w-5 animate-spin text-primary" />
           </div>
         ) : detail?.found === false ? (
-          <div className="py-10 text-center text-sm text-white/40">{detail.error || 'Not found on any enabled instance or in the local catalog.'}</div>
+          <div className="py-10 text-center text-sm text-muted-foreground">{detail.error || 'Not found on any enabled instance or in the local catalog.'}</div>
         ) : (
           <div className="flex flex-col gap-5">
             <div className="relative">
               {backdrop || poster ? (
                 <>
-                  <div className="relative h-36 w-full overflow-hidden rounded-2xl bg-white/5">
+                  <div className="relative h-36 w-full overflow-hidden rounded-2xl bg-[var(--dk-surface-field)] border border-[var(--dk-separator)]">
                     <img
                       src={backdrop || poster || ''}
                       alt={title}
@@ -776,7 +776,7 @@ const ArrMediaDetailDrawer = ({
                   <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between">
                     <DetailStatusBadge status={status} />
                     {detail?.live === false && (
-                      <span className="rounded-md bg-black/60 px-2 py-0.5 text-[10px] text-white/50 backdrop-blur">
+                      <span className="rounded-md bg-[var(--dk-surface-overlay)] border border-[var(--dk-separator)] px-2 py-0.5 text-[10px] text-foreground backdrop-blur">
                         Cached
                       </span>
                     )}
@@ -786,13 +786,13 @@ const ArrMediaDetailDrawer = ({
                 <div className="flex items-center justify-between">
                   <DetailStatusBadge status={status} />
                   {detail?.live === false && (
-                    <span className="rounded-md bg-black/60 px-2 py-0.5 text-[10px] text-white/50">Cached</span>
+                    <span className="rounded-md bg-[var(--dk-surface-overlay)] border border-[var(--dk-separator)] px-2 py-0.5 text-[10px] text-foreground">Cached</span>
                   )}
                 </div>
               )}
             </div>
 
-            <div className="flex flex-col divide-y divide-white/[0.06] rounded-2xl bg-white/[0.03] px-4 py-1">
+            <div className="flex flex-col divide-y divide-[var(--dk-separator)] rounded-2xl bg-[var(--dk-surface-field)] border border-[var(--dk-separator)] px-4 py-1">
               {detail?.size_on_disk != null && <DetailRow label="Storage" value={`${formatBytes(detail.size_on_disk)} on disk`} />}
               {file?.size != null && <DetailRow label="File size" value={formatBytes(file.size)} />}
               {file?.quality && <DetailRow label="Quality" value={file.quality} />}
@@ -823,7 +823,7 @@ const ArrMediaDetailDrawer = ({
                 <DetailRow
                   label="Path"
                   value={
-                    <span title={path} className="break-all font-mono text-[11px] text-white/60">
+                    <span title={path} className="break-all font-mono text-[11px] text-muted-foreground">
                       {path}
                     </span>
                   }
@@ -833,7 +833,7 @@ const ArrMediaDetailDrawer = ({
                 <DetailRow
                   label="File"
                   value={
-                    <span title={file.name} className="break-all font-mono text-[11px] text-white/60">
+                    <span title={file.name} className="break-all font-mono text-[11px] text-muted-foreground">
                       {file.name}
                     </span>
                   }
@@ -844,7 +844,7 @@ const ArrMediaDetailDrawer = ({
             {genres.length > 0 && (
               <div className="flex flex-wrap gap-1.5">
                 {genres.slice(0, 8).map((g) => (
-                  <span key={g} className="rounded-md bg-white/[0.06] px-2 py-0.5 text-[11px] text-white/60">
+                  <span key={g} className="rounded-md bg-[var(--dk-surface-field)] border border-[var(--dk-separator)] px-2 py-0.5 text-[11px] text-muted-foreground">
                     {g}
                   </span>
                 ))}
@@ -853,13 +853,13 @@ const ArrMediaDetailDrawer = ({
 
             {overview && (
               <div>
-                <h3 className="mb-1 text-[11px] font-medium uppercase tracking-wide text-white/35">Overview</h3>
-                <p className="text-xs leading-relaxed text-white/70">{overview}</p>
+                <h3 className="mb-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Overview</h3>
+                <p className="text-xs leading-relaxed text-foreground">{overview}</p>
               </div>
             )}
 
             {!detail?.live && !detail && (
-              <p className="text-[11px] text-white/35">Live details unavailable — showing cached catalog data.</p>
+              <p className="text-[11px] text-muted-foreground">Live details unavailable — showing cached catalog data.</p>
             )}
           </div>
         )}
@@ -958,7 +958,7 @@ const MoviesSection = ({ pluginId }: { pluginId?: string }) => {
     <div className="flex flex-col gap-4">
       {summary && summary.length > 0 && (
         <div>
-          <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-white/40">
+          <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             Instance summary
           </h3>
           <div className="flex gap-3 overflow-x-auto pb-1">
@@ -968,49 +968,49 @@ const MoviesSection = ({ pluginId }: { pluginId?: string }) => {
                 type="button"
                 onClick={() => setInstanceFilter((f) => (f === s.id ? '' : s.id))}
                 className={cn(
-                  'group shrink-0 rounded-xl border px-4 py-3 text-left transition-colors',
+                  'group shrink-0 rounded-xl border px-4 py-3 text-left transition-colors cursor-pointer',
                   instanceFilter === s.id
-                    ? 'border-white/30 bg-white/[0.07]'
-                    : 'border-white/10 bg-white/[0.02] hover:border-white/25 hover:bg-white/[0.04]',
+                    ? 'border-primary bg-primary/10'
+                    : 'border-[var(--dk-separator)] bg-[var(--dk-surface-field)] hover:bg-[var(--dk-surface-hover)]',
                 )}
               >
                 <div className="flex items-center gap-2">
-                  <span className="max-w-[10rem] truncate text-sm font-semibold text-white">
+                  <span className="max-w-[10rem] truncate text-sm font-semibold text-foreground">
                     {s.name}
                   </span>
                   {s.disabled && (
-                    <span className="rounded bg-white/5 px-1.5 py-0.5 text-[10px] font-medium text-white/40">
+                    <span className="rounded bg-[var(--dk-surface-field)] border border-[var(--dk-separator)] px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
                       disabled
                     </span>
                   )}
                 </div>
                 <div className="mt-1.5 flex items-baseline gap-2">
-                  <span className="text-2xl font-bold tabular-nums text-white">{s.total}</span>
-                  <span className="text-[11px] text-white/40">titles</span>
+                  <span className="text-2xl font-bold tabular-nums text-foreground">{s.total}</span>
+                  <span className="text-[11px] text-muted-foreground">titles</span>
                   {s.size_on_disk > 0 && (
-                    <span className="text-[11px] tabular-nums text-white/50">
+                    <span className="text-[11px] tabular-nums text-muted-foreground">
                       {formatBytes(s.size_on_disk)}
                     </span>
                   )}
                 </div>
                 <div className="mt-2 flex flex-wrap gap-1.5 text-[10px] font-medium">
-                  <span className="rounded border border-emerald-500/20 bg-emerald-500/10 px-1.5 py-0.5 text-emerald-300">
+                  <span className="rounded border border-emerald-500/20 bg-emerald-500/10 px-1.5 py-0.5 text-emerald-600 dark:text-emerald-400">
                     {s.downloaded} down
                   </span>
-                  <span className="rounded border border-blue-500/20 bg-blue-500/10 px-1.5 py-0.5 text-blue-300">
+                  <span className="rounded border border-sky-500/20 bg-sky-500/10 px-1.5 py-0.5 text-sky-600 dark:text-sky-400">
                     {s.downloading} dl
                   </span>
-                  <span className="rounded border border-amber-500/20 bg-amber-500/10 px-1.5 py-0.5 text-amber-300">
+                  <span className="rounded border border-amber-500/20 bg-amber-500/10 px-1.5 py-0.5 text-amber-600 dark:text-amber-400">
                     {s.requested} req
                   </span>
-                  <span className="rounded border border-white/10 bg-white/5 px-1.5 py-0.5 text-white/50">
+                  <span className="rounded border border-[var(--dk-separator)] bg-[var(--dk-surface-field)] px-1.5 py-0.5 text-muted-foreground">
                     {s.missing} miss
                   </span>
                 </div>
                 {typeof s.episodes_total === 'number' && s.episodes_total > 0 && (
-                  <div className="mt-2 text-[11px] tabular-nums text-white/50">
+                  <div className="mt-2 text-[11px] tabular-nums text-muted-foreground">
                     {s.episodes_files?.toLocaleString() ?? 0} / {s.episodes_total.toLocaleString()} eps
-                    <span className="text-white/30">
+                    <span className="text-muted-foreground">
                       {' '}
                       ({Math.round(((s.episodes_files ?? 0) / s.episodes_total) * 100)}%)
                     </span>
@@ -1023,7 +1023,7 @@ const MoviesSection = ({ pluginId }: { pluginId?: string }) => {
       )}
       <div className="flex items-center gap-3">
         <div className="relative flex-1">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/30" />
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
@@ -1044,7 +1044,7 @@ const MoviesSection = ({ pluginId }: { pluginId?: string }) => {
           />
         )}
         {total > 0 && (
-          <span className="shrink-0 text-[11px] tabular-nums text-white/40">
+          <span className="shrink-0 text-[11px] tabular-nums text-muted-foreground">
             {movies?.length ?? 0} of {total}
           </span>
         )}
@@ -1193,7 +1193,7 @@ const RequestsSection = ({ pluginId }: { pluginId?: string }) => {
     <div className="flex flex-col gap-4">
       <div className="flex items-center gap-3">
         <div className="relative flex-1">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/30" />
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
@@ -1203,7 +1203,7 @@ const RequestsSection = ({ pluginId }: { pluginId?: string }) => {
           />
         </div>
         {total > 0 && (
-          <span className="shrink-0 text-[11px] tabular-nums text-white/40">
+          <span className="shrink-0 text-[11px] tabular-nums text-muted-foreground">
             {requests?.length ?? 0} of {total}
           </span>
         )}
@@ -1234,9 +1234,9 @@ const RequestsSection = ({ pluginId }: { pluginId?: string }) => {
               return (
                 <div
                   key={r.tmdb_id + ':' + r.instance_id}
-                  className="flex items-center gap-3 rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-2.5"
+                  className="flex items-center gap-3 rounded-xl border border-[var(--dk-separator)] bg-[var(--dk-surface-field)] px-3 py-2.5"
                 >
-                  <div className="h-12 w-8 shrink-0 overflow-hidden rounded-md bg-white/[0.04]">
+                  <div className="h-12 w-8 shrink-0 overflow-hidden rounded-md bg-[var(--dk-surface-field)]">
                     {r.poster_url ? (
                       <img
                         src={r.poster_url}
@@ -1245,23 +1245,23 @@ const RequestsSection = ({ pluginId }: { pluginId?: string }) => {
                         className="h-full w-full object-cover"
                       />
                     ) : (
-                      <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-white/[0.06] to-transparent">
-                        <span className="text-xs font-semibold text-white/15">
+                      <div className="flex h-full w-full items-center justify-center bg-[var(--dk-surface-field)]">
+                        <span className="text-xs font-semibold text-muted-foreground/30">
                           {(r.title || r.tmdb_id).charAt(0).toUpperCase()}
                         </span>
                       </div>
                     )}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-xs font-medium text-white/85">{r.title || r.tmdb_id}</p>
-                    <p className="mt-0.5 truncate text-[11px] text-white/40">
+                    <p className="truncate text-xs font-medium text-foreground">{r.title || r.tmdb_id}</p>
+                    <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
                       TMDB {r.tmdb_id}
                       {r.instance_name ? ` · ${r.instance_name}` : ''}
                       {' · '}
                       {new Date(r.requested_at).toLocaleString()}
                     </p>
                     {isError && r.error && (
-                      <p className="mt-0.5 truncate text-[11px] text-red-400/80">{r.error}</p>
+                      <p className="mt-0.5 truncate text-[11px] text-destructive">{r.error}</p>
                     )}
                   </div>
                   <div className="flex shrink-0 items-center gap-1.5">
@@ -1365,7 +1365,7 @@ const SyncHistorySection = ({ pluginId }: { pluginId?: string }) => {
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-center justify-between">
-        <p className="text-[11px] text-white/40">
+        <p className="text-[11px] text-muted-foreground">
           {total > 0 ? `${total} run${total === 1 ? '' : 's'}` : 'No syncs yet'}
         </p>
         <Button variant="ghost" size="xs" onClick={fetchRuns} disabled={loading}>
@@ -1390,26 +1390,26 @@ const SyncHistorySection = ({ pluginId }: { pluginId?: string }) => {
           const expanded = String(run.id) === expandedId
           const runErrors = parseErrors(run)
           return (
-            <div key={run.id} className="overflow-hidden rounded-xl border border-white/[0.06] bg-white/[0.02]">
+            <div key={run.id} className="overflow-hidden rounded-xl border border-[var(--dk-separator)] bg-[var(--dk-surface-field)]">
               <button
                 type="button"
                 onClick={() => setExpandedId(expanded ? null : String(run.id))}
-                className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-white/[0.03]"
+                className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-[var(--dk-surface-hover)] cursor-pointer"
               >
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     {run.paused ? (
-                      <Badge tone="warning" dot>paused</Badge>
+                      <Badge tone="warning">paused</Badge>
                     ) : run.success ? (
-                      <Badge tone="success" dot>ok</Badge>
+                      <Badge tone="success">ok</Badge>
                     ) : (
-                      <Badge tone="danger" dot>failed</Badge>
+                      <Badge tone="danger">failed</Badge>
                     )}
-                    <span className="truncate text-xs text-white/80">
+                    <span className="truncate text-xs text-foreground">
                       {run.message || `Sync ${new Date(run.started_at).toLocaleString()}`}
                     </span>
                   </div>
-                  <p className="mt-1 text-[11px] text-white/40">
+                  <p className="mt-1 text-[11px] text-muted-foreground">
                     {new Date(run.started_at).toLocaleString()}
                     {run.instance_id ? ` · ${run.instance_id}` : ''}
                   </p>
@@ -1418,28 +1418,28 @@ const SyncHistorySection = ({ pluginId }: { pluginId?: string }) => {
                   <Badge tone="success">{run.imported} imported</Badge>
                   {run.skipped > 0 && <Badge>{run.skipped} skipped</Badge>}
                   {run.failed > 0 && <Badge tone="danger">{run.failed} failed</Badge>}
-                  {run.paused ? <WifiOff className="h-3.5 w-3.5 text-amber-400" /> : null}
+                  {run.paused ? <WifiOff className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" /> : null}
                   {expanded ? (
-                    <ChevronUp className="h-4 w-4 text-white/30" />
+                    <ChevronUp className="h-4 w-4 text-muted-foreground" />
                   ) : (
-                    <ChevronDown className="h-4 w-4 text-white/30" />
+                    <ChevronDown className="h-4 w-4 text-muted-foreground" />
                   )}
                 </div>
               </button>
 
               {expanded && (
-                <div className="border-t border-white/[0.06] bg-black/20 px-4 py-3">
-                  <p className="text-[11px] text-white/40">
+                <div className="border-t border-[var(--dk-separator)] bg-[var(--dk-surface-raised)] px-4 py-3">
+                  <p className="text-[11px] text-muted-foreground">
                     Found {run.found} · Imported {run.imported} · Skipped {run.skipped} · Failed {run.failed}
                   </p>
                   {runErrors.length === 0 ? (
-                    <p className="mt-2 text-xs text-emerald-300/80">No failures on this run.</p>
+                    <p className="mt-2 text-xs text-emerald-600 dark:text-emerald-400">No failures on this run.</p>
                   ) : (
                     <div className="mt-2 flex max-h-56 flex-col gap-1.5 overflow-y-auto pr-1">
                       {runErrors.map((e, i) => (
-                        <div key={`${run.id}-${i}`} className="rounded-lg border border-red-500/15 bg-red-500/[0.04] px-3 py-2">
-                          <p className="text-xs text-red-300">{e.title || e.tmdb_id || 'Movie'}</p>
-                          {e.error && <p className="mt-0.5 break-words text-[11px] text-red-400/70">{e.error}</p>}
+                        <div key={`${run.id}-${i}`} className="rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-2">
+                          <p className="text-xs text-destructive">{e.title || e.tmdb_id || 'Movie'}</p>
+                          {e.error && <p className="mt-0.5 break-words text-[11px] text-destructive/80">{e.error}</p>}
                         </div>
                       ))}
                     </div>
@@ -1542,9 +1542,9 @@ const PlaylistMappingForm = ({ pluginId }: { pluginId: string }) => {
   }
 
   return (
-    <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-5">
-      <h3 className="text-sm font-semibold text-white">Add a Spotify playlist mapping</h3>
-      <p className="mt-1 text-xs text-white/40">
+    <div className="rounded-xl border border-[var(--dk-separator)] bg-[var(--dk-surface-field)] p-5">
+      <h3 className="text-sm font-semibold text-foreground">Add a Spotify playlist mapping</h3>
+      <p className="mt-1 text-xs text-muted-foreground">
         Pick one of your playlists — it&apos;s synced to a YouTube Music playlist you name.
       </p>
 
@@ -1555,7 +1555,7 @@ const PlaylistMappingForm = ({ pluginId }: { pluginId: string }) => {
               {loadState === 'error' ? 'Retry loading playlists' : 'Load my Spotify playlists'}
             </Button>
             {loadState === 'error' && loadError && (
-              <p className="text-xs text-amber-400/90">
+              <p className="text-xs text-amber-600 dark:text-amber-400">
                 {loadError} You can still add a playlist by pasting its URL or ID below.
               </p>
             )}
@@ -1574,7 +1574,7 @@ const PlaylistMappingForm = ({ pluginId }: { pluginId: string }) => {
             <button
               type="button"
               onClick={loadPlaylists}
-              className="self-start text-xs text-white/40 transition-colors hover:text-white/70"
+              className="self-start text-xs text-muted-foreground transition-colors hover:text-foreground cursor-pointer"
             >
               Refresh list
             </button>
@@ -1582,7 +1582,7 @@ const PlaylistMappingForm = ({ pluginId }: { pluginId: string }) => {
         )}
 
         {loadState === 'loaded' && playlists.length === 0 && (
-          <p className="text-xs text-white/40">No playlists found on your account.</p>
+          <p className="text-xs text-muted-foreground">No playlists found on your account.</p>
         )}
 
         <input
@@ -1591,7 +1591,7 @@ const PlaylistMappingForm = ({ pluginId }: { pluginId: string }) => {
           onChange={(e) => setManualId(e.target.value)}
           placeholder="…or paste a Spotify playlist URL / ID (optional)"
           aria-label="Spotify playlist URL or ID"
-          className="w-full h-9 rounded-xl bg-white/[0.04] border border-white/[0.06] px-3 text-sm text-white placeholder:text-white/30 outline-none transition-all focus:border-primary/40 focus:bg-white/[0.06]"
+          className="w-full h-9 rounded-xl bg-[var(--dk-surface-field)] border border-[var(--dk-separator)] px-3 text-sm text-foreground placeholder:text-muted-foreground outline-none transition-all focus:border-primary focus:ring-1 focus:ring-primary/30"
         />
         <input
           type="text"
@@ -1599,7 +1599,7 @@ const PlaylistMappingForm = ({ pluginId }: { pluginId: string }) => {
           onChange={(e) => setYtTitle(e.target.value)}
           placeholder="YouTube Music playlist title"
           aria-label="YouTube Music playlist title"
-          className="w-full h-9 rounded-xl bg-white/[0.04] border border-white/[0.06] px-3 text-sm text-white placeholder:text-white/30 outline-none transition-all focus:border-primary/40 focus:bg-white/[0.06]"
+          className="w-full h-9 rounded-xl bg-[var(--dk-surface-field)] border border-[var(--dk-separator)] px-3 text-sm text-foreground placeholder:text-muted-foreground outline-none transition-all focus:border-primary focus:ring-1 focus:ring-primary/30"
         />
         <Select
           value={matchMode}
@@ -1611,8 +1611,8 @@ const PlaylistMappingForm = ({ pluginId }: { pluginId: string }) => {
           aria-label="Match mode"
         />
 
-        {error && <p className="text-xs text-red-400">{error}</p>}
-        {added && <p className="text-xs text-emerald-300">Mapping added — it will sync on the next run.</p>}
+        {error && <p className="text-xs text-destructive">{error}</p>}
+        {added && <p className="text-xs text-emerald-600 dark:text-emerald-400">Mapping added — it will sync on the next run.</p>}
 
         <Button size="sm" loading={adding} onClick={handleAdd}>
           Add mapping
@@ -1657,7 +1657,7 @@ export const PluginSettingsPage = ({ tab }: PluginSettingsPageProps) => {
   if (!tab) {
     return (
       <div className="flex flex-col items-center justify-center py-24 text-center">
-        <p className="text-sm text-white/40">No plugin settings available.</p>
+        <p className="text-sm text-muted-foreground">No plugin settings available.</p>
       </div>
     )
   }
@@ -1668,19 +1668,19 @@ export const PluginSettingsPage = ({ tab }: PluginSettingsPageProps) => {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center gap-3">
-        <h1 className="text-xl font-semibold text-white">{tab.label}</h1>
+        <h1 className="text-xl font-semibold text-foreground">{tab.label}</h1>
       </div>
 
       {tab.sections.length > 1 && (
-        <div className="flex w-fit gap-1 rounded-lg border border-white/[0.06] bg-white/[0.02] p-1">
+        <div className="flex w-fit gap-1 rounded-lg border border-[var(--dk-separator)] bg-[var(--dk-surface-field)] p-1">
           {tab.sections.map((s) => (
             <button
               key={s.id}
               type="button"
               onClick={() => setActiveSection(s.id)}
               className={cn(
-                'rounded-md px-3 py-1.5 text-sm transition-colors',
-                s.id === activeSection ? 'bg-white/[0.06] text-white' : 'text-white/45 hover:text-white/70',
+                'rounded-md px-3 py-1.5 text-sm transition-colors cursor-pointer',
+                s.id === activeSection ? 'bg-primary text-primary-foreground font-medium' : 'text-muted-foreground hover:text-foreground',
               )}
             >
               {s.label}
@@ -1713,7 +1713,7 @@ export const PluginSettingsPage = ({ tab }: PluginSettingsPageProps) => {
           />
         )
       ) : (
-        <p className="text-sm text-white/40">This tab has no sections.</p>
+        <p className="text-sm text-muted-foreground">This tab has no sections.</p>
       )}
     </div>
   )
@@ -1784,7 +1784,7 @@ const ConfigSection = ({ section, pluginId }: { section: PluginSettingsSection; 
   if (loading) {
     return (
       <div className="flex items-center justify-center py-16">
-        <Loader2 className="h-5 w-5 animate-spin text-white/30" />
+        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
       </div>
     )
   }
@@ -1794,9 +1794,9 @@ const ConfigSection = ({ section, pluginId }: { section: PluginSettingsSection; 
   return (
     <div className="space-y-4">
       {hasFormFields ? (
-        <div data-testid="config-form" className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-5">
+        <div data-testid="config-form" className="rounded-xl border border-[var(--dk-separator)] bg-[var(--dk-surface-field)] p-5">
           {saveError && (
-            <div className="mb-4 rounded-lg border border-red-500/20 bg-red-500/10 px-3.5 py-2.5 text-xs text-red-400">
+            <div className="mb-4 rounded-lg border border-destructive/20 bg-destructive/10 px-3.5 py-2.5 text-xs text-destructive">
               {saveError}
             </div>
           )}
@@ -1812,7 +1812,7 @@ const ConfigSection = ({ section, pluginId }: { section: PluginSettingsSection; 
           />
         </div>
       ) : (
-        <p className="py-10 text-center text-sm text-white/40">
+        <p className="py-10 text-center text-sm text-muted-foreground">
           No additional configuration for this plugin ({section.label}).
         </p>
       )}

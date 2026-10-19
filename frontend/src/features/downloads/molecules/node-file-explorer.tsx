@@ -268,18 +268,13 @@ export const NodeFileExplorer = ({
       case 'folder':
         return <Folder className="h-4 w-4 text-amber-300 shrink-0" />
       default:
-        return <FileText className="h-4 w-4 text-white/50 shrink-0" />
+        return <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
     }
   }
 
   if (nodesLoading) {
     return (
-      <div
-        className={cn(
-          'flex items-center justify-center gap-2 p-12 text-xs',
-          isModal ? 'text-white/50' : 'text-muted-foreground',
-        )}
-      >
+      <div className="flex items-center justify-center gap-2 p-12 text-xs text-muted-foreground">
         <RefreshCw className="h-4 w-4 animate-spin text-primary" />
         <span>Loading connected nodes...</span>
       </div>
@@ -289,18 +284,13 @@ export const NodeFileExplorer = ({
   if (nodes.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center gap-3 px-4 py-12 text-center">
-        <div
-          className={cn(
-            'rounded-2xl p-3',
-            isModal ? 'bg-white/10 text-white/50' : 'bg-muted text-muted-foreground/60',
-          )}
-        >
+        <div className="rounded-2xl p-3 bg-muted text-muted-foreground/60">
           <Server className="h-6 w-6" />
         </div>
-        <p className={cn('text-sm font-semibold', isModal ? 'text-white' : 'text-foreground')}>
+        <p className="text-sm font-semibold text-foreground">
           No nodes connected
         </p>
-        <p className={cn('max-w-sm text-xs', isModal ? 'text-white/50' : 'text-muted-foreground')}>
+        <p className="max-w-sm text-xs text-muted-foreground">
           Connect a self-hosted Otix node in Library settings to browse its storage.
         </p>
         <a
@@ -337,7 +327,7 @@ export const NodeFileExplorer = ({
           )}
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <span className={cn('truncate text-sm font-semibold', isModal ? 'text-white' : 'text-foreground')}>
+              <span className="truncate text-sm font-semibold text-foreground">
                 {activeNode?.name || 'Node storage'}
               </span>
               <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-400">
@@ -345,13 +335,8 @@ export const NodeFileExplorer = ({
                 Online
               </span>
             </div>
-            <div
-              className={cn(
-                'mt-0.5 flex flex-wrap items-center gap-2 text-[11px]',
-                isModal ? 'text-white/45' : 'text-muted-foreground',
-              )}
-            >
-              <span className={cn('truncate font-mono', isModal ? 'text-white/70' : 'text-foreground/70')}>
+            <div className="mt-0.5 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+              <span className="truncate font-mono text-foreground/70">
                 {activeNode?.primaryUrl}
               </span>
               {browseData?.disk_free_bytes != null && (
@@ -375,12 +360,7 @@ export const NodeFileExplorer = ({
                 setSelectedNodeId(Number(e.target.value))
                 handleNavigate(undefined)
               }}
-              className={cn(
-                'rounded-xl px-2.5 py-1.5 text-xs outline-none',
-                isModal
-                  ? 'border border-white/10 bg-white/5 text-white focus:border-primary/50'
-                  : 'border border-border bg-background text-foreground focus:border-primary',
-              )}
+              className="rounded-xl border border-[var(--dk-separator)] bg-[var(--dk-surface-field)] px-2.5 py-1.5 text-xs text-foreground outline-none focus:border-primary"
             >
               {nodes.map((s) => (
                 <option key={s.id} value={s.id}>
@@ -393,28 +373,18 @@ export const NodeFileExplorer = ({
             type="button"
             onClick={() => handleRequestPermission()}
             disabled={requestPermissionMutation.isPending}
-            className={cn(
-              'inline-flex items-center gap-1 rounded-xl px-2.5 py-1.5 text-xs font-medium transition-colors',
-              isModal
-                ? 'bg-white/5 text-white/70 hover:bg-white/10 hover:text-white'
-                : 'border border-border bg-muted/60 text-foreground/80 hover:bg-muted hover:text-foreground',
-            )}
+            className="inline-flex items-center gap-1 rounded-xl border border-[var(--dk-separator)] bg-[var(--dk-surface-ghost)] px-2.5 py-1.5 text-xs font-medium text-foreground/80 transition-colors hover:bg-[var(--dk-surface-ghost-hover)] hover:text-foreground"
             title="Request Mac folder permissions or open settings"
             aria-label="Request Mac folder permissions"
           >
-            <ShieldAlert className="h-3.5 w-3.5 text-amber-400" />
+            <ShieldAlert className="h-3.5 w-3.5 text-amber-500 dark:text-amber-400" />
             <span className="hidden sm:inline">Permissions</span>
           </button>
           <button
             type="button"
             onClick={() => refetch()}
             disabled={isRefetching}
-            className={cn(
-              'rounded-xl p-1.5 transition-colors',
-              isModal
-                ? 'bg-white/5 text-white/70 hover:bg-white/10 hover:text-white'
-                : 'border border-border bg-muted/60 text-foreground/80 hover:bg-muted hover:text-foreground',
-            )}
+            className="rounded-xl border border-[var(--dk-separator)] bg-[var(--dk-surface-ghost)] p-1.5 text-foreground/80 transition-colors hover:bg-[var(--dk-surface-ghost-hover)] hover:text-foreground"
             title="Refresh directory"
             aria-label="Refresh directory"
           >
@@ -438,21 +408,16 @@ export const NodeFileExplorer = ({
         className={cn(
           'flex shrink-0 flex-col gap-2 text-xs sm:flex-row sm:items-center sm:justify-between',
           isModal
-            ? 'mx-4 mb-2 rounded-2xl bg-white/[0.04] px-3 py-2.5'
+            ? 'mx-4 mb-2 rounded-2xl bg-[var(--dk-surface-ghost)] border border-[var(--dk-separator)] px-3 py-2.5'
             : 'border-b border-border bg-muted/20 px-4 py-2.5',
         )}
       >
         <div className="flex min-w-0 items-center gap-2">
           <HardDrive className="h-3.5 w-3.5 shrink-0 text-primary" />
-          <span className={cn('shrink-0 font-medium', isModal ? 'text-white/50' : 'text-muted-foreground')}>
+          <span className="shrink-0 font-medium text-muted-foreground">
             Download folder
           </span>
-          <span
-            className={cn(
-              'truncate font-mono text-[11px]',
-              isModal ? 'text-white/80' : 'text-foreground',
-            )}
-          >
+          <span className="truncate font-mono text-[11px] text-foreground">
             {browseData?.active_download_path || 'storage/downloads'}
           </span>
         </div>
@@ -481,12 +446,7 @@ export const NodeFileExplorer = ({
               onClick={handleResetDownloadLocation}
               disabled={setDownloadPathMutation.isPending}
               title="Reset download location to default storage/downloads"
-              className={cn(
-                'inline-flex shrink-0 items-center gap-1 rounded-lg px-2 py-1 text-[11px] transition-colors cursor-pointer',
-                isModal
-                  ? 'bg-white/5 text-white/60 hover:bg-white/10 hover:text-white'
-                  : 'border border-border/60 bg-background/60 text-muted-foreground hover:bg-muted hover:text-foreground',
-              )}
+              className="inline-flex shrink-0 items-center gap-1 rounded-lg px-2 py-1 text-[11px] transition-colors cursor-pointer border border-[var(--dk-separator)] bg-[var(--dk-surface-ghost)] text-muted-foreground hover:bg-[var(--dk-surface-ghost-hover)] hover:text-foreground"
             >
               <RotateCcw className="h-3 w-3" />
               <span>Reset</span>
@@ -503,12 +463,7 @@ export const NodeFileExplorer = ({
             isModal ? 'mx-4 mb-2' : 'border-b border-border/40 bg-muted/10 px-4',
           )}
         >
-          <span
-            className={cn(
-              'shrink-0 text-[10px] font-semibold uppercase tracking-wider',
-              isModal ? 'text-white/35' : 'text-muted-foreground/60',
-            )}
-          >
+          <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">
             Quick access:
           </span>
           {browseData.shortcuts.map((sc) => {
@@ -522,9 +477,7 @@ export const NodeFileExplorer = ({
                   'inline-flex shrink-0 items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-medium transition-colors',
                   isActive
                     ? 'bg-primary text-primary-foreground font-semibold shadow-sm'
-                    : isModal
-                      ? 'bg-white/5 text-white/70 hover:bg-white/10 hover:text-white'
-                      : 'border border-border/60 bg-background/60 text-muted-foreground hover:bg-muted hover:text-foreground',
+                    : 'border border-[var(--dk-separator)] bg-[var(--dk-surface-ghost)] text-muted-foreground hover:bg-[var(--dk-surface-ghost-hover)] hover:text-foreground',
                 )}
                 title={sc.path}
               >
@@ -548,20 +501,12 @@ export const NodeFileExplorer = ({
           isModal ? 'px-4 pb-2' : 'border-b border-border bg-card/40 px-4 py-2.5',
         )}
       >
-        <div
-          className={cn(
-            'flex min-w-0 flex-1 items-center gap-1 overflow-x-auto py-0.5 text-xs no-scrollbar',
-            isModal ? 'text-white/45' : 'text-muted-foreground',
-          )}
-        >
+        <div className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto py-0.5 text-xs no-scrollbar text-muted-foreground">
           {browseData?.parent_path && (
             <button
               type="button"
               onClick={() => handleNavigate(browseData.parent_path!)}
-              className={cn(
-                'mr-1 shrink-0 rounded-lg p-1 transition-colors',
-                isModal ? 'hover:bg-white/10 hover:text-white' : 'hover:bg-muted hover:text-foreground',
-              )}
+              className="mr-1 shrink-0 rounded-lg p-1 transition-colors hover:bg-[var(--dk-surface-ghost-hover)] hover:text-foreground"
               title="Go up"
               aria-label="Go up"
             >
@@ -576,9 +521,7 @@ export const NodeFileExplorer = ({
               'inline-flex shrink-0 items-center gap-1 rounded-lg px-2 py-1 font-medium transition-colors',
               !currentPath
                 ? 'bg-primary/15 font-semibold text-primary'
-                : isModal
-                  ? 'text-white/50 hover:text-white'
-                  : 'text-muted-foreground hover:text-foreground',
+                : 'text-muted-foreground hover:text-foreground',
             )}
             title="Go to Home folder"
           >
@@ -595,12 +538,8 @@ export const NodeFileExplorer = ({
                 className={cn(
                   'max-w-[140px] shrink-0 truncate rounded-lg px-2 py-1 transition-colors',
                   idx === breadcrumbs.length - 1
-                    ? isModal
-                      ? 'bg-white/10 font-semibold text-white'
-                      : 'bg-muted font-semibold text-foreground'
-                    : isModal
-                      ? 'text-white/50 hover:text-white'
-                      : 'text-muted-foreground hover:text-foreground',
+                    ? 'bg-[var(--dk-surface-ghost-active)] font-semibold text-foreground'
+                    : 'text-muted-foreground hover:text-foreground',
                 )}
                 title={crumb.fullPath}
               >
@@ -613,12 +552,7 @@ export const NodeFileExplorer = ({
         <button
           type="button"
           onClick={() => setIsCreatingFolder(!isCreatingFolder)}
-          className={cn(
-            'flex shrink-0 items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-medium transition-colors',
-            isModal
-              ? 'bg-white/5 text-white/80 hover:bg-white/10 hover:text-white'
-              : 'border border-border bg-muted/60 text-foreground hover:bg-muted',
-          )}
+          className="flex shrink-0 items-center gap-1 rounded-lg border border-[var(--dk-separator)] bg-[var(--dk-surface-ghost)] px-2.5 py-1 text-xs font-medium text-foreground transition-colors hover:bg-[var(--dk-surface-ghost-hover)]"
         >
           <FolderPlus className="h-3.5 w-3.5 text-primary" />
           <span className="hidden sm:inline">New folder</span>
@@ -630,7 +564,7 @@ export const NodeFileExplorer = ({
           onSubmit={handleCreateFolder}
           className={cn(
             'flex shrink-0 items-center gap-2',
-            isModal ? 'mx-4 mb-2 rounded-xl bg-white/[0.04] p-2.5' : 'border-b border-border bg-muted/30 p-3',
+            isModal ? 'mx-4 mb-2 rounded-xl bg-[var(--dk-surface-ghost)] border border-[var(--dk-separator)] p-2.5' : 'border-b border-border bg-muted/30 p-3',
           )}
         >
           <FolderPlus className="h-4 w-4 shrink-0 text-primary" />
@@ -641,12 +575,7 @@ export const NodeFileExplorer = ({
             placeholder="Folder name…"
             value={newFolderName}
             onChange={(e) => setNewFolderName(e.target.value)}
-            className={cn(
-              'h-8 flex-1 rounded-lg px-3 text-xs outline-none',
-              isModal
-                ? 'bg-white/5 text-white placeholder:text-white/30 focus:bg-white/10'
-                : 'border border-border bg-background text-foreground placeholder:text-muted-foreground focus:border-primary',
-            )}
+            className="h-8 flex-1 rounded-lg border border-[var(--dk-separator)] bg-[var(--dk-surface-field)] px-3 text-xs text-foreground outline-none placeholder:text-muted-foreground/50 focus:border-primary"
           />
           <button
             type="submit"
@@ -658,10 +587,7 @@ export const NodeFileExplorer = ({
           <button
             type="button"
             onClick={() => setIsCreatingFolder(false)}
-            className={cn(
-              'rounded-lg p-1.5',
-              isModal ? 'text-white/40 hover:text-white' : 'text-muted-foreground hover:text-foreground',
-            )}
+            className="rounded-lg p-1.5 text-muted-foreground hover:text-foreground"
             aria-label="Cancel"
           >
             <X className="h-3.5 w-3.5" />
@@ -673,10 +599,10 @@ export const NodeFileExplorer = ({
       <div
         className={cn(
           'flex shrink-0 items-center gap-2',
-          isModal ? 'mx-4 mb-2 rounded-xl bg-white/[0.04] px-3 py-2' : 'border-b border-border/60 bg-card/20 px-4 py-2',
+          isModal ? 'mx-4 mb-2 rounded-xl bg-[var(--dk-surface-ghost)] border border-[var(--dk-separator)] px-3 py-2' : 'border-b border-border/60 bg-card/20 px-4 py-2',
         )}
       >
-        <Search className={cn('h-3.5 w-3.5 shrink-0', isModal ? 'text-white/40' : 'text-muted-foreground')} />
+        <Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
         <input
           type="text"
           placeholder="Filter this folder…"
@@ -705,34 +631,24 @@ export const NodeFileExplorer = ({
       <div
         className={cn(
           'min-h-0 flex-1 overflow-y-auto overscroll-contain',
-          isModal ? 'mx-4 mb-3 rounded-2xl bg-white/[0.03]' : 'max-h-[min(55vh,480px)] min-h-[200px]',
+          isModal ? 'mx-4 mb-3 rounded-2xl bg-[var(--dk-surface-ghost)] border border-[var(--dk-separator)]' : 'max-h-[min(55vh,480px)] min-h-[200px]',
         )}
       >
         {isBrowsing && !browseData ? (
-          <div
-            className={cn(
-              'flex flex-col items-center justify-center gap-2 p-12 text-xs',
-              isModal ? 'text-white/50' : 'text-muted-foreground',
-            )}
-          >
+          <div className="flex flex-col items-center justify-center gap-2 p-12 text-xs text-muted-foreground">
             <RefreshCw className="h-5 w-5 animate-spin text-primary" />
             <span>Scanning node storage…</span>
           </div>
         ) : browseData?.permission_denied ? (
           <div className="mx-auto max-w-md space-y-4 p-8 text-center text-xs">
-            <div
-              className={cn(
-                'mx-auto flex h-12 w-12 items-center justify-center rounded-2xl',
-                isModal ? 'bg-amber-500/20 text-amber-400' : 'bg-amber-500/10 text-amber-500',
-              )}
-            >
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-500">
               <ShieldAlert className="h-6 w-6" />
             </div>
             <div className="space-y-1">
-              <p className={cn('text-sm font-semibold', isModal ? 'text-white' : 'text-foreground')}>
+              <p className="text-sm font-semibold text-foreground">
                 Mac Folder Permission Required
               </p>
-              <p className={cn('text-[11px] leading-relaxed', isModal ? 'text-white/60' : 'text-muted-foreground')}>
+              <p className="text-[11px] leading-relaxed text-muted-foreground">
                 {browseData.permission_message ||
                   `Otix Node running on your Mac needs permission to access "${browseData.current_path}".`}
               </p>
@@ -750,19 +666,14 @@ export const NodeFileExplorer = ({
               <button
                 type="button"
                 onClick={() => refetch()}
-                className={cn(
-                  'inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-medium transition-colors',
-                  isModal
-                    ? 'bg-white/10 text-white hover:bg-white/15'
-                    : 'border border-border bg-muted/60 text-foreground hover:bg-muted',
-                )}
+                className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--dk-separator)] bg-[var(--dk-surface-ghost)] px-3 py-2 text-xs font-medium text-foreground transition-colors hover:bg-[var(--dk-surface-ghost-hover)]"
               >
                 <RefreshCw className={cn('h-3.5 w-3.5', isRefetching && 'animate-spin')} />
                 Retry
               </button>
             </div>
             <div className="pt-2 text-[11px]">
-              <span className={isModal ? 'text-white/40' : 'text-muted-foreground'}>
+              <span className="text-muted-foreground">
                 Or return to:{' '}
               </span>
               <button
@@ -786,14 +697,14 @@ export const NodeFileExplorer = ({
             if (isDisconnectedOrNotFound) {
               return (
                 <div className="space-y-3 p-8 text-center text-xs">
-                  <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-400">
+                  <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-500">
                     <Server className="h-5 w-5" />
                   </div>
                   <div className="space-y-1">
-                    <p className={cn('text-sm font-semibold', isModal ? 'text-white' : 'text-foreground')}>
+                    <p className="text-sm font-semibold text-foreground">
                       Node Disconnected or Removed
                     </p>
-                    <p className={cn('text-[11px]', isModal ? 'text-white/45' : 'text-muted-foreground')}>
+                    <p className="text-[11px] text-muted-foreground">
                       {(browseError as any)?.response?.data?.detail || 'This node is no longer connected to your account.'}
                     </p>
                   </div>
@@ -825,12 +736,12 @@ export const NodeFileExplorer = ({
 
             return (
               <div className="space-y-3 p-8 text-center text-xs">
-                <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-2xl bg-rose-500/10 text-rose-400">
+                <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-2xl bg-rose-500/10 text-rose-500">
                   <ShieldAlert className="h-5 w-5" />
                 </div>
                 <div className="space-y-1">
-                  <p className="font-semibold text-rose-400">Unable to access directory</p>
-                  <p className={cn('text-[11px]', isModal ? 'text-white/45' : 'text-muted-foreground')}>
+                  <p className="font-semibold text-rose-500">Unable to access directory</p>
+                  <p className="text-[11px] text-muted-foreground">
                     {(browseError as any)?.response?.data?.detail || browseError.message}
                   </p>
                 </div>
@@ -847,12 +758,7 @@ export const NodeFileExplorer = ({
                   <button
                     type="button"
                     onClick={() => handleNavigate(undefined)}
-                    className={cn(
-                      'inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-medium transition-colors',
-                      isModal
-                        ? 'bg-white/10 text-white hover:bg-white/15'
-                        : 'border border-border bg-muted/60 text-foreground hover:bg-muted',
-                    )}
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--dk-separator)] bg-[var(--dk-surface-ghost)] px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-[var(--dk-surface-ghost-hover)]"
                   >
                     Back to Home
                   </button>
@@ -861,14 +767,9 @@ export const NodeFileExplorer = ({
             )
           })()
         ) : sortedEntries.length === 0 ? (
-          <div
-            className={cn(
-              'space-y-2 p-12 text-center text-xs',
-              isModal ? 'text-white/45' : 'text-muted-foreground',
-            )}
-          >
-            <Folder className={cn('mx-auto h-8 w-8', isModal ? 'text-white/20' : 'text-muted-foreground/30')} />
-            <p className={cn('font-medium', isModal ? 'text-white/70' : 'text-foreground/70')}>
+          <div className="space-y-2 p-12 text-center text-xs text-muted-foreground">
+            <Folder className="mx-auto h-8 w-8 text-muted-foreground/30" />
+            <p className="font-medium text-foreground/70">
               {searchQuery ? 'No matching files or folders' : 'This folder is empty'}
             </p>
             <p className="mx-auto max-w-xs text-[11px]">
@@ -876,7 +777,7 @@ export const NodeFileExplorer = ({
             </p>
           </div>
         ) : (
-          <div className={cn('divide-y', isModal ? 'divide-white/5' : 'divide-border/50')}>
+          <div className="divide-y divide-[var(--dk-separator)]">
             {sortedEntries.map((entry) => {
               const badge = getFormatBadgeColor(entry.format_category)
 
@@ -888,19 +789,14 @@ export const NodeFileExplorer = ({
                     onClick={() => handleNavigate(entry.path)}
                     className={cn(
                       'flex w-full items-center justify-between gap-3 px-3.5 py-2.5 text-left transition-colors',
-                      isModal ? 'hover:bg-white/[0.04]' : 'hover:bg-muted/40',
+                      isModal ? 'hover:bg-[var(--dk-surface-ghost-hover)]' : 'hover:bg-muted/40',
                     )}
                   >
                     <div className="flex min-w-0 items-center gap-3">
-                      <Folder className="h-4 w-4 shrink-0 text-amber-300" />
+                      <Folder className="h-4 w-4 shrink-0 text-amber-500 dark:text-amber-300" />
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
-                          <span
-                            className={cn(
-                              'truncate text-xs font-semibold',
-                              isModal ? 'text-white' : 'text-foreground',
-                            )}
-                          >
+                          <span className="truncate text-xs font-semibold text-foreground">
                             {entry.name}
                           </span>
                           {entry.is_download_location && (
@@ -910,23 +806,13 @@ export const NodeFileExplorer = ({
                           )}
                         </div>
                         {entry.modified_at && (
-                          <span
-                            className={cn(
-                              'text-[10px]',
-                              isModal ? 'text-white/35' : 'text-muted-foreground',
-                            )}
-                          >
+                          <span className="text-[10px] text-muted-foreground">
                             {formatExplorerDate(entry.modified_at)}
                           </span>
                         )}
                       </div>
                     </div>
-                    <ChevronRight
-                      className={cn(
-                        'h-3.5 w-3.5 shrink-0',
-                        isModal ? 'text-white/25' : 'text-muted-foreground/40',
-                      )}
-                    />
+                    <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground/40" />
                   </button>
                 )
               }
@@ -936,19 +822,14 @@ export const NodeFileExplorer = ({
                   key={entry.path}
                   className={cn(
                     'flex items-center justify-between gap-3 px-3.5 py-2.5',
-                    isModal ? 'hover:bg-white/[0.03]' : 'hover:bg-card/80',
+                    isModal ? 'hover:bg-[var(--dk-surface-ghost-hover)]' : 'hover:bg-card/80',
                   )}
                 >
                   <div className="flex min-w-0 items-center gap-3">
                     {getFormatIcon(entry.format_category)}
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
-                        <span
-                          className={cn(
-                            'truncate text-xs font-medium',
-                            isModal ? 'text-white' : 'text-foreground',
-                          )}
-                        >
+                        <span className="truncate text-xs font-medium text-foreground">
                           {entry.name}
                         </span>
                         <span
@@ -962,12 +843,7 @@ export const NodeFileExplorer = ({
                           {badge.label}
                         </span>
                       </div>
-                      <div
-                        className={cn(
-                          'mt-0.5 flex items-center gap-2 text-[10px]',
-                          isModal ? 'text-white/35' : 'text-muted-foreground',
-                        )}
-                      >
+                      <div className="mt-0.5 flex items-center gap-2 text-[10px] text-muted-foreground">
                         <span className="font-mono">{formatBytes(entry.size)}</span>
                         {entry.modified_at && (
                           <>
@@ -1003,7 +879,7 @@ export const NodeFileExplorer = ({
           className={cn(
             'flex shrink-0 items-center justify-between gap-3 text-[11px]',
             isModal
-              ? 'border-t border-white/5 px-4 py-3 text-white/40'
+              ? 'border-t border-[var(--dk-separator)] px-4 py-3 text-muted-foreground'
               : 'border-t border-border bg-muted/20 px-4 py-2 text-muted-foreground',
           )}
         >

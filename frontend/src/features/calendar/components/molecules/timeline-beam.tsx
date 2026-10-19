@@ -205,7 +205,7 @@ const BeamTip = ({
       }`}
     >
       {posters.length === 0 && (
-        <div className="flex h-14 w-10 items-center justify-center rounded-md bg-white/10 text-[10px] text-white/40 ring-1 ring-white/15">
+        <div className="flex h-14 w-10 items-center justify-center rounded-md bg-[var(--dk-surface-ghost)] text-[10px] text-muted-foreground ring-1 ring-[var(--dk-separator)]">
           {events.length}
         </div>
       )}
@@ -225,7 +225,7 @@ const BeamTip = ({
                   }
                 : undefined),
               boxShadow: selected
-                ? `0 0 0 2px rgba(255,255,255,0.45), 0 0 0 1px ${ring.hex}`
+                ? `0 0 0 2px var(--primary), 0 0 0 1px ${ring.hex}`
                 : `0 0 0 1px ${ring.hex}88`,
             }}
           >
@@ -241,12 +241,12 @@ const BeamTip = ({
         )
       })}
       {overflow > 0 && posters.length > 0 && (
-        <span className="absolute -right-1 -bottom-1 z-20 rounded-full bg-black/70 px-1.5 py-0.5 text-[9px] font-semibold text-white/80 ring-1 ring-white/20">
+        <span className="absolute -right-1 -bottom-1 z-20 rounded-full bg-background/90 px-1.5 py-0.5 text-[9px] font-semibold text-foreground ring-1 ring-[var(--dk-separator)] shadow-md">
           +{overflow}
         </span>
       )}
       {isAura && (
-        <span className="absolute -top-1 left-1/2 z-20 flex -translate-x-1/2 gap-0.5 rounded-full bg-black/50 px-1 py-0.5 backdrop-blur-sm">
+        <span className="absolute -top-1 left-1/2 z-20 flex -translate-x-1/2 gap-0.5 rounded-full bg-background/80 px-1 py-0.5 backdrop-blur-sm border border-[var(--dk-separator)]">
           {kinds.map((k) => (
             <span
               key={k}
@@ -262,7 +262,7 @@ const BeamTip = ({
   const titleEl = (
     <span
       className={`max-w-[7rem] truncate text-center text-[10px] font-medium leading-tight ${
-        selected ? 'text-white' : 'text-white/75'
+        selected ? 'text-foreground font-semibold' : 'text-foreground/85'
       }`}
     >
       {label}

@@ -70,7 +70,7 @@ export const NotificationList = () => {
   if (isError && notifications.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-16">
-        <p className="text-sm text-white/50">Failed to load notifications.</p>
+        <p className="text-sm text-muted-foreground">Failed to load notifications.</p>
         <button
           type="button"
           onClick={() => void refetch()}

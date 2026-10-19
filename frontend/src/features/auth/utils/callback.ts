@@ -161,16 +161,25 @@ export const collectOpenId = (p: URLSearchParams) => {
   return { params, rawQuery }
 }
 
-export const handleCallback = async (cfg: ServiceCfg, params: URLSearchParams): Promise<void> => {
+export const handleCallback = async (
+  cfg: ServiceCfg,
+  params: URLSearchParams,
+): Promise<Record<string, unknown> | null> => {
   if (cfg.useOpenId) {
     const oid = collectOpenId(params)
     const body = { params: oid.params, rawQuery: oid.rawQuery }
-    const { data } = await apiClient.post(cfg.endpoint, body)
+    const { data } = await apiClient.post<Record<string, unknown>>(cfg.endpoint, body)
     cfg.onSuccess?.(data)
+    return data
   } else {
     const paramErr = cfg.validateParams?.(params) ?? null
     if (paramErr) throw new Error(paramErr)
     const body = cfg.buildBody(params)
-    if (body) await apiClient.post(cfg.endpoint, body)
+    if (body) {
+      const { data } = await apiClient.post<Record<string, unknown>>(cfg.endpoint, body)
+      cfg.onSuccess?.(data)
+      return data
+    }
+    return null
   }
 }

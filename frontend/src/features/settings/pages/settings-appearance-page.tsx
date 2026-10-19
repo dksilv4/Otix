@@ -8,7 +8,6 @@ import { Moon, Sun, Monitor, Plus, Palette } from 'lucide-react'
 import { SectionHeader } from '../components/molecules/settings-section-header'
 import { SettingsCard } from '../components/molecules/settings-card'
 import { useSettingsHashScroll } from '../hooks/use-settings-hash-scroll'
-import { SettingsGeneralPage } from './settings-general-page'
 import {
   ACCENTS,
   CUSTOM_ACCENTS_KEY,
@@ -32,6 +31,10 @@ export const SettingsAppearancePage = () => {
       navigate({ to: '/settings/launcher', replace: true })
     } else if (location.hash === '#desktop' || location.hash === 'desktop') {
       navigate({ to: '/settings/nodes', replace: true })
+    } else if (location.hash === '#general' || location.hash === 'general') {
+      navigate({ to: '/settings/general', replace: true })
+    } else if (location.hash === '#recommendations' || location.hash === 'recommendations' || location.hash === '#taste') {
+      navigate({ to: '/settings/recommendations', replace: true })
     }
   }, [location.hash, navigate])
 
@@ -58,7 +61,7 @@ export const SettingsAppearancePage = () => {
         variant="page"
         icon={Palette}
         title="Appearance"
-        description="Theme, motion, app defaults, and client cache."
+        description="Theme mode, accent colors, interface animations, and background quality."
       />
 
       <div id="appearance" className="space-y-5 scroll-mt-28">
@@ -78,26 +81,26 @@ export const SettingsAppearancePage = () => {
               {theme === 'dark' ? <Moon className="h-5.5 w-5.5" /> : theme === 'light' ? <Sun className="h-5.5 w-5.5" /> : <Monitor className="h-5.5 w-5.5" />}
             </div>
             <div>
-              <p className="text-sm font-semibold text-white">
+              <p className="text-sm font-semibold text-foreground">
                 {theme === 'dark' ? 'Dark' : theme === 'light' ? 'Light' : 'System'} mode
               </p>
-              <p className="text-xs text-white/60 mt-0.5">
+              <p className="text-xs text-muted-foreground mt-0.5">
                 {theme === 'dark' ? 'Easier on the eyes at night' : theme === 'light' ? 'Bright and crisp for daytime' : 'Follows your device settings'}
               </p>
             </div>
           </div>
 
-          <div className="grid grid-cols-3 w-full sm:w-auto rounded-xl p-1 gap-1 bg-white/[0.04]">
+          <div className="grid grid-cols-3 w-full sm:w-auto rounded-xl p-1 gap-1 bg-[var(--dk-surface-ghost)]">
             {(['system', 'light', 'dark'] as const).map((t) => (
               <button
                 key={t}
                 type="button"
                 onClick={() => setTheme(t)}
                 className={cn(
-                  'rounded-lg px-3 py-2 text-xs font-medium transition-all duration-150 text-center',
+                  'rounded-lg px-3 py-2 text-xs font-medium transition-all duration-150 text-center cursor-pointer',
                   theme === t
-                    ? 'bg-white/10 text-white shadow-sm font-semibold'
-                    : 'text-white/60 hover:text-white',
+                    ? 'bg-primary text-primary-foreground shadow-sm font-semibold'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-ghost-hover)]',
                 )}
               >
                 {t === 'system' ? 'System' : t === 'light' ? 'Light' : 'Dark'}
@@ -154,7 +157,7 @@ export const SettingsAppearancePage = () => {
                   }
                 }}
               >
-                {!hasColor && <Plus className="h-4 w-4 text-white/30 pointer-events-none" />}
+                {!hasColor && <Plus className="h-4 w-4 text-muted-foreground/50 pointer-events-none" />}
                 {active && (
                   <span
                     className="absolute inset-0 rounded-full pointer-events-none"
@@ -196,10 +199,10 @@ export const SettingsAppearancePage = () => {
                   type="button"
                   onClick={() => setMotionPreference(option.value)}
                   className={cn(
-                    'rounded-xl px-3 py-3 text-left transition-all duration-150',
+                    'rounded-xl px-3 py-3 text-left transition-all duration-150 cursor-pointer',
                     isActiveOpt
                       ? 'bg-primary text-primary-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.15)]'
-                      : 'hover:bg-white/[0.06]',
+                      : 'hover:bg-[var(--dk-surface-ghost-hover)]',
                   )}
                   style={!isActiveOpt ? { backgroundColor: 'var(--dk-surface-overlay)' } : undefined}
                 >
@@ -236,10 +239,10 @@ export const SettingsAppearancePage = () => {
                   type="button"
                   onClick={() => setShaderQuality(option.value)}
                   className={cn(
-                    'rounded-xl px-3 py-3 text-left transition-all duration-150',
+                    'rounded-xl px-3 py-3 text-left transition-all duration-150 cursor-pointer',
                     isActiveOpt
                       ? 'bg-primary text-primary-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.15)]'
-                      : 'hover:bg-white/[0.06]',
+                      : 'hover:bg-[var(--dk-surface-ghost-hover)]',
                   )}
                   style={!isActiveOpt ? { backgroundColor: 'var(--dk-surface-overlay)' } : undefined}
                 >
@@ -259,8 +262,6 @@ export const SettingsAppearancePage = () => {
         </div>
       </SettingsCard>
       </div>
-
-      <SettingsGeneralPage />
     </div>
   )
 };

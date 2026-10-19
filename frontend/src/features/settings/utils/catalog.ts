@@ -11,7 +11,7 @@ export interface GameStatusInfo {
 
 export const getStatusInfo = (game: LocalGame): GameStatusInfo => {
   if (game.data?.id || game.otixMediaId) {
-    return { label: 'Matched', color: 'text-green-400', bg: 'bg-green-500/10', icon: CheckCircle2 }
+    return { label: 'Matched', color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-500/10', icon: CheckCircle2 }
   }
   const suggestion = game.otixMatchSuggestion || game.matchSuggestion
   if (suggestion) {
@@ -19,11 +19,11 @@ export const getStatusInfo = (game: LocalGame): GameStatusInfo => {
     const count = Array.isArray(candidates) ? candidates.length : 1
     return {
       label: `${count} candidate${count > 1 ? 's' : ''}`,
-      color: 'text-blue-400',
-      bg: 'bg-blue-500/10',
+      color: 'text-sky-600 dark:text-sky-400',
+      bg: 'bg-sky-500/10',
       icon: count > 1 ? Users : Star,
       candidateCount: count,
     }
   }
-  return { label: 'Unmatched', color: 'text-white/30', bg: 'bg-white/5', icon: Gamepad2 }
+  return { label: 'Unmatched', color: 'text-muted-foreground', bg: 'bg-[var(--dk-surface-field)]', icon: Gamepad2 }
 }

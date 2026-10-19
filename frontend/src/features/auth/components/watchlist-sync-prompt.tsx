@@ -102,7 +102,7 @@ export const WatchlistSyncPrompt = () => {
           type="button"
           onClick={() => setOpen(false)}
           disabled={syncing}
-          className="w-full sm:w-auto px-4 py-2 text-xs font-medium text-white/60 hover:text-white transition-colors disabled:opacity-50"
+          className="w-full sm:w-auto px-4 py-2 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50 cursor-pointer"
         >
           Not now
         </button>

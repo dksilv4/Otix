@@ -100,8 +100,8 @@ export const DiskSpaceWidget = ({ id }: { id?: string }) => {
   if (drives.length === 0) return null
 
   return (
-    <div id={id} className="flex-1 rounded-2xl bg-white/3 p-4 max-w-sm animate-fade-in flex flex-col gap-2">
-      <h3 className="text-[11px] font-bold text-white/50 uppercase tracking-wider mb-1">Storage</h3>
+    <div id={id} className="flex-1 rounded-2xl bg-[var(--dk-surface-ghost)] border border-[var(--dk-separator)] p-4 max-w-sm animate-fade-in flex flex-col gap-2">
+      <h3 className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-1">Storage</h3>
       {annotatedDrives.map((info, i) => (
         <DriveRow key={info.drive} index={i} {...info} />
       ))}

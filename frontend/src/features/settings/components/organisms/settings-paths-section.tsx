@@ -848,12 +848,12 @@ export const SettingsPathsSection = ({ onScanComplete, className, nodeId: nodeId
         <div className="space-y-3">
           <div className="space-y-2">
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center shrink-0">
+              <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
                 <HardDrive size={16} />
               </div>
               <div className="min-w-0">
-                <span className="text-xs font-semibold text-white">Game installation folder</span>
-                <p className="text-[11px] text-white/40">Where installed games live. Target directory for game installers.</p>
+                <span className="text-xs font-semibold text-foreground">Game installation folder</span>
+                <p className="text-[11px] text-muted-foreground">Where installed games live. Target directory for game installers.</p>
               </div>
             </div>
             <PathInput
@@ -870,12 +870,12 @@ export const SettingsPathsSection = ({ onScanComplete, className, nodeId: nodeId
 
           <div className="space-y-2">
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-cyan-500/10 text-cyan-400 flex items-center justify-center shrink-0">
+              <div className="w-8 h-8 rounded-lg bg-sky-500/10 text-sky-600 dark:text-sky-400 flex items-center justify-center shrink-0">
                 <Gamepad2 size={16} />
               </div>
               <div className="min-w-0">
-                <span className="text-xs font-semibold text-white">Games download folder</span>
-                <p className="text-[11px] text-white/40">Where game installers are downloaded before installation.</p>
+                <span className="text-xs font-semibold text-foreground">Games download folder</span>
+                <p className="text-[11px] text-muted-foreground">Where game installers are downloaded before installation.</p>
               </div>
             </div>
             <PathInput
@@ -892,12 +892,12 @@ export const SettingsPathsSection = ({ onScanComplete, className, nodeId: nodeId
 
           <div className="space-y-2">
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center shrink-0">
+              <div className="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
                 <Disc size={16} />
               </div>
               <div className="min-w-0">
-                <span className="text-xs font-semibold text-white">ISOs &amp; disc images</span>
-                <p className="text-[11px] text-white/40">Target for completed ISO files and ROMs.</p>
+                <span className="text-xs font-semibold text-foreground">ISOs &amp; disc images</span>
+                <p className="text-[11px] text-muted-foreground">Target for completed ISO files and ROMs.</p>
               </div>
             </div>
             <PathInput
@@ -1013,8 +1013,8 @@ export const SettingsPathsSection = ({ onScanComplete, className, nodeId: nodeId
                 className={cn(
                   'px-3.5 py-2 rounded-xl text-xs font-mono flex items-center justify-between gap-3 transition-all duration-300',
                   isJustAdded
-                    ? 'bg-emerald-500/15 text-emerald-200 shadow-md shadow-emerald-500/10'
-                    : 'bg-white/[0.03] text-white/80',
+                    ? 'bg-emerald-500/15 text-emerald-800 dark:text-emerald-200 shadow-md shadow-emerald-500/10'
+                    : 'bg-[var(--dk-surface-ghost)] text-foreground',
                 )}
               >
                 <div className="flex items-center gap-2.5 min-w-0 flex-1">
@@ -1022,8 +1022,8 @@ export const SettingsPathsSection = ({ onScanComplete, className, nodeId: nodeId
                     className={cn(
                       'flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-sans font-semibold uppercase tracking-wider shrink-0',
                       item.type === 'iso'
-                        ? 'bg-amber-500/15 text-amber-300'
-                        : 'bg-cyan-500/15 text-cyan-300',
+                        ? 'bg-amber-500/15 text-amber-700 dark:text-amber-300'
+                        : 'bg-sky-500/15 text-sky-700 dark:text-sky-300',
                     )}
                   >
                     {item.type === 'iso' ? <Disc size={11} /> : <Gamepad2 size={11} />}
@@ -1035,17 +1035,17 @@ export const SettingsPathsSection = ({ onScanComplete, className, nodeId: nodeId
                     </span>
                   )}
                   {isJustAdded && (
-                    <span className="flex items-center gap-1 text-[10px] font-sans font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-emerald-500/25 text-emerald-300 shrink-0 animate-in fade-in zoom-in-90 duration-200">
+                    <span className="flex items-center gap-1 text-[10px] font-sans font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-emerald-500/25 text-emerald-700 dark:text-emerald-300 shrink-0 animate-in fade-in zoom-in-90 duration-200">
                       <Check size={10} /> Confirmed
                     </span>
                   )}
-                  <FolderOpen size={14} className={cn('shrink-0', isJustAdded ? 'text-emerald-400' : 'text-primary')} />
+                  <FolderOpen size={14} className={cn('shrink-0', isJustAdded ? 'text-emerald-500 dark:text-emerald-400' : 'text-primary')} />
                   <span className="truncate">{item.path}</span>
                 </div>
                 <button
                   type="button"
                   onClick={() => handleRemoveScanPath(item)}
-                  className="h-6 w-6 flex items-center justify-center rounded-lg text-white/40 hover:text-red-400 hover:bg-red-500/10 transition-colors shrink-0 cursor-pointer"
+                  className="h-6 w-6 flex items-center justify-center rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors shrink-0 cursor-pointer"
                   title="Remove path"
                   aria-label="Remove path"
                 >
@@ -1055,10 +1055,10 @@ export const SettingsPathsSection = ({ onScanComplete, className, nodeId: nodeId
             )
           })}
 
-          <div className="px-3.5 py-2.5 rounded-xl bg-white/[0.03] space-y-2.5">
+          <div className="px-3.5 py-2.5 rounded-xl bg-[var(--dk-surface-ghost)] space-y-2.5">
             <div className="flex items-center gap-2">
               <div
-                className="inline-flex rounded-lg bg-white/5 p-0.5 shrink-0"
+                className="inline-flex rounded-lg bg-[var(--dk-surface-raised)] p-0.5 shrink-0"
                 role="group"
                 aria-label="Scan folder type"
               >
@@ -1068,8 +1068,8 @@ export const SettingsPathsSection = ({ onScanComplete, className, nodeId: nodeId
                   className={cn(
                     'flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-semibold uppercase tracking-wider transition-colors cursor-pointer',
                     draftScanType === 'game'
-                      ? 'bg-cyan-500/20 text-cyan-300'
-                      : 'text-white/40 hover:text-white/70',
+                      ? 'bg-sky-500/20 text-sky-700 dark:text-sky-300'
+                      : 'text-muted-foreground hover:text-foreground',
                   )}
                   aria-pressed={draftScanType === 'game'}
                 >
@@ -1082,8 +1082,8 @@ export const SettingsPathsSection = ({ onScanComplete, className, nodeId: nodeId
                   className={cn(
                     'flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-semibold uppercase tracking-wider transition-colors cursor-pointer',
                     draftScanType === 'iso'
-                      ? 'bg-amber-500/20 text-amber-300'
-                      : 'text-white/40 hover:text-white/70',
+                      ? 'bg-amber-500/20 text-amber-700 dark:text-amber-300'
+                      : 'text-muted-foreground hover:text-foreground',
                   )}
                   aria-pressed={draftScanType === 'iso'}
                 >
@@ -1091,7 +1091,7 @@ export const SettingsPathsSection = ({ onScanComplete, className, nodeId: nodeId
                   ISO
                 </button>
               </div>
-              <span className="text-[11px] text-white/40 truncate">
+              <span className="text-[11px] text-muted-foreground truncate">
                 {scanPaths.length === 0 ? 'Add a folder to scan' : 'Add another folder'}
               </span>
             </div>
@@ -1126,8 +1126,8 @@ export const SettingsPathsSection = ({ onScanComplete, className, nodeId: nodeId
                 className={cn(
                   'inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-xs font-semibold transition-all duration-200 cursor-pointer disabled:cursor-not-allowed disabled:opacity-40',
                   draftScanPath.trim()
-                    ? 'bg-emerald-500 text-white hover:bg-emerald-400 shadow-md shadow-emerald-500/25 active:scale-95'
-                    : 'bg-white/5 text-white/40',
+                    ? 'bg-primary text-primary-foreground hover:bg-primary/90 shadow-md active:scale-95'
+                    : 'bg-[var(--dk-surface-raised)] text-muted-foreground',
                 )}
               >
                 <Check className="h-4 w-4" />

@@ -45,7 +45,7 @@ export const CalendarGrid = ({ events, year, month }: CalendarGridProps) => {
       {/* Day-of-week header */}
       <div className="grid grid-cols-7 gap-px">
         {DAYS.map((d) => (
-          <div key={d} className="pb-2 text-center text-[11px] font-medium uppercase tracking-wider text-white/30">
+          <div key={d} className="pb-2 text-center text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
             {d}
           </div>
         ))}
@@ -78,7 +78,7 @@ export const CalendarGrid = ({ events, year, month }: CalendarGridProps) => {
       {/* Selected day events */}
       {selectedEvents.length > 0 && (
         <div className="space-y-1.5 pt-2">
-          <h3 className="text-xs font-medium text-white/40">
+          <h3 className="text-xs font-medium text-muted-foreground">
             {new Date(
               parseInt(selectedKey!.split('-')[0]),
               parseInt(selectedKey!.split('-')[1]),

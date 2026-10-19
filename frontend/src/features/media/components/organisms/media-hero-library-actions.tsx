@@ -7,7 +7,10 @@ import { DownloadGameButton } from '@/features/media/game/components/organisms/m
 import { RequestMediaButton } from './media-request-button'
 import { useMediaDetailPluginActions } from '@/features/media/hooks/use-media-detail-plugin-actions'
 import { useRequestMedia } from '@/features/media/hooks/use-request-media'
-import { apiClient } from '@/lib/api/client'
+import {
+  buildPlexPlaybackSession,
+  fetchPlexConnectInfoCached,
+} from '@/features/media/utils/plex-stream'
 import { showToast } from '@ui/molecules/toast'
 
 export const MediaHeroLibraryActions = () => {
@@ -36,47 +39,41 @@ export const MediaHeroLibraryActions = () => {
         }
       }
 
-      // 2. Direct attempt: probe backend Plex connect-info for any candidate
-      const rawCandidates = [
-        effectiveMediaId,
-        detail?.tmdbId,
-        (detail as { tvdbId?: string | number })?.tvdbId,
-        detail?.slug,
-        detail?.title,
-      ]
-      const candidates = Array.from(
-        new Set(
-          rawCandidates
-            .filter((c): c is string | number => Boolean(c))
-            .map((c) => String(c)),
-        ),
-      )
-      for (const cand of candidates) {
-        try {
-          const { data: plexInfo } = await apiClient.get<Record<string, unknown>>(
-            `/integrations/plex/connect-info/${encodeURIComponent(String(cand))}`,
-          )
-          const ratingKey = String(plexInfo?.ratingKey || plexInfo?.rating_key || '')
-          const baseUrl = String(plexInfo?.baseUrl || plexInfo?.base_url || '')
-          const token = String(plexInfo?.token || '')
-          if (ratingKey && baseUrl && token) {
-            await pluginActions.handlePlay('backend-plex', {
-              id: `plex|${ratingKey}`,
-              serverId: String(plexInfo?.serverId || plexInfo?.server_id || 'default'),
-              name: String(plexInfo?.serverName || plexInfo?.server_name || 'Plex'),
-              ratingKey,
-              baseUrl,
-              token,
-              provider: 'plex',
-              providerLabel: 'Plex',
-              serverName: String(plexInfo?.serverName || plexInfo?.server_name || 'Plex'),
-              mediaType: mediaType as 'movie' | 'show',
-              title: detail?.title || 'Stream',
-            })
-            return
-          }
-        } catch {
-          // Probe next candidate
+      // 2. Direct attempt: resolve Plex connect-info via cached lookup with full metadata
+      const releaseYear = (detail as { releaseDate?: string })?.releaseDate
+        ? new Date((detail as { releaseDate: string }).releaseDate).getFullYear()
+        : undefined
+      const plexInfo = await fetchPlexConnectInfoCached(effectiveMediaId, {
+        tmdbId: detail?.tmdbId,
+        tvdbId: (detail as { tvdbId?: string | number })?.tvdbId,
+        title: detail?.title,
+        year: releaseYear && !isNaN(releaseYear) ? releaseYear : undefined,
+        mediaType,
+      })
+
+      if (plexInfo) {
+        const ratingKey = String(plexInfo.ratingKey || plexInfo.rating_key || '')
+        const baseUrl = String(plexInfo.baseUrl || plexInfo.base_url || '')
+        const token = String(plexInfo.token || '')
+        if (ratingKey && baseUrl && token) {
+          const streamSession = buildPlexPlaybackSession(plexInfo, {
+            title: detail?.title || plexInfo.title || 'Stream',
+          })
+          await pluginActions.handlePlay('backend-plex', {
+            id: `plex|${ratingKey}`,
+            serverId: String(plexInfo.serverId || plexInfo.server_id || 'default'),
+            name: String(plexInfo.serverName || plexInfo.server_name || 'Plex'),
+            ratingKey,
+            baseUrl,
+            token,
+            provider: 'plex',
+            providerLabel: 'Plex',
+            serverName: String(plexInfo.serverName || plexInfo.server_name || 'Plex'),
+            mediaType: mediaType as 'movie' | 'show',
+            title: detail?.title || 'Stream',
+            streamSession,
+          })
+          return
         }
       }
 

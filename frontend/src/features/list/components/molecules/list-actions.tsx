@@ -36,8 +36,8 @@ export const ListLikeButton = ({ list }: { list: UserListDetailOut }) => {
       className={cn(
         'flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-all active:scale-95',
         isLiked 
-          ? 'bg-rose-500/10 text-rose-500 hover:bg-rose-500/20' 
-          : 'bg-white/5 text-muted-foreground hover:bg-white/10 hover:text-foreground'
+          ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400 hover:bg-rose-500/20' 
+          : 'bg-[var(--dk-surface-ghost)] text-muted-foreground hover:bg-[var(--dk-surface-glass-hover)] hover:text-foreground'
       )}
     >
       <Heart className={cn('h-4 w-4', isLiked && 'fill-current')} />
@@ -134,7 +134,7 @@ export const ShareModal = ({ list, onClose, isExiting }: ShareModalProps) => {
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
       <div
         className={cn(
-          'relative w-full max-w-md overflow-hidden rounded-3xl bg-[var(--dk-surface-base)] border border-white/10 shadow-[var(--dk-shadow-dialog)] transition-all duration-200 ease-out flex flex-col p-6 space-y-5',
+          'relative w-full max-w-md overflow-hidden rounded-3xl bg-[var(--dk-surface-base)] border border-[var(--dk-separator)] shadow-[var(--dk-shadow-dialog)] transition-all duration-200 ease-out flex flex-col p-6 space-y-5',
           visible ? 'scale-100 translate-y-0' : 'scale-95 translate-y-4',
         )}
       >
@@ -159,7 +159,7 @@ export const ShareModal = ({ list, onClose, isExiting }: ShareModalProps) => {
         </div>
 
         {/* List preview card */}
-        <div className="rounded-2xl border border-white/10 bg-[var(--dk-surface-glass)] p-4 space-y-3">
+        <div className="rounded-2xl border border-[var(--dk-separator)] bg-[var(--dk-surface-glass)] p-4 space-y-3">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
               <h4 className="font-semibold text-foreground text-sm truncate">{list.name}</h4>
@@ -173,8 +173,8 @@ export const ShareModal = ({ list, onClose, isExiting }: ShareModalProps) => {
               className={cn(
                 'inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium border shrink-0',
                 isPublic
-                  ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-                  : 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+                  ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
+                  : 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20',
               )}
             >
               {isPublic ? <Globe className="h-3 w-3" /> : <Lock className="h-3 w-3" />}
@@ -187,7 +187,7 @@ export const ShareModal = ({ list, onClose, isExiting }: ShareModalProps) => {
               {previewPosters.map((url, idx) => (
                 <div
                   key={idx}
-                  className="relative aspect-[2/3] w-12 rounded-lg overflow-hidden border border-white/10 bg-black/40 shadow-sm"
+                  className="relative aspect-[2/3] w-12 rounded-lg overflow-hidden border border-[var(--dk-separator)] bg-[var(--dk-surface-ghost)] shadow-sm"
                 >
                   <img src={url} alt="" className="h-full w-full object-cover" />
                 </div>
@@ -198,12 +198,12 @@ export const ShareModal = ({ list, onClose, isExiting }: ShareModalProps) => {
 
         {/* Owner visibility toggle */}
         {isOwner && (
-          <div className="flex items-center justify-between p-3.5 rounded-2xl border border-white/10 bg-[var(--dk-surface-glass)]">
+          <div className="flex items-center justify-between p-3.5 rounded-2xl border border-[var(--dk-separator)] bg-[var(--dk-surface-glass)]">
             <div className="flex items-center gap-3 min-w-0">
               <div
                 className={cn(
                   'flex h-8 w-8 shrink-0 items-center justify-center rounded-xl transition-colors',
-                  isPublic ? 'bg-emerald-500/10 text-emerald-400' : 'bg-amber-500/10 text-amber-400',
+                  isPublic ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-amber-500/10 text-amber-600 dark:text-amber-400',
                 )}
               >
                 {isPublic ? <Globe className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
@@ -225,13 +225,13 @@ export const ShareModal = ({ list, onClose, isExiting }: ShareModalProps) => {
               disabled={isTogglingVisibility}
               className={cn(
                 'relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none disabled:opacity-50',
-                isPublic ? 'bg-primary' : 'bg-white/15',
+                isPublic ? 'bg-primary' : 'bg-[var(--dk-surface-elevated)]',
               )}
               aria-label={isPublic ? 'Make list private' : 'Make list public'}
             >
               <span
                 className={cn(
-                  'pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow-md transform ring-0 transition duration-200 ease-in-out',
+                  'pointer-events-none inline-block h-5 w-5 rounded-full bg-primary-foreground shadow-md transform ring-0 transition duration-200 ease-in-out',
                   isPublic ? 'translate-x-5' : 'translate-x-0',
                 )}
               />
@@ -240,11 +240,11 @@ export const ShareModal = ({ list, onClose, isExiting }: ShareModalProps) => {
         )}
 
         {toggleError && (
-          <p className="text-xs text-rose-400 px-1">{toggleError}</p>
+          <p className="text-xs text-destructive px-1">{toggleError}</p>
         )}
 
         {!isPublic && !isOwner && (
-          <div className="p-3 rounded-xl border border-amber-500/20 bg-amber-500/10 text-xs text-amber-300">
+          <div className="p-3 rounded-xl border border-amber-500/20 bg-amber-500/10 text-xs text-amber-600 dark:text-amber-400">
             This list is private. Only accepted collaborators can access it.
           </div>
         )}
@@ -266,7 +266,7 @@ export const ShareModal = ({ list, onClose, isExiting }: ShareModalProps) => {
           <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
             Shareable Link
           </label>
-          <div className="flex bg-[var(--dk-surface-glass)] rounded-xl border border-white/10 overflow-hidden">
+          <div className="flex bg-[var(--dk-surface-glass)] rounded-xl border border-[var(--dk-separator)] overflow-hidden">
             <input
               readOnly
               value={shareUrl}
@@ -276,9 +276,9 @@ export const ShareModal = ({ list, onClose, isExiting }: ShareModalProps) => {
             <button
               type="button"
               onClick={handleCopy}
-              className="flex items-center gap-1.5 px-4 bg-white/5 hover:bg-white/10 text-foreground text-xs font-semibold transition-colors shrink-0"
+              className="flex items-center gap-1.5 px-4 bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-glass-hover)] text-foreground text-xs font-semibold transition-colors shrink-0"
             >
-              {copied ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5" />}
+              {copied ? <Check className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" /> : <Copy className="h-3.5 w-3.5" />}
               {copied ? 'Copied' : 'Copy'}
             </button>
           </div>
@@ -294,7 +294,7 @@ export const ShareModal = ({ list, onClose, isExiting }: ShareModalProps) => {
               href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(`Check out "${list.name}" on Otix`)}&url=${encodeURIComponent(shareUrl)}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center justify-center gap-2 py-2 px-3 rounded-xl border border-white/10 bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-ghost-hover)] text-foreground text-xs font-semibold transition-colors"
+              className="flex items-center justify-center gap-2 py-2 px-3 rounded-xl border border-[var(--dk-separator)] bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-ghost-hover)] text-foreground text-xs font-semibold transition-colors"
             >
               <ExternalLink className="h-3.5 w-3.5 text-muted-foreground" />
               Twitter / X
@@ -303,7 +303,7 @@ export const ShareModal = ({ list, onClose, isExiting }: ShareModalProps) => {
               href={`https://bsky.app/intent/compose?text=${encodeURIComponent(`Check out "${list.name}" on Otix ${shareUrl}`)}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center justify-center gap-2 py-2 px-3 rounded-xl border border-white/10 bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-ghost-hover)] text-foreground text-xs font-semibold transition-colors"
+              className="flex items-center justify-center gap-2 py-2 px-3 rounded-xl border border-[var(--dk-separator)] bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-ghost-hover)] text-foreground text-xs font-semibold transition-colors"
             >
               <ExternalLink className="h-3.5 w-3.5 text-muted-foreground" />
               Bluesky
@@ -312,7 +312,7 @@ export const ShareModal = ({ list, onClose, isExiting }: ShareModalProps) => {
               href={`https://reddit.com/submit?url=${encodeURIComponent(shareUrl)}&title=${encodeURIComponent(`Check out "${list.name}" on Otix`)}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center justify-center gap-2 py-2 px-3 rounded-xl border border-white/10 bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-ghost-hover)] text-foreground text-xs font-semibold transition-colors"
+              className="flex items-center justify-center gap-2 py-2 px-3 rounded-xl border border-[var(--dk-separator)] bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-ghost-hover)] text-foreground text-xs font-semibold transition-colors"
             >
               <ExternalLink className="h-3.5 w-3.5 text-muted-foreground" />
               Reddit
@@ -321,7 +321,7 @@ export const ShareModal = ({ list, onClose, isExiting }: ShareModalProps) => {
               href={`https://api.whatsapp.com/send?text=${encodeURIComponent(`${list.name} on Otix: ${shareUrl}`)}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center justify-center gap-2 py-2 px-3 rounded-xl border border-white/10 bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-ghost-hover)] text-foreground text-xs font-semibold transition-colors"
+              className="flex items-center justify-center gap-2 py-2 px-3 rounded-xl border border-[var(--dk-separator)] bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-ghost-hover)] text-foreground text-xs font-semibold transition-colors"
             >
               <ExternalLink className="h-3.5 w-3.5 text-muted-foreground" />
               WhatsApp
@@ -330,7 +330,7 @@ export const ShareModal = ({ list, onClose, isExiting }: ShareModalProps) => {
         </div>
 
         {/* Export options */}
-        <div className="space-y-2 pt-1 border-t border-white/[0.08]">
+        <div className="space-y-2 pt-1 border-t border-[var(--dk-separator)]">
           <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
             Export Data
           </label>
@@ -339,7 +339,7 @@ export const ShareModal = ({ list, onClose, isExiting }: ShareModalProps) => {
               href={getExportUrl(list.id, 'json')}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center justify-center gap-2 py-2 rounded-xl border border-white/10 bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-ghost-hover)] text-foreground text-xs font-semibold transition-colors"
+              className="flex items-center justify-center gap-2 py-2 rounded-xl border border-[var(--dk-separator)] bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-ghost-hover)] text-foreground text-xs font-semibold transition-colors"
             >
               <Download className="h-3.5 w-3.5 text-muted-foreground" /> JSON
             </a>
@@ -347,7 +347,7 @@ export const ShareModal = ({ list, onClose, isExiting }: ShareModalProps) => {
               href={getExportUrl(list.id, 'csv')}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center justify-center gap-2 py-2 rounded-xl border border-white/10 bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-ghost-hover)] text-foreground text-xs font-semibold transition-colors"
+              className="flex items-center justify-center gap-2 py-2 rounded-xl border border-[var(--dk-separator)] bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-ghost-hover)] text-foreground text-xs font-semibold transition-colors"
             >
               <Download className="h-3.5 w-3.5 text-muted-foreground" /> CSV
             </a>
@@ -410,29 +410,29 @@ export const CollaboratorsModal = ({ list, onClose, isExiting }: CollaboratorsMo
   return (
     <div className={cn("fixed inset-0 z-[var(--dk-z-modal)] flex items-center justify-center p-4 transition-opacity duration-200", visible ? "opacity-100" : "opacity-0")}>
       <div className="absolute inset-0 bg-black/60" onClick={onClose} />
-      <div className={cn("relative w-full max-w-md overflow-hidden rounded-3xl bg-[var(--dk-surface-base)] shadow-[var(--dk-shadow-dialog)] transition-all duration-200 ease-out flex flex-col p-6 space-y-6", visible ? "scale-100 translate-y-0" : "scale-95 translate-y-4")}>
+      <div className={cn("relative w-full max-w-md overflow-hidden rounded-3xl bg-[var(--dk-surface-overlay)] border border-[var(--dk-separator)] shadow-[var(--dk-shadow-dialog)] transition-all duration-200 ease-out flex flex-col p-6 space-y-6", visible ? "scale-100 translate-y-0" : "scale-95 translate-y-4")}>
         <div className="flex items-center justify-between">
-          <h3 className="text-lg font-bold text-white">Collaborators</h3>
-          <button onClick={onClose} className="rounded-xl p-1.5 transition-all text-white/50 hover:bg-white/5 hover:text-white">
+          <h3 className="text-lg font-bold text-foreground">Collaborators</h3>
+          <button onClick={onClose} className="rounded-xl p-1.5 transition-all text-muted-foreground hover:bg-[var(--dk-surface-ghost-hover)] hover:text-foreground">
             <X className="h-4 w-4" />
           </button>
         </div>
 
         {/* My pending invitations */}
         {myPending.length > 0 && (
-          <div className="space-y-3 bg-white/5 rounded-2xl p-4 border border-white/5">
-            <label className="text-xs font-semibold text-white/50 uppercase tracking-wider">Your Invitations</label>
+          <div className="space-y-3 bg-[var(--dk-surface-ghost)] rounded-2xl p-4 border border-[var(--dk-separator)]">
+            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Your Invitations</label>
             {myPending.map((c) => (
               <div key={c.id} className="flex items-center justify-between">
                 <div className="flex flex-col">
-                  <span className="text-sm font-semibold text-white">{list.name}</span>
-                  <span className="text-xs text-white/50">{c.permission} · pending</span>
+                  <span className="text-sm font-semibold text-foreground">{list.name}</span>
+                  <span className="text-xs text-muted-foreground">{c.permission} · pending</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <button onClick={() => decline.mutate()} disabled={decline.isPending} className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white/70 text-xs font-semibold transition-colors">
+                  <button onClick={() => decline.mutate()} disabled={decline.isPending} className="px-3 py-1.5 rounded-lg bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)] text-muted-foreground hover:text-foreground text-xs font-semibold transition-colors border border-[var(--dk-separator)]">
                     Decline
                   </button>
-                  <button onClick={() => accept.mutate()} disabled={accept.isPending} className="px-3 py-1.5 rounded-lg bg-primary hover:bg-primary/90 text-white text-xs font-semibold transition-colors">
+                  <button onClick={() => accept.mutate()} disabled={accept.isPending} className="px-3 py-1.5 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold transition-colors">
                     Accept
                   </button>
                 </div>
@@ -444,19 +444,19 @@ export const CollaboratorsModal = ({ list, onClose, isExiting }: CollaboratorsMo
         {/* Collaborator list */}
         {others.length > 0 ? (
           <div className="space-y-3">
-            <label className="text-xs font-semibold text-white/50 uppercase tracking-wider">Collaborators</label>
+            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Collaborators</label>
             <div className="space-y-2">
               {others.map((c) => (
-                <div key={c.id} className="flex items-center justify-between p-3 rounded-xl bg-white/[0.03]">
+                <div key={c.id} className="flex items-center justify-between p-3 rounded-xl bg-[var(--dk-surface-ghost)] border border-[var(--dk-separator)]">
                   <div className="flex flex-col">
-                    <span className="text-sm font-medium text-white/90">{c.user?.username || c.userId}</span>
-                    <span className="text-[11px] font-medium text-white/40 uppercase tracking-wide">
+                    <span className="text-sm font-medium text-foreground">{c.user?.username || c.userId}</span>
+                    <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">
                       {c.permission}
                       {c.status === 'pending' && ' · pending'}
                     </span>
                   </div>
                   {isOwner && (
-                    <button onClick={() => remove.mutate(c.userId)} className="text-xs font-semibold text-red-400 hover:text-red-300 transition-colors">
+                    <button onClick={() => remove.mutate(c.userId)} className="text-xs font-semibold text-destructive hover:opacity-80 transition-colors">
                       Remove
                     </button>
                   )}
@@ -466,26 +466,26 @@ export const CollaboratorsModal = ({ list, onClose, isExiting }: CollaboratorsMo
           </div>
         ) : (
           myPending.length === 0 && (
-            <p className="text-sm text-white/40 text-center py-4">No collaborators yet.</p>
+            <p className="text-sm text-muted-foreground text-center py-4">No collaborators yet.</p>
           )
         )}
 
         {/* Invite (owner only) */}
         {isOwner && (
-          <div className="space-y-3 pt-4 border-t border-white/[0.04]">
-            <label className="text-xs font-semibold text-white/50 uppercase tracking-wider">Invite</label>
+          <div className="space-y-3 pt-4 border-t border-[var(--dk-separator)]">
+            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Invite</label>
             <div className="flex gap-2">
               <input
                 value={inviteUsername}
                 onChange={(e) => { setInviteUsername(e.target.value); setLookupError(null) }}
                 placeholder="Username to invite..."
-                className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder:text-white/20 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
+                className="flex-1 bg-[var(--dk-surface-field)] border border-[var(--dk-separator)] rounded-xl px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
                 onKeyDown={(e) => { if (e.key === 'Enter') handleInvite() }}
               />
               <select
                 value={permission}
                 onChange={(e) => setPermission(e.target.value)}
-                className="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white/80 focus:outline-none focus:ring-2 focus:ring-primary/50 appearance-none transition-all"
+                className="bg-[var(--dk-surface-field)] border border-[var(--dk-separator)] rounded-xl px-3 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 appearance-none transition-all"
               >
                 <option value="VIEW">View</option>
                 <option value="EDIT">Edit</option>
@@ -494,12 +494,12 @@ export const CollaboratorsModal = ({ list, onClose, isExiting }: CollaboratorsMo
               <button
                 onClick={handleInvite}
                 disabled={invite.isPending || isLookingUp || !inviteUsername.trim()}
-                className="flex items-center justify-center px-4 rounded-xl bg-primary hover:bg-primary/90 text-white font-semibold transition-all disabled:opacity-50"
+                className="flex items-center justify-center px-4 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-semibold transition-all disabled:opacity-50"
               >
                 {isLookingUp || invite.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Invite'}
               </button>
             </div>
-            {lookupError && <p className="text-xs font-medium text-red-400">{lookupError}</p>}
+            {lookupError && <p className="text-xs font-medium text-destructive">{lookupError}</p>}
           </div>
         )}
       </div>
@@ -514,10 +514,10 @@ export const RankHistoryTimeline = ({ listId }: { listId: string }) => {
 
   const historyList = Array.isArray(history) ? history.filter(Boolean) : []
 
-  if (isLoading) return <div className="text-sm text-white/50 py-4">Loading history...</div>
+  if (isLoading) return <div className="text-sm text-muted-foreground py-4">Loading history...</div>
   if (historyList.length === 0) {
     return (
-      <div className="text-sm text-white/50 py-4">
+      <div className="text-sm text-muted-foreground py-4">
         No ranking changes yet. Reorder items to see history.
       </div>
     )
@@ -525,18 +525,18 @@ export const RankHistoryTimeline = ({ listId }: { listId: string }) => {
 
   return (
     <div className="space-y-4">
-      <h4 className="text-sm font-semibold text-white">Rank Changes</h4>
-      <div className="space-y-2 border-l border-white/10 pl-4 ml-2">
+      <h4 className="text-sm font-semibold text-foreground">Rank Changes</h4>
+      <div className="space-y-2 border-l border-[var(--dk-separator)] pl-4 ml-2">
         {historyList.map((entry) => (
           <div key={entry.id} className="relative flex flex-col gap-0.5 py-1 text-sm">
             <div className="absolute w-2 h-2 rounded-full bg-primary -left-[21px] top-2" />
-            <span className="text-[10px] text-white/40 uppercase tracking-wider font-semibold">
+            <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">
               {new Date(entry.changedAt).toLocaleDateString()}
             </span>
-            <span className="font-medium text-white/90">
+            <span className="font-medium text-foreground">
               {entry.mediaItem ? entry.mediaItem.title : 'Unknown item'}
             </span>
-            <span className="text-white/50 text-xs">
+            <span className="text-muted-foreground text-xs">
               #{entry.oldSortOrder + 1} &rarr; #{entry.newSortOrder + 1}
             </span>
           </div>

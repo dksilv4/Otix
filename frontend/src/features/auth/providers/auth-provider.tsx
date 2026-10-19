@@ -78,18 +78,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useDeepLink(
     useCallback(
       (data) => {
-        if (data.action === 'auth/callback/steam' && data.params.accessToken) {
+        if (data.params?.accessToken) {
           localStorage.setItem(ACCESS_TOKEN_KEY, data.params.accessToken)
           window.desktopAPI?.plugin?.setAuthToken(data.params.accessToken)
           resetAuthRefreshState()
           fetchAuthenticatedUser().then((loaded) => {
             setUser(loaded)
             if (loaded) emitOtixEvent('otix:user:login', { userId: loaded.id })
+            if (typeof window !== 'undefined' && window.location.pathname.startsWith('/auth/')) {
+              import('@/lib/router').then(({ router }) => {
+                void router.navigate({ to: '/' })
+              }).catch(() => {})
+            }
           })
         }
 
-        if (data.action === 'auth/callback/steam-connect') {
+        if (data.action?.startsWith('auth/callback/')) {
           queryClient.invalidateQueries({ queryKey: ['integrations'] })
+          queryClient.invalidateQueries({ queryKey: ['user'] })
+          window.dispatchEvent(new CustomEvent('otix:integrations:refresh'))
         }
       },
       [],

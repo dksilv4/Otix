@@ -9,6 +9,7 @@ import { isDesktop } from '@/lib/desktop/api'
 import {
   NAV_GROUPS,
   DESKTOP_SECTIONS,
+  DEFAULT_SETTINGS_SECTION,
   getNavItems,
   matchNavItem,
   rememberSettingsSection,
@@ -42,7 +43,7 @@ const SettingsNavGroups = ({
   const navLinkClass = (isActive: boolean) =>
     cn(
       'flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs sm:text-sm font-medium transition-all duration-200',
-      isActive ? 'bg-white/10 text-white shadow-sm font-semibold' : 'text-white/50 hover:text-white hover:bg-white/5',
+      isActive ? 'bg-primary/10 text-primary shadow-xs font-semibold' : 'text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-ghost-hover)]',
     )
 
   const groups = NAV_GROUPS.filter((group) => items.some((item) => item.group === group.id))
@@ -55,17 +56,17 @@ const SettingsNavGroups = ({
           <div key={group.id}>
             {!collapsed ? (
               <div className={cn('mb-1', idx > 0 && 'mt-3 pt-2')}>
-                <span className="px-3 text-[10px] font-semibold uppercase tracking-widest text-white/40 flex items-center justify-between">
+                <span className="px-3 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70 flex items-center justify-between">
                   <span>{group.label}</span>
                   {group.id === 'account' && !user && (
-                    <span className="text-[9px] lowercase font-normal px-1.5 py-0.5 rounded bg-white/10 text-white/60">
+                    <span className="text-[9px] lowercase font-normal px-1.5 py-0.5 rounded bg-primary/10 text-primary">
                       sign in
                     </span>
                   )}
                 </span>
               </div>
             ) : (
-              idx > 0 && <div className="my-1.5 h-px w-8 bg-white/10 shrink-0 mx-auto" />
+              idx > 0 && <div className="my-1.5 h-px w-8 bg-[var(--dk-separator)] shrink-0 mx-auto" />
             )}
             {groupItems.map((item) => {
               const Icon = item.icon
@@ -96,7 +97,7 @@ const SettingsNavGroups = ({
                               : 'wip'
                         return <FeatureStatusTag key={badge} kind={kind} short />
                       })}
-                      {showLock && <Lock className="h-3 w-3 text-white/30 shrink-0" />}
+                      {showLock && <Lock className="h-3 w-3 text-muted-foreground/50 shrink-0" />}
                     </>
                   )}
                   {collapsed && (showLock || (item.badges && item.badges.length > 0)) && (
@@ -132,7 +133,9 @@ const SettingsLayoutInner = () => {
 
   const settingsPath = location.pathname.replace(/\/+$/, '')
   const activeSection =
-    settingsPath === '/settings' ? 'appearance' : settingsPath.replace(/^\/settings\//, '').split('/')[0] || 'appearance'
+    settingsPath === '/settings'
+      ? DEFAULT_SETTINGS_SECTION
+      : settingsPath.replace(/^\/settings\//, '').split('/')[0] || DEFAULT_SETTINGS_SECTION
   const { tabs: pluginTabs } = usePluginTabs()
   const filteredNav = getNavItems(pluginTabs)
     .filter((i) => !DESKTOP_SECTIONS.has(i.id) || desktop)
@@ -188,7 +191,7 @@ const SettingsLayoutInner = () => {
             <button
               type="button"
               onClick={() => setMobileOpen(false)}
-              className="flex h-8 w-8 items-center justify-center rounded-xl text-white/40 hover:text-white hover:bg-white/5 transition-colors"
+              className="flex h-8 w-8 items-center justify-center rounded-xl text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-ghost-hover)] transition-colors"
             >
               <X className="h-4 w-4" />
             </button>
@@ -196,13 +199,13 @@ const SettingsLayoutInner = () => {
 
           <div className="px-4 pb-2">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-white/40 pointer-events-none" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
               <input
                 type="search"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search settings..."
-                className="w-full rounded-xl bg-white/5 pl-9 pr-3 py-2 text-sm text-white placeholder-white/40 outline-none"
+                className="w-full rounded-xl bg-[var(--dk-surface-field)] pl-9 pr-3 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none transition-colors"
               />
             </div>
           </div>
@@ -225,7 +228,7 @@ const SettingsLayoutInner = () => {
                     {user.username}
                     {user.isAdmin && <Shield className="h-3 w-3 inline-block ml-1 text-amber-400/80" />}
                   </p>
-                  <p className="text-xs text-white/40 truncate">{user.email}</p>
+                  <p className="text-xs text-muted-foreground truncate">{user.email}</p>
                 </div>
               </div>
             </div>
@@ -247,7 +250,7 @@ const SettingsLayoutInner = () => {
             >
               <div
                 className={cn(
-                  'flex flex-col h-full pt-6 pb-5 transition-all duration-300 rounded-3xl shadow-2xl backdrop-blur-2xl border border-white/[0.06]',
+                  'flex flex-col h-full pt-6 pb-5 transition-all duration-300 rounded-3xl shadow-[var(--dk-shadow-glass)] backdrop-blur-2xl',
                   collapsed ? 'px-2 items-center' : 'px-5',
                 )}
                 style={{
@@ -263,7 +266,7 @@ const SettingsLayoutInner = () => {
                     onClick={toggleCollapsed}
                     title={collapsed ? 'Expand settings menu' : 'Collapse settings menu'}
                     aria-label={collapsed ? 'Expand settings menu' : 'Collapse settings menu'}
-                    className="flex h-8 w-8 items-center justify-center rounded-xl text-white/50 hover:text-white hover:bg-white/10 transition-colors shrink-0"
+                    className="flex h-8 w-8 items-center justify-center rounded-xl text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-ghost-hover)] transition-colors shrink-0"
                   >
                     {collapsed ? <PanelLeftOpen className="h-4.5 w-4.5" /> : <PanelLeftClose className="h-4.5 w-4.5" />}
                   </button>
@@ -271,13 +274,13 @@ const SettingsLayoutInner = () => {
 
                 {!collapsed && (
                   <div className="relative mb-4 w-full">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-white/40 pointer-events-none" />
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
                     <input
                       type="search"
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       placeholder="Search..."
-                      className="w-full rounded-xl bg-white/5 pl-9 pr-3 py-2 text-xs text-white placeholder-white/40 outline-none"
+                      className="w-full rounded-xl bg-[var(--dk-surface-field)] pl-9 pr-3 py-2 text-xs text-foreground placeholder:text-muted-foreground outline-none transition-colors"
                     />
                   </div>
                 )}
@@ -299,7 +302,7 @@ const SettingsLayoutInner = () => {
                             {user.username}
                             {user.isAdmin && <Shield className="h-3 w-3 inline-block ml-1 text-amber-400/80" />}
                           </p>
-                          <p className="text-xs text-white/40 truncate">{user.email}</p>
+                          <p className="text-xs text-muted-foreground truncate">{user.email}</p>
                         </div>
                       </div>
                     ) : (
@@ -332,7 +335,7 @@ const SettingsLayoutInner = () => {
                   <button
                     type="button"
                     onClick={() => setMobileOpen(true)}
-                    className="sm:hidden flex items-center gap-2 text-sm text-white/50 hover:text-white transition-colors self-start mb-4 px-2 py-1"
+                    className="sm:hidden flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors self-start mb-4 px-2 py-1"
                   >
                     <ChevronDown className="h-4 w-4 rotate-90" />
                     {activeLabel}
@@ -355,9 +358,17 @@ const SettingsLayoutInner = () => {
 };
 
 export const SettingsLayout = () => {
+  const location = useLocation()
+  const settingsPath = location.pathname.replace(/\/+$/, '')
+  const activeSection =
+    settingsPath === '/settings'
+      ? DEFAULT_SETTINGS_SECTION
+      : settingsPath.replace(/^\/settings\//, '').split('/')[0] || DEFAULT_SETTINGS_SECTION
+  const isNodeAware = ['nodes', 'library', 'downloads', 'game-servers'].includes(activeSection)
+
   return (
     <SettingsSaveProvider>
-      <SettingsNodeProvider>
+      <SettingsNodeProvider enabled={isNodeAware}>
         <SettingsLayoutInner />
       </SettingsNodeProvider>
     </SettingsSaveProvider>

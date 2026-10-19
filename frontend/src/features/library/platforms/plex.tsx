@@ -46,6 +46,7 @@ const PlexEmptyState = ({ onScan, isScanning, scanResult, scanError }: PlatformE
         Sync your Plex servers to see your media here.
       </p>
       <button
+        type="button"
         onClick={onScan}
         disabled={isScanning}
         className={cn(
@@ -169,10 +170,10 @@ export const PlexTabContent = () => {
     [data]
   )
 
-  // Auto-scan once per mount if the library is empty
+  // Auto-scan once per mount only if the library has never been scanned and is empty
   useEffect(() => {
     if (hasAutoScanned.current) return
-    if (status && status.itemCount === 0 && !isScanning) {
+    if (status && !status.lastScannedAt && status.itemCount === 0 && !isScanning) {
       hasAutoScanned.current = true
       handleScan()
     }
@@ -237,6 +238,7 @@ export const PlexTabContent = () => {
             <span className="dk-library-plex__sync-phase">{syncProgress.phase}</span>
           )}
           <button
+            type="button"
             onClick={handleScan}
             disabled={isScanning}
             className={cn(
@@ -379,12 +381,13 @@ const PlexOverviewModule = ({ expanded, onToggle }: { expanded?: boolean; onTogg
             </div>
             <div className="flex items-center gap-2">
               <button
+                type="button"
                 onClick={(e) => { e.stopPropagation(); navigate({ to: "/library/plex" }); }}
                 className="dk-library-plex__hero-link"
               >
                 View all
               </button>
-              <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${expanded ? "rotate-180" : ""}`} style={{ color: "rgba(255,255,255,0.5)" }} />
+              <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${expanded ? "rotate-180" : ""} text-muted-foreground`} />
             </div>
           </div>
           <h2 className="dk-library-plex__hero-title">Media Library</h2>
@@ -442,6 +445,7 @@ const PlexOverviewModule = ({ expanded, onToggle }: { expanded?: boolean; onTogg
           <div className="dk-library-plex__carousel-header">
             <h3 className="dk-library-plex__carousel-title">Recently viewed</h3>
             <button
+              type="button"
               onClick={() => navigate({ to: "/library/plex" })}
               className="dk-library-plex__carousel-link"
             >
@@ -456,12 +460,12 @@ const PlexOverviewModule = ({ expanded, onToggle }: { expanded?: boolean; onTogg
                     <img src={item.posterUrl} alt={item.title} className="dk-library-plex__carousel-img" loading="lazy" />
                   ) : (
                     <div className="dk-library-plex__carousel-placeholder">
-                      <PlexIcon className="h-8 w-8 text-[#e5a00d]/30" />
+                      <PlexIcon className="h-8 w-8 text-primary/30" />
                     </div>
                   )}
                   <div className="dk-library-plex__carousel-overlay">
                     <div className="dk-library-plex__carousel-play">
-                      <Play className="h-5 w-5 text-white ml-0.5" />
+                      <Play className="h-5 w-5 text-primary-foreground ml-0.5" />
                     </div>
                   </div>
                 </div>

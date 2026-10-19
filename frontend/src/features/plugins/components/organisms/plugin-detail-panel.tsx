@@ -182,7 +182,7 @@ const PluginConnectionSection = ({ plugin, api }: { plugin: PluginInfo; api: Plu
 
   if (state.loading) {
     return (
-      <div className="flex items-center gap-2 px-4 py-3 text-sm text-white/50">
+      <div className="flex items-center gap-2 px-4 py-3 text-sm text-muted-foreground">
         <Loader2 className="h-3.5 w-3.5 animate-spin" />
         Checking connection...
       </div>
@@ -201,7 +201,7 @@ const PluginConnectionSection = ({ plugin, api }: { plugin: PluginInfo; api: Plu
             : 'Scanning...'
 
   return (
-    <div className="rounded-xl border border-white/[0.06] bg-white/[0.02]">
+    <div className="rounded-xl border border-[var(--dk-separator)] bg-[var(--dk-surface-field)]">
       <div className="flex items-center gap-3 px-4 py-3">
         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
           <Gamepad2 className="h-4 w-4" />
@@ -210,8 +210,8 @@ const PluginConnectionSection = ({ plugin, api }: { plugin: PluginInfo; api: Plu
         {!state.connected ? (
           <>
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-medium text-white">{plugin.name}</p>
-              <p className="text-xs text-white/40">{state.message || 'Sign in to sync your game library'}</p>
+              <p className="text-sm font-medium text-foreground">{plugin.name}</p>
+              <p className="text-xs text-muted-foreground">{state.message || 'Sign in to sync your game library'}</p>
             </div>
             <Button size="sm" onClick={handleLogin} loading={actionLoading === 'login'}>
               <Gamepad2 className="h-3.5 w-3.5" />
@@ -222,24 +222,24 @@ const PluginConnectionSection = ({ plugin, api }: { plugin: PluginInfo; api: Plu
           <>
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
-                <p className="text-sm font-medium text-white">{state.displayName || 'Connected'}</p>
-                <Badge tone="success" dot>
+                <p className="text-sm font-medium text-foreground">{state.displayName || 'Connected'}</p>
+                <Badge tone="success">
                   Connected
                 </Badge>
               </div>
               {state.scanTotal != null && (
-                <p className="mt-0.5 text-xs text-white/40">
+                <p className="mt-0.5 text-xs text-muted-foreground">
                   {state.scanTotal} items{state.scanMatched != null ? ` · ${state.scanMatched} matched` : ''}
                 </p>
               )}
               {scanProgress && scanProgress.phase !== 'done' && (
                 <div className="mt-1.5">
-                  <div className="flex items-center gap-2 text-xs text-white/40">
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
                     <Loader2 className="h-2.5 w-2.5 animate-spin" />
                     {phaseLabel(scanProgress.phase)}
                   </div>
                   {scanProgress.total > 0 && (
-                    <div className="mt-1 h-0.5 overflow-hidden rounded-full bg-white/5">
+                    <div className="mt-1 h-0.5 overflow-hidden rounded-full bg-[var(--dk-surface-field)] border border-[var(--dk-separator)]">
                       <div
                         className="h-full rounded-full bg-primary transition-all duration-300"
                         style={{ width: `${Math.min(100, (scanProgress.current / scanProgress.total) * 100)}%` }}
@@ -259,7 +259,7 @@ const PluginConnectionSection = ({ plugin, api }: { plugin: PluginInfo; api: Plu
                 variant="ghost"
                 onClick={handleLogout}
                 loading={actionLoading === 'logout'}
-                className="text-white/40 hover:text-red-400"
+                className="text-muted-foreground hover:text-destructive"
                 title="Disconnect"
               >
                 <LogOut className="h-3.5 w-3.5" />
@@ -279,39 +279,39 @@ const OverviewContent = ({ plugin, api }: { plugin: PluginInfo; api: PluginAPI }
 
   return (
     <div className="space-y-4">
-      {plugin.description && <p className="text-sm leading-relaxed text-white/70">{plugin.description}</p>}
+      {plugin.description && <p className="text-sm leading-relaxed text-muted-foreground">{plugin.description}</p>}
 
       {hasSlots && <PluginConnectionSection plugin={plugin} api={api} />}
 
       <div className="grid grid-cols-2 gap-3">
-        <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3.5">
-          <div className="flex items-center gap-2 text-[11px] uppercase tracking-wider text-white/35">
+        <div className="rounded-xl border border-[var(--dk-separator)] bg-[var(--dk-surface-field)] p-3.5">
+          <div className="flex items-center gap-2 text-[11px] uppercase tracking-wider text-muted-foreground">
             <Layers className="h-3.5 w-3.5" /> Version
           </div>
-          <p className="mt-1 text-sm font-medium text-white">v{plugin.version}</p>
+          <p className="mt-1 text-sm font-medium text-foreground">v{plugin.version}</p>
         </div>
-        <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3.5">
-          <div className="flex items-center gap-2 text-[11px] uppercase tracking-wider text-white/35">
+        <div className="rounded-xl border border-[var(--dk-separator)] bg-[var(--dk-surface-field)] p-3.5">
+          <div className="flex items-center gap-2 text-[11px] uppercase tracking-wider text-muted-foreground">
             <ShieldCheck className="h-3.5 w-3.5" /> Status
           </div>
-          <p className="mt-1 text-sm font-medium text-white capitalize">{plugin.status}</p>
+          <p className="mt-1 text-sm font-medium text-foreground capitalize">{plugin.status}</p>
         </div>
       </div>
 
-      <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
+      <div className="rounded-xl border border-[var(--dk-separator)] bg-[var(--dk-surface-field)] p-4">
         <div className="flex items-center justify-between">
-          <span className="text-xs text-white/30">Repository</span>
+          <span className="text-xs text-muted-foreground">Repository</span>
           <button
             onClick={() => openExternal(plugin.repository, { newTab: true })}
-            className="flex items-center gap-1 truncate text-xs text-primary/80 hover:text-primary"
+            className="flex items-center gap-1 truncate text-xs text-primary/80 hover:text-primary cursor-pointer"
           >
             {plugin.repository.replace(/^https?:\/\/[^/]+\//, '').replace(/\/$/, '')}
             <ExternalLink className="h-3 w-3 shrink-0" />
           </button>
         </div>
         <div className="mt-2.5 flex items-center justify-between">
-          <span className="text-xs text-white/30">Author</span>
-          <span className="text-xs text-white/60">{plugin.author}</span>
+          <span className="text-xs text-muted-foreground">Author</span>
+          <span className="text-xs text-foreground">{plugin.author}</span>
         </div>
       </div>
 
@@ -319,7 +319,7 @@ const OverviewContent = ({ plugin, api }: { plugin: PluginInfo; api: PluginAPI }
         <div className="space-y-2">
           {plugin.manifest.services && plugin.manifest.services.length > 0 && (
             <div className="flex flex-wrap items-center gap-1.5">
-              <span className="text-[11px] text-white/30 mr-1">Services</span>
+              <span className="text-[11px] text-muted-foreground mr-1">Services</span>
               {plugin.manifest.services.map((s) => {
                 const type = typeof s === 'string' ? s : s.type
                 const protocol = typeof s === 'string' ? undefined : s.protocol
@@ -333,7 +333,7 @@ const OverviewContent = ({ plugin, api }: { plugin: PluginInfo; api: PluginAPI }
           )}
           {plugin.manifest.depends_on && plugin.manifest.depends_on.length > 0 && (
             <div className="flex flex-wrap items-center gap-1.5">
-              <span className="text-[11px] text-white/30 mr-1">Depends on</span>
+              <span className="text-[11px] text-muted-foreground mr-1">Depends on</span>
               {plugin.manifest.depends_on.map((s) => (
                 <Badge key={s}>{s}</Badge>
               ))}
@@ -412,8 +412,8 @@ const ConfigureContent = ({
   if (!hasConfig) {
     return (
       <div className="flex flex-col items-center py-12 text-center">
-        <Settings className="h-8 w-8 text-white/20 mb-3" />
-        <p className="text-sm text-white/40">No configurable settings for this plugin.</p>
+        <Settings className="h-8 w-8 text-muted-foreground/30 mb-3" />
+        <p className="text-sm text-muted-foreground">No configurable settings for this plugin.</p>
       </div>
     )
   }
@@ -459,21 +459,21 @@ const PermissionsContent = ({ plugin }: { plugin: PluginInfo }) => {
   return (
     <div className="space-y-4">
       <div className="space-y-2">
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-white/40">Declared permissions</p>
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Declared permissions</p>
         {perms.length === 0 ? (
-          <p className="text-sm text-white/40">This plugin requests no permissions.</p>
+          <p className="text-sm text-muted-foreground">This plugin requests no permissions.</p>
         ) : (
           perms.map((perm) => (
             <div
               key={perm}
-              className="flex items-center gap-3 rounded-xl border border-white/[0.06] bg-white/[0.02] px-3.5 py-2.5"
+              className="flex items-center gap-3 rounded-xl border border-[var(--dk-separator)] bg-[var(--dk-surface-field)] px-3.5 py-2.5"
             >
-              <ShieldCheck className="h-4 w-4 shrink-0 text-white/30" />
+              <ShieldCheck className="h-4 w-4 shrink-0 text-muted-foreground" />
               <div className="min-w-0 flex-1">
-                <p className="text-sm text-white/80">{getPermissionLabel(perm)}</p>
-                <p className="font-mono text-[11px] text-white/25">{perm}</p>
+                <p className="text-sm text-foreground">{getPermissionLabel(perm)}</p>
+                <p className="font-mono text-[11px] text-muted-foreground">{perm}</p>
               </div>
-              <Badge tone="success" dot>
+              <Badge tone="success">
                 Granted
               </Badge>
             </div>
@@ -516,10 +516,10 @@ const ActivityContent = ({ plugin, api }: { plugin: PluginInfo; api: PluginAPI }
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Badge tone={plugin.status === 'error' ? 'danger' : plugin.status === 'enabled' ? 'success' : 'default'} dot>
+          <Badge tone={plugin.status === 'error' ? 'danger' : plugin.status === 'enabled' ? 'success' : 'default'}>
             {plugin.status}
           </Badge>
-          {status?.error ? <span className="text-xs text-red-400">{String(status.error)}</span> : null}
+          {status?.error ? <span className="text-xs text-destructive">{String(status.error)}</span> : null}
         </div>
         <Button size="sm" variant="outline" onClick={refresh} loading={loading}>
           <RefreshCw className="h-3.5 w-3.5" /> Refresh
@@ -527,29 +527,29 @@ const ActivityContent = ({ plugin, api }: { plugin: PluginInfo; api: PluginAPI }
       </div>
 
       {lastSync && (
-        <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
-          <div className="flex items-center gap-2 text-[11px] uppercase tracking-wider text-white/35">
+        <div className="rounded-xl border border-[var(--dk-separator)] bg-[var(--dk-surface-field)] p-4">
+          <div className="flex items-center gap-2 text-[11px] uppercase tracking-wider text-muted-foreground">
             <RefreshCw className="h-3.5 w-3.5" /> Last sync
           </div>
-          <p className="mt-1.5 text-sm text-white/80">
+          <p className="mt-1.5 text-sm text-foreground">
             {lastSync.title} ({lastSync.direction || 'sync'})
           </p>
-          <p className="text-xs text-white/40 mt-0.5">
+          <p className="text-xs text-muted-foreground mt-0.5">
             {lastSync.synced_at ? new Date(lastSync.synced_at).toLocaleString() : '—'}
           </p>
         </div>
       )}
 
       {rows.length > 0 && (
-        <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
-          <div className="mb-2.5 flex items-center gap-2 text-[11px] uppercase tracking-wider text-white/35">
+        <div className="rounded-xl border border-[var(--dk-separator)] bg-[var(--dk-surface-field)] p-4">
+          <div className="mb-2.5 flex items-center gap-2 text-[11px] uppercase tracking-wider text-muted-foreground">
             <Activity className="h-3.5 w-3.5" /> Status fields
           </div>
           <div className="space-y-2">
             {rows.map(([key, value]) => (
               <div key={key} className="flex items-center justify-between gap-3 text-sm">
-                <span className="capitalize text-white/50">{key.replace(/_/g, ' ')}</span>
-                <span className="max-w-[60%] truncate font-mono text-xs text-white/70">
+                <span className="capitalize text-muted-foreground">{key.replace(/_/g, ' ')}</span>
+                <span className="max-w-[60%] truncate font-mono text-xs text-foreground">
                   {typeof value === 'object' ? JSON.stringify(value) : String(value)}
                 </span>
               </div>
@@ -560,8 +560,8 @@ const ActivityContent = ({ plugin, api }: { plugin: PluginInfo; api: PluginAPI }
 
       {rows.length === 0 && !lastSync && (
         <div className="flex flex-col items-center py-10 text-center">
-          <Activity className="h-8 w-8 text-white/20 mb-3" />
-          <p className="text-sm text-white/40">No activity recorded for this plugin.</p>
+          <Activity className="h-8 w-8 text-muted-foreground/30 mb-3" />
+          <p className="text-sm text-muted-foreground">No activity recorded for this plugin.</p>
         </div>
       )}
     </div>
@@ -592,23 +592,23 @@ const DepRow = ({
       disabled={!clickable}
       onClick={() => clickable && onOpenPlugin?.(dep.id)}
       className={cn(
-        'flex w-full items-center gap-3 rounded-xl border border-white/[0.06] bg-white/[0.02] px-3.5 py-2.5 text-left transition-colors',
-        clickable ? 'hover:bg-white/[0.05]' : 'cursor-default',
+        'flex w-full items-center gap-3 rounded-xl border border-[var(--dk-separator)] bg-[var(--dk-surface-field)] px-3.5 py-2.5 text-left transition-colors',
+        clickable ? 'hover:bg-[var(--dk-surface-hover)] cursor-pointer' : 'cursor-default',
       )}
     >
-      <Network className="h-4 w-4 shrink-0 text-white/30" />
+      <Network className="h-4 w-4 shrink-0 text-muted-foreground" />
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm text-white/80">{dep.name}</p>
-        <p className="truncate font-mono text-[11px] text-white/25">{dep.id}</p>
+        <p className="truncate text-sm text-foreground">{dep.name}</p>
+        <p className="truncate font-mono text-[11px] text-muted-foreground">{dep.id}</p>
       </div>
       {dep.installed ? (
-        <Badge tone={dep.status === 'enabled' ? 'success' : dep.status === 'error' ? 'danger' : 'default'} dot>
+        <Badge tone={dep.status === 'enabled' ? 'success' : dep.status === 'error' ? 'danger' : 'default'}>
           {dep.status}
         </Badge>
       ) : (
         <Badge tone="default">not installed</Badge>
       )}
-      {clickable && <ChevronRight className="h-3.5 w-3.5 shrink-0 text-white/25" />}
+      {clickable && <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />}
     </button>
   )
 };
@@ -639,8 +639,8 @@ const DependenciesContent = ({
   if (requires.length === 0 && dependents.length === 0) {
     return (
       <div className="flex flex-col items-center py-12 text-center">
-        <Network className="h-8 w-8 text-white/20 mb-3" />
-        <p className="text-sm text-white/40">No plugin dependencies declared.</p>
+        <Network className="h-8 w-8 text-muted-foreground/30 mb-3" />
+        <p className="text-sm text-muted-foreground">No plugin dependencies declared.</p>
       </div>
     )
   }
@@ -649,7 +649,7 @@ const DependenciesContent = ({
     <div className="space-y-5">
       {requires.length > 0 && (
         <div>
-          <p className="mb-2 text-[11px] uppercase tracking-wider text-white/35">Requires</p>
+          <p className="mb-2 text-[11px] uppercase tracking-wider text-muted-foreground">Requires</p>
           <div className="space-y-2">
             {requires.map((dep) => (
               <DepRow key={dep.id} dep={dep} clickable={dep.installed} onOpenPlugin={onOpenPlugin} />
@@ -659,7 +659,7 @@ const DependenciesContent = ({
       )}
       {dependents.length > 0 && (
         <div>
-          <p className="mb-2 text-[11px] uppercase tracking-wider text-white/35">Used by</p>
+          <p className="mb-2 text-[11px] uppercase tracking-wider text-muted-foreground">Used by</p>
           <div className="space-y-2">
             {dependents.map((dep) => (
               <DepRow key={dep.id} dep={dep} clickable onOpenPlugin={onOpenPlugin} />
@@ -696,29 +696,29 @@ export const PluginDetailPanel = ({
   return (
     <SlidePanel onClose={onClose} isExiting={isExiting}>
       {/* Header */}
-      <div className="flex items-center gap-3 border-b border-white/[0.06] px-6 py-4">
+      <div className="flex items-center gap-3 border-b border-[var(--dk-separator)] px-6 py-4">
         <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-xl">
           {createElement(icon, { className: 'h-5 w-5' })}
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <h2 className="truncate text-base font-semibold text-white">{plugin.name}</h2>
+            <h2 className="truncate text-base font-semibold text-foreground">{plugin.name}</h2>
             <FeatureStatusTags kinds={kindsFromPluginStage(plugin.manifest.stage)} short />
           </div>
-          <p className="text-[11px] text-white/40">
+          <p className="text-[11px] text-muted-foreground">
             {plugin.author} &middot; v{plugin.version}
           </p>
         </div>
         <button
           onClick={onClose}
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-white/40 transition-colors hover:bg-white/5 hover:text-white"
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-[var(--dk-surface-hover)] hover:text-foreground cursor-pointer"
         >
           <X className="h-4 w-4" />
         </button>
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 overflow-x-auto scrollbar-none border-b border-white/[0.06] px-3 pt-2">
+      <div className="flex gap-1 overflow-x-auto scrollbar-none border-b border-[var(--dk-separator)] px-3 pt-2">
         {TABS.map((tab) => {
           const Icon = tab.icon
           return (
@@ -727,10 +727,10 @@ export const PluginDetailPanel = ({
               type="button"
               onClick={() => setActiveTab(tab.id)}
               className={cn(
-                'flex shrink-0 items-center gap-1.5 rounded-t-lg border-b-2 px-3 py-2 text-xs font-medium transition-colors',
+                'flex shrink-0 items-center gap-1.5 rounded-t-lg border-b-2 px-3 py-2 text-xs font-medium transition-colors cursor-pointer',
                 activeTab === tab.id
-                  ? 'border-primary text-white'
-                  : 'border-transparent text-white/40 hover:text-white/70',
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-muted-foreground hover:text-foreground',
               )}
             >
               <Icon className="h-3.5 w-3.5" />

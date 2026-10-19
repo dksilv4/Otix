@@ -246,7 +246,9 @@ export const AssetEditor = ({
             onClick={() => { setMode('file'); setUrlDraft(value) }}
             className={cn(
               'px-3 py-1.5 rounded-lg text-xs font-medium transition-colors',
-              mode === 'file' ? 'bg-white/10 text-white' : 'text-white/50 hover:text-white',
+              mode === 'file'
+                ? 'bg-[var(--dk-surface-field)] text-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-ghost)]',
             )}
           >
             Upload
@@ -256,7 +258,9 @@ export const AssetEditor = ({
             onClick={() => { setMode('url'); setUrlDraft(value) }}
             className={cn(
               'px-3 py-1.5 rounded-lg text-xs font-medium transition-colors',
-              mode === 'url' ? 'bg-white/10 text-white' : 'text-white/50 hover:text-white',
+              mode === 'url'
+                ? 'bg-[var(--dk-surface-field)] text-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-ghost)]',
             )}
           >
             URL
@@ -267,18 +271,18 @@ export const AssetEditor = ({
         {mode === 'file' ? (
           <div className="space-y-3">
             {showPreview || showCurrentUrl ? (
-              <div className="relative overflow-hidden rounded-xl bg-black/40 cursor-pointer group" onClick={openFilePicker}>
+              <div className="relative overflow-hidden rounded-xl bg-[var(--dk-surface-ghost)] cursor-pointer group" onClick={openFilePicker}>
                 <img
                   src={showPreview ? previewObjectUrl! : value}
                   alt="Preview"
                   className="h-36 w-full object-cover"
                 />
-                <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <span className="text-xs font-medium text-white">Click to change</span>
+                <div className="absolute inset-0 flex items-center justify-center bg-[var(--dk-surface-overlay)]/70 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <span className="text-xs font-medium text-foreground">Click to change</span>
                 </div>
-                <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/60 to-transparent pointer-events-none" />
+                <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-[var(--dk-surface-base)]/80 to-transparent pointer-events-none" />
                 {selectedFile && (
-                  <p className="absolute left-3 bottom-3 text-[11px] font-medium text-white/60">
+                  <p className="absolute left-3 bottom-3 text-[11px] font-medium text-muted-foreground">
                     {selectedFile.name}
                   </p>
                 )}
@@ -287,16 +291,15 @@ export const AssetEditor = ({
               <div
                 onClick={openFilePicker}
                 className={cn(
-                  'flex cursor-pointer flex-col items-center justify-center rounded-xl outline-2 outline-dashed outline-white/10 hover:outline-white/15 hover:bg-white/5 transition-colors',
+                  'flex cursor-pointer flex-col items-center justify-center rounded-xl bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)] transition-colors',
                   compact ? 'h-24 gap-1.5' : 'h-32 gap-2',
                 )}
-                style={{ backgroundColor: 'rgba(255,255,255,0.02)' }}
               >
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/[0.04]">
-                  <Image className={cn('text-white/25', compact ? 'h-5 w-5' : 'h-6 w-6')} />
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--dk-surface-field)]">
+                  <Image className={cn('text-muted-foreground', compact ? 'h-5 w-5' : 'h-6 w-6')} />
                 </div>
-                <span className="text-xs font-medium text-white/40">Click to select image</span>
-                <span className="text-[11px] text-white/20">PNG, JPEG, WebP, GIF — max 5MB</span>
+                <span className="text-xs font-medium text-foreground">Click to select image</span>
+                <span className="text-[11px] text-muted-foreground">PNG, JPEG, WebP, GIF — max 5MB</span>
               </div>
             )}
 
@@ -309,7 +312,7 @@ export const AssetEditor = ({
                 setMode('url')
                 setUrlDraft(value)
               }}
-              className="text-xs text-white/35 underline underline-offset-4 decoration-white/20 hover:text-white/60 hover:decoration-white/40 transition-colors"
+              className="text-xs text-muted-foreground underline underline-offset-4 decoration-[var(--dk-separator)] hover:text-foreground transition-colors"
             >
               or paste a URL instead
             </button>
@@ -321,7 +324,7 @@ export const AssetEditor = ({
               value={urlDraft}
               onChange={(e) => setUrlDraft(e.target.value)}
               placeholder="https://example.com/image.jpg"
-              className="w-full rounded-xl px-3.5 h-10 text-sm outline-none transition-all bg-white/[0.04] text-white focus:bg-white/[0.06] focus:shadow-[0_0_0_1px_rgba(255,255,255,0.1)]"
+              className="w-full rounded-xl px-3.5 h-10 text-sm outline-none transition-all bg-[var(--dk-surface-field)] text-foreground focus:ring-1 focus:ring-primary/40"
               onKeyDown={(e) => {
                 if (e.key === 'Enter') handleApply()
               }}
@@ -332,7 +335,7 @@ export const AssetEditor = ({
             <button
               type="button"
               onClick={() => setMode('file')}
-              className="text-xs text-white/35 underline underline-offset-4 decoration-white/20 hover:text-white/60 hover:decoration-white/40 transition-colors"
+              className="text-xs text-muted-foreground underline underline-offset-4 decoration-[var(--dk-separator)] hover:text-foreground transition-colors"
             >
               or upload a file instead
             </button>
@@ -651,24 +654,24 @@ export const SettingsProfilePage = () => {
 
       {/* Cover + Profile — cover fills the whole card */}
       <div
-        className="relative rounded-2xl overflow-hidden"
+        className="relative rounded-2xl overflow-hidden bg-[var(--dk-surface-base)]"
         style={{
           background: backgroundUrl
             ? `url(${backgroundUrl}) center/cover no-repeat`
-            : 'linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)',
+            : undefined,
         }}
       >
         {/* Gradient atmosphere over the full card */}
-        <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-black/10 via-40% to-black/70 pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-to-b from-[var(--dk-surface-base)]/20 via-[var(--dk-surface-base)]/50 to-[var(--dk-surface-base)] pointer-events-none" />
 
         {/* Cover hover overlay — covers full card, behind bio/sections */}
         <button
           onClick={handleEditCover}
-          className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity bg-black/40"
+          className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity bg-[var(--dk-surface-overlay)]/60 cursor-pointer"
         >
-          <div className="flex items-center gap-2 text-white">
+          <div className="flex items-center gap-2 text-foreground font-medium">
             <Pencil className="h-5 w-5" />
-            <span className="text-sm font-medium">Change Cover</span>
+            <span className="text-sm">Change Cover</span>
           </div>
         </button>
 
@@ -677,34 +680,33 @@ export const SettingsProfilePage = () => {
         </div>
 
         {/* Avatar + name + bio — glass overlay */}
-        <div className="relative bg-gradient-to-b from-transparent via-black/30 to-black/60 px-6 pb-6 pt-4 rounded-b-2xl">
+        <div className="relative px-6 pb-6 pt-4 rounded-b-2xl">
           <div className="flex items-end gap-4" style={{ marginTop: '-4rem' }}>
             {/* Avatar */}
             <div className="relative shrink-0">
-              <div className="rounded-full ring-4 ring-white/10">
+              <div className="rounded-full ring-4 ring-[var(--dk-surface-base)] shadow-sm">
                 <DkAvatar src={avatarUrl || null} name={user.username} size="xl" />
               </div>
               <button
                 onClick={handleEditAvatar}
-                className="absolute inset-0 flex items-center justify-center rounded-full opacity-0 hover:opacity-100 transition-opacity"
-                style={{ backgroundColor: 'rgba(0,0,0,0.4)' }}
+                className="absolute inset-0 flex items-center justify-center rounded-full opacity-0 hover:opacity-100 transition-opacity bg-[var(--dk-surface-overlay)]/60 cursor-pointer"
               >
-                <Pencil className="h-4 w-4 text-white" />
+                <Pencil className="h-4 w-4 text-foreground" />
               </button>
             </div>
 
             <div className="pb-1 min-w-0 flex-1 relative z-10">
-              <h3 className="text-lg font-bold text-white" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.3)' }}>
+              <h3 className="text-lg font-bold text-foreground">
                 {username}
                 {user.isAdmin && (
-                  <Shield className="h-4 w-4 inline-block ml-1.5 text-amber-400/80" />
+                  <Shield className="h-4 w-4 inline-block ml-1.5 text-amber-500/80 align-middle" />
                 )}
               </h3>
               <a
                 href={`/user/${username}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-[11px] text-white/40 hover:text-primary transition-colors"
+                className="text-[11px] text-muted-foreground hover:text-primary transition-colors"
               >
                 View public profile →
               </a>
@@ -722,25 +724,20 @@ export const SettingsProfilePage = () => {
                 }}
                 placeholder="Write a short bio..."
                 rows={4}
-                className="w-full resize-none rounded-2xl px-4 py-3 text-sm bg-white/[0.06] text-white focus:outline-none focus:bg-white/[0.1]"
-                style={{ backdropFilter: 'blur(4px)' }}
+                className="w-full resize-none rounded-2xl px-4 py-3 text-sm bg-[var(--dk-surface-field)] text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40 placeholder:text-muted-foreground/40"
               />
               <span
                 className={cn(
-                  'absolute bottom-3 right-2 rounded-full px-2 py-0.5 tabular-nums text-[11px]',
+                  'absolute bottom-3 right-2 rounded-full px-2 py-0.5 tabular-nums text-[11px] bg-[var(--dk-surface-glass)] backdrop-blur-md',
                   bio.length > BIO_MAX_LENGTH * 0.85
-                    ? 'text-[var(--primary)]'
-                    : 'text-white/50',
+                    ? 'text-primary'
+                    : 'text-muted-foreground',
                 )}
-                style={{
-                  backgroundColor: 'rgba(0,0,0,0.4)',
-                  backdropFilter: 'blur(4px)',
-                }}
               >
                 {bio.length}/{BIO_MAX_LENGTH}
               </span>
             </div>
-            <p className="mt-2 text-[11px] text-white/40">
+            <p className="mt-2 text-[11px] text-muted-foreground">
               Keep it short. This appears on your public profile.
             </p>
           </div>
@@ -753,8 +750,8 @@ export const SettingsProfilePage = () => {
           {/* Username */}
           <div className="flex items-center justify-between py-3">
             <div>
-              <p className="text-sm font-medium text-white">Username</p>
-              <p className="text-xs text-white/60 mt-0.5">
+              <p className="text-sm font-medium text-foreground">Username</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
                 <a
                   href={`/user/${username}`}
                   target="_blank"
@@ -771,7 +768,7 @@ export const SettingsProfilePage = () => {
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              className="w-64 text-sm text-white text-right outline-none h-9 rounded-xl bg-white/5 px-3 placeholder:text-white/30"
+              className="w-64 text-sm text-foreground text-right outline-none h-9 rounded-xl bg-[var(--dk-surface-field)] px-3 placeholder:text-muted-foreground/40 focus:ring-1 focus:ring-primary/40"
               maxLength={32}
             />
           </div>
@@ -779,7 +776,7 @@ export const SettingsProfilePage = () => {
           {/* Country */}
           <div className="flex items-center justify-between py-3">
             <div>
-              <p className="text-sm font-medium text-white">Country</p>
+              <p className="text-sm font-medium text-foreground">Country</p>
             </div>
             <div className="w-64">
               <DkDropdown
@@ -794,8 +791,8 @@ export const SettingsProfilePage = () => {
           {/* Adult content */}
           <div className="flex items-center justify-between py-3">
             <div>
-              <p className="text-sm font-medium text-white">Show 18+ Content</p>
-              <p className="text-xs text-white/60 mt-0.5">
+              <p className="text-sm font-medium text-foreground">Show 18+ Content</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
                 Include adult-rated media in search results.
               </p>
             </div>
@@ -827,7 +824,7 @@ export const SettingsProfilePage = () => {
           <div className="space-y-4 mt-4">
             {user.steamId && (
               <div className="flex items-center justify-between gap-4">
-                <span className="text-sm font-medium text-white">Steam</span>
+                <span className="text-sm font-medium text-foreground">Steam</span>
                 <DkDropdown
                   options={VISIBILITY_OPTIONS}
                   value={steamVisibility}
@@ -837,7 +834,7 @@ export const SettingsProfilePage = () => {
             )}
             {user.plexId && (
               <div className="flex items-center justify-between gap-4">
-                <span className="text-sm font-medium text-white">Plex</span>
+                <span className="text-sm font-medium text-foreground">Plex</span>
                 <DkDropdown
                   options={VISIBILITY_OPTIONS}
                   value={plexVisibility}
@@ -847,7 +844,7 @@ export const SettingsProfilePage = () => {
             )}
             {user.tmdbUsername && (
               <div className="flex items-center justify-between gap-4">
-                <span className="text-sm font-medium text-white">TMDb</span>
+                <span className="text-sm font-medium text-foreground">TMDb</span>
                 <DkDropdown
                   options={VISIBILITY_OPTIONS}
                   value={tmdbVisibility}

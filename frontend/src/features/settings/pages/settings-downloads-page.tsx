@@ -408,16 +408,16 @@ export const SettingsDownloadsPage = ({
         />
 
         {showAddServer && (
-          <div className="p-4 rounded-xl bg-white/[0.04] space-y-4">
-            <div className="flex items-center gap-1 border-b border-white/10 pb-3">
+          <div className="p-4 rounded-xl bg-[var(--dk-surface-ghost)] space-y-4">
+            <div className="flex items-center gap-1 pb-3">
               <button
                 type="button"
                 onClick={() => setConnectTab('claim')}
                 className={cn(
                   'px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 cursor-pointer',
                   connectTab === 'claim'
-                    ? 'bg-primary text-black font-bold'
-                    : 'text-white/60 hover:text-white hover:bg-white/5',
+                    ? 'bg-primary text-primary-foreground font-bold shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-ghost-hover)]',
                 )}
               >
                 <KeyRound size={13} />
@@ -429,8 +429,8 @@ export const SettingsDownloadsPage = ({
                 className={cn(
                   'px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 cursor-pointer',
                   connectTab === 'manual'
-                    ? 'bg-primary text-black font-bold'
-                    : 'text-white/60 hover:text-white hover:bg-white/5',
+                    ? 'bg-primary text-primary-foreground font-bold shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-ghost-hover)]',
                 )}
               >
                 <Server size={13} />
@@ -442,7 +442,7 @@ export const SettingsDownloadsPage = ({
               <form onSubmit={handleClaimByPin} className="space-y-3">
                 {/* Local vs Remote toggle */}
                 <div>
-                  <label className="text-[11px] font-medium text-white/60 uppercase tracking-wider block mb-1.5">
+                  <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider block mb-1.5">
                     Node Location
                   </label>
                   <div className="grid grid-cols-2 gap-2 max-w-sm">
@@ -450,33 +450,33 @@ export const SettingsDownloadsPage = ({
                       type="button"
                       onClick={() => setClaimIsLocal(true)}
                       className={cn(
-                        'px-3 py-2 rounded-lg text-xs font-medium border text-left transition-colors cursor-pointer',
+                        'px-3 py-2 rounded-lg text-xs font-medium text-left transition-colors cursor-pointer',
                         claimIsLocal
-                          ? 'border-primary/50 bg-primary/10 text-white font-semibold'
-                          : 'border-white/10 bg-white/5 text-white/60 hover:bg-white/[0.08]',
+                          ? 'bg-primary/10 text-foreground font-semibold'
+                          : 'bg-[var(--dk-surface-field)] text-muted-foreground hover:bg-[var(--dk-surface-ghost-hover)]',
                       )}
                     >
                       <span className="block font-bold">Local</span>
-                      <span className="text-[10px] text-white/50 block">This computer or LAN</span>
+                      <span className="text-[10px] text-muted-foreground block">This computer or LAN</span>
                     </button>
                     <button
                       type="button"
                       onClick={() => setClaimIsLocal(false)}
                       className={cn(
-                        'px-3 py-2 rounded-lg text-xs font-medium border text-left transition-colors cursor-pointer',
+                        'px-3 py-2 rounded-lg text-xs font-medium text-left transition-colors cursor-pointer',
                         !claimIsLocal
-                          ? 'border-primary/50 bg-primary/10 text-white font-semibold'
-                          : 'border-white/10 bg-white/5 text-white/60 hover:bg-white/[0.08]',
+                          ? 'bg-primary/10 text-foreground font-semibold'
+                          : 'bg-[var(--dk-surface-field)] text-muted-foreground hover:bg-[var(--dk-surface-ghost-hover)]',
                       )}
                     >
                       <span className="block font-bold">Remote</span>
-                      <span className="text-[10px] text-white/50 block">WAN / Cloud / VPS</span>
+                      <span className="text-[10px] text-muted-foreground block">WAN / Cloud / VPS</span>
                     </button>
                   </div>
                 </div>
 
                 <div>
-                  <label className="text-[11px] font-medium text-white/60 uppercase tracking-wider block mb-1">
+                  <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider block mb-1">
                     6-Character Claim PIN
                   </label>
                   <div className="flex flex-col sm:flex-row sm:items-center gap-3">
@@ -487,38 +487,38 @@ export const SettingsDownloadsPage = ({
                       placeholder="OTX-XXXX"
                       value={claimPin}
                       onChange={(e) => setClaimPin(e.target.value.toUpperCase())}
-                      className="w-full sm:w-44 px-3 py-2 rounded-lg bg-black/40 text-base font-mono tracking-widest font-bold text-primary placeholder:text-white/20 focus:outline-none focus:ring-2 focus:ring-primary/40 uppercase"
+                      className="w-full sm:w-44 px-3 py-2 rounded-lg bg-[var(--dk-surface-field)] text-base font-mono tracking-widest font-bold text-primary placeholder:text-muted-foreground/30 focus:outline-none focus:ring-2 focus:ring-primary/40 uppercase"
                     />
-                    <p className="text-[11px] text-white/50 leading-relaxed">
-                      Run <span className="font-mono text-white/80">otix-node</span> on Mac, Windows, Linux, or Docker and open its web dashboard at{' '}
-                      <span className="font-mono text-white/80">http://&lt;node-ip&gt;:8090</span> to view your claim PIN.
+                    <p className="text-[11px] text-muted-foreground leading-relaxed">
+                      Run <span className="font-mono text-foreground font-medium">otix-node</span> on Mac, Windows, Linux, or Docker and open its web dashboard at{' '}
+                      <span className="font-mono text-foreground font-medium">http://&lt;node-ip&gt;:8090</span> to view your claim PIN.
                     </p>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                   <div>
-                    <label className="text-[11px] font-medium text-white/60 uppercase tracking-wider block mb-1">
-                      Node URL <span className="normal-case font-normal text-white/30">({claimIsLocal ? 'defaults to http://127.0.0.1:8090' : 'required for remote'})</span>
+                    <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider block mb-1">
+                      Node URL <span className="normal-case font-normal text-muted-foreground/70">({claimIsLocal ? 'defaults to http://127.0.0.1:8090' : 'required for remote'})</span>
                     </label>
                     <input
                       type="url"
                       placeholder={claimIsLocal ? 'http://127.0.0.1:8090' : 'https://node.example.com:8090'}
                       value={claimNodeUrl}
                       onChange={(e) => setClaimNodeUrl(e.target.value)}
-                      className="w-full px-3 py-2 rounded-lg bg-black/40 text-xs text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-primary/40"
+                      className="w-full px-3 py-2 rounded-lg bg-[var(--dk-surface-field)] text-xs text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-2 focus:ring-primary/40"
                     />
                   </div>
                   <div>
-                    <label className="text-[11px] font-medium text-white/60 uppercase tracking-wider block mb-1">
-                      Node Name <span className="normal-case font-normal text-white/30">(defaults to {defaultAutoName})</span>
+                    <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider block mb-1">
+                      Node Name <span className="normal-case font-normal text-muted-foreground/70">(defaults to {defaultAutoName})</span>
                     </label>
                     <input
                       type="text"
                       placeholder={defaultAutoName}
                       value={claimServerName}
                       onChange={(e) => setClaimServerName(e.target.value)}
-                      className="w-full px-3 py-2 rounded-lg bg-black/40 text-xs text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-primary/40"
+                      className="w-full px-3 py-2 rounded-lg bg-[var(--dk-surface-field)] text-xs text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-2 focus:ring-primary/40"
                     />
                   </div>
                 </div>
@@ -527,14 +527,14 @@ export const SettingsDownloadsPage = ({
                   <button
                     type="button"
                     onClick={() => setShowAddServer(false)}
-                    className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white/70 text-xs font-semibold cursor-pointer"
+                    className="px-3 py-1.5 rounded-lg bg-[var(--dk-surface-field)] hover:bg-[var(--dk-surface-ghost-hover)] text-muted-foreground hover:text-foreground text-xs font-semibold cursor-pointer"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={claimingPin || !claimPin.trim()}
-                    className="px-4 py-1.5 rounded-lg bg-primary text-black text-xs font-bold hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center gap-1.5 cursor-pointer"
+                    className="px-4 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-bold hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center gap-1.5 cursor-pointer"
                   >
                     <KeyRound size={13} />
                     {claimingPin ? 'Connecting & Verifying...' : 'Claim & Link Node'}
@@ -545,7 +545,7 @@ export const SettingsDownloadsPage = ({
               <form onSubmit={handleAddServer} className="space-y-3">
                 {/* Local vs Remote toggle */}
                 <div>
-                  <label className="text-[11px] font-medium text-white/60 uppercase tracking-wider block mb-1.5">
+                  <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider block mb-1.5">
                     Node Location
                   </label>
                   <div className="grid grid-cols-2 gap-2 max-w-sm">
@@ -556,14 +556,14 @@ export const SettingsDownloadsPage = ({
                         if (!serverUrl) setServerUrl('http://127.0.0.1:8090')
                       }}
                       className={cn(
-                        'px-3 py-2 rounded-lg text-xs font-medium border text-left transition-colors cursor-pointer',
+                        'px-3 py-2 rounded-lg text-xs font-medium text-left transition-colors cursor-pointer',
                         manualIsLocal
-                          ? 'border-primary/50 bg-primary/10 text-white font-semibold'
-                          : 'border-white/10 bg-white/5 text-white/60 hover:bg-white/[0.08]',
+                          ? 'bg-primary/10 text-foreground font-semibold'
+                          : 'bg-[var(--dk-surface-field)] text-muted-foreground hover:bg-[var(--dk-surface-ghost-hover)]',
                       )}
                     >
                       <span className="block font-bold">Local</span>
-                      <span className="text-[10px] text-white/50 block">This computer or LAN</span>
+                      <span className="text-[10px] text-muted-foreground block">This computer or LAN</span>
                     </button>
                     <button
                       type="button"
@@ -572,33 +572,33 @@ export const SettingsDownloadsPage = ({
                         if (serverUrl === 'http://127.0.0.1:8090') setServerUrl('')
                       }}
                       className={cn(
-                        'px-3 py-2 rounded-lg text-xs font-medium border text-left transition-colors cursor-pointer',
+                        'px-3 py-2 rounded-lg text-xs font-medium text-left transition-colors cursor-pointer',
                         !manualIsLocal
-                          ? 'border-primary/50 bg-primary/10 text-white font-semibold'
-                          : 'border-white/10 bg-white/5 text-white/60 hover:bg-white/[0.08]',
+                          ? 'bg-primary/10 text-foreground font-semibold'
+                          : 'bg-[var(--dk-surface-field)] text-muted-foreground hover:bg-[var(--dk-surface-ghost-hover)]',
                       )}
                     >
                       <span className="block font-bold">Remote</span>
-                      <span className="text-[10px] text-white/50 block">WAN / Cloud / VPS</span>
+                      <span className="text-[10px] text-muted-foreground block">WAN / Cloud / VPS</span>
                     </button>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="text-[11px] font-medium text-white/60 uppercase tracking-wider block mb-1">
-                      Node Name <span className="normal-case font-normal text-white/30">(defaults to {defaultAutoName})</span>
+                    <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider block mb-1">
+                      Node Name <span className="normal-case font-normal text-muted-foreground/70">(defaults to {defaultAutoName})</span>
                     </label>
                     <input
                       type="text"
                       placeholder={defaultAutoName}
                       value={serverName}
                       onChange={(e) => setServerName(e.target.value)}
-                      className="w-full px-3 py-2 rounded-lg bg-black/40 text-xs text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-primary/40"
+                      className="w-full px-3 py-2 rounded-lg bg-[var(--dk-surface-field)] text-xs text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-2 focus:ring-primary/40"
                     />
                   </div>
                   <div>
-                    <label className="text-[11px] font-medium text-white/60 uppercase tracking-wider block mb-1">
+                    <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider block mb-1">
                       {manualIsLocal ? 'Local URL' : 'Remote URL'}
                     </label>
                     <input
@@ -607,13 +607,13 @@ export const SettingsDownloadsPage = ({
                       placeholder={manualIsLocal ? 'http://127.0.0.1:8090' : 'https://node.example.com:8090'}
                       value={serverUrl}
                       onChange={(e) => setServerUrl(e.target.value)}
-                      className="w-full px-3 py-2 rounded-lg bg-black/40 text-xs text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-primary/40"
+                      className="w-full px-3 py-2 rounded-lg bg-[var(--dk-surface-field)] text-xs text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-2 focus:ring-primary/40"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="text-[11px] font-medium text-white/60 uppercase tracking-wider block mb-1">
+                  <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider block mb-1">
                     {manualIsLocal ? 'WAN / Remote URL (optional)' : 'Fallback Local URL (optional)'}
                   </label>
                   <input
@@ -621,15 +621,15 @@ export const SettingsDownloadsPage = ({
                     placeholder={manualIsLocal ? 'e.g. https://node.example.com:8090' : 'e.g. http://192.168.1.50:8090'}
                     value={serverRemoteUrl}
                     onChange={(e) => setServerRemoteUrl(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg bg-black/40 text-xs text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-primary/40"
+                    className="w-full px-3 py-2 rounded-lg bg-[var(--dk-surface-field)] text-xs text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-2 focus:ring-primary/40"
                   />
-                  <p className="mt-1.5 text-[11px] text-white/40 leading-relaxed">
+                  <p className="mt-1.5 text-[11px] text-muted-foreground leading-relaxed">
                     Used when opening Otix away from home.
                   </p>
                 </div>
 
                 <div>
-                  <label className="text-[11px] font-medium text-white/60 uppercase tracking-wider block mb-1">
+                  <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider block mb-1">
                     Access Token
                   </label>
                   <input
@@ -638,9 +638,9 @@ export const SettingsDownloadsPage = ({
                     placeholder="Paste the token from the node's dashboard"
                     value={serverToken}
                     onChange={(e) => setServerToken(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg bg-black/40 text-xs text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-primary/40"
+                    className="w-full px-3 py-2 rounded-lg bg-[var(--dk-surface-field)] text-xs text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-2 focus:ring-primary/40"
                   />
-                  <p className="mt-1.5 text-[11px] text-white/40 leading-relaxed">
+                  <p className="mt-1.5 text-[11px] text-muted-foreground leading-relaxed">
                     Open the node in a browser, copy its access token, then paste it here.
                     {serverUrl.trim() ? (
                       <>
@@ -662,14 +662,14 @@ export const SettingsDownloadsPage = ({
                   <button
                     type="button"
                     onClick={() => setShowAddServer(false)}
-                    className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white/70 text-xs font-semibold cursor-pointer"
+                    className="px-3 py-1.5 rounded-lg bg-[var(--dk-surface-field)] hover:bg-[var(--dk-surface-ghost-hover)] text-muted-foreground hover:text-foreground text-xs font-semibold cursor-pointer"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={serverSubmitting}
-                    className="px-4 py-1.5 rounded-lg bg-primary text-black text-xs font-bold hover:bg-primary/90 transition-colors disabled:opacity-50 cursor-pointer"
+                    className="px-4 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-bold hover:bg-primary/90 transition-colors disabled:opacity-50 cursor-pointer"
                   >
                     {serverSubmitting ? 'Verifying & Linking...' : 'Connect & Link Node'}
                   </button>
@@ -680,7 +680,7 @@ export const SettingsDownloadsPage = ({
         )}
 
         {orphanedNodes.length > 0 && (
-          <div className="p-3.5 rounded-xl border border-white/[0.04] bg-destructive/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="p-3.5 rounded-xl bg-destructive/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-xl bg-destructive/20 flex items-center justify-center shrink-0">
                 <AlertCircle className="w-4 h-4 text-destructive" />
@@ -712,23 +712,23 @@ export const SettingsDownloadsPage = ({
         )}
 
         {unclaimedNodes.length > 0 && (
-          <div className="p-3.5 rounded-xl border border-primary/30 bg-primary/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="p-3.5 rounded-xl bg-primary/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-xl bg-primary/20 flex items-center justify-center shrink-0">
                 <Sparkles className="w-4 h-4 text-primary" />
               </div>
               <div className="min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <p className="text-xs font-bold text-white">
+                  <p className="text-xs font-bold text-foreground">
                     Unclaimed Otix Node Detected: <span className="text-primary">{unclaimedNodes[0].serverName}</span>
                   </p>
                   {unclaimedNodes[0].claimCode && (
-                    <span className="px-2 py-0.5 rounded font-mono text-[10px] font-bold bg-white/10 text-white/90">
+                    <span className="px-2 py-0.5 rounded font-mono text-[10px] font-bold bg-[var(--dk-surface-field)] text-foreground">
                       PIN: {unclaimedNodes[0].claimCode}
                     </span>
                   )}
                 </div>
-                <p className="text-[11px] text-white/50 truncate">
+                <p className="text-[11px] text-muted-foreground truncate">
                   Available at {unclaimedNodes[0].localUrl}. Claim this node to link it to your account.
                 </p>
               </div>
@@ -770,7 +770,7 @@ export const SettingsDownloadsPage = ({
               return (
               <div
                 key={server.id}
-                className="relative group p-3.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.07] transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-3 cursor-pointer"
+                className="relative group p-3.5 rounded-xl bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)] transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-3 cursor-pointer"
               >
                 <Link
                   {...nodeSettingsNavigateOptions(server.id)}
@@ -780,14 +780,14 @@ export const SettingsDownloadsPage = ({
                   <span className="sr-only">Open {server.name}</span>
                 </Link>
                 <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-10 h-10 rounded-xl bg-white/[0.06] flex items-center justify-center shrink-0">
-                      <Server size={18} className="text-white/80" />
+                    <div className="w-10 h-10 rounded-xl bg-[var(--dk-surface-field)] flex items-center justify-center shrink-0">
+                      <Server size={18} className="text-muted-foreground" />
                     </div>
                     <div className="min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-sm font-semibold text-white">{server.name}</span>
+                        <span className="text-sm font-semibold text-foreground">{server.name}</span>
                         {local && (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-400">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-500">
                             Otix app
                           </span>
                         )}
@@ -801,26 +801,26 @@ export const SettingsDownloadsPage = ({
                           className={cn(
                             'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider',
                             server.isOnline
-                              ? 'bg-emerald-500/10 text-emerald-400'
-                              : 'bg-rose-500/10 text-rose-400',
+                              ? 'bg-emerald-500/10 text-emerald-500'
+                              : 'bg-rose-500/10 text-rose-500',
                           )}
                         >
                           <span
                             className={cn(
                               'w-1.5 h-1.5 rounded-full',
-                              server.isOnline ? 'bg-emerald-400 animate-pulse' : 'bg-rose-400',
+                              server.isOnline ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500',
                             )}
                           />
                           {server.isOnline ? 'Online' : 'Offline'}
                         </span>
                       </div>
-                      <div className="flex items-center gap-3 text-xs text-white/40 mt-0.5 flex-wrap">
-                        <span className={cn('truncate inline-flex items-center gap-1', reserved ? 'text-white/50' : 'font-mono text-white/60')}>
+                      <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5 flex-wrap">
+                        <span className={cn('truncate inline-flex items-center gap-1', reserved ? 'text-muted-foreground' : 'font-mono text-muted-foreground')}>
                           {local
                             ? 'Otix app on this computer'
                             : server.primaryUrl}
                           {(probeResults[server.id]?.remote_accessible || probeResults[server.id]?.remoteAccessible || probeResults[server.id]?.reachable) && (
-                            <span className="inline-flex items-center text-emerald-400" title="Accessible from the Internet">
+                            <span className="inline-flex items-center text-emerald-500" title="Accessible from the Internet">
                               <Globe size={11} />
                             </span>
                           )}
@@ -844,7 +844,7 @@ export const SettingsDownloadsPage = ({
                           e.preventDefault()
                           handleSetPrimary(server.id)
                         }}
-                        className="pointer-events-auto flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-white/70 hover:text-white text-xs font-medium transition-colors cursor-pointer"
+                        className="pointer-events-auto flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[var(--dk-surface-field)] hover:bg-[var(--dk-surface-ghost-hover)] text-muted-foreground hover:text-foreground text-xs font-medium transition-colors cursor-pointer"
                         title="Set as primary"
                       >
                         <Star size={12} />
@@ -862,10 +862,10 @@ export const SettingsDownloadsPage = ({
                       className={cn(
                         'pointer-events-auto flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-colors cursor-pointer',
                         probeResults[server.id]?.remote_accessible || probeResults[server.id]?.remoteAccessible || probeResults[server.id]?.reachable
-                          ? 'bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20'
+                          ? 'bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20'
                           : probeResults[server.id] && !(probeResults[server.id]?.remote_accessible || probeResults[server.id]?.remoteAccessible || probeResults[server.id]?.reachable)
-                            ? 'bg-amber-500/10 text-amber-400 hover:bg-amber-500/20'
-                            : 'bg-white/5 hover:bg-white/10 text-white/80 hover:text-white',
+                            ? 'bg-amber-500/10 text-amber-500 hover:bg-amber-500/20'
+                            : 'bg-[var(--dk-surface-field)] hover:bg-[var(--dk-surface-ghost-hover)] text-muted-foreground hover:text-foreground',
                       )}
                       title="Test Remote Access (Internet Reachability)"
                     >
@@ -886,7 +886,7 @@ export const SettingsDownloadsPage = ({
                         target="_blank"
                         rel="noreferrer"
                         onClick={(e) => e.stopPropagation()}
-                        className="pointer-events-auto flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-white/80 hover:text-white text-xs font-medium transition-colors cursor-pointer"
+                        className="pointer-events-auto flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[var(--dk-surface-field)] hover:bg-[var(--dk-surface-ghost-hover)] text-muted-foreground hover:text-foreground text-xs font-medium transition-colors cursor-pointer"
                         title="Open Node WebUI"
                       >
                         <ExternalLink size={12} />
@@ -900,7 +900,7 @@ export const SettingsDownloadsPage = ({
                         e.preventDefault()
                         openServerExplorer(server)
                       }}
-                      className="pointer-events-auto flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-white/80 hover:text-white text-xs font-medium transition-colors cursor-pointer"
+                      className="pointer-events-auto flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[var(--dk-surface-field)] hover:bg-[var(--dk-surface-ghost-hover)] text-muted-foreground hover:text-foreground text-xs font-medium transition-colors cursor-pointer"
                       title="Explore Node Storage"
                     >
                       <HardDrive size={12} />
@@ -913,7 +913,7 @@ export const SettingsDownloadsPage = ({
                         e.preventDefault()
                         handlePingServer(server.id)
                       }}
-                      className="pointer-events-auto flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-white/70 hover:text-white text-xs font-medium transition-colors cursor-pointer"
+                      className="pointer-events-auto flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[var(--dk-surface-field)] hover:bg-[var(--dk-surface-ghost-hover)] text-muted-foreground hover:text-foreground text-xs font-medium transition-colors cursor-pointer"
                       title="Test Connection"
                     >
                       <Radio size={12} />
@@ -926,7 +926,7 @@ export const SettingsDownloadsPage = ({
                         e.preventDefault()
                         setNodeToDelete({ id: server.id, name: server.name })
                       }}
-                      className="pointer-events-auto p-1.5 rounded-lg bg-white/5 hover:bg-rose-500/20 text-white/50 hover:text-rose-400 transition-colors cursor-pointer"
+                      className="pointer-events-auto p-1.5 rounded-lg bg-[var(--dk-surface-field)] hover:bg-rose-500/20 text-muted-foreground hover:text-rose-500 transition-colors cursor-pointer"
                       title="Disconnect Node"
                     >
                       <Trash2 size={13} />
@@ -935,7 +935,7 @@ export const SettingsDownloadsPage = ({
                   )}
                     <span
                       aria-hidden
-                      className="flex items-center gap-0.5 text-xs font-medium text-white/40 group-hover:text-white transition-colors"
+                      className="flex items-center gap-0.5 text-xs font-medium text-muted-foreground group-hover:text-foreground transition-colors"
                     >
                       Open
                       <ChevronRight size={14} className="transition-transform group-hover:translate-x-0.5" />
@@ -945,13 +945,13 @@ export const SettingsDownloadsPage = ({
               )
             })
           ) : (
-            <div className="p-6 rounded-xl bg-white/[0.03] text-center space-y-3">
+            <div className="p-6 rounded-xl bg-[var(--dk-surface-ghost)] text-center space-y-3">
               <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto text-primary">
                 <DownloadCloud className="w-6 h-6" />
               </div>
               <div className="space-y-1">
-                <p className="text-sm text-white font-semibold">No Otix nodes connected yet</p>
-                <p className="text-xs text-white/50 max-w-md mx-auto leading-relaxed">
+                <p className="text-sm text-foreground font-semibold">No Otix nodes connected yet</p>
+                <p className="text-xs text-muted-foreground max-w-md mx-auto leading-relaxed">
                   Download Otix Node to run on your Mac, Windows PC, or home server. It runs quietly in the background with zero setup — double-click to start and link it with your claim PIN.
                 </p>
               </div>
@@ -982,7 +982,7 @@ export const SettingsDownloadsPage = ({
           description={`Are you sure you want to disconnect ${nodeToDelete.name}?`}
         >
           <div className="space-y-4 pt-2">
-            <p className="text-xs text-white/70 leading-relaxed">
+            <p className="text-xs text-muted-foreground leading-relaxed">
               This node will be removed from your account. Any active downloads will be stopped and you will need to re-claim or add the node again to reconnect.
             </p>
             <div className="flex justify-end gap-2 pt-2">

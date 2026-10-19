@@ -437,7 +437,7 @@ export const SettingsNodesPage = () => {
             ref={headerRef}
             className={cn(
               'pointer-events-auto rounded-3xl p-4 sm:p-5 transition-all duration-300 shadow-2xl',
-              'backdrop-blur-2xl bg-[var(--dk-surface-base)]/85 border border-white/[0.06]',
+              'backdrop-blur-2xl bg-[var(--dk-surface-base)]/85',
             )}
           >
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
@@ -453,34 +453,34 @@ export const SettingsNodesPage = () => {
                 <div className="flex flex-col gap-1.5">
                   <div className="flex items-center gap-2 flex-wrap">
                     {stats.offlineNodes > 0 && (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500/15 text-amber-400 border border-amber-500/20">
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500/15 text-amber-500 dark:text-amber-400">
                         <AlertTriangle size={10} />
                         <span>{stats.offlineNodes} offline</span>
                       </span>
                     )}
 
-                    <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-medium bg-white/[0.04] text-muted-foreground border border-white/[0.04]">
+                    <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-medium bg-[var(--dk-surface-field)] text-muted-foreground">
                       <span>
                         {stats.onlineNodes}/{stats.totalNodes} {stats.totalNodes === 1 ? 'node' : 'nodes'} active
                       </span>
                     </span>
 
                     {stats.serverCount > 0 && (
-                      <span className="hidden md:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-medium bg-white/[0.04] text-muted-foreground border border-white/[0.04]">
+                      <span className="hidden md:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-medium bg-[var(--dk-surface-field)] text-muted-foreground">
                         <HardDrive size={10} className="text-primary" />
                         <span>{stats.serverCount} machines</span>
                       </span>
                     )}
 
                     {stats.homeCount > 0 && (
-                      <span className="hidden xl:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-medium bg-white/[0.04] text-muted-foreground border border-white/[0.04]">
+                      <span className="hidden xl:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-medium bg-[var(--dk-surface-field)] text-muted-foreground">
                         <HomeIcon size={10} className="text-primary" />
                         <span>{stats.homeCount} {stats.homeCount === 1 ? 'home' : 'homes'}</span>
                       </span>
                     )}
 
                     {stats.sambaCount > 0 && (
-                      <span className="hidden xl:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-medium bg-white/[0.04] text-muted-foreground border border-white/[0.04]">
+                      <span className="hidden xl:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-medium bg-[var(--dk-surface-field)] text-muted-foreground">
                         <FolderTree size={10} className="text-primary" />
                         <span>{stats.sambaCount} {stats.sambaCount === 1 ? 'samba share' : 'samba shares'}</span>
                       </span>
@@ -506,7 +506,7 @@ export const SettingsNodesPage = () => {
                   <Plus size={14} />
                   <span>Add Node</span>
                   {unclaimedNodes.length > 0 && (
-                    <span className="ml-1 px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-white/20 text-primary-foreground">
+                    <span className="ml-1 px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-primary-foreground/20 text-primary-foreground">
                       {unclaimedNodes.length}
                     </span>
                   )}
@@ -516,7 +516,7 @@ export const SettingsNodesPage = () => {
 
             {/* Unclaimed Nodes Notice (if any freshly discovered node with PIN exists) */}
             {unclaimedNodes.length > 0 && (
-              <div className="mt-4 p-3.5 sm:p-4 rounded-2xl bg-primary/[0.08] backdrop-blur-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm border border-primary/20">
+              <div className="mt-4 p-3.5 sm:p-4 rounded-2xl bg-primary/[0.08] backdrop-blur-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm">
                 <div className="flex items-center gap-3">
                   <div className="w-9 h-9 rounded-xl bg-primary/20 flex items-center justify-center shrink-0">
                     <Sparkles className="w-4 h-4 text-primary" />
@@ -528,7 +528,7 @@ export const SettingsNodesPage = () => {
                         <span className="text-primary">{unclaimedNodes[0].serverName}</span>
                       </p>
                       {unclaimedNodes[0].claimCode && (
-                        <span className="px-2 py-0.5 rounded font-mono text-[10px] font-bold bg-white/[0.08] text-foreground/90">
+                        <span className="px-2 py-0.5 rounded font-mono text-[10px] font-bold bg-[var(--dk-surface-field)] text-foreground">
                           PIN: {unclaimedNodes[0].claimCode}
                         </span>
                       )}
@@ -575,7 +575,7 @@ export const SettingsNodesPage = () => {
           className="max-w-md"
         >
           <div className="space-y-4 pt-2">
-            <div className="p-3.5 rounded-xl bg-destructive/10 border border-destructive/20 text-xs text-foreground/90 flex items-start gap-2.5">
+            <div className="p-3.5 rounded-xl bg-destructive/10 text-xs text-foreground/90 flex items-start gap-2.5">
               <AlertTriangle size={16} className="text-destructive shrink-0 mt-0.5" />
               <span>
                 Disconnecting <strong>{nodeToDelete.name}</strong> removes it from your account. Active
@@ -620,7 +620,7 @@ export const SettingsNodesPage = () => {
         >
           <form onSubmit={handleRenameConfirm} className="space-y-4 pt-2">
             <div className="space-y-1.5">
-              <label htmlFor="rename-node-input" className="text-xs font-semibold text-white/70">
+              <label htmlFor="rename-node-input" className="text-xs font-semibold text-muted-foreground">
                 Node Name
               </label>
               <input
@@ -630,7 +630,7 @@ export const SettingsNodesPage = () => {
                 onChange={(e) => setRenameInput(e.target.value)}
                 placeholder="Enter node name..."
                 autoFocus
-                className="w-full h-10 px-3 rounded-xl bg-white/5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary transition-colors"
+                className="w-full h-10 px-3 rounded-xl bg-[var(--dk-surface-field)] text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary transition-colors"
                 disabled={isSavingRename}
               />
             </div>

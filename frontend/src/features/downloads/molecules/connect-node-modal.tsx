@@ -195,7 +195,7 @@ export const ConnectNodeModal = ({
       <div className="space-y-4 pt-1">
         <NodesFeatureTags />
 
-        <div className="flex items-center gap-1 border-b border-white/10 pb-3">
+        <div className="flex items-center gap-1 border-b border-[var(--dk-separator)] pb-3">
           <button
             type="button"
             onClick={() => setConnectTab('claim')}
@@ -203,7 +203,7 @@ export const ConnectNodeModal = ({
               'px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 cursor-pointer',
               connectTab === 'claim'
                 ? 'bg-primary text-primary-foreground font-bold'
-                : 'text-muted-foreground hover:text-foreground hover:bg-white/5',
+                : 'text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-ghost)]',
             )}
           >
             <KeyRound size={13} />
@@ -216,7 +216,7 @@ export const ConnectNodeModal = ({
               'px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 cursor-pointer',
               connectTab === 'manual'
                 ? 'bg-primary text-primary-foreground font-bold'
-                : 'text-muted-foreground hover:text-foreground hover:bg-white/5',
+                : 'text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-ghost)]',
             )}
           >
             <Server size={13} />
@@ -238,7 +238,7 @@ export const ConnectNodeModal = ({
                     'px-3 py-2 rounded-lg text-xs font-medium border text-left transition-colors cursor-pointer',
                     claimIsLocal
                       ? 'border-primary/50 bg-primary/10 text-foreground font-semibold'
-                      : 'border-white/10 bg-white/5 text-muted-foreground hover:bg-white/[0.08]',
+                      : 'border-[var(--dk-separator)] bg-[var(--dk-surface-ghost)] text-muted-foreground hover:bg-[var(--dk-surface-ghost-hover)]',
                   )}
                 >
                   <span className="block font-bold">Local</span>
@@ -251,7 +251,7 @@ export const ConnectNodeModal = ({
                     'px-3 py-2 rounded-lg text-xs font-medium border text-left transition-colors cursor-pointer',
                     !claimIsLocal
                       ? 'border-primary/50 bg-primary/10 text-foreground font-semibold'
-                      : 'border-white/10 bg-white/5 text-muted-foreground hover:bg-white/[0.08]',
+                      : 'border-[var(--dk-separator)] bg-[var(--dk-surface-ghost)] text-muted-foreground hover:bg-[var(--dk-surface-ghost-hover)]',
                   )}
                 >
                   <span className="block font-bold">Remote</span>
@@ -262,7 +262,7 @@ export const ConnectNodeModal = ({
 
             {/* Auto-detected node banners */}
             {orphanedNodes.length > 0 && (
-              <div className="rounded-xl p-3 bg-destructive/10 border border-white/[0.04] flex items-center justify-between gap-3">
+              <div className="rounded-xl p-3 bg-destructive/10 border border-[var(--dk-separator)] flex items-center justify-between gap-3">
                 <div className="min-w-0">
                   <div className="flex items-center gap-1.5 text-destructive font-semibold text-xs">
                     <AlertCircle size={14} className="shrink-0" />
@@ -287,7 +287,7 @@ export const ConnectNodeModal = ({
             )}
 
             {unclaimedNodes.length > 0 && unclaimedNodes[0].claimCode && (
-              <div className="rounded-xl p-3 bg-primary/10 border border-white/[0.04] flex items-center justify-between gap-3">
+              <div className="rounded-xl p-3 bg-primary/10 border border-[var(--dk-separator)] flex items-center justify-between gap-3">
                 <div className="min-w-0">
                   <div className="flex items-center gap-1.5 text-primary font-semibold text-xs">
                     <Sparkles size={14} className="shrink-0" />
@@ -320,7 +320,7 @@ export const ConnectNodeModal = ({
                 placeholder="OTX-XXXX"
                 value={claimPin}
                 onChange={(e) => setClaimPin(e.target.value.toUpperCase())}
-                className="w-full px-3 py-2 rounded-lg bg-black/40 text-base font-mono tracking-widest font-bold text-primary placeholder:text-muted-foreground/30 focus:outline-none focus:ring-2 focus:ring-primary/40 uppercase"
+                className="w-full px-3 py-2 rounded-lg bg-[var(--dk-surface-field)] border border-[var(--dk-separator)] text-base font-mono tracking-widest font-bold text-primary placeholder:text-muted-foreground/40 focus:outline-none focus:ring-2 focus:ring-primary/40 uppercase"
               />
               <p className="mt-1.5 text-[11px] text-muted-foreground leading-relaxed">
                 Run <span className="font-mono text-foreground/80">otix-node</span> and open its dashboard at{' '}
@@ -341,7 +341,7 @@ export const ConnectNodeModal = ({
                   placeholder={claimIsLocal ? 'http://127.0.0.1:8090' : 'https://node.example.com:8090'}
                   value={claimNodeUrl}
                   onChange={(e) => setClaimNodeUrl(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg bg-black/40 text-xs text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  className="w-full px-3 py-2 rounded-lg bg-[var(--dk-surface-field)] border border-[var(--dk-separator)] text-xs text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-2 focus:ring-primary/40"
                 />
               </div>
               <div>
@@ -354,12 +354,12 @@ export const ConnectNodeModal = ({
                   placeholder={defaultName}
                   value={claimServerName}
                   onChange={(e) => setClaimServerName(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg bg-black/40 text-xs text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  className="w-full px-3 py-2 rounded-lg bg-[var(--dk-surface-field)] border border-[var(--dk-separator)] text-xs text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-2 focus:ring-primary/40"
                 />
               </div>
             </div>
 
-            <div className="rounded-xl p-3 bg-white/[0.03] border border-white/[0.04] space-y-1 text-xs">
+            <div className="rounded-xl p-3 bg-[var(--dk-surface-ghost)] border border-[var(--dk-separator)] space-y-1 text-xs">
               <div className="flex items-center justify-between">
                 <span className="font-semibold text-foreground">Want direct account login instead?</span>
                 <a
@@ -409,7 +409,7 @@ export const ConnectNodeModal = ({
                     'px-3 py-2 rounded-lg text-xs font-medium border text-left transition-colors cursor-pointer',
                     manualIsLocal
                       ? 'border-primary/50 bg-primary/10 text-foreground font-semibold'
-                      : 'border-white/10 bg-white/5 text-muted-foreground hover:bg-white/[0.08]',
+                      : 'border-[var(--dk-separator)] bg-[var(--dk-surface-ghost)] text-muted-foreground hover:bg-[var(--dk-surface-ghost-hover)]',
                   )}
                 >
                   <span className="block font-bold">Local</span>
@@ -425,7 +425,7 @@ export const ConnectNodeModal = ({
                     'px-3 py-2 rounded-lg text-xs font-medium border text-left transition-colors cursor-pointer',
                     !manualIsLocal
                       ? 'border-primary/50 bg-primary/10 text-foreground font-semibold'
-                      : 'border-white/10 bg-white/5 text-muted-foreground hover:bg-white/[0.08]',
+                      : 'border-[var(--dk-separator)] bg-[var(--dk-surface-ghost)] text-muted-foreground hover:bg-[var(--dk-surface-ghost-hover)]',
                   )}
                 >
                   <span className="block font-bold">Remote</span>
@@ -438,14 +438,14 @@ export const ConnectNodeModal = ({
               <div>
                 <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider block mb-1">
                   Node Name{' '}
-                  <span className="normal-case font-normal text-white/30">(defaults to {defaultName})</span>
+                  <span className="normal-case font-normal text-muted-foreground/60">(defaults to {defaultName})</span>
                 </label>
                 <input
                   type="text"
                   placeholder={defaultName}
                   value={serverName}
                   onChange={(e) => setServerName(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg bg-black/40 text-xs text-foreground placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  className="w-full px-3 py-2 rounded-lg bg-[var(--dk-surface-field)] border border-[var(--dk-separator)] text-xs text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-2 focus:ring-primary/40"
                 />
               </div>
               <div>
@@ -458,7 +458,7 @@ export const ConnectNodeModal = ({
                   placeholder={manualIsLocal ? 'http://127.0.0.1:8090' : 'https://node.example.com:8090'}
                   value={serverUrl}
                   onChange={(e) => setServerUrl(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg bg-black/40 text-xs text-foreground placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  className="w-full px-3 py-2 rounded-lg bg-[var(--dk-surface-field)] border border-[var(--dk-separator)] text-xs text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-2 focus:ring-primary/40"
                 />
               </div>
             </div>
@@ -472,7 +472,7 @@ export const ConnectNodeModal = ({
                 placeholder={manualIsLocal ? 'e.g. https://node.example.com:8090' : 'e.g. http://192.168.1.50:8090'}
                 value={serverRemoteUrl}
                 onChange={(e) => setServerRemoteUrl(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg bg-black/40 text-xs text-foreground placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-primary/40"
+                className="w-full px-3 py-2 rounded-lg bg-[var(--dk-surface-field)] border border-[var(--dk-separator)] text-xs text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-2 focus:ring-primary/40"
               />
             </div>
 
@@ -486,7 +486,7 @@ export const ConnectNodeModal = ({
                 placeholder="Paste the token from the node's dashboard"
                 value={serverToken}
                 onChange={(e) => setServerToken(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg bg-black/40 text-xs text-foreground placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-primary/40"
+                className="w-full px-3 py-2 rounded-lg bg-[var(--dk-surface-field)] border border-[var(--dk-separator)] text-xs text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-2 focus:ring-primary/40"
               />
               {serverUrl.trim() ? (
                 <p className="mt-1.5 text-[11px] text-muted-foreground">

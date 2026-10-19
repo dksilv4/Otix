@@ -434,7 +434,7 @@ const SteamOverviewModule = ({ expanded, onToggle }: { expanded?: boolean; onTog
                   )}
                   <div className="dk-library-steam__carousel-overlay">
                     <div className="dk-library-steam__carousel-play">
-                      <Play className="h-5 w-5 text-white ml-0.5" />
+                      <Play className="h-5 w-5 text-primary-foreground ml-0.5" />
                     </div>
                   </div>
                 </div>

@@ -76,22 +76,22 @@ const BestResultItem = ({ item }: { item: any }) => {
       <Link
         to="/u/$username"
         params={{ username: item.username }}
-        className="group relative flex w-full aspect-[2/3] flex-col items-center justify-center rounded-xl bg-white/[0.03] p-6 text-center ring-1 ring-white/[0.06] transition-colors hover:bg-white/[0.06]"
+        className="group relative flex w-full aspect-[2/3] flex-col items-center justify-center rounded-xl bg-[var(--dk-surface-ghost)] p-6 text-center border border-[var(--dk-separator)] transition-colors hover:bg-[var(--dk-surface-ghost-hover)]"
       >
         <div className="flex flex-col items-center justify-center">
           {item.avatarUrl ? (
             <Image
               src={item.avatarUrl}
               alt={item.username}
-              className="h-24 w-24 rounded-full object-cover ring-2 ring-white/10"
+              className="h-24 w-24 rounded-full object-cover ring-2 ring-[var(--dk-separator)]"
               fallback={
-                <div className="flex h-24 w-24 items-center justify-center rounded-full bg-white/[0.04]">
+                <div className="flex h-24 w-24 items-center justify-center rounded-full bg-[var(--dk-surface-glass)] border border-[var(--dk-separator)]">
                   <UserRound className="h-10 w-10 text-muted-foreground/50" aria-hidden="true" />
                 </div>
               }
             />
           ) : (
-            <div className="flex h-24 w-24 items-center justify-center rounded-full bg-white/[0.04]">
+            <div className="flex h-24 w-24 items-center justify-center rounded-full bg-[var(--dk-surface-glass)] border border-[var(--dk-separator)]">
               <UserRound className="h-10 w-10 text-muted-foreground/50" aria-hidden="true" />
             </div>
           )}
@@ -362,7 +362,7 @@ export const SearchResults = ({ query, type, sort }: SearchResultsProps) => {
                   <Link
                     to="/u/$username"
                     params={{ username: user.username }}
-                    className="group relative flex w-full flex-col items-center rounded-xl bg-white/[0.03] p-4 text-center ring-1 ring-white/[0.06] transition-colors hover:bg-white/[0.06]"
+                    className="group relative flex w-full flex-col items-center rounded-xl bg-[var(--dk-surface-ghost)] p-4 text-center border border-[var(--dk-separator)] transition-colors hover:bg-[var(--dk-surface-ghost-hover)]"
                   >
                     {user.avatarUrl ? (
                       <Image
@@ -370,13 +370,13 @@ export const SearchResults = ({ query, type, sort }: SearchResultsProps) => {
                         alt={user.username}
                         className="h-16 w-16 rounded-full"
                         fallback={
-                          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-white/[0.04]">
+                          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[var(--dk-surface-glass)] border border-[var(--dk-separator)]">
                             <UserRound className="h-8 w-8 text-muted-foreground/50" aria-hidden="true" />
                           </div>
                         }
                       />
                     ) : (
-                      <div className="flex h-16 w-16 items-center justify-center rounded-full bg-white/[0.04]">
+                      <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[var(--dk-surface-glass)] border border-[var(--dk-separator)]">
                         <UserRound className="h-8 w-8 text-muted-foreground/50" aria-hidden="true" />
                       </div>
                     )}
@@ -551,7 +551,7 @@ export const SearchResults = ({ query, type, sort }: SearchResultsProps) => {
               key={user.id}
               to="/u/$username"
               params={{ username: user.username }}
-              className="group relative flex w-full flex-col items-center rounded-xl bg-white/[0.03] p-4 text-center ring-1 ring-white/[0.06] transition-colors hover:bg-white/[0.06]"
+              className="group relative flex w-full flex-col items-center rounded-xl bg-[var(--dk-surface-ghost)] p-4 text-center border border-[var(--dk-separator)] transition-colors hover:bg-[var(--dk-surface-ghost-hover)]"
             >
               {user.avatarUrl ? (
                 <Image
@@ -559,13 +559,13 @@ export const SearchResults = ({ query, type, sort }: SearchResultsProps) => {
                   alt={user.username}
                   className="h-16 w-16 rounded-full"
                   fallback={
-                    <div className="flex h-16 w-16 items-center justify-center rounded-full bg-white/[0.04]">
+                    <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[var(--dk-surface-glass)] border border-[var(--dk-separator)]">
                       <UserRound className="h-8 w-8 text-muted-foreground/50" aria-hidden="true" />
                     </div>
                   }
                 />
               ) : (
-                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-white/[0.04]">
+                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[var(--dk-surface-glass)] border border-[var(--dk-separator)]">
                   <UserRound className="h-8 w-8 text-muted-foreground/50" aria-hidden="true" />
                 </div>
               )}

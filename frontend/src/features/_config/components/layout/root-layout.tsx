@@ -15,11 +15,9 @@ import { GamingXpHost } from "@/features/launcher"
 import { IndexerSearchHost } from "@/features/downloads/molecules/indexer-search-host"
 import { CookieBanner } from "@/components/cookie-banner"
 import { AppMicroFooter } from "@/components/app-micro-footer"
+import { UpdateNotificationToast } from "@/features/updater"
 import { safeLazy } from "@/lib/utils/chunk-reload"
 
-const ActivityModule = safeLazy(() =>
-  import("@activity/components/organisms/activity-panel").then((m) => ({ default: m.ActivityModule })),
-)
 const PluginPermissionModal = safeLazy(() =>
   import("@/features/plugins/components/organisms/plugin-permission-modal").then((m) => ({
     default: m.PluginPermissionModal,
@@ -27,8 +25,10 @@ const PluginPermissionModal = safeLazy(() =>
 )
 
 import { loadPinState } from "../../utils"
+import { useScrollRestoration } from "../../hooks/use-scroll-restoration"
 
 export const RootLayout = () => {
+  useScrollRestoration()
   const isPinned = loadPinState()
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const location = useLocation()
@@ -82,7 +82,12 @@ export const RootLayout = () => {
       <PanelProvider>
         <NotificationsProvider>
           <CatalogStreamProvider>
-          <NavShell isPinned={isPinned} isSidebarOpen={isSidebarOpen} onToggleSidebar={handleToggleSidebar}>
+          <NavShell
+            isPinned={isPinned}
+            isSidebarOpen={isSidebarOpen}
+            onToggleSidebar={handleToggleSidebar}
+            onCloseSidebar={handleCloseSidebar}
+          >
             <main className={isFullScreenPage ? "" : "pt-16 md:pt-20 flex flex-col min-h-screen"}>
               <div className="flex-1">
                 <Outlet />
@@ -93,9 +98,6 @@ export const RootLayout = () => {
           </NavShell>
 
           <XPToastContainer />
-          <Suspense fallback={null}>
-            <ActivityModule open={isSidebarOpen} onClose={handleCloseSidebar} />
-          </Suspense>
           </CatalogStreamProvider>
         </NotificationsProvider>
       </PanelProvider>
@@ -106,6 +108,7 @@ export const RootLayout = () => {
       <IndexerSearchHost />
       <ModalRoot />
       <CookieBanner />
+      <UpdateNotificationToast />
     </div>
   )
 };

@@ -17,23 +17,23 @@
 }
 
 .dk-review__tabs {
-  @apply inline-flex items-center p-1 rounded-xl bg-white/[0.04] border border-white/[0.06];
+  @apply inline-flex items-center p-1 rounded-xl bg-[var(--dk-surface-ghost)] border border-[var(--dk-separator)];
 }
 
 .dk-review__tab {
   @apply px-3 py-1 text-xs font-medium rounded-lg transition-all duration-150 text-muted-foreground cursor-pointer flex items-center gap-1.5 focus:outline-none;
 
   &:hover {
-    @apply text-foreground bg-white/[0.04];
+    @apply text-foreground bg-[var(--dk-surface-glass-hover)];
   }
 
   &--active {
-    @apply text-foreground font-semibold bg-white/[0.12] shadow-sm;
+    @apply text-foreground font-semibold bg-[var(--dk-surface-glass)] shadow-sm;
   }
 }
 
 .dk-review__tab-count {
-  @apply text-[10px] px-1.5 py-0.5 rounded-full bg-white/10 text-muted-foreground font-mono;
+  @apply text-[10px] px-1.5 py-0.5 rounded-full bg-[var(--dk-surface-glass)] text-muted-foreground font-mono;
 }
 
 .dk-review__action-btn {
@@ -54,7 +54,7 @@
 }
 
 .dk-review__banner-icon {
-  @apply h-8 w-8 rounded-xl flex items-center justify-center shrink-0 text-amber-400;
+  @apply h-8 w-8 rounded-xl flex items-center justify-center shrink-0 text-amber-600 dark:text-amber-400;
 }
 
 .dk-review__banner-title {
@@ -96,12 +96,12 @@
 }
 
 .dk-review__placeholder-text--error {
-  @apply mb-3 text-red-400;
+  @apply mb-3 text-red-600 dark:text-red-400;
 }
 
 /* ---------- skeleton loader ---------- */
 .dk-review__skeleton {
-  @apply rounded-2xl p-5 space-y-3 border border-white/[0.04];
+  @apply rounded-2xl p-5 space-y-3 border border-[var(--dk-separator)];
   background: var(--dk-surface-ghost);
   box-shadow: var(--dk-shadow-xs);
 }

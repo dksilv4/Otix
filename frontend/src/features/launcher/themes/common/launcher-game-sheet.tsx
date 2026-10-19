@@ -55,10 +55,10 @@ export const LauncherGameSheet = ({ game, onClose }: LauncherGameSheetProps) => 
           animate={{ x: 0 }}
           exit={{ x: "100%" }}
           transition={{ type: "spring", damping: 30, stiffness: 300 }}
-          className="relative z-10 w-full max-w-2xl h-full bg-neutral-950 border-l border-white/10 shadow-2xl flex flex-col overflow-hidden"
+          className="relative z-10 w-full max-w-2xl h-full bg-[var(--dk-surface-overlay)] border-l border-[var(--dk-separator)] shadow-2xl flex flex-col overflow-hidden"
         >
           {/* Header image banner */}
-          <div className="relative h-64 w-full shrink-0 overflow-hidden bg-neutral-900">
+          <div className="relative h-64 w-full shrink-0 overflow-hidden bg-[var(--dk-surface-base)]">
             {backdropUrl && (
               <img
                 src={backdropUrl}
@@ -66,7 +66,7 @@ export const LauncherGameSheet = ({ game, onClose }: LauncherGameSheetProps) => 
                 className="w-full h-full object-cover brightness-60"
               />
             )}
-            <div className="absolute inset-0 bg-gradient-to-t from-neutral-950 via-neutral-950/40 to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-t from-[var(--dk-surface-overlay)] via-[var(--dk-surface-overlay)]/40 to-transparent" />
 
             {/* Close button */}
             <button
@@ -96,7 +96,7 @@ export const LauncherGameSheet = ({ game, onClose }: LauncherGameSheetProps) => 
                   {PLATFORM_LABELS[raw.platform] || raw.platform}
                 </span>
                 {detail?.releaseDate && (
-                  <span className="flex items-center gap-1 text-white/60">
+                  <span className="flex items-center gap-1 text-white/70">
                     <Calendar size={12} />
                     {detail.releaseDate.slice(0, 4)}
                   </span>
@@ -112,11 +112,11 @@ export const LauncherGameSheet = ({ game, onClose }: LauncherGameSheetProps) => 
           </div>
 
           {/* Action Bar */}
-          <div className="px-6 py-4 border-b border-white/[0.08] bg-neutral-900/40 flex items-center justify-between gap-4">
+          <div className="px-6 py-4 border-b border-[var(--dk-separator)] bg-[var(--dk-surface-ghost)] flex items-center justify-between gap-4">
             <LauncherActionButtons game={raw} size="md" />
             <button
               onClick={handleOpenMatchModal}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] text-xs font-semibold text-white/70 hover:text-white border border-white/10 transition-colors cursor-pointer"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)] text-xs font-semibold text-foreground/80 hover:text-foreground border border-[var(--dk-separator)] transition-colors cursor-pointer"
             >
               <Layers size={13} />
               <span>{raw.data?.id ? "Edit Match" : "Match Game"}</span>
@@ -124,7 +124,7 @@ export const LauncherGameSheet = ({ game, onClose }: LauncherGameSheetProps) => 
           </div>
 
           {/* Navigation Tabs */}
-          <div className="px-6 border-b border-white/[0.06] bg-neutral-900/20 flex gap-6 flex-none">
+          <div className="px-6 border-b border-[var(--dk-separator)] bg-[var(--dk-surface-ghost)]/50 flex gap-6 flex-none">
             <button
               onClick={() => setActiveTab("overview")}
               className={`py-3 text-xs font-bold uppercase tracking-wider transition-all border-b-2 cursor-pointer flex items-center gap-1.5 ${
@@ -160,7 +160,7 @@ export const LauncherGameSheet = ({ game, onClose }: LauncherGameSheetProps) => 
                 }`}
               >
                 <Server size={13} /> Dedicated Servers
-                <span className="px-1.5 py-0.5 rounded-full bg-white/10 text-[10px] font-semibold">
+                <span className="px-1.5 py-0.5 rounded-full bg-[var(--dk-surface-raised)] text-[10px] font-semibold text-foreground">
                   {gameServers.length}
                 </span>
               </button>
@@ -180,27 +180,27 @@ export const LauncherGameSheet = ({ game, onClose }: LauncherGameSheetProps) => 
               <>
                 {/* Overview */}
                 <div>
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-white/40 mb-2">Overview</h3>
-                  <p className="text-sm text-white/80 leading-relaxed font-normal">{overview}</p>
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Overview</h3>
+                  <p className="text-sm text-foreground leading-relaxed font-normal">{overview}</p>
                 </div>
 
                 {/* Technical File Info */}
-                <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/[0.06] space-y-2.5">
-                  <h3 className="text-[11px] font-bold uppercase tracking-wider text-white/40 mb-3 flex items-center gap-1.5">
+                <div className="p-4 rounded-2xl bg-[var(--dk-surface-ghost)] border border-[var(--dk-separator)] space-y-2.5">
+                  <h3 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-1.5">
                     <HardDrive size={13} /> File & Launch Properties
                   </h3>
                   {raw.exePath && (
                     <div className="flex flex-col gap-0.5">
-                      <span className="text-[10px] text-white/40 uppercase font-semibold">Executable</span>
-                      <span className="text-xs text-white/90 font-mono bg-black/40 px-2.5 py-1.5 rounded-lg break-all border border-white/5">
+                      <span className="text-[10px] text-muted-foreground uppercase font-semibold">Executable</span>
+                      <span className="text-xs text-foreground font-mono bg-[var(--dk-surface-field)] px-2.5 py-1.5 rounded-lg break-all border border-[var(--dk-separator)]">
                         {raw.exePath}
                       </span>
                     </div>
                   )}
                   {raw.installDir && (
                     <div className="flex flex-col gap-0.5">
-                      <span className="text-[10px] text-white/40 uppercase font-semibold">Install Directory</span>
-                      <span className="text-xs text-white/90 font-mono bg-black/40 px-2.5 py-1.5 rounded-lg break-all border border-white/5">
+                      <span className="text-[10px] text-muted-foreground uppercase font-semibold">Install Directory</span>
+                      <span className="text-xs text-foreground font-mono bg-[var(--dk-surface-field)] px-2.5 py-1.5 rounded-lg break-all border border-[var(--dk-separator)]">
                         {raw.installDir}
                       </span>
                     </div>
@@ -210,12 +210,12 @@ export const LauncherGameSheet = ({ game, onClose }: LauncherGameSheetProps) => 
                 {/* Genres & Details */}
                 {detail?.genres && detail.genres.length > 0 && (
                   <div>
-                    <h3 className="text-xs font-bold uppercase tracking-wider text-white/40 mb-2">Genres</h3>
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Genres</h3>
                     <div className="flex flex-wrap gap-1.5">
                       {detail.genres.map((g) => (
                         <span
                           key={g.id}
-                          className="px-2.5 py-1 rounded-lg bg-white/[0.05] text-white/70 text-xs font-medium border border-white/5"
+                          className="px-2.5 py-1 rounded-lg bg-[var(--dk-surface-ghost)] text-foreground/80 text-xs font-medium border border-[var(--dk-separator)]"
                         >
                           {g.name}
                         </span>
@@ -227,7 +227,7 @@ export const LauncherGameSheet = ({ game, onClose }: LauncherGameSheetProps) => 
                 {/* Screenshots Gallery */}
                 {screenshots.length > 0 && (
                   <div>
-                    <h3 className="text-xs font-bold uppercase tracking-wider text-white/40 mb-3 flex items-center gap-1.5">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-1.5">
                       <ImageIcon size={13} /> Screenshots ({screenshots.length})
                     </h3>
                     <div className="grid grid-cols-2 gap-3">
@@ -235,7 +235,7 @@ export const LauncherGameSheet = ({ game, onClose }: LauncherGameSheetProps) => 
                         <div
                           key={idx}
                           onClick={() => setSelectedScreenshot(s.url)}
-                          className="relative aspect-video rounded-xl overflow-hidden cursor-pointer group border border-white/10 hover:border-white/30 transition-all"
+                          className="relative aspect-video rounded-xl overflow-hidden cursor-pointer group border border-[var(--dk-separator)] hover:border-foreground/20 transition-all"
                         >
                           <img
                             src={s.url}

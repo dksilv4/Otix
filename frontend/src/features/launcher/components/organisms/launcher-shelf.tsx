@@ -34,7 +34,7 @@ export const LauncherShelf = ({ id }: LauncherShelfProps) => {
     <div id={id}>
       {/* ── Tab bar ── */}
       <div className="flex items-center justify-between pb-2.5 mb-5">
-        <h3 className="text-sm font-black text-white/90 uppercase tracking-wider">
+        <h3 className="text-sm font-black text-foreground uppercase tracking-wider">
           {TAB_LABELS[shelfTab]}
         </h3>
 
@@ -46,8 +46,8 @@ export const LauncherShelf = ({ id }: LauncherShelfProps) => {
               className={
                 'text-[11px] font-semibold transition-all cursor-pointer pb-0.5 ' +
                 (shelfTab === tab
-                  ? 'text-white border-b border-white'
-                  : 'text-white/35 hover:text-white/60')
+                  ? 'text-foreground border-b-2 border-primary'
+                  : 'text-muted-foreground hover:text-foreground')
               }
             >
               {TAB_LABELS[tab]}
@@ -59,11 +59,11 @@ export const LauncherShelf = ({ id }: LauncherShelfProps) => {
       {/* ── Poster cards ── */}
       <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-none scroll-smooth snap-x">
         {isLoading ? (
-          <div className="flex items-center justify-center h-32 w-full text-white/20 text-xs font-semibold">
+          <div className="flex items-center justify-center h-32 w-full text-muted-foreground text-xs font-semibold">
             Loading...
           </div>
         ) : activeGames.length === 0 ? (
-          <div className="flex items-center justify-center h-32 w-full text-white/30 text-xs font-semibold">
+          <div className="flex items-center justify-center h-32 w-full text-muted-foreground text-xs font-semibold">
             {emptyMessage}
           </div>
         ) : shelfTab === 'my-games' ? (

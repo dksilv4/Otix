@@ -93,12 +93,11 @@ const RequestMediaButtonInner = ({
     const isPaused = status.includes('pause')
     return (
       <div className="group/dl flex flex-wrap items-center gap-2">
-        <div className="relative inline-flex items-center gap-2 overflow-hidden rounded-full h-10 px-4 sm:px-5 py-2 text-sm font-semibold text-white shadow-lg shadow-blue-500/15">
-          <span className="absolute inset-0 bg-white/[0.10]" />
+        <div className="relative inline-flex items-center gap-2 overflow-hidden rounded-full h-10 px-4 sm:px-5 py-2 text-sm font-semibold text-foreground bg-[var(--dk-surface-glass)] border border-[var(--dk-separator)] shadow-lg">
           <span
             className={cn(
               'absolute inset-y-0 left-0 transition-[width] duration-500 ease-out',
-              isPaused ? 'bg-amber-500/60' : 'bg-blue-500/50',
+              isPaused ? 'bg-amber-500/30' : 'bg-primary/30',
             )}
             style={{ width: `${pct}%` }}
           />
@@ -106,14 +105,14 @@ const RequestMediaButtonInner = ({
             <Loader2 className={cn('h-4 w-4', !isPaused && 'animate-spin')} />
             <span className="tabular-nums">{pct.toFixed(0)}%</span>
             {state.queueItem.timeleft && state.queueItem.timeleft !== '00:00:00' && (
-              <span className="text-xs font-medium text-white/60">{state.queueItem.timeleft}</span>
+              <span className="text-xs font-medium text-muted-foreground">{state.queueItem.timeleft}</span>
             )}
           </span>
         </div>
         <button
           type="button"
           onClick={state.handleCancelQueue}
-          className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/[0.08] text-red-400 hover:bg-red-500/15 hover:text-red-300 transition-all cursor-pointer opacity-0 group-hover/dl:opacity-100"
+          className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-[var(--dk-surface-glass)] text-destructive hover:bg-destructive/15 transition-all cursor-pointer opacity-0 group-hover/dl:opacity-100"
           title="Cancel download"
         >
           <X className="h-4 w-4" />
@@ -138,7 +137,7 @@ const RequestMediaButtonInner = ({
         <button
           type="button"
           onClick={onWatch}
-          className="inline-flex items-center gap-2 rounded-full h-10 px-4 sm:px-5 py-2 text-sm font-semibold bg-emerald-500/20 text-emerald-200 hover:bg-emerald-500/30 hover:text-emerald-100 shadow-lg shadow-emerald-500/10 transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+          className="inline-flex items-center gap-2 rounded-full h-10 px-4 sm:px-5 py-2 text-sm font-semibold bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
           title={downloadedInstances ? `Available in library on: ${downloadedInstances}. Click to watch/stream.` : 'Available in library. Click to watch/stream.'}
         >
           <Play className="h-4 w-4 fill-current text-current" />
@@ -152,7 +151,7 @@ const RequestMediaButtonInner = ({
 
     return (
       <div
-        className="inline-flex items-center gap-2 rounded-full h-10 px-4 sm:px-5 py-2 text-sm font-semibold bg-emerald-500/20 text-emerald-300 shadow-lg shadow-emerald-500/10"
+        className="inline-flex items-center gap-2 rounded-full h-10 px-4 sm:px-5 py-2 text-sm font-semibold bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 shadow-lg"
         title={downloadedInstances ? `Available in library on: ${downloadedInstances}` : 'Available in library'}
       >
         <Check className="h-4 w-4" />
@@ -168,7 +167,7 @@ const RequestMediaButtonInner = ({
       .join(', ')
     return (
       <div
-        className="inline-flex items-center gap-2 rounded-full h-10 px-4 sm:px-5 py-2 text-sm font-semibold bg-amber-500/20 text-amber-300 shadow-lg shadow-amber-500/10"
+        className="inline-flex items-center gap-2 rounded-full h-10 px-4 sm:px-5 py-2 text-sm font-semibold bg-amber-500/20 text-amber-700 dark:text-amber-300 shadow-lg"
         title={requestedInstances ? `Requested on: ${requestedInstances}` : 'Already requested'}
       >
         <Clock className="h-4 w-4" />
@@ -198,7 +197,7 @@ const RequestMediaButtonInner = ({
           type="button"
           onClick={() => openConfirm(target?.id)}
           disabled={busy || !target}
-          className="inline-flex items-center gap-2 rounded-full h-10 px-4 sm:px-5 py-2 text-sm font-semibold bg-blue-500 hover:bg-blue-400 text-white shadow-lg shadow-blue-500/25 transition-all duration-200 active:scale-95 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+          className="inline-flex items-center gap-2 rounded-full h-10 px-4 sm:px-5 py-2 text-sm font-semibold bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg transition-all duration-200 active:scale-95 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
           title={buttonTitle}
         >
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowDownToLine className="h-4 w-4" />}
@@ -218,13 +217,13 @@ const RequestMediaButtonInner = ({
     <>
       <div
         ref={menuRef}
-        className="relative inline-flex overflow-visible rounded-full shadow-lg shadow-blue-500/25"
+        className="relative inline-flex overflow-visible rounded-full shadow-lg"
       >
         <button
           type="button"
           onClick={() => openConfirm(targets[0]?.id)}
           disabled={busy}
-          className="inline-flex items-center gap-2 rounded-l-full h-10 px-4 sm:px-5 py-2 text-sm font-semibold bg-blue-500 text-white hover:bg-blue-400 transition-all duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+          className="inline-flex items-center gap-2 rounded-l-full h-10 px-4 sm:px-5 py-2 text-sm font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-all duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
           title={busy ? 'Request is in progress…' : `Request on ${targets[0]?.name || state.activeServerName}`}
         >
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowDownToLine className="h-4 w-4" />}
@@ -238,7 +237,7 @@ const RequestMediaButtonInner = ({
           aria-haspopup="menu"
           aria-expanded={menuOpen}
           aria-controls={menuId}
-          className="inline-flex items-center justify-center rounded-r-full h-10 border-l border-white/20 bg-blue-500 px-3 text-white hover:bg-blue-400 transition-all cursor-pointer"
+          className="inline-flex items-center justify-center rounded-r-full h-10 border-l border-primary-foreground/20 bg-primary px-3 text-primary-foreground hover:bg-primary/90 transition-all cursor-pointer"
         >
           <ChevronDown className={cn('h-4 w-4 transition-transform', menuOpen && 'rotate-180')} />
         </button>
@@ -247,9 +246,9 @@ const RequestMediaButtonInner = ({
             id={menuId}
             role="menu"
             aria-label="Request options"
-            className="absolute left-0 top-full z-50 mt-2 min-w-64 overflow-hidden rounded-2xl border border-white/10 bg-[#16181d]/95 p-1.5 shadow-2xl shadow-black/60 backdrop-blur-xl"
+            className="absolute left-0 top-full z-50 mt-2 min-w-64 overflow-hidden rounded-2xl border border-[var(--dk-separator)] bg-[var(--dk-surface-base)]/95 p-1.5 shadow-2xl backdrop-blur-xl"
           >
-            <p className="px-3 pb-1.5 pt-2 text-[10px] font-bold uppercase tracking-[0.16em] text-white/35">
+            <p className="px-3 pb-1.5 pt-2 text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
               {state.mediaType === 'movie' ? 'Radarr' : 'Sonarr'} instances
             </p>
             {targets.map((instance) => (
@@ -261,14 +260,14 @@ const RequestMediaButtonInner = ({
                   setMenuOpen(false)
                   openConfirm(instance.id)
                 }}
-                className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm text-white/80 transition-colors hover:bg-white/[0.08] hover:text-white cursor-pointer"
+                className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm text-foreground transition-colors hover:bg-[var(--dk-surface-glass)] cursor-pointer"
               >
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-400/10">
-                  <Server className="h-4 w-4 text-blue-400" />
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                  <Server className="h-4 w-4 text-primary" />
                 </span>
                 <span className="flex min-w-0 flex-col">
-                  <span className="font-medium text-white truncate">{instance.name}</span>
-                  <span className="text-xs text-white/40">Request on this instance</span>
+                  <span className="font-medium text-foreground truncate">{instance.name}</span>
+                  <span className="text-xs text-muted-foreground">Request on this instance</span>
                 </span>
               </button>
             ))}

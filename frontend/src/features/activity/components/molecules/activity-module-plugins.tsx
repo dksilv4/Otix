@@ -140,8 +140,8 @@ export const ActivityModulePlugins = () => {
         return (
           <ActivityModuleSection key={pluginId} className="flex flex-col gap-2">
             <div className="flex items-center gap-2">
-              <RefreshCw className="h-3.5 w-3.5 text-white/40" />
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-white/50">
+              <RefreshCw className="h-3.5 w-3.5 text-muted-foreground" />
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                 {label}
               </span>
             </div>
@@ -149,11 +149,11 @@ export const ActivityModulePlugins = () => {
             <div className="space-y-2">
               {items.map((item) => {
                 const IconComp = TYPE_ICON[item.type] || Info
-                const statusColor = item.status ? STATUS_COLOR[item.status] : 'text-white/40'
+                const statusColor = item.status ? STATUS_COLOR[item.status] : 'text-muted-foreground'
                 const isActive = item.status === 'active'
 
                 return (
-                  <div key={item.id} className="flex items-start gap-2.5">
+                  <div key={item.id} className="flex items-start gap-2.5 p-2 rounded-xl bg-[var(--dk-surface-overlay)]/60 border border-[var(--dk-separator)]">
                     <div className={`shrink-0 mt-0.5 ${statusColor}`}>
                       {isActive ? (
                         <IconComp className="h-3.5 w-3.5 animate-spin" />
@@ -165,24 +165,24 @@ export const ActivityModulePlugins = () => {
                     </div>
 
                     <div className="min-w-0 flex-1">
-                      <p className="text-xs font-medium text-white/80 truncate">
+                      <p className="text-xs font-medium text-foreground truncate">
                         {item.title}
                       </p>
                       {item.subtitle && (
-                        <p className="text-[10px] text-white/40 truncate mt-0.5">
+                        <p className="text-[10px] text-muted-foreground truncate mt-0.5">
                           {item.subtitle}
                         </p>
                       )}
                       {/* Progress bar */}
                       {item.progress !== undefined && (
                         <div className="mt-1.5 flex items-center gap-2">
-                          <div className="flex-1 h-1 rounded-full bg-white/[0.06] overflow-hidden">
+                          <div className="flex-1 h-1 rounded-full bg-muted overflow-hidden">
                             <div
                               className="h-full rounded-full transition-all duration-500 bg-gradient-to-r from-blue-500 to-indigo-500"
                               style={{ width: `${Math.min(item.progress, 100)}%` }}
                             />
                           </div>
-                          <span className="text-[9px] text-white/30 tabular-nums font-medium">{item.progress}%</span>
+                          <span className="text-[9px] text-muted-foreground tabular-nums font-medium">{item.progress}%</span>
                         </div>
                       )}
                     </div>
@@ -191,7 +191,7 @@ export const ActivityModulePlugins = () => {
                     {item.action && (
                       <button
                         onClick={() => api?.plugin?.callData(pluginId, item.action!.method, item.id)}
-                        className="shrink-0 text-[10px] px-2 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-white/50 hover:text-white/70 transition-colors font-medium"
+                        className="shrink-0 text-[10px] px-2 py-1 rounded-lg bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)] text-muted-foreground hover:text-foreground transition-colors font-medium"
                       >
                         {item.action.label}
                       </button>
@@ -199,7 +199,7 @@ export const ActivityModulePlugins = () => {
 
                     {/* Timestamp */}
                     {item.timestamp && (
-                      <span className="text-[9px] text-white/20 shrink-0 mt-0.5 tabular-nums">
+                      <span className="text-[9px] text-muted-foreground/60 shrink-0 mt-0.5 tabular-nums">
                         {new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </span>
                     )}

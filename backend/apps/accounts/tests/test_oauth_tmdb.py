@@ -527,6 +527,29 @@ class TMDbLoginCallbackTests(TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.data["detail"], "TMDb linking session expired. Please try again.")
 
+    @override_settings(**TMDB_SETTINGS)
+    def test_login_flow_with_desktop_source(self) -> None:
+        with _mock_tmdb():
+            init_resp = APIClient().post(
+                "/api/v1/auth/tmdb/initiate",
+                {"source": "desktop"},
+                format="json",
+            )
+        self.assertEqual(init_resp.status_code, 200)
+        state = init_resp.data["state"]
+        row = OAuthState.objects.get(key=state)
+        self.assertEqual(row.payload["source"], "desktop")
+
+        with _mock_tmdb():
+            cb_resp = APIClient().post(
+                "/api/v1/auth/tmdb/callback",
+                {"state": state, "request_token": REQUEST_TOKEN},
+                format="json",
+            )
+        self.assertEqual(cb_resp.status_code, 200)
+        self.assertEqual(cb_resp.data["source"], "desktop")
+        self.assertTrue(cb_resp.data["access_token"])
+
 
 class MeIntegrationsViewTests(TestCase):
     def setUp(self) -> None:

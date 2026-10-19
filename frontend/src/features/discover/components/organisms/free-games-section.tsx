@@ -123,7 +123,7 @@ export const FreeGamesSection = () => {
     >
       {/* ═══ Header ═══ */}
       <div className="px-8 flex items-center gap-2.5 flex-wrap mb-4">
-        <h2 className="text-xl font-bold text-white/90">Free Games</h2>
+        <h2 className="text-xl font-bold text-foreground">Free Games</h2>
         {currentItems.length > 0 && (
           <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/20">
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
@@ -146,8 +146,8 @@ export const FreeGamesSection = () => {
                 className="w-full h-full object-cover object-top opacity-[0.08] blur-sm"
               />
             )}
-            <div className="absolute inset-0 bg-gradient-to-b from-[var(--dk-bg,#09090b)] via-transparent to-[var(--dk-bg,#09090b)]" />
-            <div className="absolute inset-0 bg-gradient-to-r from-[var(--dk-bg,#09090b)] via-transparent to-[var(--dk-bg,#09090b)]" />
+            <div className="absolute inset-0 bg-gradient-to-b from-[var(--dk-surface-root)] via-transparent to-[var(--dk-surface-root)]" />
+            <div className="absolute inset-0 bg-gradient-to-r from-[var(--dk-surface-root)] via-transparent to-[var(--dk-surface-root)]" />
           </div>
 
           <div className="relative z-10 px-8">
@@ -199,7 +199,7 @@ const SpotlightCard = ({ item }: { item: FreeGameItem }) => {
   } as CSSProperties
 
   return (
-    <div className="group relative rounded-2xl overflow-hidden">
+    <div className="group relative rounded-2xl overflow-hidden bg-[var(--dk-surface-base)] border border-[var(--dk-separator)] shadow-[var(--dk-shadow-sm)]">
       <div className="relative flex flex-col sm:flex-row sm:min-h-[440px]">
         {/* ── Image area ── */}
         <div
@@ -214,8 +214,8 @@ const SpotlightCard = ({ item }: { item: FreeGameItem }) => {
               loading="lazy"
             />
           ) : (
-            <div className="absolute inset-0 flex items-center justify-center bg-white/[0.03]">
-              <Gamepad2 className="h-12 w-12 text-white/10" />
+            <div className="absolute inset-0 flex items-center justify-center bg-[var(--dk-surface-field)]">
+              <Gamepad2 className="h-12 w-12 text-muted-foreground" />
             </div>
           )}
 
@@ -226,8 +226,8 @@ const SpotlightCard = ({ item }: { item: FreeGameItem }) => {
           </div>
 
           {/* Gradient overlays — seamless edge fade */}
-          <div className="absolute inset-0 z-[1] bg-gradient-to-r from-transparent via-transparent to-[var(--dk-bg,#09090b)] hidden sm:block" />
-          <div className="absolute inset-0 z-[1] bg-gradient-to-t from-[var(--dk-bg,#09090b)] via-transparent to-transparent sm:hidden" />
+          <div className="absolute inset-0 z-[1] bg-gradient-to-r from-transparent via-transparent to-[var(--dk-surface-base)] hidden sm:block" />
+          <div className="absolute inset-0 z-[1] bg-gradient-to-t from-[var(--dk-surface-base)] via-transparent to-transparent sm:hidden" />
           <div className="absolute inset-0 z-[1] bg-gradient-to-t from-black/50 via-transparent to-transparent" />
 
           {/* Logo over cover */}
@@ -285,7 +285,7 @@ const SpotlightCard = ({ item }: { item: FreeGameItem }) => {
         {/* ── Info area ── */}
         <div className="relative sm:w-1/2 lg:w-[45%] flex flex-col justify-center p-5 sm:p-6 lg:p-8">
           {/* Store badge (desktop) */}
-          <div className="hidden sm:flex items-center gap-1.5 text-[11px] font-medium text-white/40 mb-3">
+          <div className="hidden sm:flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground mb-3">
             <StoreIcon store={item.store} className="h-3.5 w-3.5" />
             {storeLabel(item.store, item.storeName)}
           </div>
@@ -300,20 +300,20 @@ const SpotlightCard = ({ item }: { item: FreeGameItem }) => {
           )}
 
           {/* Title */}
-          <h3 className="text-xl sm:text-2xl font-bold text-white tracking-tight leading-tight line-clamp-2 mb-2">
+          <h3 className="text-xl sm:text-2xl font-bold text-foreground tracking-tight leading-tight line-clamp-2 mb-2">
             {title}
           </h3>
 
           {/* Description */}
           {description && (
-            <p className="text-sm text-white/45 line-clamp-2 leading-relaxed mb-4">
+            <p className="text-sm text-muted-foreground line-clamp-2 leading-relaxed mb-4">
               {description}
             </p>
           )}
 
           {/* Countdown bar */}
           {isNow && countdown && !ending && (
-            <div className="flex items-center gap-1.5 text-[11px] font-medium text-white/40 mb-3">
+            <div className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground mb-3">
               <Clock className="h-3 w-3" />
               {countdown} · Ends {formatDate(item.endDate)}
             </div>
@@ -329,7 +329,7 @@ const SpotlightCard = ({ item }: { item: FreeGameItem }) => {
           <div className="flex items-center gap-3 mb-5">
             {item.originalPrice && (
               <div className="flex items-center gap-2">
-                <span className="text-sm text-white/25 line-through">{item.originalPrice}</span>
+                <span className="text-sm text-muted-foreground line-through">{item.originalPrice}</span>
                 <span className="text-sm font-bold text-emerald-400">FREE</span>
               </div>
             )}
@@ -362,7 +362,7 @@ const SpotlightCard = ({ item }: { item: FreeGameItem }) => {
               <Link
                 to="/media/$mediaType/$mediaId"
                 params={{ mediaType: 'game', mediaId: String(media.id) }}
-                className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-semibold text-white/70 hover:text-white bg-white/[0.06] hover:bg-white/[0.10] border border-white/[0.08] transition-all active:scale-[0.97]"
+                className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-semibold text-foreground/80 hover:text-foreground bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)] border border-[var(--dk-separator)] transition-all active:scale-[0.97]"
               >
                 <Gamepad2 className="h-3.5 w-3.5" />
                 {isDlcOrPack ? 'View Base Game' : 'Open in Otix'}

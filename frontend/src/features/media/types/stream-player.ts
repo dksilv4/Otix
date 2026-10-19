@@ -58,6 +58,7 @@ export interface StreamPlaybackSession {
   videoCodec?: string
   audioCodec?: string
   baseUrls?: string[]
+  isSharedServer?: boolean
 }
 
 export type PlaybackMethod = 'direct-play' | 'direct-stream' | 'transcode'

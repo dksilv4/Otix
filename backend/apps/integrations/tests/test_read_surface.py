@@ -25,6 +25,7 @@ from datetime import timedelta
 from unittest import mock
 
 from django.contrib.auth import get_user_model
+from django.core.cache import cache
 from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
@@ -308,6 +309,7 @@ class PlexAltUrlParsingTests(TestCase):
     """Unit coverage of the best-effort plex.tv resources parsing."""
 
     def setUp(self):
+        cache.clear()
         self.user = User.objects.create_user(username="carol", password="pass")
         self.user.plex_auth_token = "tok"
         self.server = _make_server(self.user, machine="match-id")

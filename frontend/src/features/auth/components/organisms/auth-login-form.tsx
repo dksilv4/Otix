@@ -99,8 +99,8 @@ export const LoginForm = ({ onSuccess }: LoginFormProps) => {
           aria-invalid={!!fieldErrors.identity}
           aria-describedby={fieldErrors.identity ? 'identity-error' : undefined}
           className={
-            'flex min-h-[52px] w-full rounded-xl px-5 text-base outline-none transition-all placeholder:text-muted-foreground/50' +
-            (fieldErrors.identity ? ' shadow-[0_0_0_1px_rgb(248_113_113_/_0.4)]' : '')
+            'flex min-h-[52px] w-full rounded-xl px-5 text-base outline-none transition-all placeholder:text-muted-foreground/50 text-foreground' +
+            (fieldErrors.identity ? ' ring-1 ring-destructive focus:ring-destructive' : ' border border-[var(--dk-separator)]')
           }
           style={
             fieldErrors.identity
@@ -108,7 +108,6 @@ export const LoginForm = ({ onSuccess }: LoginFormProps) => {
               : {
                   backgroundColor: 'var(--dk-surface-glass)',
                   backdropFilter: 'blur(12px)',
-                  boxShadow: 'inset 0 1px 0 oklch(1 0 0 / 0.06)',
                 }
           }
         />
@@ -133,7 +132,7 @@ export const LoginForm = ({ onSuccess }: LoginFormProps) => {
       <div className="flex justify-end">
         <Link
           to="/auth/forgot-password"
-          className="text-xs text-muted-foreground transition-colors hover:text-white/80"
+          className="text-xs text-muted-foreground transition-colors hover:text-foreground"
         >
           Forgot password?
         </Link>
@@ -146,13 +145,13 @@ export const LoginForm = ({ onSuccess }: LoginFormProps) => {
           disabled={isSubmitting || showSuccess}
           className={
             'cursor-pointer flex h-14 w-14 items-center justify-center rounded-full transition-all ' +
-            (showSuccess ? 'bg-green-500' : 'bg-white/10 hover:bg-white/20') +
+            (showSuccess ? 'bg-emerald-500 text-primary-foreground' : 'bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-glass-hover)] border border-[var(--dk-separator)] text-foreground') +
             ' disabled:opacity-50'
           }
           aria-label="Sign in"
         >
           {showSuccess ? (
-            <Check className="h-6 w-6 text-black" />
+            <Check className="h-6 w-6 text-primary-foreground" />
           ) : isSubmitting ? (
             <Loader2 className="h-6 w-6 animate-spin" />
           ) : (

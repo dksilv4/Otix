@@ -11,6 +11,8 @@ import {
   Shuffle,
   HardDrive,
   Server,
+  SlidersHorizontal,
+  Sparkles,
 } from 'lucide-react'
 import type { ComponentType } from 'react'
 import type { PluginSettingsTab } from '@/features/_config/slots'
@@ -29,7 +31,7 @@ export const NAV_GROUPS: { id: NavGroup; label: string }[] = [
 export const DESKTOP_SECTIONS = new Set<string>()
 
 export const SETTINGS_LAST_SECTION_KEY = 'otix:settings-last-section'
-export const DEFAULT_SETTINGS_SECTION = 'appearance'
+export const DEFAULT_SETTINGS_SECTION = 'general'
 
 export interface NavItem {
   id: string
@@ -48,13 +50,31 @@ export interface NavItem {
 
 export const NAV_ITEMS: NavItem[] = [
   {
+    id: 'general',
+    label: 'General',
+    icon: SlidersHorizontal,
+    desktop: false,
+    requiresAuth: false,
+    group: 'preferences',
+    keywords: 'defaults landing page cache wizard welcome about version client environment',
+  },
+  {
     id: 'appearance',
     label: 'Appearance',
     icon: Palette,
     desktop: false,
     requiresAuth: false,
     group: 'preferences',
-    keywords: 'theme accent motion shader sidebar landing cache about general taste recommendations for you',
+    keywords: 'theme light dark mode accent color motion shader quality background',
+  },
+  {
+    id: 'recommendations',
+    label: 'Recommendations',
+    icon: Sparkles,
+    desktop: false,
+    requiresAuth: false,
+    group: 'preferences',
+    keywords: 'for you taste reset blocked recommendations steam free packs dlc decide for me personalize discover',
   },
   {
     id: 'launcher',
@@ -197,7 +217,7 @@ export function getLastSettingsSection(allowedIds?: Set<string>): string {
 
 export function rememberSettingsSection(id: string) {
   if (id === 'desktop') id = 'nodes'
-  if (!id || id === 'overview' || id === 'general' || id === 'integrations' || id === 'proposals') {
+  if (!id || id === 'overview' || id === 'integrations' || id === 'proposals') {
     return
   }
   try {

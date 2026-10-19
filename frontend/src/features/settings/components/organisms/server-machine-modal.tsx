@@ -228,10 +228,10 @@ export const ServerMachineModal = ({
             <Server className="h-5 w-5" />
           </div>
           <div>
-            <h2 className="text-base font-semibold leading-tight text-white">
+            <h2 className="text-base font-semibold leading-tight text-foreground">
               {server ? `Edit ${server.name}` : 'Add Server Machine'}
             </h2>
-            <p className="text-xs text-white/50">
+            <p className="text-xs text-muted-foreground">
               Configure homelab computer, OS, node hosting, hard drives, and SMB access.
             </p>
           </div>
@@ -240,15 +240,15 @@ export const ServerMachineModal = ({
     >
       <div className="space-y-6 pt-3">
         {/* Navigation Tabs */}
-        <div className="flex gap-2 rounded-xl bg-white/[0.03] p-1">
+        <div className="flex gap-2 rounded-xl bg-[var(--dk-surface-ghost)] border border-[var(--dk-separator)] p-1">
           <button
             type="button"
             onClick={() => setActiveTab('general')}
             className={cn(
               'flex-1 rounded-lg py-1.5 text-xs font-semibold transition-colors',
               activeTab === 'general'
-                ? 'bg-white/10 text-white shadow-sm'
-                : 'text-white/60 hover:text-white',
+                ? 'bg-[var(--dk-surface-raised)] text-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground',
             )}
           >
             General &amp; OS
@@ -259,8 +259,8 @@ export const ServerMachineModal = ({
             className={cn(
               'flex-1 rounded-lg py-1.5 text-xs font-semibold transition-colors',
               activeTab === 'storage'
-                ? 'bg-white/10 text-white shadow-sm'
-                : 'text-white/60 hover:text-white',
+                ? 'bg-[var(--dk-surface-raised)] text-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground',
             )}
           >
             Hard Drives ({formData.drivesConfig.length})
@@ -271,8 +271,8 @@ export const ServerMachineModal = ({
             className={cn(
               'flex-1 rounded-lg py-1.5 text-xs font-semibold transition-colors',
               activeTab === 'smb'
-                ? 'bg-white/10 text-white shadow-sm'
-                : 'text-white/60 hover:text-white',
+                ? 'bg-[var(--dk-surface-raised)] text-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground',
             )}
           >
             SMB &amp; Nodes
@@ -283,7 +283,7 @@ export const ServerMachineModal = ({
         {activeTab === 'general' && (
           <div className="space-y-4">
             <div>
-              <label className="block text-xs font-medium text-white/70 mb-1.5">
+              <label className="block text-xs font-medium text-foreground mb-1.5">
                 Server Name *
               </label>
               <DkInput
@@ -295,7 +295,7 @@ export const ServerMachineModal = ({
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-medium text-white/70 mb-1.5">
+                <label className="block text-xs font-medium text-foreground mb-1.5">
                   Home / Environment
                 </label>
                 <DkSelect
@@ -312,7 +312,7 @@ export const ServerMachineModal = ({
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-white/70 mb-1.5">
+                <label className="block text-xs font-medium text-foreground mb-1.5">
                   Host / IP Address
                 </label>
                 <DkInput
@@ -324,10 +324,10 @@ export const ServerMachineModal = ({
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-white/70 mb-1.5">
+              <label className="block text-xs font-medium text-foreground mb-1.5">
                 Operating System (OS)
               </label>
-              <p className="text-[11px] text-white/40 mb-2">
+              <p className="text-[11px] text-muted-foreground mb-2">
                 Specify host operating system to enable OS-specific features and community tooling.
               </p>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
@@ -341,12 +341,12 @@ export const ServerMachineModal = ({
                       className={cn(
                         'flex flex-col items-start p-2.5 rounded-xl text-left transition-all',
                         isSelected
-                          ? 'bg-primary/15 text-white ring-1 ring-primary/40'
-                          : 'bg-white/[0.03] hover:bg-white/[0.06] text-white/70',
+                          ? 'bg-primary/15 text-primary ring-1 ring-primary/40'
+                          : 'bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-hover)] text-foreground border border-[var(--dk-separator)]',
                       )}
                     >
                       <span className="text-xs font-semibold leading-tight">{opt.label}</span>
-                      <span className="text-[10px] text-white/40 line-clamp-1 mt-0.5">
+                      <span className="text-[10px] text-muted-foreground line-clamp-1 mt-0.5">
                         {opt.description}
                       </span>
                     </button>
@@ -356,7 +356,7 @@ export const ServerMachineModal = ({
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-white/70 mb-1.5">
+              <label className="block text-xs font-medium text-foreground mb-1.5">
                 OS Version (Optional)
               </label>
               <DkInput
@@ -367,10 +367,10 @@ export const ServerMachineModal = ({
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-white/70 mb-1.5">
+              <label className="block text-xs font-medium text-foreground mb-1.5">
                 Node Running on This Server Machine
               </label>
-              <p className="text-[11px] text-white/40 mb-2">
+              <p className="text-[11px] text-muted-foreground mb-2">
                 Specify if an Otix Node daemon is directly installed on this server machine.
               </p>
               <DkSelect
@@ -391,13 +391,13 @@ export const ServerMachineModal = ({
         {/* Tab 2: Hard Drives */}
         {activeTab === 'storage' && (
           <div className="space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-2xl bg-white/[0.03]">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-2xl bg-[var(--dk-surface-ghost)] border border-[var(--dk-separator)]">
               <div>
-                <p className="text-xs font-semibold text-white/80">Storage Capacity</p>
-                <p className="text-sm font-bold tabular-nums text-white mt-0.5">
+                <p className="text-xs font-semibold text-foreground">Storage Capacity</p>
+                <p className="text-sm font-bold tabular-nums text-foreground mt-0.5">
                   {formatBytes(usedBytes)} used of {formatBytes(totalBytes)} ({usedPercent}%)
                 </p>
-                <p className="text-[11px] text-white/40 mt-0.5">
+                <p className="text-[11px] text-muted-foreground mt-0.5">
                   {formatBytes(freeBytes)} free across {formData.drivesConfig.length} drive(s)
                 </p>
               </div>
@@ -429,10 +429,10 @@ export const ServerMachineModal = ({
 
             {/* Drives List */}
             {formData.drivesConfig.length === 0 ? (
-              <div className="rounded-2xl p-6 text-center bg-white/[0.02]">
-                <HardDrive className="h-8 w-8 text-white/20 mx-auto mb-2" />
-                <p className="text-sm font-medium text-white/70">No hard drives configured</p>
-                <p className="text-xs text-white/40 mt-1 max-w-sm mx-auto">
+              <div className="rounded-2xl p-6 text-center bg-[var(--dk-surface-ghost)] border border-[var(--dk-separator)]">
+                <HardDrive className="h-8 w-8 text-muted-foreground/40 mx-auto mb-2" />
+                <p className="text-sm font-medium text-foreground">No hard drives configured</p>
+                <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
                   Click &ldquo;Auto-Detect from Node&rdquo; to probe disks directly or &ldquo;Add Drive&rdquo; to specify disks manually.
                 </p>
               </div>
@@ -441,22 +441,22 @@ export const ServerMachineModal = ({
                 {formData.drivesConfig.map((drive, idx) => (
                   <div
                     key={drive.id || idx}
-                    className="p-3.5 rounded-2xl bg-white/[0.03] space-y-3"
+                    className="p-3.5 rounded-2xl bg-[var(--dk-surface-ghost)] border border-[var(--dk-separator)] space-y-3"
                   >
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2">
                         <HardDrive className="h-4 w-4 text-primary" />
-                        <span className="text-xs font-semibold text-white/90">
+                        <span className="text-xs font-semibold text-foreground">
                           {drive.label || drive.drive || `Drive #${idx + 1}`}
                         </span>
-                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-white/10 text-white/60 uppercase">
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--dk-surface-raised)] text-muted-foreground border border-[var(--dk-separator)] uppercase">
                           {drive.type || 'HDD'}
                         </span>
                       </div>
                       <button
                         type="button"
                         onClick={() => handleRemoveDrive(idx)}
-                        className="text-white/40 hover:text-red-400 p-1 transition-colors"
+                        className="text-muted-foreground hover:text-destructive p-1 transition-colors"
                         title="Remove Drive"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
@@ -465,7 +465,7 @@ export const ServerMachineModal = ({
 
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                       <div>
-                        <label className="block text-[10px] text-white/50 mb-1">
+                        <label className="block text-[10px] text-muted-foreground mb-1">
                           Drive Path / Letter
                         </label>
                         <DkInput
@@ -475,7 +475,7 @@ export const ServerMachineModal = ({
                         />
                       </div>
                       <div>
-                        <label className="block text-[10px] text-white/50 mb-1">
+                        <label className="block text-[10px] text-muted-foreground mb-1">
                           Label
                         </label>
                         <DkInput
@@ -485,7 +485,7 @@ export const ServerMachineModal = ({
                         />
                       </div>
                       <div>
-                        <label className="block text-[10px] text-white/50 mb-1">
+                        <label className="block text-[10px] text-muted-foreground mb-1">
                           Type
                         </label>
                         <DkSelect
@@ -498,7 +498,7 @@ export const ServerMachineModal = ({
 
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                       <div>
-                        <label className="block text-[10px] text-white/50 mb-1">
+                        <label className="block text-[10px] text-muted-foreground mb-1">
                           File System
                         </label>
                         <DkInput
@@ -508,7 +508,7 @@ export const ServerMachineModal = ({
                         />
                       </div>
                       <div>
-                        <label className="block text-[10px] text-white/50 mb-1">
+                        <label className="block text-[10px] text-muted-foreground mb-1">
                           Total GB
                         </label>
                         <DkInput
@@ -523,7 +523,7 @@ export const ServerMachineModal = ({
                         />
                       </div>
                       <div>
-                        <label className="block text-[10px] text-white/50 mb-1">
+                        <label className="block text-[10px] text-muted-foreground mb-1">
                           Free GB
                         </label>
                         <DkInput
@@ -548,10 +548,10 @@ export const ServerMachineModal = ({
         {/* Tab 3: SMB & Node Communication */}
         {activeTab === 'smb' && (
           <div className="space-y-4">
-            <div className="flex items-center justify-between p-3.5 rounded-2xl bg-white/[0.03]">
+            <div className="flex items-center justify-between p-3.5 rounded-2xl bg-[var(--dk-surface-ghost)] border border-[var(--dk-separator)]">
               <div>
-                <p className="text-xs font-semibold text-white/90">Allow SMB Communication</p>
-                <p className="text-[11px] text-white/50 mt-0.5">
+                <p className="text-xs font-semibold text-foreground">Allow SMB Communication</p>
+                <p className="text-[11px] text-muted-foreground mt-0.5">
                   Allows worker nodes to mount and communicate with storage on this server machine via SMB.
                 </p>
               </div>
@@ -565,7 +565,7 @@ export const ServerMachineModal = ({
               <>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-medium text-white/70 mb-1.5">
+                    <label className="block text-xs font-medium text-foreground mb-1.5">
                       SMB Share Name
                     </label>
                     <DkInput
@@ -575,7 +575,7 @@ export const ServerMachineModal = ({
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-white/70 mb-1.5">
+                    <label className="block text-xs font-medium text-foreground mb-1.5">
                       SMB Port
                     </label>
                     <DkInput
@@ -589,7 +589,7 @@ export const ServerMachineModal = ({
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-medium text-white/70 mb-1.5">
+                    <label className="block text-xs font-medium text-foreground mb-1.5">
                       Username (Optional)
                     </label>
                     <DkInput
@@ -599,7 +599,7 @@ export const ServerMachineModal = ({
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-white/70 mb-1.5">
+                    <label className="block text-xs font-medium text-foreground mb-1.5">
                       Password (Optional)
                     </label>
                     <DkInput
@@ -612,7 +612,7 @@ export const ServerMachineModal = ({
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-white/70 mb-1.5">
+                  <label className="block text-xs font-medium text-foreground mb-1.5">
                     Mount Path (Optional)
                   </label>
                   <DkInput
@@ -623,14 +623,14 @@ export const ServerMachineModal = ({
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-white/70 mb-1.5">
+                  <label className="block text-xs font-medium text-foreground mb-1.5">
                     Nodes Allowed to Communicate with this Server through SMB
                   </label>
-                  <p className="text-[11px] text-white/40 mb-2.5">
+                  <p className="text-[11px] text-muted-foreground mb-2.5">
                     Select the Otix nodes that access or mount files from this server machine over SMB.
                   </p>
                   {nodes.length === 0 ? (
-                    <p className="text-xs text-white/40 italic p-3 rounded-xl bg-white/[0.02]">
+                    <p className="text-xs text-muted-foreground italic p-3 rounded-xl bg-[var(--dk-surface-ghost)] border border-[var(--dk-separator)]">
                       No Otix nodes claimed yet.
                     </p>
                   ) : (
@@ -640,7 +640,7 @@ export const ServerMachineModal = ({
                         return (
                           <div
                             key={node.id}
-                            className="flex items-center justify-between p-2.5 rounded-xl bg-white/[0.03] hover:bg-white/[0.05] transition-colors"
+                            className="flex items-center justify-between p-2.5 rounded-xl bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-hover)] border border-[var(--dk-separator)] transition-colors"
                           >
                             <div className="flex items-center gap-2.5">
                               <DkCheckbox
@@ -648,14 +648,14 @@ export const ServerMachineModal = ({
                                 onCheckedChange={() => handleToggleSmbNode(node.id)}
                               />
                               <div>
-                                <p className="text-xs font-medium text-white/90">{node.name}</p>
-                                <p className="text-[10px] text-white/40">{node.primaryUrl || 'No URL'}</p>
+                                <p className="text-xs font-medium text-foreground">{node.name}</p>
+                                <p className="text-[10px] text-muted-foreground">{node.primaryUrl || 'No URL'}</p>
                               </div>
                             </div>
                             <span
                               className={cn(
                                 'text-[10px] px-2 py-0.5 rounded-full font-medium',
-                                node.isOnline ? 'bg-emerald-500/10 text-emerald-400' : 'bg-white/10 text-white/40',
+                                node.isOnline ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400' : 'bg-[var(--dk-surface-raised)] text-muted-foreground',
                               )}
                             >
                               {node.isOnline ? 'Online' : 'Offline'}

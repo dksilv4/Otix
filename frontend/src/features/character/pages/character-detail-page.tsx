@@ -20,7 +20,7 @@ export const CharacterDetailPage = () => {
   if (isLoading) {
     return (
       <div className={`mx-auto max-w-5xl px-4 ${ptClass} pb-16 sm:px-6 lg:px-8 space-y-8`}>
-        <div className="flex flex-col sm:flex-row gap-6 p-6 rounded-3xl bg-zinc-950/40">
+        <div className="flex flex-col sm:flex-row gap-6 p-6 rounded-3xl bg-[var(--dk-surface-ghost)] border border-[var(--dk-separator)]">
           <Skeleton className="w-36 h-48 rounded-2xl shrink-0" />
           <div className="space-y-3 flex-1">
             <Skeleton className="h-8 w-64" />
@@ -67,20 +67,20 @@ export const CharacterDetailPage = () => {
       </Helmet>
 
       {/* ── Hero Banner ── */}
-      <div className="relative overflow-hidden rounded-3xl bg-zinc-950/40 p-6 sm:p-8 md:p-10 shadow-[0_32px_80px_rgba(0,0,0,0.5)] backdrop-blur-md border border-white/[0.06]">
+      <div className="relative overflow-hidden rounded-3xl bg-[var(--dk-surface-glass)] p-6 sm:p-8 md:p-10 shadow-[var(--dk-shadow-glass)] backdrop-blur-xl border border-[var(--dk-separator)]">
         {character.mugShotUrl && (
           <>
             <div
               className="absolute inset-0 -z-10 bg-cover bg-center opacity-15 blur-[40px] scale-110 select-none pointer-events-none"
               style={{ backgroundImage: `url(${character.mugShotUrl})` }}
             />
-            <div className="absolute inset-0 -z-10 bg-gradient-to-t from-zinc-950 via-zinc-950/80 to-zinc-950/40 pointer-events-none" />
+            <div className="absolute inset-0 -z-10 bg-gradient-to-t from-[var(--dk-surface-base)] via-[var(--dk-surface-base)]/80 to-[var(--dk-surface-base)]/40 pointer-events-none" />
           </>
         )}
 
         <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 sm:gap-8">
           {/* Portrait / Mugshot */}
-          <div className="relative w-36 sm:w-44 aspect-[3/4] rounded-2xl overflow-hidden shadow-2xl bg-zinc-900 border border-white/10 shrink-0">
+          <div className="relative w-36 sm:w-44 aspect-[3/4] rounded-2xl overflow-hidden shadow-2xl bg-[var(--dk-surface-field)] border border-[var(--dk-separator)] shrink-0">
             {character.mugShotUrl ? (
               <Image
                 src={character.mugShotUrl}
@@ -88,7 +88,7 @@ export const CharacterDetailPage = () => {
                 className="w-full h-full object-cover"
               />
             ) : (
-              <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground bg-zinc-900/80">
+              <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground bg-[var(--dk-surface-field)]">
                 <User className="h-12 w-12 stroke-[1.5] mb-2 opacity-50" />
                 <span className="text-[11px] font-medium uppercase tracking-wider">No Photo</span>
               </div>
@@ -103,23 +103,23 @@ export const CharacterDetailPage = () => {
                   Game Character
                 </span>
                 {character.species && (
-                  <Badge variant="outline" className="text-[11px] capitalize border-white/15 bg-white/5">
+                  <Badge variant="outline" className="text-[11px] capitalize border-[var(--dk-separator)] bg-[var(--dk-surface-ghost)] text-muted-foreground">
                     {character.species}
                   </Badge>
                 )}
                 {character.gender && (
-                  <Badge variant="outline" className="text-[11px] capitalize border-white/15 bg-white/5">
+                  <Badge variant="outline" className="text-[11px] capitalize border-[var(--dk-separator)] bg-[var(--dk-surface-ghost)] text-muted-foreground">
                     {character.gender.replace('_', ' ')}
                   </Badge>
                 )}
               </div>
-              <h1 className="text-3xl sm:text-4xl font-black text-white tracking-tight">
+              <h1 className="text-3xl sm:text-4xl font-black text-foreground tracking-tight">
                 {character.name}
               </h1>
             </div>
 
             {character.description && (
-              <div className="text-sm text-white/70 leading-relaxed max-w-2xl">
+              <div className="text-sm text-muted-foreground leading-relaxed max-w-2xl">
                 <p className={cn(!descExpanded && showDescExpand && 'line-clamp-4')}>
                   {character.description}
                 </p>
@@ -142,16 +142,16 @@ export const CharacterDetailPage = () => {
       <section className="space-y-4">
         <div className="flex items-center gap-2.5">
           <div className="h-4 w-0.5 rounded-full bg-primary shrink-0" />
-          <h2 className="text-xl font-bold tracking-tight text-white flex items-center gap-2">
+          <h2 className="text-xl font-bold tracking-tight text-foreground flex items-center gap-2">
             <span>Appears in</span>
-            <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-white/10 text-white/70">
+            <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-[var(--dk-surface-ghost)] text-muted-foreground border border-[var(--dk-separator)]">
               {games.length}
             </span>
           </h2>
         </div>
 
         {games.length === 0 ? (
-          <div className="p-8 rounded-2xl glass-card text-center text-sm text-white/50">
+          <div className="p-8 rounded-2xl glass-card text-center text-sm text-muted-foreground">
             No games recorded for this character yet.
           </div>
         ) : (
@@ -163,7 +163,7 @@ export const CharacterDetailPage = () => {
                 params={{ mediaType: g.mediaType || 'game', mediaId: g.slug || g.id }}
                 className="group relative rounded-xl overflow-hidden glass-card hover:ring-2 hover:ring-primary/50 transition-all duration-300 flex flex-col"
               >
-                <div className="aspect-[2/3] w-full relative overflow-hidden bg-zinc-900">
+                <div className="aspect-[2/3] w-full relative overflow-hidden bg-[var(--dk-surface-field)]">
                   {g.posterUrl ? (
                     <Image
                       src={g.posterUrl}
@@ -176,18 +176,18 @@ export const CharacterDetailPage = () => {
                     </div>
                   )}
                   {g.avgRating != null && (
-                    <div className="absolute top-2 right-2 flex items-center gap-1 rounded-md bg-black/60 px-1.5 py-0.5 text-[11px] font-semibold text-white backdrop-blur-md">
-                      <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+                    <div className="absolute top-2 right-2 flex items-center gap-1 rounded-md bg-background/80 border border-[var(--dk-separator)] px-1.5 py-0.5 text-[11px] font-semibold text-foreground backdrop-blur-md shadow-sm">
+                      <Star className="h-3 w-3 fill-amber-500 text-amber-500 dark:fill-amber-400 dark:text-amber-400" />
                       <span>{g.avgRating.toFixed(1)}</span>
                     </div>
                   )}
                 </div>
                 <div className="p-2.5 flex-1 flex flex-col justify-between">
-                  <h3 className="text-xs font-semibold text-white line-clamp-2 group-hover:text-primary transition-colors">
+                  <h3 className="text-xs font-semibold text-foreground line-clamp-2 group-hover:text-primary transition-colors">
                     {g.title}
                   </h3>
                   {g.releaseDate && (
-                    <div className="mt-1 flex items-center gap-1 text-[10px] text-white/40">
+                    <div className="mt-1 flex items-center gap-1 text-[10px] text-muted-foreground">
                       <Calendar className="h-3 w-3" />
                       <span>{g.releaseDate.slice(0, 4)}</span>
                     </div>

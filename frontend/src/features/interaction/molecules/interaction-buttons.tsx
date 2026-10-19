@@ -262,7 +262,7 @@ const InteractionSection = ({
         <div className="flex flex-col sm:flex-row items-center justify-end gap-2.5 mt-4">
           <button
             onClick={() => close()}
-            className="w-full sm:w-auto px-4 py-2 text-xs font-medium text-white/60 hover:text-white transition-colors"
+            className="w-full sm:w-auto px-4 py-2 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
           >
             Continue Browsing
           </button>
@@ -270,7 +270,7 @@ const InteractionSection = ({
             to="/auth/login"
             search={{ redirect: location.href }}
             onClick={() => close()}
-            className="w-full sm:w-auto inline-flex items-center justify-center px-4 py-2 text-xs font-semibold rounded-xl bg-white/10 hover:bg-white/20 text-white transition-all border border-white/10"
+            className="w-full sm:w-auto inline-flex items-center justify-center px-4 py-2 text-xs font-semibold rounded-xl bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-glass-hover)] text-foreground transition-all border border-[var(--dk-separator)]"
           >
             Sign In
           </Link>

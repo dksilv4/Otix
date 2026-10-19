@@ -34,7 +34,7 @@ export const RatingCard = ({ rating, isOwn, onEdit, className }: RatingCardProps
             >
               {username}
               {rating.user?.isAdmin && (
-                <Shield className="h-3 w-3 inline-block text-amber-400/80 ml-1" />
+                <Shield className="h-3 w-3 inline-block text-amber-600/80 dark:text-amber-400/80 ml-1" />
               )}
             </Link>
 
@@ -48,7 +48,7 @@ export const RatingCard = ({ rating, isOwn, onEdit, className }: RatingCardProps
 
           <div className="dk-rating-card__action-text">
             <span>rated this</span>
-            <span className="text-amber-400/90 font-medium">
+            <span className="text-amber-600/90 dark:text-amber-400/90 font-medium">
               {(rating.score / 2).toFixed(rating.score % 2 === 0 ? 0 : 1)} / 5 ★
             </span>
           </div>

@@ -110,7 +110,7 @@ export const GOGCodeModal = ({
           target="_blank"
           rel="noopener noreferrer"
           role="button"
-          className="inline-flex items-center justify-center gap-2 w-full h-10 px-4 rounded-xl text-sm font-medium bg-white/10 text-white shadow-none hover:bg-white/15 transition-colors"
+          className="inline-flex items-center justify-center gap-2 w-full h-10 px-4 rounded-xl text-sm font-medium bg-[var(--dk-surface-ghost)] border border-[var(--dk-separator)] text-foreground shadow-none hover:bg-[var(--dk-surface-hover)] transition-colors"
           onClick={() => {
             openExternal(authUrl, { newTab: true })
             void handleOpenLogin()
@@ -120,7 +120,7 @@ export const GOGCodeModal = ({
           <span>Open GOG login (new tab)</span>
         </a>
         <div className="space-y-1">
-          <label htmlFor="gog-auth-code" className="block pl-1 text-sm font-medium">
+          <label htmlFor="gog-auth-code" className="block pl-1 text-sm font-medium text-foreground">
             Authorization code or redirect URL
           </label>
           <textarea
@@ -129,10 +129,10 @@ export const GOGCodeModal = ({
             onChange={(e) => setPaste(e.target.value)}
             placeholder="Paste code or https://embed.gog.com/on_login_success?code=..."
             rows={4}
-            className="w-full rounded-xl px-4 py-3 text-sm text-white outline-none bg-white/5 shadow-[0_0_0_1px_rgba(255,255,255,0.1)] transition-shadow duration-150 placeholder:text-white/30 focus:shadow-[0_0_0_1px_rgba(255,255,255,0.3)] resize-y min-h-[96px]"
+            className="w-full rounded-xl px-4 py-3 text-sm text-foreground outline-none bg-[var(--dk-surface-ghost)] border border-[var(--dk-separator)] transition-colors placeholder:text-muted-foreground focus:border-primary resize-y min-h-[96px]"
           />
         </div>
-        {error && <p className="text-xs text-red-400">{error}</p>}
+        {error && <p className="text-xs text-destructive">{error}</p>}
         <DkButton
           type="button"
           className="w-full"

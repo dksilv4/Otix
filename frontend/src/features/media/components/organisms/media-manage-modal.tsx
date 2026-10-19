@@ -72,7 +72,7 @@ const AdminDenied = ({ onClose }: { onClose: () => void }) => {
       <button
         type="button"
         onClick={onClose}
-        className="mt-2 rounded-xl bg-white/10 px-4 py-2 text-xs font-semibold text-white hover:bg-white/15 transition-colors"
+        className="mt-2 rounded-xl bg-[var(--dk-surface-glass)] px-4 py-2 text-xs font-semibold text-foreground hover:bg-[var(--dk-surface-glass-hover)] transition-colors"
       >
         Close
       </button>
@@ -292,24 +292,17 @@ export const MediaManageModal = ({ open, isExiting, onClose, mediaType, mediaId 
     >
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-black/75 backdrop-blur-md transition-opacity duration-200"
+        className="absolute inset-0 bg-background/80 backdrop-blur-md transition-opacity duration-200"
         onClick={onClose}
       />
 
       {/* Dialog Panel: Fixed width and height across all tabs and empty states */}
       <div
         className={cn(
-          'relative w-full max-w-5xl h-[86vh] min-h-[580px] max-h-[840px] flex flex-col rounded-3xl p-5 sm:p-6 backdrop-blur-3xl text-white transition-all duration-200 ease-out overflow-hidden',
+          'relative w-full max-w-5xl h-[86vh] min-h-[580px] max-h-[840px] flex flex-col rounded-3xl p-5 sm:p-6 backdrop-blur-3xl text-foreground bg-[var(--dk-surface-base)]/95 border border-[var(--dk-separator)] shadow-2xl transition-all duration-200 ease-out overflow-hidden',
           visible ? 'scale-100 translate-y-0 opacity-100' : 'scale-95 translate-y-4 opacity-0',
         )}
-        style={{
-          backgroundColor: 'oklch(from var(--dk-surface-base) l c h / 0.88)',
-          boxShadow:
-            'inset 0 1px 1px 0 rgba(255, 255, 255, 0.15), inset 0 0 0 1px rgba(255, 255, 255, 0.04), 0 30px 60px -12px rgba(0, 0, 0, 0.85)',
-        }}
       >
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-white/[0.04] via-transparent to-black/[0.2]" />
-
         {!user?.isAdmin ? (
           <div className="relative z-10 flex min-h-0 flex-1 flex-col">
             <AdminDenied onClose={onClose} />
@@ -317,10 +310,10 @@ export const MediaManageModal = ({ open, isExiting, onClose, mediaType, mediaId 
         ) : (
           <div className="relative z-10 flex min-h-0 flex-1 flex-col space-y-4">
             {/* Header (fixed shrink-0) */}
-            <div className="flex items-center justify-between gap-3 border-b border-white/10 pb-4 shrink-0">
+            <div className="flex items-center justify-between gap-3 border-b border-[var(--dk-separator)] pb-4 shrink-0">
               <div className="min-w-0 flex-1">
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Manage Artwork</p>
-                <h2 className="truncate text-base sm:text-lg font-bold tracking-tight text-white">
+                <h2 className="truncate text-base sm:text-lg font-bold tracking-tight text-foreground">
                   {detail?.title ?? 'Loading…'}
                 </h2>
               </div>
@@ -331,7 +324,7 @@ export const MediaManageModal = ({ open, isExiting, onClose, mediaType, mediaId 
                   onClick={() => setShowHelp((o) => !o)}
                   aria-expanded={showHelp}
                   className={cn(
-                    'flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-white hover:bg-white/5',
+                    'flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground hover:bg-[var(--dk-surface-glass)]',
                     focusRing,
                   )}
                 >
@@ -339,7 +332,7 @@ export const MediaManageModal = ({ open, isExiting, onClose, mediaType, mediaId 
                   <span className="hidden sm:inline">How this works</span>
                 </button>
 
-                <div className="flex items-center gap-2 border-l border-white/10 pl-2 sm:pl-3 text-xs sm:text-sm">
+                <div className="flex items-center gap-2 border-l border-[var(--dk-separator)] pl-2 sm:pl-3 text-xs sm:text-sm">
                   <span className="hidden text-xs text-muted-foreground min-[420px]:inline">Downloader</span>
                   <DkSwitch
                     checked={mirroringOn === true}
@@ -352,7 +345,7 @@ export const MediaManageModal = ({ open, isExiting, onClose, mediaType, mediaId 
                 <button
                   type="button"
                   onClick={onClose}
-                  className="shrink-0 rounded-xl p-2 text-white/50 transition-all hover:bg-white/10 hover:text-white cursor-pointer active:scale-95 ml-1"
+                  className="shrink-0 rounded-xl p-2 text-muted-foreground transition-all hover:bg-[var(--dk-surface-glass)] hover:text-foreground cursor-pointer active:scale-95 ml-1"
                   aria-label="Close dialog"
                   title="Close dialog"
                 >
@@ -363,32 +356,32 @@ export const MediaManageModal = ({ open, isExiting, onClose, mediaType, mediaId 
 
             {/* Help (inline, collapsible, shrink-0) */}
             {showHelp && (
-              <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3 text-[12px] leading-relaxed text-muted-foreground shrink-0">
+              <div className="rounded-xl border border-[var(--dk-separator)] bg-[var(--dk-surface-glass)] p-3 text-[12px] leading-relaxed text-muted-foreground shrink-0">
                 <ul className="grid gap-x-6 gap-y-2 sm:grid-cols-2">
                   <li className="flex items-start gap-2">
                     <Monitor className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" aria-hidden="true" />
                     <span>
-                      <strong className="text-white">General</strong>: fallback for Dark &amp; Light.
+                      <strong className="text-foreground">General</strong>: fallback for Dark &amp; Light.
                     </span>
                   </li>
                   <li className="flex items-start gap-2">
                     <Moon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" aria-hidden="true" />
                     <span>
-                      <strong className="text-white">Dark / Light</strong>: overrides General for that theme.
+                      <strong className="text-foreground">Dark / Light</strong>: overrides General for that theme.
                     </span>
                   </li>
                   {familyHasTextless && (
                     <li className="flex items-start gap-2">
                       <Scissors className="mt-0.5 h-3.5 w-3.5 shrink-0 text-accent" aria-hidden="true" />
                       <span>
-                        <strong className="text-white">Textless</strong>: marks one shared textless image.
+                        <strong className="text-foreground">Textless</strong>: marks one shared textless image.
                       </span>
                     </li>
                   )}
                   <li className="flex items-start gap-2">
                     <Bookmark className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" aria-hidden="true" />
                     <span>
-                      <strong className="text-white">Keep</strong>: downloads variant to disk even when unpicked.
+                      <strong className="text-foreground">Keep</strong>: downloads variant to disk even when unpicked.
                     </span>
                   </li>
                 </ul>
@@ -410,7 +403,7 @@ export const MediaManageModal = ({ open, isExiting, onClose, mediaType, mediaId 
                       className={cn(
                         'relative rounded-md px-3 py-1.5 text-xs sm:text-sm font-medium transition-colors',
                         focusRing,
-                        active ? 'text-white font-semibold' : 'text-muted-foreground hover:text-white',
+                        active ? 'text-foreground font-semibold' : 'text-muted-foreground hover:text-foreground',
                       )}
                     >
                       {g.label}
@@ -440,7 +433,7 @@ export const MediaManageModal = ({ open, isExiting, onClose, mediaType, mediaId 
                       focusRing,
                       lang === null
                         ? 'bg-primary/10 font-semibold text-primary'
-                        : 'text-muted-foreground hover:text-white',
+                        : 'text-muted-foreground hover:text-foreground',
                     )}
                   >
                     All
@@ -456,7 +449,7 @@ export const MediaManageModal = ({ open, isExiting, onClose, mediaType, mediaId 
                         focusRing,
                         lang === l
                           ? 'bg-primary/10 font-semibold text-primary'
-                          : 'text-muted-foreground hover:text-white',
+                          : 'text-muted-foreground hover:text-foreground',
                       )}
                     >
                       {l}
@@ -476,7 +469,7 @@ export const MediaManageModal = ({ open, isExiting, onClose, mediaType, mediaId 
               ) : typeAssets.length === 0 ? (
                 <div className="flex flex-1 flex-col items-center justify-center text-center p-6">
                   <ImageOff className="h-10 w-10 text-muted-foreground/40" aria-hidden="true" />
-                  <p className="mt-3 text-sm font-semibold text-white">No {labelFor(type).toLowerCase()} images</p>
+                  <p className="mt-3 text-sm font-semibold text-foreground">No {labelFor(type).toLowerCase()} images</p>
                   <p className="mt-1 text-xs text-muted-foreground max-w-sm">
                     This provider hasn't supplied any{' '}
                     {selectedGroup.assetTypes.map((t) => labelFor(t).toLowerCase()).join(' & ')}.
@@ -484,7 +477,7 @@ export const MediaManageModal = ({ open, isExiting, onClose, mediaType, mediaId 
                 </div>
               ) : lang && visibleAssets.length === 0 ? (
                 <div className="flex flex-1 flex-col items-center justify-center text-center p-6">
-                  <p className="text-sm font-semibold text-white">No {lang.toUpperCase()} images</p>
+                  <p className="text-sm font-semibold text-foreground">No {lang.toUpperCase()} images</p>
                   <p className="mt-1 text-xs text-muted-foreground max-w-sm">
                     No {selectedGroup.assetTypes.map((t) => labelFor(t).toLowerCase()).join(' & ')} in this language — switch
                     back to All.
@@ -495,7 +488,7 @@ export const MediaManageModal = ({ open, isExiting, onClose, mediaType, mediaId 
                   {/* Left: Active Preview + Controls */}
                   <section aria-label="Selected artwork" className="flex flex-col min-h-0 justify-between gap-3 overflow-y-auto pr-1">
                     {/* Consistent-height preview box */}
-                    <div className="flex h-[280px] sm:h-[320px] w-full items-center justify-center rounded-2xl border border-white/10 bg-black/30 p-2.5 relative overflow-hidden shrink-0">
+                    <div className="flex h-[280px] sm:h-[320px] w-full items-center justify-center rounded-2xl border border-[var(--dk-separator)] bg-[var(--dk-surface-glass)] p-2.5 relative overflow-hidden shrink-0">
                       <PreviewImage key={activeAsset.url} asset={activeAsset} />
                       {activeAsset.isTextless && (
                         <span className="absolute left-2.5 top-2.5 flex items-center gap-1 rounded-md bg-accent px-1.5 py-0.5 text-[10px] font-semibold text-accent-foreground shadow-sm">
@@ -513,7 +506,7 @@ export const MediaManageModal = ({ open, isExiting, onClose, mediaType, mediaId 
                     <div className="flex flex-col gap-3 shrink-0">
                       <div className="flex items-center justify-between gap-3">
                         <div className="min-w-0 flex-1">
-                          <p className="text-xs font-semibold text-white">
+                          <p className="text-xs font-semibold text-foreground">
                             {isGeneralPinned
                               ? `Pinned as Default ${selectedGroup.label}`
                               : isGeneralActive
@@ -576,7 +569,7 @@ export const MediaManageModal = ({ open, isExiting, onClose, mediaType, mediaId 
                       <div className="flex flex-col gap-1.5">
                         <p className="text-[11px] font-medium text-muted-foreground">Pin for theme</p>
                         <div
-                          className="inline-flex max-w-full flex-wrap items-center gap-1 rounded-xl border border-white/10 p-1"
+                          className="inline-flex max-w-full flex-wrap items-center gap-1 rounded-xl border border-[var(--dk-separator)] p-1"
                           role="group"
                           aria-label="Pin the selected image for a theme"
                         >
@@ -598,7 +591,7 @@ export const MediaManageModal = ({ open, isExiting, onClose, mediaType, mediaId 
                                   focusRing,
                                   busy || active
                                     ? 'bg-primary text-primary-foreground hover:bg-primary/90'
-                                    : 'text-muted-foreground hover:bg-white/5 hover:text-white',
+                                    : 'text-muted-foreground hover:bg-[var(--dk-surface-glass)] hover:text-foreground',
                                   pinBusyForActive && !busy && !active && 'opacity-50',
                                 )}
                               >
@@ -609,7 +602,7 @@ export const MediaManageModal = ({ open, isExiting, onClose, mediaType, mediaId 
                           })}
                           {familyHasTextless && (
                             <>
-                              <span aria-hidden="true" className="mx-0.5 h-4 w-px bg-white/10" />
+                              <span aria-hidden="true" className="mx-0.5 h-4 w-px bg-[var(--dk-separator)]" />
                               <button
                                 type="button"
                                 onClick={() => toggleTextlessActive()}
@@ -628,7 +621,7 @@ export const MediaManageModal = ({ open, isExiting, onClose, mediaType, mediaId 
                                   focusRing,
                                   activeAsset.isTextless
                                     ? 'bg-accent text-accent-foreground hover:bg-accent/90'
-                                    : 'text-muted-foreground hover:bg-white/5 hover:text-white',
+                                    : 'text-muted-foreground hover:bg-[var(--dk-surface-glass)] hover:text-foreground',
                                 )}
                               >
                                 {textlessBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Scissors className="h-3.5 w-3.5" />}
@@ -657,9 +650,9 @@ export const MediaManageModal = ({ open, isExiting, onClose, mediaType, mediaId 
                           }
                           aria-pressed={activeAsset.keepLocal}
                           className={cn(
-                            'inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-1.5 text-xs font-medium text-white transition-colors',
+                            'inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-[var(--dk-separator)] px-2.5 py-1.5 text-xs font-medium text-foreground transition-colors',
                             focusRing,
-                            activeAsset.keepLocal ? 'bg-primary/20 text-primary border-primary/40' : 'hover:bg-white/5',
+                            activeAsset.keepLocal ? 'bg-primary/20 text-primary border-primary/40' : 'hover:bg-[var(--dk-surface-glass)]',
                           )}
                         >
                           {keepBusy ? (
@@ -674,7 +667,7 @@ export const MediaManageModal = ({ open, isExiting, onClose, mediaType, mediaId 
                   </section>
 
                   {/* Right: Candidate List (scrollable) */}
-                  <aside aria-label="Choose an image" className="flex flex-col h-full min-h-0 md:border-l md:border-white/10 md:pl-4">
+                  <aside aria-label="Choose an image" className="flex flex-col h-full min-h-0 md:border-l md:border-[var(--dk-separator)] md:pl-4">
                     <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground shrink-0 pb-1.5">
                       Candidates ({visibleAssets.length})
                     </p>
@@ -699,7 +692,7 @@ export const MediaManageModal = ({ open, isExiting, onClose, mediaType, mediaId 
                                 focusRing,
                                 isActive
                                   ? 'border-primary/50 bg-primary/10'
-                                  : 'border-transparent hover:border-white/10 hover:bg-white/5',
+                                  : 'border-transparent hover:border-[var(--dk-separator)] hover:bg-[var(--dk-surface-glass)]',
                               )}
                             >
                               <Image
@@ -707,13 +700,13 @@ export const MediaManageModal = ({ open, isExiting, onClose, mediaType, mediaId 
                                 alt=""
                                 loading="lazy"
                                 className={cn(
-                                  'block w-10 shrink-0 rounded-md border border-white/10 bg-white/5',
+                                  'block w-10 shrink-0 rounded-md border border-[var(--dk-separator)] bg-[var(--dk-surface-glass)]',
                                   portraitThumb ? 'aspect-[2/3]' : 'aspect-video',
                                 )}
                                 imgClassName={asset.assetType === 'logo' ? 'object-contain p-0.5' : undefined}
                               />
                               <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-                                <span className="flex items-center gap-1.5 text-xs font-medium text-white">
+                                <span className="flex items-center gap-1.5 text-xs font-medium text-foreground">
                                   <span className="truncate">{asset.provider ?? 'Unknown'}</span>
                                   {asset.lang ? <span className="uppercase text-[10px] text-muted-foreground">{asset.lang}</span> : null}
                                   {isPinned ? (

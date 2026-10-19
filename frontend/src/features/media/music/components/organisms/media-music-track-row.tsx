@@ -150,7 +150,7 @@ export const TrackRow = ({
 
   // Cell background color
   const cellBg = isPlexPlaying
-    ? 'bg-amber-500/10'
+    ? 'bg-primary/10'
     : 'bg-[var(--dk-surface-glass)] group-hover:bg-[var(--dk-surface-glass-hover)]'
 
   // --- Render ---
@@ -162,7 +162,7 @@ export const TrackRow = ({
         e.stopPropagation()
         handlePlexPlay()
       }}
-      className={`inline-flex items-center justify-center h-7 w-7 rounded-full transition-colors ${isPlexPlaying ? 'bg-amber-500 text-black' : 'bg-amber-500/20 text-amber-400 hover:bg-amber-500/30'}`}
+      className={`inline-flex items-center justify-center h-7 w-7 rounded-full transition-colors ${isPlexPlaying ? 'bg-primary text-primary-foreground' : 'bg-primary/15 text-primary hover:bg-primary/25'}`}
     >
       {isPlexPlaying ? (
         <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor">

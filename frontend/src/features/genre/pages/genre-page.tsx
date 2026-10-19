@@ -287,9 +287,9 @@ export const GenrePage = () => {
       </Helmet>
 
       <div className="flex flex-col gap-4">
-        <div className="flex items-baseline justify-between border-b border-white/[0.08] pb-4">
+        <div className="flex items-baseline justify-between border-b border-[var(--dk-separator)] pb-4">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground">
               {pageTitle}
             </h1>
             <p className="text-sm text-muted-foreground mt-1">
@@ -300,7 +300,7 @@ export const GenrePage = () => {
           </div>
           {(items.length > 0 || (!isLoading && total > 0)) && (
             <div className="shrink-0 text-right space-y-0.5">
-              <p className="text-sm font-semibold text-white tabular-nums">
+              <p className="text-sm font-semibold text-foreground tabular-nums">
                 {total.toLocaleString()} {typeLabel.toLowerCase()}
               </p>
               {items.length > 0 && (
@@ -317,7 +317,7 @@ export const GenrePage = () => {
         <div className="flex items-center gap-2 overflow-x-auto py-1 scrollbar-none">
           <Link
             to="/genres"
-            className="glass-inset px-3.5 py-1.5 rounded-full text-xs font-medium text-muted-foreground hover:text-white hover:bg-white/[0.08] transition-all shrink-0 inline-flex items-center gap-1.5 border border-white/[0.06]"
+            className="px-3.5 py-1.5 rounded-full text-xs font-medium text-muted-foreground hover:text-foreground bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)] transition-all shrink-0 inline-flex items-center gap-1.5 border border-[var(--dk-separator)]"
           >
             All
           </Link>
@@ -336,8 +336,8 @@ export const GenrePage = () => {
                     className={cn(
                       'inline-flex items-center px-3.5 py-1.5 rounded-full text-xs font-medium transition-colors shrink-0 cursor-pointer',
                       isSelected
-                        ? 'bg-white/20 text-white font-semibold shadow-inner border border-white/25'
-                        : 'glass-inset text-muted-foreground hover:text-white hover:bg-white/[0.08]',
+                        ? 'bg-primary text-primary-foreground font-semibold shadow-sm'
+                        : 'bg-[var(--dk-surface-ghost)] text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-ghost-hover)] border border-[var(--dk-separator)]',
                     )}
                   >
                     {g.name}
@@ -396,7 +396,7 @@ export const GenrePage = () => {
           <button
             type="button"
             onClick={clearFilters}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium text-muted-foreground hover:text-foreground transition-colors hover:bg-white/[0.06]"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium text-muted-foreground hover:text-foreground transition-colors hover:bg-[var(--dk-surface-ghost-hover)]"
           >
             <RotateCcw className="h-3 w-3" />
             Reset
@@ -436,7 +436,7 @@ export const GenrePage = () => {
             <button
               type="button"
               onClick={clearFilters}
-              className="mt-4 px-4 py-2 rounded-full text-xs font-semibold bg-white/10 hover:bg-white/15 text-white transition-colors"
+              className="mt-4 px-4 py-2 rounded-full text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors shadow-sm"
             >
               Clear Filters
             </button>

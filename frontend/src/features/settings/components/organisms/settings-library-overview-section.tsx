@@ -50,11 +50,11 @@ const Metric = ({
 }) => {
   const toneClass =
     tone === 'success'
-      ? 'text-emerald-400'
+      ? 'text-emerald-500 dark:text-emerald-400'
       : tone === 'warn'
-        ? 'text-sky-400'
+        ? 'text-sky-500 dark:text-sky-400'
         : tone === 'muted'
-          ? 'text-white/50'
+          ? 'text-muted-foreground'
           : 'text-primary'
 
   return (
@@ -63,9 +63,9 @@ const Metric = ({
         <Icon className="h-3.5 w-3.5" />
       </div>
       <div className="min-w-0">
-        <p className="text-[10px] uppercase tracking-wider text-white/40 font-semibold">{label}</p>
-        <p className="text-sm font-semibold text-white truncate">{value}</p>
-        {hint && <p className="text-[11px] text-white/40 mt-0.5 truncate">{hint}</p>}
+        <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">{label}</p>
+        <p className="text-sm font-semibold text-foreground truncate">{value}</p>
+        {hint && <p className="text-[11px] text-muted-foreground mt-0.5 truncate">{hint}</p>}
       </div>
     </div>
   )
@@ -91,11 +91,10 @@ const OverviewNavCard = ({
   children: ReactNode
 }) => {
   const className =
-    'group text-left w-full rounded-2xl sm:rounded-3xl p-5 sm:p-6 backdrop-blur-xl transition-all duration-200 hover:bg-white/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40'
+    'group text-left w-full rounded-2xl sm:rounded-3xl p-5 sm:p-6 backdrop-blur-xl transition-all duration-200 hover:bg-[var(--dk-surface-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40'
   const style = {
     backgroundColor: 'var(--dk-surface-base)',
-    boxShadow:
-      'inset 0 1px 0 0 rgba(255, 255, 255, 0.08), 0 10px 30px -10px rgba(0, 0, 0, 0.5)',
+    boxShadow: 'var(--dk-shadow-card)',
   }
   const body = (
     <>
@@ -105,13 +104,13 @@ const OverviewNavCard = ({
             <Icon className="h-4 w-4" />
           </div>
           <div className="min-w-0">
-            <h3 className="text-sm font-bold text-white tracking-tight">{title}</h3>
-            <p className="text-xs text-white/50 mt-0.5 leading-relaxed">{description}</p>
+            <h3 className="text-sm font-bold text-foreground tracking-tight">{title}</h3>
+            <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{description}</p>
           </div>
         </div>
-        <ArrowRight className="h-4 w-4 text-white/30 group-hover:text-primary group-hover:translate-x-0.5 transition-all shrink-0 mt-1" />
+        <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 transition-all shrink-0 mt-1" />
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1 border-t border-white/5">{children}</div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">{children}</div>
     </>
   )
 
@@ -300,7 +299,7 @@ export const SettingsLibraryOverviewSection = ({
           title="Overview"
           description="A quick look at your library, folders, Otix nodes, and automation."
         />
-        <p className="text-xs text-white/45 leading-relaxed max-w-2xl">
+        <p className="text-xs text-muted-foreground leading-relaxed max-w-2xl">
           Jump into matching, or open a node to configure folders, downloaders, and automation for that machine.
         </p>
       </SettingsCard>

@@ -59,11 +59,11 @@ export const NodeMapActionDock = ({
     <div
       role="region"
       aria-label="Node actions"
-      className="absolute bottom-6 left-1/2 -translate-x-1/2 z-30 pointer-events-auto flex items-center gap-2 p-1.5 px-3 rounded-2xl bg-black/75 backdrop-blur-2xl border border-white/[0.08] shadow-2xl animate-in fade-in slide-in-from-bottom-2 duration-150 max-w-[calc(100vw-3rem)] overflow-x-auto"
+      className="absolute bottom-6 left-1/2 -translate-x-1/2 z-30 pointer-events-auto flex items-center gap-2 p-1.5 px-3 rounded-2xl bg-[var(--dk-surface-overlay)] backdrop-blur-2xl shadow-xl animate-in fade-in slide-in-from-bottom-2 duration-150 max-w-[calc(100vw-3rem)] overflow-x-auto"
     >
       {/* Left: Selected Node Icon & Title */}
       <div className="flex items-center gap-2 pr-1 shrink-0">
-        <div className="h-6 w-6 rounded-lg bg-white/[0.06] border border-white/[0.08] flex items-center justify-center text-primary shrink-0">
+        <div className="h-6 w-6 rounded-lg bg-[var(--dk-surface-field)] flex items-center justify-center text-primary shrink-0">
           {type === 'home' && <HomeIcon size={12} />}
           {type === 'server' && <Server size={12} />}
           {type === 'node' && <Cpu size={12} />}
@@ -84,7 +84,7 @@ export const NodeMapActionDock = ({
         </div>
       </div>
 
-      <div className="h-4 w-px bg-white/10 shrink-0" />
+      <div className="h-4 w-px bg-[var(--dk-separator)] shrink-0" />
 
       {/* Center: Contextual Action Buttons */}
       <div className="flex items-center gap-1 shrink-0">
@@ -96,7 +96,7 @@ export const NodeMapActionDock = ({
             size="sm"
             aria-label={`Connect ${name}`}
             onClick={() => onOpenConnectPicker(selectedItem)}
-            className="h-7 px-2 text-xs font-medium gap-1.5 text-foreground hover:bg-white/[0.08]"
+            className="h-7 px-2 text-xs font-medium gap-1.5 text-foreground hover:bg-[var(--dk-surface-hover)]"
           >
             <LinkIcon size={12} className="text-primary" />
             <span className="hidden sm:inline">Connect</span>
@@ -112,7 +112,7 @@ export const NodeMapActionDock = ({
               size="sm"
               aria-label="Open"
               onClick={() => onOpenNodeSettings?.(data.server)}
-              className="h-7 px-2 text-xs font-medium gap-1.5 text-foreground hover:bg-white/[0.08]"
+              className="h-7 px-2 text-xs font-medium gap-1.5 text-foreground hover:bg-[var(--dk-surface-hover)]"
             >
               <ExternalLink size={12} />
               <span>Open</span>
@@ -124,7 +124,7 @@ export const NodeMapActionDock = ({
               size="sm"
               aria-label={`Rename ${data.server.name}`}
               onClick={() => onRenameNode?.(data.server)}
-              className="h-7 px-2 text-xs font-medium gap-1.5 text-foreground hover:bg-white/[0.08]"
+              className="h-7 px-2 text-xs font-medium gap-1.5 text-foreground hover:bg-[var(--dk-surface-hover)]"
             >
               <Pencil size={12} />
               <span className="hidden sm:inline">Rename</span>
@@ -137,7 +137,7 @@ export const NodeMapActionDock = ({
                 size="sm"
                 aria-label="Test connection"
                 onClick={() => onPingNode(data.server)}
-                className="h-7 px-2 text-xs font-medium gap-1.5 text-amber-400 hover:text-amber-300 hover:bg-white/[0.08]"
+                className="h-7 px-2 text-xs font-medium gap-1.5 text-amber-400 hover:text-amber-300 hover:bg-[var(--dk-surface-hover)]"
               >
                 <Radio size={12} />
                 <span>Ping</span>
@@ -155,7 +155,7 @@ export const NodeMapActionDock = ({
               size="sm"
               aria-label={`Edit ${data.machine.name}`}
               onClick={() => onEditServer?.(data.machine)}
-              className="h-7 px-2 text-xs font-medium gap-1.5 text-foreground hover:bg-white/[0.08]"
+              className="h-7 px-2 text-xs font-medium gap-1.5 text-foreground hover:bg-[var(--dk-surface-hover)]"
             >
               <Pencil size={12} />
               <span>Edit</span>
@@ -167,7 +167,7 @@ export const NodeMapActionDock = ({
               size="sm"
               aria-label="Detect drives"
               onClick={() => onDetectDrives?.(data.machine)}
-              className="h-7 px-2 text-xs font-medium gap-1.5 text-foreground hover:bg-white/[0.08]"
+              className="h-7 px-2 text-xs font-medium gap-1.5 text-foreground hover:bg-[var(--dk-surface-hover)]"
             >
               <RefreshCw size={12} />
               <span className="hidden sm:inline">Drives</span>
@@ -179,7 +179,7 @@ export const NodeMapActionDock = ({
               size="sm"
               aria-label={`Delete ${data.machine.name}`}
               onClick={() => onDeleteServer?.(data.machine)}
-              className="h-7 px-2 text-xs font-medium gap-1.5 text-muted-foreground hover:text-destructive hover:bg-white/[0.08]"
+              className="h-7 px-2 text-xs font-medium gap-1.5 text-muted-foreground hover:text-destructive hover:bg-[var(--dk-surface-hover)]"
             >
               <Trash2 size={12} />
               <span className="hidden sm:inline">Delete</span>
@@ -196,7 +196,7 @@ export const NodeMapActionDock = ({
               size="sm"
               aria-label={`Edit ${data.home.name}`}
               onClick={() => onEditHome?.(data.home)}
-              className="h-7 px-2 text-xs font-medium gap-1.5 text-foreground hover:bg-white/[0.08]"
+              className="h-7 px-2 text-xs font-medium gap-1.5 text-foreground hover:bg-[var(--dk-surface-hover)]"
             >
               <Pencil size={12} />
               <span>Edit</span>
@@ -209,7 +209,7 @@ export const NodeMapActionDock = ({
                 size="sm"
                 aria-label={`Delete ${data.home.name}`}
                 onClick={() => onDeleteHome?.(data.home)}
-                className="h-7 px-2 text-xs font-medium gap-1.5 text-muted-foreground hover:text-destructive hover:bg-white/[0.08]"
+                className="h-7 px-2 text-xs font-medium gap-1.5 text-muted-foreground hover:text-destructive hover:bg-[var(--dk-surface-hover)]"
               >
                 <Trash2 size={12} />
                 <span className="hidden sm:inline">Delete</span>
@@ -226,7 +226,7 @@ export const NodeMapActionDock = ({
             size="sm"
             aria-label={`Configure /${data.samba.shareName}`}
             onClick={() => onOpenSambaSettings?.(data.samba)}
-            className="h-7 px-2 text-xs font-medium gap-1.5 text-foreground hover:bg-white/[0.08]"
+            className="h-7 px-2 text-xs font-medium gap-1.5 text-foreground hover:bg-[var(--dk-surface-hover)]"
           >
             <Pencil size={12} />
             <span>Configure</span>
@@ -249,7 +249,7 @@ export const NodeMapActionDock = ({
         )}
       </div>
 
-      <div className="h-4 w-px bg-white/10 shrink-0" />
+      <div className="h-4 w-px bg-[var(--dk-separator)] shrink-0" />
 
       {/* Right: Deselect / Close button */}
       <DkButton
@@ -259,7 +259,7 @@ export const NodeMapActionDock = ({
         aria-label="Deselect"
         title="Deselect (Esc)"
         onClick={onClose}
-        className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground hover:bg-white/[0.08] shrink-0"
+        className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-hover)] shrink-0"
       >
         <X size={13} />
       </DkButton>

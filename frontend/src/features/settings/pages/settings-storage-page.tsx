@@ -67,9 +67,9 @@ const Metric = ({
         <Icon className="h-4.5 w-4.5" />
       </div>
       <div className="min-w-0">
-        <p className="text-[11px] font-medium uppercase tracking-wider text-white/40">{label}</p>
-        <p className="text-lg font-bold text-white tabular-nums leading-tight">{value}</p>
-        {hint && <p className="text-[11px] text-white/40 mt-0.5">{hint}</p>}
+        <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{label}</p>
+        <p className="text-lg font-bold text-foreground tabular-nums leading-tight">{value}</p>
+        {hint && <p className="text-[11px] text-muted-foreground mt-0.5">{hint}</p>}
       </div>
     </div>
   )
@@ -140,7 +140,7 @@ const AutoMirrorControls = ({ masterEnabled }: { masterEnabled: boolean }) => {
 
   if (isLoading) {
     return (
-      <SettingsCard tone="raised" className="flex items-center justify-center gap-3 py-10 text-white/50">
+      <SettingsCard tone="raised" className="flex items-center justify-center gap-3 py-10 text-muted-foreground">
         <Loader2 className="h-4 w-4 animate-spin" />
         <span className="text-xs">Loading artwork settings…</span>
       </SettingsCard>
@@ -303,16 +303,16 @@ const AutoMirrorControls = ({ masterEnabled }: { masterEnabled: boolean }) => {
         </div>
 
         {budgetPct !== null && (
-          <div className="mt-4 rounded-xl bg-white/[0.03] p-4 ring-1 ring-inset ring-white/[0.05]">
+          <div className="mt-4 rounded-xl bg-[var(--dk-surface-field)] p-4">
             <div className="mb-2 flex items-center justify-between text-[11px]">
-              <span className="font-semibold uppercase tracking-widest text-white/50">
+              <span className="font-semibold uppercase tracking-widest text-muted-foreground">
                 Artwork budget
               </span>
-              <span className="text-white/50 tabular-nums">
+              <span className="text-muted-foreground tabular-nums">
                 {formatBytes(mirror.bytes)} of {formatBytes(capBytes)}
               </span>
             </div>
-            <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/[0.07]">
+            <div className="h-1.5 w-full overflow-hidden rounded-full bg-[var(--dk-surface-overlay)]">
               <div
                 className="h-full rounded-full transition-all duration-500"
                 style={{
@@ -324,7 +324,7 @@ const AutoMirrorControls = ({ masterEnabled }: { masterEnabled: boolean }) => {
                 }}
               />
             </div>
-            <p className="mt-1.5 text-[11px] text-white/40 tabular-nums">
+            <p className="mt-1.5 text-[11px] text-muted-foreground tabular-nums">
               {formatBytes(mirror.bytes)} stored · {mirror.count} image
               {mirror.count === 1 ? '' : 's'} downloaded
             </p>
@@ -443,14 +443,14 @@ export const SettingsStoragePage = () => {
       />
 
       {isLoading && (
-        <SettingsCard tone="raised" className="flex items-center justify-center gap-3 py-14 text-white/50">
+        <SettingsCard tone="raised" className="flex items-center justify-center gap-3 py-14 text-muted-foreground">
           <Loader2 className="h-5 w-5 animate-spin" />
           <span className="text-sm">Loading storage usage…</span>
         </SettingsCard>
       )}
 
       {error && (
-        <SettingsCard tone="raised" className="text-sm text-red-400/90 bg-red-400/5 py-6 text-center">
+        <SettingsCard tone="raised" className="text-sm text-destructive bg-destructive/10 py-6 text-center">
           Could not load storage usage. The media admin API may be unreachable.
         </SettingsCard>
       )}
@@ -470,7 +470,7 @@ export const SettingsStoragePage = () => {
                     disabled={setMirroring.isPending}
                   />
                 ) : (
-                  <div className="flex items-center gap-2 text-xs text-white/40">
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
                     Loading…
                   </div>
@@ -478,11 +478,11 @@ export const SettingsStoragePage = () => {
               }
             />
             {mirroring.isSuccess && !mirroringEnabled && (
-              <div className="mt-4 flex items-start gap-2.5 rounded-xl bg-amber-400/10 px-3.5 py-3 text-xs leading-relaxed text-amber-300/90">
+              <div className="mt-4 flex items-start gap-2.5 rounded-xl bg-amber-400/10 px-3.5 py-3 text-xs leading-relaxed text-amber-500 dark:text-amber-300">
                 <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
                 <p>
                   Mirroring is paused. The{' '}
-                  <span className="font-semibold text-amber-200">Download Images</span> action on
+                  <span className="font-semibold text-amber-600 dark:text-amber-200">Download Images</span> action on
                   media is blocked until you turn this back on. Artwork already downloaded keeps
                   being served from this server.
                 </p>
@@ -505,13 +505,13 @@ export const SettingsStoragePage = () => {
             </div>
 
             <div className="mt-5 pt-5">
-              <div className="mb-2 flex items-center justify-between text-[11px] text-white/50">
+              <div className="mb-2 flex items-center justify-between text-[11px] text-muted-foreground">
                 <span className="font-semibold uppercase tracking-widest">Volume usage</span>
                 <span className="tabular-nums">
                   {formatBytes(disk?.used ?? 0)} used · {formatBytes(disk?.free ?? 0)} free
                 </span>
               </div>
-              <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/[0.07]">
+              <div className="h-1.5 w-full overflow-hidden rounded-full bg-[var(--dk-surface-field)]">
                 <div
                   className="h-full rounded-full transition-all duration-500"
                   style={{
@@ -522,24 +522,24 @@ export const SettingsStoragePage = () => {
               </div>
             </div>
 
-            <div className="mt-5 flex items-center gap-2.5 text-white/60">
+            <div className="mt-5 flex items-center gap-2.5 text-muted-foreground">
               <FolderOpen className="h-4 w-4 shrink-0" />
               <p className="text-xs">
                 Downloaded files live at{' '}
-                <code className="rounded bg-white/[0.06] px-1.5 py-0.5 text-white/80">
+                <code className="rounded bg-[var(--dk-surface-field)] px-1.5 py-0.5 text-foreground">
                   {data.mediaDir}
                 </code>
               </p>
             </div>
 
-            <div className="mt-5 flex flex-col gap-4 rounded-xl bg-red-500/[0.06] px-4 py-3.5 ring-1 ring-inset ring-red-500/20 sm:flex-row sm:items-center sm:justify-between">
+            <div className="mt-5 flex flex-col gap-4 rounded-xl bg-destructive/10 px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-red-400/10 text-red-400">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-destructive/15 text-destructive">
                   <Trash2 className="h-5 w-5" />
                 </div>
                 <div>
-                  <h4 className="text-sm font-bold text-white">Delete downloaded artwork</h4>
-                  <p className="text-xs text-white/40">
+                  <h4 className="text-sm font-bold text-foreground">Delete downloaded artwork</h4>
+                  <p className="text-xs text-muted-foreground">
                     {data.downloadedCount > 0
                       ? `${data.downloadedCount} image${data.downloadedCount === 1 ? '' : 's'} · ${formatBytes(data.downloadedBytes)} on disk`
                       : 'Nothing downloaded to delete'}
@@ -550,7 +550,7 @@ export const SettingsStoragePage = () => {
                 type="button"
                 disabled={purge.isPending || data.downloadedCount === 0}
                 onClick={() => setConfirmOpen(true)}
-                className="inline-flex items-center justify-center gap-2 self-start rounded-xl bg-red-500/15 px-4 py-2 text-xs font-semibold text-red-300 ring-1 ring-inset ring-red-500/30 transition-all hover:bg-red-500/25 disabled:cursor-not-allowed disabled:opacity-40 sm:self-auto"
+                className="inline-flex items-center justify-center gap-2 self-start rounded-xl bg-destructive/15 px-4 py-2 text-xs font-semibold text-destructive transition-all hover:bg-destructive/25 disabled:cursor-not-allowed disabled:opacity-40 sm:self-auto"
               >
                 <Trash2 className="h-4 w-4" />
                 {purge.isPending ? 'Deleting…' : 'Delete all'}
@@ -593,7 +593,7 @@ export const SettingsStoragePage = () => {
                 />
               </div>
             ) : (
-              <div className="mt-3 text-xs text-white/50">
+              <div className="mt-3 text-xs text-muted-foreground">
                 Launch the optimizer to inspect connected servers and view actionable savings.
               </div>
             )}
@@ -617,7 +617,7 @@ export const SettingsStoragePage = () => {
                 type="button"
                 onClick={() => setConfirmOpen(false)}
                 disabled={purge.isPending}
-                className="rounded-xl px-4 py-2 text-xs font-semibold text-white/70 transition-all hover:bg-white/10 disabled:opacity-50"
+                className="rounded-xl px-4 py-2 text-xs font-semibold text-muted-foreground transition-all hover:bg-[var(--dk-surface-hover)] disabled:opacity-50"
               >
                 Cancel
               </button>
@@ -625,7 +625,7 @@ export const SettingsStoragePage = () => {
                 type="button"
                 onClick={deleteAllDownloaded}
                 disabled={purge.isPending}
-                className="inline-flex items-center gap-2 rounded-xl bg-red-500 px-4 py-2 text-xs font-semibold text-white transition-all hover:bg-red-600 disabled:opacity-60"
+                className="inline-flex items-center gap-2 rounded-xl bg-destructive px-4 py-2 text-xs font-semibold text-destructive-foreground transition-all hover:bg-destructive/90 disabled:opacity-60"
               >
                 <Trash2 className="h-3.5 w-3.5" />
                 {purge.isPending ? 'Deleting…' : 'Delete'}

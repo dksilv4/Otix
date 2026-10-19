@@ -1,11 +1,11 @@
 // Initial page load & root styling
 $bg-dark: #0a0b1e;
-$bg-light: #f8fafc;
+$bg-light: #f5f5f7;
 $fg-dark: #f8fafc;
 $fg-light: #0f172a;
 
 :root {
-  color-scheme: dark;
+  color-scheme: dark light;
 }
 
 html {
@@ -17,6 +17,12 @@ html {
     background-color: $bg-light;
     color: $fg-light;
     color-scheme: light;
+  }
+
+  &[data-theme='dark'] {
+    background-color: $bg-dark;
+    color: $fg-dark;
+    color-scheme: dark;
   }
 }
 

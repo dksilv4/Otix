@@ -84,13 +84,10 @@ export const SettingsLauncherPage = () => {
 
       <div id="launcher" className="space-y-5 scroll-mt-28">
         {/* ── Active Theme Spotlight Card ── */}
-        <SettingsCard className="border border-white/10 bg-gradient-to-r from-white/[0.04] via-white/[0.02] to-transparent">
+        <SettingsCard className="bg-[var(--dk-surface-raised)]">
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
             <div className="w-full md:w-72 lg:w-80 shrink-0">
-              <div
-                className="rounded-xl overflow-hidden border shadow-xl transition-all duration-300"
-                style={{ borderColor: `color-mix(in srgb, ${selectedThemeMeta.accentColor} 40%, transparent)` }}
-              >
+              <div className="rounded-xl overflow-hidden shadow-xl transition-all duration-300">
                 <LauncherThemePreview themeId={selectedThemeMeta.id} isSelected={true} />
               </div>
             </div>
@@ -107,20 +104,20 @@ export const SettingsLauncherPage = () => {
                   <CheckCircle2 size={12} />
                   Active Default
                 </span>
-                <span className="text-xs font-mono font-bold px-2 py-0.5 rounded bg-white/10 text-white/80">
+                <span className="text-xs font-mono font-bold px-2 py-0.5 rounded bg-[var(--dk-surface-field)] text-foreground">
                   {selectedThemeMeta.version}
                 </span>
                 {selectedThemeMeta.isBeta && <FeatureStatusTag kind="beta" />}
-                <span className="text-xs text-white/50 font-medium">
+                <span className="text-xs text-muted-foreground font-medium">
                   {selectedThemeMeta.subtitle}
                 </span>
               </div>
 
               <div>
-                <h3 className="text-xl font-black text-white tracking-tight">
+                <h3 className="text-xl font-black text-foreground tracking-tight">
                   {selectedThemeMeta.name}
                 </h3>
-                <p className="text-xs text-white/70 leading-relaxed mt-1 max-w-xl">
+                <p className="text-xs text-muted-foreground leading-relaxed mt-1 max-w-xl">
                   {selectedThemeMeta.description}
                 </p>
               </div>
@@ -146,18 +143,18 @@ export const SettingsLauncherPage = () => {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
             <div>
               <div className="flex flex-wrap items-center gap-2">
-                <h3 className="font-bold text-white tracking-tight text-sm sm:text-base">
+                <h3 className="font-bold text-foreground tracking-tight text-sm sm:text-base">
                   Themes & Layout Editions
                 </h3>
                 <FeatureStatusTag kind="beta" />
               </div>
-              <p className="text-white/60 mt-0.5 leading-relaxed text-xs">
+              <p className="text-muted-foreground mt-0.5 leading-relaxed text-xs">
                 Select your default launcher interface. All 10 themes read the same game library, user profiles, and active play sessions.
               </p>
             </div>
 
             {/* Category filter pills */}
-            <div className="flex items-center gap-1 bg-white/[0.04] p-1 rounded-xl shrink-0 self-start sm:self-center overflow-x-auto max-w-full">
+            <div className="flex items-center gap-1 bg-[var(--dk-surface-field)] p-1 rounded-xl shrink-0 self-start sm:self-center overflow-x-auto max-w-full">
               {THEME_CATEGORIES.map((cat) => {
                 const count =
                   cat.id === 'all'
@@ -172,8 +169,8 @@ export const SettingsLauncherPage = () => {
                     className={cn(
                       'px-2.5 py-1 rounded-lg text-xs font-medium transition-all whitespace-nowrap cursor-pointer',
                       isActive
-                        ? 'bg-white/15 text-white font-semibold shadow-sm'
-                        : 'text-white/50 hover:text-white hover:bg-white/5',
+                        ? 'bg-[var(--dk-surface-overlay)] text-foreground font-semibold shadow-sm'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-hover)]',
                     )}
                   >
                     {cat.label} ({count})
@@ -199,32 +196,31 @@ export const SettingsLauncherPage = () => {
                     }
                   }}
                   className={cn(
-                    'group relative flex flex-col rounded-2xl p-3.5 transition-all duration-200 text-left cursor-pointer border',
+                    'group relative flex flex-col rounded-2xl p-3.5 transition-all duration-200 text-left cursor-pointer',
                     isSelected
-                      ? 'bg-white/[0.08] shadow-lg ring-2'
-                      : 'bg-white/[0.02] hover:bg-white/[0.06] border-white/10 hover:border-white/20',
+                      ? 'bg-[var(--dk-surface-raised)] shadow-lg'
+                      : 'bg-[var(--dk-surface-field)] hover:bg-[var(--dk-surface-hover)]',
                   )}
                   style={
                     isSelected
                       ? {
-                          borderColor: theme.accentColor,
                           boxShadow: `0 8px 24px -6px color-mix(in srgb, ${theme.accentColor} 25%, transparent)`,
                         }
                       : undefined
                   }
                 >
                   {/* Miniature Preview */}
-                  <div className="w-full aspect-[16/10] rounded-xl overflow-hidden mb-3 border border-white/10 group-hover:border-white/25 transition-all shadow-sm">
+                  <div className="w-full aspect-[16/10] rounded-xl overflow-hidden mb-3 transition-all shadow-sm">
                     <LauncherThemePreview themeId={theme.id} isSelected={isSelected} />
                   </div>
 
                   {/* Header row */}
                   <div className="flex items-center justify-between gap-2 mb-1.5">
                     <div className="flex items-center gap-1.5 min-w-0">
-                      <span className="text-[10px] font-mono font-black uppercase px-1.5 py-0.5 rounded bg-white/10 text-white/80 shrink-0">
+                      <span className="text-[10px] font-mono font-black uppercase px-1.5 py-0.5 rounded bg-[var(--dk-surface-field)] text-foreground shrink-0">
                         {theme.version}
                       </span>
-                      <h4 className="text-sm font-bold text-white group-hover:text-primary transition-colors truncate">
+                      <h4 className="text-sm font-bold text-foreground group-hover:text-primary transition-colors truncate">
                         {theme.name}
                       </h4>
                       {theme.isBeta && <FeatureStatusTag kind="beta" className="px-1.5" />}
@@ -239,7 +235,7 @@ export const SettingsLauncherPage = () => {
                         Active
                       </span>
                     ) : (
-                      <span className="text-[11px] font-medium text-white/40 group-hover:text-white/80 transition-colors shrink-0">
+                      <span className="text-[11px] font-medium text-muted-foreground group-hover:text-foreground transition-colors shrink-0">
                         Select
                       </span>
                     )}
@@ -248,25 +244,25 @@ export const SettingsLauncherPage = () => {
                   {/* Subtitle / category tag */}
                   <span
                     className="text-[11px] font-semibold tracking-wide uppercase"
-                    style={{ color: isSelected ? theme.accentColor : 'rgba(255,255,255,0.45)' }}
+                    style={{ color: isSelected ? theme.accentColor : 'var(--dk-muted-foreground)' }}
                   >
                     {theme.subtitle}
                   </span>
 
                   {/* Description */}
-                  <p className="text-xs text-white/55 font-normal leading-relaxed mt-1.5 line-clamp-2 flex-1">
+                  <p className="text-xs text-muted-foreground font-normal leading-relaxed mt-1.5 line-clamp-2 flex-1">
                     {theme.description}
                   </p>
 
                   {/* Bottom status bar */}
-                  <div className="w-full pt-2.5 mt-3 border-t border-white/5 flex items-center justify-between">
-                    <span className="text-[10px] text-white/40">
+                  <div className="w-full pt-2.5 mt-3 flex items-center justify-between">
+                    <span className="text-[10px] text-muted-foreground">
                       {isSelected ? 'Default layout' : 'Click to activate'}
                     </span>
                     <div
                       className="h-1.5 rounded-full transition-all"
                       style={{
-                        backgroundColor: isSelected ? theme.accentColor : 'rgba(255,255,255,0.1)',
+                        backgroundColor: isSelected ? theme.accentColor : 'var(--dk-separator)',
                         width: isSelected ? '24px' : '8px',
                       }}
                     />
@@ -328,10 +324,10 @@ export const SettingsLauncherPage = () => {
             <Sparkles size={18} />
           </div>
           <div className="text-xs space-y-1">
-            <p className="font-semibold text-white">Looking for Game Library & Download Settings?</p>
-            <p className="text-white/60 leading-relaxed">
-              Local folder scan paths, game matching, download directories, and worker nodes are managed under <span className="font-medium text-white">Settings &gt; Library</span> and <span className="font-medium text-white">Settings &gt; Nodes</span>.
-              Linked accounts (Steam, Plex, *arr) are under <span className="font-medium text-white">Settings &gt; Connections</span>.
+            <p className="font-semibold text-foreground">Looking for Game Library & Download Settings?</p>
+            <p className="text-muted-foreground leading-relaxed">
+              Local folder scan paths, game matching, download directories, and worker nodes are managed under <span className="font-medium text-foreground">Settings &gt; Library</span> and <span className="font-medium text-foreground">Settings &gt; Nodes</span>.
+              Linked accounts (Steam, Plex, *arr) are under <span className="font-medium text-foreground">Settings &gt; Connections</span>.
             </p>
           </div>
         </div>

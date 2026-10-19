@@ -20,11 +20,11 @@ interface MediaCardBadgesProps {
 }
 
 const TONE_STYLES: Record<NonNullable<CardBadge['tone']>, string> = {
-  default: 'text-white/80 bg-white/10 border-white/10',
-  info: 'text-sky-300 bg-sky-500/15 border-sky-400/30',
-  success: 'text-emerald-300 bg-emerald-500/15 border-emerald-400/30',
-  warning: 'text-amber-300 bg-amber-500/15 border-amber-400/30',
-  danger: 'text-red-300 bg-red-500/15 border-red-400/30',
+  default: 'text-foreground bg-[var(--dk-surface-glass)] border-[var(--dk-separator)]',
+  info: 'text-sky-600 dark:text-sky-300 bg-sky-500/15 border-sky-500/30',
+  success: 'text-emerald-600 dark:text-emerald-300 bg-emerald-500/15 border-emerald-500/30',
+  warning: 'text-amber-600 dark:text-amber-300 bg-amber-500/15 border-amber-500/30',
+  danger: 'text-destructive bg-destructive/15 border-destructive/30',
 }
 
 export const MediaCardBadges = ({ mediaId, mediaType, tmdbId, className }: MediaCardBadgesProps) => {

@@ -113,3 +113,110 @@ class RequestContextResolutionTests(TestCase):
     def test_invalid_theme_defaults_to_general(self):
         req = self.rf.get("/media/?theme=neon")
         self.assertEqual(request_context(req), "general")
+
+
+class LogoLanguageRankingTests(TestCase):
+    def setUp(self):
+        self.item = MediaItem.objects.create(
+            title="Language Ranking Movie",
+            media_type="movie",
+            slug="language-movie",
+            original_language="ja",
+        )
+        # White Russian logo (theme contrast rank = 3 in dark mode)
+        self.logo_ru_white = MediaAsset.objects.create(
+            media_item=self.item,
+            asset_type="logo",
+            url="https://example.com/logo_ru_white.png",
+            lang="ru",
+            score=60,
+            color_guess="guess_white",
+        )
+        # Colorful English logo (theme contrast rank = 2 in dark mode)
+        self.logo_en_color = MediaAsset.objects.create(
+            media_item=self.item,
+            asset_type="logo",
+            url="https://example.com/logo_en_color.png",
+            lang="en",
+            score=40,
+            color_guess="guess_colorful",
+        )
+        # Japanese logo matching original_language
+        self.logo_ja = MediaAsset.objects.create(
+            media_item=self.item,
+            asset_type="logo",
+            url="https://example.com/logo_ja.png",
+            lang="ja",
+            score=50,
+            color_guess="guess_colorful",
+        )
+
+    def test_english_logo_outranks_foreign_white_logo_in_dark_theme(self):
+        # Even though Russian logo is white (score 3 in dark mode) and English is colorful (score 2),
+        # English language priority (tier 3 vs 0) MUST outrank the foreign logo.
+        best = _best_asset(self.item, "logo", context="dark")
+        self.assertIsNotNone(best)
+        self.assertEqual(best.pk, self.logo_en_color.pk)
+
+    def test_original_language_outranks_other_foreign_when_no_english(self):
+        # If English logo does not exist, original_language (ja) outranks foreign (ru)
+        self.logo_en_color.delete()
+        best = _best_asset(self.item, "logo", context="general")
+        self.assertIsNotNone(best)
+        self.assertEqual(best.pk, self.logo_ja.pk)
+
+
+class RatingComputationTests(TestCase):
+    def test_compute_overall_rating_blended(self):
+        from apps.media.models import ExternalRating
+        from apps.media.services.rating import compute_and_store_overall_rating
+
+        item = MediaItem.objects.create(
+            title="Rating Test",
+            media_type="movie",
+            slug="rating-test",
+            avg_rating=8.0,
+            rating_count=10,
+        )
+        # External rating of 7.0 / 10.0
+        ExternalRating.objects.create(
+            media_item=item,
+            provider="tmdb",
+            score=7.0,
+            max_score=10.0,
+            vote_count=1000,
+        )
+        # Community is 8.0, external is 7.0
+        # Blended: 0.9 * 8.0 + 0.1 * 7.0 = 7.2 + 0.7 = 7.9 -> 79.0 on 0-100 scale
+        score, source = compute_and_store_overall_rating(item.pk)
+        self.assertEqual(score, 79.0)
+        self.assertEqual(source, "community")
+
+        item.refresh_from_db()
+        self.assertEqual(item.overall_rating, 79.0)
+        self.assertEqual(item.overall_rating_source, "community")
+
+    def test_compute_overall_rating_external_fallback(self):
+        from apps.media.models import ExternalRating
+        from apps.media.services.rating import compute_and_store_overall_rating
+
+        item = MediaItem.objects.create(
+            title="External Rating Test",
+            media_type="movie",
+            slug="ext-rating-test",
+        )
+        ExternalRating.objects.create(
+            media_item=item,
+            provider="imdb",
+            score=8.5,
+            max_score=10.0,
+            vote_count=5000,
+        )
+        score, source = compute_and_store_overall_rating(item.pk)
+        self.assertEqual(score, 85.0)
+        self.assertEqual(source, "external")
+
+        item.refresh_from_db()
+        self.assertEqual(item.overall_rating, 85.0)
+        self.assertEqual(item.overall_rating_source, "external")
+

@@ -188,7 +188,7 @@ export const ListDetailPage = () => {
                   Public
                 </span>
               ) : (
-                <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
                   <LockIcon className="h-3 w-3 shrink-0" />
                   Private
                 </span>
@@ -203,7 +203,7 @@ export const ListDetailPage = () => {
                     <img
                       src={list.user.avatarUrl}
                       alt={list.user.username}
-                      className="h-4 w-4 rounded-full object-cover border border-white/10"
+                      className="h-4 w-4 rounded-full object-cover border border-[var(--dk-separator)]"
                     />
                   ) : null}
                   <span>
@@ -227,7 +227,7 @@ export const ListDetailPage = () => {
               onClick={() => {
                 const close = openModal(<ShareModal list={list} onClose={() => close()} />)
               }}
-              className="glass-inset inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium text-white/90 transition-all hover:bg-white/10 hover:text-white"
+              className="glass-inset inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium text-foreground transition-all hover:bg-[var(--dk-surface-ghost-hover)] hover:text-foreground"
             >
               <ShareIcon className="h-4 w-4" />
               Share
@@ -238,8 +238,8 @@ export const ListDetailPage = () => {
                 <button
                   onClick={() => setAddingMode(!addingMode)}
                   className={cn(
-                    "glass-inset inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium text-white/90 transition-all hover:bg-white/10 hover:text-white",
-                    addingMode && "bg-white/10 text-white"
+                    "glass-inset inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium text-foreground transition-all hover:bg-[var(--dk-surface-ghost-hover)] hover:text-foreground",
+                    addingMode && "bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground"
                   )}
                 >
                   {addingMode ? (
@@ -266,7 +266,7 @@ export const ListDetailPage = () => {
                       />
                     )
                   }}
-                  className="glass-inset inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium text-white/90 transition-all hover:bg-white/10 hover:text-white"
+                  className="glass-inset inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium text-foreground transition-all hover:bg-[var(--dk-surface-ghost-hover)] hover:text-foreground"
                 >
                   <PencilIcon className="h-4 w-4" />
                   Edit
@@ -275,7 +275,7 @@ export const ListDetailPage = () => {
                   onClick={() => {
                     const close = openModal(<CollaboratorsModal list={list} onClose={() => close()} />)
                   }}
-                  className="glass-inset inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium text-white/90 transition-all hover:bg-white/10 hover:text-white"
+                  className="glass-inset inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium text-foreground transition-all hover:bg-[var(--dk-surface-ghost-hover)] hover:text-foreground"
                 >
                   <UsersIcon className="h-4 w-4" />
                   Collab
@@ -294,7 +294,7 @@ export const ListDetailPage = () => {
 
         {/* Embedded Search panel */}
         {addingMode && (
-          <div className="relative z-10 mt-8 pt-8 border-t border-white/10 animate-fade-in space-y-6">
+          <div className="relative z-10 mt-8 pt-8 border-t border-[var(--dk-separator)] animate-fade-in space-y-6">
             <div className="flex flex-col gap-4 items-start lg:flex-row lg:items-center">
               <SearchField
                 value={searchQuery}
@@ -364,7 +364,7 @@ export const ListDetailPage = () => {
                               handleRemoveItem(item.id, item.mediaType)
                             }}
                             title="Remove from list"
-                            className="absolute top-2 right-2 rounded-full px-2.5 py-1 text-[10px] font-semibold tracking-wide uppercase backdrop-blur-md bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 hover:bg-red-500/20 hover:text-red-300 hover:border-red-500/30 transition-colors"
+                            className="absolute top-2 right-2 rounded-full px-2.5 py-1 text-[10px] font-semibold tracking-wide uppercase backdrop-blur-md bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 hover:bg-destructive/20 hover:text-destructive hover:border-destructive/30 transition-colors"
                           >
                             Added
                           </button>
@@ -376,7 +376,7 @@ export const ListDetailPage = () => {
                               addToList.mutate({ listId, mediaItemId: item.id, mediaType: item.mediaType })
                             }}
                             title="Add to list"
-                            className="absolute top-2 right-2 rounded-full p-2 backdrop-blur-md bg-black/60 text-white/70 opacity-0 group-hover:opacity-100 hover:bg-primary hover:text-white transition-all duration-200"
+                            className="absolute top-2 right-2 rounded-full p-2 backdrop-blur-md bg-background/80 text-foreground opacity-0 group-hover:opacity-100 hover:bg-primary hover:text-primary-foreground transition-all duration-200 border border-[var(--dk-separator)] shadow-md"
                           >
                             <PlusIcon className="h-4 w-4" />
                           </button>
@@ -401,7 +401,7 @@ export const ListDetailPage = () => {
       >
         {isOwner && listItems.length > 1 && (
           <div className="flex justify-end px-2">
-            <p className="text-xs font-medium text-white/30 hidden sm:block uppercase tracking-wider">
+            <p className="text-xs font-medium text-muted-foreground hidden sm:block uppercase tracking-wider">
               Drag to reorder
             </p>
           </div>
@@ -409,7 +409,7 @@ export const ListDetailPage = () => {
         
         {listItems.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">
-            <p className="text-lg font-semibold text-white/90">
+            <p className="text-lg font-semibold text-foreground">
               This list is empty
             </p>
             <p className="mt-1.5 text-sm text-muted-foreground max-w-xs">
@@ -418,7 +418,7 @@ export const ListDetailPage = () => {
             {isOwner && (
               <button
                 onClick={() => setAddingMode(true)}
-                className="mt-6 inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold bg-white text-black hover:bg-white/90 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                className="mt-6 inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-all hover:scale-[1.02] active:scale-[0.98]"
               >
                 <PlusIcon className="h-4 w-4" />
                 Add Items
@@ -442,7 +442,7 @@ export const ListDetailPage = () => {
                 onDragLeave={handleDragLeave}
               >
                 {isOwner && (
-                  <div className="absolute top-2 left-2 z-10 rounded-full p-1.5 backdrop-blur-md bg-black/50 text-white/50 opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing hover:bg-black/70 hover:text-white">
+                  <div className="absolute top-2 left-2 z-10 rounded-full p-1.5 backdrop-blur-md bg-background/80 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing hover:bg-background hover:text-foreground border border-[var(--dk-separator)] shadow-md">
                     <GripVerticalIcon className="h-4 w-4" />
                   </div>
                 )}
@@ -464,7 +464,7 @@ export const ListDetailPage = () => {
                       e.preventDefault()
                       handleRemoveItem(item.id, item.mediaType)
                     }}
-                    className="absolute top-2 right-2 rounded-full p-1.5 backdrop-blur-md bg-black/50 text-white/60 opacity-0 group-hover:opacity-100 hover:bg-red-500/80 hover:text-white transition-all duration-200"
+                    className="absolute top-2 right-2 rounded-full p-1.5 backdrop-blur-md bg-background/80 text-muted-foreground opacity-0 group-hover:opacity-100 hover:bg-destructive hover:text-destructive-foreground transition-all duration-200 border border-[var(--dk-separator)] shadow-md"
                   >
                     <TrashIcon className="h-4 w-4" />
                   </button>

@@ -66,7 +66,7 @@ export const CropModal = ({
       {/* header */}
       <div className="dk-settings-crop-modal__header">
         <div className="dk-settings-crop-modal__header-icon">
-          <SlidersHorizontal className="h-4 w-4 text-white/60" />
+          <SlidersHorizontal className="h-4 w-4 text-muted-foreground" />
         </div>
         <div className="dk-settings-crop-modal__text-wrap">
           <p className="dk-settings-crop-modal__title">Crop &amp; Resize</p>

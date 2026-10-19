@@ -11,11 +11,8 @@ export const OAuthContainer = ({
   return (
     <div
       id={id}
-      className="w-full max-w-sm rounded-[2rem] p-6 text-center [&:has(>div:empty)]:hidden"
+      className="w-full max-w-sm rounded-[2rem] p-6 text-center [&:has(>div:empty)]:hidden bg-[var(--dk-surface-base)]/40 backdrop-blur-2xl"
       style={{
-        backgroundColor: 'oklch(from var(--dk-surface-base) l c h / 0.4)',
-        backdropFilter: 'blur(24px)',
-        WebkitBackdropFilter: 'blur(24px)',
         boxShadow: 'var(--dk-shadow-glass)',
       }}
     >

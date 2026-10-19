@@ -48,7 +48,7 @@ export const ListCard = ({ list, selectable = false, selected = false, onSelect 
               type="button"
               onClick={handleShare}
               title={`Share ${list.name}`}
-              className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground opacity-70 group-hover:opacity-100 hover:bg-white/10 hover:text-foreground transition-all"
+              className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground opacity-70 group-hover:opacity-100 hover:bg-[var(--dk-surface-ghost-hover)] hover:text-foreground transition-all"
               aria-label={`Share ${list.name}`}
             >
               <Share2 className="h-3.5 w-3.5" />
@@ -66,7 +66,7 @@ export const ListCard = ({ list, selectable = false, selected = false, onSelect 
                 "flex h-5 w-5 shrink-0 items-center justify-center rounded-lg border transition-all",
                 selected
                   ? "border-primary bg-primary text-primary-foreground shadow-sm shadow-primary/30"
-                  : "border-white/20 bg-black/20 group-hover:border-white/40",
+                  : "border-border/40 bg-[var(--dk-surface-ghost)] group-hover:border-border",
               )}
               aria-label={selected ? `Deselect ${list.name}` : `Select ${list.name}`}
             >

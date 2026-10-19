@@ -38,28 +38,28 @@ export const CalendarPage = () => {
       </Helmet>
 
       <div className="mb-6 flex items-center justify-between gap-3">
-        <h1 className="text-xl font-bold text-white">Calendar</h1>
+        <h1 className="text-xl font-bold text-foreground">Calendar</h1>
         <Link
           to="/calendar/timeline"
-          className="rounded-md border border-white/10 px-2.5 py-1 text-[11px] font-medium text-white/45 transition-colors hover:border-white/20 hover:text-white/80"
+          className="rounded-md border border-[var(--dk-separator)] px-2.5 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:text-foreground hover:bg-[var(--dk-surface-ghost)]"
         >
-          Timeline <span className="text-white/30">Beta</span>
+          Timeline <span className="text-muted-foreground/60">Beta</span>
         </Link>
       </div>
 
       <div className="mb-6 flex items-center justify-between">
         <button
           onClick={prevMonth}
-          className="flex h-8 w-8 items-center justify-center rounded-lg text-white/40 transition-colors hover:bg-white/5 hover:text-white/80"
+          className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-[var(--dk-surface-ghost)] hover:text-foreground"
         >
           <ChevronLeft className="h-4 w-4" />
         </button>
 
         <div className="flex items-center gap-3">
-          <h2 className="text-base font-semibold text-white/90">{monthLabel}</h2>
+          <h2 className="text-base font-semibold text-foreground">{monthLabel}</h2>
           <button
             onClick={goToToday}
-            className="rounded-md border border-white/10 px-2.5 py-1 text-[11px] font-medium text-white/50 transition-colors hover:border-white/20 hover:text-white/80"
+            className="rounded-md border border-[var(--dk-separator)] px-2.5 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:text-foreground hover:bg-[var(--dk-surface-ghost)]"
           >
             Today
           </button>
@@ -67,7 +67,7 @@ export const CalendarPage = () => {
 
         <button
           onClick={nextMonth}
-          className="flex h-8 w-8 items-center justify-center rounded-lg text-white/40 transition-colors hover:bg-white/5 hover:text-white/80"
+          className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-[var(--dk-surface-ghost)] hover:text-foreground"
         >
           <ChevronRight className="h-4 w-4" />
         </button>
@@ -75,17 +75,17 @@ export const CalendarPage = () => {
 
       {isLoading && (
         <div className="space-y-2">
-          <div className="h-64 animate-pulse rounded-lg bg-white/[0.03]" />
+          <div className="h-64 animate-pulse rounded-lg bg-[var(--dk-surface-ghost)]" />
         </div>
       )}
 
       {isError && !events && (
         <div className="flex flex-col items-center justify-center py-16 text-center">
-          <p className="text-sm text-white/50">Failed to load the calendar.</p>
+          <p className="text-sm text-destructive">Failed to load the calendar.</p>
           <button
             type="button"
             onClick={() => void refetch()}
-            className="mt-3 rounded-md border border-white/10 px-3 py-1.5 text-xs font-medium text-white/70 transition-colors hover:border-white/20 hover:text-white"
+            className="mt-3 rounded-md border border-[var(--dk-separator)] px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground hover:bg-[var(--dk-surface-ghost)]"
           >
             Retry
           </button>
@@ -95,8 +95,8 @@ export const CalendarPage = () => {
       {events && events.length > 0 && <CalendarGrid events={events} year={year} month={month} />}
       {events && events.length === 0 && (
         <div className="flex flex-col items-center justify-center py-16 text-center">
-          <p className="text-sm text-white/30">No upcoming or recent releases</p>
-          <p className="mt-1 text-xs text-white/20">Add items to your watchlist to track them here.</p>
+          <p className="text-sm text-muted-foreground">No upcoming or recent releases</p>
+          <p className="mt-1 text-xs text-muted-foreground/60">Add items to your watchlist to track them here.</p>
         </div>
       )}
     </div>

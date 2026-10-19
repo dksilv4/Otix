@@ -114,7 +114,7 @@ export const BlueprintCommunity = ({ pluginId, onViewDetail }: Props) => {
             value={search}
             onChange={(e) => { setSearch(e.target.value); setPage(1) }}
             placeholder="Search community blueprints..."
-            className="w-full h-8 pl-8 pr-3 text-xs rounded-lg bg-white/5 border border-white/10 text-white placeholder:text-muted-foreground focus:outline-none focus:border-primary/50"
+            className="w-full h-8 pl-8 pr-3 text-xs rounded-lg bg-[var(--dk-surface-glass)] border border-[var(--dk-separator)] text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50"
           />
         </div>
         <div className="flex gap-1">
@@ -125,7 +125,7 @@ export const BlueprintCommunity = ({ pluginId, onViewDetail }: Props) => {
               className={`px-2.5 py-1 text-[10px] font-medium rounded-lg transition-all ${
                 sort === opt.value
                   ? 'bg-primary/10 text-primary'
-                  : 'text-muted-foreground hover:text-white hover:bg-white/5'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-glass)]'
               }`}
             >
               {opt.label}
@@ -142,7 +142,7 @@ export const BlueprintCommunity = ({ pluginId, onViewDetail }: Props) => {
 
       {/* Error state */}
       {error && (
-        <div className="flex items-center gap-2 p-3 rounded-lg bg-red-500/10 text-red-400 text-xs">
+        <div className="flex items-center gap-2 p-3 rounded-lg bg-destructive/10 text-destructive text-xs">
           <AlertCircle className="h-4 w-4 shrink-0" />
           {error}
         </div>
@@ -194,7 +194,7 @@ export const BlueprintCommunity = ({ pluginId, onViewDetail }: Props) => {
                     <button
                       onClick={(e) => { e.stopPropagation(); handleLike(bp.id) }}
                       className={`flex items-center gap-1 transition-all ${
-                        bp.user_has_liked ? 'text-red-400' : 'hover:text-white'
+                        bp.user_has_liked ? 'text-destructive' : 'hover:text-foreground'
                       }`}
                     >
                       <Heart className={`h-3 w-3 ${bp.user_has_liked ? 'fill-current' : ''}`} />
@@ -212,7 +212,7 @@ export const BlueprintCommunity = ({ pluginId, onViewDetail }: Props) => {
               <button
                 onClick={() => setPage(p => Math.max(1, p - 1))}
                 disabled={page === 1}
-                className="px-3 py-1.5 text-xs rounded-lg hover:bg-white/10 text-muted-foreground disabled:opacity-30"
+                className="px-3 py-1.5 text-xs rounded-lg hover:bg-[var(--dk-surface-glass)] text-muted-foreground hover:text-foreground disabled:opacity-30"
               >
                 Previous
               </button>
@@ -222,7 +222,7 @@ export const BlueprintCommunity = ({ pluginId, onViewDetail }: Props) => {
               <button
                 onClick={() => setPage(p => p + 1)}
                 disabled={page >= Math.ceil(total / 24)}
-                className="px-3 py-1.5 text-xs rounded-lg hover:bg-white/10 text-muted-foreground disabled:opacity-30"
+                className="px-3 py-1.5 text-xs rounded-lg hover:bg-[var(--dk-surface-glass)] text-muted-foreground hover:text-foreground disabled:opacity-30"
               >
                 Next
               </button>
@@ -233,9 +233,9 @@ export const BlueprintCommunity = ({ pluginId, onViewDetail }: Props) => {
 
       {/* Upload modal */}
       {showUpload && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={() => setShowUpload(false)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm" onClick={() => setShowUpload(false)}>
           <div className="glass-card rounded-xl p-6 max-w-lg w-full mx-4 space-y-4" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-sm font-medium text-white">Share to Community</h3>
+            <h3 className="text-sm font-medium text-foreground">Share to Community</h3>
             <p className="text-xs text-muted-foreground">Select a blueprint from your vault to publish.</p>
             {vaultBlueprints.length === 0 ? (
               <p className="text-xs text-muted-foreground py-4 text-center">
@@ -247,7 +247,7 @@ export const BlueprintCommunity = ({ pluginId, onViewDetail }: Props) => {
                   <button
                     key={bp.id}
                     onClick={() => handleUpload(bp.id, bp.parsed_data?.label || bp.label, '', [])}
-                    className="w-full text-left p-2.5 rounded-lg hover:bg-white/5 text-xs text-muted-foreground hover:text-white transition-all"
+                    className="w-full text-left p-2.5 rounded-lg hover:bg-[var(--dk-surface-glass)] text-xs text-muted-foreground hover:text-foreground transition-all"
                   >
                     {bp.parsed_data?.label || bp.label}
                   </button>
@@ -257,7 +257,7 @@ export const BlueprintCommunity = ({ pluginId, onViewDetail }: Props) => {
             <div className="flex justify-end">
               <button
                 onClick={() => setShowUpload(false)}
-                className="px-4 py-2 text-xs rounded-lg hover:bg-white/10 text-muted-foreground transition-all"
+                className="px-4 py-2 text-xs rounded-lg hover:bg-[var(--dk-surface-glass)] text-muted-foreground hover:text-foreground transition-all"
               >
                 Cancel
               </button>

@@ -1,6 +1,8 @@
 @import "tailwindcss";
 @import "./components/ui/tokens.css";
 
+@custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *));
+
 /* ── shadcn/ui CSS variables (new-york, zinc) ── */
 @theme inline {
   --radius: 0.5rem;

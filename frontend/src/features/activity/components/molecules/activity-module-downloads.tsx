@@ -21,7 +21,7 @@ const HistoryStatusIcon = ({ status }: { status: string }) => {
   if (status === 'failed') return <AlertCircle className="h-4 w-4 text-rose-400 shrink-0" />
   if (status === 'processing') return <RefreshCw className="h-4 w-4 text-purple-400 animate-spin shrink-0" />
   if (status === 'paused') return <Clock className="h-4 w-4 text-amber-400 shrink-0" />
-  return <Clock className="h-4 w-4 text-white/35 shrink-0" />
+  return <Clock className="h-4 w-4 text-muted-foreground shrink-0" />
 };
 
 /** Molecule showing active and recent downloads with progress bars. */
@@ -89,7 +89,7 @@ export const ActivityModuleDownloads = () => {
               </span>
             )}
           </div>
-          <span className="text-xs font-semibold uppercase tracking-wider text-white/50">Downloads</span>
+          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Downloads</span>
         </div>
         <div className="space-y-4">
           {serverItems.map((item) => {
@@ -98,19 +98,19 @@ export const ActivityModuleDownloads = () => {
             const isPaused = status.includes('pause')
 
             return (
-              <div key={item.nzo_id} className="flex flex-col gap-2">
+              <div key={item.nzo_id} className="flex flex-col gap-2 p-2.5 rounded-xl bg-[var(--dk-surface-overlay)]/60 border border-[var(--dk-separator)]">
                 <div className="flex items-center gap-3">
                   {isPaused ? (
-                    <Clock className="h-4 w-4 text-amber-400 shrink-0" />
+                    <Clock className="h-4 w-4 text-amber-500 dark:text-amber-400 shrink-0" />
                   ) : (
-                    <Loader2 className="h-4 w-4 text-blue-400 animate-spin shrink-0" />
+                    <Loader2 className="h-4 w-4 text-blue-500 dark:text-blue-400 animate-spin shrink-0" />
                   )}
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold truncate text-white/90" title={item.filename}>
+                    <p className="text-sm font-semibold truncate text-foreground" title={item.filename}>
                       {item.filename || 'SABnzbd download'}
                     </p>
-                    <p className="flex items-center gap-1.5 text-[10px] mt-0.5 font-medium text-white/35">
-                      <span className="uppercase tracking-wider text-[9px] font-bold text-blue-300/70">Usenet</span>
+                    <p className="flex items-center gap-1.5 text-[10px] mt-0.5 font-medium text-muted-foreground">
+                      <span className="uppercase tracking-wider text-[9px] font-bold text-blue-500 dark:text-blue-300/70">Usenet</span>
                       {item.size_mb ? formatBytes(item.size_mb * 1024 * 1024) : null}
                       {item.speed && item.speed !== '0 B/s' ? <span>· {item.speed}</span> : null}
                     </p>
@@ -119,7 +119,7 @@ export const ActivityModuleDownloads = () => {
                     <button
                       type="button"
                       onClick={() => cancelServerQueue.mutate(item.nzo_id)}
-                      className="h-7 w-7 flex items-center justify-center rounded-full transition-all cursor-pointer text-white/30 hover:text-red-400 hover:bg-red-400/10"
+                      className="h-7 w-7 flex items-center justify-center rounded-full transition-all cursor-pointer text-muted-foreground hover:text-red-500 hover:bg-red-500/10"
                       title="Cancel Download"
                     >
                       <X className="h-4 w-4" />
@@ -127,33 +127,33 @@ export const ActivityModuleDownloads = () => {
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
-                  <div className="h-1.5 rounded-full overflow-hidden flex-1 bg-white/[0.06]">
+                  <div className="h-1.5 rounded-full overflow-hidden flex-1 bg-muted">
                     <div
                       className="h-full rounded-full transition-all duration-700 bg-gradient-to-r from-blue-500 to-indigo-500"
                       style={{ width: `${pct}%` }}
                     />
                   </div>
-                  <span className="text-[10px] font-mono tabular-nums font-medium text-white/40">{pct.toFixed(0)}%</span>
+                  <span className="text-[10px] font-mono tabular-nums font-medium text-muted-foreground">{pct.toFixed(0)}%</span>
                 </div>
               </div>
             )
           })}
 
           {historyItems.map((item) => (
-            <div key={item.nzo_id || item.id} className="flex flex-col gap-2">
+            <div key={item.nzo_id || item.id} className="flex flex-col gap-2 p-2.5 rounded-xl bg-[var(--dk-surface-overlay)]/60 border border-[var(--dk-separator)]">
               <div className="flex items-center gap-3">
                 <HistoryStatusIcon status={item.status} />
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold truncate text-white/90" title={item.title}>
+                  <p className="text-sm font-semibold truncate text-foreground" title={item.title}>
                     {item.title}
                   </p>
-                  <p className="flex items-center gap-1.5 text-[10px] mt-0.5 font-medium text-white/35">
+                  <p className="flex items-center gap-1.5 text-[10px] mt-0.5 font-medium text-muted-foreground">
                     {historyMeta(item)}
                   </p>
                 </div>
               </div>
               {item.status === 'failed' && item.error_message ? (
-                <p className="text-[11px] rounded-xl px-3 py-2 leading-relaxed break-words font-medium text-rose-400/80 bg-rose-400/5">
+                <p className="text-[11px] rounded-xl px-3 py-2 leading-relaxed break-words font-medium text-rose-500 dark:text-rose-400/80 bg-rose-500/10">
                   {item.error_message}
                 </p>
               ) : null}
@@ -182,16 +182,16 @@ export const ActivityModuleDownloads = () => {
             }
 
             return (
-              <div key={d.id} className="flex flex-col gap-2">
+              <div key={d.id} className="flex flex-col gap-2 p-2.5 rounded-xl bg-[var(--dk-surface-overlay)]/60 border border-[var(--dk-separator)]">
                 <div className="flex items-center gap-3">
                   {statusIcon}
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold truncate text-white/90" title={d.mediaItemTitle ?? d.nzbName ?? 'Unknown'}>
+                    <p className="text-sm font-semibold truncate text-foreground" title={d.mediaItemTitle ?? d.nzbName ?? 'Unknown'}>
                       {d.mediaItemTitle ?? d.nzbName ?? 'Unknown'}
                     </p>
-                    <p className="flex items-center gap-1.5 text-[10px] mt-0.5 font-medium text-white/35">
+                    <p className="flex items-center gap-1.5 text-[10px] mt-0.5 font-medium text-muted-foreground">
                       {d.source === 'radarr' && (
-                        <span className="uppercase tracking-wider text-[9px] font-bold text-blue-300/70">Radarr</span>
+                        <span className="uppercase tracking-wider text-[9px] font-bold text-blue-500 dark:text-blue-300/70">Radarr</span>
                       )}
                       {d.nzbSize ? formatBytes(d.nzbSize) : null}
                     </p>
@@ -202,7 +202,7 @@ export const ActivityModuleDownloads = () => {
                       <button
                         type="button"
                         onClick={() => cancelDownload(d.id)}
-                        className="h-7 w-7 flex items-center justify-center rounded-full transition-all cursor-pointer text-white/30 hover:text-red-400 hover:bg-red-400/10"
+                        className="h-7 w-7 flex items-center justify-center rounded-full transition-all cursor-pointer text-muted-foreground hover:text-red-500 hover:bg-red-500/10"
                         title="Cancel Download"
                       >
                         <X className="h-4 w-4" />
@@ -212,20 +212,20 @@ export const ActivityModuleDownloads = () => {
                 </div>
 
                 {d.status === 'failed' && d.errorMessage && (
-                  <p className="text-[11px] rounded-xl px-3 py-2 leading-relaxed break-words font-medium text-rose-400/80 bg-rose-400/5">
+                  <p className="text-[11px] rounded-xl px-3 py-2 leading-relaxed break-words font-medium text-rose-500 dark:text-rose-400/80 bg-rose-500/10">
                     {d.errorMessage}
                   </p>
                 )}
 
                 {isActive && (
                   <div className="flex items-center gap-3">
-                    <div className="h-1.5 rounded-full overflow-hidden flex-1 bg-white/[0.06]">
+                    <div className="h-1.5 rounded-full overflow-hidden flex-1 bg-muted">
                       <div
                         className={"h-full rounded-full transition-all duration-700 " + progressBgClass}
                         style={{ width: `${pct}%` }}
                       />
                     </div>
-                    <span className="text-[10px] font-mono tabular-nums font-medium text-white/40">{pct}%</span>
+                    <span className="text-[10px] font-mono tabular-nums font-medium text-muted-foreground">{pct}%</span>
                   </div>
                 )}
               </div>

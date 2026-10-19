@@ -497,16 +497,31 @@ def _upsert_tmdb_rating(media: MediaItem, raw: dict[str, Any]) -> None:
             max_score=10.0,
             vote_count=vote_count,
         )
-        return
-    changes = {
-        key: val
-        for key, val in (("score", score), ("vote_count", vote_count))
-        if getattr(row, key) != val
-    }
-    if changes:
-        for key, val in changes.items():
-            setattr(row, key, val)
-        row.save(update_fields=tuple(changes.keys()))
+    else:
+        changes = {
+            key: val
+            for key, val in (("score", score), ("vote_count", vote_count))
+            if getattr(row, key) != val
+        }
+        if changes:
+            for key, val in changes.items():
+                setattr(row, key, val)
+            row.save(update_fields=tuple(changes.keys()))
+
+    media_updates: list[str] = []
+    if media.avg_rating is None and score > 0:
+        media.avg_rating = round(score, 2)
+        media_updates.append("avg_rating")
+    if not media.rating_count and vote_count > 0:
+        media.rating_count = int(vote_count)
+        media_updates.append("rating_count")
+    if media_updates:
+        media.save(update_fields=tuple(media_updates))
+
+    from apps.media.services.rating import compute_and_store_overall_rating
+
+    compute_and_store_overall_rating(media.pk)
+
 
 
 def _hydrate_relations(media: MediaItem, raw: dict[str, Any]) -> None:

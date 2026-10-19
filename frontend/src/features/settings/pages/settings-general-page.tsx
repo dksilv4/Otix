@@ -1,40 +1,42 @@
 import { useState, useEffect } from 'react'
-import { useQuery } from '@tanstack/react-query'
 import { DkDropdown } from '@ui/atoms/dropdown'
 import { DkButton } from '@ui/atoms/button'
 import { DkSwitch } from '@ui/atoms/switch'
-import { DkDialog } from '@ui/molecules/dialog'
-import { Trash2, CheckCircle2, Sparkles, RotateCcw, Ban, Wand2 } from 'lucide-react'
+import {
+  Trash2,
+  CheckCircle2,
+  Sparkles,
+  Wand2,
+  SlidersHorizontal,
+  RefreshCw,
+  DownloadCloud,
+  ArrowRight,
+  AlertCircle,
+} from 'lucide-react'
 import { SectionHeader } from '../components/molecules/settings-section-header'
 import { SettingsCard } from '../components/molecules/settings-card'
-import { useSteamFreePacksSetting, STEAM_FREE_PACKS_STORAGE_KEY } from '../hooks/use-steam-free-packs-setting'
 import { isDesktop } from '@/lib/desktop/api'
-import { useAuth } from '@auth/hooks/use-auth'
-import { apiClient } from '@/lib/api/client'
-import { useToast } from '@ui/molecules/toast'
-import { queryClient } from '@/lib/query/client'
-import { mediaKeys } from '@media/queries/media-keys'
-import { mediaQueries, useUnblockRecommendation } from '@media/queries/media-queries'
+import {
+  useAppUpdater,
+  getUpdateStatusLabel,
+  formatBytes,
+  formatSpeed,
+} from '@/features/updater'
 import { useWelcomePreferences, SetupWizardModal } from '@/features/welcome'
 import { router } from '@/lib/router'
+import { useSettingsHashScroll } from '../hooks/use-settings-hash-scroll'
 import {
   DEFAULT_LANDING_PAGE_KEY as STORAGE_KEY,
   LANDING_PAGE_OPTIONS,
   readDefaultPage,
-  formatResetAt,
 } from '../utils/general'
 
 export const SettingsGeneralPage = () => {
   const [defaultPage, setDefaultPage] = useState(readDefaultPage)
-  const [showSteamPacks, setShowSteamPacks] = useSteamFreePacksSetting()
   const [cleared, setCleared] = useState(false)
-  const [confirmTasteReset, setConfirmTasteReset] = useState(false)
-  const [tasteResetting, setTasteResetting] = useState(false)
-  const [showBlockedModal, setShowBlockedModal] = useState(false)
   const [showSetupWizard, setShowSetupWizard] = useState(false)
   const desktop = isDesktop()
-  const { isAuthenticated, user, refreshUser } = useAuth()
-  const { toast } = useToast()
+  useSettingsHashScroll()
   const {
     isWelcomeNavVisible,
     isWelcomeBannerVisible,
@@ -42,11 +44,20 @@ export const SettingsGeneralPage = () => {
     setWelcomeBannerVisible,
   } = useWelcomePreferences()
 
-  const { data: blockedData } = useQuery({
-    ...mediaQueries.blockedRecommendations(),
-    enabled: isAuthenticated,
-  })
-  const unblockMutation = useUnblockRecommendation()
+  const {
+    status: updateStatus,
+    currentVersion,
+    availableVersion,
+    releaseNotes,
+    progress: updateProgress,
+    error: updateError,
+    isChecking: isUpdateChecking,
+    isDownloading: isUpdateDownloading,
+    isDownloaded: isUpdateDownloaded,
+    checkForUpdates,
+    downloadUpdate,
+    installUpdate,
+  } = useAppUpdater()
 
   useEffect(() => {
     try {
@@ -65,7 +76,6 @@ export const SettingsGeneralPage = () => {
         'otix-accent-customs',
         'otix:default-landing-page',
         'otix:launcher-theme',
-        STEAM_FREE_PACKS_STORAGE_KEY,
       ])
       const keysToRemove: string[] = []
       for (let i = 0; i < localStorage.length; i++) {
@@ -82,332 +92,244 @@ export const SettingsGeneralPage = () => {
     }
   }
 
-  const handleResetTaste = async () => {
-    setTasteResetting(true)
-    try {
-      await apiClient.post('/auth/me/taste/reset')
-      await refreshUser()
-      await queryClient.invalidateQueries({ queryKey: mediaKeys.all() })
-      setConfirmTasteReset(false)
-      toast({
-        title: 'Taste profile reset',
-        description: 'For You will rebuild from new ratings and activity. Your library is unchanged.',
-        variant: 'success',
-      })
-    } catch {
-      toast({
-        title: 'Could not reset taste',
-        description: 'Try again in a moment.',
-        variant: 'error',
-      })
-    } finally {
-      setTasteResetting(false)
-    }
-  }
-
-  const lastTasteReset = formatResetAt(user?.tasteResetAt)
-
   return (
-    <div id="general" className="space-y-5 scroll-mt-28">
-      {/* Default Landing Page */}
-      <SettingsCard>
-        <SectionHeader
-          title="Default Landing Page"
-          description="Choose which view opens first whenever you launch Otix."
-          action={
-            <DkDropdown
-              options={LANDING_PAGE_OPTIONS}
-              value={defaultPage}
-              onChange={(v) => setDefaultPage(v)}
-              className="w-44"
-            />
-          }
-        />
-      </SettingsCard>
+    <div id="settings-general-section" className="space-y-8">
+      <SectionHeader
+        variant="page"
+        icon={SlidersHorizontal}
+        title="General"
+        description="Application defaults, startup view, welcome guides, and local cache."
+      />
 
-      {/* Free Steam Packs & DLC */}
-      <SettingsCard>
-        <SectionHeader
-          title="Show Free Steam Packs & DLC"
-          description="Include promotional packs, DLCs, and bundles from Steam in Discover rails. Free packs for games you view will always appear on their game detail page."
-          action={
-            <DkSwitch
-              checked={showSteamPacks}
-              onCheckedChange={setShowSteamPacks}
-            />
-          }
-        />
-      </SettingsCard>
+      <div id="general" className="space-y-5 scroll-mt-28">
+        {/* Default Landing Page */}
+        <SettingsCard>
+          <SectionHeader
+            title="Default Landing Page"
+            description="Choose which view opens first whenever you launch Otix."
+            action={
+              <DkDropdown
+                options={LANDING_PAGE_OPTIONS}
+                value={defaultPage}
+                onChange={(v) => setDefaultPage(v)}
+                className="w-44"
+              />
+            }
+          />
+        </SettingsCard>
 
-      {/* Cache & Local State */}
-      <SettingsCard>
-        <SectionHeader
-          title="Application Cache"
-          description="Clear temporary cached catalog queries, search filters, and volatile media states without logging out."
-          action={
-            <DkButton
-              size="sm"
-              variant="ghost"
-              onClick={handleClearCache}
-              className="hover:bg-white/10 text-xs font-semibold gap-2"
+        {/* Welcome & Feature Guide */}
+        <SettingsCard>
+          <SectionHeader
+            title="Welcome & Feature Guide"
+            description="Manage getting started guides, walkthroughs, and navigation shortcuts."
+          />
+
+          <div className="space-y-4">
+            <div
+              className="flex items-center justify-between rounded-2xl p-4 sm:p-5"
+              style={{ backgroundColor: 'var(--dk-surface-raised)' }}
             >
-              {cleared ? (
-                <>
-                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
-                  <span className="text-emerald-400">Cache Cleared</span>
-                </>
-              ) : (
-                <>
-                  <Trash2 className="h-3.5 w-3.5 text-white/60" />
-                  <span>Clear Cache</span>
-                </>
-              )}
-            </DkButton>
-          }
-        />
-      </SettingsCard>
+              <div className="space-y-0.5 pr-4">
+                <span className="text-sm font-semibold text-foreground">Show in Navigation Menu</span>
+                <p className="text-xs text-muted-foreground">
+                  Display the Welcome Guide link in the floating navigation menu dropdown.
+                </p>
+              </div>
+              <DkSwitch
+                checked={isWelcomeNavVisible}
+                onCheckedChange={setWelcomeNavVisible}
+              />
+            </div>
 
-      {isAuthenticated && (
-        <SettingsCard>
-          <SectionHeader
-            icon={Sparkles}
-            title="For You taste"
-            description={
-              lastTasteReset
-                ? `Recommendations ignore activity from before ${lastTasteReset}. Library ratings and history stay intact.`
-                : 'For You blends this title with your ratings and watch activity. Reset to start a fresh taste profile without deleting your library.'
-            }
-            action={
-              <DkButton
-                size="sm"
-                variant="ghost"
-                onClick={() => setConfirmTasteReset(true)}
-                className="hover:bg-white/10 text-xs font-semibold gap-2"
-              >
-                <RotateCcw className="h-3.5 w-3.5 text-white/60" />
-                <span>Reset taste</span>
-              </DkButton>
-            }
-          />
-        </SettingsCard>
-      )}
+            <div
+              className="flex items-center justify-between rounded-2xl p-4 sm:p-5"
+              style={{ backgroundColor: 'var(--dk-surface-raised)' }}
+            >
+              <div className="space-y-0.5 pr-4">
+                <span className="text-sm font-semibold text-foreground">Discover Greeting Banner</span>
+                <p className="text-xs text-muted-foreground">
+                  Display the introductory welcome card above the feed on Discover.
+                </p>
+              </div>
+              <DkSwitch
+                checked={isWelcomeBannerVisible}
+                onCheckedChange={setWelcomeBannerVisible}
+              />
+            </div>
 
-      {isAuthenticated && (
-        <SettingsCard>
-          <SectionHeader
-            icon={Ban}
-            title="Blocked recommendations"
-            description={
-              blockedData?.total
-                ? `${blockedData.total} title${blockedData.total === 1 ? '' : 's'} blocked from appearing in Decide for me and For You.`
-                : 'No titles blocked from recommendations.'
-            }
-            action={
+            <div className="pt-2 flex flex-wrap gap-2.5 justify-start">
               <DkButton
+                variant="primary"
                 size="sm"
-                variant="ghost"
-                onClick={() => setShowBlockedModal(true)}
-                className="hover:bg-white/10 text-xs font-semibold gap-2"
-                disabled={!blockedData?.items?.length}
+                leftIcon={Wand2}
+                onClick={() => setShowSetupWizard(true)}
+                className="rounded-xl px-4 text-xs font-semibold"
               >
-                <span>Manage ({blockedData?.total ?? 0})</span>
+                Run Setup Wizard
               </DkButton>
-            }
-          />
-        </SettingsCard>
-      )}
 
-      {confirmTasteReset && (
-        <DkDialog
-          open={confirmTasteReset}
-          onOpenChange={(open) => {
-            if (!open && !tasteResetting) setConfirmTasteReset(false)
-          }}
-          title="Reset For You taste?"
-          description="Start fresh personalization without deleting your library."
-        >
-          <div className="space-y-4 pt-2">
-            <p className="text-xs text-white/70 leading-relaxed">
-              Otix will stop using your past ratings and activity for For You
-              recommendations, and clear preferred genres / discover emphases.
-              Your watch history, ratings, and library stay as they are. New
-              activity after this reset will rebuild your taste profile.
-            </p>
-            <div className="flex justify-end gap-2 pt-2">
               <DkButton
-                type="button"
-                variant="ghost"
+                variant="secondary"
                 size="sm"
-                disabled={tasteResetting}
-                onClick={() => setConfirmTasteReset(false)}
+                leftIcon={Sparkles}
+                onClick={() => router.navigate({ to: '/welcome' })}
+                className="rounded-xl px-4 text-xs font-semibold"
               >
-                Cancel
-              </DkButton>
-              <DkButton
-                type="button"
-                variant="destructive"
-                size="sm"
-                loading={tasteResetting}
-                onClick={handleResetTaste}
-              >
-                Reset taste
+                Open Welcome Guide
               </DkButton>
             </div>
           </div>
-        </DkDialog>
-      )}
+        </SettingsCard>
 
-      {showBlockedModal && (
-        <DkDialog
-          open={showBlockedModal}
-          onOpenChange={(open) => {
-            if (!open) setShowBlockedModal(false)
-          }}
-          title="Blocked recommendations"
-          description="These titles will not appear in Decide for me or For You feeds."
-          className="max-w-xl max-h-[80vh] overflow-hidden flex flex-col"
-        >
-          <div className="min-h-0 flex-1 space-y-3 overflow-y-auto py-2">
-            {!blockedData?.items?.length ? (
-              <p className="text-xs text-white/50 py-4 text-center">No blocked recommendations.</p>
-            ) : (
-              blockedData.items.map((item) => (
-                <div
-                  key={item.id}
-                  className="flex items-center justify-between gap-3 rounded-xl bg-white/5 p-3"
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    {item.posterUrl && (
-                      <img
-                        src={item.posterUrl}
-                        alt=""
-                        className="h-12 w-8 shrink-0 rounded object-cover"
-                      />
+        {/* Cache & Local State */}
+        <SettingsCard>
+          <SectionHeader
+            title="Application Cache"
+            description="Clear temporary cached catalog queries, search filters, and volatile media states without logging out."
+            action={
+              <DkButton
+                size="sm"
+                variant="ghost"
+                onClick={handleClearCache}
+                className="hover:bg-[var(--dk-surface-hover)] text-xs font-semibold gap-2"
+              >
+                {cleared ? (
+                  <>
+                    <CheckCircle2 className="h-3.5 w-3.5 text-primary" />
+                    <span className="text-primary font-medium">Cache Cleared</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span>Clear Cache</span>
+                  </>
+                )}
+              </DkButton>
+            }
+          />
+        </SettingsCard>
+
+        {/* About & Updates */}
+        <SettingsCard>
+          <SectionHeader
+            title="About & Updates"
+            description="Client environment, build information, and application updates."
+          />
+
+          <div
+            className="rounded-2xl p-4 sm:p-5 space-y-4"
+            style={{ backgroundColor: 'var(--dk-surface-raised)' }}
+          >
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-muted-foreground">Platform Environment</span>
+              <span className="font-semibold text-foreground">
+                {desktop ? 'Otix Desktop App (Electron)' : 'Otix Web App'}
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between text-xs pt-1">
+              <span className="text-muted-foreground">Installed Version</span>
+              <span className="font-mono text-foreground font-semibold">
+                v{currentVersion}
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between text-xs pt-1">
+              <span className="text-muted-foreground">System Status</span>
+              <span className="text-xs font-semibold text-primary">
+                Operational
+              </span>
+            </div>
+
+            {desktop && (
+              <div className="mt-4 pt-4 border-t border-[var(--dk-separator)] space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="space-y-0.5">
+                    <span className="text-xs font-semibold text-foreground">
+                      Application Updates
+                    </span>
+                    <p className="text-xs text-muted-foreground">
+                      {getUpdateStatusLabel(updateStatus, availableVersion ?? undefined)}
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    {isUpdateDownloaded ? (
+                      <DkButton
+                        size="sm"
+                        variant="primary"
+                        rightIcon={ArrowRight}
+                        onClick={() => void installUpdate()}
+                        className="rounded-xl px-4 text-xs font-semibold"
+                      >
+                        Restart & Install
+                      </DkButton>
+                    ) : updateStatus === 'available' ? (
+                      <DkButton
+                        size="sm"
+                        variant="primary"
+                        leftIcon={DownloadCloud}
+                        onClick={() => void downloadUpdate()}
+                        className="rounded-xl px-4 text-xs font-semibold"
+                      >
+                        Download Update
+                      </DkButton>
+                    ) : (
+                      <DkButton
+                        size="sm"
+                        variant="secondary"
+                        leftIcon={RefreshCw}
+                        loading={isUpdateChecking || isUpdateDownloading}
+                        loadingText={isUpdateDownloading ? 'Downloading...' : 'Checking...'}
+                        onClick={() => void checkForUpdates()}
+                        className="rounded-xl px-4 text-xs font-semibold"
+                      >
+                        Check for Updates
+                      </DkButton>
                     )}
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-white truncate">{item.title}</p>
-                      <p className="text-xs text-white/50 capitalize">{item.mediaType}</p>
+                  </div>
+                </div>
+
+                {isUpdateDownloading && updateProgress && (
+                  <div className="space-y-1.5 pt-1">
+                    <div className="w-full bg-[var(--dk-surface-ghost)] rounded-full h-1.5 overflow-hidden">
+                      <div
+                        className="bg-primary h-full transition-all duration-300 rounded-full"
+                        style={{ width: `${Math.min(100, Math.max(0, updateProgress.percent))}%` }}
+                      />
+                    </div>
+                    <div className="flex justify-between items-center text-[11px] text-muted-foreground">
+                      <span>{updateProgress.percent.toFixed(1)}%</span>
+                      <span>
+                        {formatBytes(updateProgress.transferred)} of {formatBytes(updateProgress.total)} ({formatSpeed(updateProgress.bytesPerSecond)})
+                      </span>
                     </div>
                   </div>
-                  <DkButton
-                    size="sm"
-                    variant="ghost"
-                    onClick={async () => {
-                      await unblockMutation.mutateAsync({
-                        mediaId: item.id,
-                        mediaType: item.mediaType,
-                      })
-                      toast({
-                        title: 'Unblocked',
-                        description: `"${item.title}" can now be recommended again.`,
-                      })
-                    }}
-                    disabled={unblockMutation.isPending}
-                    className="text-xs text-white/70 hover:text-white"
-                  >
-                    Unblock
-                  </DkButton>
-                </div>
-              ))
+                )}
+
+                {updateError && (
+                  <div className="flex items-start gap-2 p-3 rounded-xl text-xs text-destructive bg-[var(--dk-surface-ghost)]">
+                    <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                    <span className="leading-relaxed">{updateError}</span>
+                  </div>
+                )}
+
+                {releaseNotes && (
+                  <div className="space-y-1 pt-1">
+                    <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+                      Release Notes
+                    </span>
+                    <div className="p-3 rounded-xl bg-[var(--dk-surface-base)] text-xs text-muted-foreground whitespace-pre-wrap max-h-36 overflow-y-auto">
+                      {releaseNotes}
+                    </div>
+                  </div>
+                )}
+              </div>
             )}
           </div>
-        </DkDialog>
-      )}
-
-      {/* Welcome & Feature Guide */}
-      <SettingsCard>
-        <SectionHeader
-          title="Welcome & Feature Guide"
-          description="Manage getting started guides, walkthroughs, and navigation shortcuts."
-        />
-
-        <div className="space-y-4">
-          <div
-            className="flex items-center justify-between rounded-2xl p-4 sm:p-5"
-            style={{ backgroundColor: 'var(--dk-surface-raised)' }}
-          >
-            <div className="space-y-0.5 pr-4">
-              <span className="text-sm font-semibold text-white">Show in Navigation Menu</span>
-              <p className="text-xs text-white/50">
-                Display the Welcome Guide link in the floating navigation menu dropdown.
-              </p>
-            </div>
-            <DkSwitch
-              checked={isWelcomeNavVisible}
-              onCheckedChange={setWelcomeNavVisible}
-            />
-          </div>
-
-          <div
-            className="flex items-center justify-between rounded-2xl p-4 sm:p-5"
-            style={{ backgroundColor: 'var(--dk-surface-raised)' }}
-          >
-            <div className="space-y-0.5 pr-4">
-              <span className="text-sm font-semibold text-white">Discover Greeting Banner</span>
-              <p className="text-xs text-white/50">
-                Display the introductory welcome card above the feed on Discover.
-              </p>
-            </div>
-            <DkSwitch
-              checked={isWelcomeBannerVisible}
-              onCheckedChange={setWelcomeBannerVisible}
-            />
-          </div>
-
-          <div className="pt-2 flex flex-wrap gap-2.5 justify-start">
-            <DkButton
-              variant="primary"
-              size="sm"
-              leftIcon={Wand2}
-              onClick={() => setShowSetupWizard(true)}
-              className="rounded-xl px-4 text-xs font-semibold"
-            >
-              Run Setup Wizard
-            </DkButton>
-
-            <DkButton
-              variant="secondary"
-              size="sm"
-              leftIcon={Sparkles}
-              onClick={() => router.navigate({ to: '/welcome' })}
-              className="rounded-xl px-4 text-xs font-semibold"
-            >
-              Open Welcome Guide
-            </DkButton>
-          </div>
-        </div>
-      </SettingsCard>
-
-      {/* About Otix */}
-      <SettingsCard>
-        <SectionHeader
-          title="About Otix"
-          description="Client environment and build information."
-        />
-
-        <div
-          className="rounded-2xl p-4 sm:p-5 space-y-3"
-          style={{ backgroundColor: 'var(--dk-surface-raised)' }}
-        >
-          <div className="flex items-center justify-between text-xs">
-            <span className="text-white/60">Platform Environment</span>
-            <span className="font-semibold text-white">
-              {desktop ? 'Otix Desktop App (Electron)' : 'Otix Web App'}
-            </span>
-          </div>
-          <div className="flex items-center justify-between text-xs pt-3">
-            <span className="text-white/60">Version</span>
-            <span className="font-mono text-white/80">0.0.1 (Release)</span>
-          </div>
-          <div className="flex items-center justify-between text-xs pt-3">
-            <span className="text-white/60">Status</span>
-            <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-400">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-              Operational
-            </span>
-          </div>
-        </div>
-      </SettingsCard>
+        </SettingsCard>
+      </div>
 
       {showSetupWizard && (
         <SetupWizardModal

@@ -98,17 +98,17 @@ export const AddToListButton = ({ mediaItemId, className, variant = 'default' }:
         <button
           type="button"
           onClick={() => setOpen(!open)}
-          className="inline-flex h-8 w-8 items-center justify-center rounded-full text-white/80 hover:text-white hover:bg-white/[0.12] transition-all hover:scale-110 active:scale-95"
+          className="inline-flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-glass-hover)] transition-all hover:scale-110 active:scale-95"
           title="Add to list"
           aria-label="Add to list"
         >
-          <ListIcon className="h-4 w-4 text-white/75 hover:text-white transition-colors" />
+          <ListIcon className="h-4 w-4 text-muted-foreground hover:text-foreground transition-colors" />
         </button>
       ) : variant === 'pill' ? (
         <button
           type="button"
           onClick={() => setOpen(!open)}
-          className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs sm:text-sm font-medium bg-white/[0.08] hover:bg-white/[0.14] text-white/90 border border-white/10 shadow-md backdrop-blur-md transition-all hover:scale-[1.02] active:scale-[0.98]"
+          className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs sm:text-sm font-medium bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-glass-hover)] text-foreground border border-[var(--dk-separator)] shadow-md backdrop-blur-md transition-all hover:scale-[1.02] active:scale-[0.98]"
         >
           <ListIcon className="h-4 w-4 text-muted-foreground" />
           <span>List</span>
@@ -144,7 +144,7 @@ export const AddToListButton = ({ mediaItemId, className, variant = 'default' }:
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="Search lists..."
-                  className="w-full bg-white/5 border border-white/10 rounded-lg pl-8 pr-7 py-1.5 text-xs text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-1 focus:ring-primary/50 transition-colors"
+                  className="w-full bg-[var(--dk-surface-ghost)] border border-[var(--dk-separator)] rounded-lg pl-8 pr-7 py-1.5 text-xs text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-1 focus:ring-primary/50 transition-colors"
                 />
                 {search && (
                   <button
@@ -192,15 +192,15 @@ export const AddToListButton = ({ mediaItemId, className, variant = 'default' }:
                     disabled={isMutatingThis}
                     className={cn(
                       'flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm transition-colors',
-                      'hover:bg-white/5 focus-visible:bg-white/5 focus-visible:outline-none',
-                      isMember ? 'text-emerald-400' : 'text-foreground/80',
+                      'hover:bg-[var(--dk-surface-ghost)] focus-visible:bg-[var(--dk-surface-ghost)] focus-visible:outline-none',
+                      isMember ? 'text-emerald-600 dark:text-emerald-400' : 'text-foreground/80',
                     )}
                   >
                     <div
                       className={cn(
                         'flex h-5 w-5 shrink-0 items-center justify-center rounded border transition-colors',
                         isMember
-                          ? 'border-emerald-400 bg-emerald-400/10'
+                          ? 'border-emerald-500 bg-emerald-500/10'
                           : 'border-border/40',
                       )}
                     >
@@ -238,7 +238,7 @@ export const AddToListButton = ({ mediaItemId, className, variant = 'default' }:
                   />
                 )
               }}
-              className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm text-muted-foreground hover:bg-white/5 hover:text-foreground transition-colors"
+              className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm text-muted-foreground hover:bg-[var(--dk-surface-ghost)] hover:text-foreground transition-colors"
             >
               <PlusIcon className="h-4 w-4" />
               New List

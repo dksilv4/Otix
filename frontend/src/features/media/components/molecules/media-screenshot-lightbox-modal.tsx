@@ -79,7 +79,7 @@ export const MediaScreenshotLightboxModal = ({
       animate={{ opacity: visible ? 1 : 0 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.2 }}
-      className="fixed inset-0 z-[var(--dk-z-modal,10000)] flex flex-col justify-between bg-black/90 backdrop-blur-xl p-4 sm:p-6"
+      className="fixed inset-0 z-[10005] flex flex-col justify-between bg-black/90 backdrop-blur-xl p-4 sm:p-6"
       onClick={onClose}
     >
       {/* Top Bar */}
@@ -87,7 +87,7 @@ export const MediaScreenshotLightboxModal = ({
         className="flex items-center justify-between w-full max-w-7xl mx-auto z-20"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center gap-2 rounded-full border border-white/10 bg-[var(--dk-surface-glass)] px-3.5 py-1.5 shadow-md">
+        <div className="flex items-center gap-2 rounded-full border border-white/[0.06] bg-[var(--dk-surface-glass)] px-3.5 py-1.5 shadow-md">
           <span className="text-xs font-semibold tabular-nums text-foreground">
             {index + 1}
           </span>
@@ -100,7 +100,7 @@ export const MediaScreenshotLightboxModal = ({
         <button
           type="button"
           onClick={onClose}
-          className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-[var(--dk-surface-glass)] text-muted-foreground transition-all hover:bg-[var(--dk-surface-ghost-hover)] hover:text-foreground"
+          className="flex h-10 w-10 items-center justify-center rounded-full border border-white/[0.06] bg-[var(--dk-surface-glass)] text-muted-foreground transition-all hover:bg-[var(--dk-surface-ghost-hover)] hover:text-foreground"
           aria-label="Close fullscreen preview"
         >
           <X className="h-4.5 w-4.5" />
@@ -116,7 +116,7 @@ export const MediaScreenshotLightboxModal = ({
           <button
             type="button"
             onClick={handlePrev}
-            className="absolute left-2 sm:left-4 z-10 flex h-12 w-12 items-center justify-center rounded-full border border-white/10 bg-black/60 text-muted-foreground transition-all hover:scale-105 hover:bg-black/80 hover:text-foreground active:scale-95 shadow-lg backdrop-blur-md"
+            className="absolute left-2 sm:left-4 z-10 flex h-12 w-12 items-center justify-center rounded-full border border-white/[0.06] bg-black/60 text-muted-foreground transition-all hover:scale-105 hover:bg-black/80 hover:text-foreground active:scale-95 shadow-lg backdrop-blur-md"
             aria-label="Previous screenshot"
           >
             <ChevronLeft className="h-6 w-6" />
@@ -133,7 +133,7 @@ export const MediaScreenshotLightboxModal = ({
               transition={{ duration: 0.18, ease: 'easeOut' }}
               src={current.url}
               alt={`Screenshot ${index + 1}`}
-              className="max-h-[74vh] max-w-[92vw] sm:max-w-[85vw] object-contain rounded-2xl border border-white/10 shadow-2xl"
+              className="max-h-[74vh] max-w-[92vw] sm:max-w-[85vw] object-contain rounded-2xl border border-white/[0.06] shadow-2xl"
             />
           </AnimatePresence>
         </div>
@@ -142,7 +142,7 @@ export const MediaScreenshotLightboxModal = ({
           <button
             type="button"
             onClick={handleNext}
-            className="absolute right-2 sm:right-4 z-10 flex h-12 w-12 items-center justify-center rounded-full border border-white/10 bg-black/60 text-muted-foreground transition-all hover:scale-105 hover:bg-black/80 hover:text-foreground active:scale-95 shadow-lg backdrop-blur-md"
+            className="absolute right-2 sm:right-4 z-10 flex h-12 w-12 items-center justify-center rounded-full border border-white/[0.06] bg-black/60 text-muted-foreground transition-all hover:scale-105 hover:bg-black/80 hover:text-foreground active:scale-95 shadow-lg backdrop-blur-md"
             aria-label="Next screenshot"
           >
             <ChevronRight className="h-6 w-6" />
@@ -168,7 +168,7 @@ export const MediaScreenshotLightboxModal = ({
                 'relative aspect-video h-12 sm:h-14 shrink-0 rounded-lg overflow-hidden border transition-all duration-200 cursor-pointer',
                 i === index
                   ? 'border-primary ring-2 ring-primary/40 scale-105 shadow-md shadow-primary/20 opacity-100'
-                  : 'border-white/10 opacity-50 hover:opacity-90 hover:border-white/30',
+                  : 'border-white/[0.06] opacity-50 hover:opacity-90 hover:border-white/[0.12]',
               )}
               aria-label={`Jump to screenshot ${i + 1}`}
             >

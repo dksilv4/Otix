@@ -32,10 +32,10 @@ export const AddSectionButton = ({ currentSections, username }: AddSectionButton
       <button
         type="button"
         onClick={() => setOpen(!open)}
-        className="w-full flex flex-col items-center py-8 rounded-2xl border border-dashed border-white/[0.06] hover:border-white/[0.15] hover:bg-white/[0.02] transition-all duration-200"
+        className="w-full flex flex-col items-center py-8 rounded-2xl border border-dashed border-[var(--dk-separator)] hover:border-primary/40 hover:bg-[var(--dk-surface-ghost)] transition-all duration-200"
       >
-        <Plus className="h-4 w-4 text-muted-foreground/30" />
-        <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.2)', marginTop: '4px' }}>
+        <Plus className="h-4 w-4 text-muted-foreground/60" />
+        <span className="text-xs text-muted-foreground/60 mt-1 font-medium">
           Add Section
         </span>
       </button>
@@ -47,14 +47,9 @@ export const AddSectionButton = ({ currentSections, username }: AddSectionButton
             onClick={() => setOpen(false)}
           />
           <div
-            className="absolute left-0 right-0 z-50 mt-2 rounded-2xl overflow-hidden"
-            style={{
-              background: 'var(--dk-surface-glass)',
-              backdropFilter: 'blur(24px)',
-              boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
-            }}
+            className="absolute left-0 right-0 z-50 mt-2 rounded-2xl overflow-hidden border border-[var(--dk-separator)] bg-[var(--dk-surface-overlay)] backdrop-blur-2xl shadow-xl"
           >
-            <p className="text-xs font-semibold uppercase tracking-wider px-3 py-2 text-white/30">
+            <p className="text-xs font-semibold uppercase tracking-wider px-3 py-2 text-muted-foreground/60">
               Available Sections
             </p>
             {missing.map((section) => {
@@ -63,7 +58,7 @@ export const AddSectionButton = ({ currentSections, username }: AddSectionButton
                 <button
                   key={section.id}
                   type="button"
-                  className="w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors duration-150 hover:bg-white/[0.06]"
+                  className="w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors duration-150 hover:bg-[var(--dk-surface-ghost-hover)]"
                   onClick={async () => {
                     const updated = [...currentSections, section.id]
                     await apiClient.put('/me/profile-sections', { sections: updated })
@@ -72,10 +67,10 @@ export const AddSectionButton = ({ currentSections, username }: AddSectionButton
                   }}
                 >
                   <Icon className="h-4 w-4 text-muted-foreground/50" />
-                  <span style={{ fontSize: '13px', color: 'rgba(255,255,255,0.7)' }}>
+                  <span className="text-xs text-foreground font-medium">
                     {section.label}
                   </span>
-                  <Plus className="h-4 w-4 ml-auto text-muted-foreground/30" />
+                  <Plus className="h-4 w-4 ml-auto text-muted-foreground/40" />
                 </button>
               )
             })}

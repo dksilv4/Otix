@@ -204,10 +204,10 @@ export const NodesManagementModal = ({
                 <Server className="h-5 w-5" />
               </div>
               <div>
-                <h2 className="text-lg font-semibold leading-tight text-white">
+                <h2 className="text-lg font-semibold leading-tight text-foreground">
                   Nodes &amp; Homelab
                 </h2>
-                <p className="text-xs text-white/50">
+                <p className="text-xs text-muted-foreground">
                   Manage worker nodes, homelab server machines, hard drive storage, and homes.
                 </p>
               </div>
@@ -259,15 +259,15 @@ export const NodesManagementModal = ({
       >
         <div className="space-y-6 pt-4">
           {/* Main Navigation Tabs */}
-          <div className="flex gap-2 rounded-2xl bg-white/[0.03] p-1.5">
+          <div className="flex gap-2 rounded-2xl bg-[var(--dk-surface-ghost)] p-1.5 border border-[var(--dk-separator)]">
             <button
               type="button"
               onClick={() => setActiveTab('nodes')}
               className={cn(
                 'flex-1 flex items-center justify-center gap-2 rounded-xl py-2 text-xs font-semibold transition-all',
                 activeTab === 'nodes'
-                  ? 'bg-white/10 text-white shadow-sm'
-                  : 'text-white/60 hover:text-white',
+                  ? 'bg-primary text-primary-foreground shadow-xs'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-ghost-hover)]',
               )}
             >
               <Cpu className="h-4 w-4" />
@@ -279,8 +279,8 @@ export const NodesManagementModal = ({
               className={cn(
                 'flex-1 flex items-center justify-center gap-2 rounded-xl py-2 text-xs font-semibold transition-all',
                 activeTab === 'servers'
-                  ? 'bg-white/10 text-white shadow-sm'
-                  : 'text-white/60 hover:text-white',
+                  ? 'bg-primary text-primary-foreground shadow-xs'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-ghost-hover)]',
               )}
             >
               <Server className="h-4 w-4" />
@@ -292,8 +292,8 @@ export const NodesManagementModal = ({
               className={cn(
                 'flex-1 flex items-center justify-center gap-2 rounded-xl py-2 text-xs font-semibold transition-all',
                 activeTab === 'homes'
-                  ? 'bg-white/10 text-white shadow-sm'
-                  : 'text-white/60 hover:text-white',
+                  ? 'bg-primary text-primary-foreground shadow-xs'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-ghost-hover)]',
               )}
             >
               <HomeIcon className="h-4 w-4" />
@@ -310,10 +310,10 @@ export const NodesManagementModal = ({
                   <div className="flex items-center gap-3">
                     <Sparkles className="h-5 w-5 text-primary shrink-0" />
                     <div>
-                      <p className="text-xs font-semibold text-white">
+                      <p className="text-xs font-semibold text-foreground">
                         {unclaimedNodes.length} Unclaimed Node(s) Detected
                       </p>
-                      <p className="text-[11px] text-white/60">
+                      <p className="text-[11px] text-muted-foreground">
                         PINs found on your local network ready for 1-click account pairing.
                       </p>
                     </div>
@@ -329,15 +329,15 @@ export const NodesManagementModal = ({
               )}
 
               {loadingNodes ? (
-                <div className="flex items-center justify-center gap-2 py-12 text-sm text-white/50">
+                <div className="flex items-center justify-center gap-2 py-12 text-sm text-muted-foreground">
                   <Loader2 className="h-4 w-4 animate-spin" />
                   Loading nodes...
                 </div>
               ) : servers.length === 0 ? (
-                <div className="rounded-2xl p-8 text-center bg-white/[0.02]">
-                  <Server className="h-10 w-10 text-white/20 mx-auto mb-2" />
-                  <p className="text-sm font-medium text-white/80">No nodes connected</p>
-                  <p className="text-xs text-white/40 mt-1 max-w-md mx-auto">
+                <div className="rounded-2xl p-8 text-center bg-[var(--dk-surface-ghost)] border border-[var(--dk-separator)]">
+                  <Server className="h-10 w-10 text-muted-foreground/30 mx-auto mb-2" />
+                  <p className="text-sm font-medium text-foreground">No nodes connected</p>
+                  <p className="text-xs text-muted-foreground mt-1 max-w-md mx-auto">
                     Install or start an Otix Node daemon on your PC, NAS (Unraid, TrueNAS),
                     or server to manage games, cloud saves, and downloaders.
                   </p>
@@ -366,7 +366,7 @@ export const NodesManagementModal = ({
                     return (
                       <div
                         key={node.id}
-                        className="p-4 rounded-2xl bg-white/[0.03] hover:bg-white/[0.04] transition-all space-y-3"
+                        className="p-4 rounded-2xl bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)] border border-[var(--dk-separator)] transition-all space-y-3"
                       >
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                           <div className="flex items-center gap-3">
@@ -375,7 +375,7 @@ export const NodesManagementModal = ({
                             </div>
                             <div className="min-w-0">
                               <div className="flex items-center gap-2">
-                                <span className="text-sm font-semibold text-white truncate">
+                                <span className="text-sm font-semibold text-foreground truncate">
                                   {node.name}
                                 </span>
                                 <span
@@ -383,7 +383,7 @@ export const NodesManagementModal = ({
                                     'text-[10px] px-2 py-0.5 rounded-full font-medium',
                                     node.isOnline
                                       ? 'bg-emerald-500/15 text-emerald-400'
-                                      : 'bg-white/10 text-white/40',
+                                      : 'bg-[var(--dk-surface-field)] text-muted-foreground',
                                   )}
                                 >
                                   {node.isOnline ? 'Online' : 'Offline'}
@@ -394,7 +394,7 @@ export const NodesManagementModal = ({
                                   </span>
                                 )}
                               </div>
-                              <p className="text-xs text-white/40 truncate mt-0.5">
+                              <p className="text-xs text-muted-foreground truncate mt-0.5">
                                 {node.primaryUrl || 'No URL configured'}
                               </p>
                             </div>
@@ -431,11 +431,11 @@ export const NodesManagementModal = ({
                         </div>
 
                         {/* Node Relationships: Home, Hosted Machine, SMB Connections */}
-                        <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-white/[0.04] text-[11px]">
+                        <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-[var(--dk-separator)] text-[11px]">
                           {/* Home assignment dropdown */}
                           <div className="flex items-center gap-1.5">
-                            <HomeIcon className="h-3.5 w-3.5 text-white/40" />
-                            <span className="text-white/50">Home:</span>
+                            <HomeIcon className="h-3.5 w-3.5 text-muted-foreground" />
+                            <span className="text-muted-foreground">Home:</span>
                             <select
                               value={node.homeId ?? ''}
                               onChange={(e) =>
@@ -444,16 +444,16 @@ export const NodesManagementModal = ({
                                   e.target.value ? Number(e.target.value) : null,
                                 )
                               }
-                              className="rounded-lg bg-white/[0.05] hover:bg-white/[0.08] px-2 py-1 text-white/80 text-[11px] outline-none border-none"
+                              className="rounded-lg bg-[var(--dk-surface-field)] hover:bg-[var(--dk-surface-ghost-hover)] px-2 py-1 text-foreground text-[11px] outline-none border border-[var(--dk-separator)]"
                             >
-                              <option value="" className="bg-[#18181b] text-white">
+                              <option value="" className="bg-[var(--dk-surface-overlay)] text-foreground">
                                 None (Unassigned)
                               </option>
                               {homes.map((h) => (
                                 <option
                                   key={h.id}
                                   value={h.id}
-                                  className="bg-[#18181b] text-white"
+                                  className="bg-[var(--dk-surface-overlay)] text-foreground"
                                 >
                                   {h.name}
                                 </option>
@@ -463,16 +463,16 @@ export const NodesManagementModal = ({
 
                           {/* Hosted machine indicator */}
                           {hostedMachine && (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-white/[0.04] text-white/70">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-[var(--dk-surface-field)] text-muted-foreground border border-[var(--dk-separator)]">
                               <Server className="h-3 w-3 text-primary" />
                               <span>Hosted on: {hostedMachine.name}</span>
-                              <span className="text-white/40">({getOSLabel(hostedMachine.os)})</span>
+                              <span className="text-muted-foreground/70">({getOSLabel(hostedMachine.os)})</span>
                             </span>
                           )}
 
                           {/* SMB connections indicator */}
                           {smbMachines.length > 0 && (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-white/[0.04] text-white/70">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-[var(--dk-surface-field)] text-muted-foreground border border-[var(--dk-separator)]">
                               <Network className="h-3 w-3 text-emerald-400" />
                               <span>SMB link: {smbMachines.map((m) => m.name).join(', ')}</span>
                             </span>
@@ -502,10 +502,10 @@ export const NodesManagementModal = ({
           {/* TAB 2: SERVER MACHINES */}
           {activeTab === 'servers' && (
             <div className="space-y-4">
-              <div className="flex items-center justify-between p-3.5 rounded-2xl bg-white/[0.02]">
+              <div className="flex items-center justify-between p-3.5 rounded-2xl bg-[var(--dk-surface-ghost)] border border-[var(--dk-separator)]">
                 <div>
-                  <p className="text-xs font-semibold text-white/90">Homelab &amp; NAS Computers</p>
-                  <p className="text-[11px] text-white/50">
+                  <p className="text-xs font-semibold text-foreground">Homelab &amp; NAS Computers</p>
+                  <p className="text-[11px] text-muted-foreground">
                     Physical and virtual servers running Unraid, TrueNAS, Ubuntu, Proxmox, and Windows Server.
                   </p>
                 </div>
@@ -524,15 +524,15 @@ export const NodesManagementModal = ({
               </div>
 
               {loadingMachines ? (
-                <div className="flex items-center justify-center gap-2 py-12 text-sm text-white/50">
+                <div className="flex items-center justify-center gap-2 py-12 text-sm text-muted-foreground">
                   <Loader2 className="h-4 w-4 animate-spin" />
                   Loading servers...
                 </div>
               ) : serverMachines.length === 0 ? (
-                <div className="rounded-2xl p-8 text-center bg-white/[0.02]">
-                  <Server className="h-10 w-10 text-white/20 mx-auto mb-2" />
-                  <p className="text-sm font-medium text-white/80">No server machines added</p>
-                  <p className="text-xs text-white/40 mt-1 max-w-md mx-auto">
+                <div className="rounded-2xl p-8 text-center bg-[var(--dk-surface-ghost)] border border-[var(--dk-separator)]">
+                  <Server className="h-10 w-10 text-muted-foreground/30 mx-auto mb-2" />
+                  <p className="text-sm font-medium text-foreground">No server machines added</p>
+                  <p className="text-xs text-muted-foreground mt-1 max-w-md mx-auto">
                     Add your Unraid tower, TrueNAS SCALE vault, or Proxmox homelab host to configure
                     hard drive storage, OS integration, and SMB network access for nodes.
                   </p>
@@ -562,7 +562,7 @@ export const NodesManagementModal = ({
                     return (
                       <div
                         key={machine.id}
-                        className="p-4 rounded-2xl bg-white/[0.03] hover:bg-white/[0.04] transition-all space-y-3"
+                        className="p-4 rounded-2xl bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)] border border-[var(--dk-separator)] transition-all space-y-3"
                       >
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                           <div className="flex items-center gap-3">
@@ -571,10 +571,10 @@ export const NodesManagementModal = ({
                             </div>
                             <div className="min-w-0">
                               <div className="flex items-center gap-2">
-                                <span className="text-sm font-semibold text-white truncate">
+                                <span className="text-sm font-semibold text-foreground truncate">
                                   {machine.name}
                                 </span>
-                                <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/10 text-white/80 font-medium">
+                                <span className="text-[10px] px-2 py-0.5 rounded-full bg-[var(--dk-surface-field)] text-foreground font-medium border border-[var(--dk-separator)]">
                                   {getOSLabel(machine.os)}
                                 </span>
                                 {machine.homeName && (
@@ -583,7 +583,7 @@ export const NodesManagementModal = ({
                                   </span>
                                 )}
                               </div>
-                              <p className="text-xs text-white/40 truncate mt-0.5">
+                              <p className="text-xs text-muted-foreground truncate mt-0.5">
                                 {machine.host || 'No IP configured'}
                                 {machine.osVersion ? ` • ${machine.osVersion}` : ''}
                               </p>
@@ -618,7 +618,7 @@ export const NodesManagementModal = ({
                               size="sm"
                               variant="ghost"
                               onClick={() => handleDeleteMachine(machine)}
-                              className="text-white/40 hover:text-red-400 p-2"
+                              className="text-muted-foreground hover:text-destructive p-2"
                               title="Delete Server Machine"
                             >
                               <Trash2 className="h-4 w-4" />
@@ -629,7 +629,7 @@ export const NodesManagementModal = ({
                         {/* Storage Capacity Bar */}
                         {machine.totalStorageBytes > 0 && (
                           <div className="space-y-1.5 pt-1">
-                            <div className="flex items-center justify-between text-[11px] tabular-nums text-white/60">
+                            <div className="flex items-center justify-between text-[11px] tabular-nums text-muted-foreground">
                               <span className="flex items-center gap-1.5">
                                 <HardDrive className="h-3 w-3 text-primary" />
                                 <span>
@@ -638,7 +638,7 @@ export const NodesManagementModal = ({
                               </span>
                               <span>{formatBytes(machine.freeStorageBytes)} free ({percentUsed}%)</span>
                             </div>
-                            <div className="h-1.5 w-full rounded-full bg-white/10 overflow-hidden">
+                            <div className="h-1.5 w-full rounded-full bg-[var(--dk-surface-ghost)] overflow-hidden">
                               <div
                                 className="h-full bg-primary rounded-full transition-all duration-300"
                                 style={{ width: `${percentUsed}%` }}
@@ -648,14 +648,14 @@ export const NodesManagementModal = ({
                         )}
 
                         {/* Metadata Footer: Hosted Node & SMB */}
-                        <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-white/[0.04] text-[11px]">
+                        <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-[var(--dk-separator)] text-[11px]">
                           {machine.hostedNodeName ? (
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-emerald-500/10 text-emerald-400">
                               <Cpu className="h-3 w-3" />
                               <span>Hosted Node: {machine.hostedNodeName}</span>
                             </span>
                           ) : (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-white/[0.04] text-white/50">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-[var(--dk-surface-field)] text-muted-foreground border border-[var(--dk-separator)]">
                               No node running directly on this host
                             </span>
                           )}
@@ -665,19 +665,19 @@ export const NodesManagementModal = ({
                               <Network className="h-3 w-3" />
                               <span>SMB: /{machine.smbShareName || 'share'} ({machine.smbPort || 445})</span>
                               {machine.smbNodeIds?.length ? (
-                                <span className="text-white/50">
+                                <span className="text-muted-foreground">
                                   • {machine.smbNodeIds.length} connected node(s)
                                 </span>
                               ) : null}
                             </span>
                           ) : (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-white/[0.04] text-white/40">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-[var(--dk-surface-field)] text-muted-foreground border border-[var(--dk-separator)]">
                               SMB Disabled
                             </span>
                           )}
 
                           {machine.drivesConfig?.length ? (
-                            <span className="text-white/40 ml-auto">
+                            <span className="text-muted-foreground ml-auto">
                               {machine.drivesConfig.length} drive volume(s)
                             </span>
                           ) : null}
@@ -693,10 +693,10 @@ export const NodesManagementModal = ({
           {/* TAB 3: HOMES */}
           {activeTab === 'homes' && (
             <div className="space-y-4">
-              <div className="flex items-center justify-between p-3.5 rounded-2xl bg-white/[0.02]">
+              <div className="flex items-center justify-between p-3.5 rounded-2xl bg-[var(--dk-surface-ghost)] border border-[var(--dk-separator)]">
                 <div>
-                  <p className="text-xs font-semibold text-white/90">Household &amp; Homelab Environments</p>
-                  <p className="text-[11px] text-white/50">
+                  <p className="text-xs font-semibold text-foreground">Household &amp; Homelab Environments</p>
+                  <p className="text-[11px] text-muted-foreground">
                     Organize your instances, nodes, and servers across different physical or logical homes.
                   </p>
                 </div>
@@ -715,14 +715,14 @@ export const NodesManagementModal = ({
               </div>
 
               {loadingHomes ? (
-                <div className="flex items-center justify-center gap-2 py-12 text-sm text-white/50">
+                <div className="flex items-center justify-center gap-2 py-12 text-sm text-muted-foreground">
                   <Loader2 className="h-4 w-4 animate-spin" />
                   Loading homes...
                 </div>
               ) : homes.length === 0 ? (
-                <div className="rounded-2xl p-8 text-center bg-white/[0.02]">
-                  <HomeIcon className="h-10 w-10 text-white/20 mx-auto mb-2" />
-                  <p className="text-sm font-medium text-white/80">No homes configured</p>
+                <div className="rounded-2xl p-8 text-center bg-[var(--dk-surface-ghost)] border border-[var(--dk-separator)]">
+                  <HomeIcon className="h-10 w-10 text-muted-foreground/30 mx-auto mb-2" />
+                  <p className="text-sm font-medium text-foreground">No homes configured</p>
                   <DkButton
                     size="sm"
                     variant="primary"
@@ -745,7 +745,7 @@ export const NodesManagementModal = ({
                     return (
                       <div
                         key={h.id}
-                        className="p-4 rounded-2xl bg-white/[0.03] hover:bg-white/[0.04] transition-all space-y-2"
+                        className="p-4 rounded-2xl bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)] border border-[var(--dk-separator)] transition-all space-y-2"
                       >
                         <div className="flex items-center justify-between gap-3">
                           <div className="flex items-center gap-3">
@@ -754,7 +754,7 @@ export const NodesManagementModal = ({
                             </div>
                             <div>
                               <div className="flex items-center gap-2">
-                                <span className="text-sm font-semibold text-white">{h.name}</span>
+                                <span className="text-sm font-semibold text-foreground">{h.name}</span>
                                 {h.isDefault && (
                                   <span className="text-[10px] px-2 py-0.5 rounded-full bg-primary/15 text-primary font-medium">
                                     Default
@@ -762,7 +762,7 @@ export const NodesManagementModal = ({
                                 )}
                               </div>
                               {h.description && (
-                                <p className="text-xs text-white/40 mt-0.5">{h.description}</p>
+                                <p className="text-xs text-muted-foreground mt-0.5">{h.description}</p>
                               )}
                             </div>
                           </div>
@@ -785,7 +785,7 @@ export const NodesManagementModal = ({
                                 size="sm"
                                 variant="ghost"
                                 onClick={() => handleDeleteHome(h)}
-                                className="text-white/40 hover:text-red-400 p-2"
+                                className="text-muted-foreground hover:text-destructive p-2"
                                 title="Delete Home"
                               >
                                 <Trash2 className="h-4 w-4" />
@@ -794,7 +794,7 @@ export const NodesManagementModal = ({
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-3 pt-2 text-xs text-white/50 border-t border-white/[0.04]">
+                        <div className="flex items-center gap-3 pt-2 text-xs text-muted-foreground border-t border-[var(--dk-separator)]">
                           <span>{assignedNodes.length} Node(s)</span>
                           <span>•</span>
                           <span>{assignedMachines.length} Server Machine(s)</span>

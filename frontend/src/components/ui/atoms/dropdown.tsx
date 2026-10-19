@@ -124,24 +124,24 @@ const DkDropdownInner = <T extends string = string>({
                 'flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-medium transition-colors duration-150 cursor-pointer select-none',
                 value
                   ? 'bg-primary/20 text-primary hover:bg-primary/30'
-                  : 'bg-white/[0.05] text-white/70 hover:text-white hover:bg-white/10',
+                  : 'bg-[var(--dk-surface-ghost)] text-foreground/80 hover:text-foreground hover:bg-[var(--dk-surface-ghost-hover)]',
               )
             : cn(
                 'flex items-center justify-between gap-2.5 rounded-xl px-3.5 h-9.5 text-xs font-medium w-full transition-colors duration-150 text-left cursor-pointer select-none',
                 open
-                  ? 'bg-white/10 text-white font-semibold'
-                  : 'bg-white/5 hover:bg-white/10 active:bg-white/15 text-white/80 hover:text-white',
+                  ? 'bg-[var(--dk-surface-ghost-active)] text-foreground font-semibold'
+                  : 'bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)] active:bg-[var(--dk-surface-ghost-active)] text-foreground/80 hover:text-foreground',
               )
         }
       >
-        <span className={cn('truncate', !isFilter && !selected && 'text-white/40')}>
+        <span className={cn('truncate', !isFilter && !selected && 'text-muted-foreground')}>
           {isFilter
             ? `${label ? `${label}: ` : ''}${selected?.label ?? options[0]?.label ?? ''}`
             : (selected?.label ?? placeholder)}
         </span>
         <ChevronDown
           className={cn(
-            'h-4 w-4 text-white/50 shrink-0 transition-transform duration-150',
+            'h-4 w-4 text-muted-foreground shrink-0 transition-transform duration-150',
             open && 'rotate-180 text-primary',
           )}
         />
@@ -160,7 +160,7 @@ const DkDropdownInner = <T extends string = string>({
               ...(coords.right !== undefined ? { right: coords.right } : {}),
               minWidth: isFilter ? 170 : Math.max(coords.width, 180),
               backgroundColor: 'var(--dk-surface-overlay)',
-              boxShadow: 'var(--dk-shadow-glass), 0 0 0 1px rgba(255,255,255,0.06)',
+              boxShadow: 'var(--dk-shadow-glass), 0 0 0 1px var(--dk-separator)',
             }}
           >
             {options.map((opt) => {
@@ -179,7 +179,7 @@ const DkDropdownInner = <T extends string = string>({
                     'w-full flex items-center justify-between gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-left cursor-pointer',
                     isSelected
                       ? 'bg-primary/20 text-primary font-semibold'
-                      : 'text-white/70 hover:text-white hover:bg-white/10',
+                      : 'text-foreground/80 hover:text-foreground hover:bg-[var(--dk-surface-ghost-hover)]',
                   )}
                 >
                   <span className="truncate">{opt.label}</span>

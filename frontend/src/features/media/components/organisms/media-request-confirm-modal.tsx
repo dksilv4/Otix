@@ -207,25 +207,25 @@ export const MediaRequestConfirmModal = ({
     >
       <div className="space-y-4 pt-1">
         {/* Media Preview Card */}
-        <div className="flex items-center gap-3.5 rounded-2xl border border-white/10 bg-white/[0.04] p-3">
+        <div className="flex items-center gap-3.5 rounded-2xl border border-[var(--dk-separator)] bg-[var(--dk-surface-glass)] p-3">
           {state.posterUrl ? (
             <img
               src={state.posterUrl}
               alt={state.mediaTitle}
-              className="h-16 w-11 shrink-0 rounded-lg object-cover shadow border border-white/10 bg-white/5"
+              className="h-16 w-11 shrink-0 rounded-lg object-cover shadow border border-[var(--dk-separator)] bg-[var(--dk-surface-glass)]"
             />
           ) : (
-            <div className="flex h-16 w-11 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-white/40">
+            <div className="flex h-16 w-11 shrink-0 items-center justify-center rounded-lg border border-[var(--dk-separator)] bg-[var(--dk-surface-glass)] text-muted-foreground">
               {isMovie ? <Film className="h-5 w-5" /> : <Tv className="h-5 w-5" />}
             </div>
           )}
           <div className="min-w-0 flex-1">
-            <h4 className="truncate font-semibold text-white text-sm sm:text-base leading-snug">
+            <h4 className="truncate font-semibold text-foreground text-sm sm:text-base leading-snug">
               {state.mediaTitle || 'Unknown title'}
             </h4>
-            <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-white/50">
+            <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
               {state.mediaYear && <span>{state.mediaYear}</span>}
-              <span className="inline-flex items-center gap-1 rounded-md bg-white/10 px-2 py-0.5 text-[11px] font-medium text-white/80">
+              <span className="inline-flex items-center gap-1 rounded-md bg-[var(--dk-surface-glass)] px-2 py-0.5 text-[11px] font-medium text-foreground">
                 {isMovie ? <Film className="h-3 w-3" /> : <Tv className="h-3 w-3" />}
                 {isMovie ? 'Movie · Radarr' : 'TV Series · Sonarr'}
               </span>
@@ -235,43 +235,43 @@ export const MediaRequestConfirmModal = ({
 
         {/* Status Verification Alerts */}
         {isDownloaded && (
-          <div className="flex items-start gap-2.5 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-xs text-emerald-200">
-            <Check className="h-4 w-4 shrink-0 text-emerald-400 mt-0.5" />
+          <div className="flex items-start gap-2.5 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-xs text-emerald-700 dark:text-emerald-300">
+            <Check className="h-4 w-4 shrink-0 text-emerald-500 mt-0.5" />
             <div className="min-w-0">
-              <p className="font-semibold text-emerald-300">Available in Library</p>
-              <p className="text-white/70 mt-0.5">
+              <p className="font-semibold text-emerald-700 dark:text-emerald-300">Available in Library</p>
+              <p className="text-muted-foreground mt-0.5">
                 This {isMovie ? 'movie' : 'show'} is already downloaded on{' '}
-                <span className="text-white font-medium">{selectedInstance?.name || state.activeServerName}</span>.
+                <span className="text-foreground font-medium">{selectedInstance?.name || state.activeServerName}</span>.
               </p>
             </div>
           </div>
         )}
 
         {isRequested && (
-          <div className="flex items-start gap-2.5 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-200">
-            <Clock className="h-4 w-4 shrink-0 text-amber-400 mt-0.5" />
+          <div className="flex items-start gap-2.5 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-700 dark:text-amber-300">
+            <Clock className="h-4 w-4 shrink-0 text-amber-500 mt-0.5" />
             <div className="min-w-0">
-              <p className="font-semibold text-amber-300">Already Requested</p>
-              <p className="text-white/70 mt-0.5">
+              <p className="font-semibold text-amber-700 dark:text-amber-300">Already Requested</p>
+              <p className="text-muted-foreground mt-0.5">
                 This {isMovie ? 'movie' : 'show'} is already requested and monitored on{' '}
-                <span className="text-white font-medium">{selectedInstance?.name || state.activeServerName}</span>.
+                <span className="text-foreground font-medium">{selectedInstance?.name || state.activeServerName}</span>.
               </p>
             </div>
           </div>
         )}
 
         {/* Form Options */}
-        <div className="space-y-3.5 rounded-2xl border border-white/10 bg-white/[0.02] p-4 text-xs">
+        <div className="space-y-3.5 rounded-2xl border border-[var(--dk-separator)] bg-[var(--dk-surface-glass)] p-4 text-xs">
           {/* Target Instance */}
           <div>
             <div className="mb-1.5 flex items-center justify-between">
-              <label className="flex items-center gap-1.5 font-medium text-white/75">
-                <Server className="h-3.5 w-3.5 text-blue-400" />
+              <label className="flex items-center gap-1.5 font-medium text-foreground">
+                <Server className="h-3.5 w-3.5 text-primary" />
                 <span>Target Instance</span>
               </label>
               {isChecking && (
-                <span className="inline-flex items-center gap-1 text-[11px] text-white/40">
-                  <Loader2 className="h-3 w-3 animate-spin text-blue-400" />
+                <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
+                  <Loader2 className="h-3 w-3 animate-spin text-primary" />
                   <span>Checking status…</span>
                 </span>
               )}
@@ -285,21 +285,21 @@ export const MediaRequestConfirmModal = ({
                 className="w-full"
               />
             ) : (
-              <div className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-white/80">
+              <div className="flex items-center justify-between rounded-xl border border-[var(--dk-separator)] bg-[var(--dk-surface-glass)] px-3 py-2 text-sm text-foreground">
                 <span>{selectedInstance?.name || state.activeServerName}</span>
-                <span className="text-[11px] text-white/40 uppercase tracking-wider font-semibold">Active</span>
+                <span className="text-[11px] text-muted-foreground uppercase tracking-wider font-semibold">Active</span>
               </div>
             )}
           </div>
 
           {/* Quality Profile */}
           <div>
-            <label className="mb-1.5 flex items-center gap-1.5 font-medium text-white/75">
-              <Layers className="h-3.5 w-3.5 text-purple-400" />
+            <label className="mb-1.5 flex items-center gap-1.5 font-medium text-foreground">
+              <Layers className="h-3.5 w-3.5 text-primary" />
               <span>Quality Profile</span>
             </label>
             {loadingProfiles ? (
-              <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-xs text-white/40">
+              <div className="flex items-center gap-2 rounded-xl border border-[var(--dk-separator)] bg-[var(--dk-surface-glass)] px-3 py-2 text-xs text-muted-foreground">
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
                 <span>Loading quality profiles…</span>
               </div>
@@ -312,7 +312,7 @@ export const MediaRequestConfirmModal = ({
                 className="w-full"
               />
             ) : (
-              <div className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-xs text-amber-400/80">
+              <div className="rounded-xl border border-[var(--dk-separator)] bg-[var(--dk-surface-glass)] px-3 py-2 text-xs text-amber-600 dark:text-amber-400">
                 No quality profiles discovered. Default will be requested.
               </div>
             )}
@@ -320,12 +320,12 @@ export const MediaRequestConfirmModal = ({
 
           {/* Root Folder */}
           <div>
-            <label className="mb-1.5 flex items-center gap-1.5 font-medium text-white/75">
-              <HardDrive className="h-3.5 w-3.5 text-emerald-400" />
+            <label className="mb-1.5 flex items-center gap-1.5 font-medium text-foreground">
+              <HardDrive className="h-3.5 w-3.5 text-primary" />
               <span>Root Folder</span>
             </label>
             {loadingFolders ? (
-              <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-xs text-white/40">
+              <div className="flex items-center gap-2 rounded-xl border border-[var(--dk-separator)] bg-[var(--dk-surface-glass)] px-3 py-2 text-xs text-muted-foreground">
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
                 <span>Loading root folders…</span>
               </div>
@@ -338,25 +338,25 @@ export const MediaRequestConfirmModal = ({
                 className="w-full"
               />
             ) : (
-              <div className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-xs text-amber-400/80">
+              <div className="rounded-xl border border-[var(--dk-separator)] bg-[var(--dk-surface-glass)] px-3 py-2 text-xs text-amber-600 dark:text-amber-400">
                 No root folders discovered. Default path will be used.
               </div>
             )}
           </div>
 
           {/* Toggles */}
-          <div className="pt-2 border-t border-white/10 space-y-2.5">
+          <div className="pt-2 border-t border-[var(--dk-separator)] space-y-2.5">
             <div className="flex items-center justify-between">
               <div>
-                <span className="font-medium text-white/80 block">Search immediately</span>
-                <span className="text-[11px] text-white/40">Start searching for releases upon adding</span>
+                <span className="font-medium text-foreground block">Search immediately</span>
+                <span className="text-[11px] text-muted-foreground">Start searching for releases upon adding</span>
               </div>
               <DkSwitch checked={searchNow} onCheckedChange={setSearchNow} />
             </div>
             <div className="flex items-center justify-between">
               <div>
-                <span className="font-medium text-white/80 block">Monitor</span>
-                <span className="text-[11px] text-white/40">Monitor for new episodes or quality upgrades</span>
+                <span className="font-medium text-foreground block">Monitor</span>
+                <span className="text-[11px] text-muted-foreground">Monitor for new episodes or quality upgrades</span>
               </div>
               <DkSwitch checked={monitored} onCheckedChange={setMonitored} />
             </div>
@@ -369,7 +369,7 @@ export const MediaRequestConfirmModal = ({
             variant="ghost"
             onClick={onClose}
             disabled={submitting}
-            className="text-white/60 hover:text-white"
+            className="text-muted-foreground hover:text-foreground"
           >
             Cancel
           </DkButton>
@@ -395,7 +395,7 @@ export const MediaRequestConfirmModal = ({
               onClick={handleConfirm}
               loading={submitting || isChecking}
               disabled={submitting}
-              className="px-5 shadow-lg shadow-blue-500/25"
+              className="px-5 shadow-lg shadow-primary/20"
             >
               Confirm Request
             </DkButton>

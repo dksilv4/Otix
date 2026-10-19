@@ -4,7 +4,41 @@ import type { LocalGame, GamesFilter } from '@/features/launcher/types'
 
 // ── API types ────────────────────────────────────────────────────────
 
+export type UpdateStatus =
+  | 'idle'
+  | 'checking'
+  | 'available'
+  | 'not-available'
+  | 'downloading'
+  | 'downloaded'
+  | 'error'
+
+export interface UpdateProgress {
+  percent: number
+  bytesPerSecond: number
+  transferred: number
+  total: number
+}
+
+export interface UpdateStatePayload {
+  status: UpdateStatus
+  version?: string
+  currentVersion?: string
+  releaseNotes?: string | null
+  progress?: UpdateProgress
+  error?: string
+}
+
+export interface UpdateCheckResult {
+  status: string
+  updateInfo?: unknown
+  error?: string
+  reason?: string
+  currentVersion?: string
+}
+
 export type AiModelStatus = 'not_available' | 'downloading' | 'loading' | 'ready' | 'error';
+
 
 export interface DesktopSettingsData {
   launchOnStartup: boolean;
@@ -410,6 +444,16 @@ export interface DesktopAPI {
   onAiDownloadProgress?: (cb: (progress: number) => void) => () => void
   onAiLoadingProgress?: (cb: (progress: number) => void) => () => void
   onAiStatusChanged?: (cb: (status: AiModelStatus) => void) => () => void
+
+  // Auto Updater
+  updater?: {
+    checkForUpdates: () => Promise<UpdateCheckResult>
+    downloadUpdate: () => Promise<{ status: string; error?: string; reason?: string }>
+    installUpdate: () => Promise<boolean>
+    getVersion: () => Promise<string>
+    getStatus: () => Promise<UpdateStatePayload>
+    onStatusChanged: (callback: (state: UpdateStatePayload) => void) => () => void
+  }
 }
 
 // ── Accessor ─────────────────────────────────────────────────────────

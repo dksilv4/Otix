@@ -16,7 +16,7 @@ const SkeletonGrid = () => {
       {Array.from({ length: 12 }).map((_, i) => (
         <div
           key={i}
-          className="rounded-xl bg-white/5 animate-pulse"
+          className="rounded-xl bg-[var(--dk-surface-ghost)] animate-pulse"
           style={{ aspectRatio: "2/3" }}
         />
       ))}
@@ -34,21 +34,21 @@ const YoutubeEmptyState = ({ onScan }: PlatformEmptyStateProps) => {
       <div className="w-16 h-16 rounded-full bg-red-500/10 flex items-center justify-center">
         <Play className="h-8 w-8 text-red-500" />
       </div>
-      <p className="text-lg font-medium text-white/80">No synced YouTube videos</p>
-      <p className="text-sm text-white/40 text-center max-w-md">
+      <p className="text-lg font-medium text-foreground">No synced YouTube videos</p>
+      <p className="text-sm text-muted-foreground text-center max-w-md">
         Sync your YouTube liked videos in Settings &rarr; Integrations to see them here.
       </p>
       <div className="flex gap-3">
         <button
           onClick={onScan}
-          className="inline-flex items-center gap-2 rounded-lg bg-red-500/20 px-4 py-2 text-sm font-medium text-red-400 transition-colors hover:bg-red-500/30"
+          className="inline-flex items-center gap-2 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-600 dark:text-red-400 border border-red-500/20 px-4 py-2 text-sm font-medium transition-colors"
         >
           <RefreshCw className="h-4 w-4" />
           Sync Liked Videos
         </button>
         <button
           onClick={() => navigate({ to: "/settings" })}
-          className="inline-flex items-center gap-2 rounded-lg bg-white/5 px-4 py-2 text-sm font-medium text-white/60 transition-colors hover:bg-white/10"
+          className="inline-flex items-center gap-2 rounded-lg bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-glass-hover)] px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground border border-[var(--dk-separator)] transition-colors"
         >
           Open Settings
         </button>
@@ -77,14 +77,14 @@ const YoutubeVideoCard = ({ video }: { video: YoutubeLikedVideo }) => {
           isAdult={false}
         />
         <div className="flex items-center gap-1.5 mt-1.5">
-          <Music className="h-3 w-3 text-red-400/60 shrink-0" />
-          <p className="text-xs text-white/50 truncate">{video.matchedArtist ?? video.channelTitle}</p>
+          <Music className="h-3 w-3 text-red-600/70 dark:text-red-400/70 shrink-0" />
+          <p className="text-xs text-muted-foreground truncate">{video.matchedArtist ?? video.channelTitle}</p>
         </div>
         <a
           href={youtubeUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-1 text-[10px] text-red-400/60 hover:text-red-400 transition-colors"
+          className="inline-flex items-center gap-1 text-[10px] text-red-600/70 hover:text-red-600 dark:text-red-400/70 dark:hover:text-red-400 transition-colors"
         >
           <ExternalLink className="h-2.5 w-2.5" />
           YouTube
@@ -95,9 +95,9 @@ const YoutubeVideoCard = ({ video }: { video: YoutubeLikedVideo }) => {
 
   // Unmatched — show raw YouTube data
   return (
-    <div className="group rounded-xl overflow-hidden bg-white/[0.04] border border-white/5 hover:border-white/10 transition-all">
+    <div className="group rounded-xl overflow-hidden bg-[var(--dk-surface-glass)] border border-[var(--dk-separator)] hover:bg-[var(--dk-surface-elevated)] transition-all">
       <a href={youtubeUrl} target="_blank" rel="noopener noreferrer" className="block">
-        <div className="aspect-video bg-black/40 relative overflow-hidden">
+        <div className="aspect-video bg-black/20 dark:bg-black/40 relative overflow-hidden">
           {video.thumbnailUrl ? (
             <img
               src={video.thumbnailUrl}
@@ -107,28 +107,28 @@ const YoutubeVideoCard = ({ video }: { video: YoutubeLikedVideo }) => {
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center">
-              <Play className="h-8 w-8 text-white/10" />
+              <Play className="h-8 w-8 text-muted-foreground/30" />
             </div>
           )}
           <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
             <div className="w-10 h-10 rounded-full bg-red-600/90 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-              <Play className="h-5 w-5 text-white ml-0.5" />
+              <Play className="h-5 w-5 text-primary-foreground ml-0.5" />
             </div>
           </div>
         </div>
       </a>
       <div className="p-2.5 space-y-1">
-        <p className="text-xs font-medium text-white/80 line-clamp-2 leading-tight">
+        <p className="text-xs font-medium text-foreground line-clamp-2 leading-tight">
           {video.title}
         </p>
-        <p className="text-[10px] text-white/40 truncate">
+        <p className="text-[10px] text-muted-foreground truncate">
           {video.channelTitle}
         </p>
         <a
           href={youtubeUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-1 text-[10px] text-red-400/60 hover:text-red-400 transition-colors"
+          className="inline-flex items-center gap-1 text-[10px] text-red-600/70 hover:text-red-600 dark:text-red-400/70 dark:hover:text-red-400 transition-colors"
         >
           <ExternalLink className="h-2.5 w-2.5" />
           Watch on YouTube
@@ -153,8 +153,8 @@ export const YoutubeTabContent = () => {
   if (query.isError) {
     return (
       <div className="flex flex-col items-center justify-center py-16 gap-3">
-        <p className="text-sm text-red-400">Failed to load synced videos.</p>
-        <button onClick={() => query.refetch()} className="text-sm text-white/50 hover:text-white">
+        <p className="text-sm text-destructive">Failed to load synced videos.</p>
+        <button onClick={() => query.refetch()} className="text-sm text-muted-foreground hover:text-foreground">
           Retry
         </button>
       </div>
@@ -172,16 +172,16 @@ export const YoutubeTabContent = () => {
     <div className="space-y-8">
       <div className="flex items-center gap-3">
         <Play className="h-5 w-5 text-red-500" />
-        <h2 className="text-lg font-semibold text-white">Synced YouTube Videos</h2>
-        <span className="text-sm text-white/30">
+        <h2 className="text-lg font-semibold text-foreground">Synced YouTube Videos</h2>
+        <span className="text-sm text-muted-foreground">
           {items.length} total &middot; {matched.length} matched
         </span>
       </div>
 
       {matched.length > 0 && (
         <div className="space-y-3">
-          <h3 className="flex items-center gap-2 text-sm font-medium text-white/60">
-            <Link2 className="h-3.5 w-3.5 text-green-400/60" />
+          <h3 className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+            <Link2 className="h-3.5 w-3.5 text-emerald-600/70 dark:text-emerald-400/70" />
             Matched to Catalog ({matched.length})
           </h3>
           <MediaGrid>
@@ -194,8 +194,8 @@ export const YoutubeTabContent = () => {
 
       {unmatched.length > 0 && (
         <div className="space-y-3">
-          <h3 className="flex items-center gap-2 text-sm font-medium text-white/60">
-            <Music className="h-3.5 w-3.5 text-red-400/60" />
+          <h3 className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+            <Music className="h-3.5 w-3.5 text-red-600/70 dark:text-red-400/70" />
             Unmatched Music Videos ({unmatched.length})
           </h3>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
@@ -211,12 +211,12 @@ export const YoutubeTabContent = () => {
           <div className="h-5 w-5 animate-spin rounded-full border-2 border-red-500/30 border-t-red-500" />
         )}
         {query.hasNextPage && !query.isFetchingNextPage && (
-          <button onClick={() => query.fetchNextPage()} className="text-sm text-white/40 hover:text-white transition-colors">
+          <button onClick={() => query.fetchNextPage()} className="text-sm text-muted-foreground hover:text-foreground transition-colors">
             Load more
           </button>
         )}
         {!query.hasNextPage && items.length > 0 && (
-          <p className="text-xs text-white/20">All synced videos loaded</p>
+          <p className="text-xs text-muted-foreground/60">All synced videos loaded</p>
         )}
       </div>
     </div>
@@ -236,14 +236,14 @@ const YoutubeOverviewModule = () => {
   if (items.length === 0) return null
 
   return (
-    <div className="rounded-2xl overflow-hidden bg-white/[0.03] border border-white/5">
-      <button className="w-full flex items-center gap-3 p-4 hover:bg-white/[0.02] transition-colors text-left">
+    <div className="rounded-2xl overflow-hidden bg-[var(--dk-surface-glass)] border border-[var(--dk-separator)]">
+      <button className="w-full flex items-center gap-3 p-4 hover:bg-[var(--dk-surface-elevated)] transition-colors text-left">
         <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-red-500/10 shrink-0">
           <Play className="h-5 w-5 text-red-500" />
         </div>
         <div>
-          <p className="text-sm font-medium text-white">YouTube</p>
-          <p className="text-xs text-white/30">{items.length} videos &middot; {matched} matched</p>
+          <p className="text-sm font-medium text-foreground">YouTube</p>
+          <p className="text-xs text-muted-foreground">{items.length} videos &middot; {matched} matched</p>
         </div>
       </button>
     </div>

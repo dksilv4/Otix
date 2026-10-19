@@ -38,8 +38,8 @@ export const formatProposalDate = (s: string): string => {
 }
 
 export const confidenceColor = (c: number): string => {
-  if (c >= 0.95) return 'text-green-400 bg-green-500/10'
-  if (c >= 0.85) return 'text-blue-400 bg-blue-500/10'
-  if (c >= 0.75) return 'text-amber-400 bg-amber-500/10'
-  return 'text-white/40 bg-white/5'
+  if (c >= 0.95) return 'text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20'
+  if (c >= 0.85) return 'text-sky-600 dark:text-sky-400 bg-sky-500/10 border border-sky-500/20'
+  if (c >= 0.75) return 'text-amber-600 dark:text-amber-400 bg-amber-500/10 border border-amber-500/20'
+  return 'text-muted-foreground bg-[var(--dk-surface-glass)] border border-[var(--dk-separator)]'
 }

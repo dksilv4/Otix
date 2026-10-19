@@ -62,7 +62,7 @@ export const GameCharacters = ({ characters = [], className = '' }: GameCharacte
         <div className="flex items-center gap-2.5">
           <div className="h-4 w-0.5 rounded-full bg-primary/60 shrink-0" />
           <h2 className="text-base font-semibold tracking-tight">Characters</h2>
-          <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-white/[0.06] text-muted-foreground">
+          <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-[var(--dk-surface-glass)] text-muted-foreground">
             {validCharacters.length}
           </span>
         </div>
@@ -85,7 +85,7 @@ export const GameCharacters = ({ characters = [], className = '' }: GameCharacte
               type="button"
               disabled={!canScrollLeft}
               onClick={() => scrollBy(-260)}
-              className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/[0.05] hover:bg-white/[0.1] text-foreground disabled:opacity-25 transition-all"
+              className="flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-base)] text-foreground disabled:opacity-25 transition-all"
               aria-label="Scroll left"
             >
               <ChevronLeft className="h-4 w-4" />
@@ -94,7 +94,7 @@ export const GameCharacters = ({ characters = [], className = '' }: GameCharacte
               type="button"
               disabled={!canScrollRight}
               onClick={() => scrollBy(260)}
-              className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/[0.05] hover:bg-white/[0.1] text-foreground disabled:opacity-25 transition-all"
+              className="flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-base)] text-foreground disabled:opacity-25 transition-all"
               aria-label="Scroll right"
             >
               <ChevronRight className="h-4 w-4" />
@@ -133,13 +133,13 @@ export const GameCharacters = ({ characters = [], className = '' }: GameCharacte
                   alt={char.name}
                   className="absolute inset-0 h-full w-full rounded-lg object-cover transition-transform duration-500 ease-out group-hover:scale-110"
                   fallback={
-                    <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-950 text-white/45">
+                    <div className="flex h-full w-full items-center justify-center bg-muted text-muted-foreground">
                       <UserRound className="h-10 w-10" aria-hidden="true" />
                     </div>
                   }
                 />
               ) : (
-                <div className="absolute inset-0 flex h-full w-full items-center justify-center rounded-lg bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-950 text-white/45 transition-transform duration-500 ease-out group-hover:scale-110">
+                <div className="absolute inset-0 flex h-full w-full items-center justify-center rounded-lg bg-muted text-muted-foreground transition-transform duration-500 ease-out group-hover:scale-110">
                   <UserRound className="h-10 w-10" aria-hidden="true" />
                 </div>
               )}
@@ -174,7 +174,7 @@ export const GameCharacters = ({ characters = [], className = '' }: GameCharacte
           <div className="space-y-5 p-1 max-h-[70vh] overflow-y-auto pr-1">
             <div className="flex flex-col sm:flex-row gap-5 items-center sm:items-start">
               {/* Mugshot */}
-              <div className="relative w-32 h-40 rounded-xl overflow-hidden shadow-xl bg-zinc-900 shrink-0">
+              <div className="relative w-32 h-40 rounded-xl overflow-hidden shadow-xl bg-muted shrink-0">
                 {selectedCharacter.mugShotUrl ? (
                   <Image
                     src={selectedCharacter.mugShotUrl}
@@ -182,7 +182,7 @@ export const GameCharacters = ({ characters = [], className = '' }: GameCharacte
                     className="w-full h-full object-cover"
                   />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center text-muted-foreground bg-zinc-900">
+                  <div className="w-full h-full flex items-center justify-center text-muted-foreground bg-muted">
                     <UserRound className="h-10 w-10 opacity-40" />
                   </div>
                 )}
@@ -192,23 +192,23 @@ export const GameCharacters = ({ characters = [], className = '' }: GameCharacte
               <div className="space-y-3 flex-1 text-center sm:text-left">
                 <div className="flex flex-wrap items-center justify-center sm:justify-start gap-1.5">
                   {selectedCharacter.species && (
-                    <Badge variant="secondary" className="text-xs capitalize bg-white/5 border-0">
+                    <Badge variant="secondary" className="text-xs capitalize bg-[var(--dk-surface-glass)] border-0">
                       {selectedCharacter.species}
                     </Badge>
                   )}
                   {selectedCharacter.gender && (
-                    <Badge variant="secondary" className="text-xs capitalize bg-white/5 border-0">
+                    <Badge variant="secondary" className="text-xs capitalize bg-[var(--dk-surface-glass)] border-0">
                       {selectedCharacter.gender.replace('_', ' ')}
                     </Badge>
                   )}
                 </div>
 
                 {selectedCharacter.description ? (
-                  <p className="text-sm text-white/75 leading-relaxed">
+                  <p className="text-sm text-foreground/80 leading-relaxed">
                     {selectedCharacter.description}
                   </p>
                 ) : (
-                  <p className="text-sm text-white/40 italic">No description available for this character.</p>
+                  <p className="text-sm text-muted-foreground italic">No description available for this character.</p>
                 )}
 
                 <div className="pt-2">
@@ -256,7 +256,7 @@ export const GameCharacters = ({ characters = [], className = '' }: GameCharacte
                         className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                       />
                     ) : (
-                      <div className="absolute inset-0 flex items-center justify-center bg-zinc-900 text-white/40">
+                      <div className="absolute inset-0 flex items-center justify-center bg-muted text-muted-foreground">
                         <UserRound className="h-8 w-8" />
                       </div>
                     )}

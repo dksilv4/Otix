@@ -20,7 +20,7 @@ export const EMPTY_TRACKS: TrackOut[] = []
 
 // ── Hero ──
 
-export const GLASS_PILL = 'bg-white/[0.08] hover:bg-white/[0.14] text-white/90 gap-1.5 px-3 py-1.5 text-xs font-medium border-0 transition-colors'
+export const GLASS_PILL = 'bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-base)] text-foreground gap-1.5 px-3 py-1.5 text-xs font-medium border-0 transition-colors'
 
 // ── Download Game ──
 
@@ -31,11 +31,11 @@ export interface StatusLabelConfig {
 }
 
 export const DOWNLOAD_STATUS_LABELS: Record<string, StatusLabelConfig> = {
-  queued: { icon: Clock, label: 'Queued in SABnzbd', color: 'text-amber-400' },
-  downloading: { icon: Loader2, label: 'Downloading...', color: 'text-blue-400' },
-  processing: { icon: Loader2, label: 'Unpacking/Verifying...', color: 'text-purple-400' },
-  completed: { icon: CheckCircle2, label: 'Download complete', color: 'text-green-400' },
-  failed: { icon: XCircle, label: 'Download failed', color: 'text-red-400' },
+  queued: { icon: Clock, label: 'Queued in SABnzbd', color: 'text-amber-600 dark:text-amber-400' },
+  downloading: { icon: Loader2, label: 'Downloading...', color: 'text-primary' },
+  processing: { icon: Loader2, label: 'Unpacking/Verifying...', color: 'text-purple-600 dark:text-purple-400' },
+  completed: { icon: CheckCircle2, label: 'Download complete', color: 'text-emerald-600 dark:text-emerald-400' },
+  failed: { icon: XCircle, label: 'Download failed', color: 'text-destructive' },
 }
 
 // ── Episode Modal ──

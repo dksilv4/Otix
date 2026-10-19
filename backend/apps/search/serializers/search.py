@@ -19,6 +19,7 @@ from rest_framework import serializers
 
 from apps.company.models import Company
 from apps.media.models import MediaItem
+from apps.media.services.catalog import _pick_asset
 from apps.people.models import Person
 
 MEDIA_SUMMARY_FIELDS = (
@@ -50,11 +51,8 @@ MEDIA_SUMMARY_FIELDS = (
 
 
 def _asset_url(obj: MediaItem, asset_type: str) -> str | None:
-    """Return the first URL for ``obj``'s asset of the given type, if any."""
-    for asset in obj.assets.all():
-        if (asset.asset_type or "").lower() == asset_type:
-            return asset.url
-    return None
+    """Return the ranked URL for ``obj``'s asset of the given type, if any."""
+    return _pick_asset(obj, asset_type, "general")
 
 
 def _external_id(obj: MediaItem, provider: str) -> str | None:

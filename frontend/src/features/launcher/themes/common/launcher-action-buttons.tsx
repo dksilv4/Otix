@@ -114,7 +114,7 @@ export const LauncherActionButtons = ({
         </button>
       ) : isIso ? (
         isIncompatible ? (
-          <div className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-300 text-xs font-medium">
+          <div className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-600 dark:text-amber-400 text-xs font-medium">
             <AlertCircle size={14} />
             <span>Windows ISO Only</span>
           </div>
@@ -124,7 +124,7 @@ export const LauncherActionButtons = ({
               e.stopPropagation()
               cancelInstall(activeInstall.installId)
             }}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-500/20 text-amber-300 border border-amber-500/30 text-xs font-bold hover:bg-amber-500/30 transition-all cursor-pointer"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30 text-xs font-bold hover:bg-amber-500/30 transition-all cursor-pointer"
           >
             <Loader2 size={14} className="animate-spin" />
             <span>Installing ({activeInstall.progress}%)</span>
@@ -175,7 +175,7 @@ export const LauncherActionButtons = ({
       ) : (
         <button
           onClick={onOpenDetails || handlePlay}
-          className={`flex items-center justify-center gap-2 rounded-xl uppercase transition-all duration-200 cursor-pointer active:scale-95 bg-white/10 hover:bg-white/20 text-white border border-white/15 ${paddingClass}`}
+          className={`flex items-center justify-center gap-2 rounded-xl uppercase transition-all duration-200 cursor-pointer active:scale-95 bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-field)] text-foreground border border-[var(--dk-separator)] ${paddingClass}`}
         >
           <Info size={size === "lg" ? 16 : 14} />
           <span>View Details</span>
@@ -188,14 +188,14 @@ export const LauncherActionButtons = ({
           <button
             onClick={handleOpenFolder}
             title="Open Game Folder"
-            className="p-2.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] text-white/70 hover:text-white border border-white/10 transition-colors cursor-pointer active:scale-95"
+            className="p-2.5 rounded-xl bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-field)] text-muted-foreground hover:text-foreground border border-[var(--dk-separator)] transition-colors cursor-pointer active:scale-95"
           >
             <FolderOpen size={size === "lg" ? 18 : 15} />
           </button>
           <button
             onClick={handlePickExe}
             title="Configure Executable Target"
-            className="p-2.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] text-white/70 hover:text-white border border-white/10 transition-colors cursor-pointer active:scale-95"
+            className="p-2.5 rounded-xl bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-field)] text-muted-foreground hover:text-foreground border border-[var(--dk-separator)] transition-colors cursor-pointer active:scale-95"
           >
             <Sliders size={size === "lg" ? 18 : 15} />
           </button>
@@ -209,7 +209,7 @@ export const LauncherActionButtons = ({
             onOpenDetails()
           }}
           title="Game Overview & Media"
-          className="p-2.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] text-white/70 hover:text-white border border-white/10 transition-colors cursor-pointer active:scale-95"
+          className="p-2.5 rounded-xl bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-field)] text-muted-foreground hover:text-foreground border border-[var(--dk-separator)] transition-colors cursor-pointer active:scale-95"
         >
           <Info size={size === "lg" ? 18 : 15} />
         </button>

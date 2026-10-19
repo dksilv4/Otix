@@ -17,6 +17,7 @@ from apps.accounts.models import User
 from apps.lists.models import ListItemRankHistory, MediaListCollaborator, UserList
 from apps.lists.models.user_list import LIST_COLLABORATOR_PERMISSIONS
 from apps.media.models import MediaItem
+from apps.media.services.catalog import _logo_color_guess, _pick_asset, _pick_backdrop
 
 _COLLABORATOR_CHOICES = [(permission, permission) for permission in LIST_COLLABORATOR_PERMISSIONS]
 
@@ -41,6 +42,8 @@ class MediaItemSummarySerializer(serializers.ModelSerializer):
 
     poster_url = serializers.SerializerMethodField()
     backdrop_url = serializers.SerializerMethodField()
+    logo_url = serializers.SerializerMethodField()
+    logo_color_guess = serializers.SerializerMethodField()
     tmdb_id = serializers.SerializerMethodField()
 
     class Meta:
@@ -66,21 +69,23 @@ class MediaItemSummarySerializer(serializers.ModelSerializer):
             "is_adult",
             "poster_url",
             "backdrop_url",
+            "logo_url",
+            "logo_color_guess",
             "tmdb_id",
         )
         read_only_fields = fields
 
     def get_poster_url(self, obj: MediaItem) -> str | None:
-        return next(
-            (a.url for a in obj.assets.all() if (a.asset_type or "").lower() == "poster"),
-            None,
-        )
+        return _pick_asset(obj, "poster", "general")
 
     def get_backdrop_url(self, obj: MediaItem) -> str | None:
-        return next(
-            (a.url for a in obj.assets.all() if (a.asset_type or "").lower() == "backdrop"),
-            None,
-        )
+        return _pick_backdrop(obj, "general")
+
+    def get_logo_url(self, obj: MediaItem) -> str | None:
+        return _pick_asset(obj, "logo", "general")
+
+    def get_logo_color_guess(self, obj: MediaItem) -> str | None:
+        return _logo_color_guess(obj, "general")
 
     def get_tmdb_id(self, obj: MediaItem) -> str | None:
         return next(

@@ -336,10 +336,10 @@ export const SettingsOrganizeSection = ({ nodeId: nodeIdProp }: { nodeId?: numbe
 
         {/* ISO Directory Picker */}
         <div className="space-y-1.5">
-          <label className="text-xs font-semibold text-white/80 block">
+          <label className="text-xs font-semibold text-foreground block">
             ISO File Directory
           </label>
-          <p className="text-xs text-white/50">
+          <p className="text-xs text-muted-foreground">
             The target library folder on this node where your organized ISO games are sorted and stored.
           </p>
           <div className="pt-1">
@@ -356,10 +356,10 @@ export const SettingsOrganizeSection = ({ nodeId: nodeIdProp }: { nodeId?: numbe
         {/* Folder Structure Presets */}
         <div className="space-y-2.5 pt-2">
           <div className="flex items-center justify-between">
-            <label className="text-xs font-semibold text-white/80 block">
+            <label className="text-xs font-semibold text-foreground block">
               Folder Structure Presets
             </label>
-            <span className="text-[11px] text-white/40">Select a layout or build a custom template below</span>
+            <span className="text-[11px] text-muted-foreground">Select a layout or build a custom template below</span>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
@@ -376,23 +376,23 @@ export const SettingsOrganizeSection = ({ nodeId: nodeIdProp }: { nodeId?: numbe
                   className={cn(
                     'p-3 rounded-2xl text-left transition-all cursor-pointer flex flex-col justify-between gap-2.5',
                     isSelected
-                      ? 'bg-primary/15 text-white shadow-sm shadow-primary/10'
-                      : 'bg-white/[0.02] hover:bg-white/[0.04]',
+                      ? 'bg-primary/15 text-primary shadow-sm shadow-primary/10'
+                      : 'bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-hover)]',
                   )}
                 >
                   <div className="flex items-center justify-between gap-2 w-full">
-                    <span className="text-xs font-bold text-white tracking-tight">{preset.label}</span>
+                    <span className="text-xs font-bold text-foreground tracking-tight">{preset.label}</span>
                     <span
                       className={cn(
                         'text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider',
-                        isSelected ? 'bg-primary text-black' : 'bg-white/10 text-white/60',
+                        isSelected ? 'bg-primary text-primary-foreground' : 'bg-[var(--dk-surface-raised)] text-muted-foreground',
                       )}
                     >
                       {preset.badge}
                     </span>
                   </div>
 
-                  <p className="text-[11px] text-white/50 leading-relaxed">{preset.description}</p>
+                  <p className="text-[11px] text-muted-foreground leading-relaxed">{preset.description}</p>
 
                   <div className="pt-1 overflow-x-auto w-full">
                     <TokenizedTemplateDisplay template={preset.template} size="xs" />
@@ -406,10 +406,10 @@ export const SettingsOrganizeSection = ({ nodeId: nodeIdProp }: { nodeId?: numbe
         {/* Template Input with Color-Coded Token Chips */}
         <div className="space-y-3 pt-2">
           <div className="flex items-center justify-between">
-            <label className="text-xs font-semibold text-white/80 block">
+            <label className="text-xs font-semibold text-foreground block">
               Active Naming Template
             </label>
-            <span className="text-[11px] text-white/40 font-mono">
+            <span className="text-[11px] text-muted-foreground font-mono">
               Use <code className="text-primary font-bold">/</code> for subfolders
             </span>
           </div>
@@ -423,12 +423,12 @@ export const SettingsOrganizeSection = ({ nodeId: nodeIdProp }: { nodeId?: numbe
               setPresetId('custom')
             }}
             placeholder="{Title} ({Year})/{Title}.{ext}"
-            className="w-full text-sm font-mono text-white outline-none h-10 rounded-xl bg-white/5 px-3.5 focus:bg-white/10 placeholder:text-white/30"
+            className="w-full text-sm font-mono text-foreground outline-none h-10 rounded-xl bg-[var(--dk-surface-ghost)] px-3.5 focus:ring-1 focus:ring-primary/40 placeholder:text-muted-foreground"
           />
 
           {/* Color-Coded Token Chips for Cursor Insertion */}
           <div className="space-y-1.5">
-            <p className="text-[11px] font-medium text-white/50">
+            <p className="text-[11px] font-medium text-muted-foreground">
               Click tokens to insert at cursor:
             </p>
             <div className="flex flex-wrap items-center gap-1.5">
@@ -451,24 +451,24 @@ export const SettingsOrganizeSection = ({ nodeId: nodeIdProp }: { nodeId?: numbe
           </div>
 
           {/* Live Interactive Preview Box */}
-          <div className="p-3.5 rounded-2xl bg-white/[0.025] space-y-2">
+          <div className="p-3.5 rounded-2xl bg-[var(--dk-surface-ghost)] space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-[11px] font-semibold text-white/50 uppercase tracking-wider flex items-center gap-1.5">
+              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
                 <Sparkles size={12} className="text-primary" />
                 <span>Live Sample Previews</span>
               </span>
-              <span className="text-[11px] text-white/40">Real-time template transformation</span>
+              <span className="text-[11px] text-muted-foreground">Real-time template transformation</span>
             </div>
 
             <div className="space-y-1.5 pt-1">
               {SAMPLE_RELEASES.slice(0, 2).map((sample, sIdx) => {
                 const formatted = formatTemplateSample(namingTemplate, sample)
                 return (
-                  <div key={sIdx} className="p-2 rounded-xl bg-white/[0.02] space-y-1">
-                    <p className="text-[10px] text-white/40 font-mono truncate">
+                  <div key={sIdx} className="p-2 rounded-xl bg-[var(--dk-surface-raised)] space-y-1">
+                    <p className="text-[10px] text-muted-foreground font-mono truncate">
                       Release: {sample.originalName}.{sample.ext}
                     </p>
-                    <p className="text-xs font-mono font-semibold text-emerald-400 break-all">
+                    <p className="text-xs font-mono font-semibold text-emerald-500 dark:text-emerald-400 break-all">
                       &rarr; {formatted}
                     </p>
                   </div>
@@ -503,14 +503,14 @@ export const SettingsOrganizeSection = ({ nodeId: nodeIdProp }: { nodeId?: numbe
         />
         {autoSearch && (
           <div>
-            <label className="text-xs font-medium text-white/60">Interval (hours)</label>
+            <label className="text-xs font-medium text-muted-foreground">Interval (hours)</label>
             <input
               type="number"
               value={intervalHours}
               onChange={(e) => setIntervalHours(parseInt(e.target.value, 10) || 12)}
               min={1}
               max={168}
-              className="mt-1 h-9 rounded-lg px-3 text-sm outline-none text-white/80 focus:ring-2 focus:ring-primary/40"
+              className="mt-1 h-9 rounded-lg px-3 text-sm outline-none text-foreground focus:ring-2 focus:ring-primary/40"
               style={{ backgroundColor: 'var(--dk-surface-raised)', width: '120px' }}
             />
           </div>
@@ -534,18 +534,18 @@ export const SettingsOrganizeSection = ({ nodeId: nodeIdProp }: { nodeId?: numbe
           description="Bias automatic picks toward preferred release groups."
         />
         <div>
-          <label className="text-xs font-medium text-white/60 mb-1.5 block">Preferred repackers</label>
+          <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Preferred repackers</label>
           <input
             type="text"
             value={preferredRepackers}
             onChange={(e) => setPreferredRepackers(e.target.value)}
             placeholder="e.g. FitGirl, DODI, ElAmigos"
-            className="w-full text-sm text-white outline-none h-9 rounded-xl bg-white/5 px-3 focus:bg-white/10 placeholder:text-white/30"
+            className="w-full text-sm text-foreground outline-none h-9 rounded-xl bg-[var(--dk-surface-ghost)] px-3 focus:ring-1 focus:ring-primary/40 placeholder:text-muted-foreground"
           />
-          <p className="mt-1.5 text-[11px] text-white/40">Comma-separated. Used when auto-picking search results.</p>
+          <p className="mt-1.5 text-[11px] text-muted-foreground">Comma-separated. Used when auto-picking search results.</p>
         </div>
         <details className="pt-1">
-          <summary className="cursor-pointer text-xs font-medium text-white/50 hover:text-white/70">
+          <summary className="cursor-pointer text-xs font-medium text-muted-foreground hover:text-foreground">
             Advanced
           </summary>
           <div className="mt-3">

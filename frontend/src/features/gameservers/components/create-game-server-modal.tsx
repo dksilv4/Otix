@@ -174,8 +174,8 @@ export const CreateGameServerModal = ({
       <form onSubmit={handleSubmit} className="space-y-4 pt-2">
         <div>
           <div className="flex items-center justify-between mb-1">
-            <label className="text-xs font-semibold text-white/70">Server Name</label>
-            <span className="text-[11px] text-white/40">Optional</span>
+            <label className="text-xs font-semibold text-foreground">Server Name</label>
+            <span className="text-[11px] text-muted-foreground">Optional</span>
           </div>
           <DkInput
             value={name}
@@ -187,20 +187,20 @@ export const CreateGameServerModal = ({
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="text-xs font-semibold text-white/70 block mb-1">Server Protocol</label>
+            <label className="text-xs font-semibold text-foreground block mb-1">Server Protocol</label>
             <select
               value={serverType}
               onChange={(e) => handleServerTypeChange(e.target.value as GameServerType)}
-              className="w-full h-10 px-3 rounded-xl bg-white/5 border border-white/10 text-sm text-white focus:outline-none focus:border-primary cursor-pointer"
+              className="w-full h-10 px-3 rounded-xl bg-[var(--dk-surface-ghost)] border border-[var(--dk-separator)] text-sm text-foreground focus:outline-none focus:border-primary cursor-pointer"
             >
-              <option value="steam_source" className="bg-neutral-900">Steam / Source (A2S)</option>
-              <option value="minecraft" className="bg-neutral-900">Minecraft (Java / Bedrock)</option>
-              <option value="generic" className="bg-neutral-900">Generic TCP Ping</option>
+              <option value="steam_source" className="bg-[var(--dk-surface-overlay)] text-foreground">Steam / Source (A2S)</option>
+              <option value="minecraft" className="bg-[var(--dk-surface-overlay)] text-foreground">Minecraft (Java / Bedrock)</option>
+              <option value="generic" className="bg-[var(--dk-surface-overlay)] text-foreground">Generic TCP Ping</option>
             </select>
           </div>
 
           <div>
-            <label className="text-xs font-semibold text-white/70 block mb-1">Game</label>
+            <label className="text-xs font-semibold text-foreground block mb-1">Game</label>
             <DkInput
               value={gameTitle}
               onChange={(e) => setGameTitle(e.target.value)}
@@ -212,7 +212,7 @@ export const CreateGameServerModal = ({
 
         <div className="grid grid-cols-3 gap-3">
           <div className="col-span-2">
-            <label className="text-xs font-semibold text-white/70 block mb-1 flex items-center gap-1.5">
+            <label className="text-xs font-semibold text-foreground block mb-1 flex items-center gap-1.5">
               <Globe size={13} className="text-primary" /> Host / Address
             </label>
             <DkInput
@@ -227,7 +227,7 @@ export const CreateGameServerModal = ({
           </div>
 
           <div>
-            <label className="text-xs font-semibold text-white/70 block mb-1 flex items-center gap-1.5">
+            <label className="text-xs font-semibold text-foreground block mb-1 flex items-center gap-1.5">
               <Hash size={13} className="text-primary" /> Port
             </label>
             <DkInput
@@ -246,7 +246,7 @@ export const CreateGameServerModal = ({
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="text-xs font-semibold text-white/70 block mb-1">Query Port (Optional)</label>
+            <label className="text-xs font-semibold text-foreground block mb-1">Query Port (Optional)</label>
             <DkInput
               type="number"
               value={queryPort}
@@ -266,8 +266,8 @@ export const CreateGameServerModal = ({
           </div>
 
           <div>
-            <label className="text-xs font-semibold text-white/70 block mb-1 flex items-center gap-1.5">
-              <Key size={13} className="text-amber-400" /> Password (Optional)
+            <label className="text-xs font-semibold text-foreground block mb-1 flex items-center gap-1.5">
+              <Key size={13} className="text-amber-500 dark:text-amber-400" /> Password (Optional)
             </label>
             <DkInput
               type="text"
@@ -283,25 +283,25 @@ export const CreateGameServerModal = ({
           <div
             className={`p-3 rounded-2xl border text-xs flex items-center justify-between transition-all ${
               verifyResult.status === 'online'
-                ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-300'
-                : 'bg-rose-500/10 border-rose-500/20 text-rose-300'
+                ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-700 dark:text-emerald-300'
+                : 'bg-destructive/10 border-destructive/20 text-destructive'
             }`}
           >
             <div className="flex items-center gap-2.5 min-w-0">
               {verifyResult.status === 'online' ? (
-                <CheckCircle2 size={16} className="text-emerald-400 shrink-0" />
+                <CheckCircle2 size={16} className="text-emerald-500 dark:text-emerald-400 shrink-0" />
               ) : (
-                <AlertCircle size={16} className="text-rose-400 shrink-0" />
+                <AlertCircle size={16} className="text-destructive shrink-0" />
               )}
               <div className="truncate">
                 <span className="font-semibold">
                   {verifyResult.status === 'online' ? 'Connection Verified' : 'Connection Unreachable'}
                 </span>
                 {verifyResult.pingMs != null && (
-                  <span className="ml-1.5 text-white/70">• {verifyResult.pingMs}ms</span>
+                  <span className="ml-1.5 text-muted-foreground">• {verifyResult.pingMs}ms</span>
                 )}
                 {verifyResult.currentPlayers != null && (
-                  <span className="ml-1.5 text-white/70">
+                  <span className="ml-1.5 text-muted-foreground">
                     • {verifyResult.currentPlayers}/{verifyResult.maxPlayers ?? '?'} players
                   </span>
                 )}
@@ -314,7 +314,7 @@ export const CreateGameServerModal = ({
               </div>
             </div>
             {verifyResult.status === 'online' && (
-              <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 shrink-0">
+              <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 shrink-0">
                 Online
               </span>
             )}
@@ -322,23 +322,23 @@ export const CreateGameServerModal = ({
         )}
 
         <div>
-          <label className="text-xs font-semibold text-white/70 block mb-1">Description / Notes</label>
+          <label className="text-xs font-semibold text-foreground block mb-1">Description / Notes</label>
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             placeholder="Rules, modpack links, or server details..."
             rows={2}
-            className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-white focus:outline-none focus:border-primary resize-none placeholder:text-white/30"
+            className="w-full px-3 py-2 rounded-xl bg-[var(--dk-surface-ghost)] border border-[var(--dk-separator)] text-sm text-foreground focus:outline-none focus:border-primary resize-none placeholder:text-muted-foreground"
           />
         </div>
 
-        <div className="flex items-center justify-between p-3 rounded-2xl bg-white/[0.04] border border-white/[0.08]">
+        <div className="flex items-center justify-between p-3 rounded-2xl bg-[var(--dk-surface-ghost)] border border-[var(--dk-separator)]">
           <div className="space-y-0.5">
-            <div className="text-sm font-medium text-white flex items-center gap-1.5">
+            <div className="text-sm font-medium text-foreground flex items-center gap-1.5">
               <Shield size={14} className="text-primary" />
               <span>Allow Anyone with the Link</span>
             </div>
-            <p className="text-xs text-white/50">
+            <p className="text-xs text-muted-foreground">
               Generate a shareable invite code so non-friends can also view and join this server.
             </p>
           </div>
@@ -350,7 +350,7 @@ export const CreateGameServerModal = ({
           />
         </div>
 
-        <div className="flex flex-col items-end gap-1.5 pt-3 border-t border-white/10">
+        <div className="flex flex-col items-end gap-1.5 pt-3 border-t border-[var(--dk-separator)]">
           <div className="flex items-center justify-end gap-3 w-full">
           <DkButton type="button" variant="ghost" onClick={onClose}>
             Cancel

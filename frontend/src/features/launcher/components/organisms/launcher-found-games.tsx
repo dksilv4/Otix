@@ -55,27 +55,27 @@ export const LauncherFoundGames = ({ className, compact = false }: Props) => {
         onClick={() => setOpen((value) => !value)}
         className="flex w-full items-center gap-2 text-left cursor-pointer"
       >
-        <HardDrive size={14} className="text-white/35 shrink-0" />
-        <h3 className="text-xs font-bold uppercase tracking-wider text-white/70">
+        <HardDrive size={14} className="text-muted-foreground shrink-0" />
+        <h3 className="text-xs font-bold uppercase tracking-wider text-foreground">
           Found on servers
         </h3>
-        <span className="text-[10px] font-semibold text-white/35 tabular-nums">
+        <span className="text-[10px] font-semibold text-muted-foreground tabular-nums">
           {found.length}
         </span>
         {unmatchedCount > 0 && (
-          <span className="text-[10px] font-bold uppercase tracking-wider text-amber-300/90">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">
             {unmatchedCount} unmatched
           </span>
         )}
         <ChevronDown
           size={14}
-          className={`ml-auto text-white/30 transition-transform ${open ? 'rotate-180' : ''}`}
+          className={`ml-auto text-muted-foreground transition-transform ${open ? 'rotate-180' : ''}`}
         />
       </button>
 
       {open && (
-        <div className="mt-3 rounded-2xl border border-white/[0.08] bg-white/[0.03] overflow-hidden">
-          <div className="flex items-center gap-2 px-3 py-2 border-b border-white/[0.06]">
+        <div className="mt-3 rounded-2xl border border-[var(--dk-separator)] bg-[var(--dk-surface-ghost)] overflow-hidden">
+          <div className="flex items-center gap-2 px-3 py-2 border-b border-[var(--dk-separator)]">
             <div className="flex items-center gap-1">
               {(['unmatched', 'all'] as FoundTab[]).map((id) => (
                 <button
@@ -84,8 +84,8 @@ export const LauncherFoundGames = ({ className, compact = false }: Props) => {
                   onClick={() => setTab(id)}
                   className={`px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider cursor-pointer transition-colors ${
                     tab === id
-                      ? 'bg-white/12 text-white'
-                      : 'text-white/40 hover:text-white/70'
+                      ? 'bg-[var(--dk-surface-field)] text-foreground shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground'
                   }`}
                 >
                   {id === 'unmatched' ? `Unmatched (${unmatchedCount})` : `All (${found.length})`}
@@ -93,20 +93,20 @@ export const LauncherFoundGames = ({ className, compact = false }: Props) => {
               ))}
             </div>
             <div className="relative flex-1 min-w-0">
-              <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-white/25" />
+              <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
               <input
                 type="search"
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
                 placeholder="Search found games…"
-                className="w-full bg-white/[0.04] rounded-lg pl-7 pr-2 py-1.5 text-[11px] text-white placeholder-white/25 outline-none border-none"
+                className="w-full bg-[var(--dk-surface-field)] rounded-lg pl-7 pr-2 py-1.5 text-[11px] text-foreground placeholder:text-muted-foreground outline-none border-none"
               />
             </div>
           </div>
 
           <div className="max-h-80 overflow-y-auto">
             {rows.length === 0 ? (
-              <p className="px-4 py-6 text-center text-[11px] text-white/35">
+              <p className="px-4 py-6 text-center text-[11px] text-muted-foreground">
                 {tab === 'unmatched' ? 'Every scanned title is already in your library.' : 'No matching files.'}
               </p>
             ) : (
@@ -138,13 +138,13 @@ const FoundGameRow = ({
     : ''
 
   return (
-    <div className="flex items-center gap-3 px-3 py-2.5 border-b border-white/[0.04] last:border-b-0">
-      <div className="w-8 h-8 rounded-lg bg-white/[0.06] flex items-center justify-center shrink-0">
-        <Gamepad2 size={14} className="text-white/35" />
+    <div className="flex items-center gap-3 px-3 py-2.5 border-b border-[var(--dk-separator)] last:border-b-0">
+      <div className="w-8 h-8 rounded-lg bg-[var(--dk-surface-field)] flex items-center justify-center shrink-0">
+        <Gamepad2 size={14} className="text-muted-foreground" />
       </div>
       <div className="min-w-0 flex-1">
-        <p className="text-xs font-semibold text-white truncate">{item.game.title}</p>
-        <p className="text-[10px] text-white/40 truncate">
+        <p className="text-xs font-semibold text-foreground truncate">{item.game.title}</p>
+        <p className="text-[10px] text-muted-foreground truncate">
           {item.filename}
           {item.filesize ? ` · ${formatBytes(item.filesize)}` : ''}
           {item.serverName ? ` · ${item.serverName}` : ''}
@@ -155,12 +155,12 @@ const FoundGameRow = ({
         <button
           type="button"
           onClick={onMatch}
-          className="shrink-0 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider text-white cursor-pointer bg-blue-500 hover:bg-blue-400 active:scale-95 transition-all"
+          className="shrink-0 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider text-primary-foreground cursor-pointer bg-primary hover:bg-primary/90 active:scale-95 transition-all"
         >
           Match
         </button>
       ) : (
-        <span className="inline-flex items-center gap-1 shrink-0 text-[10px] font-bold uppercase tracking-wider text-emerald-300/90">
+        <span className="inline-flex items-center gap-1 shrink-0 text-[10px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
           <Check size={12} />
           In library
         </span>

@@ -41,13 +41,13 @@ export const PeopleCard = ({
           alt={name}
           className="absolute inset-0 h-full w-full rounded-lg transition-transform duration-500 ease-out group-hover:scale-110"
           fallback={
-            <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-950 text-white/45">
+            <div className="flex h-full w-full items-center justify-center bg-muted text-muted-foreground/50">
               <UserRound className="h-10 w-10" aria-hidden="true" />
             </div>
           }
         />
       ) : (
-        <div className="absolute inset-0 flex h-full w-full items-center justify-center rounded-lg bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-950 text-white/45 transition-transform duration-500 ease-out group-hover:scale-110">
+        <div className="absolute inset-0 flex h-full w-full items-center justify-center rounded-lg bg-muted text-muted-foreground/50 transition-transform duration-500 ease-out group-hover:scale-110">
           <UserRound className="h-10 w-10" aria-hidden="true" />
         </div>
       )}

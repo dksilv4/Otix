@@ -316,7 +316,7 @@ export const NodeMachineSettings = ({ server }: { server: GameServer }) => {
               size="sm"
               onClick={handleRefreshHardware}
               disabled={refreshingHardware || loading}
-              className="gap-1.5 h-8 px-2.5 text-xs text-muted-foreground hover:text-foreground border border-white/[0.06] hover:bg-white/[0.04] cursor-pointer"
+              className="gap-1.5 h-8 px-2.5 text-xs text-muted-foreground hover:text-foreground border border-[var(--dk-separator)] hover:bg-[var(--dk-surface-hover)] cursor-pointer"
             >
               <RefreshCw size={13} className={refreshingHardware ? 'animate-spin text-primary' : ''} />
               <span>{refreshingHardware ? 'Scanning...' : 'Re-scan Hardware'}</span>
@@ -331,8 +331,8 @@ export const NodeMachineSettings = ({ server }: { server: GameServer }) => {
         ) : (
           <div className="space-y-4">
             {/* System Identity Banner */}
-            <div className="p-3.5 rounded-2xl bg-white/[0.03] border border-white/[0.05] space-y-3">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/[0.06] pb-2.5">
+            <div className="p-3.5 rounded-2xl bg-[var(--dk-surface-field)] border border-[var(--dk-separator)] space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[var(--dk-separator)] pb-2.5">
                 <div className="flex items-center gap-2">
                   <div className="w-8 h-8 rounded-xl bg-primary/15 border border-primary/25 flex items-center justify-center text-primary">
                     <ServerIcon size={16} />
@@ -343,12 +343,12 @@ export const NodeMachineSettings = ({ server }: { server: GameServer }) => {
                         {hw?.system?.hostname || settings.hostname || server.name}
                       </span>
                       {hw?.os?.platform && (
-                        <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-white/[0.06] text-muted-foreground uppercase">
+                        <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-[var(--dk-surface-raised)] border border-[var(--dk-separator)] text-muted-foreground uppercase">
                           {hw.os.platform}
                         </span>
                       )}
                     </div>
-                    <p className="text-xs text-white/50">
+                    <p className="text-xs text-muted-foreground">
                       {hw?.system?.model
                         ? `${hw.system.manufacturer ? `${hw.system.manufacturer} ` : ''}${hw.system.model}`
                         : `Host Node: ${server.name}`}
@@ -361,7 +361,7 @@ export const NodeMachineSettings = ({ server }: { server: GameServer }) => {
                   <span className="px-2.5 py-1 rounded-xl bg-primary/15 text-primary font-semibold text-xs">
                     Online & Ready
                   </span>
-                  <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-white/[0.04] text-muted-foreground">
+                  <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-[var(--dk-surface-raised)] border border-[var(--dk-separator)] text-muted-foreground">
                     <Clock size={12} className="text-muted-foreground" />
                     <span>Uptime: {formatUptime(settings.uptimeSeconds)}</span>
                   </div>
@@ -408,7 +408,7 @@ export const NodeMachineSettings = ({ server }: { server: GameServer }) => {
             {hw ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
                 {/* 1. CPU / Processor Card */}
-                <div className="p-4 rounded-2xl bg-white/[0.025] border border-white/[0.04] space-y-3">
+                <div className="p-4 rounded-2xl bg-[var(--dk-surface-field)] border border-[var(--dk-separator)] space-y-3">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <div className="p-1.5 rounded-lg bg-primary/10 text-primary">
@@ -417,7 +417,7 @@ export const NodeMachineSettings = ({ server }: { server: GameServer }) => {
                       <span className="text-xs font-bold text-foreground uppercase tracking-wider">Processor (CPU)</span>
                     </div>
                     {hw.cpu?.vendor && (
-                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-white/[0.06] text-muted-foreground">
+                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[var(--dk-surface-raised)] border border-[var(--dk-separator)] text-muted-foreground">
                         {hw.cpu.vendor}
                       </span>
                     )}
@@ -429,7 +429,7 @@ export const NodeMachineSettings = ({ server }: { server: GameServer }) => {
                     </h4>
                   </div>
 
-                  <div className="grid grid-cols-3 gap-2 pt-1 border-t border-white/[0.05] text-xs">
+                  <div className="grid grid-cols-3 gap-2 pt-1 border-t border-[var(--dk-separator)] text-xs">
                     <div>
                       <span className="text-[10px] text-muted-foreground block">Cores / Threads</span>
                       <span className="font-semibold text-foreground/90">
@@ -450,7 +450,7 @@ export const NodeMachineSettings = ({ server }: { server: GameServer }) => {
                 </div>
 
                 {/* 2. Graphics (GPU) Card */}
-                <div className="p-4 rounded-2xl bg-white/[0.025] border border-white/[0.04] space-y-3">
+                <div className="p-4 rounded-2xl bg-[var(--dk-surface-field)] border border-[var(--dk-separator)] space-y-3">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <div className="p-1.5 rounded-lg bg-primary/10 text-primary">
@@ -458,7 +458,7 @@ export const NodeMachineSettings = ({ server }: { server: GameServer }) => {
                       </div>
                       <span className="text-xs font-bold text-foreground uppercase tracking-wider">Graphics (GPU)</span>
                     </div>
-                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-white/[0.06] text-muted-foreground">
+                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[var(--dk-surface-raised)] border border-[var(--dk-separator)] text-muted-foreground">
                       {hw.gpus?.length || 0} Adapter{hw.gpus?.length === 1 ? '' : 's'}
                     </span>
                   </div>
@@ -468,7 +468,7 @@ export const NodeMachineSettings = ({ server }: { server: GameServer }) => {
                       hw.gpus.map((gpu, idx) => (
                         <div
                           key={`${gpu.name}-${idx}`}
-                          className="p-2.5 rounded-xl bg-white/[0.02] border border-white/[0.04] space-y-1.5"
+                          className="p-2.5 rounded-xl bg-[var(--dk-surface-raised)] border border-[var(--dk-separator)] space-y-1.5"
                         >
                           <div className="flex items-start justify-between gap-2">
                             <span className="text-xs font-semibold text-foreground leading-tight">
@@ -480,7 +480,7 @@ export const NodeMachineSettings = ({ server }: { server: GameServer }) => {
                                   Discrete
                                 </span>
                               ) : (
-                                <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-white/10 text-muted-foreground">
+                                <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-[var(--dk-surface-field)] text-muted-foreground">
                                   Integrated
                                 </span>
                               )}
@@ -513,7 +513,7 @@ export const NodeMachineSettings = ({ server }: { server: GameServer }) => {
                 </div>
 
                 {/* 3. System Memory (RAM) Card — Static Physical Memory Spec Only */}
-                <div className="p-4 rounded-2xl bg-white/[0.025] border border-white/[0.04] space-y-3">
+                <div className="p-4 rounded-2xl bg-[var(--dk-surface-field)] border border-[var(--dk-separator)] space-y-3">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <div className="p-1.5 rounded-lg bg-primary/10 text-primary">
@@ -521,7 +521,7 @@ export const NodeMachineSettings = ({ server }: { server: GameServer }) => {
                       </div>
                       <span className="text-xs font-bold text-foreground uppercase tracking-wider">System Memory (RAM)</span>
                     </div>
-                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-white/[0.06] text-muted-foreground">
+                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[var(--dk-surface-raised)] border border-[var(--dk-separator)] text-muted-foreground">
                       Physical Memory
                     </span>
                   </div>
@@ -538,7 +538,7 @@ export const NodeMachineSettings = ({ server }: { server: GameServer }) => {
                     </p>
                   </div>
 
-                  <div className="flex items-center justify-between pt-2 border-t border-white/[0.05] text-[11px] text-muted-foreground">
+                  <div className="flex items-center justify-between pt-2 border-t border-[var(--dk-separator)] text-[11px] text-muted-foreground">
                     <span>Hardware Spec</span>
                     <span className="font-semibold text-foreground/90">
                       {formatRAM(hw.memory?.totalBytes || 0)} Total
@@ -557,7 +557,7 @@ export const NodeMachineSettings = ({ server }: { server: GameServer }) => {
                   )
 
                   return (
-                    <div className="p-4 rounded-2xl bg-white/[0.025] border border-white/[0.04] space-y-3">
+                    <div className="p-4 rounded-2xl bg-[var(--dk-surface-field)] border border-[var(--dk-separator)] space-y-3">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <div className="p-1.5 rounded-lg bg-primary/10 text-primary">
@@ -565,7 +565,7 @@ export const NodeMachineSettings = ({ server }: { server: GameServer }) => {
                           </div>
                           <span className="text-xs font-bold text-foreground uppercase tracking-wider">Fixed Disks</span>
                         </div>
-                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-white/[0.06] text-muted-foreground">
+                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[var(--dk-surface-raised)] border border-[var(--dk-separator)] text-muted-foreground">
                           {internalDisks.length} Internal Drive{internalDisks.length === 1 ? '' : 's'}
                         </span>
                       </div>
@@ -575,7 +575,7 @@ export const NodeMachineSettings = ({ server }: { server: GameServer }) => {
                           internalDisks.map((disk, idx) => (
                             <div
                               key={`${disk.drive}-${idx}`}
-                              className="p-2.5 rounded-xl bg-white/[0.02] border border-white/[0.04] space-y-1.5"
+                              className="p-2.5 rounded-xl bg-[var(--dk-surface-raised)] border border-[var(--dk-separator)] space-y-1.5"
                             >
                               <div className="flex items-center justify-between text-xs">
                                 <div className="flex items-center gap-1.5">
@@ -586,7 +586,7 @@ export const NodeMachineSettings = ({ server }: { server: GameServer }) => {
                                     </span>
                                   )}
                                   {disk.fileSystem && (
-                                    <span className="px-1.5 py-0.2 rounded text-[9px] font-medium bg-white/10 text-muted-foreground">
+                                    <span className="px-1.5 py-0.2 rounded text-[9px] font-medium bg-[var(--dk-surface-field)] text-muted-foreground">
                                       {disk.fileSystem}
                                     </span>
                                   )}
@@ -596,7 +596,7 @@ export const NodeMachineSettings = ({ server }: { server: GameServer }) => {
                                 </span>
                               </div>
 
-                              <div className="w-full h-1.5 rounded-full bg-white/10 overflow-hidden">
+                              <div className="w-full h-1.5 rounded-full bg-[var(--dk-surface-overlay)] overflow-hidden">
                                 <div
                                   className={cn(
                                     'h-full rounded-full transition-all duration-500',
@@ -626,7 +626,7 @@ export const NodeMachineSettings = ({ server }: { server: GameServer }) => {
 
                 {/* 5. Connected Displays & Monitor Arrangement Card */}
                 {hw.displays && hw.displays.length > 0 && (
-                  <div className="md:col-span-2 p-4 rounded-2xl bg-white/[0.025] border border-white/[0.04] space-y-4">
+                  <div className="md:col-span-2 p-4 rounded-2xl bg-[var(--dk-surface-field)] border border-[var(--dk-separator)] space-y-4">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <div className="p-1.5 rounded-lg bg-primary/10 text-primary">
@@ -641,7 +641,7 @@ export const NodeMachineSettings = ({ server }: { server: GameServer }) => {
                           </span>
                         </div>
                       </div>
-                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-white/[0.06] text-muted-foreground">
+                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[var(--dk-surface-raised)] border border-[var(--dk-separator)] text-muted-foreground">
                         {hw.displays.length} Attached Monitor{hw.displays.length === 1 ? '' : 's'}
                       </span>
                     </div>
@@ -658,9 +658,9 @@ export const NodeMachineSettings = ({ server }: { server: GameServer }) => {
 
                       return (
                         <div className="space-y-3">
-                          <div className="relative w-full h-48 sm:h-56 rounded-xl bg-black/40 border border-white/[0.04] p-4 flex items-center justify-center overflow-hidden">
+                          <div className="relative w-full h-48 sm:h-56 rounded-xl bg-[var(--dk-surface-overlay)] border border-[var(--dk-separator)] p-4 flex items-center justify-center overflow-hidden">
                             {/* Desktop canvas grid background */}
-                            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.04)_1px,transparent_1px)] bg-[size:16px_16px] pointer-events-none" />
+                            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,var(--dk-separator)_1px,transparent_1px)] bg-[size:16px_16px] pointer-events-none" />
 
                             <div
                               className="relative"
@@ -684,7 +684,7 @@ export const NodeMachineSettings = ({ server }: { server: GameServer }) => {
                                       'absolute rounded-lg p-2 flex flex-col justify-between transition-all select-none border',
                                       d.isPrimary
                                         ? 'bg-primary/15 border-primary/50'
-                                        : 'bg-white/[0.04] border-white/10 hover:border-white/20',
+                                        : 'bg-[var(--dk-surface-field)] border-[var(--dk-separator)] hover:bg-[var(--dk-surface-hover)]',
                                     )}
                                     style={{
                                       left: `${leftPct}%`,
@@ -699,7 +699,7 @@ export const NodeMachineSettings = ({ server }: { server: GameServer }) => {
                                           'text-[10px] font-bold px-1.5 py-0.5 rounded font-mono',
                                           d.isPrimary
                                             ? 'bg-primary text-primary-foreground'
-                                            : 'bg-white/10 text-foreground/80',
+                                            : 'bg-[var(--dk-surface-field)] text-foreground/80',
                                         )}
                                       >
                                         {d.index}
@@ -721,7 +721,7 @@ export const NodeMachineSettings = ({ server }: { server: GameServer }) => {
                                       </p>
                                     </div>
 
-                                    <div className="flex items-center justify-between text-[9px] text-muted-foreground pt-0.5 border-t border-white/[0.05]">
+                                    <div className="flex items-center justify-between text-[9px] text-muted-foreground pt-0.5 border-t border-[var(--dk-separator)]">
                                       <span className="truncate">{d.orientation || 'Landscape'}</span>
                                       <span className="font-mono">{d.positionX},{d.positionY}</span>
                                     </div>
@@ -740,7 +740,7 @@ export const NodeMachineSettings = ({ server }: { server: GameServer }) => {
                                   'p-3 rounded-xl border space-y-1.5',
                                   d.isPrimary
                                     ? 'bg-primary/[0.05] border-primary/20'
-                                    : 'bg-white/[0.02] border-white/[0.04]',
+                                    : 'bg-[var(--dk-surface-raised)] border-[var(--dk-separator)]',
                                 )}
                               >
                                 <div className="flex items-center justify-between gap-2">
@@ -748,7 +748,7 @@ export const NodeMachineSettings = ({ server }: { server: GameServer }) => {
                                     <span
                                       className={cn(
                                         'text-[10px] font-bold px-1.5 py-0.2 rounded font-mono shrink-0',
-                                        d.isPrimary ? 'bg-primary text-primary-foreground' : 'bg-white/10 text-muted-foreground',
+                                        d.isPrimary ? 'bg-primary text-primary-foreground' : 'bg-[var(--dk-surface-field)] text-muted-foreground',
                                       )}
                                     >
                                       {d.index}
@@ -765,18 +765,18 @@ export const NodeMachineSettings = ({ server }: { server: GameServer }) => {
                                 </div>
 
                                 <div className="flex items-center gap-1.5 flex-wrap">
-                                  <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-white/5 text-foreground/80 font-mono">
+                                  <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-[var(--dk-surface-field)] text-foreground/80 font-mono">
                                     {d.resolution}{d.refreshRate ? ` @ ${d.refreshRate}Hz` : ''}
                                   </span>
                                   {d.orientation && (
-                                    <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-white/5 text-muted-foreground">
+                                    <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-[var(--dk-surface-field)] text-muted-foreground">
                                       {d.orientation}
                                     </span>
                                   )}
                                 </div>
 
                                 {d.arrangement && (
-                                  <div className="pt-1 border-t border-white/[0.04] flex items-center justify-between text-[10px]">
+                                  <div className="pt-1 border-t border-[var(--dk-separator)] flex items-center justify-between text-[10px]">
                                     <span className="text-muted-foreground">Arrangement</span>
                                     <span className="font-medium text-primary">{d.arrangement}</span>
                                   </div>
@@ -793,32 +793,32 @@ export const NodeMachineSettings = ({ server }: { server: GameServer }) => {
             ) : null}
 
             {/* Capability Feature Pills */}
-            <div className="p-3.5 rounded-2xl bg-white/[0.02] border border-white/[0.04] space-y-2">
+            <div className="p-3.5 rounded-2xl bg-[var(--dk-surface-field)] border border-[var(--dk-separator)] space-y-2">
               <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider block">
                 Identified Capabilities & Supported Features
               </span>
               <div className="flex flex-wrap gap-2 pt-0.5">
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-medium bg-white/[0.04] text-foreground/85 border border-white/[0.04]">
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-medium bg-[var(--dk-surface-raised)] text-foreground border border-[var(--dk-separator)]">
                   <Gamepad2 size={13} className="text-primary" />
                   Game Process Tracking ({caps.game_tracking !== false ? 'Active' : 'Unsupported'})
                 </span>
 
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-medium bg-white/[0.04] text-foreground/85 border border-white/[0.04]">
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-medium bg-[var(--dk-surface-raised)] text-foreground border border-[var(--dk-separator)]">
                   <Sparkles size={13} className="text-primary" />
                   {isWindows ? 'Win32 Native In-Game Overlay' : 'OBS / Web HUD Overlay'}
                 </span>
 
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-medium bg-white/[0.04] text-foreground/85 border border-white/[0.04]">
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-medium bg-[var(--dk-surface-raised)] text-foreground border border-[var(--dk-separator)]">
                   <HardDrive size={13} className="text-primary" />
                   Save State Backups (Automated)
                 </span>
 
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-medium bg-white/[0.04] text-foreground/85 border border-white/[0.04]">
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-medium bg-[var(--dk-surface-raised)] text-foreground border border-[var(--dk-separator)]">
                   <Download size={13} className="text-primary" />
                   Downloader Provider ({caps.downloader_provider ? 'Ready' : 'Standby'})
                 </span>
 
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-medium bg-white/[0.04] text-foreground/85 border border-white/[0.04]">
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-medium bg-[var(--dk-surface-raised)] text-foreground border border-[var(--dk-separator)]">
                   <FolderOpen size={13} className="text-primary" />
                   {isWindows ? 'Silent Game Installer (NSIS / Inno)' : 'Proton / Wine Runner'}
                 </span>

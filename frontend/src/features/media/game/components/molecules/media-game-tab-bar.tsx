@@ -63,7 +63,7 @@ export const GameTabBar = ({ gameExternalId, activeTab, onTabChange, onTabsLoade
         className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${
           activeTab === 'info'
             ? 'bg-primary/10 text-primary'
-            : 'text-muted-foreground hover:text-white hover:bg-white/5'
+            : 'text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-glass)]'
         }`}
       >
         Info
@@ -75,7 +75,7 @@ export const GameTabBar = ({ gameExternalId, activeTab, onTabChange, onTabsLoade
           className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${
             activeTab === tab.tabId
               ? 'bg-primary/10 text-primary'
-              : 'text-muted-foreground hover:text-white hover:bg-white/5'
+              : 'text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-glass)]'
           }`}
         >
           {tab.label}

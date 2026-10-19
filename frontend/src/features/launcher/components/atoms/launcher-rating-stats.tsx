@@ -12,12 +12,12 @@ export const LauncherRatingStats = () => {
 
   return (
     <>
-      <div className="w-px self-stretch bg-white/15" />
+      <div className="w-px self-stretch bg-[var(--dk-separator)]" />
       <div className="flex items-center gap-3 min-w-0">
-        <span className="text-amber-400 text-lg leading-none">★</span>
+        <span className="text-amber-500 dark:text-amber-400 text-lg leading-none">★</span>
         <div>
-          <p className="text-lg font-black text-amber-400 tracking-tight leading-none">{(avgRating / 10).toFixed(1)}</p>
-          <p className="text-[10px] font-semibold text-white/60 tracking-wide">{ratingCount > 0 ? `${ratingCount} ratings` : '—'}</p>
+          <p className="text-lg font-black text-amber-500 dark:text-amber-400 tracking-tight leading-none">{(avgRating / 10).toFixed(1)}</p>
+          <p className="text-[10px] font-semibold text-muted-foreground tracking-wide">{ratingCount > 0 ? `${ratingCount} ratings` : '—'}</p>
         </div>
       </div>
     </>

@@ -59,9 +59,9 @@ export const GenresDirectoryPage = () => {
       </Helmet>
 
       <div className="flex flex-col gap-4">
-        <div className="flex items-baseline justify-between border-b border-white/[0.08] pb-4">
+        <div className="flex items-baseline justify-between border-b border-[var(--dk-separator)] pb-4">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground">
               Genres
             </h1>
             <p className="text-sm text-muted-foreground mt-1">
@@ -92,7 +92,7 @@ export const GenresDirectoryPage = () => {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Filter genres..."
-            className="w-full bg-white/[0.04] border border-white/[0.08] focus:border-primary/50 focus:bg-white/[0.07] rounded-full pl-9 pr-4 py-1.5 text-xs text-white placeholder-muted-foreground outline-none transition-all"
+            className="w-full bg-[var(--dk-surface-field)] border border-[var(--dk-separator)] focus:border-primary/50 focus:bg-[var(--dk-surface-ghost-hover)] rounded-full pl-9 pr-4 py-1.5 text-xs text-foreground placeholder-muted-foreground/60 outline-none transition-all"
           />
         </div>
       </div>
@@ -115,7 +115,7 @@ export const GenresDirectoryPage = () => {
             <button
               type="button"
               onClick={() => setSearchQuery('')}
-              className="mt-4 px-4 py-2 rounded-full text-xs font-semibold bg-white/10 hover:bg-white/15 text-white transition-colors"
+              className="mt-4 px-4 py-2 rounded-full text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors shadow-sm"
             >
               Clear Search
             </button>

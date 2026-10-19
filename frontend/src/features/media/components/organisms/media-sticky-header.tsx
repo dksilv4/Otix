@@ -146,7 +146,7 @@ export const MediaStickyHeader = ({ detail, mediaType }: MediaStickyHeaderProps)
           ? 'translate(-50%, 0) scale(1)'
           : 'translate(-50%, -2rem) scale(0.96)',
         transition: 'all 300ms var(--dk-ease-out)',
-        background: 'oklch(from var(--dk-surface-raised) r g b / 0.25)',
+        background: 'color-mix(in oklch, var(--dk-surface-raised) 25%, transparent)',
         backgroundImage:
           'linear-gradient(to bottom right, var(--dk-surface-glass), var(--dk-surface-glass-hover))',
       }
@@ -161,7 +161,7 @@ export const MediaStickyHeader = ({ detail, mediaType }: MediaStickyHeaderProps)
         ? 'translate(-50%, 0) scale(1)'
         : 'translate(-50%, -2rem) scale(0.96)',
       transition: 'all 300ms var(--dk-ease-out)',
-      background: 'oklch(from var(--dk-surface-raised) r g b / 0.25)',
+      background: 'color-mix(in oklch, var(--dk-surface-raised) 25%, transparent)',
       backgroundImage:
         'linear-gradient(to bottom right, var(--dk-surface-glass), var(--dk-surface-glass-hover))',
     }
@@ -172,7 +172,7 @@ export const MediaStickyHeader = ({ detail, mediaType }: MediaStickyHeaderProps)
       data-testid="media-sticky-header"
       data-placement={placement}
       className={cn(
-        'fixed z-[9990] flex items-center gap-2 sm:gap-3 rounded-[2rem] px-2.5 sm:px-3.5 py-1.5 shadow-[var(--dk-shadow-glass)] backdrop-blur-[16px] border border-white/[0.08]',
+        'fixed z-[9990] flex items-center gap-2 sm:gap-3 rounded-[2rem] px-2.5 sm:px-3.5 py-1.5 shadow-[var(--dk-shadow-glass)] backdrop-blur-[16px] border border-[var(--dk-separator)]',
         visible ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none',
       )}
       style={getContainerStyles()}
@@ -183,7 +183,7 @@ export const MediaStickyHeader = ({ detail, mediaType }: MediaStickyHeaderProps)
           <img
             src={detail.posterUrl}
             alt=""
-            className="h-8 w-5 sm:h-8 sm:w-6 rounded-md object-cover ring-1 ring-white/10 shrink-0 shadow-sm"
+            className="h-8 w-5 sm:h-8 sm:w-6 rounded-md object-cover border border-[var(--dk-separator)] shrink-0 shadow-sm"
           />
         )}
         <div className="flex items-center gap-1.5 min-w-0">
@@ -220,7 +220,7 @@ export const MediaStickyHeader = ({ detail, mediaType }: MediaStickyHeaderProps)
                 variant: 'info',
               })
             }}
-            className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500 hover:bg-emerald-400 text-black active:scale-95 px-3 py-1 text-[11px] sm:text-xs font-semibold shadow-md shadow-emerald-500/20 transition-all shrink-0"
+            className="inline-flex items-center gap-1.5 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground active:scale-95 px-3 py-1 text-[11px] sm:text-xs font-semibold shadow-md transition-all shrink-0"
             title={`Claim Free on ${activePromotion.storeName}`}
           >
             <Gift className="h-3.5 w-3.5 shrink-0" />
@@ -234,10 +234,10 @@ export const MediaStickyHeader = ({ detail, mediaType }: MediaStickyHeaderProps)
           <button
             type="button"
             onClick={openTrailer}
-            className="inline-flex items-center gap-1.5 rounded-full bg-white/[0.08] hover:bg-white/[0.14] active:scale-95 px-2.5 sm:px-3 py-1 text-[11px] sm:text-xs font-semibold text-white/90 shadow-sm transition-all shrink-0 group/trailer"
+            className="inline-flex items-center gap-1.5 rounded-full bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-glass-hover)] active:scale-95 px-2.5 sm:px-3 py-1 text-[11px] sm:text-xs font-semibold text-foreground shadow-sm transition-all shrink-0 group/trailer"
             title="Watch Trailer"
           >
-            <Film className="h-3 w-3 text-rose-400 group-hover/trailer:scale-110 transition-transform shrink-0" />
+            <Film className="h-3 w-3 text-primary group-hover/trailer:scale-110 transition-transform shrink-0" />
             <span>Trailer</span>
           </button>
         ) : null}
@@ -250,12 +250,12 @@ export const MediaStickyHeader = ({ detail, mediaType }: MediaStickyHeaderProps)
             className={cn(
               'inline-flex items-center gap-1 rounded-full px-2 sm:px-2.5 py-1 text-xs font-medium transition-all shrink-0 active:scale-95',
               isWatchlisted
-                ? 'bg-sky-500/25 text-sky-300'
-                : 'bg-white/[0.06] hover:bg-white/[0.12] text-foreground',
+                ? 'bg-primary/20 text-primary'
+                : 'bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-glass-hover)] text-foreground',
             )}
             title={isWatchlisted ? `In ${watchlistLabel}` : `Add to ${watchlistLabel}`}
           >
-            <Bookmark className={cn('h-3.5 w-3.5', isWatchlisted && 'fill-current text-sky-400')} />
+            <Bookmark className={cn('h-3.5 w-3.5', isWatchlisted && 'fill-current text-primary')} />
             <span className={placement === 'between' ? 'hidden xl:inline' : 'hidden md:inline'}>
               {watchlistLabel}
             </span>
@@ -270,12 +270,12 @@ export const MediaStickyHeader = ({ detail, mediaType }: MediaStickyHeaderProps)
             className={cn(
               'inline-flex items-center gap-1 rounded-full px-2 sm:px-2.5 py-1 text-xs font-medium transition-all shrink-0 active:scale-95',
               isWatched
-                ? 'bg-emerald-500/25 text-emerald-300'
-                : 'bg-white/[0.06] hover:bg-white/[0.12] text-foreground',
+                ? 'bg-primary/20 text-primary'
+                : 'bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-glass-hover)] text-foreground',
             )}
             title={isWatched ? `Marked as ${watchedLabel}` : `Mark ${watchedLabel}`}
           >
-            <CheckCircle2 className={cn('h-3.5 w-3.5', isWatched && 'text-emerald-400')} />
+            <CheckCircle2 className={cn('h-3.5 w-3.5', isWatched && 'text-primary')} />
             <span className={placement === 'between' ? 'hidden xl:inline' : 'hidden md:inline'}>
               {watchedLabel}
             </span>
@@ -290,12 +290,12 @@ export const MediaStickyHeader = ({ detail, mediaType }: MediaStickyHeaderProps)
             className={cn(
               'inline-flex items-center justify-center rounded-full p-1.5 text-xs transition-all shrink-0 active:scale-95',
               isLiked
-                ? 'bg-rose-500/25 text-rose-400'
-                : 'bg-white/[0.06] hover:bg-white/[0.12] text-muted-foreground hover:text-foreground',
+                ? 'bg-rose-500/20 text-rose-600 dark:text-rose-400'
+                : 'bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-glass-hover)] text-muted-foreground hover:text-foreground',
             )}
             title={isLiked ? 'Liked' : 'Like'}
           >
-            <Heart className={cn('h-3.5 w-3.5', isLiked && 'fill-current text-rose-400')} />
+            <Heart className={cn('h-3.5 w-3.5', isLiked && 'fill-current text-rose-600 dark:text-rose-400')} />
           </button>
         )}
 

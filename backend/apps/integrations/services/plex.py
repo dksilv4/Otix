@@ -12,10 +12,13 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 import time
+import unicodedata
 import urllib.error
 import urllib.parse
 import urllib.request
+from difflib import SequenceMatcher
 from typing import Any
 
 from django.conf import settings
@@ -74,16 +77,15 @@ def _connections(resource: dict) -> list[dict]:
 
 
 def _ordered_connections(resource: dict) -> list[str]:
-    """Return all distinct connection URIs for a resource in preferred order:
-    1. Local HTTPS (direct LAN with SSL)
-    2. Remote direct HTTPS (remote with SSL, non-relay)
-    3. Local HTTP (LAN without SSL)
-    4. Remote direct HTTP (remote without SSL, non-relay)
-    5. Relay HTTPS (Plex relay fallback)
-    6. Any other URI
+    """Return all distinct connection URIs for a resource in preferred order.
+
+    If the server is owned by the user, prioritize direct LAN connections.
+    If the server is shared (not owned, e.g. friend's server), prioritize Remote direct HTTPS
+    and Remote direct HTTP / Relay before LAN IPs to eliminate 3.5s connection timeouts.
     """
     connections = _connections(resource)
     ordered: list[str] = []
+    is_owned = bool(resource.get("owned", False))
 
     def _add(condition):
         for c in connections:
@@ -94,18 +96,33 @@ def _ordered_connections(resource: dict) -> list[str]:
             if clean not in ordered and condition(c, clean):
                 ordered.append(clean)
 
-    # 1. Local HTTPS (direct LAN)
-    _add(lambda c, u: u.startswith("https://") and c.get("local") and not c.get("relay"))
-    # 2. Remote direct HTTPS (remote public IP or custom domain)
-    _add(lambda c, u: u.startswith("https://") and not c.get("local") and not c.get("relay"))
-    # 3. Local HTTP
-    _add(lambda c, u: u.startswith("http://") and c.get("local") and not c.get("relay"))
-    # 4. Remote direct HTTP
-    _add(lambda c, u: u.startswith("http://") and not c.get("local") and not c.get("relay"))
-    # 5. Relay connections
-    _add(lambda c, u: bool(c.get("relay")))
-    # 6. Any other URI
-    _add(lambda c, u: True)
+    if is_owned:
+        # 1. Local HTTPS (direct LAN)
+        _add(lambda c, u: u.startswith("https://") and c.get("local") and not c.get("relay"))
+        # 2. Remote direct HTTPS (remote public IP or custom domain)
+        _add(lambda c, u: u.startswith("https://") and not c.get("local") and not c.get("relay"))
+        # 3. Local HTTP
+        _add(lambda c, u: u.startswith("http://") and c.get("local") and not c.get("relay"))
+        # 4. Remote direct HTTP
+        _add(lambda c, u: u.startswith("http://") and not c.get("local") and not c.get("relay"))
+        # 5. Relay connections
+        _add(lambda c, u: bool(c.get("relay")))
+        # 6. Any other URI
+        _add(lambda c, u: True)
+    else:
+        # Remote / shared server: LAN IPs will hang/timeout. Prioritize Remote HTTPS & Relay!
+        # 1. Remote direct HTTPS
+        _add(lambda c, u: u.startswith("https://") and not c.get("local") and not c.get("relay"))
+        # 2. Remote direct HTTP
+        _add(lambda c, u: u.startswith("http://") and not c.get("local") and not c.get("relay"))
+        # 3. Relay connections
+        _add(lambda c, u: bool(c.get("relay")))
+        # 4. Local HTTPS (in case user is on the same remote LAN)
+        _add(lambda c, u: u.startswith("https://") and c.get("local") and not c.get("relay"))
+        # 5. Local HTTP
+        _add(lambda c, u: u.startswith("http://") and c.get("local") and not c.get("relay"))
+        # 6. Any other URI
+        _add(lambda c, u: True)
 
     return ordered
 
@@ -127,18 +144,30 @@ def _get_alternative_plex_urls(server: UserPlexServer, user) -> list[str]:
 
     Best-effort: any failure (no linked token, network, parse) yields ``[]`` so
     callers fall back to the stored ``base_url`` — mirrors the legacy helper.
+    Caches the lookup in Django cache to prevent synchronous network latency on every probe.
     """
     if not user.plex_auth_token:
         return []
 
-    resources_url = f"{_plex_tv_base()}/api/v2/resources?includeHttps=1&includeRelay=1"
-    url = _with_token(resources_url, user.plex_auth_token)
-    try:
-        status, raw = _request(url, headers=_plex_headers())
-        if status != 200:
+    cache_key = f"plex_resources_alt_urls:{user.pk}:{server.machine_identifier}"
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return cached
+
+    resources_cache_key = f"plex_resources_raw:{user.pk}"
+    data = cache.get(resources_cache_key)
+    if data is None:
+        resources_url = f"{_plex_tv_base()}/api/v2/resources?includeHttps=1&includeRelay=1"
+        url = _with_token(resources_url, user.plex_auth_token)
+        try:
+            status, raw = _request(url, headers=_plex_headers(), timeout=5.0)
+            if status == 200:
+                data = json.loads(raw)
+                cache.set(resources_cache_key, data, timeout=300)
+        except Exception:
             return []
-        data = json.loads(raw)
-    except Exception:
+
+    if not data:
         return []
 
     machine_id = server.machine_identifier
@@ -146,7 +175,9 @@ def _get_alternative_plex_urls(server: UserPlexServer, user) -> list[str]:
         client_id = str(resource.get("clientIdentifier") or resource.get("machineIdentifier") or "")
         if client_id != machine_id:
             continue
-        return _ordered_connections(resource)
+        ordered = _ordered_connections(resource)
+        cache.set(cache_key, ordered, timeout=300)
+        return ordered
     return []
 
 
@@ -169,6 +200,180 @@ def _request(
         return exc.code, exc.read().decode("utf-8", "replace")
 
 
+def _normalize_title(val: str | None) -> str:
+    """Normalize a title string for fuzzy comparison."""
+    if not val:
+        return ""
+    norm = unicodedata.normalize("NFKD", str(val))
+    norm = "".join(c for c in norm if not unicodedata.combining(c))
+    norm = norm.lower().strip()
+    norm = re.sub(r"\s*\(\d{4}\)$", "", norm)
+    norm = re.sub(r"[\':;.,!?_\-\\/()[\]{}]", " ", norm)
+    norm = re.sub(r"\s+", " ", norm).strip()
+    for article in ("the ", "a ", "an "):
+        if norm.startswith(article):
+            norm = norm[len(article) :].strip()
+            break
+    return norm
+
+
+def _are_titles_compatible(
+    title_a: str | None, title_b: str | None, min_ratio: float = 0.60
+) -> bool:
+    """Check whether two titles are sufficiently compatible to represent the same work."""
+    n1 = _normalize_title(title_a)
+    n2 = _normalize_title(title_b)
+    if not n1 or not n2:
+        return False
+    if n1 == n2:
+        return True
+    if (len(n1) >= 4 and n1 in n2) or (len(n2) >= 4 and n2 in n1):
+        return True
+    main1 = _normalize_title(str(title_a).split(":")[0].split(" - ")[0])
+    main2 = _normalize_title(str(title_b).split(":")[0].split(" - ")[0])
+    if main1 and main2 and (
+        main1 == main2 or (len(main1) >= 4 and (main1 in main2 or main2 in main1))
+    ):
+        return True
+    return SequenceMatcher(None, n1, n2).ratio() >= min_ratio
+
+
+def _is_compatible_plex_match(
+    plex_item: UserPlexItem | None,
+    target_media_item=None,
+    target_media_type: str | None = None,
+    target_year: int | None = None,
+    has_guid_match: bool = False,
+    req_tmdb_id: str | int | None = None,
+    req_imdb_id: str | None = None,
+    req_tvdb_id: str | None = None,
+) -> bool:
+    """Validate that a candidate Plex item is genuinely compatible with the target.
+
+    Prevents wrong matching where a 1994 movie (Forrest Gump) matches a 2026 title (The Odyssey),
+    or TV show Baby Reindeer matches movie Alice Through the Looking Glass due to TMDB ID collisions,
+    or remakes from different decades match each other.
+    """
+    if plex_item is None:
+        return False
+
+    p_type = getattr(plex_item, "media_type", None) or ""
+    expected_type = getattr(target_media_item, "media_type", None) or target_media_type or ""
+
+    # 1. Media type strict isolation
+    if expected_type == "game":
+        return False
+    if expected_type == "movie" and p_type != "movie":
+        return False
+    if expected_type in ("show", "series", "tv") and p_type not in ("show", "episode"):
+        return False
+    if expected_type in ("album", "music") and p_type not in ("music", "track", "album", "artist"):
+        return False
+    if p_type == "movie" and expected_type and expected_type != "movie":
+        return False
+    if (
+        p_type in ("show", "episode")
+        and expected_type
+        and expected_type not in ("show", "series", "tv", "season", "episode")
+    ):
+        return False
+
+    # 2. Check GUID conflict
+    p_guids = plex_item.guids if isinstance(plex_item.guids, dict) else {}
+    if req_tmdb_id and "tmdb" in p_guids and str(p_guids["tmdb"]) != str(req_tmdb_id):
+        return False
+    if req_imdb_id and "imdb" in p_guids and str(p_guids["imdb"]) != str(req_imdb_id):
+        return False
+    if req_tvdb_id and "tvdb" in p_guids and str(p_guids["tvdb"]) != str(req_tvdb_id):
+        return False
+
+    if target_media_item is not None:
+        from django.contrib.contenttypes.models import ContentType
+
+        from apps.media.models import ExternalID
+
+        ct = ContentType.objects.get_for_model(target_media_item.__class__)
+        exts = {
+            e.provider: e.external_id
+            for e in ExternalID.objects.filter(content_type=ct, object_id=target_media_item.id)
+        }
+        for prov in ("imdb", "tmdb", "tvdb"):
+            if prov in p_guids and prov in exts:
+                if str(p_guids[prov]) != str(exts[prov]):
+                    return False
+
+    # 3. Year compatibility
+    c_year = (
+        target_media_item.release_date.year
+        if (target_media_item and getattr(target_media_item, "release_date", None))
+        else target_year
+    )
+    p_year = getattr(plex_item, "year", None)
+    if c_year and p_year:
+        max_diff = 2 if has_guid_match else 1
+        if abs(c_year - p_year) > max_diff:
+            return False
+
+    # 4. Title compatibility
+    target_title = getattr(target_media_item, "title", None)
+    plex_title = getattr(plex_item, "title", None)
+    if not has_guid_match:
+        if target_title and plex_title and not _are_titles_compatible(target_title, plex_title, min_ratio=0.60):
+            return False
+    else:
+        # If years are missing on both sides, guard against zero-similarity GUID collisions
+        if not c_year and not p_year:
+            if target_title and plex_title and not _are_titles_compatible(target_title, plex_title, min_ratio=0.30):
+                return False
+
+    return True
+
+
+def cleanup_corrupted_plex_matches(user=None) -> int:
+    """Scan UserPlexItem rows with media_item set and disassociate any incompatible links.
+
+    Returns the count of cleaned up rows.
+    """
+    from django.contrib.contenttypes.models import ContentType
+
+    from apps.media.models import ExternalID
+
+    qs = UserPlexItem.objects.filter(media_item__isnull=False).select_related("media_item")
+    if user is not None:
+        qs = qs.filter(user=user)
+
+    cleaned = 0
+    for item in qs:
+        has_guid = False
+        m = item.media_item
+        ct = ContentType.objects.get_for_model(m.__class__)
+        exts = {
+            e.provider: e.external_id
+            for e in ExternalID.objects.filter(content_type=ct, object_id=m.id)
+        }
+        p_guids = item.guids if isinstance(item.guids, dict) else {}
+        for prov in ("tmdb", "imdb", "tvdb"):
+            if prov in p_guids and prov in exts and str(p_guids[prov]) == str(exts[prov]):
+                has_guid = True
+                break
+
+        if not _is_compatible_plex_match(item, m, has_guid_match=has_guid):
+            item.media_item = None
+            item.save(update_fields=["media_item"])
+            cleaned += 1
+            logger.warning(
+                "Cleaned up corrupted Plex link: Plex item %s ('%s', %s, %s) was wrongly linked to Otix %s ('%s', %s)",
+                item.id,
+                item.title,
+                item.year,
+                item.media_type,
+                m.id,
+                m.title,
+                m.media_type,
+            )
+    return cleaned
+
+
 def get_plex_connect_info(
     user,
     media_identifier: str | int,
@@ -178,43 +383,78 @@ def get_plex_connect_info(
     title: str | None = None,
     imdb_id: str | None = None,
     tvdb_id: str | None = None,
+    year: str | int | None = None,
+    media_type: str | None = None,
 ) -> dict:
     """Return Plex connect details for the user's copy of a catalog media item.
 
     Mirrors the legacy response with expanded provider-agnostic playback metadata
     including progress percentage, resume offset, episode context, pre-resolved stream
-    tracks, and performance timing statistics.
+    tracks, and performance timing statistics. Cached for 60s per user/item.
     """
+    safe_ident = urllib.parse.quote(str(media_identifier), safe="")
+    safe_title = urllib.parse.quote(str(title), safe="") if title else ""
+    cache_key = (
+        f"plex_connect_info:{user.pk}:{safe_ident}:{season}:{episode}:{tmdb_id}:{safe_title}:{year}:{media_type}"
+    )
+    cached_info = cache.get(cache_key)
+    if cached_info is not None:
+        return cached_info
+
     t_start = time.perf_counter()
-    ident = str(media_identifier)
+    ident = str(media_identifier).strip()
     plex_item = None
     target_media_item = None
 
     if ident.isdigit():
-        plex_item = (
-            UserPlexItem.objects.filter(user=user, media_item_id=int(ident))
-            .select_related("server")
-            .first()
-        )
-        if plex_item is None:
-            from apps.media.models import MediaItem
-            target_media_item = MediaItem.objects.filter(id=int(ident)).first()
-
-    if plex_item is None and target_media_item is None:
         from apps.media.models import MediaItem
+
+        target_media_item = MediaItem.objects.filter(id=int(ident)).first()
+
+    if target_media_item is None:
+        from apps.media.models import MediaItem
+
         target_media_item = MediaItem.objects.filter(slug=ident).first()
+
+    # Also resolve target_media_item via tmdb_id / imdb_id / tvdb_id ExternalID if not resolved yet
+    if target_media_item is None and (tmdb_id or imdb_id or tvdb_id):
+        from apps.media.models import ExternalID, MediaItem
+
+        ext_obj = None
+        if tmdb_id:
+            ext_obj = ExternalID.objects.filter(provider="tmdb", external_id=str(tmdb_id)).first()
+        if ext_obj is None and imdb_id:
+            ext_obj = ExternalID.objects.filter(provider="imdb", external_id=str(imdb_id)).first()
+        if ext_obj is None and tvdb_id:
+            ext_obj = ExternalID.objects.filter(provider="tvdb", external_id=str(tvdb_id)).first()
+        if ext_obj and ext_obj.object_id:
+            target_media_item = MediaItem.objects.filter(id=ext_obj.object_id).first()
 
     # Plex integration only supports movie/show/music/episode items, NEVER games
     if target_media_item is not None and getattr(target_media_item, "media_type", None) == "game":
         raise PlexConnectInfoNotFound(CONNECT_INFO_ITEM_NOT_FOUND)
 
     if target_media_item is not None:
-        if plex_item is None:
-            plex_item = (
-                UserPlexItem.objects.filter(user=user, media_item_id=target_media_item.id)
-                .select_related("server")
-                .first()
-            )
+        cand = (
+            UserPlexItem.objects.filter(user=user, media_item_id=target_media_item.id)
+            .select_related("server")
+            .first()
+        )
+        if cand:
+            if _is_compatible_plex_match(
+                cand,
+                target_media_item,
+                has_guid_match=True,
+                req_tmdb_id=tmdb_id,
+                req_imdb_id=imdb_id,
+                req_tvdb_id=tvdb_id,
+            ):
+                plex_item = cand
+            else:
+                # Clean up previously corrupted match in DB
+                cand.media_item = None
+                cand.save(update_fields=["media_item"])
+
         if plex_item is None:
             from django.contrib.contenttypes.models import ContentType
 
@@ -229,94 +469,225 @@ def get_plex_connect_info(
             imdb_ext = exts.get("imdb")
             tvdb_ext = exts.get("tvdb")
 
+            p_filter_type = [target_media_item.media_type]
+            if target_media_item.media_type == "show":
+                p_filter_type = ["show", "episode"]
+
             if tmdb_ext:
-                plex_item = (
-                    UserPlexItem.objects.filter(user=user, guids__tmdb=str(tmdb_ext))
+                cand = (
+                    UserPlexItem.objects.filter(
+                        user=user, media_type__in=p_filter_type, guids__tmdb=str(tmdb_ext)
+                    )
                     .select_related("server")
                     .first()
                 )
-            if plex_item is None and tvdb_ext:
-                plex_item = (
-                    UserPlexItem.objects.filter(user=user, guids__tvdb=str(tvdb_ext))
-                    .select_related("server")
-                    .first()
-                )
+                if _is_compatible_plex_match(
+                    cand,
+                    target_media_item,
+                    has_guid_match=True,
+                    req_tmdb_id=tmdb_id,
+                    req_imdb_id=imdb_id,
+                    req_tvdb_id=tvdb_id,
+                ):
+                    plex_item = cand
             if plex_item is None and imdb_ext:
-                plex_item = (
-                    UserPlexItem.objects.filter(user=user, guids__imdb=str(imdb_ext))
+                cand = (
+                    UserPlexItem.objects.filter(
+                        user=user, media_type__in=p_filter_type, guids__imdb=str(imdb_ext)
+                    )
                     .select_related("server")
                     .first()
                 )
+                if _is_compatible_plex_match(
+                    cand,
+                    target_media_item,
+                    has_guid_match=True,
+                    req_tmdb_id=tmdb_id,
+                    req_imdb_id=imdb_id,
+                    req_tvdb_id=tvdb_id,
+                ):
+                    plex_item = cand
+            if plex_item is None and tvdb_ext:
+                cand = (
+                    UserPlexItem.objects.filter(
+                        user=user, media_type__in=p_filter_type, guids__tvdb=str(tvdb_ext)
+                    )
+                    .select_related("server")
+                    .first()
+                )
+                if _is_compatible_plex_match(
+                    cand,
+                    target_media_item,
+                    has_guid_match=True,
+                    req_tmdb_id=tmdb_id,
+                    req_imdb_id=imdb_id,
+                    req_tvdb_id=tvdb_id,
+                ):
+                    plex_item = cand
             if plex_item is None:
-                plex_item = (
-                    UserPlexItem.objects.filter(user=user, title__iexact=target_media_item.title)
-                    .select_related("server")
-                    .first()
+                title_cands = UserPlexItem.objects.filter(
+                    user=user,
+                    media_type__in=p_filter_type,
+                    title__iexact=target_media_item.title,
+                ).select_related("server")
+                for c in title_cands:
+                    if _is_compatible_plex_match(
+                        c,
+                        target_media_item,
+                        has_guid_match=False,
+                        req_tmdb_id=tmdb_id,
+                        req_imdb_id=imdb_id,
+                        req_tvdb_id=tvdb_id,
+                    ):
+                        plex_item = c
+                        break
+
+            # Fallback: title matching with +/- 1 year tolerance
+            if plex_item is None and target_media_item.release_date:
+                t_year_val = target_media_item.release_date.year
+                year_cands = UserPlexItem.objects.filter(
+                    user=user,
+                    media_type__in=p_filter_type,
+                    year__gte=t_year_val - 1,
+                    year__lte=t_year_val + 1,
+                ).select_related("server")
+                for c in year_cands:
+                    if _is_compatible_plex_match(
+                        c,
+                        target_media_item,
+                        has_guid_match=False,
+                        req_tmdb_id=tmdb_id,
+                        req_imdb_id=imdb_id,
+                        req_tvdb_id=tvdb_id,
+                    ):
+                        plex_item = c
+                        break
+
+            if (
+                plex_item is not None
+                and plex_item.media_item_id != target_media_item.id
+                and _is_compatible_plex_match(
+                    plex_item,
+                    target_media_item,
+                    has_guid_match=True,
+                    req_tmdb_id=tmdb_id,
+                    req_imdb_id=imdb_id,
+                    req_tvdb_id=tvdb_id,
                 )
-            if plex_item is not None and plex_item.media_item_id != target_media_item.id:
+            ):
                 plex_item.media_item = target_media_item
                 plex_item.save(update_fields=["media_item"])
 
     # Query param fallbacks for unified single-roundtrip finding
-    if plex_item is None and tmdb_id:
-        plex_item = (
-            UserPlexItem.objects.filter(user=user, guids__tmdb=str(tmdb_id))
-            .select_related("server")
-            .first()
-        )
-    if plex_item is None and tvdb_id:
-        plex_item = (
-            UserPlexItem.objects.filter(user=user, guids__tvdb=str(tvdb_id))
-            .select_related("server")
-            .first()
-        )
-    if plex_item is None and imdb_id:
-        plex_item = (
-            UserPlexItem.objects.filter(user=user, guids__imdb=str(imdb_id))
-            .select_related("server")
-            .first()
-        )
-    if plex_item is None and title:
-        plex_item = (
-            UserPlexItem.objects.filter(user=user, title__iexact=str(title).strip())
-            .select_related("server")
-            .first()
-        )
+    t_year = (
+        target_media_item.release_date.year
+        if (target_media_item and getattr(target_media_item, "release_date", None))
+        else (int(year) if year and str(year).isdigit() else None)
+    )
+    p_type_filter = []
+    if media_type:
+        p_type_filter = ["show", "episode"] if media_type in ("show", "series", "tv") else [media_type]
 
-    # Ident fallbacks
-    if plex_item is None:
-        plex_item = (
-            UserPlexItem.objects.filter(user=user, guids__tmdb=ident)
-            .select_related("server")
-            .first()
+    if plex_item is None and tmdb_id:
+        qs = UserPlexItem.objects.filter(user=user, guids__tmdb=str(tmdb_id))
+        if p_type_filter:
+            qs = qs.filter(media_type__in=p_type_filter)
+        cand = qs.select_related("server").first()
+        if _is_compatible_plex_match(
+            cand,
+            target_media_item,
+            target_media_type=media_type,
+            target_year=t_year,
+            has_guid_match=True,
+            req_tmdb_id=tmdb_id,
+            req_imdb_id=imdb_id,
+            req_tvdb_id=tvdb_id,
+        ):
+            plex_item = cand
+    if plex_item is None and tvdb_id:
+        qs = UserPlexItem.objects.filter(user=user, guids__tvdb=str(tvdb_id))
+        if p_type_filter:
+            qs = qs.filter(media_type__in=p_type_filter)
+        cand = qs.select_related("server").first()
+        if _is_compatible_plex_match(
+            cand,
+            target_media_item,
+            target_media_type=media_type,
+            target_year=t_year,
+            has_guid_match=True,
+            req_tmdb_id=tmdb_id,
+            req_imdb_id=imdb_id,
+            req_tvdb_id=tvdb_id,
+        ):
+            plex_item = cand
+    if plex_item is None and imdb_id:
+        qs = UserPlexItem.objects.filter(user=user, guids__imdb=str(imdb_id))
+        if p_type_filter:
+            qs = qs.filter(media_type__in=p_type_filter)
+        cand = qs.select_related("server").first()
+        if _is_compatible_plex_match(
+            cand,
+            target_media_item,
+            target_media_type=media_type,
+            target_year=t_year,
+            has_guid_match=True,
+            req_tmdb_id=tmdb_id,
+            req_imdb_id=imdb_id,
+            req_tvdb_id=tvdb_id,
+        ):
+            plex_item = cand
+    if plex_item is None and title:
+        qs = UserPlexItem.objects.filter(
+            user=user, title__iexact=str(title).strip()
         )
-    if plex_item is None:
-        plex_item = (
-            UserPlexItem.objects.filter(user=user, guids__tvdb=ident)
-            .select_related("server")
-            .first()
-        )
-    if plex_item is None:
-        plex_item = (
-            UserPlexItem.objects.filter(user=user, guids__imdb=ident)
-            .select_related("server")
-            .first()
-        )
-    if plex_item is None:
-        plex_item = (
+        if target_media_item:
+            p_filter_type = [target_media_item.media_type]
+            if target_media_item.media_type == "show":
+                p_filter_type = ["show", "episode"]
+            qs = qs.filter(media_type__in=p_filter_type)
+        elif p_type_filter:
+            qs = qs.filter(media_type__in=p_type_filter)
+        title_cands = qs.select_related("server")
+        for c in title_cands:
+            if _is_compatible_plex_match(
+                c,
+                target_media_item,
+                target_media_type=media_type,
+                target_year=t_year,
+                has_guid_match=False,
+                req_tmdb_id=tmdb_id,
+                req_imdb_id=imdb_id,
+                req_tvdb_id=tvdb_id,
+            ):
+                plex_item = c
+                break
+
+    # Direct rating_key lookup ONLY when target_media_item is None (e.g. caller passed a raw Plex rating key)
+    if plex_item is None and target_media_item is None:
+        cand = (
             UserPlexItem.objects.filter(user=user, rating_key=ident)
             .select_related("server")
             .first()
         )
-    if plex_item is None:
-        plex_item = (
-            UserPlexItem.objects.filter(user=user, title__iexact=ident)
-            .select_related("server")
-            .first()
+        if cand:
+            plex_item = cand
+
+    if (
+        plex_item is not None
+        and target_media_item is not None
+        and plex_item.media_item_id != target_media_item.id
+        and _is_compatible_plex_match(
+            plex_item,
+            target_media_item,
+            has_guid_match=True,
+            req_tmdb_id=tmdb_id,
+            req_imdb_id=imdb_id,
+            req_tvdb_id=tvdb_id,
         )
-    if plex_item is not None and target_media_item is not None and plex_item.media_item_id != target_media_item.id:
+    ):
         plex_item.media_item = target_media_item
         plex_item.save(update_fields=["media_item"])
+
     if plex_item is None:
         raise PlexConnectInfoNotFound(CONNECT_INFO_ITEM_NOT_FOUND)
     server = plex_item.server
@@ -357,7 +728,9 @@ def get_plex_connect_info(
 
     if plex_item.media_type == "show" or season is not None or episode is not None:
         try:
-            leaves_res = _plex_server_get(server, user, f"/library/metadata/{plex_item.rating_key}/allLeaves")
+            leaves_res = _plex_server_get(
+                server, user, f"/library/metadata/{plex_item.rating_key}/allLeaves"
+            )
             if leaves_res:
                 leaves_data, working_base = leaves_res
                 if working_base in base_urls:
@@ -368,7 +741,9 @@ def get_plex_connect_info(
 
                 if season is not None and episode is not None:
                     for leaf in leaves:
-                        if str(leaf.get("parentIndex")) == str(season) and str(leaf.get("index")) == str(episode):
+                        if str(leaf.get("parentIndex")) == str(season) and str(
+                            leaf.get("index")
+                        ) == str(episode):
                             selected_leaf = leaf
                             break
                 elif season is not None:
@@ -404,11 +779,25 @@ def get_plex_connect_info(
                         active_season_num = int(selected_leaf.get("parentIndex"))
                     if selected_leaf.get("index") is not None:
                         active_episode_num = int(selected_leaf.get("index"))
-                    active_offset = int(selected_leaf.get("viewOffset") or 0)
                     active_duration = int(selected_leaf.get("duration") or 0)
-                    active_viewed = int(selected_leaf.get("viewCount") or 0) > 0
+
+                    # Strictly isolate watch progress per user
+                    user_ep = UserPlexItem.objects.filter(
+                        user=user, rating_key=active_rating_key
+                    ).first()
+                    if user_ep and user_ep.view_offset:
+                        active_offset = int(user_ep.view_offset)
+                        active_viewed = bool(user_ep.viewed)
+                    elif server.owned:
+                        active_offset = int(selected_leaf.get("viewOffset") or 0)
+                        active_viewed = int(selected_leaf.get("viewCount") or 0) > 0
+                    else:
+                        active_offset = 0
+                        active_viewed = False
         except Exception as e:
-            logger.warning("Failed to resolve episode leaves for show %s: %s", plex_item.rating_key, e)
+            logger.warning(
+                "Failed to resolve episode leaves for show %s: %s", plex_item.rating_key, e
+            )
     else:
         try:
             live_res = _plex_server_get(server, user, f"/library/metadata/{plex_item.rating_key}")
@@ -419,11 +808,12 @@ def get_plex_connect_info(
                     base_urls.insert(0, working_base)
                 meta = meta_data.get("MediaContainer", {}).get("Metadata", [{}])[0]
                 target_leaf = meta
-                if meta.get("viewOffset") is not None:
+                # Strictly isolate watch progress: only use PMS live viewOffset if this user has no progress and owns server
+                if active_offset == 0 and server.owned and meta.get("viewOffset") is not None:
                     active_offset = int(meta.get("viewOffset"))
                 if meta.get("duration") is not None:
                     active_duration = int(meta.get("duration"))
-                if meta.get("viewCount") is not None:
+                if not active_viewed and server.owned and meta.get("viewCount") is not None:
                     active_viewed = int(meta.get("viewCount")) > 0
         except Exception as e:
             logger.debug("Failed to query live movie metadata for %s: %s", plex_item.rating_key, e)
@@ -476,7 +866,13 @@ def get_plex_connect_info(
                         })
                     elif stype == 3:  # Subtitle
                         sub_format = (
-                            "pgs" if codec == "pgs" else ("ass" if codec == "ass" else ("srt" if codec == "srt" else "vtt"))
+                            "pgs"
+                            if codec == "pgs"
+                            else (
+                                "ass"
+                                if codec == "ass"
+                                else ("srt" if codec == "srt" else "vtt")
+                            )
                         )
                         sub_key = s.get("key")
                         sub_url = (
@@ -496,7 +892,11 @@ def get_plex_connect_info(
                         })
 
     primary_url = base_urls[0] if base_urls else None
-    direct_url = f"{primary_url}{part_key}?X-Plex-Token={token}" if (primary_url and part_key and token) else None
+    direct_url = (
+        f"{primary_url}{part_key}?X-Plex-Token={token}"
+        if (primary_url and part_key and token)
+        else None
+    )
     hls_url = None
     if primary_url and token and active_rating_key:
         encoded_path = urllib.parse.quote(f"/library/metadata/{active_rating_key}", safe="")
@@ -522,7 +922,7 @@ def get_plex_connect_info(
         "total_ms": total_ms,
     }
 
-    return {
+    result = {
         "base_url": base_urls[0] if base_urls else None,
         "base_urls": base_urls,
         "token": token,
@@ -532,6 +932,7 @@ def get_plex_connect_info(
         "provider_label": "Plex",
         "server_name": server.name,
         "server_id": server.machine_identifier or str(server.id),
+        "is_shared_server": not server.owned,
         "media_type": active_media_type,
         "title": active_title,
         "year": plex_item.year,
@@ -553,6 +954,8 @@ def get_plex_connect_info(
         "stats": stats,
         "server_timings": server_timings,
     }
+    cache.set(cache_key, result, timeout=60)
+    return result
 
 
 def list_plex_libraries(user) -> list[dict]:
@@ -663,6 +1066,7 @@ def report_plex_timeline(
     client_id: str = "otix-web-player",
     session_id: str | None = None,
     local_only: bool = False,
+    user=None,
 ) -> bool:
     """Report playback progress to Plex Media Server timeline.
 
@@ -680,14 +1084,41 @@ def report_plex_timeline(
         if token:
             scrobble_url += f"&X-Plex-Token={token}"
 
-    # Update local UserPlexItem if matching row exists
-    try:
-        UserPlexItem.objects.filter(rating_key=str(rating_key)).update(
-            view_offset=int(time_ms),
-            viewed=bool(scrobble_url is not None),
-        )
-    except Exception:
-        pass
+    # Update local UserPlexItem strictly for this specific user to eliminate cross-user progress collisions
+    if user is not None:
+        try:
+            UserPlexItem.objects.filter(user=user, rating_key=str(rating_key)).update(
+                view_offset=int(time_ms),
+                viewed=bool(scrobble_url is not None),
+            )
+            from apps.media.services.interaction import set_interaction
+
+            p_item = UserPlexItem.objects.filter(user=user, rating_key=str(rating_key)).first()
+            if p_item and p_item.media_item_id:
+                if scrobble_url is not None or (duration_ms > 0 and time_ms >= duration_ms * 0.9):
+                    set_interaction(
+                        user,
+                        p_item.media_item_id,
+                        "watched",
+                        {
+                            "source": "plex",
+                            "view_offset": time_ms,
+                            "duration": duration_ms,
+                        },
+                    )
+                elif time_ms > 0:
+                    set_interaction(
+                        user,
+                        p_item.media_item_id,
+                        "started",
+                        {
+                            "source": "plex",
+                            "view_offset": time_ms,
+                            "duration": duration_ms,
+                        },
+                    )
+        except Exception:
+            logger.debug("Failed updating local interaction for timeline", exc_info=True)
 
     if local_only:
         return True
@@ -860,7 +1291,12 @@ def get_plex_sessions(user) -> list[dict]:
             qs = MediaItem.objects.filter(media_type=m_type, title__iexact=m_title)
             matched_item = None
             if s.get("year"):
-                matched_item = qs.filter(release_date__year=s["year"]).first() or qs.first()
+                matched_item = qs.filter(release_date__year=s["year"]).first()
+                if not matched_item:
+                    matched_item = qs.filter(
+                        release_date__year__gte=s["year"] - 1,
+                        release_date__year__lte=s["year"] + 1,
+                    ).first()
             else:
                 matched_item = qs.first()
 
@@ -1183,7 +1619,12 @@ def get_plex_continue_watching(user) -> list[dict]:
             m_type = item.get("media_type")
             qs = MediaItem.objects.filter(media_type=m_type, title__iexact=m_title)
             if item.get("year"):
-                matched = qs.filter(release_date__year=item["year"]).first() or qs.first()
+                matched = qs.filter(release_date__year=item["year"]).first()
+                if not matched:
+                    matched = qs.filter(
+                        release_date__year__gte=item["year"] - 1,
+                        release_date__year__lte=item["year"] + 1,
+                    ).first()
             else:
                 matched = qs.first()
             if matched:

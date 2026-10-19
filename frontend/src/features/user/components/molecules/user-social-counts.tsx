@@ -24,9 +24,9 @@ const CountButton = ({
     <button
       type="button"
       onClick={onClick}
-      className="inline-flex items-baseline gap-1 rounded-md px-0.5 text-xs text-white/40 transition-colors hover:text-white/80 cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/30"
+      className="inline-flex items-baseline gap-1 rounded-md px-0.5 text-xs text-muted-foreground transition-colors hover:text-foreground cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary/40"
     >
-      <span className="font-semibold tabular-nums text-white/70">{count}</span>
+      <span className="font-semibold tabular-nums text-foreground">{count}</span>
       <span>{label}</span>
     </button>
   )
@@ -54,7 +54,7 @@ export const UserSocialCounts = ({
   return (
     <div
       className={cn(
-        'flex flex-wrap items-center gap-x-1 gap-y-1 text-xs text-white/30',
+        'flex flex-wrap items-center gap-x-1 gap-y-1 text-xs text-muted-foreground',
         className,
       )}
     >
@@ -63,13 +63,13 @@ export const UserSocialCounts = ({
         label={friendCount === 1 ? 'friend' : 'friends'}
         onClick={() => openList('friends')}
       />
-      <span aria-hidden className="text-white/15">·</span>
+      <span aria-hidden className="text-muted-foreground/30">·</span>
       <CountButton
         count={followerCount}
         label={followerCount === 1 ? 'follower' : 'followers'}
         onClick={() => openList('followers')}
       />
-      <span aria-hidden className="text-white/15">·</span>
+      <span aria-hidden className="text-muted-foreground/30">·</span>
       <CountButton
         count={followingCount}
         label="following"

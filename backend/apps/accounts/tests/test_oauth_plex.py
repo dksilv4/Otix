@@ -519,3 +519,25 @@ class PlexLoginTests(TestCase):
             )
         self.assertEqual(response.status_code, 500)
         self.assertEqual(response.data["detail"], "Failed to sign in with Plex. Please try again.")
+
+    def test_login_flow_with_desktop_source(self) -> None:
+        with _mock_plex():
+            init_resp = self.client.post(
+                "/api/v1/auth/plex/initiate",
+                {"source": "desktop"},
+                format="json",
+            )
+        self.assertEqual(init_resp.status_code, 200)
+        state = init_resp.data["state"]
+        row = OAuthState.objects.get(key=state)
+        self.assertEqual(row.payload["source"], "desktop")
+
+        with _mock_plex(profile_body={"id": "9999", "username": "plexdesk"}):
+            cb_resp = self.client.post(
+                "/api/v1/auth/plex/callback",
+                {"state": state, "pin_id": "pin-123"},
+                format="json",
+            )
+        self.assertEqual(cb_resp.status_code, 200)
+        self.assertEqual(cb_resp.data["source"], "desktop")
+        self.assertTrue(cb_resp.data["access_token"])

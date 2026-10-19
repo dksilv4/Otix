@@ -48,23 +48,55 @@ describe('NotificationCard', () => {
     expect(screen.getByLabelText('Mark as read')).toBeInTheDocument()
   })
 
-  it('safely renders system or unknown notification types without throwing', () => {
-    const systemNotif: Notification = {
-      id: 'notif-system',
+  it('marks unread notification as read and navigates when card is clicked', () => {
+    const onMarkRead = vi.fn()
+    render(
+      <NotificationCard
+        notification={mockNotification}
+        onMarkRead={onMarkRead}
+        actionCallbacks={mockCallbacks}
+      />
+    )
+    const card = screen.getByRole('button', { name: /new follower/i })
+    card.click()
+    expect(onMarkRead).toHaveBeenCalledWith('notif-1')
+  })
+
+  it('marks unread notification without link as read when clicked', () => {
+    const onMarkRead = vi.fn()
+    const systemUnread: Notification = {
+      id: 'notif-system-unread',
       type: 'system',
-      title: 'System alert',
-      body: 'Maintenance scheduled',
+      title: 'System alert unread',
+      body: 'Maintenance soon',
       metadataJson: {},
-      isRead: true,
+      isRead: false,
       createdAt: new Date().toISOString(),
     }
     render(
       <NotificationCard
-        notification={systemNotif}
-        onMarkRead={vi.fn()}
+        notification={systemUnread}
+        onMarkRead={onMarkRead}
         actionCallbacks={mockCallbacks}
       />
     )
-    expect(screen.getByText('System alert')).toBeInTheDocument()
+    const card = screen.getByRole('button', { name: /system alert unread/i })
+    card.click()
+    expect(onMarkRead).toHaveBeenCalledWith('notif-system-unread')
+  })
+
+  it('clicking mark as read button does not trigger card navigation', () => {
+    const onMarkRead = vi.fn()
+    render(
+      <NotificationCard
+        notification={mockNotification}
+        onMarkRead={onMarkRead}
+        actionCallbacks={mockCallbacks}
+      />
+    )
+    const markReadBtn = screen.getByLabelText('Mark as read')
+    markReadBtn.click()
+    expect(onMarkRead).toHaveBeenCalledWith('notif-1')
   })
 })
+

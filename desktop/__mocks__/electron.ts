@@ -14,10 +14,25 @@ mockApp.requestSingleInstanceLock = () => true
 mockApp.setAsDefaultProtocolClient = () => {}
 mockApp.commandLine = { appendSwitch: () => {} }
 
+const mockIpcMain = new EventEmitter() as any
+const ipcHandlers = new Map<string, Function>()
+mockIpcMain.handle = (channel: string, handler: Function) => {
+  ipcHandlers.set(channel, handler)
+}
+mockIpcMain.removeHandler = (channel: string) => {
+  ipcHandlers.delete(channel)
+}
+mockIpcMain._invoke = async (channel: string, ...args: any[]) => {
+  const handler = ipcHandlers.get(channel)
+  if (!handler) throw new Error(`No handler registered for ${channel}`)
+  return handler({ sender: {} }, ...args)
+}
+mockApp.getVersion = () => '0.1.0'
+
 module.exports = {
   app: mockApp,
   BrowserWindow: class {},
-  ipcMain: new EventEmitter(),
+  ipcMain: mockIpcMain,
   dialog: {},
   shell: {},
   screen: {

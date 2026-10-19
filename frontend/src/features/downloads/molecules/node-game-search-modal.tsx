@@ -299,7 +299,7 @@ export const NodeGameSearchModal = ({
     >
       <form onSubmit={handleSearch} className="flex shrink-0 gap-2">
         <div className="relative flex-1">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/35" />
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/60" />
           <input
             type="text"
             required
@@ -307,13 +307,13 @@ export const NodeGameSearchModal = ({
             placeholder="Search a game title…"
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
-            className="w-full rounded-xl border border-white/[0.08] bg-white/[0.04] py-2.5 pl-9 pr-4 text-sm text-white outline-none placeholder:text-white/30 transition-colors focus:border-blue-500/40 focus:bg-white/[0.06]"
+            className="w-full rounded-xl border border-[var(--dk-separator)] bg-[var(--dk-surface-field)] py-2.5 pl-9 pr-4 text-sm text-foreground outline-none placeholder:text-muted-foreground/50 transition-colors focus:border-primary"
           />
         </div>
         <button
           type="submit"
           disabled={searching || !searchInput.trim()}
-          className="inline-flex shrink-0 items-center gap-1.5 rounded-xl bg-blue-500 px-4 py-2.5 text-xs font-bold text-white shadow-sm transition-colors hover:bg-blue-400 disabled:opacity-50"
+          className="inline-flex shrink-0 items-center gap-1.5 rounded-xl bg-primary px-4 py-2.5 text-xs font-bold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 disabled:opacity-50"
         >
           {searching ? (
             <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -325,24 +325,24 @@ export const NodeGameSearchModal = ({
       </form>
 
       {queueData && queueData.items && queueData.items.length > 0 && (
-        <div className="mt-3 flex items-center justify-between rounded-xl border border-blue-500/25 bg-blue-500/10 px-3.5 py-2 text-xs text-blue-200">
+        <div className="mt-3 flex items-center justify-between rounded-xl border border-blue-500/25 bg-blue-500/10 px-3.5 py-2 text-xs text-blue-700 dark:text-blue-200">
           <div className="flex items-center gap-2">
-            <Loader2 className="h-4 w-4 animate-spin text-blue-400 shrink-0" />
+            <Loader2 className="h-4 w-4 animate-spin text-blue-500 dark:text-blue-400 shrink-0" />
             <span>
               Downloader: <strong>{queueData.items.length}</strong> {queueData.items.length === 1 ? 'item' : 'items'} in queue
             </span>
             {queueData.speed && queueData.speed !== '0 B/s' && (
-              <span className="rounded-md bg-blue-500/20 px-1.5 py-0.5 font-mono text-[11px] font-semibold text-blue-300">
+              <span className="rounded-md bg-blue-500/20 px-1.5 py-0.5 font-mono text-[11px] font-semibold text-blue-600 dark:text-blue-300">
                 {queueData.speed}
               </span>
             )}
             {queueData.time_left && (
-              <span className="text-white/60 tabular-nums">
+              <span className="text-muted-foreground tabular-nums">
                 ETA: {queueData.time_left}
               </span>
             )}
           </div>
-          <span className="text-[11px] text-white/50 capitalize font-medium">
+          <span className="text-[11px] text-muted-foreground capitalize font-medium">
             {queueData.status || 'Downloading'}
           </span>
         </div>
@@ -351,19 +351,19 @@ export const NodeGameSearchModal = ({
       <div className="mt-4 flex min-h-0 flex-1 flex-col">
         {!activeQuery ? (
           <EmptyState
-            icon={<Sparkles className="h-8 w-8 text-blue-400/50" />}
+            icon={<Sparkles className="h-8 w-8 text-primary/50" />}
             title="Search your indexers"
             body="Type a game name to search Prowlarr across your configured Usenet and torrent indexers."
           />
         ) : searching ? (
           <EmptyState
-            icon={<Loader2 className="h-7 w-7 animate-spin text-blue-400" />}
+            icon={<Loader2 className="h-7 w-7 animate-spin text-primary" />}
             title={`Searching for “${activeQuery}”`}
             body="Querying Prowlarr and waiting on your indexers."
           />
         ) : error ? (
           <EmptyState
-            icon={<AlertCircle className="h-7 w-7 text-rose-400" />}
+            icon={<AlertCircle className="h-7 w-7 text-rose-500" />}
             title="Search failed"
             body={
               (error as { response?: { data?: { detail?: string } } })?.response?.data?.detail ||
@@ -374,13 +374,13 @@ export const NodeGameSearchModal = ({
           />
         ) : groups.length === 0 ? (
           <EmptyState
-            icon={<Search className="h-8 w-8 text-white/20" />}
+            icon={<Search className="h-8 w-8 text-muted-foreground/30" />}
             title={`No releases for “${activeQuery}”`}
             body="Try a different spelling, or check that the right indexers are enabled in Prowlarr."
           />
         ) : (
           <>
-            <div className="relative z-10 flex shrink-0 flex-wrap items-center justify-between gap-2 bg-[oklch(from_var(--dk-surface-base)_l_c_h_/_0.92)] pb-3">
+            <div className="relative z-10 flex shrink-0 flex-wrap items-center justify-between gap-2 bg-[var(--dk-surface-base)] pb-3">
               <div className="flex flex-wrap items-center gap-1.5">
                 {(['all', 'usenet', 'torrent'] as const).map((filter) => {
                   const count =
@@ -394,14 +394,14 @@ export const NodeGameSearchModal = ({
                       onClick={() => setProtocolFilter(filter)}
                       className={cn(
                         'rounded-lg px-2.5 py-1 text-[11px] font-semibold capitalize transition-colors',
-                        active && filter === 'usenet' && 'bg-blue-500/15 text-blue-400',
-                        active && filter === 'torrent' && 'bg-red-500/15 text-red-400',
-                        active && filter === 'all' && 'bg-white/10 text-white',
-                        !active && 'text-white/45 hover:bg-white/[0.06] hover:text-white/75',
+                        active && filter === 'usenet' && 'bg-blue-500/15 text-blue-600 dark:text-blue-400',
+                        active && filter === 'torrent' && 'bg-red-500/15 text-red-600 dark:text-red-400',
+                        active && filter === 'all' && 'bg-primary text-primary-foreground',
+                        !active && 'text-muted-foreground hover:bg-[var(--dk-surface-ghost-hover)] hover:text-foreground',
                       )}
                     >
                       {filter === 'all' ? 'All' : filter}
-                      <span className="ml-1 tabular-nums text-white/40">{count}</span>
+                      <span className="ml-1 tabular-nums opacity-70">{count}</span>
                     </button>
                   )
                 })}
@@ -409,7 +409,7 @@ export const NodeGameSearchModal = ({
                   <select
                     value={versionFilter}
                     onChange={(e) => setVersionFilter(e.target.value)}
-                    className="rounded-lg border border-white/[0.08] bg-white/[0.06] px-2 py-1 text-[11px] font-semibold text-white outline-none"
+                    className="rounded-lg border border-[var(--dk-separator)] bg-[var(--dk-surface-field)] px-2 py-1 text-[11px] font-semibold text-foreground outline-none"
                   >
                     <option value="all">All versions</option>
                     {versionOptions.map((version) => (
@@ -420,14 +420,14 @@ export const NodeGameSearchModal = ({
                   </select>
                 )}
               </div>
-              <span className="text-[11px] text-white/35">
+              <span className="text-[11px] text-muted-foreground">
                 {releases.length} result{releases.length === 1 ? '' : 's'}
               </span>
             </div>
 
             {visibleGroups.length === 0 ? (
               <EmptyState
-                icon={<Search className="h-7 w-7 text-white/20" />}
+                icon={<Search className="h-7 w-7 text-muted-foreground/30" />}
                 title={versionFilter !== 'all' ? `No v${versionFilter} releases` : `No ${protocolFilter} releases`}
                 body="Switch back to All to see every indexer hit for this search."
               />
@@ -456,14 +456,14 @@ export const NodeGameSearchModal = ({
       </div>
       {updatePrompt && (
         <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/65 p-6 backdrop-blur-sm">
-          <div className="w-full max-w-sm rounded-2xl border border-white/[0.08] bg-[oklch(from_var(--dk-surface-base)_l_c_h_/_0.95)] p-5 shadow-2xl">
-            <h3 className="text-base font-semibold text-white">Queue updates too?</h3>
-            <p className="mt-2 text-[13px] leading-relaxed text-white/60">
+          <div className="w-full max-w-sm rounded-2xl border border-[var(--dk-separator)] bg-[var(--dk-surface-overlay)] p-5 shadow-2xl">
+            <h3 className="text-base font-semibold text-foreground">Queue updates too?</h3>
+            <p className="mt-2 text-[13px] leading-relaxed text-muted-foreground">
               {updatePrompt.updates.length === 1
                 ? 'This version has 1 update. Queue it with this download?'
                 : `This version has ${updatePrompt.updates.length} updates. Queue them with this download?`}
             </p>
-            <ul className="mt-3 max-h-28 space-y-1 overflow-y-auto text-[12px] text-white/45">
+            <ul className="mt-3 max-h-28 space-y-1 overflow-y-auto text-[12px] text-muted-foreground">
               {updatePrompt.updates.map((update) => (
                 <li key={update.guid} className="truncate">
                   {cleanReleaseTitle(update.title) || update.title}
@@ -474,14 +474,14 @@ export const NodeGameSearchModal = ({
               <button
                 type="button"
                 onClick={() => void handleConfirmQueue(true)}
-                className="inline-flex items-center justify-center rounded-xl bg-blue-500 px-4 py-2.5 text-xs font-bold text-white transition-colors hover:bg-blue-400"
+                className="inline-flex items-center justify-center rounded-xl bg-primary px-4 py-2.5 text-xs font-bold text-primary-foreground transition-colors hover:bg-primary/90"
               >
                 Queue game + updates
               </button>
               <button
                 type="button"
                 onClick={() => void handleConfirmQueue(false)}
-                className="inline-flex items-center justify-center rounded-xl bg-white/[0.08] px-4 py-2.5 text-xs font-semibold text-white/80 transition-colors hover:bg-white/[0.12]"
+                className="inline-flex items-center justify-center rounded-xl border border-[var(--dk-separator)] bg-[var(--dk-surface-ghost)] px-4 py-2.5 text-xs font-semibold text-foreground transition-colors hover:bg-[var(--dk-surface-ghost-hover)]"
               >
                 Just this release
               </button>
@@ -532,7 +532,7 @@ const EditionBlock = ({
   return (
     <section>
       {group.title ? (
-        <h3 className="sticky top-0 z-[1] bg-[oklch(from_var(--dk-surface-base)_l_c_h)] px-6 py-2.5 text-[11px] font-bold uppercase tracking-[0.16em] text-white/45 sm:px-7">
+        <h3 className="sticky top-0 z-[1] bg-[var(--dk-surface-base)] px-6 py-2.5 text-[11px] font-bold uppercase tracking-[0.16em] text-muted-foreground sm:px-7">
           {group.title}
         </h3>
       ) : null}
@@ -588,8 +588,8 @@ const PackBlock = ({
   return (
     <div>
       <div className="flex items-baseline justify-between gap-3 px-6 pb-1 pt-3 sm:px-7">
-        <h4 className="min-w-0 truncate text-sm font-semibold text-white">{pack.title}</h4>
-        <p className="shrink-0 text-[11px] tabular-nums text-white/35">
+        <h4 className="min-w-0 truncate text-sm font-semibold text-foreground">{pack.title}</h4>
+        <p className="shrink-0 text-[11px] tabular-nums text-muted-foreground">
           {releaseCount} release{releaseCount === 1 ? '' : 's'}
           {updateCount > 0 ? ` · ${updateCount} update${updateCount === 1 ? '' : 's'}` : ''}
         </p>
@@ -621,11 +621,11 @@ const PackBlock = ({
           <button
             type="button"
             onClick={() => setUpdatesOpen((open) => !open)}
-            className="flex w-full items-center gap-2 px-6 py-2 text-left text-[11px] font-semibold uppercase tracking-wider text-white/45 hover:text-white/70 sm:px-7"
+            className="flex w-full items-center gap-2 px-6 py-2 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground sm:px-7"
           >
             <ArrowUpCircle className="h-3.5 w-3.5" />
             <span>Updates</span>
-            <span className="tabular-nums text-white/30">{pack.updates.length}</span>
+            <span className="tabular-nums text-muted-foreground/60">{pack.updates.length}</span>
             <ChevronDown className={cn('ml-auto h-3.5 w-3.5 transition-transform', updatesOpen && 'rotate-180')} />
           </button>
           {updatesOpen &&
@@ -673,10 +673,10 @@ const EmptyState = ({
   return (
     <div className="flex min-h-[240px] flex-1 flex-col items-center justify-center gap-2 px-2 py-14 text-center">
       {icon}
-      <p className={cn('text-sm font-semibold', tone === 'error' ? 'text-rose-300' : 'text-white/80')}>
+      <p className={cn('text-sm font-semibold', tone === 'error' ? 'text-rose-500' : 'text-foreground')}>
         {title}
       </p>
-      <p className="max-w-sm text-[12px] leading-relaxed text-white/40">{body}</p>
+      <p className="max-w-sm text-[12px] leading-relaxed text-muted-foreground">{body}</p>
     </div>
   )
 };
@@ -733,7 +733,7 @@ const ReleaseRow = ({
   return (
     <div
       className={cn(
-        'group flex flex-col gap-2 border-b border-white/[0.05] py-3 transition-colors hover:bg-white/[0.035] sm:flex-row sm:items-center',
+        'group flex flex-col gap-2 border-b border-[var(--dk-separator)] py-3 transition-colors hover:bg-[var(--dk-surface-ghost-hover)] sm:flex-row sm:items-center',
         indented ? 'pl-10 pr-6 sm:pl-12 sm:pr-7' : 'px-6 sm:px-7',
         protocol === 'usenet' && 'border-l-2 border-l-blue-400',
         protocol === 'torrent' && 'border-l-2 border-l-red-400',
@@ -742,7 +742,7 @@ const ReleaseRow = ({
     >
       <div className="min-w-0 flex-1 space-y-1.5">
         <div className="flex flex-wrap items-center gap-1.5">
-          <span className="text-sm font-semibold text-white/90 group-hover:text-white">
+          <span className="text-sm font-semibold text-foreground">
             {cleaned || release.title}
           </span>
           {kindBadge && (
@@ -775,18 +775,18 @@ const ReleaseRow = ({
         </div>
 
         {cleaned && cleaned !== release.title && (
-          <p className="truncate font-mono text-[11px] text-white/30">{release.title}</p>
+          <p className="truncate font-mono text-[11px] text-muted-foreground/60">{release.title}</p>
         )}
 
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-white/45">
-          <span className="font-semibold tabular-nums text-white/75">{formatBytes(release.size)}</span>
-          <span className="text-white/20">·</span>
-          <span className="rounded bg-white/[0.06] px-1.5 py-0.5 text-[10px] font-medium text-white/70">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-muted-foreground">
+          <span className="font-semibold tabular-nums text-foreground/80">{formatBytes(release.size)}</span>
+          <span className="text-muted-foreground/40">·</span>
+          <span className="rounded bg-[var(--dk-surface-ghost)] border border-[var(--dk-separator)] px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
             {release.indexer}
           </span>
           {release.protocol === 'torrent' && release.seeders != null && (
             <>
-              <span className="text-white/20">·</span>
+              <span className="text-muted-foreground/40">·</span>
               <span className={cn('tabular-nums', seederClass(release.seeders))}>
                 {release.seeders} seeders
               </span>
@@ -794,7 +794,7 @@ const ReleaseRow = ({
           )}
           {release.age_days != null && (
             <>
-              <span className="text-white/20">·</span>
+              <span className="text-muted-foreground/40">·</span>
               <span className="inline-flex items-center gap-1">
                 <Clock className="h-3 w-3" />
                 {formatAgeDays(release.age_days)}
@@ -803,12 +803,12 @@ const ReleaseRow = ({
           )}
           {release.info_url && (
             <>
-              <span className="text-white/20">·</span>
+              <span className="text-muted-foreground/40">·</span>
               <a
                 href={release.info_url}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center gap-1 text-white/45 hover:text-white/80"
+                className="inline-flex items-center gap-1 text-muted-foreground hover:text-foreground"
               >
                 <ExternalLink className="h-3 w-3" />
                 Info
@@ -822,7 +822,7 @@ const ReleaseRow = ({
         {queueItem ? (
           <div className="flex items-center gap-2">
             <div
-              className="relative inline-flex min-w-[150px] max-w-[220px] items-center justify-between overflow-hidden rounded-xl border border-blue-500/30 bg-blue-950/40 px-3 py-1.5 text-xs text-white shadow-sm"
+              className="relative inline-flex min-w-[150px] max-w-[220px] items-center justify-between overflow-hidden rounded-xl border border-blue-500/30 bg-blue-500/10 px-3 py-1.5 text-xs text-blue-700 dark:text-blue-200 shadow-sm"
               title={`${queueItem.status} — ${pct.toFixed(1)}%${queueItem.speed ? ` at ${queueItem.speed}` : ''}${queueItem.time_left ? ` (${queueItem.time_left} left)` : ''}`}
             >
               {/* Animated Progress Fill */}
@@ -835,21 +835,21 @@ const ReleaseRow = ({
               />
               <span className="relative z-10 flex items-center gap-1.5">
                 {isPaused ? (
-                  <Pause className="h-3.5 w-3.5 text-amber-400 shrink-0" />
+                  <Pause className="h-3.5 w-3.5 text-amber-500 dark:text-amber-400 shrink-0" />
                 ) : (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-400 shrink-0" />
+                  <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-500 dark:text-blue-400 shrink-0" />
                 )}
                 <span className="tabular-nums font-mono font-semibold text-[11px]">
                   {pct.toFixed(0)}%
                 </span>
                 {queueItem.speed && queueItem.speed !== '0 B/s' && (
-                  <span className="text-[10px] text-white/70 font-mono hidden sm:inline">
+                  <span className="text-[10px] text-muted-foreground font-mono hidden sm:inline">
                     {queueItem.speed}
                   </span>
                 )}
               </span>
               {queueItem.time_left && (
-                <span className="relative z-10 text-[10px] text-white/50 hidden md:inline ml-2 tabular-nums">
+                <span className="relative z-10 text-[10px] text-muted-foreground hidden md:inline ml-2 tabular-nums">
                   {queueItem.time_left}
                 </span>
               )}
@@ -859,21 +859,21 @@ const ReleaseRow = ({
                 type="button"
                 onClick={onCancelQueue}
                 title="Cancel download in SABnzbd"
-                className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-red-500/25 bg-red-500/10 text-red-400 hover:bg-red-500/20 hover:text-red-300 transition-colors"
+                className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-red-500/25 bg-red-500/10 text-red-500 hover:bg-red-500/20 hover:text-red-400 transition-colors"
               >
                 <X className="h-3.5 w-3.5" />
               </button>
             )}
           </div>
         ) : isHistoryCompleted ? (
-          <span className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-500/30 bg-emerald-500/15 px-3 py-1.5 text-xs font-bold text-emerald-400">
+          <span className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-500/30 bg-emerald-500/15 px-3 py-1.5 text-xs font-bold text-emerald-500 dark:text-emerald-400">
             <CheckCircle2 className="h-3.5 w-3.5" />
             Completed
           </span>
         ) : isQueued ? (
           <div className="flex items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 rounded-xl border border-blue-500/30 bg-blue-500/15 px-3 py-1.5 text-xs font-bold text-blue-400">
-              <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-400" />
+            <span className="inline-flex items-center gap-1.5 rounded-xl border border-blue-500/30 bg-blue-500/15 px-3 py-1.5 text-xs font-bold text-blue-500 dark:text-blue-400">
+              <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-500 dark:text-blue-400" />
               Queued…
             </span>
           </div>
@@ -884,8 +884,8 @@ const ReleaseRow = ({
             disabled={disabled || !canQueue}
             title={canQueue ? 'Queue this release on the node' : blockReason || 'Cannot queue this release'}
             className={cn(
-              'inline-flex items-center gap-1.5 rounded-xl px-3.5 py-1.5 text-xs font-bold text-white shadow-sm transition-colors disabled:opacity-50',
-              protocol === 'torrent' ? 'bg-red-500 hover:bg-red-400' : 'bg-blue-500 hover:bg-blue-400',
+              'inline-flex items-center gap-1.5 rounded-xl px-3.5 py-1.5 text-xs font-bold text-primary-foreground shadow-sm transition-colors disabled:opacity-50',
+              protocol === 'torrent' ? 'bg-red-500 hover:bg-red-400' : 'bg-primary hover:bg-primary/90',
             )}
           >
             {isPending ? (

@@ -40,10 +40,10 @@
   @apply text-5xl sm:text-6xl font-extrabold tabular-nums tracking-tight;
   font-family: var(--dk-font-mono);
 
-  &--positive { @apply text-emerald-400; }
-  &--medium   { @apply text-sky-400; }
-  &--low      { @apply text-amber-400; }
-  &--critical { @apply text-red-400; }
+  &--positive { @apply text-emerald-600 dark:text-emerald-400; }
+  &--medium   { @apply text-sky-600 dark:text-sky-400; }
+  &--low      { @apply text-amber-600 dark:text-amber-400; }
+  &--critical { @apply text-red-600 dark:text-red-400; }
   &--muted    { @apply text-muted-foreground/30; }
 }
 

@@ -40,19 +40,15 @@ export const SettingsSaveBar = () => {
       )}
     >
       <div
-        className="pointer-events-auto flex items-center justify-between gap-4 rounded-2xl px-5 py-3.5 shadow-2xl backdrop-blur-2xl"
-        style={{
-          backgroundColor: 'oklch(from var(--dk-surface-base) l c h / 0.85)',
-          boxShadow: '0 8px 32px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1)',
-        }}
+        className="pointer-events-auto flex items-center justify-between gap-4 rounded-2xl px-5 py-3.5 shadow-xl backdrop-blur-2xl bg-[var(--dk-surface-overlay)]"
       >
         <div className="flex items-center gap-3 min-w-0">
           {saved ? (
-            <CheckCircle2 className="h-5 w-5 text-emerald-400 shrink-0" />
+            <CheckCircle2 className="h-5 w-5 text-emerald-500 dark:text-emerald-400 shrink-0" />
           ) : (
-            <AlertCircle className="h-5 w-5 text-amber-400 shrink-0" />
+            <AlertCircle className="h-5 w-5 text-amber-500 dark:text-amber-400 shrink-0" />
           )}
-          <p className="text-sm font-medium text-white/90 truncate">
+          <p className="text-sm font-medium text-foreground truncate">
             {saved ? 'Changes saved successfully' : 'You have unsaved changes'}
           </p>
         </div>
@@ -62,7 +58,7 @@ export const SettingsSaveBar = () => {
             <button
               type="button"
               onClick={onDiscard}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white/60 hover:text-white rounded-xl hover:bg-white/10 transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground rounded-xl hover:bg-[var(--dk-surface-hover)] transition-colors"
             >
               <RotateCcw className="h-3.5 w-3.5" />
               Reset

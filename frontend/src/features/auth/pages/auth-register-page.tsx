@@ -1,23 +1,36 @@
-import { useCallback } from 'react'
+import { useCallback, useEffect } from 'react'
 import { Helmet } from 'react-helmet-async'
 import { useNavigate } from '@tanstack/react-router'
+import { useAuth } from '@auth/hooks/use-auth'
 import { AuthBackground } from '@auth/components/atoms/auth-background'
 import { AuthCard } from '@auth/components/molecules/auth-card'
 import { AuthHeader } from '@auth/components/molecules/auth-header'
 import { RegisterForm } from '@auth/components/organisms/auth-register-form'
+import { OAuthContainer } from '@auth/components/organisms/auth-oauth-container'
+import { GoogleOAuthButton } from '@auth/components/molecules/auth-oauth-google-button'
+import { PlexOAuthButton } from '@auth/components/molecules/auth-oauth-plex-button'
+import { TmdbOAuthButton } from '@auth/components/molecules/auth-oauth-tmdb-button'
+import { SteamOAuthButton } from '@auth/components/molecules/auth-oauth-steam-button'
 import { Logo } from '@ui/atoms/logo'
 import { AuthBackButton } from '@auth/components/molecules/auth-back-button'
 
 export const RegisterPage = () => {
   const navigate = useNavigate()
+  const { isAuthenticated } = useAuth()
   const redirect = typeof window !== 'undefined'
     ? new URLSearchParams(window.location.search).get('redirect') || '/'
     : '/'
 
+  useEffect(() => {
+    if (isAuthenticated) {
+      void navigate({ to: redirect })
+    }
+  }, [isAuthenticated, navigate, redirect])
+
   const handleSuccess = useCallback(() => navigate({ to: redirect }), [navigate, redirect])
 
   return (
-    <div id="auth-register-page" className="relative flex min-h-screen items-center justify-center p-4 py-8">
+    <div id="auth-register-page" className="relative flex min-h-screen flex-col items-center justify-center gap-4 p-4 py-8">
       <Helmet>
         <title>Create Account - Otix</title>
         <meta name="description" content="Create an account on Otix to track movies, shows, games, and music." />
@@ -56,13 +69,20 @@ export const RegisterPage = () => {
           <a
             href="/terms"
             onClick={(e) => { e.preventDefault(); navigate({ to: '/terms' }) }}
-            className="text-white/80 underline underline-offset-2 hover:text-white"
+            className="text-foreground underline underline-offset-2 hover:text-primary"
           >
             Terms of Service
           </a>
           .
         </p>
       </AuthCard>
+
+      <OAuthContainer id="auth-register-oauth">
+        <GoogleOAuthButton />
+        <PlexOAuthButton />
+        <TmdbOAuthButton />
+        <SteamOAuthButton />
+      </OAuthContainer>
     </div>
   )
 };

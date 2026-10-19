@@ -55,15 +55,38 @@ def _iso(value: date | datetime | None) -> str | None:
     return value
 
 
+def _lang_rank(asset: MediaAsset, original_language: str | None = None) -> int:
+    asset_type = (asset.asset_type or "").lower()
+    if asset_type not in ("logo", "icon", "poster"):
+        return 0
+    lang = (asset.lang or "").lower().strip()
+    if lang in ("en", "eng"):
+        return 3
+    if not lang or lang in ("00", "zxx", "xx"):
+        return 2
+    if original_language and lang == original_language.lower().strip():
+        return 1
+    return 0
+
+
 def _pick_best(
-    assets: list[MediaAsset], label_pref: dict[str, int], *, prefer_png: bool
+    assets: list[MediaAsset],
+    label_pref: dict[str, int],
+    *,
+    prefer_png: bool,
+    original_language: str | None = None,
 ) -> MediaAsset | None:
     best: MediaAsset | None = None
     best_key: tuple | None = None
     for asset in assets:
-        key = (label_pref.get(asset.label or "", 999), -(asset.score or 0), -(asset.width or 0))
+        key = (
+            -_lang_rank(asset, original_language),
+            label_pref.get(asset.label or "", 999),
+            -(asset.score or 0),
+            -(asset.width or 0),
+        )
         if prefer_png and asset.url.lower().endswith(".png"):
-            key = (key[0] - 0.5, *key[1:])
+            key = (key[0], key[1] - 0.5, *key[2:])
         if best_key is None or key < best_key:
             best_key, best = key, asset
     return best
@@ -84,6 +107,7 @@ def _attach_resolved_assets(items: list[MediaItem]) -> None:
         by_item[(asset.media_item_id, asset.asset_type)].append(asset)
 
     for item in items:
+        orig_lang = getattr(item, "original_language", None)
         for asset_type, suffix in _ASSET_SUFFIX.items():
             if asset_type == "backdrop":
                 # Textless backdrop is the family textless art; when one exists it
@@ -93,13 +117,21 @@ def _attach_resolved_assets(items: list[MediaItem]) -> None:
                     usable = [a for a in by_item[(item.id, source_type)] if a.url]
                     if not usable:
                         continue
-                    best = _pick_best(usable, _LABEL_PREF.get(source_type, {}), prefer_png=False)
+                    best = _pick_best(
+                        usable,
+                        _LABEL_PREF.get(source_type, {}),
+                        prefer_png=False,
+                        original_language=orig_lang,
+                    )
                     break
                 item._resolved_backdrop_url = best.url if best is not None else None
                 continue
             assets = by_item[(item.id, asset_type)]
             best = _pick_best(
-                assets, _LABEL_PREF.get(asset_type, {}), prefer_png=asset_type == "icon"
+                assets,
+                _LABEL_PREF.get(asset_type, {}),
+                prefer_png=asset_type == "icon",
+                original_language=orig_lang,
             )
             setattr(item, f"_resolved_{suffix}", best.url if best is not None else None)
             if asset_type == "logo":

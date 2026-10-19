@@ -72,7 +72,7 @@ export const RatingsHub = ({
   const score = overallRating ?? 0
   const colors = hasOverall
     ? scoreColor(score)
-    : { text: 'text-muted-foreground', bg: 'bg-white/5', ring: 'ring-white/10', glow: '' }
+    : { text: 'text-muted-foreground', bg: 'bg-[var(--dk-surface-glass)]', ring: 'ring-[var(--dk-separator)]', glow: '' }
 
   let subtitle = 'No ratings yet'
   if (hasOverall) {
@@ -132,7 +132,7 @@ export const RatingsHub = ({
                 href={imdbUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="px-2 py-0.5 rounded-md bg-[#f5c518]/15 text-[#f5c518] hover:bg-[#f5c518]/25 text-[10px] font-bold tracking-wider transition-colors inline-flex items-center gap-1"
+                className="px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-600 dark:text-amber-400 hover:bg-amber-500/25 text-[10px] font-bold tracking-wider transition-colors inline-flex items-center gap-1"
                 title="View on IMDb"
               >
                 IMDb
@@ -165,7 +165,7 @@ export const RatingsHub = ({
               <div className="flex items-center gap-1.5">
                 <span className="text-xs font-semibold text-foreground">Otix Community</span>
                 {avgRating && (
-                  <span className="text-[11px] text-amber-400 font-medium">({(avgRating / 2).toFixed(1)}/5 ★)</span>
+                  <span className="text-[11px] text-amber-600 dark:text-amber-400 font-medium">({(avgRating / 2).toFixed(1)}/5 ★)</span>
                 )}
               </div>
               <p className="text-[11px] text-muted-foreground truncate">{subtitle}</p>
@@ -184,7 +184,7 @@ export const RatingsHub = ({
             <button
               type="button"
               onClick={() => handleRateQuick(0)}
-              className="text-[11px] text-muted-foreground/70 hover:text-red-400 transition-colors"
+              className="text-[11px] text-muted-foreground/70 hover:text-destructive transition-colors"
             >
               Clear
             </button>
@@ -209,7 +209,7 @@ export const RatingsHub = ({
                   <div key={starIdx} className="relative flex items-center justify-center w-8 h-8 select-none">
                     {/* Base dimmed empty star */}
                     <Star
-                      className="w-6 h-6 text-zinc-700/60 fill-zinc-800/40 transition-colors"
+                      className="w-6 h-6 text-muted-foreground/30 fill-muted-foreground/15 transition-colors"
                       strokeWidth={1.5}
                     />
 
@@ -242,7 +242,7 @@ export const RatingsHub = ({
                         }}
                       >
                         <Star
-                          className="w-6 h-6 text-amber-400 fill-amber-400 drop-shadow-[0_0_8px_rgba(251,191,36,0.4)] transition-transform duration-150"
+                          className="w-6 h-6 text-amber-500 fill-amber-500 drop-shadow-[0_0_8px_rgba(245,158,11,0.3)] transition-transform duration-150"
                           strokeWidth={1.5}
                         />
                       </div>
@@ -255,14 +255,14 @@ export const RatingsHub = ({
             {/* Centered Rating Preview directly beneath the stars */}
             <div className="flex items-center justify-center min-h-[24px]">
               {activeDisplayScore != null && activeDisplayScore > 0 ? (
-                <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-amber-400/10 text-xs font-semibold text-amber-400 animate-fade-in">
+                <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-amber-500/15 text-xs font-semibold text-amber-600 dark:text-amber-400 animate-fade-in">
                   <span>
                     {(activeDisplayScore / 2).toFixed(activeDisplayScore % 2 === 0 ? 0 : 1)} / 5 ★
                   </span>
                   {activeLabel && (
                     <>
                       <span className="opacity-40">•</span>
-                      <span className="text-[11px] font-medium text-amber-300/90">{activeLabel}</span>
+                      <span className="text-[11px] font-medium text-amber-600/90 dark:text-amber-300/90">{activeLabel}</span>
                     </>
                   )}
                 </div>
@@ -305,7 +305,7 @@ export const RatingsHub = ({
           {review?.content ? (
             <div
               onClick={handleOpenComposer}
-              className="glass-inset p-4 rounded-2xl space-y-2 cursor-pointer hover:bg-white/[0.05] transition-all group"
+              className="glass-inset p-4 rounded-2xl space-y-2 cursor-pointer hover:bg-[var(--dk-surface-glass)] transition-all group"
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1.5 text-xs font-semibold text-primary">
@@ -327,7 +327,7 @@ export const RatingsHub = ({
             <button
               type="button"
               onClick={handleOpenComposer}
-              className="w-full text-left relative overflow-hidden rounded-2xl bg-gradient-to-br from-white/[0.06] via-white/[0.03] to-transparent p-4 transition-all duration-200 hover:from-primary/[0.08] hover:to-transparent hover:shadow-lg hover:shadow-primary/5 group cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              className="w-full text-left relative overflow-hidden rounded-2xl bg-[var(--dk-surface-glass)] border border-[var(--dk-separator)] p-4 transition-all duration-200 hover:bg-[var(--dk-surface-glass-hover)] hover:shadow-lg group cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             >
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-3 min-w-0">

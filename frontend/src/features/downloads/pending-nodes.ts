@@ -145,7 +145,7 @@ export async function probeLocalGameNode(fetcher: typeof fetch = fetch): Promise
 
     try {
       const statusResp = await fetcher('http://127.0.0.1:8090/api/v1/status', {
-        signal: AbortSignal.timeout(2000),
+        signal: AbortSignal.timeout(600),
       })
       if (statusResp.ok) {
         reached = true
@@ -154,15 +154,19 @@ export async function probeLocalGameNode(fetcher: typeof fetch = fetch): Promise
         if (data.claim_code) claimCode = data.claim_code
         if (data.claimed !== undefined) claimed = Boolean(data.claimed)
         if (data.claimed_by) claimedBy = data.claimed_by
+      } else if (statusResp.status === 404) {
+        // Server exists on port 8090 but has an older endpoint structure
+        reached = true
       }
     } catch {
-      // ignore
+      // Nothing is listening on port 8090 or request was blocked; abort probe immediately
+      return null
     }
 
     if (!reached) {
       try {
         const pingResp = await fetcher('http://127.0.0.1:8090/api/v1/ping', {
-          signal: AbortSignal.timeout(1500),
+          signal: AbortSignal.timeout(600),
         })
         if (pingResp.ok) {
           reached = true
@@ -179,7 +183,7 @@ export async function probeLocalGameNode(fetcher: typeof fetch = fetch): Promise
     if (!reached) {
       try {
         const claimResp = await fetcher('http://127.0.0.1:8090/api/v1/claim/status', {
-          signal: AbortSignal.timeout(1500),
+          signal: AbortSignal.timeout(600),
         })
         if (claimResp.ok) {
           reached = true
@@ -197,7 +201,7 @@ export async function probeLocalGameNode(fetcher: typeof fetch = fetch): Promise
     if (!reached) return null
 
     try {
-      const home = await fetcher('http://127.0.0.1:8090/', { signal: AbortSignal.timeout(2000) })
+      const home = await fetcher('http://127.0.0.1:8090/', { signal: AbortSignal.timeout(600) })
       if (home.ok) {
         const html = await home.text()
         const match = html.match(/id="node-access-token"[^>]*value="([^"]*)"/) || html.match(/const TOKEN\s*=\s*"([^"]*)"/)
@@ -210,7 +214,7 @@ export async function probeLocalGameNode(fetcher: typeof fetch = fetch): Promise
     if (!claimed && !claimCode) {
       try {
         const claimResp = await fetcher('http://127.0.0.1:8090/api/v1/claim/status', {
-          signal: AbortSignal.timeout(1500),
+          signal: AbortSignal.timeout(600),
         })
         if (claimResp.ok) {
           const claimData = await claimResp.json()

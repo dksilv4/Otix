@@ -122,22 +122,26 @@ export const MediaStreamPlayerProvider = ({ children }: { children: React.ReactN
 
         const directTimelineUrl = `${active.serverUrl.replace(/\/$/, '')}/:/timeline?${params.toString()}`
 
-        try {
-          // Use fetch with keepalive: isStopped instead of navigator.sendBeacon.
-          // sendBeacon sends an HTTP POST which Plex rejects on GET /:/timeline,
-          // preventing Plex from stopping active transcode sessions and leaving duplicate streams.
-          await fetch(directTimelineUrl, {
-            method: 'GET',
-            mode: 'no-cors',
-            keepalive: isStopped,
-          })
-        } catch {
-          // Direct fetch failed
+        // On shared servers, skip direct PMS timeline calls to avoid corrupting the server owner's watch offset.
+        if (!active.isSharedServer) {
+          try {
+            // Use fetch with keepalive: isStopped instead of navigator.sendBeacon.
+            // sendBeacon sends an HTTP POST which Plex rejects on GET /:/timeline,
+            // preventing Plex from stopping active transcode sessions and leaving duplicate streams.
+            await fetch(directTimelineUrl, {
+              method: 'GET',
+              mode: 'no-cors',
+              keepalive: isStopped,
+            })
+          } catch {
+            // Direct fetch failed
+          }
         }
 
         // Keep Otix backend UserPlexItem viewOffset in sync locally without proxying
         // duplicate /:/timeline requests to the Plex server from backend.
-        if (isStopped || state === 'paused' || Math.random() < 0.25) {
+        // For shared servers, always sync progress so the friend's position is strictly tracked for their account.
+        if (active.isSharedServer || isStopped || state === 'paused' || Math.random() < 0.25) {
           apiClient
             .post('/integrations/plex/timeline', {
               serverUrl: active.serverUrl,

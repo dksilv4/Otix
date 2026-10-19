@@ -26,9 +26,9 @@ export const ConsoleDisambiguationModal = ({
     <DkDialog
       open={open}
       onOpenChange={onOpenChange}
-      className="w-full max-w-md border border-white/[0.06] shadow-2xl"
+      className="w-full max-w-md border border-[var(--dk-separator)] shadow-2xl"
     >
-      <div className="flex items-center gap-3 mb-4 pb-3 border-b border-white/[0.04]">
+      <div className="flex items-center gap-3 mb-4 pb-3 border-b border-[var(--dk-separator)]">
         <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
           <Disc3 size={18} className="text-primary" />
         </div>
@@ -42,8 +42,8 @@ export const ConsoleDisambiguationModal = ({
 
       <div className="space-y-3">
         {/* Game summary */}
-        <div className="flex items-center gap-3 p-3 rounded-2xl bg-white/[0.03] border border-white/[0.04]">
-          <div className="w-10 h-10 rounded-xl overflow-hidden shrink-0 bg-white/5 flex items-center justify-center">
+        <div className="flex items-center gap-3 p-3 rounded-2xl bg-[var(--dk-surface-ghost)] border border-[var(--dk-separator)]">
+          <div className="w-10 h-10 rounded-xl overflow-hidden shrink-0 bg-[var(--dk-surface-field)] flex items-center justify-center">
             {game.iconUrl ? (
               <img src={game.iconUrl} alt="" className="w-full h-full object-cover" />
             ) : (
@@ -64,10 +64,10 @@ export const ConsoleDisambiguationModal = ({
               type="button"
               disabled={isSubmitting}
               onClick={() => onSelectPlatform(opt.platform)}
-              className="flex items-center justify-between p-3.5 rounded-2xl bg-white/[0.02] hover:bg-white/[0.06] border border-white/[0.04] transition-all text-left group disabled:opacity-50"
+              className="flex items-center justify-between p-3.5 rounded-2xl bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-field)] border border-[var(--dk-separator)] transition-all text-left group disabled:opacity-50"
             >
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-xs font-bold text-muted-foreground group-hover:text-foreground group-hover:bg-primary/20 transition-colors">
+                <div className="w-8 h-8 rounded-lg bg-[var(--dk-surface-field)] flex items-center justify-center text-xs font-bold text-muted-foreground group-hover:text-foreground group-hover:bg-primary/20 transition-colors">
                   <Gamepad2 size={16} />
                 </div>
                 <div>
@@ -88,4 +88,4 @@ export const ConsoleDisambiguationModal = ({
       </div>
     </DkDialog>
   )
-}
+};

@@ -103,7 +103,7 @@ export const SetupStepWelcome = ({
                     {opt.tags.map((tag) => (
                       <span
                         key={tag}
-                        className="rounded-md bg-white/[0.04] px-2 py-0.5 text-[10px] text-muted-foreground"
+                        className="rounded-md bg-[var(--dk-surface-ghost)] border border-[var(--dk-separator)] px-2 py-0.5 text-[10px] text-muted-foreground"
                       >
                         {tag}
                       </span>
@@ -117,7 +117,7 @@ export const SetupStepWelcome = ({
                   className={`flex h-6 w-6 items-center justify-center rounded-full transition-all ${
                     isSelected
                       ? 'bg-primary text-primary-foreground shadow-sm'
-                      : 'border border-white/[0.12] group-hover:border-white/[0.25]'
+                      : 'border border-[var(--dk-separator)] group-hover:border-primary/40'
                   }`}
                 >
                   {isSelected && <Check className="h-3.5 w-3.5 stroke-[3]" />}

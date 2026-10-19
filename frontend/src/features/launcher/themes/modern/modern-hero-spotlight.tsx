@@ -32,7 +32,7 @@ export const ModernHeroSpotlight = ({
   const screenshots = detail?.screenshots?.slice(0, 6) || []
 
   return (
-    <section className="relative w-full h-[520px] rounded-3xl overflow-hidden mb-8 border border-white/[0.08] shadow-[0_24px_70px_rgba(0,0,0,0.8)] group select-none">
+    <section className="relative w-full h-[520px] rounded-3xl overflow-hidden mb-8 border border-[var(--dk-separator)] shadow-[0_24px_70px_rgba(0,0,0,0.8)] group select-none">
       {/* Dynamic Ambient Background */}
       <AnimatePresence initial={false}>
         <motion.div
@@ -131,7 +131,7 @@ export const ModernHeroSpotlight = ({
                   onMouseLeave={() => setHoveredScreenshot(null)}
                   className={`relative w-24 h-14 rounded-xl overflow-hidden cursor-pointer border transition-all duration-200 shrink-0 ${
                     hoveredScreenshot === s.url
-                      ? "border-[oklch(0.705_0.213_47.604)] scale-105 shadow-lg shadow-black/80"
+                      ? "border-primary scale-105 shadow-lg shadow-black/80"
                       : "border-white/15 opacity-70 hover:opacity-100 hover:border-white/40"
                   }`}
                 >

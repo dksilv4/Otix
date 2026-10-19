@@ -79,7 +79,7 @@
 /* ── Ghost button ── */
 .dk-library-plex__btn-ghost {
   @apply inline-flex items-center gap-1.5 text-xs font-medium transition-colors;
-  color: oklch(0.5 0 0);
+  color: hsl(var(--muted-foreground));
 }
 
 .dk-library-plex__btn-ghost:hover {
@@ -93,12 +93,12 @@
 /* ── Result & error text ── */
 .dk-library-plex__result-text {
   @apply mt-2 text-xs;
-  color: oklch(0.5 0 0);
+  color: hsl(var(--muted-foreground));
 }
 
 .dk-library-plex__error-text {
   @apply mt-2 text-xs;
-  color: oklch(0.5 0 0);
+  color: hsl(var(--muted-foreground));
 }
 
 /* ── Top bar (filters + sync area) ── */
@@ -112,7 +112,7 @@
 
 .dk-library-plex__status-text {
   @apply text-xs;
-  color: oklch(0.5 0 0);
+  color: hsl(var(--muted-foreground));
 }
 
 .dk-library-plex__sync-area {
@@ -121,7 +121,7 @@
 
 .dk-library-plex__sync-phase {
   @apply text-xs;
-  color: oklch(0.5 0 0);
+  color: hsl(var(--muted-foreground));
 }
 
 /* ── Progress bar ── */
@@ -131,12 +131,12 @@
 
 .dk-library-plex__progress-info {
   @apply flex justify-between text-xs mb-1;
-  color: oklch(0.5 0 0);
+  color: hsl(var(--muted-foreground));
 }
 
 .dk-library-plex__progress-bar-bg {
   @apply w-full h-1 rounded-full overflow-hidden;
-  background-color: oklch(0.2 0 0);
+  background-color: var(--dk-surface-ghost);
 }
 
 .dk-library-plex__progress-bar-fill {
@@ -151,12 +151,12 @@
 
 .dk-library-plex__artist-name {
   @apply mt-1 text-xs;
-  color: oklch(0.5 0 0);
+  color: hsl(var(--muted-foreground));
 }
 
 .dk-library-plex__track-count {
   @apply mt-0.5 text-xs;
-  color: oklch(0.5 0 0);
+  color: hsl(var(--muted-foreground));
 }
 
 /* ── View row (plays / views) ── */
@@ -166,23 +166,22 @@
 
 .dk-library-plex__view-icon {
   @apply h-3 w-3;
-  color: oklch(0.5 0 0);
+  color: hsl(var(--muted-foreground));
 }
 
 .dk-library-plex__view-count {
   font-size: 11px;
-  color: oklch(0.5 0 0);
+  color: hsl(var(--muted-foreground));
 }
 
 .dk-library-plex__recent-badge {
   font-size: 11px;
-  @apply font-medium;
-  color: oklch(0.65 0.03 145);
+  @apply font-medium text-emerald-600 dark:text-emerald-400;
 }
 
 .dk-library-plex__last-viewed {
   font-size: 11px;
-  color: oklch(0.5 0 0);
+  color: hsl(var(--muted-foreground));
 }
 
 /* ── More / spinner ── */
@@ -196,7 +195,7 @@
 
 .dk-library-plex__end-text {
   @apply text-xs;
-  color: oklch(0.5 0 0);
+  color: hsl(var(--muted-foreground));
 }
 
 /* ── Dashboard section ── */
@@ -307,7 +306,7 @@
 
 .dk-library-plex__quick-link-sub {
   @apply text-xs block mt-0.5;
-  color: oklch(0.5 0 0);
+  color: hsl(var(--muted-foreground));
 }
 
 /* ── Carousel ── */
@@ -321,12 +320,12 @@
 
 .dk-library-plex__carousel-title {
   @apply text-sm font-semibold;
-  color: oklch(0.6 0 0);
+  color: hsl(var(--muted-foreground));
 }
 
 .dk-library-plex__carousel-link {
   @apply text-xs font-medium transition-colors;
-  color: oklch(0.5 0 0);
+  color: hsl(var(--muted-foreground));
 }
 
 .dk-library-plex__carousel-link:hover {
@@ -388,7 +387,7 @@
 
 .dk-library-plex__carousel-card-sub {
   @apply text-xs truncate;
-  color: oklch(0.5 0 0);
+  color: hsl(var(--muted-foreground));
 }
 
 /* ── Dashboard view (legacy) ── */

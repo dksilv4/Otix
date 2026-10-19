@@ -54,27 +54,27 @@ export const NodeDownloaderCard = ({ server }: { server: GameServer }) => {
   }
 
   return (
-    <div className="rounded-2xl p-4 bg-white/5 border border-white/10 space-y-3">
+    <div className="rounded-2xl p-4 bg-[var(--dk-surface-base)] border border-[var(--dk-separator)] space-y-3">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-3.5 min-w-0">
-          <div className="h-11 w-11 rounded-2xl bg-amber-500/10 flex items-center justify-center shrink-0 border border-amber-500/20 text-amber-400">
+          <div className="h-11 w-11 rounded-2xl bg-amber-500/10 flex items-center justify-center shrink-0 border border-amber-500/20 text-amber-600 dark:text-amber-400">
             <DownloadCloud className="h-5 w-5" />
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <h4 className="text-sm font-bold text-white">SABnzbd Downloader</h4>
+              <h4 className="text-sm font-bold text-foreground">SABnzbd Downloader</h4>
               {isConfigured ? (
                 <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
                   <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
                   Connected
                 </span>
               ) : (
-                <span className="inline-flex items-center gap-1 text-[10px] font-medium text-white/50 bg-white/5 px-2 py-0.5 rounded-full border border-white/10">
+                <span className="inline-flex items-center gap-1 text-[10px] font-medium text-muted-foreground bg-[var(--dk-surface-ghost)] px-2 py-0.5 rounded-full border border-[var(--dk-separator)]">
                   Not Configured
                 </span>
               )}
             </div>
-            <p className="text-xs text-white/50 mt-1">
+            <p className="text-xs text-muted-foreground mt-1">
               {configLoading
                 ? 'Loading configuration...'
                 : isConfigured

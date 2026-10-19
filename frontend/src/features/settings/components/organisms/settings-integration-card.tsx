@@ -45,12 +45,12 @@ export const IntegrationCard = ({
     <>
       <div
         className={cn(
-          'rounded-2xl overflow-hidden shadow-lg shadow-black/20 backdrop-blur-xl transition-all duration-200',
+          'rounded-2xl overflow-hidden backdrop-blur-xl transition-all duration-200',
           className,
         )}
         style={{
           backgroundColor: 'var(--dk-surface-raised)',
-          boxShadow: 'inset 0 1px 0 0 rgba(255, 255, 255, 0.05), 0 4px 20px -4px rgba(0, 0, 0, 0.3)',
+          boxShadow: 'var(--dk-shadow-card)',
           ...style,
         }}
       >
@@ -70,7 +70,7 @@ export const IntegrationCard = ({
           }
           className={cn(
             'flex w-full items-center gap-4 px-5 py-4 text-left transition-colors duration-150',
-            isConnected && 'cursor-pointer hover:bg-white/[0.03] active:bg-white/[0.03]',
+            isConnected && 'cursor-pointer hover:bg-[var(--dk-surface-hover)] active:bg-[var(--dk-surface-hover)]',
           )}
         >
           <div className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-xl', brandBg)} style={{ color: brandColor }}>
@@ -78,22 +78,22 @@ export const IntegrationCard = ({
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
-              <p className="text-sm font-semibold">{name}</p>
-              {isConnected && <span className="h-1.5 w-1.5 rounded-full shrink-0 bg-green-500" />}
+              <p className="text-sm font-semibold text-foreground">{name}</p>
+              {isConnected && <span className="h-1.5 w-1.5 rounded-full shrink-0 bg-emerald-500" />}
             </div>
-            <p className="text-xs text-white/60 mt-0.5 truncate">{description}</p>
+            <p className="text-xs text-muted-foreground mt-0.5 truncate">{description}</p>
           </div>
           {isConnected ? (
             <div className="flex items-center gap-2 shrink-0">
-              <span className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-semibold bg-emerald-500/10 text-emerald-400 shadow-sm">
+              <span className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-semibold bg-emerald-500/10 text-emerald-700 dark:text-emerald-400">
                 <Check className="h-3.5 w-3.5" />
                 Connected
               </span>
               <span
-                className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-medium text-white/70 bg-white/5 hover:bg-white/10 hover:text-white transition-colors"
+                className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-medium text-foreground bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-hover)] transition-colors"
                 aria-label={`Configure ${name}`}
               >
-                <Settings className="h-3.5 w-3.5 text-white/60" />
+                <Settings className="h-3.5 w-3.5 text-muted-foreground" />
                 <span>Configure</span>
               </span>
             </div>
@@ -110,7 +110,7 @@ export const IntegrationCard = ({
             </DkButton>
           )}
         </div>
-        {error && !isConnected && <p className="px-5 pb-3 text-xs text-red-400">{error}</p>}
+        {error && !isConnected && <p className="px-5 pb-3 text-xs text-destructive">{error}</p>}
       </div>
 
       {isConnected && (
@@ -127,7 +127,7 @@ export const IntegrationCard = ({
                 <Icon className="h-5 w-5" />
               </div>
               <div className="min-w-0">
-                <span className="text-base font-semibold text-white">{name} Settings</span>
+                <span className="text-base font-semibold text-foreground">{name} Settings</span>
               </div>
             </div>
           }
@@ -145,7 +145,7 @@ export const IntegrationCard = ({
                   loading={disconnecting}
                   leftIcon={Unlink}
                   loadingText="Disconnecting…"
-                  className="w-full bg-red-500/10 text-red-400 shadow-none hover:bg-red-500/15"
+                  className="w-full bg-destructive/10 text-destructive shadow-none hover:bg-destructive/15"
                 >
                   Disconnect {name}
                 </DkButton>
@@ -180,18 +180,18 @@ export const IntegrationProfile = ({
   return (
     <div className="flex items-center gap-3 px-5 py-4">
       {avatarUrl ? (
-        <img src={avatarUrl} alt={avatarAlt} className="h-10 w-10 rounded-xl object-cover ring-1 ring-white/10" />
+        <img src={avatarUrl} alt={avatarAlt} className="h-10 w-10 rounded-xl object-cover" />
       ) : (
         <div
-          className={cn('flex h-10 w-10 items-center justify-center rounded-xl bg-white/5', brandBg)}
+          className={cn('flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--dk-surface-ghost)]', brandBg)}
           style={brandColor ? { color: brandColor } : undefined}
         >
           {Icon && <Icon className="h-5 w-5" />}
         </div>
       )}
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-medium truncate">{name}</p>
-        <p className="text-xs text-white/60 truncate">{detail}</p>
+        <p className="text-sm font-medium text-foreground truncate">{name}</p>
+        <p className="text-xs text-muted-foreground truncate">{detail}</p>
       </div>
       {meta}
     </div>
@@ -224,14 +224,14 @@ export const IntegrationAction = ({
   muted?: boolean
 }) => {
   return (
-    <div className={cn('flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-5 py-4', muted && 'bg-white/[0.02]')}>
+    <div className={cn('flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-5 py-4', muted && 'bg-[var(--dk-surface-ghost)]')}>
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2 flex-wrap">
-          <p className="text-xs font-semibold uppercase text-white/40 tracking-wider">{label}</p>
+          <p className="text-xs font-semibold uppercase text-muted-foreground tracking-wider">{label}</p>
           {progress}
         </div>
-        <p className="mt-1 text-sm font-medium">{description}</p>
-        {result && <p className="text-xs text-white/60 mt-0.5">{result}</p>}
+        <p className="mt-1 text-sm font-medium text-foreground">{description}</p>
+        {result && <p className="text-xs text-muted-foreground mt-0.5">{result}</p>}
         {children}
       </div>
       <DkButton
@@ -251,10 +251,10 @@ export const IntegrationAction = ({
 
 export const IntegrationStats = ({ items }: { items: { label: string; value: string | number }[] }) => {
   return (
-    <div className="flex flex-wrap gap-x-5 gap-y-1 text-xs text-white/60 px-5 py-3">
+    <div className="flex flex-wrap gap-x-5 gap-y-1 text-xs text-muted-foreground px-5 py-3">
       {items.map((item) => (
         <span key={item.label}>
-          <strong className="text-white font-semibold">{item.value}</strong> {item.label}
+          <strong className="text-foreground font-semibold">{item.value}</strong> {item.label}
         </span>
       ))}
     </div>

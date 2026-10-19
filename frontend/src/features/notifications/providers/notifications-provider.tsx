@@ -15,6 +15,7 @@ import type {
   NotificationPreferences,
 } from '../types'
 
+import { convertKeysToCamelCase } from '@/lib/api/client'
 import {
   isInQuietHours,
   appendNotificationToFeed,
@@ -55,12 +56,14 @@ export const NotificationsProvider = ({ children }: NotificationsProviderProps) 
   const handleMessage = useCallback(
     (event: SseEvent) => {
       const raw = event as Record<string, unknown>
+      const rawMeta = (raw.metadataJson ?? raw.metadata ?? raw.metadata_json ?? {}) as Record<string, unknown>
+      const meta = (convertKeysToCamelCase(rawMeta) || {}) as Record<string, unknown>
       const n: NotificationEvent = {
         id: String((raw.id as string | number) || ''),
         type: (raw.type as NotificationType) || '',
         title: (raw.title as string) || '',
         body: (raw.body as string) ?? null,
-        metadata: (raw.metadataJson ?? raw.metadata ?? {}) as Record<string, unknown>,
+        metadata: meta,
         isRead: (raw.isRead ?? raw.is_read ?? false) as boolean,
         createdAt: (raw.createdAt ?? raw.created_at ?? '') as string,
       }

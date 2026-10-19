@@ -36,7 +36,7 @@ const OfflineWatchlistTab = ({ items }: { items: OfflineWatchlistItem[] }) => {
 
   return (
     <>
-      <div className="mb-4 flex items-center justify-between gap-3 rounded-xl border border-white/[0.06] bg-white/[0.03] px-4 py-3">
+      <div className="mb-4 flex items-center justify-between gap-3 rounded-xl border border-[var(--dk-separator)] bg-[var(--dk-surface-glass)] px-4 py-3">
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <HardDrive className="h-3.5 w-3.5 shrink-0" />
           {items.length} {items.length === 1 ? "title" : "titles"} saved on this device
@@ -44,7 +44,7 @@ const OfflineWatchlistTab = ({ items }: { items: OfflineWatchlistItem[] }) => {
         <button
           type="button"
           onClick={() => clearOfflineWatchlist()}
-          className="text-[11px] font-medium text-muted-foreground hover:text-white transition-colors"
+          className="text-[11px] font-medium text-muted-foreground hover:text-foreground transition-colors"
         >
           Clear
         </button>

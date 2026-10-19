@@ -85,24 +85,21 @@ export const UserSocialListModal = ({
           y: visible ? 0 : 12,
         }}
         transition={{ duration: 0.28, ease: EASE }}
-        className="relative z-10 flex w-full max-w-md max-h-[min(80vh,520px)] flex-col overflow-hidden rounded-3xl p-6 sm:p-7 text-white pointer-events-auto"
+        className="relative z-10 flex w-full max-w-md max-h-[min(80vh,520px)] flex-col overflow-hidden rounded-3xl p-6 sm:p-7 text-foreground border border-[var(--dk-separator)] pointer-events-auto"
         style={{
-          backgroundColor: 'oklch(from var(--dk-surface-base) l c h / 0.78)',
-          boxShadow:
-            'inset 0 1px 1px 0 rgba(255, 255, 255, 0.15), inset 0 0 0 1px rgba(255, 255, 255, 0.04), 0 30px 60px -12px rgba(0, 0, 0, 0.85)',
+          backgroundColor: 'var(--dk-surface-overlay)',
+          boxShadow: 'var(--dk-shadow-dialog)',
         }}
       >
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-white/[0.04] via-transparent to-black/[0.2]" />
-
         <div className="relative z-10 mb-4 flex shrink-0 items-start justify-between gap-4">
           <div className="space-y-1">
-            <h2 className="text-lg font-bold tracking-tight text-white">{TITLES[kind]}</h2>
-            <p className="text-xs leading-relaxed text-white/60">@{username}</p>
+            <h2 className="text-lg font-bold tracking-tight text-foreground">{TITLES[kind]}</h2>
+            <p className="text-xs leading-relaxed text-muted-foreground">@{username}</p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="shrink-0 cursor-pointer rounded-xl p-2 text-white/40 transition-all hover:bg-white/10 hover:text-white"
+            className="shrink-0 cursor-pointer rounded-xl p-2 text-muted-foreground transition-all hover:bg-[var(--dk-surface-ghost-hover)] hover:text-foreground"
             aria-label="Close dialog"
           >
             <X className="h-4 w-4" />
@@ -122,8 +119,8 @@ export const UserSocialListModal = ({
               >
                 {Array.from({ length: 4 }).map((_, i) => (
                   <div key={i} className="flex items-center gap-3 rounded-xl px-2 py-2">
-                    <div className="h-9 w-9 shrink-0 animate-pulse rounded-full bg-white/10" />
-                    <div className="h-3 w-28 animate-pulse rounded bg-white/10" />
+                    <div className="h-9 w-9 shrink-0 animate-pulse rounded-full bg-[var(--dk-surface-ghost)]" />
+                    <div className="h-3 w-28 animate-pulse rounded bg-[var(--dk-surface-ghost)]" />
                   </div>
                 ))}
               </motion.div>
@@ -135,7 +132,7 @@ export const UserSocialListModal = ({
                 initial={{ opacity: 0, y: 4 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0 }}
-                className="py-8 text-center text-sm text-white/40"
+                className="py-8 text-center text-sm text-muted-foreground"
               >
                 Could not load this list.
               </motion.p>
@@ -147,7 +144,7 @@ export const UserSocialListModal = ({
                 initial={{ opacity: 0, y: 4 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0 }}
-                className="py-8 text-center text-sm text-white/40"
+                className="py-8 text-center text-sm text-muted-foreground"
               >
                 {EMPTY[kind]}
               </motion.p>
@@ -181,11 +178,11 @@ export const UserSocialListModal = ({
                   >
                     <button
                       type="button"
-                      className="flex w-full cursor-pointer items-center gap-3 rounded-xl px-2 py-2 text-left transition-colors hover:bg-white/[0.06] active:scale-[0.99]"
+                      className="flex w-full cursor-pointer items-center gap-3 rounded-xl px-2 py-2 text-left transition-colors hover:bg-[var(--dk-surface-ghost-hover)] active:scale-[0.99]"
                       onClick={() => openProfile(user.username)}
                     >
                       <DkAvatar src={user.avatarUrl} name={user.username} size="sm" />
-                      <span className="truncate text-sm font-medium text-white/90">
+                      <span className="truncate text-sm font-medium text-foreground">
                         {user.username}
                       </span>
                     </button>

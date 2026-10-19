@@ -108,7 +108,8 @@ const CommandPalettePanel = ({ onClose }: { onClose: () => void }) => {
 
   return (
     <motion.div
-      className="glass-card relative w-full max-w-[640px] overflow-hidden rounded-2xl"
+      className="relative w-full max-w-[640px] overflow-hidden rounded-2xl shadow-[var(--dk-shadow-dialog)] border border-[var(--dk-separator)] backdrop-blur-2xl"
+      style={{ backgroundColor: 'var(--dk-surface-overlay)' }}
       initial={{ opacity: 0, y: -8, scale: 0.98 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: -8, scale: 0.98 }}
@@ -116,17 +117,17 @@ const CommandPalettePanel = ({ onClose }: { onClose: () => void }) => {
       onKeyDown={handleKeyDown}
     >
       {/* Input */}
-      <div className="flex items-center gap-3 border-b border-white/10 px-4 py-3">
-        <Search className="h-4 w-4 shrink-0 text-white/40" />
+      <div className="flex items-center gap-3 border-b border-[var(--dk-separator)] px-4 py-3">
+        <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
         <input
           ref={inputRef}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search games, movies, shows, music…"
           aria-label="Search command palette"
-          className="w-full bg-transparent text-sm text-white placeholder:text-white/40 focus:outline-none"
+          className="w-full bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
         />
-        <kbd className="shrink-0 rounded border border-white/10 px-1.5 py-0.5 text-[10px] text-white/40">
+        <kbd className="shrink-0 rounded border border-[var(--dk-separator)] bg-[var(--dk-surface-ghost)] px-1.5 py-0.5 text-[10px] text-muted-foreground">
           esc
         </kbd>
       </div>
@@ -134,9 +135,9 @@ const CommandPalettePanel = ({ onClose }: { onClose: () => void }) => {
       {/* Results */}
       <div className="max-h-[50vh] overflow-y-auto py-2">
         {isLoading && flatCommands.length === 0 ? (
-          <p className="px-4 py-6 text-center text-sm text-white/40">Searching…</p>
+          <p className="px-4 py-6 text-center text-sm text-muted-foreground">Searching…</p>
         ) : flatCommands.length === 0 ? (
-          <p className="px-4 py-6 text-center text-sm text-white/40">
+          <p className="px-4 py-6 text-center text-sm text-muted-foreground">
             {query.trim() ? `No results for “${query.trim()}”` : 'Type to search'}
           </p>
         ) : (
@@ -145,7 +146,7 @@ const CommandPalettePanel = ({ onClose }: { onClose: () => void }) => {
             offset += group.commands.length
             return (
               <div key={group.providerId}>
-                <div className="px-4 pb-1 pt-3 text-[11px] font-semibold uppercase tracking-wider text-white/40">
+                <div className="px-4 pb-1 pt-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70">
                   {group.label}
                 </div>
                 {(Array.isArray(group.commands) ? group.commands : []).map((command, i) => {
@@ -174,10 +175,10 @@ const CommandPalettePanel = ({ onClose }: { onClose: () => void }) => {
       </div>
 
       {/* Footer hint */}
-      <div className="flex items-center justify-end gap-4 border-t border-white/10 px-4 py-2 text-[11px] text-white/40">
+      <div className="flex items-center justify-end gap-4 border-t border-[var(--dk-separator)] px-4 py-2 text-[11px] text-muted-foreground">
         <span className="flex items-center gap-1">
-          <kbd className="rounded border border-white/10 px-1">↑</kbd>
-          <kbd className="rounded border border-white/10 px-1">↓</kbd>
+          <kbd className="rounded border border-[var(--dk-separator)] bg-[var(--dk-surface-ghost)] px-1">↑</kbd>
+          <kbd className="rounded border border-[var(--dk-separator)] bg-[var(--dk-surface-ghost)] px-1">↓</kbd>
           <span>navigate</span>
         </span>
         <span className="flex items-center gap-1">

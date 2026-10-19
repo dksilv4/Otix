@@ -18,13 +18,13 @@ export const IsoInstallingProgress = ({ install, onOpenInstaller, onCancel }: Pr
     <div className="flex gap-2 items-stretch h-[38px]">
       <button
         onClick={onOpenInstaller}
-        className="relative overflow-hidden px-4 bg-white/5 hover:bg-white/8 border border-white/10 rounded-xl text-[11px] font-semibold flex items-center gap-2 transition-all cursor-pointer backdrop-blur-md active:scale-[0.99] text-white w-48 justify-start"
+        className="relative overflow-hidden px-4 bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-field)] border border-[var(--dk-separator)] rounded-xl text-[11px] font-semibold flex items-center gap-2 transition-all cursor-pointer backdrop-blur-md active:scale-[0.99] text-foreground w-48 justify-start"
       >
         <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 to-indigo-600/30 animate-pulse pointer-events-none" />
         <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-400 shrink-0 relative z-10" />
         <div className="flex flex-col items-start relative z-10 text-left min-w-0 leading-tight">
-          <span className="font-bold text-white truncate w-full text-[10px]">Installing...</span>
-          <span className="text-[9px] text-white/50 truncate w-full">
+          <span className="font-bold text-foreground truncate w-full text-[10px]">Installing...</span>
+          <span className="text-[9px] text-muted-foreground truncate w-full">
             {install.progress?.message ?? 'Installing...'}
           </span>
         </div>

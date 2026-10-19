@@ -211,10 +211,10 @@ export const DecideWatchModal = ({ onClose, isExiting }: DecideWatchModalProps) 
                   type="button"
                   onClick={() => toggleType(opt.id)}
                   className={cn(
-                    'rounded-full px-3 py-1.5 text-xs font-semibold transition-colors',
+                    'rounded-full px-3 py-1.5 text-xs font-semibold transition-colors cursor-pointer',
                     active
-                      ? 'bg-white text-black'
-                      : 'bg-white/5 text-white/70 hover:bg-white/10 hover:text-white',
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-[var(--dk-surface-ghost)] text-muted-foreground hover:bg-[var(--dk-surface-ghost-hover)] hover:text-foreground',
                   )}
                 >
                   {opt.label}
@@ -234,10 +234,10 @@ export const DecideWatchModal = ({ onClose, isExiting }: DecideWatchModalProps) 
                     setSeed((s) => s + 1)
                   }}
                   className={cn(
-                    'rounded-full px-3 py-1.5 text-xs font-semibold transition-colors',
+                    'rounded-full px-3 py-1.5 text-xs font-semibold transition-colors cursor-pointer',
                     active
-                      ? 'bg-white/20 text-white'
-                      : 'bg-white/5 text-white/60 hover:bg-white/10 hover:text-white',
+                      ? 'bg-primary/20 text-primary font-semibold'
+                      : 'bg-[var(--dk-surface-ghost)] text-muted-foreground hover:bg-[var(--dk-surface-ghost-hover)] hover:text-foreground',
                   )}
                 >
                   {opt.label}
@@ -255,10 +255,10 @@ export const DecideWatchModal = ({ onClose, isExiting }: DecideWatchModalProps) 
                     type="button"
                     onClick={() => toggleGenre(g.id)}
                     className={cn(
-                      'rounded-full px-3 py-1.5 text-xs font-medium transition-colors',
+                      'rounded-full px-3 py-1.5 text-xs font-medium transition-colors cursor-pointer',
                       active
-                        ? 'bg-amber-400/20 text-amber-100 ring-1 ring-amber-300/40'
-                        : 'bg-white/5 text-white/55 hover:bg-white/10 hover:text-white',
+                        ? 'bg-amber-500/20 text-amber-600 dark:text-amber-300 ring-1 ring-amber-500/30'
+                        : 'bg-[var(--dk-surface-ghost)] text-muted-foreground hover:bg-[var(--dk-surface-ghost-hover)] hover:text-foreground',
                     )}
                   >
                     {g.name}
@@ -269,7 +269,7 @@ export const DecideWatchModal = ({ onClose, isExiting }: DecideWatchModalProps) 
                 <button
                   type="button"
                   onClick={() => setShowAllGenres(true)}
-                  className="rounded-full px-3 py-1.5 text-xs font-medium text-white/50 hover:text-white"
+                  className="rounded-full px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground cursor-pointer"
                 >
                   More
                 </button>
@@ -279,13 +279,13 @@ export const DecideWatchModal = ({ onClose, isExiting }: DecideWatchModalProps) 
         </div>
 
         {authLoading ? (
-          <div className="flex h-48 items-center justify-center text-white/50">
+          <div className="flex h-48 items-center justify-center text-muted-foreground">
             <Loader2 className="h-5 w-5 animate-spin" />
           </div>
         ) : !isAuthenticated ? (
-          <div className="flex flex-col items-center gap-3 rounded-2xl bg-white/5 px-6 py-10 text-center">
-            <Dices className="h-8 w-8 text-white/40" />
-            <p className="text-sm text-white/70">Sign in so we can pick from your taste profile.</p>
+          <div className="flex flex-col items-center gap-3 rounded-2xl bg-[var(--dk-surface-ghost)] border border-[var(--dk-separator)] px-6 py-10 text-center">
+            <Dices className="h-8 w-8 text-muted-foreground" />
+            <p className="text-sm text-foreground">Sign in so we can pick from your taste profile.</p>
             <DkButton
               size="sm"
               onClick={() => {
@@ -298,20 +298,20 @@ export const DecideWatchModal = ({ onClose, isExiting }: DecideWatchModalProps) 
             </DkButton>
           </div>
         ) : decideQuery.isLoading ? (
-          <div className="flex h-56 flex-col items-center justify-center gap-3 text-white/50">
+          <div className="flex h-56 flex-col items-center justify-center gap-3 text-muted-foreground">
             <Loader2 className="h-6 w-6 animate-spin" />
             <p className="text-sm">Finding something for you…</p>
           </div>
         ) : decideQuery.isError ? (
-          <div className="flex flex-col items-center gap-3 rounded-2xl bg-white/5 px-6 py-10 text-center">
-            <p className="text-sm text-white/70">Couldn’t decide right now.</p>
+          <div className="flex flex-col items-center gap-3 rounded-2xl bg-[var(--dk-surface-ghost)] border border-[var(--dk-separator)] px-6 py-10 text-center">
+            <p className="text-sm text-foreground">Couldn’t decide right now.</p>
             <DkButton size="sm" variant="glass" onClick={() => decideQuery.refetch()}>
               Try again
             </DkButton>
           </div>
         ) : !hero ? (
-          <div className="flex flex-col items-center gap-3 rounded-2xl bg-white/5 px-6 py-10 text-center">
-            <p className="text-sm text-white/70">
+          <div className="flex flex-col items-center gap-3 rounded-2xl bg-[var(--dk-surface-ghost)] border border-[var(--dk-separator)] px-6 py-10 text-center">
+            <p className="text-sm text-foreground">
               Nothing matched those filters. Loosen them and pick again.
             </p>
             <DkButton size="sm" variant="glass" leftIcon={RefreshCw} onClick={pickAgain}>
@@ -321,7 +321,7 @@ export const DecideWatchModal = ({ onClose, isExiting }: DecideWatchModalProps) 
         ) : (
           <>
             {decideQuery.data?.coldStart && (
-              <p className="flex items-center gap-1.5 text-xs text-amber-200/80">
+              <p className="flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-300">
                 <Sparkles className="h-3.5 w-3.5" />
                 Still learning your taste — here’s what’s popular under these filters.
               </p>
@@ -331,7 +331,7 @@ export const DecideWatchModal = ({ onClose, isExiting }: DecideWatchModalProps) 
               <button
                 type="button"
                 onClick={() => hero && openTitle(hero)}
-                className="relative mx-auto aspect-[2/3] w-40 shrink-0 overflow-hidden rounded-2xl bg-black/40 shadow-xl sm:mx-0 sm:w-44"
+                className="relative mx-auto aspect-[2/3] w-40 shrink-0 overflow-hidden rounded-2xl bg-[var(--dk-surface-ghost)] border border-[var(--dk-separator)] shadow-xl sm:mx-0 sm:w-44 cursor-pointer"
               >
                 {(hero.posterUrl || hero.textlessPosterUrl) && (
                   <img
@@ -343,13 +343,13 @@ export const DecideWatchModal = ({ onClose, isExiting }: DecideWatchModalProps) 
               </button>
               <div className="flex min-w-0 flex-1 flex-col justify-center gap-3 text-center sm:text-left">
                 <div>
-                  <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.18em] text-amber-300/90">
+                  <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.18em] text-amber-600 dark:text-amber-400">
                     Watch this
                   </p>
-                  <h3 className="text-xl font-bold leading-tight text-white sm:text-2xl">
+                  <h3 className="text-xl font-bold leading-tight text-foreground sm:text-2xl">
                     {hero.title}
                   </h3>
-                  <p className="mt-1 text-sm text-white/55">
+                  <p className="mt-1 text-sm text-muted-foreground">
                     {[
                       MEDIA_TYPE_LABEL[hero.mediaType as keyof typeof MEDIA_TYPE_LABEL] ??
                         hero.mediaType,
@@ -370,7 +370,7 @@ export const DecideWatchModal = ({ onClose, isExiting }: DecideWatchModalProps) 
                     size="md"
                     variant="ghost"
                     leftIcon={Ban}
-                    className="text-white/60 hover:text-red-400 hover:bg-red-500/10"
+                    className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
                     disabled={blockMutation.isPending}
                     onClick={() => handleBlock(hero)}
                     title="Block this title from future recommendations"
@@ -383,7 +383,7 @@ export const DecideWatchModal = ({ onClose, isExiting }: DecideWatchModalProps) 
 
             {rest.length > 0 && (
               <div className="space-y-2">
-                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/40">
+                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
                   Or try one of these
                 </p>
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">

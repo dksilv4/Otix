@@ -114,13 +114,13 @@ const BADGE_TONE: Record<string, 'default' | 'success' | 'warning' | 'danger' | 
 }
 
 const STAT_COLOR: Record<string, string> = {
-  default: 'text-white/60',
-  success: 'text-emerald-400',
-  warning: 'text-amber-400',
-  warn: 'text-amber-400',
-  danger: 'text-red-400',
-  error: 'text-red-400',
-  info: 'text-sky-400',
+  default: 'text-muted-foreground',
+  success: 'text-emerald-600 dark:text-emerald-400',
+  warning: 'text-amber-600 dark:text-amber-400',
+  warn: 'text-amber-600 dark:text-amber-400',
+  danger: 'text-destructive',
+  error: 'text-destructive',
+  info: 'text-sky-600 dark:text-sky-400',
 }
 
 const PADDING: Record<string, string> = {
@@ -150,14 +150,14 @@ export const SlotRenderer = ({ contributions, onAction, loading, className }: Sl
   if (loading) {
     return (
       <div className="space-y-2">
-        <div className="h-10 rounded-xl bg-white/5 animate-pulse" />
-        <div className="h-16 rounded-xl bg-white/5 animate-pulse" />
+        <div className="h-10 rounded-xl bg-[var(--dk-surface-glass)] border border-[var(--dk-separator)] animate-pulse" />
+        <div className="h-16 rounded-xl bg-[var(--dk-surface-glass)] border border-[var(--dk-separator)] animate-pulse" />
       </div>
     )
   }
 
   if (contributions.length === 0) {
-    return <p className="text-xs text-white/30 italic px-1">No widgets contributed for this section.</p>
+    return <p className="text-xs text-muted-foreground italic px-1">No widgets contributed for this section.</p>
   }
 
   return (
@@ -166,8 +166,7 @@ export const SlotRenderer = ({ contributions, onAction, loading, className }: Sl
         <ErrorBoundary key={contribution.pluginId}>
           <div className="space-y-3">
             <div className="flex items-center gap-2">
-              <span className="h-1.5 w-1.5 rounded-full bg-white/25" />
-              <span className="text-[11px] font-semibold uppercase tracking-wider text-white/40">
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                 {contribution.label || contribution.pluginId}
               </span>
             </div>
@@ -340,11 +339,11 @@ const WidgetSwitch = ({
     case 'card': {
       const c = p as { title?: string; subtitle?: string; padding?: string; shadow?: string }
       return (
-        <div className={cn('rounded-xl border border-white/[0.06] bg-white/[0.02]', PADDING[c.padding || 'md'])}>
+        <div className={cn('rounded-xl border border-[var(--dk-separator)] bg-[var(--dk-surface-card)]', PADDING[c.padding || 'md'])}>
           {c.title && (
             <div className="mb-3">
-              <div className="text-sm font-semibold text-white/90">{c.title}</div>
-              {c.subtitle && <div className="text-xs text-white/40 mt-0.5">{c.subtitle}</div>}
+              <div className="text-sm font-semibold text-foreground">{c.title}</div>
+              {c.subtitle && <div className="text-xs text-muted-foreground mt-0.5">{c.subtitle}</div>}
             </div>
           )}
           <div className="space-y-4">{children}</div>
@@ -358,8 +357,8 @@ const WidgetSwitch = ({
         <section className="space-y-3">
           {(s.title || s.description) && (
             <div>
-              {s.title && <h4 className="text-[11px] font-semibold uppercase tracking-wider text-white/35">{s.title}</h4>}
-              {s.description && <p className="text-xs text-white/40 mt-1">{s.description}</p>}
+              {s.title && <h4 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{s.title}</h4>}
+              {s.description && <p className="text-xs text-muted-foreground mt-1">{s.description}</p>}
             </div>
           )}
           <div className="space-y-4">{children}</div>
@@ -374,8 +373,8 @@ const WidgetSwitch = ({
         <div>
           {(gr.title || gr.description) && (
             <div className="mb-2">
-              {gr.title && <div className="text-sm font-semibold text-white/85">{gr.title}</div>}
-              {gr.description && <p className="text-xs text-white/40 mt-0.5">{gr.description}</p>}
+              {gr.title && <div className="text-sm font-semibold text-foreground">{gr.title}</div>}
+              {gr.description && <p className="text-xs text-muted-foreground mt-0.5">{gr.description}</p>}
             </div>
           )}
           <div className={grid ? 'grid' : 'space-y-4'} style={grid ? { gridTemplateColumns: `repeat(${gr.columns}, 1fr)`, gap: gr.gap || '12px' } : undefined}>
@@ -401,13 +400,13 @@ const WidgetSwitch = ({
     case 'text': {
       const t = p as { content?: string; style?: string }
       const classes: Record<string, string> = {
-        body: 'text-sm text-white/80',
-        muted: 'text-xs text-white/45',
-        caption: 'text-[11px] text-white/35',
-        h1: 'text-lg font-semibold text-white',
-        h2: 'text-base font-semibold text-white/95',
-        h3: 'text-sm font-semibold text-white/90',
-        code: 'text-xs font-mono text-white/80 bg-white/5 rounded px-1.5 py-0.5',
+        body: 'text-sm text-foreground',
+        muted: 'text-xs text-muted-foreground',
+        caption: 'text-[11px] text-muted-foreground',
+        h1: 'text-lg font-semibold text-foreground',
+        h2: 'text-base font-semibold text-foreground',
+        h3: 'text-sm font-semibold text-foreground',
+        code: 'text-xs font-mono text-foreground bg-[var(--dk-surface-field)] border border-[var(--dk-separator)] rounded px-1.5 py-0.5',
       }
       return <div className={classes[t.style || 'body'] || classes.body}>{t.content}</div>
     }
@@ -420,13 +419,13 @@ const WidgetSwitch = ({
     case 'divider': {
       const d = p as { label?: string; orientation?: string }
       if (d.orientation === 'vertical') {
-        return <div className="w-px self-stretch bg-white/10" />
+        return <div className="w-px self-stretch bg-[var(--dk-separator)]" />
       }
       return (
         <div className="flex items-center gap-3">
-          <div className="h-px flex-1 bg-white/[0.08]" />
-          {d.label && <span className="text-[11px] font-semibold uppercase tracking-wider text-white/35">{d.label}</span>}
-          <div className="h-px flex-1 bg-white/[0.08]" />
+          <div className="h-px flex-1 bg-[var(--dk-separator)]" />
+          {d.label && <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{d.label}</span>}
+          <div className="h-px flex-1 bg-[var(--dk-separator)]" />
         </div>
       )
     }
@@ -449,16 +448,16 @@ const WidgetSwitch = ({
     case 'stat': {
       const s = p as { label?: string; value?: string; description?: string; tone?: string; icon?: string }
       return (
-        <div className="flex items-start gap-3 rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
+        <div className="flex items-start gap-3 rounded-xl border border-[var(--dk-separator)] bg-[var(--dk-surface-card)] p-4">
           {s.icon && (
-            <div className="rounded-lg bg-white/5 p-2">
+            <div className="rounded-lg bg-[var(--dk-surface-glass)] border border-[var(--dk-separator)] p-2">
               <Icon name={s.icon} className={cn('h-4 w-4', STAT_COLOR[s.tone || 'default'])} />
             </div>
           )}
           <div className="min-w-0">
-            <div className="text-xl font-semibold text-white">{s.value ?? '—'}</div>
-            <div className="text-xs text-white/45 mt-0.5">{s.label}</div>
-            {s.description && <div className="text-[11px] text-white/35 mt-1">{s.description}</div>}
+            <div className="text-xl font-semibold text-foreground">{s.value ?? '—'}</div>
+            <div className="text-xs text-muted-foreground mt-0.5">{s.label}</div>
+            {s.description && <div className="text-[11px] text-muted-foreground mt-1">{s.description}</div>}
           </div>
         </div>
       )
@@ -470,12 +469,12 @@ const WidgetSwitch = ({
         <div>
           {(pr.label || pr.description) && (
             <div className="mb-1.5 flex items-baseline justify-between gap-3">
-              <span className="text-xs text-white/60">{pr.label}</span>
-              {!pr.indeterminate && <span className="text-xs text-white/40">{Math.round(pr.value ?? 0)}%</span>}
+              <span className="text-xs text-muted-foreground">{pr.label}</span>
+              {!pr.indeterminate && <span className="text-xs text-muted-foreground">{Math.round(pr.value ?? 0)}%</span>}
             </div>
           )}
           <Progress value={pr.value ?? 0} tone={(pr.tone as any) || 'primary'} />
-          {pr.description && <p className="text-[11px] text-white/35 mt-1">{pr.description}</p>}
+          {pr.description && <p className="text-[11px] text-muted-foreground mt-1">{pr.description}</p>}
         </div>
       )
     }
@@ -514,8 +513,8 @@ const WidgetSwitch = ({
       return (
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <div className="text-sm text-white/85">{s.label}</div>
-            {s.description && <p className="text-[11px] text-white/35 mt-0.5">{s.description}</p>}
+            <div className="text-sm text-foreground">{s.label}</div>
+            {s.description && <p className="text-[11px] text-muted-foreground mt-0.5">{s.description}</p>}
           </div>
           <Switch checked={!!s.checked} onCheckedChange={(v) => s.action && onAction(pluginId, s.action, { value: v })} />
         </div>
@@ -530,15 +529,15 @@ const WidgetSwitch = ({
       }
       const items = l.items || []
       if (items.length === 0) {
-        return <p className="text-xs italic text-white/30">{l.emptyText || 'No items'}</p>
+        return <p className="text-xs italic text-muted-foreground">{l.emptyText || 'No items'}</p>
       }
       return (
         <div className="flex flex-col gap-1.5">
           {items.map((item, i) => (
-            <div key={item.key || i} className="flex items-center gap-3 rounded-xl border border-white/[0.06] bg-white/[0.02] px-3.5 py-2.5">
+            <div key={item.key || i} className="flex items-center gap-3 rounded-xl border border-[var(--dk-separator)] bg-[var(--dk-surface-card)] px-3.5 py-2.5">
               <div className="min-w-0 flex-1">
-                <div className="truncate text-sm font-medium text-white/85">{item.title}</div>
-                {item.subtitle && <div className="mt-0.5 truncate text-xs text-white/40">{item.subtitle}</div>}
+                <div className="truncate text-sm font-medium text-foreground">{item.title}</div>
+                {item.subtitle && <div className="mt-0.5 truncate text-xs text-muted-foreground">{item.subtitle}</div>}
               </div>
               {item.badge && <Badge>{item.badge}</Badge>}
               {item.actions?.map((a, ai) => {
@@ -563,18 +562,18 @@ const WidgetSwitch = ({
       const columns = t.columns || []
       const rows = t.rows || []
       if (rows.length === 0) {
-        return <p className="text-xs italic text-white/30">No rows</p>
+        return <p className="text-xs italic text-muted-foreground">No rows</p>
       }
       return (
-        <div className="overflow-x-auto rounded-xl border border-white/[0.06]">
+        <div className="overflow-x-auto rounded-xl border border-[var(--dk-separator)]">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-white/[0.06]">
+              <tr className="border-b border-[var(--dk-separator)]">
                 {columns.map((col) => (
                   <th
-                    key={col.key}
-                    style={col.width ? { width: col.width } : undefined}
-                    className="px-3.5 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-white/40"
+                     key={col.key}
+                     style={col.width ? { width: col.width } : undefined}
+                     className="px-3.5 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground"
                   >
                     {col.label}
                   </th>
@@ -583,9 +582,9 @@ const WidgetSwitch = ({
             </thead>
             <tbody>
               {rows.map((row, ri) => (
-                <tr key={row.key || ri} className="border-b border-white/[0.04] last:border-0">
+                <tr key={row.key || ri} className="border-b border-[var(--dk-separator)] last:border-0">
                   {columns.map((col) => (
-                    <td key={col.key} className="px-3.5 py-2.5 text-xs text-white/70">
+                    <td key={col.key} className="px-3.5 py-2.5 text-xs text-foreground">
                       {renderCell(row.cells?.[col.key])}
                     </td>
                   ))}
@@ -638,14 +637,14 @@ const WidgetSwitch = ({
       const l = p as { label?: string; href?: string; external?: boolean; icon?: string }
       const href = l.href ? safeUrl(l.href) : undefined
       if (!href) {
-        return <span className="text-sm text-white/40">{l.label}</span>
+        return <span className="text-sm text-muted-foreground">{l.label}</span>
       }
       return (
         <a
           href={href}
           target={l.external ? '_blank' : undefined}
           rel={l.external ? 'noreferrer noopener' : undefined}
-          className="inline-flex items-center gap-1.5 text-sm text-sky-400 hover:text-sky-300 hover:underline"
+          className="inline-flex items-center gap-1.5 text-sm text-sky-600 dark:text-sky-400 hover:text-sky-500 hover:underline"
         >
           {l.icon && <Icon name={l.icon} className="h-3.5 w-3.5" />}
           {l.label}
@@ -671,7 +670,7 @@ const WidgetSwitch = ({
       const h = s.height || (variant === 'text' ? '16px' : variant === 'circle' ? '40px' : '80px')
       return (
         <div
-          className="animate-pulse rounded-lg bg-white/5"
+          className="animate-pulse rounded-lg bg-[var(--dk-surface-glass)]"
           style={{ width: w, height: h, borderRadius: variant === 'circle' ? '50%' : undefined }}
         />
       )
@@ -733,7 +732,7 @@ const TabsWidget = ({
 
   return (
     <div>
-      <div className="mb-4 flex gap-1 overflow-x-auto border-b border-white/[0.06]">
+      <div className="mb-4 flex gap-1 overflow-x-auto border-b border-[var(--dk-separator)]">
         {tabs.map((t) => (
           <button
             key={t.id}
@@ -743,8 +742,8 @@ const TabsWidget = ({
               if (actionKey) onAction(pluginId, actionKey, { tab: t.id })
             }}
             className={cn(
-              '-mb-px whitespace-nowrap border-b-2 px-3 py-2 text-xs font-semibold transition-colors',
-              active === t.id ? 'border-primary text-white' : 'border-transparent text-white/40 hover:text-white/70',
+              '-mb-px whitespace-nowrap border-b-2 px-3 py-2 text-xs font-semibold transition-colors cursor-pointer',
+              active === t.id ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground',
             )}
           >
             {t.label}
@@ -886,8 +885,8 @@ const FieldsWidget = ({
             return (
               <div key={field.key} className="flex items-center justify-between gap-3">
                 <div>
-                  <div className="text-sm text-white/85">{field.label}</div>
-                  {field.description && <p className="text-[11px] text-white/35">{field.description}</p>}
+                  <div className="text-sm text-foreground">{field.label}</div>
+                  {field.description && <p className="text-[11px] text-muted-foreground">{field.description}</p>}
                 </div>
                 <Switch checked={Boolean(value)} onCheckedChange={(v) => setField(field.key, v)} />
               </div>
@@ -959,7 +958,7 @@ const PathListField = ({
               onChange={(next) => update(idx, next)}
               className="min-w-0 flex-1"
             />
-            <Button type="button" variant="ghost" size="sm" className="h-9 w-9 shrink-0 p-0 text-white/30 hover:text-red-400" onClick={() => remove(idx)}>
+            <Button type="button" variant="ghost" size="sm" className="h-9 w-9 shrink-0 p-0 text-muted-foreground hover:text-destructive" onClick={() => remove(idx)}>
               <Trash2 className="h-4 w-4" />
             </Button>
           </div>
@@ -979,24 +978,24 @@ const Markdown = ({ content }: { content: string }) => {
   if (blocks.length === 0) return null
 
   return (
-    <div className="space-y-2.5 text-sm text-white/75">
+    <div className="space-y-2.5 text-sm text-foreground">
       {blocks.map((block, i) => {
         if (block.startsWith('```')) {
           const body = block.replace(/^```[a-z]*\n?/, '').replace(/```$/, '').trim()
-          return <pre key={i} className="overflow-x-auto rounded-lg bg-white/5 p-3 font-mono text-xs text-white/80">{body}</pre>
+          return <pre key={i} className="overflow-x-auto rounded-lg bg-[var(--dk-surface-field)] border border-[var(--dk-separator)] p-3 font-mono text-xs text-foreground">{body}</pre>
         }
         const h = block.match(/^(#{1,3})\s+(.+)$/)
         if (h) {
           const lvl = h[1].length
           return (
-            <div key={i} className={cn(lvl === 1 ? 'text-base font-semibold text-white' : lvl === 2 ? 'text-sm font-semibold text-white/95' : 'text-[13px] font-semibold text-white/90')}>
+            <div key={i} className={cn(lvl === 1 ? 'text-base font-semibold text-foreground' : lvl === 2 ? 'text-sm font-semibold text-foreground' : 'text-[13px] font-semibold text-foreground')}>
               {renderInline(h[2])}
             </div>
           )
         }
         if (block.split('\n').every((line) => line.startsWith('>'))) {
           const quote = block.split('\n').map((line) => line.replace(/^>\s?/, '')).join('\n')
-          return <blockquote key={i} className="border-l-2 border-white/15 pl-3 text-white/60">{renderInline(quote)}</blockquote>
+          return <blockquote key={i} className="border-l-2 border-[var(--dk-separator)] pl-3 text-muted-foreground">{renderInline(quote)}</blockquote>
         }
         const lines = block.split('\n')
         const isList = lines.some((line) => /^[-*+]\s/.test(line))

@@ -288,7 +288,7 @@ export const MediaDetailPage = () => {
                           onClick={() => setBlueprintSubTab('vault')}
                           className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${blueprintSubTab === 'vault'
                             ? 'bg-primary/10 text-primary'
-                            : 'text-muted-foreground hover:text-white hover:bg-white/5'
+                            : 'text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-glass)]'
                             }`}
                         >
                           Vault
@@ -297,7 +297,7 @@ export const MediaDetailPage = () => {
                           onClick={() => setBlueprintSubTab('community')}
                           className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${blueprintSubTab === 'community'
                             ? 'bg-primary/10 text-primary'
-                            : 'text-muted-foreground hover:text-white hover:bg-white/5'
+                            : 'text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-glass)]'
                             }`}
                         >
                           Community

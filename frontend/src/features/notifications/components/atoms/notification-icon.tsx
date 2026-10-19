@@ -12,8 +12,8 @@ export const NotificationIcon = ({ type, className }: NotificationIconProps) => 
   const config = getTypeConfig(type)
   const Icon = getTypeIcon(type)
   return (
-    <div className={cn('shrink-0 rounded-xl p-2 bg-white/5', className)}>
-      {createElement(Icon, { className: cn('h-4 w-4', config?.color ?? 'text-white/70') })}
+    <div className={cn('shrink-0 rounded-xl p-2 bg-[var(--dk-surface-glass)] border border-[var(--dk-separator)]', className)}>
+      {createElement(Icon, { className: cn('h-4 w-4', config?.color ?? 'text-muted-foreground') })}
     </div>
   )
 };

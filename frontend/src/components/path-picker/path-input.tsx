@@ -89,7 +89,7 @@ export const PathInput = ({
   return (
     <div className={cn(compact ? '' : 'space-y-1.5', className)}>
       {label && (
-        <label htmlFor={inputId} className="block text-xs font-medium text-white/60">
+        <label htmlFor={inputId} className="block text-xs font-medium text-muted-foreground">
           {label}
         </label>
       )}
@@ -104,8 +104,8 @@ export const PathInput = ({
             onKeyDown={handleKeyDown}
             onBlur={handleBlur}
             className={cn(
-              'h-9 w-full rounded-xl bg-white/5 pl-3 pr-8 text-xs text-white outline-none placeholder:text-white/30 focus:bg-white/10 transition-all duration-200',
-              justConfirmed && 'bg-emerald-500/15 text-emerald-200',
+              'h-9 w-full rounded-xl bg-[var(--dk-surface-field)] pl-3 pr-8 text-xs text-foreground outline-none placeholder:text-muted-foreground/50 focus:bg-[var(--dk-surface-ghost-hover)] transition-all duration-200',
+              justConfirmed && 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-200',
               inputClassName,
             )}
           />
@@ -115,7 +115,7 @@ export const PathInput = ({
               onClick={handleClear}
               title="Clear / Undo path selection"
               aria-label="Clear path"
-              className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1 text-white/40 hover:bg-white/10 hover:text-white transition-colors cursor-pointer"
+              className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1 text-muted-foreground hover:bg-[var(--dk-surface-ghost-hover)] hover:text-foreground transition-colors cursor-pointer"
             >
               <X className="h-3.5 w-3.5" />
             </button>
@@ -128,7 +128,7 @@ export const PathInput = ({
           title={browseTitle}
           aria-label="Browse"
           className={cn(
-            'inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/5 text-white/80 transition-colors hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer',
+            'inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--dk-surface-field)] text-foreground/80 transition-colors hover:bg-[var(--dk-surface-ghost-hover)] hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer',
           )}
         >
           <FolderOpen className="h-4 w-4" />
@@ -143,16 +143,16 @@ export const PathInput = ({
             className={cn(
               'inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-xs font-semibold transition-all duration-200 cursor-pointer disabled:cursor-not-allowed disabled:opacity-40',
               justConfirmed
-                ? 'bg-emerald-500/25 text-emerald-300 shadow-sm shadow-emerald-500/20'
-                : 'bg-white/5 text-white/80 hover:bg-emerald-500/15 hover:text-emerald-300 active:scale-95',
+                ? 'bg-emerald-500/25 text-emerald-600 dark:text-emerald-300 shadow-sm shadow-emerald-500/20'
+                : 'bg-[var(--dk-surface-field)] text-foreground/80 hover:bg-emerald-500/15 hover:text-emerald-600 dark:hover:text-emerald-300 active:scale-95',
             )}
           >
-            <Check className={cn('h-4 w-4 transition-transform duration-200', justConfirmed ? 'text-emerald-400 scale-110' : 'text-current')} />
+            <Check className={cn('h-4 w-4 transition-transform duration-200', justConfirmed ? 'text-emerald-600 dark:text-emerald-400 scale-110' : 'text-current')} />
             <span className="sr-only">{justConfirmed ? 'Confirmed!' : (confirmLabel || 'Confirm path')}</span>
           </button>
         )}
       </div>
-      {hint && <p className="text-[11px] text-white/50">{hint}</p>}
+      {hint && <p className="text-[11px] text-muted-foreground">{hint}</p>}
     </div>
   )
 };

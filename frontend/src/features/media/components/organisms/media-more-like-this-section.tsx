@@ -68,7 +68,7 @@ export const MoreLikeThisSection = ({
   return (
     <section className={cn('w-full space-y-4', className)}>
       <div className={cn('flex items-center gap-3 px-4 sm:px-6 lg:px-8', headerClassName)}>
-        <h2 className="text-xl font-bold tracking-tight text-white/90">More Like This</h2>
+        <h2 className="text-xl font-bold tracking-tight text-foreground">More Like This</h2>
 
         {availableTabs.length > 1 && (
           <div className="flex gap-1.5">
@@ -77,11 +77,12 @@ export const MoreLikeThisSection = ({
                 key={tab.key}
                 type="button"
                 onClick={() => setActiveTab(tab.key)}
-                className={`px-3 py-1.5 text-xs font-semibold rounded-full cursor-pointer transition-colors border-0 backdrop-blur ${
+                className={cn(
+                  'px-3 py-1.5 text-xs font-semibold rounded-full cursor-pointer transition-colors border-0 backdrop-blur',
                   resolvedTab === tab.key
-                    ? 'bg-white/10 text-white'
-                    : 'bg-white/5 hover:bg-white/10 text-white/70'
-                }`}
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-glass-hover)] text-muted-foreground hover:text-foreground',
+                )}
               >
                 {tab.label}
               </button>

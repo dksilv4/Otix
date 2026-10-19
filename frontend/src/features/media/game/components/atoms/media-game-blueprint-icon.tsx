@@ -15,7 +15,7 @@ export const BlueprintIcon = ({ icons, size = 'md' }: Props) => {
 
   if (!icons?.length) {
     return (
-      <div className={`flex items-center justify-center ${dims.outer} rounded-lg bg-white/5 text-muted-foreground`}>
+      <div className={`flex items-center justify-center ${dims.outer} rounded-lg bg-[var(--dk-surface-glass)] text-muted-foreground`}>
         <Package className={dims.icon} />
       </div>
     )

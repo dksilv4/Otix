@@ -136,13 +136,13 @@ export const BlueprintVault = ({ pluginId, onViewDetail }: Props) => {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search blueprints..."
-            className="w-full h-8 pl-8 pr-3 text-xs rounded-lg bg-white/5 border border-white/10 text-white placeholder:text-muted-foreground focus:outline-none focus:border-primary/50"
+            className="w-full h-8 pl-8 pr-3 text-xs rounded-lg bg-[var(--dk-surface-glass)] border border-[var(--dk-separator)] text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50"
           />
         </div>
         <select
           value={sortBy}
           onChange={(e) => setSortBy(e.target.value)}
-          className="h-8 px-2 text-xs rounded-lg bg-white/5 border border-white/10 text-muted-foreground focus:outline-none focus:border-primary/50"
+          className="h-8 px-2 text-xs rounded-lg bg-[var(--dk-surface-glass)] border border-[var(--dk-separator)] text-foreground focus:outline-none focus:border-primary/50"
         >
           <option value="date">Date</option>
           <option value="name">Name</option>
@@ -158,7 +158,7 @@ export const BlueprintVault = ({ pluginId, onViewDetail }: Props) => {
 
       {/* Error state */}
       {error && (
-        <div className="flex items-center gap-2 p-3 rounded-lg bg-red-500/10 text-red-400 text-xs">
+        <div className="flex items-center gap-2 p-3 rounded-lg bg-destructive/10 text-destructive text-xs">
           <AlertCircle className="h-4 w-4 shrink-0" />
           {error}
         </div>
@@ -207,9 +207,9 @@ export const BlueprintVault = ({ pluginId, onViewDetail }: Props) => {
 
       {/* Import Modal */}
       {showImport && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={() => setShowImport(false)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm" onClick={() => setShowImport(false)}>
           <div className="glass-card rounded-xl p-6 max-w-lg w-full mx-4 space-y-4" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-sm font-medium text-white">Import Blueprint</h3>
+            <h3 className="text-sm font-medium text-foreground">Import Blueprint</h3>
             <p className="text-xs text-muted-foreground">
               Paste a Factorio blueprint string below. Starts with 0 or 1.
             </p>
@@ -218,15 +218,15 @@ export const BlueprintVault = ({ pluginId, onViewDetail }: Props) => {
               onChange={(e) => { setImportString(e.target.value); setImportError(null) }}
               placeholder="0eNqdk21vg..."
               rows={4}
-              className="w-full px-3 py-2 text-xs rounded-lg bg-white/5 border border-white/10 text-white placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 font-mono resize-none"
+              className="w-full px-3 py-2 text-xs rounded-lg bg-[var(--dk-surface-glass)] border border-[var(--dk-separator)] text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 font-mono resize-none"
             />
             {importError && (
-              <p className="text-xs text-red-400">{importError}</p>
+              <p className="text-xs text-destructive">{importError}</p>
             )}
             <div className="flex justify-end gap-2">
               <button
                 onClick={() => { setShowImport(false); setImportString(''); setImportError(null) }}
-                className="px-4 py-2 text-xs rounded-lg hover:bg-white/10 text-muted-foreground transition-all"
+                className="px-4 py-2 text-xs rounded-lg hover:bg-[var(--dk-surface-glass)] text-muted-foreground hover:text-foreground transition-all"
               >
                 Cancel
               </button>

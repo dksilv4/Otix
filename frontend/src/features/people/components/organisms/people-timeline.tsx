@@ -48,8 +48,8 @@ export const PeopleTimeline = ({ credits, mediaTypeFilter, roleFilter }: PeopleT
                 <h3
                   className={cn(
                     'text-lg font-bold tracking-tight',
-                    group.year === 'Upcoming' && 'text-emerald-400',
-                    group.year === 'Announced' && 'text-amber-400',
+                    group.year === 'Upcoming' && 'text-emerald-600 dark:text-emerald-400',
+                    group.year === 'Announced' && 'text-amber-600 dark:text-amber-400',
                   )}
                 >
                   {group.year}
@@ -129,8 +129,8 @@ export const PeopleTimeline = ({ credits, mediaTypeFilter, roleFilter }: PeopleT
                             <span
                               className={cn(
                                 'mt-0.5 inline-block rounded px-1.5 py-px text-[10px] font-medium',
-                                upcoming && 'bg-emerald-500/10 text-emerald-400 ring-1 ring-inset ring-emerald-500/20',
-                                !upcoming && dateLabel === 'Announced' && 'bg-amber-500/10 text-amber-400 ring-1 ring-inset ring-amber-500/20',
+                                upcoming && 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 ring-1 ring-inset ring-emerald-500/20',
+                                !upcoming && dateLabel === 'Announced' && 'bg-amber-500/10 text-amber-600 dark:text-amber-400 ring-1 ring-inset ring-amber-500/20',
                                 !upcoming && dateLabel !== 'Announced' && 'text-muted-foreground/60',
                               )}
                             >
@@ -142,7 +142,7 @@ export const PeopleTimeline = ({ credits, mediaTypeFilter, roleFilter }: PeopleT
                             {(Array.isArray(credit.roles) ? credit.roles.filter(Boolean) : []).map((r, i) => (
                               <span key={i} className="inline-flex items-center gap-1">
                                 {i > 0 && <span className="text-muted-foreground/40">·</span>}
-                                <span className="rounded px-1.5 py-0.5 text-[11px] font-medium bg-white/5 text-white/60">
+                                <span className="rounded px-1.5 py-0.5 text-[11px] font-medium bg-[var(--dk-surface-glass)] text-muted-foreground border border-[var(--dk-separator)]">
                                   {formatRole(r.role)}
                                 </span>
                                 {r.characterName && (

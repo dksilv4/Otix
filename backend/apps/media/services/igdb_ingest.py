@@ -634,6 +634,9 @@ def top_up_game_ratings(media: MediaItem, raw: dict[str, Any]) -> None:
             updates.append("rating_count")
     if updates:
         media.save(update_fields=(*updates, "updated_at"))
+        from apps.media.services.rating import compute_and_store_overall_rating
+
+        compute_and_store_overall_rating(media.pk)
 
 
 def _steam_app_id(raw: dict[str, Any]) -> int | None:

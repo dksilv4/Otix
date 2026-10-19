@@ -13,7 +13,7 @@
 /* ── Card ────────────────────────────────────────────── */
 
 .dk-review-section__card {
-  @apply rounded-3xl;
+  @apply rounded-3xl border border-[var(--dk-separator)];
   background: var(--dk-surface-ghost);
   box-shadow: var(--dk-shadow-xs);
   transition: background var(--dk-duration-fast) var(--dk-ease-out);
@@ -71,10 +71,10 @@
 .dk-review-section__score-value {
   @apply text-5xl sm:text-6xl font-extrabold tabular-nums tracking-tight;
 
-  &--emerald { @apply text-emerald-400; }
-  &--sky     { @apply text-sky-400; }
-  &--amber   { @apply text-amber-400; }
-  &--red     { @apply text-red-400; }
+  &--emerald { @apply text-emerald-600 dark:text-emerald-400; }
+  &--sky     { @apply text-sky-600 dark:text-sky-400; }
+  &--amber   { @apply text-amber-600 dark:text-amber-400; }
+  &--red     { @apply text-red-600 dark:text-red-400; }
 
   &--empty {
     @apply text-muted-foreground;

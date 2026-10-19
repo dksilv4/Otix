@@ -112,7 +112,7 @@ export const MediaGallery = ({
         {/* Tab Pills & Scroll Arrows */}
         <div className="flex items-center gap-3">
           {showTabs && (
-            <div className="flex items-center gap-1 rounded-xl bg-white/5 p-1">
+            <div className="flex items-center gap-1 rounded-xl bg-[var(--dk-surface-glass)] p-1">
               <button
                 type="button"
                 onClick={() => setActiveTab('all')}
@@ -120,7 +120,7 @@ export const MediaGallery = ({
                   'rounded-lg px-2.5 py-1 text-xs font-medium transition-all',
                   activeTab === 'all'
                     ? 'bg-primary/15 text-primary shadow-sm'
-                    : 'text-muted-foreground hover:bg-white/5 hover:text-foreground',
+                    : 'text-muted-foreground hover:bg-[var(--dk-surface-base)] hover:text-foreground',
                 )}
               >
                 All
@@ -132,7 +132,7 @@ export const MediaGallery = ({
                   'rounded-lg px-2.5 py-1 text-xs font-medium transition-all',
                   activeTab === 'videos'
                     ? 'bg-primary/15 text-primary shadow-sm'
-                    : 'text-muted-foreground hover:bg-white/5 hover:text-foreground',
+                    : 'text-muted-foreground hover:bg-[var(--dk-surface-base)] hover:text-foreground',
                 )}
               >
                 Videos ({parsedVideos.length})
@@ -144,7 +144,7 @@ export const MediaGallery = ({
                   'rounded-lg px-2.5 py-1 text-xs font-medium transition-all',
                   activeTab === 'screenshots'
                     ? 'bg-primary/15 text-primary shadow-sm'
-                    : 'text-muted-foreground hover:bg-white/5 hover:text-foreground',
+                    : 'text-muted-foreground hover:bg-[var(--dk-surface-base)] hover:text-foreground',
                 )}
               >
                 Screenshots ({validScreenshots.length})
@@ -196,6 +196,13 @@ export const MediaGallery = ({
               <div
                 key={video.youtubeId}
                 onClick={() => handleOpenVideo(video.youtubeId, video.videoType)}
+                onMouseEnter={(e) =>
+                  e.currentTarget.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'nearest',
+                    inline: 'nearest',
+                  })
+                }
                 className="group relative aspect-video w-64 sm:w-72 shrink-0 cursor-pointer overflow-hidden rounded-2xl bg-black/40 shadow-sm transition-all duration-200 hover:scale-[1.02] hover:shadow-lg [scroll-snap-align:start]"
               >
                 <img
@@ -229,6 +236,13 @@ export const MediaGallery = ({
             <div
               key={shot.id || shot.url}
               onClick={() => handleOpenScreenshot(idx)}
+              onMouseEnter={(e) =>
+                e.currentTarget.scrollIntoView({
+                  behavior: 'smooth',
+                  block: 'nearest',
+                  inline: 'nearest',
+                })
+              }
               className="group relative aspect-video w-64 sm:w-72 shrink-0 cursor-pointer overflow-hidden rounded-2xl bg-black/40 shadow-sm transition-all duration-200 hover:scale-[1.02] hover:shadow-lg [scroll-snap-align:start]"
             >
               <img

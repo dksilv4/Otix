@@ -37,7 +37,7 @@ export const ModernLauncherView = () => {
   }, [])
 
   return (
-    <div className="w-full h-full bg-neutral-950 text-white font-sans select-none overflow-y-auto overflow-x-hidden relative scroll-smooth">
+    <div className="w-full h-full bg-background text-foreground font-sans select-none overflow-y-auto overflow-x-hidden relative scroll-smooth">
       {/* Top Header */}
       <ModernHeader
         activeTab={activeTab}

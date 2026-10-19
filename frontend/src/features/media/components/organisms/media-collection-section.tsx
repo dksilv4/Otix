@@ -103,7 +103,7 @@ export const CollectionSection = ({ className }: { className?: string } = {}) =>
               />
             </div>
           ) : (
-            <div className="shrink-0 w-11 h-15 sm:w-13 sm:h-18 rounded-lg bg-white/5 flex items-center justify-center text-white/50">
+            <div className="shrink-0 w-11 h-15 sm:w-13 sm:h-18 rounded-lg bg-[var(--dk-surface-glass)] flex items-center justify-center text-muted-foreground">
               <Layers className="h-5 w-5" />
             </div>
           )}
@@ -121,7 +121,7 @@ export const CollectionSection = ({ className }: { className?: string } = {}) =>
               )}
             </div>
 
-            <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-white/95">
+            <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">
               {collection.name}
             </h2>
 
@@ -138,7 +138,7 @@ export const CollectionSection = ({ className }: { className?: string } = {}) =>
               type="button"
               onClick={() => scrollBy(-360)}
               disabled={!canScrollLeft}
-              className="p-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.12] border border-white/10 text-white/70 hover:text-white disabled:opacity-25 disabled:pointer-events-none transition-all shadow-sm active:scale-95"
+              className="p-1.5 rounded-lg bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-base)] border border-[var(--dk-separator)] text-muted-foreground hover:text-foreground disabled:opacity-25 disabled:pointer-events-none transition-all shadow-sm active:scale-95"
               aria-label="Scroll left"
             >
               <ChevronLeft className="h-4 w-4" />
@@ -147,7 +147,7 @@ export const CollectionSection = ({ className }: { className?: string } = {}) =>
               type="button"
               onClick={() => scrollBy(360)}
               disabled={!canScrollRight}
-              className="p-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.12] border border-white/10 text-white/70 hover:text-white disabled:opacity-25 disabled:pointer-events-none transition-all shadow-sm active:scale-95"
+              className="p-1.5 rounded-lg bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-base)] border border-[var(--dk-separator)] text-muted-foreground hover:text-foreground disabled:opacity-25 disabled:pointer-events-none transition-all shadow-sm active:scale-95"
               aria-label="Scroll right"
             >
               <ChevronRight className="h-4 w-4" />
@@ -216,7 +216,7 @@ export const CollectionSection = ({ className }: { className?: string } = {}) =>
                   className={cn(
                     isCurrent
                       ? 'ring-2 ring-primary shadow-xl shadow-primary/25'
-                      : 'ring-1 ring-white/10 hover:ring-white/20'
+                      : 'ring-1 ring-white/10 hover:ring-primary/40'
                   )}
                 />
               </div>

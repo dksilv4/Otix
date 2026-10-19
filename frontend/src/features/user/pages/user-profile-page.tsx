@@ -92,17 +92,6 @@ export const UserProfilePage = () => {
   }
 
   const gradient = pickGradient(profile.username)
-  const textShadow = tier.hasGlow ? '0 0 12px rgba(255,255,255,0.15)' : undefined
-  const heroShadow = [
-    '0 4px 24px rgba(0,0,0,0.3)',
-    '0 1px 4px rgba(0,0,0,0.2)',
-    '0 0 0 1px rgba(255,255,255,0.06)',
-  ].join(', ')
-  const heroShadowHover = [
-    '0 8px 40px rgba(0,0,0,0.4)',
-    '0 2px 8px rgba(0,0,0,0.25)',
-    '0 0 0 1px rgba(255,255,255,0.08)',
-  ].join(', ')
 
   return (
     <div id="user-profile-page" className="w-full flex flex-col pb-12">
@@ -121,11 +110,7 @@ export const UserProfilePage = () => {
 
       {/* ── Hero ── */}
       <div
-        className="relative overflow-hidden rounded-2xl flex flex-col justify-end mx-0 min-h-[380px] transition-shadow duration-300 hover:shadow-[var(--hero-shadow-hover)]"
-        style={{
-          boxShadow: heroShadow,
-          ['--hero-shadow-hover' as string]: heroShadowHover,
-        }}
+        className="relative overflow-hidden rounded-2xl flex flex-col justify-end mx-0 min-h-[380px] bg-[var(--dk-surface-base)] border border-[var(--dk-separator)] transition-shadow duration-300 shadow-md hover:shadow-lg"
       >
         <div className="absolute inset-0">
           {profile.backgroundUrl ? (
@@ -141,32 +126,11 @@ export const UserProfilePage = () => {
             />
           )}
           <div
-            className="absolute inset-0"
-            style={{
-              background: 'linear-gradient(180deg, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.6) 60%, rgba(0,0,0,0.85) 100%)',
-            }}
+            className="absolute inset-0 bg-gradient-to-t from-[var(--dk-surface-base)] via-[var(--dk-surface-base)]/75 to-transparent"
           />
           <div
-            className="absolute inset-0"
-            style={{
-              background: 'radial-gradient(ellipse at 30% 20%, rgba(255,255,255,0.06) 0%, transparent 60%)',
-            }}
+            className="absolute inset-0 bg-gradient-to-r from-[var(--dk-surface-base)]/80 via-[var(--dk-surface-base)]/40 to-transparent"
           />
-          <div
-            className="absolute inset-0"
-            style={{
-              background: 'radial-gradient(ellipse at 70% 80%, rgba(255,255,255,0.04) 0%, transparent 50%)',
-            }}
-          />
-          {!profile.backgroundUrl && (
-            <div
-              className="absolute inset-0"
-              style={{
-                backgroundImage: 'radial-gradient(rgba(255,255,255,0.06) 1px, transparent 1px)',
-                backgroundSize: '24px 24px',
-              }}
-            />
-          )}
         </div>
 
         {/* Content */}
@@ -195,12 +159,12 @@ export const UserProfilePage = () => {
             {/* Name, meta, bio */}
             <div className="min-w-0 flex-1">
               <h1
-                className="text-2xl font-bold text-white mb-1"
-                style={{ animation: 'profileFadeIn 0.4s ease-out both', animationDelay: '100ms', textShadow }}
+                className="text-2xl font-bold text-foreground mb-1"
+                style={{ animation: 'profileFadeIn 0.4s ease-out both', animationDelay: '100ms' }}
               >
                 {profile.username}
                 {profile.isAdmin && (
-                  <Shield className="h-4 w-4 inline-block ml-1.5 text-amber-400/80 align-middle" />
+                  <Shield className="h-4 w-4 inline-block ml-1.5 text-amber-500/80 align-middle" />
                 )}
                 <span className="inline-flex items-center ml-2.5 align-middle [&>div>span:last-child]:hidden scale-[0.8]">
                   <UserRatingSection username={username} />
@@ -208,28 +172,28 @@ export const UserProfilePage = () => {
               </h1>
 
               <div
-                className="flex flex-wrap items-center gap-x-2 text-sm text-white/60"
+                className="flex flex-wrap items-center gap-x-2 text-sm text-muted-foreground"
                 style={{ animation: 'profileFadeIn 0.4s ease-out both', animationDelay: '150ms' }}
               >
                 {(() => {
                   const m = formatMemberSince(profile.createdAt)
                   return (
                     <span className="inline-flex items-center gap-1.5" title={m.tooltip}>
-                      <CalendarDays className="h-3.5 w-3.5 text-white/40" />
+                      <CalendarDays className="h-3.5 w-3.5 text-muted-foreground/60" />
                       Joined {m.label}
                     </span>
                   )
                 })()}
-                <span aria-hidden className="text-white/15">·</span>
+                <span aria-hidden className="text-muted-foreground/30">·</span>
                 <span className="inline-flex items-center gap-1.5">
-                  <Sparkles className="h-3.5 w-3.5 text-amber-400/80" />
+                  <Sparkles className="h-3.5 w-3.5 text-amber-500/80" />
                   {profile.compositeScore ?? 0} aura
                 </span>
                 {stats?.averageRating != null && (
                   <>
-                    <span aria-hidden className="text-white/15">·</span>
+                    <span aria-hidden className="text-muted-foreground/30">·</span>
                     <span className="inline-flex items-center gap-1.5">
-                      <Star className="h-3.5 w-3.5 text-amber-400" />
+                      <Star className="h-3.5 w-3.5 text-amber-500" />
                       {stats.averageRating.toFixed(1)}
                     </span>
                   </>
@@ -238,7 +202,7 @@ export const UserProfilePage = () => {
 
               {profile.bio && (
                 <p
-                  className="mt-3 text-sm max-w-xl text-white/70"
+                  className="mt-3 text-sm max-w-xl text-muted-foreground"
                   style={{ animation: 'profileFadeIn 0.4s ease-out both', animationDelay: '200ms' }}
                 >
                   {profile.bio}
@@ -324,7 +288,7 @@ export const UserProfilePage = () => {
                   />
                   {/* Proposal stats */}
                   {(profile.proposalCount ?? 0) > 0 && (
-                    <span className="text-xs text-white/30 ml-1">
+                    <span className="text-xs text-muted-foreground/60 ml-1">
                       · {profile.proposalCount} proposal{profile.proposalCount !== 1 ? 's' : ''}
                       {profile.proposalApprovalRate != null
                         ? ` · ${Math.round(profile.proposalApprovalRate)}% approved`
@@ -345,7 +309,7 @@ export const UserProfilePage = () => {
                     followingCount={profile.followingCount ?? 0}
                   />
                   {(profile.proposalCount ?? 0) > 0 && (
-                    <span className="mt-1 block text-xs text-white/30">
+                    <span className="mt-1 block text-xs text-muted-foreground/60">
                       {profile.proposalCount} proposal{profile.proposalCount !== 1 ? 's' : ''}
                       {profile.proposalApprovalRate != null
                         ? ` · ${Math.round(profile.proposalApprovalRate)}% approved`
@@ -366,7 +330,7 @@ export const UserProfilePage = () => {
               boxShadow: tier.hasGlow ? `0 0 20px ${tier.glow}, inset 0 0 12px ${tier.glow}` : undefined,
             }}
           >
-            <div className="relative h-[52px] rounded-xl overflow-hidden bg-white/[0.06]">
+            <div className="relative h-[52px] rounded-xl overflow-hidden bg-[var(--dk-surface-ghost)] border border-[var(--dk-separator)]">
               {/* Fill */}
               <div
                 className="absolute inset-y-0 left-0 rounded-xl transition-all duration-1000 ease-out"
@@ -434,7 +398,7 @@ export const UserProfilePage = () => {
             {/* XP Rank position */}
             {profile.xpRank != null && (
               <div
-                className="mt-1 text-right text-[10px] font-medium text-white/30"
+                className="mt-1 text-right text-[10px] font-medium text-muted-foreground/60"
                 style={{ animation: 'profileFadeIn 0.4s ease-out both', animationDelay: '350ms' }}
               >
                 <span>#{profile.xpRank.toLocaleString()}</span>
@@ -472,7 +436,7 @@ export const UserProfilePage = () => {
                 href={profile.steam.profileurl ?? '#'}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 bg-white/[0.08] text-white/60 hover:bg-white/[0.14] hover:text-white/90"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 bg-[var(--dk-surface-ghost)] text-muted-foreground hover:bg-[var(--dk-surface-ghost-hover)] hover:text-foreground border border-[var(--dk-separator)]"
               >
                 <SteamIcon className="h-3.5 w-3.5" />
                 Steam
@@ -483,7 +447,7 @@ export const UserProfilePage = () => {
                 href={profile.plex.username ? `https://app.plex.tv/desktop/#!/u/${profile.plex.username}` : '#'}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 bg-white/[0.08] text-white/60 hover:bg-white/[0.14] hover:text-white/90"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 bg-[var(--dk-surface-ghost)] text-muted-foreground hover:bg-[var(--dk-surface-ghost-hover)] hover:text-foreground border border-[var(--dk-separator)]"
               >
                 <PlexIcon className="h-3.5 w-3.5 text-[#e5a00d]" />
                 Plex
@@ -494,7 +458,7 @@ export const UserProfilePage = () => {
                 href={`https://www.themoviedb.org/u/${profile.tmdbUsername}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 bg-white/[0.08] text-white/60 hover:bg-white/[0.14] hover:text-white/90"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 bg-[var(--dk-surface-ghost)] text-muted-foreground hover:bg-[var(--dk-surface-ghost-hover)] hover:text-foreground border border-[var(--dk-separator)]"
               >
                 <TmdbIcon className="h-3.5 w-3.5 text-[#01b4e4]" />
                 TMDb

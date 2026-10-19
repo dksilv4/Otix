@@ -64,7 +64,7 @@ const InteractiveStar = ({
       {/* Filled overlay */}
       {fill > 0 && (
         <Star
-          className={cn(iconSize, "absolute inset-0 text-amber-400 pointer-events-none")}
+          className={cn(iconSize, "absolute inset-0 text-amber-500 dark:text-amber-400 pointer-events-none")}
           fill="currentColor"
           style={{
             clipPath:

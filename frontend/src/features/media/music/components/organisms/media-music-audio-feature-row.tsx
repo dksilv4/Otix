@@ -15,7 +15,7 @@ export const AudioFeatureRow = ({
       <div className="space-y-1">
         <div className="flex justify-between text-xs">
           <span className="text-muted-foreground">{label}</span>
-          <span className="font-mono tabular-nums text-white/90">{Math.round(raw)} BPM</span>
+          <span className="font-mono tabular-nums text-foreground">{Math.round(raw)} BPM</span>
         </div>
       </div>
     )
@@ -26,10 +26,10 @@ export const AudioFeatureRow = ({
     <div className="space-y-1">
       <div className="flex justify-between text-xs">
         <span className="text-muted-foreground">{label}</span>
-        <span className="font-mono tabular-nums text-white/90">{pct}%</span>
+        <span className="font-mono tabular-nums text-foreground">{pct}%</span>
       </div>
-      <div className="h-1.5 overflow-hidden rounded-full bg-white/[0.06]">
-        <div className="h-full rounded-full bg-amber-500/80" style={{ width: `${pct}%` }} />
+      <div className="h-1.5 overflow-hidden rounded-full bg-[var(--dk-surface-glass)]">
+        <div className="h-full rounded-full bg-primary/80" style={{ width: `${pct}%` }} />
       </div>
     </div>
   )

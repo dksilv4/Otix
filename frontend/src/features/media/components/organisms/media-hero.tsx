@@ -205,15 +205,15 @@ export const MediaHero = ({ className = '' }: MediaHeroProps) => {
         <div className="flex flex-col items-center sm:flex-row sm:items-center lg:items-end gap-6 sm:gap-8 lg:gap-10">
           {/* Poster with subtle ambient glow */}
           <div className="w-36 shrink-0 sm:w-44 lg:w-56 xl:w-60 group">
-            <div className="overflow-hidden rounded-2xl shadow-2xl shadow-black/80 ring-1 ring-white/20 bg-black/50 transition-all duration-300 group-hover:scale-[1.02]">
+            <div className="overflow-hidden rounded-2xl shadow-2xl border border-[var(--dk-separator)] bg-[var(--dk-surface-glass)] transition-all duration-300 group-hover:scale-[1.02]">
               {!posterUrl || posterFailed ? (
                 <div
-                  className={`w-full flex flex-col items-center justify-center p-4 text-center bg-gradient-to-b from-white/10 to-white/[0.02] ${
+                  className={`w-full flex flex-col items-center justify-center p-4 text-center bg-[var(--dk-surface-glass)] ${
                     mediaType === 'music' ? 'aspect-square' : 'aspect-[2/3]'
                   }`}
                 >
-                  <MediaIcon className="h-10 w-10 text-white/30 mb-2" />
-                  <span className="text-xs font-semibold text-white/60 line-clamp-3">{title}</span>
+                  <MediaIcon className="h-10 w-10 text-muted-foreground/60 mb-2" />
+                  <span className="text-xs font-semibold text-foreground line-clamp-3">{title}</span>
                 </div>
               ) : (
                 <img
@@ -242,8 +242,7 @@ export const MediaHero = ({ className = '' }: MediaHeroProps) => {
               />
             ) : (
               <h1
-                className="text-2xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-white"
-                style={{ textShadow: '0 2px 24px rgba(0,0,0,0.7)' }}
+                className="text-2xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-foreground"
               >
                 {title}
               </h1>
@@ -252,8 +251,7 @@ export const MediaHero = ({ className = '' }: MediaHeroProps) => {
             {/* Tagline */}
             {tagline && (
               <p
-                className="max-w-[64ch] text-sm sm:text-base italic text-white/75 line-clamp-2"
-                style={{ textShadow: '0 1px 12px rgba(0,0,0,0.6)' }}
+                className="max-w-[64ch] text-sm sm:text-base italic text-muted-foreground line-clamp-2"
               >
                 &ldquo;{tagline}&rdquo;
               </p>
@@ -264,14 +262,14 @@ export const MediaHero = ({ className = '' }: MediaHeroProps) => {
               {isAnime ? (
                 <Badge
                   variant="secondary"
-                  className="bg-pink-500/80 text-white gap-1 px-2.5 py-1 text-xs font-medium border-0"
+                  className="bg-pink-500/15 text-pink-700 dark:text-pink-300 border border-pink-500/20 gap-1 px-2.5 py-1 text-xs font-medium"
                 >
                   <Sparkles className="h-3 w-3" /> Anime
                 </Badge>
               ) : isKdrama ? (
                 <Badge
                   variant="secondary"
-                  className="bg-rose-500/80 text-white gap-1 px-2.5 py-1 text-xs font-medium border-0"
+                  className="bg-rose-500/15 text-rose-700 dark:text-rose-300 border border-rose-500/20 gap-1 px-2.5 py-1 text-xs font-medium"
                 >
                   <Heart className="h-3 w-3" /> K-Drama
                 </Badge>
@@ -288,9 +286,9 @@ export const MediaHero = ({ className = '' }: MediaHeroProps) => {
               {activePromotion && (
                 <Badge
                   variant="secondary"
-                  className="bg-emerald-500/15 text-emerald-400 gap-1.5 font-medium border-0"
+                  className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 gap-1.5 font-medium border-0"
                 >
-                  <Gift className="h-3 w-3 text-emerald-400" />
+                  <Gift className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
                   Free on {activePromotion.storeName}
                 </Badge>
               )}
@@ -338,7 +336,7 @@ export const MediaHero = ({ className = '' }: MediaHeroProps) => {
               {isAdult && (
                 <Badge
                   variant="destructive"
-                  className="px-2 py-0.5 text-[11px] font-bold bg-red-600/90 text-white border-0"
+                  className="px-2 py-0.5 text-[11px] font-bold bg-destructive/15 text-destructive border border-destructive/20"
                 >
                   18+
                 </Badge>
@@ -359,19 +357,19 @@ export const MediaHero = ({ className = '' }: MediaHeroProps) => {
                   className={cn(
                     'group relative inline-flex items-center gap-2 rounded-full h-10 px-4 sm:px-5 py-2 text-sm font-semibold transition-all hover:scale-[1.02] active:scale-[0.98] shadow-md backdrop-blur-xl',
                     trailerIsPrimary
-                      ? 'bg-rose-600/90 hover:bg-rose-600 text-white shadow-rose-600/30'
-                      : 'bg-white/[0.10] hover:bg-white/[0.16] text-white/90 hover:text-white',
+                      ? 'bg-primary text-primary-foreground shadow-md'
+                      : 'bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-base)] text-foreground border border-[var(--dk-separator)]',
                   )}
                   title="Watch Trailer"
                   aria-label="Watch Trailer"
                 >
-                  <Film className="h-4 w-4 text-rose-400 group-hover:scale-110 transition-transform shrink-0" />
+                  <Film className="h-4 w-4 text-rose-500 dark:text-rose-400 group-hover:scale-110 transition-transform shrink-0" />
                   <span>Trailer</span>
                 </button>
               )}
 
               {/* ── Secondary Icon-Based Interaction Cluster ── */}
-              <div className="flex items-center gap-1 rounded-full h-10 bg-black/45 px-1.5 backdrop-blur-xl shadow-lg ring-1 ring-white/10">
+              <div className="flex items-center gap-1 rounded-full h-10 bg-[var(--dk-surface-glass)] px-1.5 backdrop-blur-xl shadow-lg border border-[var(--dk-separator)]">
                 {/* Watchlist / Wishlist Button */}
                 {isAuthenticated && (
                   <button
@@ -380,14 +378,14 @@ export const MediaHero = ({ className = '' }: MediaHeroProps) => {
                     className={cn(
                       'inline-flex h-8 w-8 items-center justify-center rounded-full transition-all hover:scale-110 active:scale-95',
                       isWatchlisted
-                        ? 'bg-sky-500/25 text-sky-200 ring-1 ring-sky-500/50 shadow-sm'
-                        : 'text-white/75 hover:text-white hover:bg-white/[0.12]',
+                        ? 'bg-sky-500/25 text-sky-700 dark:text-sky-200 ring-1 ring-sky-500/50 shadow-sm'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-base)]',
                     )}
                     title={isWatchlisted ? `In ${watchlistLabel}` : `Add to ${watchlistLabel}`}
                     aria-label={isWatchlisted ? `In ${watchlistLabel}` : `Add to ${watchlistLabel}`}
                   >
                     <Bookmark
-                      className={cn('h-4 w-4', isWatchlisted && 'fill-current text-sky-400')}
+                      className={cn('h-4 w-4', isWatchlisted && 'fill-current text-sky-600 dark:text-sky-400')}
                     />
                   </button>
                 )}
@@ -400,14 +398,14 @@ export const MediaHero = ({ className = '' }: MediaHeroProps) => {
                     className={cn(
                       'inline-flex h-8 w-8 items-center justify-center rounded-full transition-all hover:scale-110 active:scale-95',
                       isWatched
-                        ? 'bg-emerald-500/25 text-emerald-200 ring-1 ring-emerald-500/50 shadow-sm'
-                        : 'text-white/75 hover:text-white hover:bg-white/[0.12]',
+                        ? 'bg-emerald-500/25 text-emerald-700 dark:text-emerald-200 ring-1 ring-emerald-500/50 shadow-sm'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-base)]',
                     )}
                     title={isWatched ? `Marked as ${watchedLabel}` : `Mark ${watchedLabel}`}
                     aria-label={isWatched ? `Marked as ${watchedLabel}` : `Mark ${watchedLabel}`}
                   >
                     <CheckCircle2
-                      className={cn('h-4 w-4', isWatched && 'text-emerald-400')}
+                      className={cn('h-4 w-4', isWatched && 'text-emerald-600 dark:text-emerald-400')}
                     />
                   </button>
                 )}
@@ -420,14 +418,14 @@ export const MediaHero = ({ className = '' }: MediaHeroProps) => {
                     className={cn(
                       'inline-flex h-8 w-8 items-center justify-center rounded-full transition-all hover:scale-110 active:scale-95',
                       isLiked
-                        ? 'bg-rose-500/25 text-rose-200 ring-1 ring-rose-500/50 shadow-sm'
-                        : 'text-white/75 hover:text-white hover:bg-white/[0.12]',
+                        ? 'bg-rose-500/25 text-rose-700 dark:text-rose-200 ring-1 ring-rose-500/50 shadow-sm'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-base)]',
                     )}
                     title={isLiked ? 'Liked' : 'Like'}
                     aria-label="Like"
                   >
                     <Heart
-                      className={cn('h-4 w-4', isLiked && 'fill-current text-rose-400')}
+                      className={cn('h-4 w-4', isLiked && 'fill-current text-rose-600 dark:text-rose-400')}
                     />
                   </button>
                 )}

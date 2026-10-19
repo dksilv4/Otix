@@ -41,37 +41,37 @@ export const LauncherScanWidget = ({ id }: { id?: string }) => {
   const goToLibrary = useCallback(() => navigate({ to: '/launcher/library' }), [navigate])
 
   return (
-    <div id={id} className="flex-1 rounded-2xl bg-white/3 p-4 flex flex-col justify-between">
+    <div id={id} className="flex-1 rounded-2xl bg-[var(--dk-surface-ghost)] border border-[var(--dk-separator)] p-4 flex flex-col justify-between">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h3 className="text-xs font-bold text-white/90 mb-1 flex items-center gap-1.5">
+          <h3 className="text-xs font-bold text-foreground mb-1 flex items-center gap-1.5">
             <Gamepad2 size={13} className="text-pink-400"/>
             Scan and Manage Local Library
           </h3>
-          <p className="text-[11px] text-white/40 max-w-md">
+          <p className="text-[11px] text-muted-foreground max-w-md">
             Add installation folders in Settings and run a scanner to match local executables, track achievements, and launch games natively.
           </p>
         </div>
-        <ChevronRight size={16} className="text-white/30 shrink-0 mt-0.5"/>
+        <ChevronRight size={16} className="text-muted-foreground shrink-0 mt-0.5"/>
       </div>
       <div className="flex justify-end gap-2 mt-4">
         <button
           onClick={handleScan}
           disabled={scanning}
-          className="px-3.5 py-1.5 bg-white hover:bg-white/90 text-black rounded-xl text-[10px] font-black transition-colors cursor-pointer flex items-center gap-1"
+          className="px-3.5 py-1.5 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl text-[10px] font-black transition-colors cursor-pointer flex items-center gap-1 shadow-sm"
         >
           <Scan size={12} className={scanning ? 'animate-spin' : ''}/>
           {scanning ? 'Scanning...' : 'Scan Now'}
         </button>
         <button
           onClick={goToSettings}
-          className="px-3.5 py-1.5 bg-white/5 hover:bg-white/10 rounded-xl text-[10px] font-bold text-white/70 transition-colors cursor-pointer"
+          className="px-3.5 py-1.5 bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)] rounded-xl text-[10px] font-bold text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
         >
           Configure Paths
         </button>
         <button
           onClick={goToLibrary}
-          className="px-3.5 py-1.5 bg-white/10 hover:bg-white/15 rounded-xl text-[10px] font-bold text-white transition-colors cursor-pointer"
+          className="px-3.5 py-1.5 bg-[var(--dk-surface-ghost-active)] hover:bg-[var(--dk-surface-ghost-hover)] rounded-xl text-[10px] font-bold text-foreground transition-colors cursor-pointer"
         >
           View Full Library
         </button>

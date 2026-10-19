@@ -40,7 +40,7 @@ export const LauncherFpsStats = () => {
   }
 
   return (
-    <div className="relative bg-white/5 backdrop-blur-2xl rounded-xl px-5 py-5.25 max-h-[65px] min-w-[180px] overflow-hidden">
+    <div className="relative bg-[var(--dk-surface-glass)] backdrop-blur-2xl border border-[var(--dk-separator)] rounded-xl px-5 py-5.25 max-h-[65px] min-w-[180px] overflow-hidden shadow-[var(--dk-shadow-glass)]">
       {/* Full-bleed sparkline — only while capturing live data */}
       {displayValue?.live && sparkline && (
         <svg
@@ -72,18 +72,18 @@ export const LauncherFpsStats = () => {
                 className="text-2xl font-bold tracking-tight leading-none"
                 style={{
                   color: displayValue.live
-                    ? 'rgb(255 255 255 / 0.9)'
-                    : 'rgb(255 255 255 / 0.4)',
+                    ? 'var(--foreground)'
+                    : 'var(--muted-foreground)',
                 }}
               >
                 {displayValue.value}
               </span>
-              <span className="text-[11px] font-medium text-white/25 uppercase tracking-widest leading-none">
+              <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-widest leading-none">
                 {displayValue.label}
               </span>
             </>
           ) : (
-            <span className="text-2xl font-bold text-white/15 tracking-tight leading-none">
+            <span className="text-2xl font-bold text-muted-foreground/40 tracking-tight leading-none">
               &mdash;
             </span>
           )}

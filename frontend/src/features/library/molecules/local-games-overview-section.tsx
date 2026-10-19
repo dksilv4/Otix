@@ -38,7 +38,7 @@ export const LocalGamesOverviewSection = () => {
             onClick={() =>
               navigate({ to: "/launcher" })
             }
-            className="flex aspect-[16/10] items-center justify-center rounded-2xl border border-dashed border-white/[0.08] bg-[var(--dk-surface-glass)]/50 hover:bg-[var(--dk-surface-elevated)] transition-all duration-200"
+            className="flex aspect-[16/10] items-center justify-center rounded-2xl border border-dashed border-[var(--dk-separator)] bg-[var(--dk-surface-glass)]/50 hover:bg-[var(--dk-surface-elevated)] transition-all duration-200"
           >
             <span className="text-sm text-muted-foreground">
               +{gamesList.length - 5} more

@@ -30,10 +30,10 @@ export const UserProfileNowPlaying = () => {
   return (
     <div
       data-testid="user-profile-now-playing"
-      className="inline-flex items-center gap-2 max-w-full rounded-xl bg-white/[0.05] hover:bg-white/[0.08] transition-colors border border-white/[0.08] px-2.5 py-1 text-xs backdrop-blur-md mb-2.5"
+      className="inline-flex items-center gap-2 max-w-full rounded-xl bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)] transition-colors border border-[var(--dk-separator)] px-2.5 py-1 text-xs backdrop-blur-md mb-2.5"
     >
       {/* Game cover thumbnail */}
-      <div className="relative w-5 h-7 rounded overflow-hidden shrink-0 bg-white/[0.06] border border-white/10 flex items-center justify-center">
+      <div className="relative w-5 h-7 rounded overflow-hidden shrink-0 bg-[var(--dk-surface-field)] border border-[var(--dk-separator)] flex items-center justify-center">
         {posterUrl ? (
           <img
             src={posterUrl}
@@ -41,23 +41,23 @@ export const UserProfileNowPlaying = () => {
             className="w-full h-full object-cover"
           />
         ) : (
-          <Gamepad2 className="h-3.5 w-3.5 text-white/40" />
+          <Gamepad2 className="h-3.5 w-3.5 text-muted-foreground" />
         )}
       </div>
 
       {/* Playing + Title */}
       <div className="min-w-0 flex items-center gap-1.5 truncate">
-        <span className="text-white/50 font-medium shrink-0">Playing</span>
+        <span className="text-muted-foreground font-medium shrink-0">Playing</span>
         {matchedGame?.id ? (
           <Link
             to="/launcher/$gameId"
             params={{ gameId: matchedGame.id }}
-            className="font-semibold text-white hover:text-primary transition-colors truncate"
+            className="font-semibold text-foreground hover:text-primary transition-colors truncate"
           >
             {displayTitle}
           </Link>
         ) : (
-          <span className="font-semibold text-white truncate">
+          <span className="font-semibold text-foreground truncate">
             {displayTitle}
           </span>
         )}
@@ -69,7 +69,7 @@ export const UserProfileNowPlaying = () => {
           isCs2Game(runningGame.game.exePath) ||
           isCs2Game(runningGame.game.processName)) && (
           <>
-            <span className="text-white/20 select-none">·</span>
+            <span className="text-muted-foreground/30 select-none">·</span>
             <span className="font-medium text-primary text-[11px] truncate">
               {formatCs2Status(gameState)}
             </span>
@@ -79,8 +79,8 @@ export const UserProfileNowPlaying = () => {
       {/* Elapsed time */}
       {elapsedMs > 0 && (
         <>
-          <span className="text-white/20 select-none">·</span>
-          <span className="font-mono text-white/50 text-[11px] tabular-nums shrink-0">
+          <span className="text-muted-foreground/30 select-none">·</span>
+          <span className="font-mono text-muted-foreground text-[11px] tabular-nums shrink-0">
             {formatDuration(elapsedMs)}
           </span>
         </>
@@ -89,9 +89,9 @@ export const UserProfileNowPlaying = () => {
       {/* Session XP */}
       {sessionXp > 0 && (
         <>
-          <span className="text-white/20 select-none">·</span>
-          <span className="inline-flex items-center gap-0.5 text-amber-300 font-mono text-[11px] font-bold shrink-0">
-            <Zap size={10} className="fill-amber-300" />
+          <span className="text-muted-foreground/30 select-none">·</span>
+          <span className="inline-flex items-center gap-0.5 text-amber-500 font-mono text-[11px] font-bold shrink-0">
+            <Zap size={10} className="fill-amber-500" />
             +{sessionXp} XP
           </span>
         </>

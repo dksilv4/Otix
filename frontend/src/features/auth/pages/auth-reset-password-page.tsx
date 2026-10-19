@@ -32,7 +32,7 @@ export const ResetPasswordPage = () => {
           <AuthHeader title="Invalid Link" subtitle="This password reset link is missing a valid token." />
           <Link
             to="/auth/forgot-password"
-            className="inline-block rounded-full bg-white/10 px-5 py-2 text-sm font-medium transition-colors hover:bg-white/20"
+            className="inline-block rounded-full bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-glass-hover)] border border-[var(--dk-separator)] text-foreground px-5 py-2 text-sm font-medium transition-colors"
           >
             Request a New Link
           </Link>
@@ -86,8 +86,8 @@ export const ResetPasswordPage = () => {
             animate={{ opacity: 1, scale: 1 }}
             className="space-y-4"
           >
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-green-500/10">
-              <Check className="h-7 w-7 text-green-500" />
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-500/10 border border-emerald-500/20">
+              <Check className="h-7 w-7 text-emerald-500" />
             </div>
             <p className="text-sm font-medium">Password Reset</p>
             <p className="text-sm text-muted-foreground">
@@ -96,7 +96,7 @@ export const ResetPasswordPage = () => {
             <button
               type="button"
               onClick={() => navigate({ to: '/auth/login' })}
-              className="rounded-full bg-white/10 px-5 py-2 text-sm font-medium backdrop-blur-lg transition-colors hover:bg-white/20"
+              className="cursor-pointer rounded-full bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-glass-hover)] border border-[var(--dk-separator)] text-foreground px-5 py-2 text-sm font-medium transition-colors"
             >
               Go to Sign In
             </button>
@@ -141,7 +141,7 @@ export const ResetPasswordPage = () => {
             <button
               type="submit"
               disabled={state === 'submitting'}
-              className="flex w-full items-center justify-center gap-2 rounded-xl bg-white/10 px-5 py-3 text-sm font-medium backdrop-blur-lg transition-colors hover:bg-white/20 disabled:opacity-50"
+              className="cursor-pointer flex w-full items-center justify-center gap-2 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 px-5 py-3 text-sm font-semibold transition-all shadow-md disabled:opacity-50"
             >
               {state === 'submitting' ? (
                 <Loader2 className="h-5 w-5 animate-spin" />
@@ -154,7 +154,7 @@ export const ResetPasswordPage = () => {
         <div className="mt-6">
           <Link
             to="/auth/login"
-            className="inline-flex items-center gap-1.5 text-xs text-muted-foreground transition-colors hover:text-white/80"
+            className="inline-flex items-center gap-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
           >
             <ArrowLeft className="h-3.5 w-3.5" />
             Back to sign in

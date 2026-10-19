@@ -1,8 +1,8 @@
 export const hubScoreColor = (score: number) => {
-  if (score >= 80) return { text: 'text-emerald-400', bg: 'bg-emerald-400/10', ring: 'ring-emerald-400/30', glow: 'shadow-[0_0_24px_rgba(52,211,153,0.18)]' }
-  if (score >= 60) return { text: 'text-sky-400', bg: 'bg-sky-400/10', ring: 'ring-sky-400/30', glow: 'shadow-[0_0_24px_rgba(56,189,248,0.18)]' }
-  if (score >= 40) return { text: 'text-amber-400', bg: 'bg-amber-400/10', ring: 'ring-amber-400/30', glow: 'shadow-[0_0_24px_rgba(251,191,36,0.18)]' }
-  return { text: 'text-red-400', bg: 'bg-red-400/10', ring: 'ring-red-400/30', glow: 'shadow-[0_0_24px_rgba(248,113,113,0.18)]' }
+  if (score >= 80) return { text: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-500/15', ring: 'ring-emerald-500/30', glow: 'shadow-[0_0_24px_rgba(52,211,153,0.18)]' }
+  if (score >= 60) return { text: 'text-sky-600 dark:text-sky-400', bg: 'bg-sky-500/15', ring: 'ring-sky-500/30', glow: 'shadow-[0_0_24px_rgba(56,189,248,0.18)]' }
+  if (score >= 40) return { text: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-500/15', ring: 'ring-amber-500/30', glow: 'shadow-[0_0_24px_rgba(251,191,36,0.18)]' }
+  return { text: 'text-red-600 dark:text-red-400', bg: 'bg-red-500/15', ring: 'ring-red-500/30', glow: 'shadow-[0_0_24px_rgba(248,113,113,0.18)]' }
 }
 
 export const ratingsScoreColor = (score: number): { scoreClass: string; glowClass: string } => {

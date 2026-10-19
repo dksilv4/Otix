@@ -18,13 +18,12 @@ export const SettingsRow = ({ icon, label, description, action, disabled, classN
   return (
     <div
       className={cn(
-        'flex items-center justify-between rounded-xl px-4 py-3.5 transition-all duration-200 hover:bg-white/[0.04]',
+        'flex items-center justify-between rounded-xl px-4 py-3.5 transition-all duration-200 hover:bg-[var(--dk-surface-hover)]',
         disabled && 'opacity-50 pointer-events-none',
         className,
       )}
       style={{
         backgroundColor: 'var(--dk-surface-raised)',
-        boxShadow: 'inset 0 1px 0 0 rgba(255, 255, 255, 0.04)',
       }}
     >
       <div className="flex items-center gap-3.5 min-w-0 flex-1">
@@ -34,8 +33,8 @@ export const SettingsRow = ({ icon, label, description, action, disabled, classN
           </div>
         ) : null}
         <div className="min-w-0">
-          <p className="truncate text-sm font-medium text-white">{label}</p>
-          {description && <p className="truncate text-xs text-white/50 mt-0.5">{description}</p>}
+          <p className="truncate text-sm font-medium text-foreground">{label}</p>
+          {description && <p className="truncate text-xs text-muted-foreground mt-0.5">{description}</p>}
         </div>
       </div>
       <div className="ml-3 shrink-0">{action}</div>

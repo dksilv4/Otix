@@ -23,7 +23,7 @@ export const LauncherCloudSyncStat = () => {
     ? <AlertCircle size={11} className="text-red-400" />
     : sync.cloudSettings?.isPathConfirmed
     ? <Cloud size={11} className="text-primary" />
-    : <Cloud size={11} className="text-white/30" />
+    : <Cloud size={11} className="text-muted-foreground" />
 
   const cloudTitle = sync.syncing
     ? 'Syncing...'
@@ -35,11 +35,11 @@ export const LauncherCloudSyncStat = () => {
 
   return (
     <>
-      <div className="w-px self-stretch bg-white/15" />
+      <div className="w-px self-stretch bg-[var(--dk-separator)]" />
       <button
         onClick={sync.handleSyncNow}
         disabled={sync.syncing || !sync.cloudSettings?.isPathConfirmed}
-        className="flex items-center justify-center min-w-9 rounded-lg hover:bg-white/10 transition-all cursor-pointer disabled:opacity-40 active:scale-95"
+        className="flex items-center justify-center min-w-9 rounded-lg hover:bg-[var(--dk-surface-ghost)] text-muted-foreground hover:text-foreground transition-all cursor-pointer disabled:opacity-40 active:scale-95"
         title={cloudTitle}
       >
         {cloudIcon}

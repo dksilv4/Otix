@@ -122,31 +122,31 @@ export const CandidateReviewModal = ({ game, onClose, isExiting, onMatchResolved
 
   return (
     <div className={'fixed inset-0 z-[var(--dk-z-modal)] flex items-center justify-center p-4 transition-opacity duration-200 ' + (visible ? 'opacity-100' : 'opacity-0')}>
-      <div className="absolute inset-0 bg-black/60" onClick={onClose} />
-      <div className={'relative w-full max-w-2xl max-h-[85vh] overflow-hidden rounded-3xl bg-[var(--dk-surface-base)] shadow-[var(--dk-shadow-dialog)] transition-all duration-200 ease-out flex flex-col ' + (visible ? 'scale-100 translate-y-0' : 'scale-95 translate-y-4')}>
+      <div className="absolute inset-0 bg-background/80 backdrop-blur-sm" onClick={onClose} />
+      <div className={'relative w-full max-w-2xl max-h-[85vh] overflow-hidden rounded-3xl bg-[var(--dk-surface-base)] border border-[var(--dk-separator)] shadow-[var(--dk-shadow-dialog)] transition-all duration-200 ease-out flex flex-col ' + (visible ? 'scale-100 translate-y-0' : 'scale-95 translate-y-4')}>
         {/* Header */}
-        <div className="flex items-center gap-2.5 px-6 py-4 shrink-0">
-          {isMatched ? <CheckCircle2 size={16} className="text-green-500" /> : candidateCount > 0 ? <Sparkles size={16} className="text-yellow-500" /> : <Gamepad2 size={16} className="text-white/40" />}
-          <h2 className="text-sm font-bold text-white truncate flex-1">
+        <div className="flex items-center gap-2.5 px-6 py-4 shrink-0 border-b border-[var(--dk-separator)]">
+          {isMatched ? <CheckCircle2 size={16} className="text-emerald-500" /> : candidateCount > 0 ? <Sparkles size={16} className="text-amber-500" /> : <Gamepad2 size={16} className="text-muted-foreground" />}
+          <h2 className="text-sm font-bold text-foreground truncate flex-1">
             {isMatched ? 'Matched Game' : candidateCount > 0 ? `Review Candidates (${candidateCount})` : 'Game Details'}
           </h2>
-          {dlcOf && <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 font-medium shrink-0">DLC of {dlcOf}</span>}
-          <button onClick={onClose} className="shrink-0 rounded-xl p-1.5 transition-all text-[var(--muted-foreground)] hover:bg-[var(--dk-surface-ghost-hover)] hover:text-[var(--foreground)]"><X size={16} /></button>
+          {dlcOf && <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-500 dark:text-amber-400 font-medium shrink-0 border border-amber-500/20">DLC of {dlcOf}</span>}
+          <button onClick={onClose} className="shrink-0 rounded-xl p-1.5 transition-all text-muted-foreground hover:bg-[var(--dk-surface-hover)] hover:text-foreground"><X size={16} /></button>
         </div>
 
         {/* Poster row */}
         <div className="flex gap-4 px-6 py-4 shrink-0">
           <div className="flex-1 space-y-2">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-white/30">{launcherName}</p>
-            <div className="aspect-[2/3] rounded-xl overflow-hidden bg-white/5 w-full">
-              {nativePoster ? <img src={nativePoster} alt="" className="h-full w-full object-cover" /> : <div className="h-full flex items-center justify-center"><Gamepad2 className="h-10 w-10 text-white/10" /></div>}
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{launcherName}</p>
+            <div className="aspect-[2/3] rounded-xl overflow-hidden bg-[var(--dk-surface-ghost)] border border-[var(--dk-separator)] w-full">
+              {nativePoster ? <img src={nativePoster} alt="" className="h-full w-full object-cover" /> : <div className="h-full flex items-center justify-center"><Gamepad2 className="h-10 w-10 text-muted-foreground/30" /></div>}
             </div>
           </div>
           {hasRightSide && (
             <div className="flex-1 space-y-2">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-white/30">{isMatched ? 'Matched' : 'Candidate'}</p>
-              <div className="aspect-[2/3] rounded-xl overflow-hidden bg-white/5 w-full">
-                {matchPosterFinal ? <img src={matchPosterFinal} alt="" className="h-full w-full object-cover" /> : <div className="h-full flex items-center justify-center">{isMatched ? <CheckCircle2 className="h-10 w-10 text-green-400/20" /> : <Gamepad2 className="h-10 w-10 text-white/10" />}</div>}
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{isMatched ? 'Matched' : 'Candidate'}</p>
+              <div className="aspect-[2/3] rounded-xl overflow-hidden bg-[var(--dk-surface-ghost)] border border-[var(--dk-separator)] w-full">
+                {matchPosterFinal ? <img src={matchPosterFinal} alt="" className="h-full w-full object-cover" /> : <div className="h-full flex items-center justify-center">{isMatched ? <CheckCircle2 className="h-10 w-10 text-emerald-500/20" /> : <Gamepad2 className="h-10 w-10 text-muted-foreground/30" />}</div>}
               </div>
             </div>
           )}
@@ -157,14 +157,14 @@ export const CandidateReviewModal = ({ game, onClose, isExiting, onMatchResolved
           {rows.map(([label, scanned, match], i) => {
             return (
               <div key={i} className="flex items-start gap-3 py-2 text-xs">
-                <span className="text-white/30 font-medium w-20 shrink-0 text-right">{label}</span>
-                <span className={`flex-1 min-w-0 break-words text-right ${scanned ? 'text-white/70' : 'text-white/15'}`}>
+                <span className="text-muted-foreground font-medium w-20 shrink-0 text-right">{label}</span>
+                <span className={`flex-1 min-w-0 break-words text-right ${scanned ? 'text-foreground' : 'text-muted-foreground/40'}`}>
                   {scanned || '—'}
                 </span>
                 {hasRightSide && (
                   <>
-                    <span className="text-white/15 shrink-0">→</span>
-                    <span className={`flex-1 min-w-0 break-words ${match ? (label === 'Confidence' ? (String(match).includes('90') || String(match).includes('95') || String(match).includes('100') ? 'text-green-400 font-semibold' : String(match).includes('80') || String(match).includes('85') ? 'text-blue-400 font-semibold' : 'text-white/50') : 'text-white/70') : 'text-white/15'}`}>
+                    <span className="text-muted-foreground/40 shrink-0">→</span>
+                    <span className={`flex-1 min-w-0 break-words ${match ? (label === 'Confidence' ? (String(match).includes('90') || String(match).includes('95') || String(match).includes('100') ? 'text-emerald-500 font-semibold' : String(match).includes('80') || String(match).includes('85') ? 'text-primary font-semibold' : 'text-muted-foreground') : 'text-foreground') : 'text-muted-foreground/40'}`}>
                       {match || '—'}
                     </span>
                   </>
@@ -176,16 +176,16 @@ export const CandidateReviewModal = ({ game, onClose, isExiting, onMatchResolved
 
         {/* Candidate slideshow nav */}
         {!isMatched && candidateCount > 1 && (
-          <div className="flex items-center justify-between px-6 py-3 shrink-0">
+          <div className="flex items-center justify-between px-6 py-3 shrink-0 border-t border-[var(--dk-separator)]">
             <button onClick={() => setSelectedIdx(i => Math.max(0, i - 1))} disabled={selectedIdx === 0}
-              className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs text-white/50 hover:text-white hover:bg-white/5 transition-colors disabled:opacity-20 disabled:cursor-not-allowed">
+              className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-hover)] transition-colors disabled:opacity-20 disabled:cursor-not-allowed">
               <ChevronLeft size={14} /> Previous
             </button>
-            <span className="text-xs text-white/40 font-medium tabular-nums">
+            <span className="text-xs text-muted-foreground font-medium tabular-nums">
               {selectedIdx + 1} / {candidateCount}
             </span>
             <button onClick={() => setSelectedIdx(i => Math.min(candidateCount - 1, i + 1))} disabled={selectedIdx >= candidateCount - 1}
-              className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs text-white/50 hover:text-white hover:bg-white/5 transition-colors disabled:opacity-20 disabled:cursor-not-allowed">
+              className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-hover)] transition-colors disabled:opacity-20 disabled:cursor-not-allowed">
               Next <ChevronRight size={14} />
             </button>
           </div>
@@ -193,40 +193,40 @@ export const CandidateReviewModal = ({ game, onClose, isExiting, onMatchResolved
 
         {/* Auth/error + action buttons */}
         {(actionError || !isMatched) && (
-          <div className="px-6 py-3 shrink-0 space-y-2">
+          <div className="px-6 py-3 shrink-0 space-y-2 border-t border-[var(--dk-separator)]">
             {actionError && (
-              <div className="flex items-center gap-2 p-2.5 rounded-xl bg-red-500/10 text-xs text-red-400">
+              <div className="flex items-center gap-2 p-2.5 rounded-xl bg-destructive/10 text-xs text-destructive border border-destructive/20">
                 <AlertCircle size={14} className="shrink-0" />
                 <span className="flex-1">{actionError}</span>
-                {!isAuthenticated && <a href="/login" className="shrink-0 flex items-center gap-1 px-3 py-1.5 rounded-lg bg-blue-500/20 text-blue-400 font-medium hover:bg-blue-500/30 transition-colors"><LogIn size={12} /> Sign In</a>}
+                {!isAuthenticated && <a href="/login" className="shrink-0 flex items-center gap-1 px-3 py-1.5 rounded-lg bg-primary/20 text-primary font-medium hover:bg-primary/30 transition-colors"><LogIn size={12} /> Sign In</a>}
               </div>
             )}
 
             {!isMatched && candidateCount > 0 && (
               <>
                 {!isAuthenticated ? (
-                  <div className="flex items-center gap-2 p-2.5 rounded-xl bg-amber-500/10 text-xs text-amber-400">
+                  <div className="flex items-center gap-2 p-2.5 rounded-xl bg-amber-500/10 text-xs text-amber-500 dark:text-amber-400 border border-amber-500/20">
                     <LogIn size={14} className="shrink-0" />
                     <span className="flex-1">Sign in to confirm matches</span>
-                    <a href="/login" className="shrink-0 px-3 py-1.5 rounded-lg bg-blue-500/20 text-blue-400 font-medium hover:bg-blue-500/30 transition-colors">Sign In</a>
+                    <a href="/login" className="shrink-0 px-3 py-1.5 rounded-lg bg-primary/20 text-primary font-medium hover:bg-primary/30 transition-colors">Sign In</a>
                   </div>
                 ) : (
                   <button onClick={() => handleAcceptCandidate(candidates[selectedIdx])} disabled={isAccepting}
-                    className="w-full py-2.5 rounded-xl bg-green-500/80 hover:bg-green-400 disabled:bg-green-500/40 text-white text-xs font-bold flex items-center justify-center gap-2 transition-all active:scale-[0.98]">
+                    className="w-full py-2.5 rounded-xl bg-primary hover:bg-primary/90 disabled:opacity-50 text-primary-foreground text-xs font-bold flex items-center justify-center gap-2 transition-all active:scale-[0.98]">
                     {confirming ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
                     Accept Selected Match
                   </button>
                 )}
 
                 <div className="flex gap-2">
-                  <button onClick={() => handleReject(false)} disabled={isAccepting} className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-red-500/20 text-red-400 text-[11px] font-semibold hover:bg-red-500/30 transition-colors disabled:opacity-50">
+                  <button onClick={() => handleReject(false)} disabled={isAccepting} className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-destructive/10 text-destructive text-[11px] font-semibold hover:bg-destructive/20 border border-destructive/20 transition-colors disabled:opacity-50">
                     {rejecting ? <Loader2 size={12} className="animate-spin" /> : <X size={12} />} Skip
                   </button>
-                  <button onClick={() => handleReject(true)} disabled={isAccepting} className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-red-500/10 text-red-400/70 text-[11px] font-semibold hover:bg-red-500/20 transition-colors disabled:opacity-50">
+                  <button onClick={() => handleReject(true)} disabled={isAccepting} className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-destructive/10 text-destructive/80 text-[11px] font-semibold hover:bg-destructive/20 border border-destructive/20 transition-colors disabled:opacity-50">
                     <X size={12} /> Never suggest
                   </button>
                   <div className="flex-1" />
-                  <button onClick={onClose} className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-white/60 text-[11px] font-semibold transition-all">Close</button>
+                  <button onClick={onClose} className="px-4 py-2 rounded-xl bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-hover)] text-foreground border border-[var(--dk-separator)] text-[11px] font-semibold transition-all">Close</button>
                 </div>
               </>
             )}

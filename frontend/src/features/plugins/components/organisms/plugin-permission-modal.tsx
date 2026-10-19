@@ -49,7 +49,7 @@ export const PluginPermissionModal = ({
     >
       {/* Overlay */}
       <div
-        className="absolute inset-0 bg-black/60"
+        className="absolute inset-0 bg-background/80 backdrop-blur-sm"
         onClick={() => { onDeny(request.requestId); onClose() }}
       />
 
@@ -58,7 +58,7 @@ export const PluginPermissionModal = ({
         role="dialog"
         aria-modal="true"
         aria-label="Permission Request"
-        className={'relative w-full max-w-md bg-white/5 backdrop-blur-xl rounded-2xl shadow-2xl p-6 sm:p-8 transition-all duration-200 ' + (visible ? 'scale-100 translate-y-0' : 'scale-95 translate-y-4')}
+        className={'relative w-full max-w-md bg-[var(--dk-surface-raised)] border border-[var(--dk-separator)] backdrop-blur-xl rounded-2xl shadow-2xl p-6 sm:p-8 transition-all duration-200 ' + (visible ? 'scale-100 translate-y-0' : 'scale-95 translate-y-4')}
         style={{
           animation: visible ? 'authFormFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1)' : undefined,
         }}
@@ -72,9 +72,9 @@ export const PluginPermissionModal = ({
             <ShieldAlert className="h-6 w-6" />
           </div>
           <div className="min-w-0 flex-1">
-            <h2 className="text-lg font-semibold text-white">Permission Request</h2>
-            <p className="text-sm text-white/60 mt-1">
-              <span className="font-medium text-white/80">{request.pluginName}</span> needs your permission
+            <h2 className="text-lg font-semibold text-foreground">Permission Request</h2>
+            <p className="text-sm text-muted-foreground mt-1">
+              <span className="font-medium text-foreground">{request.pluginName}</span> needs your permission
             </p>
           </div>
         </div>
@@ -94,11 +94,11 @@ export const PluginPermissionModal = ({
 
         {/* Description */}
         <div className="mb-6">
-          <p className="text-sm text-white/70 leading-relaxed">
+          <p className="text-sm text-foreground leading-relaxed">
             {getPermissionDescription(request.permission)}
           </p>
           {request.reason && (
-            <p className="text-xs text-white/40 mt-2 italic leading-relaxed">
+            <p className="text-xs text-muted-foreground mt-2 italic leading-relaxed">
               &ldquo;{request.reason}&rdquo;
             </p>
           )}
@@ -109,7 +109,7 @@ export const PluginPermissionModal = ({
           <button
             type="button"
             onClick={() => { onDeny(request.requestId); onClose() }}
-            className="flex-1 inline-flex items-center justify-center gap-2 whitespace-nowrap h-10 rounded-xl px-4 text-sm font-medium hover:bg-white/5 text-white/60 hover:text-white transition-colors active:scale-[0.97]"
+            className="flex-1 inline-flex items-center justify-center gap-2 whitespace-nowrap h-10 rounded-xl px-4 text-sm font-medium hover:bg-[var(--dk-surface-hover)] text-muted-foreground hover:text-foreground transition-colors active:scale-[0.97] cursor-pointer"
           >
             Deny
           </button>
@@ -117,7 +117,7 @@ export const PluginPermissionModal = ({
           <button
             type="button"
             onClick={() => { onAllowOnce(request.requestId); onClose() }}
-            className="flex-1 inline-flex items-center justify-center gap-2 whitespace-nowrap h-10 rounded-xl px-4 text-sm font-medium hover:bg-white/5 text-white/80 hover:text-white transition-colors active:scale-[0.97]"
+            className="flex-1 inline-flex items-center justify-center gap-2 whitespace-nowrap h-10 rounded-xl px-4 text-sm font-medium hover:bg-[var(--dk-surface-hover)] text-foreground border border-[var(--dk-separator)] transition-colors active:scale-[0.97] cursor-pointer"
           >
             Allow Once
           </button>
@@ -125,7 +125,7 @@ export const PluginPermissionModal = ({
           <button
             type="button"
             onClick={() => { onAllowAlways(request.requestId); onClose() }}
-            className="flex-1 inline-flex items-center justify-center gap-2 whitespace-nowrap h-10 rounded-xl px-4 text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors active:scale-[0.97]"
+            className="flex-1 inline-flex items-center justify-center gap-2 whitespace-nowrap h-10 rounded-xl px-4 text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors active:scale-[0.97] cursor-pointer"
           >
             Always Allow
           </button>

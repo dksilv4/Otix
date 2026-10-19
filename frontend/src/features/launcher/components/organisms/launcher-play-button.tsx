@@ -71,35 +71,35 @@ export const LauncherPlayButton = ({ onOpenInstaller }: LauncherPlayButtonProps)
     const isDownloading = activeTransfer.status === 'downloading'
     const speedMBps = activeTransfer.speedBytesPerSec / (1024 * 1024)
     return (
-      <div className="flex items-center gap-3 bg-neutral-900/90 border border-cyan-500/30 px-4 py-2 rounded-xl backdrop-blur-md shadow-lg shadow-cyan-500/10">
+      <div className="flex items-center gap-3 bg-[var(--dk-surface-overlay)] border border-cyan-500/30 px-4 py-2 rounded-xl backdrop-blur-md shadow-lg shadow-cyan-500/10">
         <div className="flex items-center gap-2.5">
           {isDownloading ? (
             <Server className="h-4 w-4 text-cyan-400 animate-pulse shrink-0" />
           ) : (
-            <Pause className="h-4 w-4 text-amber-400 shrink-0" />
+            <Pause className="h-4 w-4 text-amber-500 shrink-0" />
           )}
           <div className="flex flex-col">
-            <div className="flex items-center gap-2 text-xs font-bold text-white">
+            <div className="flex items-center gap-2 text-xs font-bold text-foreground">
               <span>{isDownloading ? 'Streaming from Server' : 'Paused'}</span>
-              <span className="text-cyan-400 tabular-nums font-mono">{activeTransfer.percentage}%</span>
+              <span className="text-cyan-500 tabular-nums font-mono">{activeTransfer.percentage}%</span>
               {speedMBps > 0 && isDownloading && (
-                <span className="text-[10px] text-neutral-400 font-mono">({speedMBps.toFixed(1)} MB/s)</span>
+                <span className="text-[10px] text-muted-foreground font-mono">({speedMBps.toFixed(1)} MB/s)</span>
               )}
             </div>
-            <div className="w-36 h-1.5 bg-neutral-800 rounded-full overflow-hidden mt-1">
+            <div className="w-36 h-1.5 bg-[var(--dk-surface-field)] rounded-full overflow-hidden mt-1">
               <div
-                className="h-full bg-cyan-400 rounded-full transition-all duration-300"
+                className="h-full bg-cyan-500 rounded-full transition-all duration-300"
                 style={{ width: `${Math.min(100, Math.max(0, activeTransfer.percentage))}%` }}
               />
             </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-1 border-l border-white/10 pl-2">
+        <div className="flex items-center gap-1 border-l border-[var(--dk-separator)] pl-2">
           {isDownloading ? (
             <button
               onClick={() => pauseDownload(activeTransfer.id)}
-              className="p-1.5 hover:bg-white/10 rounded-lg text-neutral-300 hover:text-white transition-colors cursor-pointer"
+              className="p-1.5 hover:bg-[var(--dk-surface-field)] rounded-lg text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
               title="Pause download"
             >
               <Pause className="h-3.5 w-3.5" />
@@ -107,7 +107,7 @@ export const LauncherPlayButton = ({ onOpenInstaller }: LauncherPlayButtonProps)
           ) : (
             <button
               onClick={() => resumeDownload(activeTransfer.id)}
-              className="p-1.5 hover:bg-white/10 rounded-lg text-cyan-300 hover:text-white transition-colors cursor-pointer"
+              className="p-1.5 hover:bg-[var(--dk-surface-field)] rounded-lg text-cyan-500 hover:text-cyan-400 transition-colors cursor-pointer"
               title="Resume download"
             >
               <Play className="h-3.5 w-3.5 fill-current" />
@@ -115,7 +115,7 @@ export const LauncherPlayButton = ({ onOpenInstaller }: LauncherPlayButtonProps)
           )}
           <button
             onClick={() => cancelRemoteDownload(activeTransfer.id)}
-            className="p-1.5 hover:bg-red-500/20 rounded-lg text-neutral-400 hover:text-red-400 transition-colors cursor-pointer"
+            className="p-1.5 hover:bg-destructive/20 rounded-lg text-muted-foreground hover:text-destructive transition-colors cursor-pointer"
             title="Cancel download"
           >
             <X className="h-3.5 w-3.5" />

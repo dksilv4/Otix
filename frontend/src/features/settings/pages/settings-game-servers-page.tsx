@@ -134,16 +134,16 @@ export const SettingsGameServersPage = () => {
       {servers.length > 0 && (
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
           <div className="relative flex-1 max-w-md">
-            <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/40" />
+            <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search by server name, game, address..."
-              className="w-full h-9 pl-9 pr-3 rounded-xl bg-white/5 border border-white/10 text-xs text-white placeholder:text-white/40 focus:outline-none focus:border-primary transition-colors"
+              className="w-full h-9 pl-9 pr-3 rounded-xl bg-[var(--dk-surface-ghost)] text-xs text-foreground placeholder:text-muted-foreground focus:outline-none transition-colors"
             />
           </div>
-          <div className="text-xs text-white/50 self-end sm:self-center font-medium">
+          <div className="text-xs text-muted-foreground self-end sm:self-center font-medium">
             {filteredServers.length} {filteredServers.length === 1 ? 'server' : 'servers'}
           </div>
         </div>
@@ -151,17 +151,17 @@ export const SettingsGameServersPage = () => {
 
       {/* Main Content Area */}
       {isLoading ? (
-        <SettingsCard className="p-12 text-center text-xs text-white/40">
+        <SettingsCard className="p-12 text-center text-xs text-muted-foreground">
           Loading game servers...
         </SettingsCard>
       ) : servers.length === 0 ? (
         <SettingsCard className="p-8 sm:p-12 text-center flex flex-col items-center justify-center gap-4">
-          <div className="w-14 h-14 rounded-3xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary">
+          <div className="w-14 h-14 rounded-3xl bg-primary/10 flex items-center justify-center text-primary">
             <Gamepad2 size={28} />
           </div>
           <div className="space-y-1.5 max-w-md">
-            <h3 className="text-base font-bold text-white tracking-tight">No dedicated game servers</h3>
-            <p className="text-xs text-white/60 leading-relaxed">
+            <h3 className="text-base font-bold text-foreground tracking-tight">No dedicated game servers</h3>
+            <p className="text-xs text-muted-foreground leading-relaxed">
               Register your multiplayer dedicated servers (Minecraft, Steam/Source, Palworld, Valheim, CS2, etc.)
               to track live ping and player counts, and generate share links for friends.
             </p>
@@ -178,7 +178,7 @@ export const SettingsGameServersPage = () => {
           </DkButton>
         </SettingsCard>
       ) : filteredServers.length === 0 ? (
-        <SettingsCard className="p-8 text-center text-xs text-white/50">
+        <SettingsCard className="p-8 text-center text-xs text-muted-foreground">
           No game servers matched &quot;{search}&quot;.
         </SettingsCard>
       ) : (
@@ -196,7 +196,7 @@ export const SettingsGameServersPage = () => {
             return (
               <SettingsCard
                 key={server.id}
-                className="p-5 flex flex-col justify-between gap-4 border border-white/[0.08] hover:border-white/15 transition-all group"
+                className="p-5 flex flex-col justify-between gap-4 transition-all group"
               >
                 <div className="space-y-3">
                   {/* Top Bar: Status, Name, Game Badge & Actions */}
@@ -206,19 +206,19 @@ export const SettingsGameServersPage = () => {
                         className={`w-2.5 h-2.5 rounded-full shrink-0 ${
                           isOnline
                             ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]'
-                            : 'bg-red-500/80'
+                            : 'bg-destructive/80'
                         }`}
                         title={isOnline ? 'Online' : 'Offline'}
                       />
                       <div className="min-w-0">
-                        <h4 className="text-sm font-bold text-white truncate" title={server.name}>
+                        <h4 className="text-sm font-bold text-foreground truncate" title={server.name}>
                           {server.name}
                         </h4>
                         <div className="flex items-center gap-2 mt-0.5">
                           <span className="text-[11px] font-semibold text-primary truncate">
                             {server.gameTitle || server.mediaItemTitle || 'Multiplayer Game'}
                           </span>
-                          <span className="text-[10px] px-1.5 py-0.2 rounded-md bg-white/10 text-white/60">
+                          <span className="text-[10px] px-1.5 py-0.2 rounded-md bg-[var(--dk-surface-ghost)] text-muted-foreground">
                             {protocolLabel}
                           </span>
                         </div>
@@ -231,7 +231,7 @@ export const SettingsGameServersPage = () => {
                         onClick={(e) => handleRefresh(server.id, e)}
                         title="Query live server status"
                         disabled={queryMutation.isPending}
-                        className="p-1.5 rounded-lg text-white/40 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+                        className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-hover)] transition-colors cursor-pointer"
                       >
                         <RefreshCw
                           size={13}
@@ -246,7 +246,7 @@ export const SettingsGameServersPage = () => {
                         type="button"
                         onClick={() => setSelectedShareServer(server)}
                         title="Share with friends or get invite link"
-                        className="p-1.5 rounded-lg text-white/40 hover:text-primary hover:bg-white/10 transition-colors cursor-pointer"
+                        className="p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-[var(--dk-surface-hover)] transition-colors cursor-pointer"
                       >
                         <Share2 size={13} />
                       </button>
@@ -255,7 +255,7 @@ export const SettingsGameServersPage = () => {
                           type="button"
                           onClick={() => setServerToDelete(server)}
                           title="Delete server"
-                          className="p-1.5 rounded-lg text-white/40 hover:text-red-400 hover:bg-white/10 transition-colors cursor-pointer"
+                          className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-[var(--dk-surface-hover)] transition-colors cursor-pointer"
                         >
                           <Trash2 size={13} />
                         </button>
@@ -264,30 +264,30 @@ export const SettingsGameServersPage = () => {
                   </div>
 
                   {/* Address & Live Query Stats */}
-                  <div className="flex flex-wrap items-center gap-3 text-xs text-white/60">
+                  <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
                     <button
                       type="button"
                       onClick={(e) => handleCopyAddress(server, e)}
                       title="Click to copy connection address"
-                      className="flex items-center gap-1 font-mono text-[11px] px-2 py-0.5 rounded-md bg-white/5 hover:bg-white/10 text-white/80 transition-colors cursor-pointer"
+                      className="flex items-center gap-1 font-mono text-[11px] px-2 py-0.5 rounded-md bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-hover)] text-foreground transition-colors cursor-pointer"
                     >
                       <Globe size={11} className="text-primary" />
                       <span>{server.connectionAddress}</span>
                       {isCopied ? (
-                        <Check size={11} className="text-emerald-400 ml-1" />
+                        <Check size={11} className="text-emerald-500 dark:text-emerald-400 ml-1" />
                       ) : (
-                        <Copy size={11} className="text-white/40 ml-1" />
+                        <Copy size={11} className="text-muted-foreground ml-1" />
                       )}
                     </button>
 
                     {server.pingMs != null && (
                       <div className="flex items-center gap-1">
-                        <Wifi size={12} className="text-emerald-400" />
+                        <Wifi size={12} className="text-emerald-500 dark:text-emerald-400" />
                         <span>{server.pingMs}ms</span>
                       </div>
                     )}
 
-                    <div className="flex items-center gap-1 font-semibold text-white/80">
+                    <div className="flex items-center gap-1 font-semibold text-foreground">
                       <Users size={12} className="text-primary" />
                       <span>
                         {server.currentPlayers} / {server.maxPlayers || '—'}
@@ -295,21 +295,21 @@ export const SettingsGameServersPage = () => {
                     </div>
 
                     {server.currentMap && (
-                      <span className="text-[11px] text-white/40 truncate max-w-[120px]" title={server.currentMap}>
+                      <span className="text-[11px] text-muted-foreground truncate max-w-[120px]" title={server.currentMap}>
                         Map: {server.currentMap}
                       </span>
                     )}
                   </div>
 
                   {server.description && (
-                    <p className="text-xs text-white/50 line-clamp-2">{server.description}</p>
+                    <p className="text-xs text-muted-foreground line-clamp-2">{server.description}</p>
                   )}
                 </div>
 
                 {/* Card Footer: Host & Join Action */}
-                <div className="flex items-center justify-between pt-3 border-t border-white/[0.06]">
-                  <span className="text-[11px] text-white/40">
-                    {server.isOwner ? 'Hosted by you' : `Shared by @${server.ownerUsername}`}
+                <div className="flex items-center justify-between pt-3">
+                  <span className="text-[11px] text-muted-foreground">
+                    {server.isOwner ? 'Hosted by you' : `@${server.ownerUsername}`}
                   </span>
 
                   <DkButton
@@ -319,7 +319,7 @@ export const SettingsGameServersPage = () => {
                     onClick={() => setSelectedJoinServer(server)}
                     className="gap-1.5 h-8 px-3 text-xs"
                   >
-                    <Play size={12} fill="white" />
+                    <Play size={12} fill="currentColor" />
                     <span>Join</span>
                   </DkButton>
                 </div>
@@ -339,8 +339,8 @@ export const SettingsGameServersPage = () => {
           className="max-w-md"
         >
           <div className="space-y-4 pt-2">
-            <div className="p-3.5 rounded-xl bg-red-500/10 border border-red-500/20 text-xs text-red-200 flex items-start gap-2.5">
-              <AlertTriangle size={16} className="text-red-400 shrink-0 mt-0.5" />
+            <div className="p-3.5 rounded-xl bg-destructive/10 text-xs text-destructive flex items-start gap-2.5">
+              <AlertTriangle size={16} className="text-destructive shrink-0 mt-0.5" />
               <span>
                 Removing <strong>{serverToDelete.name}</strong> will revoke all friend shares and active invite links.
               </span>
@@ -361,7 +361,7 @@ export const SettingsGameServersPage = () => {
                 size="sm"
                 onClick={handleDeleteConfirm}
                 disabled={deleteMutation.isPending}
-                className="gap-1.5 bg-red-600 hover:bg-red-500 text-white"
+                className="gap-1.5"
               >
                 <Trash2 size={13} />
                 <span>{deleteMutation.isPending ? 'Deleting...' : 'Delete Server'}</span>

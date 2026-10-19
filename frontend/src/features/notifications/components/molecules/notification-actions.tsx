@@ -8,8 +8,8 @@ interface NotificationActionsProps {
 
 const variants = {
   primary: 'bg-primary text-primary-foreground hover:opacity-90',
-  secondary: 'bg-white/10 text-white/60 hover:bg-white/[0.08]',
-  danger: 'bg-red-500/20 text-red-400 hover:bg-red-500/30',
+  secondary: 'bg-[var(--dk-surface-ghost)] text-muted-foreground hover:bg-[var(--dk-surface-ghost-hover)] hover:text-foreground',
+  danger: 'bg-destructive/15 text-destructive hover:bg-destructive/25',
 }
 
 export const NotificationActions = ({ actions }: NotificationActionsProps) => {

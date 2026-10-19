@@ -295,7 +295,7 @@ export const NodeSettingsModal = ({
                 onChange={(e) => setRenameInput(e.target.value)}
                 placeholder="Enter node name..."
                 autoFocus
-                className="w-full h-10 px-3 rounded-xl bg-white/5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary transition-colors"
+                className="w-full h-10 px-3 rounded-xl bg-[var(--dk-surface-field)] border border-[var(--dk-separator)] text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary transition-colors"
                 disabled={isSavingRename}
               />
             </div>

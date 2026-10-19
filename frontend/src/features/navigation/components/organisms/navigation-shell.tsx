@@ -11,9 +11,16 @@ interface NavShellProps {
   isPinned: boolean
   isSidebarOpen: boolean
   onToggleSidebar: () => void
+  onCloseSidebar?: () => void
 }
 
-const NavShellInner = ({ children, isPinned, isSidebarOpen, onToggleSidebar }: NavShellProps) => {
+const NavShellInner = ({
+  children,
+  isPinned,
+  isSidebarOpen,
+  onToggleSidebar,
+  onCloseSidebar,
+}: NavShellProps) => {
   const { showLeft, showRight } = useNavPillsVisibility()
 
   return (
@@ -21,7 +28,12 @@ const NavShellInner = ({ children, isPinned, isSidebarOpen, onToggleSidebar }: N
       {showLeft && <NavPillLeft />}
       {showLeft && <MenuDropdown />}
       {showRight && (
-        <NavPillRight isPinned={isPinned} isSidebarOpen={isSidebarOpen} onToggleSidebar={onToggleSidebar} />
+        <NavPillRight
+          isPinned={isPinned}
+          isSidebarOpen={isSidebarOpen}
+          onToggleSidebar={onToggleSidebar}
+          onCloseSidebar={onCloseSidebar}
+        />
       )}
       {children}
     </>
@@ -29,10 +41,21 @@ const NavShellInner = ({ children, isPinned, isSidebarOpen, onToggleSidebar }: N
 };
 
 /** Top-level navigation layout wrapper providing pill navigation, sidebar, and routing context. */
-export const NavShell = ({ children, isPinned, isSidebarOpen, onToggleSidebar }: NavShellProps) => {
+export const NavShell = ({
+  children,
+  isPinned,
+  isSidebarOpen,
+  onToggleSidebar,
+  onCloseSidebar,
+}: NavShellProps) => {
   return (
     <NavigationProvider>
-      <NavShellInner isPinned={isPinned} isSidebarOpen={isSidebarOpen} onToggleSidebar={onToggleSidebar}>
+      <NavShellInner
+        isPinned={isPinned}
+        isSidebarOpen={isSidebarOpen}
+        onToggleSidebar={onToggleSidebar}
+        onCloseSidebar={onCloseSidebar}
+      >
         {children}
       </NavShellInner>
     </NavigationProvider>

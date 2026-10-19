@@ -25,12 +25,12 @@ export const SettingsCard = ({ children, className, compact, tone = 'default' }:
       style={{
         backgroundColor:
           tone === 'raised'
-            ? 'oklch(from var(--dk-surface-base) l c h / 0.42)'
+            ? 'color-mix(in oklch, var(--dk-surface-raised) 75%, transparent)'
             : 'var(--dk-surface-base)',
         boxShadow:
           tone === 'raised'
-            ? 'inset 0 1px 0 0 rgba(255,255,255,0.06), 0 12px 32px -18px rgba(0,0,0,0.5)'
-            : 'inset 0 1px 0 0 rgba(255, 255, 255, 0.08), 0 10px 30px -10px rgba(0, 0, 0, 0.5)',
+            ? 'var(--dk-shadow-md)'
+            : 'var(--dk-shadow-sm)',
       }}
     >
       {children}

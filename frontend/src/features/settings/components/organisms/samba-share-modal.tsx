@@ -269,7 +269,7 @@ export const SambaShareModal = ({
         </div>
 
         {/* Credentials / Guest access toggle */}
-        <div className="p-3 rounded-2xl bg-white/[0.02] border border-white/[0.04] space-y-3">
+        <div className="p-3 rounded-2xl bg-[var(--dk-surface-field)] border border-[var(--dk-separator)] space-y-3">
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
               <p className="text-xs font-semibold text-foreground">Anonymous / Guest Access</p>
@@ -279,7 +279,7 @@ export const SambaShareModal = ({
           </div>
 
           {!isAnonymous && (
-            <div className="space-y-2.5 pt-2 border-t border-white/[0.04]">
+            <div className="space-y-2.5 pt-2 border-t border-[var(--dk-separator)]">
               <div className="space-y-1">
                 <label className="text-[11px] font-medium text-foreground flex items-center gap-1">
                   <KeyRound size={11} className="text-primary" />
@@ -322,7 +322,7 @@ export const SambaShareModal = ({
         </div>
 
         {/* Footer Buttons */}
-        <div className="flex items-center justify-between pt-2 border-t border-white/[0.04]">
+        <div className="flex items-center justify-between pt-2 border-t border-[var(--dk-separator)]">
           {samba ? (
             <DkButton
               type="button"

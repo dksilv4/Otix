@@ -138,19 +138,19 @@ export const NodeMapCardItem = ({
       }}
       className={cn(
         'group absolute select-none rounded-2xl backdrop-blur-2xl cursor-grab active:cursor-grabbing',
-        'bg-[var(--dk-surface-base)]/85 hover:bg-[var(--dk-surface-base)] border border-white/[0.06] shadow-sm hover:shadow-md',
-        'transition-[background-color,border-color,box-shadow,opacity] duration-150',
-        isSelected && 'ring-2 ring-primary/60 border-primary/40 shadow-primary/20',
-        isConnectingSource && 'ring-2 ring-primary border-primary animate-pulse shadow-primary/30',
+        'bg-[var(--dk-surface-base)]/85 hover:bg-[var(--dk-surface-base)] shadow-sm hover:shadow-md',
+        'transition-[background-color,box-shadow,opacity] duration-150',
+        isSelected && 'ring-2 ring-primary/60 shadow-primary/20',
+        isConnectingSource && 'ring-2 ring-primary animate-pulse shadow-primary/30',
         isConnectingTargetCandidate &&
-          'ring-2 ring-primary/80 border-primary/80 bg-primary/[0.08] shadow-md shadow-primary/25 cursor-pointer scale-[1.02]',
+          'ring-2 ring-primary/80 bg-primary/[0.08] shadow-md shadow-primary/25 cursor-pointer scale-[1.02]',
         isConnectingDimmed && 'opacity-40 grayscale-[35%]',
       )}
     >
       <div className="flex items-center justify-between h-full px-3 gap-2.5">
         {/* Left: Icon with Status Badge */}
         <div className="relative shrink-0 flex items-center justify-center">
-          <div className="h-7 w-7 rounded-lg bg-white/[0.04] border border-white/[0.05] flex items-center justify-center text-primary">
+          <div className="h-7 w-7 rounded-lg bg-[var(--dk-surface-field)] flex items-center justify-center text-primary">
             {type === 'home' && <HomeIcon size={14} />}
             {type === 'server' && <Server size={14} />}
             {type === 'node' && <Cpu size={14} />}
@@ -220,7 +220,7 @@ export const NodeMapCardItem = ({
           aria-label="Node actions"
           onClick={(e) => e.stopPropagation()}
           onPointerDown={(e) => e.stopPropagation()}
-          className="absolute left-1/2 -translate-x-1/2 top-[calc(100%+1rem)] z-30 pointer-events-auto flex items-center gap-1 p-1 px-1.5 rounded-xl bg-black/85 backdrop-blur-2xl border border-white/[0.08] shadow-2xl whitespace-nowrap animate-in fade-in slide-in-from-top-1 duration-150"
+          className="absolute left-1/2 -translate-x-1/2 top-[calc(100%+1rem)] z-30 pointer-events-auto flex items-center gap-1 p-1 px-1.5 rounded-xl bg-[var(--dk-surface-overlay)] backdrop-blur-2xl shadow-xl whitespace-nowrap animate-in fade-in slide-in-from-top-1 duration-150"
         >
           {/* Add Node Action for compatible connector nodes */}
           {type !== 'unclaimed_node' && onOpenConnectPicker && (
@@ -230,7 +230,7 @@ export const NodeMapCardItem = ({
               size="sm"
               aria-label={`Add node to ${name}`}
               onClick={() => onOpenConnectPicker(item)}
-              className="h-6 px-2 text-[11px] font-medium gap-1 text-foreground hover:bg-white/[0.1] rounded-lg"
+              className="h-6 px-2 text-[11px] font-medium gap-1 text-foreground hover:bg-[var(--dk-surface-hover)] rounded-lg"
             >
               <Plus size={11} className="text-primary" />
               <span>Add Node</span>
@@ -245,7 +245,7 @@ export const NodeMapCardItem = ({
               size="sm"
               aria-label={`Connect ${name}`}
               onClick={() => onOpenConnectPicker(item)}
-              className="h-6 px-2 text-[11px] font-medium gap-1 text-foreground hover:bg-white/[0.1] rounded-lg"
+              className="h-6 px-2 text-[11px] font-medium gap-1 text-foreground hover:bg-[var(--dk-surface-hover)] rounded-lg"
             >
               <LinkIcon size={11} />
               <span>Connect</span>
@@ -261,7 +261,7 @@ export const NodeMapCardItem = ({
                 size="sm"
                 aria-label="Open"
                 onClick={() => onOpenNodeSettings?.(data.server)}
-                className="h-6 px-2 text-[11px] font-medium gap-1 text-foreground hover:bg-white/[0.1] rounded-lg"
+                className="h-6 px-2 text-[11px] font-medium gap-1 text-foreground hover:bg-[var(--dk-surface-hover)] rounded-lg"
               >
                 <ExternalLink size={11} />
                 <span>Open</span>
@@ -273,7 +273,7 @@ export const NodeMapCardItem = ({
                 size="sm"
                 aria-label={`Rename ${data.server.name}`}
                 onClick={() => onRenameNode?.(data.server)}
-                className="h-6 px-2 text-[11px] font-medium gap-1 text-foreground hover:bg-white/[0.1] rounded-lg"
+                className="h-6 px-2 text-[11px] font-medium gap-1 text-foreground hover:bg-[var(--dk-surface-hover)] rounded-lg"
               >
                 <Pencil size={11} />
                 <span>Rename</span>
@@ -286,7 +286,7 @@ export const NodeMapCardItem = ({
                   size="sm"
                   aria-label="Test connection"
                   onClick={() => onPingNode(data.server)}
-                  className="h-6 px-2 text-[11px] font-medium gap-1 text-amber-400 hover:text-amber-300 hover:bg-white/[0.1] rounded-lg"
+                  className="h-6 px-2 text-[11px] font-medium gap-1 text-amber-400 hover:text-amber-300 hover:bg-[var(--dk-surface-hover)] rounded-lg"
                 >
                   <Radio size={11} />
                   <span>Ping</span>
@@ -304,7 +304,7 @@ export const NodeMapCardItem = ({
                 size="sm"
                 aria-label={`Edit ${data.machine.name}`}
                 onClick={() => onEditServer?.(data.machine)}
-                className="h-6 px-2 text-[11px] font-medium gap-1 text-foreground hover:bg-white/[0.1] rounded-lg"
+                className="h-6 px-2 text-[11px] font-medium gap-1 text-foreground hover:bg-[var(--dk-surface-hover)] rounded-lg"
               >
                 <Pencil size={11} />
                 <span>Edit</span>
@@ -316,7 +316,7 @@ export const NodeMapCardItem = ({
                 size="sm"
                 aria-label="Detect drives"
                 onClick={() => onDetectDrives?.(data.machine)}
-                className="h-6 px-2 text-[11px] font-medium gap-1 text-foreground hover:bg-white/[0.1] rounded-lg"
+                className="h-6 px-2 text-[11px] font-medium gap-1 text-foreground hover:bg-[var(--dk-surface-hover)] rounded-lg"
               >
                 <RefreshCw size={11} />
                 <span>Drives</span>
@@ -328,7 +328,7 @@ export const NodeMapCardItem = ({
                 size="sm"
                 aria-label={`Delete ${data.machine.name}`}
                 onClick={() => onDeleteServer?.(data.machine)}
-                className="h-6 px-2 text-[11px] font-medium gap-1 text-muted-foreground hover:text-destructive hover:bg-white/[0.1] rounded-lg"
+                className="h-6 px-2 text-[11px] font-medium gap-1 text-muted-foreground hover:text-destructive hover:bg-[var(--dk-surface-hover)] rounded-lg"
               >
                 <Trash2 size={11} />
                 <span>Delete</span>
@@ -345,7 +345,7 @@ export const NodeMapCardItem = ({
                 size="sm"
                 aria-label={`Edit ${data.home.name}`}
                 onClick={() => onEditHome?.(data.home)}
-                className="h-6 px-2 text-[11px] font-medium gap-1 text-foreground hover:bg-white/[0.1] rounded-lg"
+                className="h-6 px-2 text-[11px] font-medium gap-1 text-foreground hover:bg-[var(--dk-surface-hover)] rounded-lg"
               >
                 <Pencil size={11} />
                 <span>Edit</span>
@@ -358,7 +358,7 @@ export const NodeMapCardItem = ({
                   size="sm"
                   aria-label={`Delete ${data.home.name}`}
                   onClick={() => onDeleteHome?.(data.home)}
-                  className="h-6 px-2 text-[11px] font-medium gap-1 text-muted-foreground hover:text-destructive hover:bg-white/[0.1] rounded-lg"
+                  className="h-6 px-2 text-[11px] font-medium gap-1 text-muted-foreground hover:text-destructive hover:bg-[var(--dk-surface-hover)] rounded-lg"
                 >
                   <Trash2 size={11} />
                   <span>Delete</span>
@@ -375,7 +375,7 @@ export const NodeMapCardItem = ({
               size="sm"
               aria-label={`Settings for ${data.samba.shareName}`}
               onClick={() => onOpenSambaSettings?.(data.samba)}
-              className="h-6 px-2 text-[11px] font-medium gap-1 text-foreground hover:bg-white/[0.1] rounded-lg"
+              className="h-6 px-2 text-[11px] font-medium gap-1 text-foreground hover:bg-[var(--dk-surface-hover)] rounded-lg"
             >
               <Pencil size={11} />
               <span>Settings</span>

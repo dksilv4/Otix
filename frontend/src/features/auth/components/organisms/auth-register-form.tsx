@@ -26,8 +26,8 @@ export const RegisterForm = ({ onSuccess }: RegisterFormProps) => {
   const firstInputRef = useRef<HTMLInputElement>(null)
 
   const inputClass = (hasError?: boolean) =>
-    'flex min-h-[52px] w-full rounded-xl px-5 text-base outline-none transition-all placeholder:text-muted-foreground/50' +
-    (hasError ? ' shadow-[0_0_0_1px_rgb(248_113_113_/_0.4)]' : '')
+    'flex min-h-[52px] w-full rounded-xl px-5 text-base outline-none transition-all placeholder:text-muted-foreground/50 text-foreground' +
+    (hasError ? ' ring-1 ring-destructive focus:ring-destructive' : ' border border-[var(--dk-separator)]')
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
@@ -97,7 +97,6 @@ export const RegisterForm = ({ onSuccess }: RegisterFormProps) => {
               : {
                   backgroundColor: 'var(--dk-surface-glass)',
                   backdropFilter: 'blur(12px)',
-                  boxShadow: 'inset 0 1px 0 oklch(1 0 0 / 0.06)',
                 }
           }
         />
@@ -127,7 +126,6 @@ export const RegisterForm = ({ onSuccess }: RegisterFormProps) => {
               : {
                   backgroundColor: 'var(--dk-surface-glass)',
                   backdropFilter: 'blur(12px)',
-                  boxShadow: 'inset 0 1px 0 oklch(1 0 0 / 0.06)',
                 }
           }
         />
@@ -150,16 +148,14 @@ export const RegisterForm = ({ onSuccess }: RegisterFormProps) => {
           aria-invalid={!!fieldErrors.dateOfBirth}
           aria-describedby={fieldErrors.dateOfBirth ? 'reg-dob-error' : undefined}
           className={inputClass(!!fieldErrors.dateOfBirth)}
-          style={{
-            colorScheme: 'dark',
-            ...(fieldErrors.dateOfBirth
+          style={
+            fieldErrors.dateOfBirth
               ? undefined
               : {
                   backgroundColor: 'var(--dk-surface-glass)',
                   backdropFilter: 'blur(12px)',
-                  boxShadow: 'inset 0 1px 0 oklch(1 0 0 / 0.06)',
-                }),
-          }}
+                }
+          }
         />
         {fieldErrors.dateOfBirth && (
           <p id="reg-dob-error" role="alert" className="text-xs text-destructive">
@@ -209,7 +205,7 @@ export const RegisterForm = ({ onSuccess }: RegisterFormProps) => {
               }
             }}
             required
-            className="mt-0.5 h-4 w-4 rounded border-white/20 bg-white/5 text-primary accent-primary focus:ring-primary focus:ring-offset-0 cursor-pointer shrink-0"
+            className="mt-0.5 h-4 w-4 rounded border-[var(--dk-separator)] bg-[var(--dk-surface-ghost)] text-primary accent-primary focus:ring-primary focus:ring-offset-0 cursor-pointer shrink-0"
           />
           <span className="leading-relaxed">
             I confirm that I am at least 13 years of age and agree to Otix&apos;s{' '}
@@ -217,7 +213,7 @@ export const RegisterForm = ({ onSuccess }: RegisterFormProps) => {
               href="/terms"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-white underline underline-offset-2 hover:text-primary"
+              className="text-foreground underline underline-offset-2 hover:text-primary"
             >
               Terms of Service
             </a>{' '}
@@ -226,7 +222,7 @@ export const RegisterForm = ({ onSuccess }: RegisterFormProps) => {
               href="/privacy"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-white underline underline-offset-2 hover:text-primary"
+              className="text-foreground underline underline-offset-2 hover:text-primary"
             >
               Privacy Policy
             </a>
@@ -246,14 +242,14 @@ export const RegisterForm = ({ onSuccess }: RegisterFormProps) => {
           id="register-submit"
           disabled={isSubmitting || showSuccess}
           className={
-            'flex h-14 w-14 items-center justify-center rounded-full transition-all ' +
-            (showSuccess ? 'bg-green-500' : 'bg-white/10 hover:bg-white/20') +
+            'cursor-pointer flex h-14 w-14 items-center justify-center rounded-full transition-all ' +
+            (showSuccess ? 'bg-emerald-500 text-primary-foreground' : 'bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-glass-hover)] border border-[var(--dk-separator)] text-foreground') +
             ' disabled:opacity-50'
           }
           aria-label="Create account"
         >
           {showSuccess ? (
-            <Check className="h-6 w-6 text-black" />
+            <Check className="h-6 w-6 text-primary-foreground" />
           ) : isSubmitting ? (
             <Loader2 className="h-6 w-6 animate-spin" />
           ) : (

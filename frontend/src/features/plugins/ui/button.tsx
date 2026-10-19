@@ -16,13 +16,13 @@ const VARIANT_CLASSES: Record<Variant, string> = {
   primary:
     'bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/20',
   secondary:
-    'bg-white/10 text-white hover:bg-white/20',
+    'bg-[var(--dk-surface-field)] border border-[var(--dk-separator)] text-foreground hover:bg-[var(--dk-surface-hover)]',
   ghost:
-    'bg-transparent text-white/60 hover:text-white hover:bg-white/5',
+    'bg-transparent text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-hover)]',
   danger:
-    'bg-red-500/15 text-red-400 hover:bg-red-500/25',
+    'bg-destructive/15 border border-destructive/20 text-destructive hover:bg-destructive/25',
   outline:
-    'border border-white/15 text-white/70 hover:text-white hover:border-white/30 hover:bg-white/5',
+    'border border-[var(--dk-separator)] text-muted-foreground hover:text-foreground hover:border-foreground/30 hover:bg-[var(--dk-surface-hover)]',
 }
 
 const SIZE_CLASSES: Record<Size, string> = {

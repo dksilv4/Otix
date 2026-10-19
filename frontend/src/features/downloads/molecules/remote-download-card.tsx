@@ -24,7 +24,7 @@ export const RemoteDownloadCard = ({
   const isError = transfer.status === 'error'
 
   return (
-    <div className="dk-download-card border border-cyan-500/20 bg-neutral-900/60 hover:border-cyan-500/40 transition-colors">
+    <div className="dk-download-card border border-[var(--dk-separator)] bg-[var(--dk-surface-base)] hover:border-primary/40 transition-colors">
       {/* Icon */}
       <div
         className={cn(
@@ -50,49 +50,49 @@ export const RemoteDownloadCard = ({
           <Link
             to="/media/$mediaType/$mediaId"
             params={{ mediaType: 'game', mediaId: transfer.mediaItemId }}
-            className="dk-download-card__title dk-download-card__title--link font-semibold text-white hover:text-cyan-400"
+            className="dk-download-card__title dk-download-card__title--link font-semibold text-foreground hover:text-primary transition-colors"
           >
             {transfer.gameTitle}
           </Link>
         ) : (
-          <p className="dk-download-card__title font-semibold text-white">
+          <p className="dk-download-card__title font-semibold text-foreground">
             {transfer.gameTitle || transfer.filename}
           </p>
         )}
 
-        <p className="dk-download-card__subtitle text-neutral-400">
-          {transfer.filename} · <span className="text-cyan-400/80">Remote Server</span>
+        <p className="dk-download-card__subtitle text-muted-foreground">
+          {transfer.filename} · <span className="text-primary font-medium">Remote Server</span>
         </p>
 
         <div className="dk-download-card__meta flex flex-wrap items-center gap-2 mt-1">
           <span
             className={cn(
               'text-xs font-semibold px-2 py-0.5 rounded-md uppercase tracking-wider text-[10px]',
-              isDownloading && 'bg-cyan-500/20 text-cyan-300',
-              isPaused && 'bg-amber-500/20 text-amber-300',
-              isCompleted && 'bg-green-500/20 text-green-300',
-              isError && 'bg-red-500/20 text-red-300'
+              isDownloading && 'bg-primary/20 text-primary',
+              isPaused && 'bg-amber-500/20 text-amber-500 dark:text-amber-300',
+              isCompleted && 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-300',
+              isError && 'bg-destructive/20 text-destructive'
             )}
           >
             {isDownloading ? 'Downloading' : isPaused ? 'Paused' : isCompleted ? 'Completed' : 'Error'}
           </span>
 
-          <span className="text-xs text-neutral-300 font-medium tabular-nums">
+          <span className="text-xs text-foreground/80 font-medium tabular-nums">
             {transfer.percentage}%
           </span>
 
-          <span className="text-xs text-neutral-400">
+          <span className="text-xs text-muted-foreground">
             {formatBytes(transfer.downloadedBytes)} / {formatBytes(transfer.totalBytes)}
           </span>
 
           {isDownloading && transfer.speedMBps > 0 && (
-            <span className="text-xs font-mono text-cyan-400">
+            <span className="text-xs font-mono text-primary font-semibold">
               {transfer.speedMBps.toFixed(1)} MB/s
             </span>
           )}
 
           {isDownloading && transfer.etaSeconds > 0 && (
-            <span className="text-xs text-neutral-400">
+            <span className="text-xs text-muted-foreground">
               {formatEta(transfer.etaSeconds)}
             </span>
           )}
@@ -103,14 +103,14 @@ export const RemoteDownloadCard = ({
           <div
             className={cn(
               'dk-download-card__progress-bar',
-              isPaused ? 'bg-amber-500' : 'bg-cyan-400'
+              isPaused ? 'bg-amber-500' : 'bg-primary'
             )}
             style={{ width: `${Math.min(100, Math.max(0, transfer.percentage))}%` }}
           />
         </div>
 
         {transfer.error && (
-          <p className="dk-download-card__error text-xs text-red-400 mt-1">
+          <p className="dk-download-card__error text-xs text-destructive mt-1">
             {transfer.error}
           </p>
         )}
@@ -121,7 +121,7 @@ export const RemoteDownloadCard = ({
         {isDownloading && (
           <button
             onClick={() => onPause(transfer.id)}
-            className="dk-download-card__action-btn p-2 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-white transition-colors"
+            className="dk-download-card__action-btn p-2 rounded-lg bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)] text-foreground/80 hover:text-foreground transition-colors cursor-pointer"
             title="Pause download"
           >
             <Pause className="h-4 w-4" />
@@ -131,7 +131,7 @@ export const RemoteDownloadCard = ({
         {isPaused && (
           <button
             onClick={() => onResume(transfer.id)}
-            className="dk-download-card__action-btn p-2 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 hover:text-white transition-colors"
+            className="dk-download-card__action-btn p-2 rounded-lg bg-primary/15 hover:bg-primary/25 text-primary transition-colors cursor-pointer"
             title="Resume download"
           >
             <Play className="h-4 w-4 fill-current" />
@@ -140,7 +140,7 @@ export const RemoteDownloadCard = ({
 
         <button
           onClick={() => onCancel(transfer.id)}
-          className="dk-download-card__action-btn p-2 rounded-lg bg-neutral-800 hover:bg-red-500/20 text-neutral-400 hover:text-red-400 transition-colors"
+          className="dk-download-card__action-btn p-2 rounded-lg bg-[var(--dk-surface-ghost)] hover:bg-destructive/15 text-muted-foreground hover:text-destructive transition-colors cursor-pointer"
           title="Cancel download"
         >
           <X className="h-4 w-4" />

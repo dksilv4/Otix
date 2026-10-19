@@ -16,7 +16,7 @@ export const DetailSkeleton = ({ mediaType }: { mediaType?: string } = {}) => {
       {/* ── Hero (mirrors MediaHero) ── */}
       <header className="relative min-h-[46vh] lg:min-h-[50vh] pb-6">
         <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
-          <div className="h-full w-full animate-pulse bg-gradient-to-br from-white/[0.06] via-white/[0.03] to-transparent" />
+          <div className="h-full w-full animate-pulse bg-[var(--dk-surface-glass)]" />
           <div
             className="absolute inset-0"
             style={{

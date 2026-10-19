@@ -124,7 +124,7 @@ export const FloatingGameSelector = () => {
                 }
             >
                 {/* Header Actions: Library & Search */}
-                <div className="w-full flex flex-col items-center pt-3 pb-2 gap-2 shrink-0 border-b border-white/5">
+                <div className="w-full flex flex-col items-center pt-3 pb-2 gap-2 shrink-0 border-b border-[var(--dk-separator)]">
                     <button
                         title="Browse All Games (Library)"
                         onClick={goToLibrary}
@@ -148,8 +148,8 @@ export const FloatingGameSelector = () => {
                             searchQuery
                                 ? "bg-primary text-primary-foreground shadow-sm"
                                 : searchOpen
-                                ? "bg-white/20 text-white"
-                                : "text-white/60 hover:text-white hover:bg-white/10"
+                                ? "bg-[var(--dk-surface-ghost-active)] text-foreground"
+                                : "text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-ghost)]"
                         }`}
                     >
                         <Search size={14}/>
@@ -172,25 +172,25 @@ export const FloatingGameSelector = () => {
                         animate={{ opacity: 1, x: 0, scale: 1 }}
                         exit={{ opacity: 0, x: -10, scale: 0.95 }}
                         transition={{ duration: 0.15 }}
-                        className="fixed z-40 bg-neutral-900/95 backdrop-blur-xl border border-white/15 rounded-2xl shadow-2xl p-2.5 flex items-center gap-2.5 w-64"
+                        className="fixed z-40 bg-[var(--dk-surface-overlay)] backdrop-blur-xl border border-[var(--dk-separator)] rounded-2xl shadow-[var(--dk-shadow-dialog)] p-2.5 flex items-center gap-2.5 w-64"
                         style={{
                             left: '5.5rem',
                             top: isDesktop ? '11.5rem' : '9.5rem',
                         }}
                     >
-                        <Search size={14} className="text-white/40 shrink-0 ml-1" />
+                        <Search size={14} className="text-muted-foreground shrink-0 ml-1" />
                         <input
                             ref={searchInputRef}
                             type="text"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             placeholder="Filter games..."
-                            className="bg-transparent text-xs text-white placeholder-white/40 outline-none w-full font-medium"
+                            className="bg-transparent text-xs text-foreground placeholder:text-muted-foreground outline-none w-full font-medium"
                         />
                         {searchQuery ? (
                             <button
                                 onClick={() => setSearchQuery('')}
-                                className="text-white/40 hover:text-white p-0.5 rounded-full hover:bg-white/10 transition-colors"
+                                className="text-muted-foreground hover:text-foreground p-0.5 rounded-full hover:bg-[var(--dk-surface-ghost)] transition-colors"
                                 title="Clear filter"
                             >
                                 <X size={13} />

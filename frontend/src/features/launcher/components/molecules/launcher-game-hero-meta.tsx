@@ -91,13 +91,13 @@ export const LauncherGameHeroMeta = () => {
     <div className="flex items-center flex-wrap gap-2.5">
       {/* Publisher / Developer Info */}
       {companyLines && companyLines.length > 0 && (
-        <div className="flex items-center gap-2 bg-white/5 backdrop-blur-2xl rounded-2xl px-4 py-3 border border-white/5 text-xs text-white/80 shadow-2xl">
+        <div className="flex items-center gap-2 bg-[var(--dk-surface-glass)] backdrop-blur-2xl rounded-2xl px-4 py-3 border border-[var(--dk-separator)] text-xs text-foreground shadow-[var(--dk-shadow-glass)]">
           {companyLines.map((line, i) => (
             <div key={i} className="flex items-center gap-1.5">
-              <span className="text-[10px] uppercase font-bold tracking-wider text-white/40">
+              <span className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground">
                 {line.isAnimated ? <AnimatedRoleLabel /> : line.label}
               </span>
-              <span className="text-white font-medium">{line.names.join(', ')}</span>
+              <span className="text-foreground font-medium">{line.names.join(', ')}</span>
             </div>
           ))}
         </div>
@@ -105,31 +105,31 @@ export const LauncherGameHeroMeta = () => {
 
       {/* Metadata Tags */}
       {hasTags && (
-        <div className="flex items-center flex-wrap gap-1.5 bg-white/5 backdrop-blur-2xl rounded-2xl px-3.5 py-2.5 border border-white/5 shadow-2xl">
+        <div className="flex items-center flex-wrap gap-1.5 bg-[var(--dk-surface-glass)] backdrop-blur-2xl rounded-2xl px-3.5 py-2.5 border border-[var(--dk-separator)] shadow-[var(--dk-shadow-glass)]">
           {releaseDate && (
-            <span className="text-xs font-semibold px-2.5 py-0.5 rounded-xl bg-white/10 text-white/80 border border-white/10">
+            <span className="text-xs font-semibold px-2.5 py-0.5 rounded-xl bg-[var(--dk-surface-ghost)] text-foreground border border-[var(--dk-separator)]">
               {releaseDate.slice(0, 4)}
             </span>
           )}
           {isFree && (
-            <span className="text-xs font-bold px-2.5 py-0.5 rounded-xl bg-emerald-500/15 text-emerald-400 border border-emerald-500/25">
+            <span className="text-xs font-bold px-2.5 py-0.5 rounded-xl bg-emerald-500/15 text-emerald-500 dark:text-emerald-400 border border-emerald-500/25">
               Free
             </span>
           )}
           {hasMultiplayer && (
-            <span className="text-xs font-semibold px-2.5 py-0.5 rounded-xl bg-blue-500/15 text-blue-400 border border-blue-500/25">
+            <span className="text-xs font-semibold px-2.5 py-0.5 rounded-xl bg-blue-500/15 text-blue-500 dark:text-blue-400 border border-blue-500/25">
               Multiplayer
             </span>
           )}
           {ttb && (
-            <span className="text-xs font-medium px-2.5 py-0.5 rounded-xl bg-white/8 text-white/70 border border-white/5">
+            <span className="text-xs font-medium px-2.5 py-0.5 rounded-xl bg-[var(--dk-surface-ghost)] text-muted-foreground border border-[var(--dk-separator)]">
               ~{ttb}
             </span>
           )}
           {genres?.slice(0, 3).map((genre) => (
             <span
               key={genre.id}
-              className="text-xs font-medium px-2.5 py-0.5 rounded-xl bg-white/8 text-white/70 border border-white/5"
+              className="text-xs font-medium px-2.5 py-0.5 rounded-xl bg-[var(--dk-surface-ghost)] text-muted-foreground border border-[var(--dk-separator)]"
             >
               {genre.name}
             </span>

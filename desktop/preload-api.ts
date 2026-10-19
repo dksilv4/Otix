@@ -621,11 +621,26 @@ export interface IDesktopAPI {
 
   // ── Auto Updater ──
   updater: {
-    checkForUpdates: () => Promise<{ status: string; updateInfo?: any; error?: string }>;
+    checkForUpdates: () => Promise<{ status: string; updateInfo?: any; error?: string; reason?: string }>;
+    downloadUpdate: () => Promise<{ status: string; error?: string; reason?: string }>;
     installUpdate: () => Promise<boolean>;
     getVersion: () => Promise<string>;
-    onStatusChanged: (callback: (state: { status: string; version?: string; releaseNotes?: string | null; progress?: { percent: number; bytesPerSecond: number; transferred: number; total: number }; error?: string }) => void) => () => void;
+    getStatus: () => Promise<{
+      status: 'idle' | 'checking' | 'available' | 'not-available' | 'downloading' | 'downloaded' | 'error';
+      version?: string;
+      releaseNotes?: string | null;
+      progress?: { percent: number; bytesPerSecond: number; transferred: number; total: number };
+      error?: string;
+    }>;
+    onStatusChanged: (callback: (state: {
+      status: 'idle' | 'checking' | 'available' | 'not-available' | 'downloading' | 'downloaded' | 'error';
+      version?: string;
+      releaseNotes?: string | null;
+      progress?: { percent: number; bytesPerSecond: number; transferred: number; total: number };
+      error?: string;
+    }) => void) => () => void;
   };
+
 
   // ── Storage ──
   getDiskSpace: () => Promise<Array<{ drive: string; total?: number; used: number; free: number }>>;

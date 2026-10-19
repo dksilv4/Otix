@@ -414,28 +414,28 @@ export const CalendarTimeline = ({ events }: CalendarTimelineProps) => {
     <div className="relative flex min-h-0 w-full flex-1 flex-col">
       <div className="absolute top-3 right-4 left-4 z-30 flex flex-wrap items-center justify-between gap-3 sm:right-6 sm:left-6 lg:right-8 lg:left-8">
         <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-lg font-bold text-white">Timeline</h1>
-          <span className="rounded-md border border-amber-400/25 bg-amber-400/10 px-2 py-0.5 text-[10px] font-semibold tracking-wider text-amber-200/80 uppercase">
+          <h1 className="text-lg font-bold text-foreground">Timeline</h1>
+          <span className="rounded-md border border-amber-500/25 bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold tracking-wider text-amber-600 dark:text-amber-400 uppercase">
             Beta
           </span>
-          <span className="rounded-md border border-white/10 bg-black/30 px-2.5 py-1 text-[11px] font-medium uppercase tracking-wider text-white/50 backdrop-blur-sm">
+          <span className="rounded-md border border-[var(--dk-separator)] bg-[var(--dk-surface-glass)] px-2.5 py-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground backdrop-blur-sm">
             {scaleLabel(scale)}
           </span>
-          <span className="text-sm font-medium text-white/80">{focusLabel(focusDate, scale)}</span>
+          <span className="text-sm font-medium text-foreground">{focusLabel(focusDate, scale)}</span>
           <Legend />
         </div>
 
-        <div className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-black/30 p-0.5 backdrop-blur-sm">
+        <div className="flex items-center gap-1.5 rounded-lg border border-[var(--dk-separator)] bg-[var(--dk-surface-glass)] p-0.5 backdrop-blur-sm">
           <Link
             to="/calendar"
-            className="rounded-md px-2.5 py-1 text-[11px] font-medium text-white/45 transition-colors hover:bg-white/5 hover:text-white/80"
+            className="rounded-md px-2.5 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-[var(--dk-surface-ghost)] hover:text-foreground"
           >
             Classic
           </Link>
           <button
             type="button"
             onClick={() => zoomStep(-1)}
-            className="flex h-8 w-8 items-center justify-center rounded-md text-white/40 transition-colors hover:bg-white/5 hover:text-white/80"
+            className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-[var(--dk-surface-ghost)] hover:text-foreground"
             aria-label="Zoom out"
           >
             <Minus className="h-4 w-4" />
@@ -443,7 +443,7 @@ export const CalendarTimeline = ({ events }: CalendarTimelineProps) => {
           <button
             type="button"
             onClick={() => zoomStep(1)}
-            className="flex h-8 w-8 items-center justify-center rounded-md text-white/40 transition-colors hover:bg-white/5 hover:text-white/80"
+            className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-[var(--dk-surface-ghost)] hover:text-foreground"
             aria-label="Zoom in"
           >
             <Plus className="h-4 w-4" />
@@ -451,7 +451,7 @@ export const CalendarTimeline = ({ events }: CalendarTimelineProps) => {
           <button
             type="button"
             onClick={goToday}
-            className="rounded-md px-2.5 py-1 text-[11px] font-medium text-white/50 transition-colors hover:bg-white/5 hover:text-white/80"
+            className="rounded-md px-2.5 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-[var(--dk-surface-ghost)] hover:text-foreground"
           >
             Today
           </button>
@@ -482,13 +482,13 @@ export const CalendarTimeline = ({ events }: CalendarTimelineProps) => {
               >
                 <div
                   className={`absolute left-0 w-px -translate-x-1/2 ${
-                    tick.major ? 'h-5 bg-white/20' : 'h-2.5 bg-white/10'
+                    tick.major ? 'h-5 bg-foreground/20' : 'h-2.5 bg-foreground/10'
                   }`}
                   style={{ top: `calc(50% + ${oy}px - ${tick.major ? 10 : 5}px)` }}
                 />
                 {tick.major && tick.label && (
                   <span
-                    className="absolute left-0 -translate-x-1/2 whitespace-nowrap text-[10px] font-medium tracking-wide text-white/35"
+                    className="absolute left-0 -translate-x-1/2 whitespace-nowrap text-[10px] font-medium tracking-wide text-muted-foreground"
                     style={{ top: `calc(50% + ${oy}px + 14px)` }}
                   >
                     {tick.label}
@@ -499,14 +499,14 @@ export const CalendarTimeline = ({ events }: CalendarTimelineProps) => {
           })}
 
           <div
-            className="pointer-events-none absolute z-20 w-px bg-gradient-to-b from-transparent via-white/60 to-transparent"
+            className="pointer-events-none absolute z-20 w-px bg-gradient-to-b from-transparent via-primary/70 to-transparent"
             style={{ left: todayX, top: 12, bottom: 12 }}
           >
-            <span className="absolute top-14 left-1/2 -translate-x-1/2 rounded bg-white/15 px-1.5 py-0.5 text-[9px] font-semibold tracking-wider text-white/70 uppercase">
+            <span className="absolute top-14 left-1/2 -translate-x-1/2 rounded bg-primary/20 px-1.5 py-0.5 text-[9px] font-semibold tracking-wider text-primary uppercase">
               Today
             </span>
             <div
-              className="absolute left-1/2 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white shadow-[0_0_16px_rgba(186,230,253,0.8)]"
+              className="absolute left-1/2 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary shadow-[0_0_16px_var(--primary)]"
               style={{ top: `calc(50% + ${todayAxisY}px)` }}
             />
           </div>
@@ -542,12 +542,12 @@ const Legend = () => {
   return (
     <div className="hidden items-center gap-2 sm:flex">
       {(['movie', 'show', 'game'] as const).map((k) => (
-        <span key={k} className="flex items-center gap-1 text-[10px] text-white/45">
+        <span key={k} className="flex items-center gap-1 text-[10px] text-muted-foreground">
           <span className="h-1.5 w-1.5 rounded-full" style={{ background: MEDIA_COLORS[k].hex }} />
           {MEDIA_COLORS[k].label}
         </span>
       ))}
-      <span className="flex items-center gap-1 text-[10px] text-white/45">
+      <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
         <span
           className="h-1.5 w-1.5 rounded-full"
           style={{
@@ -579,11 +579,11 @@ const ClusterDetailPanel = ({
             : format(cluster.date, 'EEEE, MMM d yyyy')
 
   return (
-    <div className="absolute right-4 bottom-4 left-4 z-30 max-h-[42%] max-w-xl overflow-y-auto rounded-xl border border-white/10 bg-black/70 p-3 shadow-2xl backdrop-blur-md sm:right-6 sm:bottom-6 sm:left-6 lg:left-8">
+    <div className="absolute right-4 bottom-4 left-4 z-30 max-h-[42%] max-w-xl overflow-y-auto rounded-xl border border-[var(--dk-separator)] bg-[var(--dk-surface-root)]/95 p-3 shadow-2xl backdrop-blur-md sm:right-6 sm:bottom-6 sm:left-6 lg:left-8">
       <div className="mb-2 flex items-center justify-between gap-2">
         <div>
-          <h3 className="text-sm font-semibold text-white">{heading}</h3>
-          <p className="text-[11px] text-white/40">
+          <h3 className="text-sm font-semibold text-foreground">{heading}</h3>
+          <p className="text-[11px] text-muted-foreground">
             {cluster.count} release{cluster.count === 1 ? '' : 's'}
             {cluster.isAura ? ' · mixed types' : ''}
           </p>
@@ -591,7 +591,7 @@ const ClusterDetailPanel = ({
         <button
           type="button"
           onClick={onClose}
-          className="rounded-md px-2 py-1 text-[11px] text-white/45 transition-colors hover:bg-white/5 hover:text-white/80"
+          className="rounded-md px-2 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-[var(--dk-surface-ghost)] hover:text-foreground"
         >
           Close
         </button>

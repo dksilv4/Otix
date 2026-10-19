@@ -106,7 +106,7 @@ const BRAND_COLORS: Record<string, string> = {
 
 const BRAND_BG: Record<string, string> = {
   steam: 'bg-[#1a6bcc]/10',
-  epic: 'bg-white/10',
+  epic: 'bg-foreground/10',
   gog: 'bg-[#a855f7]/10',
   plex: 'bg-[#e5a00d]/10',
   tmdb: 'bg-[#01b4e4]/10',
@@ -423,8 +423,15 @@ export const SettingsIntegrationsPage = () => {
       lastFetch = now
       fetchIntegrations()
     }
+    const onRefresh = () => {
+      fetchIntegrations()
+    }
     document.addEventListener('visibilitychange', onVisibilityChange)
-    return () => document.removeEventListener('visibilitychange', onVisibilityChange)
+    window.addEventListener('otix:integrations:refresh', onRefresh)
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibilityChange)
+      window.removeEventListener('otix:integrations:refresh', onRefresh)
+    }
      
   }, [isAuthenticated])
 
@@ -668,7 +675,7 @@ export const SettingsIntegrationsPage = () => {
     setPlexConnecting(true)
     setPlexError('')
     try {
-      const { data } = await apiClient.post('/auth/oauth/plex')
+      const { data } = await apiClient.post('/auth/oauth/plex', isDesktop() ? { source: 'desktop' } : undefined)
       openExternal(data.authUrl || data.auth_url)
     } catch (err) {
       setPlexError(extractIntegrationMessage(err))
@@ -703,7 +710,7 @@ export const SettingsIntegrationsPage = () => {
     setTmdbConnecting(true)
     setTmdbError('')
     try {
-      const { data } = await apiClient.post('/auth/oauth/tmdb')
+      const { data } = await apiClient.post('/auth/oauth/tmdb', isDesktop() ? { source: 'desktop' } : undefined)
       openExternal(data.authUrl)
     } catch (err) {
       setTmdbConnecting(false)
@@ -734,7 +741,7 @@ export const SettingsIntegrationsPage = () => {
     setGoogleConnecting(true)
     setGoogleError('')
     try {
-      const { data } = await apiClient.post('/auth/oauth/google')
+      const { data } = await apiClient.post('/auth/oauth/google', isDesktop() ? { source: 'desktop' } : undefined)
       openExternal(data.authUrl)
     } catch (err) {
       setGoogleConnecting(false)
@@ -764,7 +771,7 @@ export const SettingsIntegrationsPage = () => {
     setDriveConnecting(true)
     setDriveError('')
     try {
-      const { data } = await apiClient.post('/auth/oauth/google-drive')
+      const { data } = await apiClient.post('/auth/oauth/google-drive', isDesktop() ? { source: 'desktop' } : undefined)
       openExternal(data.authUrl)
     } catch (err) {
       setDriveConnecting(false)
@@ -1437,7 +1444,7 @@ export const SettingsIntegrationsPage = () => {
             icon={SteamIcon}
             brandColor={BRAND_COLORS.steam}
             meta={steamProfile?.profileurl && (
-              <a href={steamProfile.profileurl} target="_blank" rel="noopener noreferrer" className="text-xs text-white/40 hover:text-primary transition-colors duration-150 shrink-0">
+              <a href={steamProfile.profileurl} target="_blank" rel="noopener noreferrer" className="text-xs text-muted-foreground hover:text-primary transition-colors duration-150 shrink-0">
                 View Profile &rarr;
               </a>
             )}
@@ -1449,9 +1456,9 @@ export const SettingsIntegrationsPage = () => {
               ...(steamProfile.personastate !== null && steamProfile.personastate !== undefined ? [{ label: 'status', value: personaStateLabel(steamProfile.personastate) }] : []),
             ]} />
           )}
-          <div className="mx-5 my-3 p-3.5 rounded-xl bg-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="flex items-center gap-2.5 text-xs text-white/70">
-              <FolderOpen className="h-4 w-4 text-sky-400 shrink-0" />
+          <div className="mx-5 my-3 p-3.5 rounded-xl bg-[var(--dk-surface-ghost)] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5 text-xs text-muted-foreground">
+              <FolderOpen className="h-4 w-4 text-sky-500 shrink-0" />
               <span>
                 Game scanning, wishlist syncing, and auto-matching are managed under
                 {' '}<strong>Library Settings</strong> as a Provider.
@@ -1459,7 +1466,7 @@ export const SettingsIntegrationsPage = () => {
             </div>
             <Link
               to="/settings/library"
-              className="px-3.5 py-1.5 rounded-xl bg-sky-500/15 hover:bg-sky-500/25 text-sky-400 text-xs font-semibold whitespace-nowrap transition-colors self-start sm:self-auto shrink-0"
+              className="px-3.5 py-1.5 rounded-xl bg-sky-500/15 hover:bg-sky-500/25 text-sky-500 text-xs font-semibold whitespace-nowrap transition-colors self-start sm:self-auto shrink-0"
             >
               Go to Library Settings &rarr;
             </Link>
@@ -1480,9 +1487,9 @@ export const SettingsIntegrationsPage = () => {
             icon={EpicIcon}
             brandColor={BRAND_COLORS.epic}
           />
-          <div className="mx-5 my-3 p-3.5 rounded-xl bg-white/5 border border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="flex items-center gap-2.5 text-xs text-white/70">
-              <FolderOpen className="h-4 w-4 text-white/50 shrink-0" />
+          <div className="mx-5 my-3 p-3.5 rounded-xl bg-[var(--dk-surface-ghost)] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5 text-xs text-muted-foreground">
+              <FolderOpen className="h-4 w-4 text-muted-foreground/60 shrink-0" />
               <span>
                 Game scanning and matching are also managed under
                 {' '}<strong>Library Settings</strong> as a Provider.
@@ -1490,7 +1497,7 @@ export const SettingsIntegrationsPage = () => {
             </div>
             <Link
               to="/settings/library"
-              className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/15 text-white/80 text-xs font-semibold whitespace-nowrap transition-colors self-start sm:self-auto shrink-0"
+              className="px-3 py-1.5 rounded-xl bg-[var(--dk-surface-field)] hover:bg-[var(--dk-surface-ghost-hover)] text-foreground text-xs font-semibold whitespace-nowrap transition-colors self-start sm:self-auto shrink-0"
             >
               Go to Library Settings &rarr;
             </Link>
@@ -1537,9 +1544,9 @@ export const SettingsIntegrationsPage = () => {
             icon={GOGIcon}
             brandColor={BRAND_COLORS.gog}
           />
-          <div className="mx-5 my-3 p-3.5 rounded-xl bg-white/5 border border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="flex items-center gap-2.5 text-xs text-white/70">
-              <FolderOpen className="h-4 w-4 text-white/50 shrink-0" />
+          <div className="mx-5 my-3 p-3.5 rounded-xl bg-[var(--dk-surface-ghost)] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5 text-xs text-muted-foreground">
+              <FolderOpen className="h-4 w-4 text-muted-foreground/60 shrink-0" />
               <span>
                 Game scanning and matching are also managed under
                 {' '}<strong>Library Settings</strong> as a Provider.
@@ -1547,7 +1554,7 @@ export const SettingsIntegrationsPage = () => {
             </div>
             <Link
               to="/settings/library"
-              className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/15 text-white/80 text-xs font-semibold whitespace-nowrap transition-colors self-start sm:self-auto shrink-0"
+              className="px-3 py-1.5 rounded-xl bg-[var(--dk-surface-field)] hover:bg-[var(--dk-surface-ghost-hover)] text-foreground text-xs font-semibold whitespace-nowrap transition-colors self-start sm:self-auto shrink-0"
             >
               Go to Library Settings &rarr;
             </Link>
@@ -1599,8 +1606,8 @@ export const SettingsIntegrationsPage = () => {
           {/* Libraries list */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-5 py-4">
             <div className="min-w-0 flex-1">
-              <p className="text-xs font-semibold uppercase text-white/40 tracking-wider">Plex Libraries</p>
-              <p className="mt-1 text-sm font-medium">
+              <p className="text-xs font-semibold uppercase text-muted-foreground tracking-wider">Plex Libraries</p>
+              <p className="mt-1 text-sm font-medium text-foreground">
                 {plexLibrariesLoading
                   ? 'Loading...'
                   : plexLibraries && plexLibraries.length > 0
@@ -1645,23 +1652,23 @@ export const SettingsIntegrationsPage = () => {
                     : (lib.itemCount ?? 0)
 
                 return (
-                  <div key={lib.id} className="flex flex-col gap-2 rounded-xl p-3 bg-white/[0.03]">
+                  <div key={lib.id} className="flex flex-col gap-2 rounded-xl p-3 bg-[var(--dk-surface-ghost)]">
                     <div className="flex items-center gap-3">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium truncate">{lib.title}</span>
-                          <span className="inline-flex items-center gap-1 text-xs text-white/60 shrink-0 bg-white/5 rounded-md px-1.5 py-0.5">
+                          <span className="text-sm font-medium text-foreground truncate">{lib.title}</span>
+                          <span className="inline-flex items-center gap-1 text-xs text-muted-foreground shrink-0 bg-[var(--dk-surface-field)] rounded-md px-1.5 py-0.5">
                             <TypeIcon className="h-3 w-3" />
                             {typeLabel}
                           </span>
                         </div>
-                        <div className="flex items-center gap-1.5 text-xs text-white/40 mt-0.5">
-                          <span className="font-medium text-white/60">{lib.serverName}</span>
-                          <span className="text-white/20">·</span>
+                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-0.5">
+                          <span className="font-medium text-foreground">{lib.serverName}</span>
+                          <span className="text-muted-foreground/30">·</span>
                           <span>{displayCount} items</span>
                           {lib.lastSyncedAt && (
                             <>
-                              <span className="text-white/20">·</span>
+                              <span className="text-muted-foreground/30">·</span>
                               <span>last synced {formatDaysAgo(Math.floor(new Date(lib.lastSyncedAt).getTime() / 1000))}</span>
                             </>
                           )}
@@ -1686,19 +1693,19 @@ export const SettingsIntegrationsPage = () => {
                       <div className="space-y-1">
                         {libProgress.itemsTotal > 0 ? (
                           <>
-                            <div className="overflow-hidden rounded-full h-1.5 w-full bg-white/10">
+                            <div className="overflow-hidden rounded-full h-1.5 w-full bg-[var(--dk-surface-field)]">
                               <div
                                 className="rounded-full h-full bg-primary transition-all duration-150"
                                 style={{ width: `${Math.min(100, Math.round((libProgress.itemsProcessed / libProgress.itemsTotal) * 100))}%` }}
                               />
                             </div>
-                            <div className="flex justify-between text-[11px] text-white/40">
+                            <div className="flex justify-between text-[11px] text-muted-foreground">
                               <span>Syncing items...</span>
                               <span>{libProgress.itemsProcessed} / {libProgress.itemsTotal}</span>
                             </div>
                           </>
                         ) : (
-                          <div className="flex justify-between text-[11px] text-white/40">
+                          <div className="flex justify-between text-[11px] text-muted-foreground">
                             <span>Preparing sync...</span>
                           </div>
                         )}
@@ -1707,7 +1714,7 @@ export const SettingsIntegrationsPage = () => {
 
                     {/* Success state */}
                     {isComplete && (
-                      <div className="flex items-center gap-1.5 text-[11px] text-emerald-400">
+                      <div className="flex items-center gap-1.5 text-[11px] text-emerald-500">
                         <Check className="h-3 w-3" />
                         <span>Sync complete</span>
                       </div>
@@ -1734,7 +1741,7 @@ export const SettingsIntegrationsPage = () => {
             buttonIcon={RefreshCw}
             onPress={handlePlexSync}
             loading={plexSyncing}
-            disabled={plexSyncing || syncingLibraryIds.size > 0 || discoveringPlex || !plexLibraries || plexLibraries.length === 0}
+            disabled={plexSyncing || syncingLibraryIds.size > 0 || discoveringPlex}
             progress={plexSyncing && Object.values(plexLibraryProgress).filter(l => l.phase === 'syncing').length > 0 && <span className="text-xs text-primary">{Object.values(plexLibraryProgress).filter(l => l.phase === 'syncing').length} libraries syncing</span>}
             muted
           />
@@ -1760,8 +1767,8 @@ export const SettingsIntegrationsPage = () => {
           />
           <div className="flex items-center justify-between gap-4 px-5 py-3">
             <div className="min-w-0">
-              <p className="text-sm font-medium">Watch History Sync</p>
-              <p className="mt-0.5 text-xs text-white/60">
+              <p className="text-sm font-medium text-foreground">Watch History Sync</p>
+              <p className="mt-0.5 text-xs text-muted-foreground">
                 Sync episode-level watch history from Plex to your Otix library.
               </p>
             </div>
@@ -1787,10 +1794,10 @@ export const SettingsIntegrationsPage = () => {
       {/* Google Drive content */}
       {i.id === 'google_drive' && (
         <>
-          <div className="flex flex-wrap items-center justify-between gap-2 px-5 py-3 bg-white/[0.03] text-xs text-white/60">
+          <div className="flex flex-wrap items-center justify-between gap-2 px-5 py-3 bg-[var(--dk-surface-ghost)] text-xs text-muted-foreground">
             <span>
               {googleEmail ? (
-                <>Connected account: <span className="text-white/90 font-medium">{googleEmail}</span></>
+                <>Connected account: <span className="text-foreground font-medium">{googleEmail}</span></>
               ) : (
                 'Backs up your game saves to a dedicated folder in your Google Drive.'
               )}
@@ -1877,24 +1884,24 @@ export const SettingsIntegrationsPage = () => {
         title="Connections"
       />
       <div className="relative">
-        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-white/30 pointer-events-none" />
+        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
         <input
           type="text"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           placeholder="Search integrations..."
-          className="w-full h-10 rounded-xl bg-white/[0.04] hover:bg-white/[0.06] focus:bg-white/[0.07] backdrop-blur-xl pl-10 pr-4 text-sm text-white placeholder:text-white/30 outline-none border-none shadow-none focus:outline-none focus:ring-0 transition-colors"
+          className="w-full h-10 rounded-xl bg-[var(--dk-surface-field)] pl-10 pr-4 text-sm text-foreground placeholder:text-muted-foreground/40 outline-none transition-colors"
         />
       </div>
 
       {loading ? (
-        <div className="flex items-center gap-2 py-8 text-sm text-white/60">
-          <Loader2 className="h-4 w-4 animate-spin" />
+        <div className="flex items-center gap-2 py-8 text-sm text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin text-primary" />
           Loading integrations...
         </div>
       ) : filteredIntegrations.length === 0 ? (
-        <div className="rounded-2xl p-8 text-center bg-white/5">
-          <p className="text-sm text-white/60">No integrations match &quot;{searchQuery}&quot;</p>
+        <div className="rounded-2xl p-8 text-center bg-[var(--dk-surface-ghost)]">
+          <p className="text-sm text-muted-foreground">No integrations match &quot;{searchQuery}&quot;</p>
         </div>
       ) : (
         <>
@@ -1927,13 +1934,13 @@ export const SettingsIntegrationsPage = () => {
       )}
 
       {/* Privacy & Legal Compliance Disclosure */}
-      <div className="mt-8 rounded-2xl border border-white/5 bg-white/[0.02] p-4 sm:p-5 flex items-start gap-3.5 text-xs text-white/50">
-        <ShieldCheck className="h-5 w-5 text-emerald-400/80 shrink-0 mt-0.5" />
+      <div className="mt-8 rounded-2xl bg-[var(--dk-surface-ghost)] p-4 sm:p-5 flex items-start gap-3.5 text-xs text-muted-foreground">
+        <ShieldCheck className="h-5 w-5 text-emerald-500 shrink-0 mt-0.5" />
         <div className="space-y-1">
-          <p className="font-semibold text-white/80">Personal Media &amp; Streaming Privacy</p>
+          <p className="font-semibold text-foreground">Personal Media &amp; Streaming Privacy</p>
           <p className="leading-relaxed">
             Otix is a personal media management client. Otix does not host, store, or distribute copyrighted video or audio. Media streaming connections are established directly between your browser and your linked personal servers (Plex, Jellyfin) for private domestic viewing. Read our full{' '}
-            <Link to="/terms" className="text-emerald-400 hover:text-emerald-300 underline underline-offset-2">
+            <Link to="/terms" className="text-primary hover:underline underline-offset-2">
               Terms of Service
             </Link>
             .

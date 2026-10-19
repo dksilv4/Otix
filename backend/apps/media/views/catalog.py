@@ -295,6 +295,26 @@ class MediaDetailView(APIView):
             except Exception:
                 pass
 
+        # Hydrate ratings when missing
+        if item.overall_rating is None:
+            from apps.media.services.rating import compute_and_store_overall_rating
+
+            score, source = compute_and_store_overall_rating(item.pk)
+            if score is not None:
+                item.overall_rating = score
+                item.overall_rating_source = source
+
+        if item.avg_rating is None:
+            first_ext = item.external_ratings.filter(max_score__gt=0).first()
+            if first_ext and first_ext.score > 0:
+                norm = float(first_ext.score) / float(first_ext.max_score) * 10
+                item.avg_rating = round(norm, 2)
+                item.rating_count = first_ext.vote_count or 0
+                MediaItem.objects.filter(pk=item.pk).update(
+                    avg_rating=item.avg_rating,
+                    rating_count=item.rating_count,
+                )
+
         data = MediaItemDetailSerializer(item).data
         cache.set(cache_key, data, 120)
         return Response(data)

@@ -130,7 +130,7 @@ export const MediaStoryline = ({ detail, mediaType, className = '' }: MediaStory
               to="/genre/$genreId"
               params={{ genreId: g.slug }}
               search={{ type: mediaType }}
-              className="glass-inset px-3 py-1.5 text-xs font-medium text-foreground hover:text-primary hover:bg-white/[0.08] transition-all rounded-full"
+              className="glass-inset px-3 py-1.5 text-xs font-medium text-foreground hover:text-primary hover:bg-[var(--dk-surface-glass-hover)] transition-all rounded-full"
             >
               {g.name}
             </Link>

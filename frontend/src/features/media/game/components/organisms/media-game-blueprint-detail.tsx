@@ -44,7 +44,7 @@ export const BlueprintDetail = ({ blueprint, onClose, onCopy, onEdit, onDelete }
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm" onClick={onClose}>
       <div
         className="glass-card rounded-xl p-6 max-w-2xl w-full mx-4 max-h-[85vh] overflow-y-auto space-y-5"
         onClick={(e) => e.stopPropagation()}
@@ -54,7 +54,7 @@ export const BlueprintDetail = ({ blueprint, onClose, onCopy, onEdit, onDelete }
           <div className="flex items-start gap-3">
             <BlueprintIcon icons={blueprint.icons || []} size="lg" />
             <div>
-              <h2 className="text-lg font-semibold text-white">{blueprint.label}</h2>
+              <h2 className="text-lg font-semibold text-foreground">{blueprint.label}</h2>
               {blueprint.description && (
                 <p className="text-sm text-muted-foreground mt-1">{blueprint.description}</p>
               )}
@@ -63,7 +63,7 @@ export const BlueprintDetail = ({ blueprint, onClose, onCopy, onEdit, onDelete }
               </p>
             </div>
           </div>
-          <button onClick={onClose} className="p-1 rounded-lg hover:bg-white/10 text-muted-foreground transition-all">
+          <button onClick={onClose} className="p-1 rounded-lg hover:bg-[var(--dk-surface-glass)] text-muted-foreground hover:text-foreground transition-all">
             <X className="h-4 w-4" />
           </button>
         </div>
@@ -99,9 +99,9 @@ export const BlueprintDetail = ({ blueprint, onClose, onCopy, onEdit, onDelete }
                   {entities.map(([name, count]) => (
                     <span
                       key={name}
-                      className="text-[11px] px-2 py-1 rounded-md bg-white/5 text-muted-foreground"
+                      className="text-[11px] px-2 py-1 rounded-md bg-[var(--dk-surface-glass)] text-muted-foreground"
                     >
-                      {name}: <span className="text-white font-medium">{count}</span>
+                      {name}: <span className="text-foreground font-medium">{count}</span>
                     </span>
                   ))}
                 </div>
@@ -116,8 +116,8 @@ export const BlueprintDetail = ({ blueprint, onClose, onCopy, onEdit, onDelete }
             <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Tiles</h3>
             <div className="flex flex-wrap gap-1.5">
               {Object.entries(blueprint.tiles).map(([name, count]) => (
-                <span key={name} className="text-[11px] px-2 py-1 rounded-md bg-white/5 text-muted-foreground">
-                  {name}: <span className="text-white font-medium">{count}</span>
+                <span key={name} className="text-[11px] px-2 py-1 rounded-md bg-[var(--dk-surface-glass)] text-muted-foreground">
+                  {name}: <span className="text-foreground font-medium">{count}</span>
                 </span>
               ))}
             </div>
@@ -125,7 +125,7 @@ export const BlueprintDetail = ({ blueprint, onClose, onCopy, onEdit, onDelete }
         )}
 
         {/* Actions */}
-        <div className="flex items-center gap-2 pt-3 border-t border-white/[0.04]">
+        <div className="flex items-center gap-2 pt-3 border-t border-[var(--dk-separator)]">
           <button
             onClick={handleCopy}
             className="flex items-center gap-1.5 px-4 py-2 text-xs font-medium rounded-lg bg-primary/15 text-primary hover:bg-primary/25 transition-all"
@@ -136,7 +136,7 @@ export const BlueprintDetail = ({ blueprint, onClose, onCopy, onEdit, onDelete }
           {onEdit && blueprint.id && (
             <button
               onClick={() => onEdit(blueprint.id!)}
-              className="px-3 py-2 text-xs rounded-lg hover:bg-white/10 text-muted-foreground transition-all"
+              className="px-3 py-2 text-xs rounded-lg hover:bg-[var(--dk-surface-glass)] text-muted-foreground hover:text-foreground transition-all"
             >
               Edit
             </button>
@@ -144,7 +144,7 @@ export const BlueprintDetail = ({ blueprint, onClose, onCopy, onEdit, onDelete }
           {onDelete && blueprint.id && (
             <button
               onClick={() => { onDelete(blueprint.id!); onClose() }}
-              className="px-3 py-2 text-xs rounded-lg hover:bg-red-500/10 text-red-400 transition-all ml-auto"
+              className="px-3 py-2 text-xs rounded-lg hover:bg-destructive/10 text-destructive transition-all ml-auto"
             >
               Delete
             </button>

@@ -59,7 +59,7 @@ const ReviewCard = ({ review, isOwn, onEdit, onDelete }: ReviewCardProps) => {
 					>
 						{review.user.username}
 						{review.user.isAdmin && (
-							<Shield className="h-3 w-3 inline-block text-amber-400/80 ml-1" />
+							<Shield className="h-3 w-3 inline-block text-amber-600/80 dark:text-amber-400/80 ml-1" />
 						)}
 					</Link>
 					<span className="dk-review-card__separator">·</span>

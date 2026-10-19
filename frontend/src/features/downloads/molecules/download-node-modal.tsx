@@ -80,8 +80,8 @@ export const DownloadNodeModal = ({ isOpen, isExiting, onClose }: DownloadNodeMo
               <Sparkles className="h-5 w-5" />
             </div>
             <div>
-              <h4 className="text-sm font-semibold text-white">Simple Double-Click Setup</h4>
-              <p className="text-xs text-white/70 mt-0.5 leading-relaxed">
+              <h4 className="text-sm font-semibold text-foreground">Simple Double-Click Setup</h4>
+              <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
                 No terminal commands or scripts required. Double-click to launch, and it will immediately open your browser with your 6-character Claim PIN (e.g.{' '}
                 <span className="font-mono text-primary font-bold">OTX-XXXX</span>).
               </p>
@@ -100,30 +100,30 @@ export const DownloadNodeModal = ({ isOpen, isExiting, onClose }: DownloadNodeMo
           {downloadOptions.map((opt) => (
             <div
               key={opt.platform}
-              className="p-4 rounded-xl bg-white/[0.04] border border-white/5 flex flex-col justify-between space-y-3"
+              className="p-4 rounded-xl bg-[var(--dk-surface-ghost)] border border-[var(--dk-separator)] flex flex-col justify-between space-y-3"
             >
               <div>
                 <div className="flex items-center justify-between gap-2 mb-1">
                   <div className="flex items-center gap-2">
                     {opt.platform === 'macOS' ? (
-                      <Laptop className="h-4 w-4 text-white/80" />
+                      <Laptop className="h-4 w-4 text-foreground/80" />
                     ) : opt.platform === 'Windows' ? (
-                      <HardDrive className="h-4 w-4 text-white/80" />
+                      <HardDrive className="h-4 w-4 text-foreground/80" />
                     ) : (
-                      <Server className="h-4 w-4 text-white/80" />
+                      <Server className="h-4 w-4 text-foreground/80" />
                     )}
-                    <span className="text-sm font-bold text-white">{opt.platform}</span>
+                    <span className="text-sm font-bold text-foreground">{opt.platform}</span>
                   </div>
-                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-white/10 text-white/70">
+                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[var(--dk-surface-ghost-hover)] text-muted-foreground border border-[var(--dk-separator)]">
                     {opt.badge}
                   </span>
                 </div>
-                <p className="text-[11px] font-medium text-white/40 mb-2">{opt.arch}</p>
-                <p className="text-xs text-white/60 leading-relaxed">{opt.description}</p>
+                <p className="text-[11px] font-medium text-muted-foreground mb-2">{opt.arch}</p>
+                <p className="text-xs text-muted-foreground leading-relaxed">{opt.description}</p>
               </div>
 
-              <div className="pt-2 border-t border-white/5 flex items-center justify-between gap-2">
-                <span className="text-[10px] font-mono text-white/30 truncate">{opt.filename}</span>
+              <div className="pt-2 border-t border-[var(--dk-separator)] flex items-center justify-between gap-2">
+                <span className="text-[10px] font-mono text-muted-foreground/60 truncate">{opt.filename}</span>
                 <DkButton size="sm" variant={opt.primary ? 'primary' : 'secondary'} asChild>
                   <a href={opt.url} target="_blank" rel="noreferrer" download className="flex items-center gap-1.5">
                     <DownloadCloud size={13} />
@@ -136,23 +136,23 @@ export const DownloadNodeModal = ({ isOpen, isExiting, onClose }: DownloadNodeMo
         </div>
 
         {/* 3-Step Setup Instructions */}
-        <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5 space-y-2.5">
-          <h5 className="text-xs font-bold uppercase tracking-wider text-white/70">How it works</h5>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs text-white/60">
+        <div className="p-4 rounded-xl bg-[var(--dk-surface-ghost)] border border-[var(--dk-separator)] space-y-2.5">
+          <h5 className="text-xs font-bold uppercase tracking-wider text-foreground/80">How it works</h5>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs text-muted-foreground">
             <div className="flex items-start gap-2">
-              <span className="h-5 w-5 rounded-full bg-white/10 flex items-center justify-center text-[10px] font-bold text-white shrink-0">
+              <span className="h-5 w-5 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-bold text-primary shrink-0">
                 1
               </span>
               <p>Download and open the app for your OS. It runs quietly in the background.</p>
             </div>
             <div className="flex items-start gap-2">
-              <span className="h-5 w-5 rounded-full bg-white/10 flex items-center justify-center text-[10px] font-bold text-white shrink-0">
+              <span className="h-5 w-5 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-bold text-primary shrink-0">
                 2
               </span>
               <p>Your browser opens to the setup page with your 6-character claim PIN.</p>
             </div>
             <div className="flex items-start gap-2">
-              <span className="h-5 w-5 rounded-full bg-white/10 flex items-center justify-center text-[10px] font-bold text-white shrink-0">
+              <span className="h-5 w-5 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-bold text-primary shrink-0">
                 3
               </span>
               <p>Otix auto-detects the node on your network. Click Claim to link it!</p>

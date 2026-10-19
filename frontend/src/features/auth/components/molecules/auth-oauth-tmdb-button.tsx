@@ -1,9 +1,10 @@
 import { OAuthButton } from './auth-oauth-button'
 import TmdbIcon from '@/assets/provider-logos/tmdb.svg?react'
-import {openExternal} from '@/lib/utils/open-external'
-import {apiClient} from '@/lib/api/client'
-import {useFeature} from '@/features/_config'
-import type {FeatureName} from "@/features/_config/types.ts";
+import { isDesktop } from '@/lib/desktop/api'
+import { openExternal } from '@/lib/utils/open-external'
+import { apiClient } from '@/lib/api/client'
+import { useFeature } from '@/features/_config'
+import type { FeatureName } from "@/features/_config/types.ts";
 
 /** TMDb OAuth login button, gated by the auth:oauth:tmdb feature flag. */
 export const TmdbOAuthButton = () => {
@@ -11,7 +12,10 @@ export const TmdbOAuthButton = () => {
     if (!enabled) return null
 
     const handleTmdbLogin = async () => {
-        const {data} = await apiClient.post('/auth/tmdb/initiate')
+        const { data } = await apiClient.post(
+            '/auth/tmdb/initiate',
+            isDesktop() ? { source: 'desktop' } : undefined,
+        )
         openExternal(data.authUrl)
     }
 

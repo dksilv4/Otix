@@ -27,10 +27,10 @@ const StarRow = ({ count, filled, size = "md" }: { count: number; filled: number
  const fill = Math.min(1, Math.max(0, filled - i))
  return (
  <span key={i} className="relative inline-block">
- <Star className={cn(dims, "text-white/[0.08]")} fill="currentColor" />
+ <Star className={cn(dims, "text-muted-foreground/20")} fill="currentColor" />
  {fill > 0 && (
  <Star
- className={cn(dims, "absolute inset-0 text-amber-400")}
+ className={cn(dims, "absolute inset-0 text-amber-500 dark:text-amber-400")}
  fill="currentColor"
  style={{
  clipPath: fill === 1 ? undefined : `inset(0 ${(1 - fill) * 100}% 0 0)`,

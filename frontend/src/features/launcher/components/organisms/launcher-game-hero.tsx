@@ -54,7 +54,7 @@ export const LauncherGameHero = () => {
   return (
     <section
       id="launcher-game-hero"
-      className="w-full min-h-[100vh] bg-neutral-950 bg-grid-pattern relative shrink-0 overflow-hidden"
+      className="w-full min-h-[100vh] bg-background bg-grid-pattern relative shrink-0 overflow-hidden"
       style={{ perspective: '1200px' }}
     >
       {/* Background layers */}
@@ -106,7 +106,7 @@ export const LauncherGameHero = () => {
       </div>
 
       {/* Bottom gradient mask transitioning hero smoothly into shelf */}
-      <div className="absolute bottom-0 inset-x-0 h-36 bg-gradient-to-t from-[#08080a] via-[#08080a]/70 to-transparent pointer-events-none z-[4]" />
+      <div className="absolute bottom-0 inset-x-0 h-36 bg-gradient-to-t from-[var(--dk-surface-root)] via-[var(--dk-surface-root)]/70 to-transparent pointer-events-none z-[4]" />
 
       {/* Bottom info dock */}
       <div

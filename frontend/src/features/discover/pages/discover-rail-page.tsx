@@ -75,9 +75,9 @@ export const DiscoverRailPage = () => {
           </Link>
         </div>
 
-        <div className="flex items-baseline justify-between border-b border-white/[0.08] pb-4">
+        <div className="flex items-baseline justify-between border-b border-[var(--dk-separator)] pb-4">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">{title}</h1>
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground">{title}</h1>
             <p className="text-sm text-muted-foreground mt-1">
               Explore the complete continuous feed of {title.toLowerCase()}
             </p>

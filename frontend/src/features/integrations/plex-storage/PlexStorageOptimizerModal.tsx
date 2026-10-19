@@ -50,35 +50,35 @@ const TABS: TabDef[] = [
     id: 'duplicates',
     label: 'Duplicates & Multi-Versions',
     icon: Layers,
-    badgeColor: 'text-amber-400 bg-amber-400/10 border-amber-400/20',
+    badgeColor: 'text-amber-600 dark:text-amber-400 bg-amber-500/10 border-amber-500/20',
     description: 'Items with multiple files or qualities. Remove redundant copies to immediately free up space.',
   },
   {
     id: 'transcode',
     label: 'Transcode Candidates',
     icon: Zap,
-    badgeColor: 'text-sky-400 bg-sky-400/10 border-sky-400/20',
+    badgeColor: 'text-sky-600 dark:text-sky-400 bg-sky-500/10 border-sky-500/20',
     description: 'Large H.264 and MPEG-2 files. Re-encoding to HEVC (H.265) or AV1 saves ~45–60% with equal quality.',
   },
   {
     id: 'unwatched',
     label: 'Dead Weight (Unwatched)',
     icon: Clock,
-    badgeColor: 'text-rose-400 bg-rose-400/10 border-rose-400/20',
+    badgeColor: 'text-rose-600 dark:text-rose-400 bg-rose-500/10 border-rose-500/20',
     description: 'Media added over 6 months ago that has never been played by anyone on this server.',
   },
   {
     id: 'watched_shows',
     label: 'Watched TV Series',
     icon: Tv,
-    badgeColor: 'text-emerald-400 bg-emerald-400/10 border-emerald-400/20',
+    badgeColor: 'text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border-emerald-500/20',
     description: 'Series where all available episodes have been watched. Ideal for archiving or cleanup.',
   },
   {
     id: 'largest_files',
     label: 'Space Hogs (Largest)',
     icon: HardDrive,
-    badgeColor: 'text-purple-400 bg-purple-400/10 border-purple-400/20',
+    badgeColor: 'text-purple-600 dark:text-purple-400 bg-purple-500/10 border-purple-500/20',
     description: 'Top largest individual titles consuming the biggest portions of server storage.',
   },
 ]
@@ -269,22 +269,22 @@ export const PlexStorageOptimizerModal = ({
     <DkDialog
       open={open}
       onOpenChange={onOpenChange}
-      className="max-w-5xl max-h-[90vh] flex flex-col p-0 overflow-hidden bg-zinc-950 border border-white/10"
+      className="max-w-5xl max-h-[90vh] flex flex-col p-0 overflow-hidden bg-[var(--dk-surface-base)] border border-[var(--dk-separator)]"
     >
       {/* Top Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 border-b border-white/10 bg-white/[0.02]">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 border-b border-[var(--dk-separator)] bg-[var(--dk-surface-ghost)]">
         <div className="flex items-center gap-3.5">
           <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#e5a00d]/15 text-[#e5a00d] ring-1 ring-inset ring-[#e5a00d]/30">
             <PlexIcon className="h-6 w-6" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h2 className="text-lg font-bold text-white tracking-tight">Plex Storage Optimizer</h2>
-              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-400 ring-1 ring-inset ring-emerald-500/20">
+              <h2 className="text-lg font-bold text-foreground tracking-tight">Plex Storage Optimizer</h2>
+              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-500 dark:text-emerald-400 ring-1 ring-inset ring-emerald-500/20">
                 <Sparkles className="h-3 w-3" /> Reclaim Space
               </span>
             </div>
-            <p className="text-xs text-white/50 mt-0.5">
+            <p className="text-xs text-muted-foreground mt-0.5">
               Analyze disk usage across linked Plex servers and discover waste to reclaim.
             </p>
           </div>
@@ -297,18 +297,18 @@ export const PlexStorageOptimizerModal = ({
               <select
                 value={activeServerId ?? ''}
                 onChange={(e) => setSelectedServerId(Number(e.target.value))}
-                className="appearance-none rounded-xl bg-white/[0.06] hover:bg-white/[0.1] pl-3 pr-8 py-2 text-xs font-medium text-white border border-white/10 focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer transition-colors"
+                className="appearance-none rounded-xl bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-glass-hover)] pl-3 pr-8 py-2 text-xs font-medium text-foreground border border-[var(--dk-separator)] focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer transition-colors"
               >
                 {servers.map((srv) => {
                   const cnt = srv.itemCount ?? srv.item_count ?? 0
                   return (
-                    <option key={srv.id} value={srv.id} className="bg-zinc-900 text-white">
+                    <option key={srv.id} value={srv.id} className="bg-background text-foreground">
                       {srv.name} {srv.owned ? '(Owner)' : ''} · {cnt} items
                     </option>
                   )
                 })}
               </select>
-              <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-white/40 pointer-events-none" />
+              <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
             </div>
           )}
 
@@ -319,7 +319,7 @@ export const PlexStorageOptimizerModal = ({
             loading={refreshMutation.isPending || summaryFetching}
             disabled={refreshMutation.isPending || summaryFetching}
             leftIcon={RefreshCw}
-            className="bg-white/5 hover:bg-white/10 text-white/80"
+            className="bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-glass-hover)] text-foreground border border-[var(--dk-separator)]"
           >
             Refresh
           </DkButton>
@@ -332,16 +332,16 @@ export const PlexStorageOptimizerModal = ({
         {summary && (
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {/* Total Media Storage */}
-            <div className="rounded-2xl bg-white/[0.03] border border-white/[0.08] p-4 flex flex-col justify-between">
-              <div className="flex items-center justify-between text-xs text-white/50">
+            <div className="rounded-2xl bg-[var(--dk-surface-ghost)] border border-[var(--dk-separator)] p-4 flex flex-col justify-between">
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
                 <span className="font-semibold uppercase tracking-wider text-[10px]">Total Scanned Storage</span>
-                <HardDrive className="h-4 w-4 text-white/40" />
+                <HardDrive className="h-4 w-4 text-muted-foreground" />
               </div>
               <div className="mt-2">
-                <span className="text-2xl font-bold text-white tabular-nums">
+                <span className="text-2xl font-bold text-foreground tabular-nums">
                   {formatBytes(totalBytes)}
                 </span>
-                <p className="text-[11px] text-white/40 mt-1">
+                <p className="text-[11px] text-muted-foreground mt-1">
                   Across {totalItems} items ({totalFiles} media files)
                 </p>
               </div>
@@ -349,33 +349,33 @@ export const PlexStorageOptimizerModal = ({
 
             {/* Potential Reclaimable Savings */}
             <div className="rounded-2xl bg-gradient-to-br from-emerald-500/10 via-emerald-500/5 to-transparent border border-emerald-500/20 p-4 flex flex-col justify-between">
-              <div className="flex items-center justify-between text-xs text-emerald-400/80">
+              <div className="flex items-center justify-between text-xs text-emerald-500 dark:text-emerald-400">
                 <span className="font-semibold uppercase tracking-wider text-[10px]">Reclaimable Storage</span>
-                <Sparkles className="h-4 w-4 text-emerald-400" />
+                <Sparkles className="h-4 w-4 text-emerald-500 dark:text-emerald-400" />
               </div>
               <div className="mt-2">
-                <span className="text-2xl font-bold text-emerald-300 tabular-nums">
+                <span className="text-2xl font-bold text-emerald-600 dark:text-emerald-300 tabular-nums">
                   Up to {formatBytes(potentialSavingsBytes)}
                 </span>
-                <p className="text-[11px] text-emerald-400/60 mt-1">
+                <p className="text-[11px] text-emerald-600/80 dark:text-emerald-400/60 mt-1">
                   From duplicates, transcode savings & dead weight
                 </p>
               </div>
             </div>
 
             {/* Watch Distribution */}
-            <div className="rounded-2xl bg-white/[0.03] border border-white/[0.08] p-4 flex flex-col justify-between">
-              <div className="flex items-center justify-between text-xs text-white/50">
+            <div className="rounded-2xl bg-[var(--dk-surface-ghost)] border border-[var(--dk-separator)] p-4 flex flex-col justify-between">
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
                 <span className="font-semibold uppercase tracking-wider text-[10px]">Watch Footprint</span>
-                <Film className="h-4 w-4 text-white/40" />
+                <Film className="h-4 w-4 text-muted-foreground" />
               </div>
               <div className="mt-2">
                 <div className="flex items-baseline justify-between text-xs">
-                  <span className="text-white/80 font-medium">Watched: {formatBytes(watchedBytes)}</span>
-                  <span className="text-rose-400 font-medium">Unwatched: {formatBytes(unwatchedBytes)}</span>
+                  <span className="text-foreground font-medium">Watched: {formatBytes(watchedBytes)}</span>
+                  <span className="text-rose-500 dark:text-rose-400 font-medium">Unwatched: {formatBytes(unwatchedBytes)}</span>
                 </div>
                 {/* Visual Ratio Bar */}
-                <div className="h-2 w-full overflow-hidden rounded-full bg-white/[0.06] mt-2 flex">
+                <div className="h-2 w-full overflow-hidden rounded-full bg-[var(--dk-surface-ghost)] mt-2 flex">
                   <div
                     className="h-full bg-primary transition-all duration-500"
                     style={{
@@ -398,10 +398,10 @@ export const PlexStorageOptimizerModal = ({
         {summary && (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Resolution Distribution */}
-            <div className="rounded-2xl bg-white/[0.02] border border-white/[0.06] p-4 space-y-3">
-              <div className="flex items-center justify-between text-xs text-white/60">
-                <span className="font-semibold text-white/80">Storage by Resolution</span>
-                <span className="text-[11px] text-white/40">Media files</span>
+            <div className="rounded-2xl bg-[var(--dk-surface-ghost)] border border-[var(--dk-separator)] p-4 space-y-3">
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <span className="font-semibold text-foreground">Storage by Resolution</span>
+                <span className="text-[11px] text-muted-foreground">Media files</span>
               </div>
               <div className="space-y-2">
                 {breakdownByResolution.slice(0, 4).map((r) => {
@@ -410,12 +410,12 @@ export const PlexStorageOptimizerModal = ({
                   return (
                     <div key={r.resolution} className="space-y-1">
                       <div className="flex justify-between text-[11px]">
-                        <span className="text-white/70 font-medium">{r.resolution}</span>
-                        <span className="text-white/40 tabular-nums">
+                        <span className="text-foreground/80 font-medium">{r.resolution}</span>
+                        <span className="text-muted-foreground tabular-nums">
                           {formatBytes(rBytes)} ({pct.toFixed(0)}%)
                         </span>
                       </div>
-                      <div className="h-1.5 w-full rounded-full bg-white/[0.05] overflow-hidden">
+                      <div className="h-1.5 w-full rounded-full bg-[var(--dk-surface-ghost)] overflow-hidden">
                         <div className="h-full bg-primary/70 rounded-full" style={{ width: `${pct}%` }} />
                       </div>
                     </div>
@@ -425,10 +425,10 @@ export const PlexStorageOptimizerModal = ({
             </div>
 
             {/* Codec Distribution */}
-            <div className="rounded-2xl bg-white/[0.02] border border-white/[0.06] p-4 space-y-3">
-              <div className="flex items-center justify-between text-xs text-white/60">
-                <span className="font-semibold text-white/80">Storage by Codec</span>
-                <span className="text-[11px] text-white/40">Efficiency</span>
+            <div className="rounded-2xl bg-[var(--dk-surface-ghost)] border border-[var(--dk-separator)] p-4 space-y-3">
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <span className="font-semibold text-foreground">Storage by Codec</span>
+                <span className="text-[11px] text-muted-foreground">Efficiency</span>
               </div>
               <div className="space-y-2">
                 {breakdownByCodec.slice(0, 4).map((c) => {
@@ -438,19 +438,19 @@ export const PlexStorageOptimizerModal = ({
                   return (
                     <div key={c.codec} className="space-y-1">
                       <div className="flex justify-between text-[11px]">
-                        <span className="text-white/70 font-medium flex items-center gap-1.5">
+                        <span className="text-foreground/80 font-medium flex items-center gap-1.5">
                           {c.codec}
                           {isLegacy && (
-                            <span className="text-[9px] px-1 py-0.2 rounded bg-amber-500/10 text-amber-400 font-semibold">
+                            <span className="text-[9px] px-1 py-0.2 rounded bg-amber-500/10 text-amber-500 dark:text-amber-400 font-semibold">
                               Can Transcode
                             </span>
                           )}
                         </span>
-                        <span className="text-white/40 tabular-nums">
+                        <span className="text-muted-foreground tabular-nums">
                           {formatBytes(cBytes)} ({pct.toFixed(0)}%)
                         </span>
                       </div>
-                      <div className="h-1.5 w-full rounded-full bg-white/[0.05] overflow-hidden">
+                      <div className="h-1.5 w-full rounded-full bg-[var(--dk-surface-ghost)] overflow-hidden">
                         <div
                           className={`h-full rounded-full ${isLegacy ? 'bg-amber-400/70' : 'bg-emerald-400/70'}`}
                           style={{ width: `${pct}%` }}
@@ -465,7 +465,7 @@ export const PlexStorageOptimizerModal = ({
         )}
 
         {/* Category Tabs */}
-        <div className="border-b border-white/10">
+        <div className="border-b border-[var(--dk-separator)]">
           <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
             {TABS.map((tab) => {
               const TabIcon = tab.icon
@@ -482,10 +482,10 @@ export const PlexStorageOptimizerModal = ({
                     setActiveTab(tab.id)
                     setSearchFilter('')
                   }}
-                  className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
+                  className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
                     isActive
-                      ? 'bg-white/10 text-white shadow-sm ring-1 ring-inset ring-white/15'
-                      : 'text-white/50 hover:text-white/80 hover:bg-white/[0.04]'
+                      ? 'bg-primary text-primary-foreground shadow-xs'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-ghost-hover)]'
                   }`}
                 >
                   <TabIcon className="h-3.5 w-3.5" />
@@ -493,7 +493,7 @@ export const PlexStorageOptimizerModal = ({
                   {count !== undefined && count > 0 && (
                     <span
                       className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full border ${
-                        isActive ? tab.badgeColor : 'text-white/40 bg-white/5 border-white/10'
+                        isActive ? 'bg-primary-foreground/20 text-primary-foreground border-transparent' : 'text-muted-foreground bg-[var(--dk-surface-ghost)] border-[var(--dk-separator)]'
                       }`}
                     >
                       {count}
@@ -506,22 +506,22 @@ export const PlexStorageOptimizerModal = ({
         </div>
 
         {/* Tab Description & Action Bar */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white/[0.02] p-3.5 rounded-2xl border border-white/[0.06]">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[var(--dk-surface-ghost)] p-3.5 rounded-2xl border border-[var(--dk-separator)]">
           <div className="flex items-start gap-2.5 min-w-0">
-            <AlertCircle className="h-4 w-4 text-white/40 shrink-0 mt-0.5" />
-            <p className="text-xs text-white/60 leading-relaxed">{currentTabDef.description}</p>
+            <AlertCircle className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+            <p className="text-xs text-muted-foreground leading-relaxed">{currentTabDef.description}</p>
           </div>
 
           <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
             {/* Search filter */}
             <div className="relative">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-white/40" />
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
               <input
                 type="text"
                 placeholder="Filter titles..."
                 value={searchFilter}
                 onChange={(e) => setSearchFilter(e.target.value)}
-                className="w-36 sm:w-44 rounded-xl bg-white/[0.05] pl-8 pr-3 py-1.5 text-xs text-white placeholder:text-white/30 border border-white/10 focus:outline-none focus:ring-1 focus:ring-primary"
+                className="w-36 sm:w-44 rounded-xl bg-[var(--dk-surface-glass)] pl-8 pr-3 py-1.5 text-xs text-foreground placeholder:text-muted-foreground border border-[var(--dk-separator)] focus:outline-none focus:ring-1 focus:ring-primary"
               />
             </div>
 
@@ -531,7 +531,7 @@ export const PlexStorageOptimizerModal = ({
               variant="ghost"
               onClick={handleCopyPaths}
               leftIcon={copiedPaths ? Check : Copy}
-              className="bg-white/5 hover:bg-white/10 text-white/80 text-xs px-2.5"
+              className="bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-glass-hover)] text-foreground text-xs px-2.5 border border-[var(--dk-separator)] cursor-pointer"
             >
               {copiedPaths ? 'Copied' : 'Copy Paths'}
             </DkButton>
@@ -542,7 +542,7 @@ export const PlexStorageOptimizerModal = ({
               variant="ghost"
               onClick={handleExportCsv}
               leftIcon={Download}
-              className="bg-white/5 hover:bg-white/10 text-white/80 text-xs px-2.5"
+              className="bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-glass-hover)] text-foreground text-xs px-2.5 border border-[var(--dk-separator)] cursor-pointer"
             >
               Export CSV
             </DkButton>
@@ -551,15 +551,15 @@ export const PlexStorageOptimizerModal = ({
 
         {/* Item List */}
         {recsLoading ? (
-          <div className="flex flex-col items-center justify-center py-16 text-white/40 gap-3">
+          <div className="flex flex-col items-center justify-center py-16 text-muted-foreground gap-3">
             <RefreshCw className="h-6 w-6 animate-spin text-primary" />
             <p className="text-xs">Analyzing media items for {currentTabDef.label}...</p>
           </div>
         ) : filteredItems.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 text-white/40 gap-2 rounded-2xl bg-white/[0.01] border border-dashed border-white/10">
-            <Check className="h-7 w-7 text-emerald-400/80 mb-1" />
-            <p className="text-sm font-semibold text-white/70">No items found</p>
-            <p className="text-xs text-white/40 max-w-sm text-center">
+          <div className="flex flex-col items-center justify-center py-16 text-muted-foreground gap-2 rounded-2xl bg-[var(--dk-surface-ghost)] border border-dashed border-[var(--dk-separator)]">
+            <Check className="h-7 w-7 text-emerald-500 mb-1" />
+            <p className="text-sm font-semibold text-foreground">No items found</p>
+            <p className="text-xs text-muted-foreground max-w-sm text-center">
               {searchFilter
                 ? 'No items matched your search filter.'
                 : `Your server is already optimized for this category! No ${currentTabDef.label.toLowerCase()} detected.`}
@@ -579,14 +579,14 @@ export const PlexStorageOptimizerModal = ({
       </div>
 
       {/* Footer */}
-      <div className="flex items-center justify-between p-4 border-t border-white/10 bg-white/[0.02] text-xs text-white/40">
+      <div className="flex items-center justify-between p-4 border-t border-[var(--dk-separator)] bg-[var(--dk-surface-ghost)] text-xs text-muted-foreground">
         <span>
           Showing {filteredItems.length} item{filteredItems.length === 1 ? '' : 's'}
         </span>
         <button
           type="button"
           onClick={() => onOpenChange(false)}
-          className="rounded-xl px-4 py-1.5 font-semibold text-white/70 hover:bg-white/10 hover:text-white transition-colors"
+          className="cursor-pointer rounded-xl px-4 py-1.5 font-semibold text-foreground hover:bg-[var(--dk-surface-glass-hover)] border border-[var(--dk-separator)] transition-colors"
         >
           Close
         </button>
@@ -618,31 +618,31 @@ const StorageItemCard = ({
   const parts = item.parts || []
 
   return (
-    <div className="rounded-2xl bg-white/[0.02] hover:bg-white/[0.04] border border-white/[0.06] p-4 transition-all space-y-3">
+    <div className="rounded-2xl bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-glass-hover)] border border-[var(--dk-separator)] p-4 transition-all space-y-3">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         {/* Title & Metadata */}
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-sm font-bold text-white tracking-tight truncate">{item.title}</span>
-            {item.year && <span className="text-xs text-white/40">({item.year})</span>}
-            <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-md bg-white/5 text-white/60">
+            <span className="text-sm font-bold text-foreground tracking-tight truncate">{item.title}</span>
+            {item.year && <span className="text-xs text-muted-foreground">({item.year})</span>}
+            <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-md bg-[var(--dk-surface-glass)] border border-[var(--dk-separator)] text-muted-foreground">
               {mediaType === 'movie' ? <Film className="h-3 w-3" /> : <Tv className="h-3 w-3" />}
               {libraryTitle}
             </span>
             {resLabel && (
-              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-white/5 text-white/60">
+              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-[var(--dk-surface-glass)] border border-[var(--dk-separator)] text-muted-foreground">
                 {resLabel}
               </span>
             )}
             {codecLabel && (
-              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-white/5 text-white/60">
+              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-[var(--dk-surface-glass)] border border-[var(--dk-separator)] text-muted-foreground">
                 {codecLabel}
               </span>
             )}
           </div>
 
-          <div className="flex items-center gap-2 text-xs text-white/40 mt-1 flex-wrap">
-            <span>Current Size: <strong className="text-white/70">{formatBytes(totalSize)}</strong></span>
+          <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1 flex-wrap">
+            <span>Current Size: <strong className="text-foreground">{formatBytes(totalSize)}</strong></span>
             <span>·</span>
             <span>Plays: {views}</span>
             {daysSinceAdded !== undefined && daysSinceAdded !== null && (
@@ -658,10 +658,10 @@ const StorageItemCard = ({
         <div className="shrink-0 flex items-center gap-3">
           {category === 'duplicates' && reclaimableBytes !== undefined && (
             <div className="text-right">
-              <span className="text-xs font-bold text-amber-400 block tabular-nums">
+              <span className="text-xs font-bold text-amber-500 dark:text-amber-400 block tabular-nums">
                 Save {formatBytes(reclaimableBytes)}
               </span>
-              <span className="text-[10px] text-white/40">
+              <span className="text-[10px] text-muted-foreground">
                 {parts.length} files detected
               </span>
             </div>
@@ -669,10 +669,10 @@ const StorageItemCard = ({
 
           {category === 'transcode' && estimatedSavingsBytes !== undefined && (
             <div className="text-right">
-              <span className="text-xs font-bold text-sky-400 block tabular-nums">
+              <span className="text-xs font-bold text-sky-500 dark:text-sky-400 block tabular-nums">
                 Save ~{formatBytes(estimatedSavingsBytes)} ({savingsPercentage}%)
               </span>
-              <span className="text-[10px] text-white/40">
+              <span className="text-[10px] text-muted-foreground">
                 via {targetCodec}
               </span>
             </div>
@@ -680,28 +680,28 @@ const StorageItemCard = ({
 
           {category === 'unwatched' && (
             <div className="text-right">
-              <span className="text-xs font-bold text-rose-400 block tabular-nums">
+              <span className="text-xs font-bold text-rose-500 dark:text-rose-400 block tabular-nums">
                 {formatBytes(totalSize)}
               </span>
-              <span className="text-[10px] text-white/40">Never watched</span>
+              <span className="text-[10px] text-muted-foreground">Never watched</span>
             </div>
           )}
 
           {category === 'watched_shows' && (
             <div className="text-right">
-              <span className="text-xs font-bold text-emerald-400 block tabular-nums">
+              <span className="text-xs font-bold text-emerald-500 dark:text-emerald-400 block tabular-nums">
                 {formatBytes(totalSize)}
               </span>
-              <span className="text-[10px] text-white/40">Fully watched</span>
+              <span className="text-[10px] text-muted-foreground">Fully watched</span>
             </div>
           )}
 
           {category === 'largest_files' && (
             <div className="text-right">
-              <span className="text-xs font-bold text-purple-400 block tabular-nums">
+              <span className="text-xs font-bold text-purple-500 dark:text-purple-400 block tabular-nums">
                 {formatBytes(totalSize)}
               </span>
-              <span className="text-[10px] text-white/40">Top file</span>
+              <span className="text-[10px] text-muted-foreground">Top file</span>
             </div>
           )}
 
@@ -709,7 +709,7 @@ const StorageItemCard = ({
             <button
               type="button"
               onClick={() => setExpanded(!expanded)}
-              className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white/60 hover:text-white transition-colors text-xs"
+              className="p-1.5 rounded-lg bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-glass-hover)] text-muted-foreground hover:text-foreground transition-colors text-xs border border-[var(--dk-separator)] cursor-pointer"
               title="Toggle file paths"
             >
               <FolderOpen className="h-4 w-4" />
@@ -720,8 +720,8 @@ const StorageItemCard = ({
 
       {/* Expanded File Paths & Media Details */}
       {expanded && parts.length > 0 && (
-        <div className="mt-3 pt-3 border-t border-white/5 space-y-2 text-xs">
-          <p className="text-[11px] font-semibold text-white/50 uppercase tracking-wider">File Paths on Disk:</p>
+        <div className="mt-3 pt-3 border-t border-[var(--dk-separator)] space-y-2 text-xs">
+          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">File Paths on Disk:</p>
           {parts.map((p, idx) => {
             const pId = p.partId ?? p.part_id ?? String(idx)
             const isRedundant =
@@ -735,8 +735,8 @@ const StorageItemCard = ({
                 key={pId}
                 className={`p-2.5 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-2 font-mono text-[11px] ${
                   isRedundant
-                    ? 'bg-amber-500/[0.07] border-amber-500/20 text-amber-200'
-                    : 'bg-black/30 border-white/5 text-white/70'
+                    ? 'bg-amber-500/[0.07] border-amber-500/20 text-amber-600 dark:text-amber-200'
+                    : 'bg-[var(--dk-surface-glass)] border-[var(--dk-separator)] text-foreground/80'
                 }`}
               >
                 <div className="truncate min-w-0 flex-1">
@@ -744,13 +744,13 @@ const StorageItemCard = ({
                 </div>
                 <div className="shrink-0 flex items-center gap-2 text-[10px] font-sans">
                   {isRedundant && (
-                    <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-semibold">
+                    <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-600 dark:text-amber-300 font-semibold">
                       Redundant Copy
                     </span>
                   )}
-                  {pRes && <span className="text-white/40 font-mono">{pRes}</span>}
-                  {pCodec && <span className="text-white/40 font-mono">{pCodec}</span>}
-                  <span className="font-semibold text-white/80 tabular-nums">{formatBytes(p.size)}</span>
+                  {pRes && <span className="text-muted-foreground font-mono">{pRes}</span>}
+                  {pCodec && <span className="text-muted-foreground font-mono">{pCodec}</span>}
+                  <span className="font-semibold text-foreground tabular-nums">{formatBytes(p.size)}</span>
                 </div>
               </div>
             )

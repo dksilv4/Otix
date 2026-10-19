@@ -314,7 +314,7 @@ export const SettingsLibraryPage = () => {
           catalog: (
             <div id="catalog" className="space-y-6 scroll-mt-28">
               {loading ? (
-                <div className="flex items-center justify-center py-20 text-white/50 gap-3">
+                <div className="flex items-center justify-center py-20 text-muted-foreground gap-3">
                   <Loader2 className="h-5 w-5 animate-spin text-primary" />
                   <span>Loading library...</span>
                 </div>
@@ -329,11 +329,11 @@ export const SettingsLibraryPage = () => {
                         <div className="flex items-center gap-2">
                           <Link
                             to="/settings/nodes"
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white/60 hover:text-white bg-white/5 hover:bg-white/10 rounded-xl transition-colors"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)] rounded-xl transition-colors"
                           >
-                            <FolderOpen className="h-3.5 w-3.5 text-white/40" />
+                            <FolderOpen className="h-3.5 w-3.5 text-muted-foreground/70" />
                             <span>Scan Folders</span>
-                            <ArrowUpRight className="h-3 w-3 text-white/30" />
+                            <ArrowUpRight className="h-3 w-3 text-muted-foreground/50" />
                           </Link>
                           <DkButton
                             size="sm"
@@ -367,84 +367,84 @@ export const SettingsLibraryPage = () => {
                         type="button"
                         onClick={() => setFilterTab('all')}
                         className={cn(
-                          'rounded-xl px-3.5 py-3 border text-left transition-colors cursor-pointer',
+                          'rounded-xl px-3.5 py-3 text-left transition-colors cursor-pointer',
                           filterTab === 'all'
-                            ? 'border-primary/40 bg-primary/10'
-                            : 'border-white/5 hover:border-white/15 hover:bg-white/[0.04]',
+                            ? 'bg-primary/10'
+                            : 'hover:bg-[var(--dk-surface-ghost)]',
                         )}
                         style={filterTab === 'all' ? undefined : { backgroundColor: 'var(--dk-surface-raised)' }}
                       >
-                        <div className="flex items-center gap-1.5 text-white/40 mb-1">
+                        <div className="flex items-center gap-1.5 text-muted-foreground mb-1">
                           <HardDrive className="h-3.5 w-3.5 text-primary" />
                           <span className="text-[10px] font-semibold uppercase tracking-wider">Total</span>
                         </div>
-                        <p className="text-lg font-bold text-white tabular-nums leading-none">
+                        <p className="text-lg font-bold text-foreground tabular-nums leading-none">
                           {gamesLoading ? '…' : stats.total}
                         </p>
-                        <p className="text-[11px] text-white/40 mt-1">All library items</p>
+                        <p className="text-[11px] text-muted-foreground mt-1">All library items</p>
                       </button>
 
                       <button
                         type="button"
                         onClick={() => setFilterTab('matched')}
                         className={cn(
-                          'rounded-xl px-3.5 py-3 border text-left transition-colors cursor-pointer',
+                          'rounded-xl px-3.5 py-3 text-left transition-colors cursor-pointer',
                           filterTab === 'matched'
-                            ? 'border-emerald-500/40 bg-emerald-500/10'
-                            : 'border-white/5 hover:border-emerald-500/20 hover:bg-emerald-500/5',
+                            ? 'bg-emerald-500/10'
+                            : 'hover:bg-emerald-500/5',
                         )}
                         style={filterTab === 'matched' ? undefined : { backgroundColor: 'var(--dk-surface-raised)' }}
                       >
-                        <div className="flex items-center gap-1.5 text-white/40 mb-1">
-                          <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
+                        <div className="flex items-center gap-1.5 text-muted-foreground mb-1">
+                          <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
                           <span className="text-[10px] font-semibold uppercase tracking-wider">Matched</span>
                         </div>
-                        <p className="text-lg font-bold text-emerald-400 tabular-nums leading-none">
+                        <p className="text-lg font-bold text-emerald-500 tabular-nums leading-none">
                           {gamesLoading ? '…' : stats.matched}
                         </p>
-                        <p className="text-[11px] text-white/40 mt-1">Linked to metadata</p>
+                        <p className="text-[11px] text-muted-foreground mt-1">Linked to metadata</p>
                       </button>
 
                       <button
                         type="button"
                         onClick={() => setFilterTab('candidates')}
                         className={cn(
-                          'rounded-xl px-3.5 py-3 border text-left transition-colors cursor-pointer',
+                          'rounded-xl px-3.5 py-3 text-left transition-colors cursor-pointer',
                           filterTab === 'candidates'
-                            ? 'border-sky-500/30 bg-sky-500/10'
-                            : 'border-white/5 hover:border-sky-500/20 hover:bg-sky-500/5',
+                            ? 'bg-sky-500/10'
+                            : 'hover:bg-sky-500/5',
                         )}
                         style={filterTab === 'candidates' ? undefined : { backgroundColor: 'var(--dk-surface-raised)' }}
                       >
-                        <div className="flex items-center gap-1.5 text-white/40 mb-1">
-                          <Sparkles className="h-3.5 w-3.5 text-sky-400" />
+                        <div className="flex items-center gap-1.5 text-muted-foreground mb-1">
+                          <Sparkles className="h-3.5 w-3.5 text-sky-500" />
                           <span className="text-[10px] font-semibold uppercase tracking-wider">Review</span>
                         </div>
-                        <p className="text-lg font-bold text-sky-400 tabular-nums leading-none">
+                        <p className="text-lg font-bold text-sky-500 tabular-nums leading-none">
                           {gamesLoading ? '…' : stats.candidates}
                         </p>
-                        <p className="text-[11px] text-white/40 mt-1">Need a decision</p>
+                        <p className="text-[11px] text-muted-foreground mt-1">Need a decision</p>
                       </button>
 
                       <button
                         type="button"
                         onClick={() => setFilterTab('unmatched')}
                         className={cn(
-                          'rounded-xl px-3.5 py-3 border text-left transition-colors cursor-pointer',
+                          'rounded-xl px-3.5 py-3 text-left transition-colors cursor-pointer',
                           filterTab === 'unmatched'
-                            ? 'border-white/20 bg-white/10'
-                            : 'border-white/5 hover:border-white/15 hover:bg-white/[0.04]',
+                            ? 'bg-primary/10'
+                            : 'hover:bg-[var(--dk-surface-ghost)]',
                         )}
                         style={filterTab === 'unmatched' ? undefined : { backgroundColor: 'var(--dk-surface-raised)' }}
                       >
-                        <div className="flex items-center gap-1.5 text-white/40 mb-1">
-                          <Gamepad2 className="h-3.5 w-3.5 text-white/50" />
+                        <div className="flex items-center gap-1.5 text-muted-foreground mb-1">
+                          <Gamepad2 className="h-3.5 w-3.5 text-muted-foreground" />
                           <span className="text-[10px] font-semibold uppercase tracking-wider">Unmatched</span>
                         </div>
-                        <p className="text-lg font-bold text-white/70 tabular-nums leading-none">
+                        <p className="text-lg font-bold text-foreground tabular-nums leading-none">
                           {gamesLoading ? '…' : stats.unmatched}
                         </p>
-                        <p className="text-[11px] text-white/40 mt-1">No Otix link yet</p>
+                        <p className="text-[11px] text-muted-foreground mt-1">No Otix link yet</p>
                       </button>
                     </div>
                   </SettingsCard>
@@ -452,18 +452,18 @@ export const SettingsLibraryPage = () => {
                   <SettingsCard>
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-4">
                       <div className="relative flex-1 max-w-sm">
-                        <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-white/40" />
+                        <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
                         <input
                           type="text"
                           placeholder="Search library titles, developers, platforms..."
                           value={searchQuery}
                           onChange={(e) => setSearchQuery(e.target.value)}
-                          className="w-full h-9 pl-9 pr-8 rounded-xl bg-white/5 text-xs text-white placeholder:text-white/30 outline-none focus:bg-white/10 transition-colors"
+                          className="w-full h-9 pl-9 pr-8 rounded-xl bg-[var(--dk-surface-field)] text-xs text-foreground placeholder:text-muted-foreground/50 outline-none focus:ring-1 focus:ring-primary/40 transition-colors"
                         />
                         {searchQuery && (
                           <button
                             onClick={() => setSearchQuery('')}
-                            className="absolute right-2.5 top-2.5 text-white/40 hover:text-white"
+                            className="absolute right-2.5 top-2.5 text-muted-foreground hover:text-foreground cursor-pointer"
                           >
                             <X className="h-3.5 w-3.5" />
                           </button>
@@ -508,7 +508,7 @@ export const SettingsLibraryPage = () => {
                         <button
                           type="button"
                           onClick={() => setSortDir((prev) => (prev === 'asc' ? 'desc' : 'asc'))}
-                          className="flex items-center justify-center h-8 w-8 rounded-full bg-white/[0.05] hover:bg-white/10 text-white/70 hover:text-white transition-all cursor-pointer select-none"
+                          className="flex items-center justify-center h-8 w-8 rounded-full bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)] text-muted-foreground hover:text-foreground transition-all cursor-pointer select-none"
                           title={sortDir === 'asc' ? 'Ascending (Click for Descending)' : 'Descending (Click for Ascending)'}
                         >
                           <ArrowUpDown
@@ -522,18 +522,18 @@ export const SettingsLibraryPage = () => {
                     </div>
 
                     {gamesLoading ? (
-                      <div className="flex items-center justify-center py-12 text-xs text-white/40 gap-2">
+                      <div className="flex items-center justify-center py-12 text-xs text-muted-foreground gap-2">
                         <Loader2 className="h-4 w-4 animate-spin text-primary" />
                         Loading games...
                       </div>
                     ) : filteredGames.length === 0 ? (
                       <div className="py-12 text-center space-y-2">
-                        <div className="h-10 w-10 rounded-2xl bg-white/5 flex items-center justify-center mx-auto text-white/20">
+                        <div className="h-10 w-10 rounded-2xl bg-[var(--dk-surface-ghost)] flex items-center justify-center mx-auto text-muted-foreground/40">
                           <Gamepad2 className="h-5 w-5" />
                         </div>
                         <div>
-                          <p className="text-xs font-semibold text-white/80">No items found</p>
-                          <p className="text-[11px] text-white/40 mt-0.5 max-w-xs mx-auto leading-relaxed">
+                          <p className="text-xs font-semibold text-foreground">No items found</p>
+                          <p className="text-[11px] text-muted-foreground mt-0.5 max-w-xs mx-auto leading-relaxed">
                             {searchQuery ||
                             filterTab !== 'all' ||
                             platformFilter ||
@@ -557,7 +557,7 @@ export const SettingsLibraryPage = () => {
                                 setSortKey('title')
                                 setSortDir('asc')
                               }}
-                              className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-white/10 text-white hover:bg-white/20 transition-all cursor-pointer"
+                              className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-[var(--dk-surface-ghost)] text-foreground hover:bg-[var(--dk-surface-ghost-hover)] transition-all cursor-pointer"
                             >
                               Reset Filters
                             </button>
@@ -576,12 +576,9 @@ export const SettingsLibraryPage = () => {
                             <button
                               key={game.id || game.title}
                               onClick={() => handleGameClick(game)}
-                              className="flex items-center gap-3 p-3 rounded-2xl bg-white/5 hover:bg-white/10 text-left transition-all group cursor-pointer relative overflow-hidden"
-                              style={{
-                                boxShadow: 'inset 0 1px 1px 0 rgba(255, 255, 255, 0.06)',
-                              }}
+                              className="flex items-center gap-3 p-3 rounded-2xl bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)] text-left transition-all group cursor-pointer relative overflow-hidden"
                             >
-                              <div className="h-12 w-12 rounded-xl bg-white/10 shrink-0 overflow-hidden flex items-center justify-center relative">
+                              <div className="h-12 w-12 rounded-xl bg-[var(--dk-surface-field)] shrink-0 overflow-hidden flex items-center justify-center relative">
                                 {iconUrl ? (
                                   <img
                                     src={iconUrl}
@@ -589,18 +586,18 @@ export const SettingsLibraryPage = () => {
                                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
                                   />
                                 ) : (
-                                  <Gamepad2 className="h-5 w-5 text-white/30" />
+                                  <Gamepad2 className="h-5 w-5 text-muted-foreground/40" />
                                 )}
                               </div>
 
                               <div className="min-w-0 flex-1">
-                                <p className="text-xs font-bold text-white truncate whitespace-nowrap group-hover:text-primary transition-colors">
+                                <p className="text-xs font-bold text-foreground truncate whitespace-nowrap group-hover:text-primary transition-colors">
                                   {game.title}
                                 </p>
                                 <div className="flex flex-wrap items-center gap-1.5 mt-1 min-w-0">
                                   <div
                                     title={game.platform || game.providerName || 'PC'}
-                                    className="flex items-center justify-center p-1 rounded-md bg-white/5 shrink-0"
+                                    className="flex items-center justify-center p-1 rounded-md bg-[var(--dk-surface-field)] shrink-0"
                                   >
                                     <ProviderLogo
                                       platform={game.platform || game.providerName || 'pc'}
@@ -608,50 +605,47 @@ export const SettingsLibraryPage = () => {
                                     />
                                   </div>
                                   {(gt === 'dlc_addon' || game.isDlc) && (
-                                    <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded-full whitespace-nowrap shrink-0">
+                                    <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-purple-500 bg-purple-500/10 px-2 py-0.5 rounded-full whitespace-nowrap shrink-0">
                                       DLC
                                     </span>
                                   )}
                                   {(gt === 'expansion' || gt === 'standalone_expansion') && (
-                                    <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded-full whitespace-nowrap shrink-0">
+                                    <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-indigo-500 bg-indigo-500/10 px-2 py-0.5 rounded-full whitespace-nowrap shrink-0">
                                       Expansion
                                     </span>
                                   )}
                                   {(gt === 'demo' || game.isDemo) && (
-                                    <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-teal-400 bg-teal-500/10 px-2 py-0.5 rounded-full whitespace-nowrap shrink-0">
+                                    <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-teal-500 bg-teal-500/10 px-2 py-0.5 rounded-full whitespace-nowrap shrink-0">
                                       Demo
                                     </span>
                                   )}
                                   {(gt === 'beta' || game.isBeta) &&
                                     gt !== 'demo' &&
                                     !game.isDemo && (
-                                      <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full whitespace-nowrap shrink-0">
+                                      <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded-full whitespace-nowrap shrink-0">
                                         Beta
                                       </span>
                                     )}
                                   {gt === 'mod' && (
-                                    <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-pink-400 bg-pink-500/10 px-2 py-0.5 rounded-full whitespace-nowrap shrink-0">
+                                    <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-pink-500 bg-pink-500/10 px-2 py-0.5 rounded-full whitespace-nowrap shrink-0">
                                       Mod
                                     </span>
                                   )}
                                   {gt === 'soundtrack' && (
-                                    <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-rose-400 bg-rose-500/10 px-2 py-0.5 rounded-full whitespace-nowrap shrink-0">
+                                    <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-rose-500 bg-rose-500/10 px-2 py-0.5 rounded-full whitespace-nowrap shrink-0">
                                       OST
                                     </span>
                                   )}
                                   {isMatched ? (
-                                    <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full whitespace-nowrap shrink-0">
-                                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.7)]" />
+                                    <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded-full whitespace-nowrap shrink-0">
                                       Matched
                                     </span>
                                   ) : isCandidate ? (
-                                    <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-sky-400 bg-sky-500/10 px-2 py-0.5 rounded-full whitespace-nowrap shrink-0">
-                                      <span className="h-1.5 w-1.5 rounded-full bg-sky-400 animate-pulse shadow-[0_0_6px_rgba(56,189,248,0.7)]" />
+                                    <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-sky-500 bg-sky-500/10 px-2 py-0.5 rounded-full whitespace-nowrap shrink-0">
                                       Review
                                     </span>
                                   ) : (
-                                    <span className="inline-flex items-center gap-1 text-[10px] font-medium text-white/40 bg-white/5 px-2 py-0.5 rounded-full whitespace-nowrap shrink-0">
-                                      <span className="h-1.5 w-1.5 rounded-full bg-white/30" />
+                                    <span className="inline-flex items-center gap-1 text-[10px] font-medium text-muted-foreground bg-[var(--dk-surface-field)] px-2 py-0.5 rounded-full whitespace-nowrap shrink-0">
                                       Unmatched
                                     </span>
                                   )}

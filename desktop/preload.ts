@@ -270,14 +270,17 @@ contextBridge.exposeInMainWorld('desktopAPI', {
   // ── Auto Updater ──
   updater: {
     checkForUpdates: () => ipcRenderer.invoke('updater:check-for-updates'),
+    downloadUpdate: () => ipcRenderer.invoke('updater:download-update'),
     installUpdate: () => ipcRenderer.invoke('updater:install-update'),
     getVersion: () => ipcRenderer.invoke('updater:get-version'),
+    getStatus: () => ipcRenderer.invoke('updater:get-status'),
     onStatusChanged: (callback: (state: any) => void) => {
       const handler = (_event: any, state: any) => callback(state);
       ipcRenderer.on('updater:status-changed', handler);
       return () => ipcRenderer.removeListener('updater:status-changed', handler);
     },
   },
+
 
   // ── Storage ──
   getDiskSpace: () => ipcRenderer.invoke('get-disk-space'),

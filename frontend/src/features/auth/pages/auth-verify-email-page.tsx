@@ -54,7 +54,7 @@ export const VerifyEmailPage = () => {
           <button
             type="button"
             onClick={() => navigate({ to: '/auth/login' })}
-            className="rounded-full bg-white/10 px-5 py-2 text-sm font-medium transition-colors hover:bg-white/20"
+            className="cursor-pointer rounded-full bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-glass-hover)] border border-[var(--dk-separator)] text-foreground px-5 py-2 text-sm font-medium transition-colors"
           >
             Go to Sign In
           </button>
@@ -83,7 +83,7 @@ export const VerifyEmailPage = () => {
               animate={{ opacity: 1 }}
               className="flex flex-col items-center gap-3"
             >
-              <Loader2 className="h-8 w-8 animate-spin" style={{ color: 'var(--muted-foreground)' }} />
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
               <p className="text-sm text-muted-foreground">Verifying your email...</p>
             </motion.div>
           )}
@@ -94,8 +94,8 @@ export const VerifyEmailPage = () => {
               animate={{ opacity: 1, scale: 1 }}
               className="flex flex-col items-center gap-3"
             >
-              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-green-500/10">
-                <Check className="h-7 w-7 text-green-500" />
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-500/10 border border-emerald-500/20">
+                <Check className="h-7 w-7 text-emerald-500" />
               </div>
               <p className="text-sm font-medium">Email Verified</p>
               <p className="text-sm text-muted-foreground">
@@ -104,7 +104,7 @@ export const VerifyEmailPage = () => {
               <button
                 type="button"
                 onClick={() => navigate({ to: isAuthenticated ? '/' : '/auth/login' })}
-                className="rounded-full bg-white/10 px-5 py-2 text-sm font-medium transition-colors hover:bg-white/20"
+                className="cursor-pointer rounded-full bg-primary text-primary-foreground hover:bg-primary/90 px-5 py-2 text-sm font-semibold transition-all shadow-md"
               >
                 {isAuthenticated ? 'Continue to Home' : 'Go to Sign In'}
               </button>
@@ -117,7 +117,7 @@ export const VerifyEmailPage = () => {
               animate={{ opacity: 1, scale: 1 }}
               className="flex flex-col items-center gap-3"
             >
-              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-red-500/10">
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-destructive/10 border border-destructive/20">
                 <ShieldAlert className="h-7 w-7 text-destructive" />
               </div>
               <p className="text-sm font-medium">Verification Failed</p>
@@ -128,7 +128,7 @@ export const VerifyEmailPage = () => {
                 <button
                   type="button"
                   onClick={handleResend}
-                  className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm text-muted-foreground transition-colors hover:bg-white/10"
+                  className="cursor-pointer inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm text-muted-foreground transition-colors hover:bg-[var(--dk-surface-glass-hover)] hover:text-foreground"
                 >
                   <Mail className="h-4 w-4" />
                   Resend Verification Email
@@ -137,7 +137,7 @@ export const VerifyEmailPage = () => {
               <button
                 type="button"
                 onClick={() => navigate({ to: '/auth/login' })}
-                className="rounded-full bg-white/10 px-5 py-2 text-sm font-medium transition-colors hover:bg-white/20"
+                className="cursor-pointer rounded-full bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-glass-hover)] border border-[var(--dk-separator)] text-foreground px-5 py-2 text-sm font-medium transition-colors"
               >
                 Go to Sign In
               </button>

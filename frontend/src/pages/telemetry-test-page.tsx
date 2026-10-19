@@ -431,7 +431,7 @@ export const TelemetryTestPage = () => {
                   </div>
 
                   {/* Footer Action */}
-                  <div className="flex items-center justify-between pt-2 border-t border-white/[0.04]">
+                  <div className="flex items-center justify-between pt-2 border-t border-[var(--dk-separator)]">
                     <span className="text-[11px] text-muted-foreground font-mono">
                       {design.subtitle}
                     </span>

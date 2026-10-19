@@ -59,14 +59,14 @@ export const ModernDashboard = ({
         <section className="space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Clock size={16} className="text-[oklch(0.705_0.213_47.604)]" />
-              <h2 className="text-sm font-black uppercase tracking-wider text-white">
+              <Clock size={16} className="text-primary" />
+              <h2 className="text-sm font-black uppercase tracking-wider text-foreground">
                 Jump Back In
               </h2>
             </div>
             <button
               onClick={onSwitchToLibrary}
-              className="text-xs font-semibold text-white/40 hover:text-white flex items-center gap-1 transition-colors cursor-pointer"
+              className="text-xs font-semibold text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors cursor-pointer"
             >
               <span>View All</span>
               <ChevronRight size={13} />
@@ -85,10 +85,10 @@ export const ModernDashboard = ({
                     setSelectedHeroGame(game)
                     onSelectGame(game)
                   }}
-                  className={`group relative flex-none w-48 sm:w-56 aspect-[16/10] rounded-2xl overflow-hidden cursor-pointer border transition-all duration-300 snap-start bg-neutral-900 ${
+                  className={`group relative flex-none w-48 sm:w-56 aspect-[16/10] rounded-2xl overflow-hidden cursor-pointer border transition-all duration-300 snap-start bg-[var(--dk-surface-base)] ${
                     isHero
-                      ? "border-[oklch(0.705_0.213_47.604)] ring-2 ring-[oklch(0.705_0.213_47.604/0.3)] scale-[1.02]"
-                      : "border-white/[0.08] hover:border-white/25 hover:-translate-y-1"
+                      ? "border-primary ring-2 ring-primary/30 scale-[1.02]"
+                      : "border-[var(--dk-separator)] hover:border-foreground/20 hover:-translate-y-1"
                   }`}
                 >
                   {poster ? (
@@ -99,7 +99,7 @@ export const ModernDashboard = ({
                       loading="lazy"
                     />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-neutral-800 text-white/30">
+                    <div className="w-full h-full flex items-center justify-center bg-[var(--dk-surface-ghost)] text-muted-foreground/40">
                       <Gamepad2 size={32} />
                     </div>
                   )}
@@ -120,7 +120,7 @@ export const ModernDashboard = ({
                         {game.title}
                       </h4>
                       {game.lastPlayedAt && (
-                        <span className="text-[10px] text-white/50 block">
+                        <span className="text-[10px] text-white/70 block">
                           Played {new Date(game.lastPlayedAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
                         </span>
                       )}
@@ -138,14 +138,14 @@ export const ModernDashboard = ({
         <section className="space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <FolderCheck size={16} className="text-emerald-400" />
-              <h2 className="text-sm font-black uppercase tracking-wider text-white">
+              <FolderCheck size={16} className="text-emerald-500 dark:text-emerald-400" />
+              <h2 className="text-sm font-black uppercase tracking-wider text-foreground">
                 Installed & Ready ({installedGames.length})
               </h2>
             </div>
             <button
               onClick={onSwitchToLibrary}
-              className="text-xs font-semibold text-white/40 hover:text-white flex items-center gap-1 transition-colors cursor-pointer"
+              className="text-xs font-semibold text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors cursor-pointer"
             >
               <span>Manage Library</span>
               <ChevronRight size={13} />
@@ -160,7 +160,7 @@ export const ModernDashboard = ({
                 <div
                   key={game.id}
                   onClick={() => onOpenDetails(game)}
-                  className="group relative rounded-2xl overflow-hidden aspect-[2/3] bg-neutral-900 border border-white/[0.08] hover:border-white/30 transition-all duration-300 cursor-pointer shadow-lg hover:-translate-y-1.5"
+                  className="group relative rounded-2xl overflow-hidden aspect-[2/3] bg-[var(--dk-surface-base)] border border-[var(--dk-separator)] hover:border-foreground/20 transition-all duration-300 cursor-pointer shadow-lg hover:-translate-y-1.5"
                 >
                   {poster ? (
                     <img
@@ -170,9 +170,9 @@ export const ModernDashboard = ({
                       loading="lazy"
                     />
                   ) : (
-                    <div className="w-full h-full flex flex-col items-center justify-center p-3 text-center text-white/30">
+                    <div className="w-full h-full flex flex-col items-center justify-center p-3 text-center text-muted-foreground/40">
                       <Gamepad2 size={28} className="mb-2" />
-                      <span className="text-[11px] font-bold text-white/60 line-clamp-2">
+                      <span className="text-[11px] font-bold text-muted-foreground line-clamp-2">
                         {game.title}
                       </span>
                     </div>
@@ -209,8 +209,8 @@ export const ModernDashboard = ({
         <section className="space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Flame size={16} className="text-amber-400" />
-              <h2 className="text-sm font-black uppercase tracking-wider text-white">
+              <Flame size={16} className="text-amber-500 dark:text-amber-400" />
+              <h2 className="text-sm font-black uppercase tracking-wider text-foreground">
                 Popular in Catalog
               </h2>
             </div>
@@ -221,7 +221,7 @@ export const ModernDashboard = ({
               <div
                 key={game.id}
                 onClick={() => onOpenDetails(game)}
-                className="group relative flex-none w-36 sm:w-44 aspect-[2/3] rounded-2xl overflow-hidden cursor-pointer border border-white/[0.08] hover:border-white/30 transition-all duration-300 snap-start bg-neutral-900"
+                className="group relative flex-none w-36 sm:w-44 aspect-[2/3] rounded-2xl overflow-hidden cursor-pointer border border-[var(--dk-separator)] hover:border-foreground/20 transition-all duration-300 snap-start bg-[var(--dk-surface-base)]"
               >
                 {game.posterUrl ? (
                   <img
@@ -231,7 +231,7 @@ export const ModernDashboard = ({
                     loading="lazy"
                   />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center text-white/30">
+                  <div className="w-full h-full flex items-center justify-center text-muted-foreground/40">
                     <Gamepad2 size={24} />
                   </div>
                 )}

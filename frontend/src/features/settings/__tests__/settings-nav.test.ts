@@ -16,13 +16,15 @@ describe('settings navigation IA', () => {
 
   it('groups pages into preferences, library, connections, account, and admin', () => {
     expect(NAV_GROUPS.map((g) => g.id)).toEqual(['preferences', 'library', 'connections', 'account', 'admin'])
+    expect(NAV_ITEMS.find((i) => i.id === 'general')?.group).toBe('preferences')
     expect(NAV_ITEMS.find((i) => i.id === 'appearance')?.group).toBe('preferences')
+    expect(NAV_ITEMS.find((i) => i.id === 'recommendations')?.group).toBe('preferences')
     expect(NAV_ITEMS.find((i) => i.id === 'launcher')?.group).toBe('preferences')
     expect(NAV_ITEMS.find((i) => i.id === 'library')?.group).toBe('library')
     expect(NAV_ITEMS.find((i) => i.id === 'library')?.desktop).toBe(false)
     expect(NAV_ITEMS.find((i) => i.id === 'connections')?.label).toBe('Connections')
     expect(NAV_ITEMS.find((i) => i.id === 'nodes')?.label).toBe('Nodes')
-    expect(NAV_ITEMS.some((i) => i.id === 'overview' || i.id === 'integrations' || i.id === 'general' || i.id === 'downloads' || i.id === 'desktop')).toBe(false)
+    expect(NAV_ITEMS.some((i) => i.id === 'overview' || i.id === 'integrations' || i.id === 'downloads' || i.id === 'desktop')).toBe(false)
   })
 
   it('matches sidebar search against labels and keywords', () => {

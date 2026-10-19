@@ -78,7 +78,7 @@
   }
 
   &--positive {
-    @apply bg-emerald-600 text-white;
+    @apply bg-emerald-600 text-primary-foreground;
 
     &:hover {
       @apply bg-emerald-500;
@@ -86,10 +86,10 @@
   }
 
   &--negative {
-    @apply bg-red-600 text-white;
+    @apply bg-destructive text-destructive-foreground;
 
     &:hover {
-      @apply bg-red-500;
+      @apply bg-destructive/90;
     }
   }
 }

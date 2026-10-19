@@ -104,7 +104,7 @@ export const SettingsEmulatorsCard = () => {
           title="Emulators & Consoles"
           description="Configure emulator executables, auto-detection, and default console runners."
         />
-        <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/[0.04] text-xs text-muted-foreground">
+        <div className="p-4 rounded-2xl bg-[var(--dk-surface-field)] text-xs text-muted-foreground">
           Emulators and local process dispatching are managed through the Otix Desktop application.
         </div>
       </SettingsCard>
@@ -143,7 +143,7 @@ export const SettingsEmulatorsCard = () => {
             return (
               <div
                 key={emu.id}
-                className="p-3.5 rounded-2xl bg-white/[0.02] border border-white/[0.04] flex flex-col justify-between gap-3"
+                className="p-3.5 rounded-2xl bg-[var(--dk-surface-field)] flex flex-col justify-between gap-3"
               >
                 <div>
                   <div className="flex items-center justify-between gap-2">
@@ -154,7 +154,7 @@ export const SettingsEmulatorsCard = () => {
                       className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold ${
                         isInstalled
                           ? 'bg-primary/15 text-primary'
-                          : 'bg-white/5 text-muted-foreground'
+                          : 'bg-[var(--dk-surface-field)] text-muted-foreground'
                       }`}
                     >
                       {isInstalled ? (
@@ -176,18 +176,18 @@ export const SettingsEmulatorsCard = () => {
                     </p>
                   )}
                   {emu.executablePath && (
-                    <p className="text-[11px] font-mono text-muted-foreground/70 truncate mt-1 bg-white/[0.02] px-2 py-1 rounded-lg">
+                    <p className="text-[11px] font-mono text-muted-foreground/70 truncate mt-1 bg-[var(--dk-surface-field)] px-2 py-1 rounded-lg">
                       {emu.executablePath}
                     </p>
                   )}
                 </div>
 
-                <div className="flex items-center justify-between pt-2 border-t border-white/[0.04]">
+                <div className="flex items-center justify-between pt-2">
                   <div className="flex items-center gap-1 flex-wrap">
                     {emu.definition.platforms.slice(0, 4).map((p) => (
                       <span
                         key={p}
-                        className="px-1.5 py-0.5 rounded text-[10px] font-mono uppercase bg-white/5 text-muted-foreground"
+                        className="px-1.5 py-0.5 rounded text-[10px] font-mono uppercase bg-[var(--dk-surface-field)] text-muted-foreground"
                       >
                         {p}
                       </span>
@@ -216,7 +216,7 @@ export const SettingsEmulatorsCard = () => {
       </div>
 
       {/* Platform Default Runners */}
-      <div className="space-y-3 pt-4 border-t border-white/[0.04]">
+      <div className="space-y-3 pt-4">
         <div className="text-xs font-semibold text-foreground uppercase tracking-wider">
           Default Runners Per Console
         </div>
@@ -236,7 +236,7 @@ export const SettingsEmulatorsCard = () => {
             return (
               <div
                 key={plat.id}
-                className="flex items-center justify-between p-2.5 rounded-xl bg-white/[0.02] border border-white/[0.04]"
+                className="flex items-center justify-between p-2.5 rounded-xl bg-[var(--dk-surface-field)]"
               >
                 <div className="min-w-0 pr-2">
                   <span className="text-xs font-medium text-foreground block truncate">

@@ -91,8 +91,8 @@ const TwoFactorCard = ({ twoFactorEnabled }: { twoFactorEnabled: boolean }) => {
               <Check className="h-5 w-5" />
             </div>
             <div>
-              <p className="text-sm font-medium">Enabled</p>
-              <p className="text-xs text-white/60">
+              <p className="text-sm font-medium text-foreground">Enabled</p>
+              <p className="text-xs text-muted-foreground">
                 You'll need a code from your authenticator app to sign in.
               </p>
             </div>
@@ -106,8 +106,7 @@ const TwoFactorCard = ({ twoFactorEnabled }: { twoFactorEnabled: boolean }) => {
                 onChange={(e) => setDisablePassword(e.target.value)}
                 placeholder="Enter password"
                 autoFocus
-                className="h-9 w-40 rounded-lg px-3 text-sm outline-none"
-                style={{ backgroundColor: 'var(--dk-surface-ghost-hover)' }}
+                className="h-9 w-40 rounded-lg px-3 text-sm text-foreground outline-none bg-[var(--dk-surface-field)]"
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') handleDisable()
                   if (e.key === 'Escape') handleCancel()
@@ -152,11 +151,11 @@ const TwoFactorCard = ({ twoFactorEnabled }: { twoFactorEnabled: boolean }) => {
           </div>
 
           <div className="space-y-1.5">
-            <p className="text-xs text-white/60">
+            <p className="text-xs text-muted-foreground">
               Scan this QR code with your authenticator app, or enter the secret manually:
             </p>
             <code
-              className="block break-all rounded-lg px-3 py-2 text-xs font-mono select-all"
+              className="block break-all rounded-lg px-3 py-2 text-xs font-mono select-all text-foreground"
               style={{ backgroundColor: 'var(--dk-surface-raised)' }}
             >
               {setupData.secret}
@@ -164,7 +163,7 @@ const TwoFactorCard = ({ twoFactorEnabled }: { twoFactorEnabled: boolean }) => {
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-medium">Verification Code</label>
+            <label className="text-xs font-medium text-foreground">Verification Code</label>
             <input
               type="text"
               inputMode="numeric"
@@ -174,8 +173,8 @@ const TwoFactorCard = ({ twoFactorEnabled }: { twoFactorEnabled: boolean }) => {
               onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
               placeholder="000000"
               autoFocus
-              className="flex h-11 w-full rounded-xl px-4 text-center font-mono tracking-widest outline-none"
-              style={{ backgroundColor: 'var(--dk-surface-ghost-hover)', boxShadow: code.length === 6 ? '0 0 0 2px color-mix(in srgb, var(--primary) 50%, transparent)' : undefined }}
+              className="flex h-11 w-full rounded-xl px-4 text-center font-mono tracking-widest text-foreground outline-none bg-[var(--dk-surface-field)]"
+              style={{ boxShadow: code.length === 6 ? '0 0 0 2px color-mix(in srgb, var(--primary) 50%, transparent)' : undefined }}
             />
           </div>
 
@@ -202,8 +201,8 @@ const TwoFactorCard = ({ twoFactorEnabled }: { twoFactorEnabled: boolean }) => {
               <Shield className="h-5 w-5" />
             </div>
             <div>
-              <p className="text-sm font-medium">Not enabled</p>
-              <p className="text-xs text-white/60">
+              <p className="text-sm font-medium text-foreground">Not enabled</p>
+              <p className="text-xs text-muted-foreground">
                 Protect your account with an authenticator app like Google Authenticator or 1Password.
               </p>
             </div>
@@ -249,10 +248,10 @@ const VerificationCard = ({
             {isVerified ? <Check className="h-5 w-5" /> : <ShieldAlert className="h-5 w-5" />}
           </div>
           <div>
-            <p className="text-sm font-medium">
+            <p className="text-sm font-medium text-foreground">
               {isVerified ? 'Verified' : 'Not verified'}
             </p>
-            <p className="text-xs text-white/60">
+            <p className="text-xs text-muted-foreground">
               {isVerified
                 ? 'You have full access to all features.'
                 : 'Some features may be limited until you verify.'}
@@ -384,7 +383,7 @@ const SessionsCard = () => {
       />
 
       {loading ? (
-        <div className="flex items-center gap-2 py-4 text-sm text-white/60">
+        <div className="flex items-center gap-2 py-4 text-sm text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" />
           Loading sessions...
         </div>
@@ -411,7 +410,7 @@ const SessionsCard = () => {
                   <div
                     className={cn(
                       'flex h-10 w-10 shrink-0 items-center justify-center rounded-xl',
-                      isCurrent ? 'text-primary' : 'text-white/60',
+                      isCurrent ? 'text-primary' : 'text-muted-foreground',
                     )}
                     style={{
                       backgroundColor: isCurrent
@@ -423,7 +422,7 @@ const SessionsCard = () => {
                   </div>
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
-                      <p className="text-sm font-medium truncate">
+                      <p className="text-sm font-medium text-foreground truncate">
                         {formatUA(session.userAgent)}
                       </p>
                       {isCurrent && (
@@ -435,7 +434,7 @@ const SessionsCard = () => {
                         </span>
                       )}
                     </div>
-                    <p className="text-xs text-white/60">
+                    <p className="text-xs text-muted-foreground">
                       {session.ipAddress ?? 'Unknown IP'}
                       {session.lastSeenAt && (
                         <> {'·'} {formatTime(session.lastSeenAt)}</>
@@ -459,14 +458,14 @@ const SessionsCard = () => {
           })}
 
           {sessions.length === 0 && (
-            <p className="py-4 text-sm text-white/60">No active sessions found.</p>
+            <p className="py-4 text-sm text-muted-foreground">No active sessions found.</p>
           )}
         </div>
       )}
 
       {sessions.length > SESSIONS_PER_PAGE && (
         <div className="flex items-center justify-between mt-4">
-          <p className="text-xs text-white/40">
+          <p className="text-xs text-muted-foreground">
             {safePage * SESSIONS_PER_PAGE + 1}–{Math.min((safePage + 1) * SESSIONS_PER_PAGE, sessions.length)} of {sessions.length}
           </p>
           <div className="flex items-center gap-2">
@@ -493,7 +492,7 @@ const SessionsCard = () => {
       {error && <p className="text-xs text-red-400 mt-3">{error}</p>}
 
       {otherSessions.length > 0 && (
-        <div className="h-px bg-white/10 mt-4 mb-4" />
+        <div className="h-px bg-[var(--dk-separator)] mt-4 mb-4" />
       )}
 
       {otherSessions.length > 0 && (
@@ -622,8 +621,8 @@ export const SettingsAccountPage = () => {
 
         <div className="flex items-center justify-between gap-4">
           <div className="min-w-0">
-            <p className="text-sm font-medium">Daily mood check-in</p>
-            <p className="text-xs text-white/60 mt-1">
+            <p className="text-sm font-medium text-foreground">Daily mood check-in</p>
+            <p className="text-xs text-muted-foreground mt-1">
               Show the mood scale on the home page once per UTC day.
             </p>
           </div>
@@ -658,7 +657,7 @@ export const SettingsAccountPage = () => {
           description="Exercise your GDPR Article 17 and CCPA Right to Erasure."
         />
         <div className="space-y-3 pt-2">
-          <p className="text-xs sm:text-sm text-white/70 leading-relaxed">
+          <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
             You can request the permanent deletion of your Otix account, login credentials, and all synchronized media preferences. Requests are processed within 30 days.
           </p>
           <div className="flex flex-wrap items-center gap-3 pt-1">
@@ -668,14 +667,14 @@ export const SettingsAccountPage = () => {
               )}&body=${encodeURIComponent(
                 `Hello Otix Privacy Team,\n\nPlease permanently delete my account and all associated personal data associated with username "${user?.username || ''}" and email "${user?.email || ''}".\n\nThank you.`
               )}`}
-              className="inline-flex items-center gap-2 rounded-xl bg-destructive/15 hover:bg-destructive/25 border border-destructive/30 px-3.5 py-2 text-xs font-semibold text-destructive transition-all active:scale-95"
+              className="inline-flex items-center gap-2 rounded-xl bg-destructive/15 hover:bg-destructive/25 px-3.5 py-2 text-xs font-semibold text-destructive transition-all active:scale-95"
             >
               <Trash2 className="h-3.5 w-3.5" />
               <span>Request Account &amp; Data Deletion</span>
             </a>
             <Link
               to="/privacy"
-              className="inline-flex items-center gap-1.5 text-xs text-white/50 hover:text-white transition-colors underline underline-offset-2"
+              className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors underline underline-offset-2"
             >
               <span>Learn more about your data rights</span>
             </Link>

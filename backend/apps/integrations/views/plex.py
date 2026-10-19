@@ -47,7 +47,19 @@ class PlexLibrariesView(APIView):
     """GET /integrations/plex/libraries"""
 
     def get(self, request):
-        return Response({"libraries": integrations_services.list_plex_libraries(request.user)})
+        libraries = integrations_services.list_plex_libraries(request.user)
+        if not libraries and getattr(request.user, "plex_auth_token", None):
+            try:
+                servers = integrations_services.discover_plex_servers(request.user)
+                for server in servers:
+                    try:
+                        integrations_services.discover_plex_libraries(request.user, server)
+                    except Exception:
+                        pass
+                libraries = integrations_services.list_plex_libraries(request.user)
+            except Exception:
+                pass
+        return Response({"libraries": libraries})
 
 
 class PlexConnectInfoView(APIView):
@@ -60,6 +72,8 @@ class PlexConnectInfoView(APIView):
         title = request.query_params.get("title")
         imdb_id = request.query_params.get("imdb_id") or request.query_params.get("imdbId")
         tvdb_id = request.query_params.get("tvdb_id") or request.query_params.get("tvdbId")
+        year = request.query_params.get("year")
+        media_type = request.query_params.get("media_type") or request.query_params.get("type")
         try:
             data = integrations_services.get_plex_connect_info(
                 request.user,
@@ -70,6 +84,8 @@ class PlexConnectInfoView(APIView):
                 title=title,
                 imdb_id=imdb_id,
                 tvdb_id=tvdb_id,
+                year=year,
+                media_type=media_type,
             )
         except integrations_services.PlexConnectInfoNotFound as exc:
             raise NotFound(exc.detail) from None
@@ -134,6 +150,7 @@ class PlexTimelineView(APIView):
             client_id=client_id,
             session_id=session_id,
             local_only=local_only,
+            user=request.user,
         )
         return Response({"success": success})
 

@@ -20,16 +20,14 @@ export const GuestCtaBanner = ({
 
   return (
     <div
-      className={`relative overflow-hidden rounded-3xl p-6 sm:p-8 backdrop-blur-2xl border border-white/10 ${className}`}
+      className={`relative overflow-hidden rounded-3xl p-6 sm:p-8 backdrop-blur-2xl border border-[var(--dk-separator)] bg-[var(--dk-surface-base)]/80 ${className}`}
       style={{
-        backgroundColor: 'oklch(from var(--dk-surface-base) l c h / 0.4)',
         boxShadow: 'var(--dk-shadow-glass)',
       }}
     >
       {/* Subtle glowing ambient atmosphere */}
       <div
-        className="absolute -top-24 -right-24 h-64 w-64 rounded-full opacity-20 pointer-events-none blur-3xl"
-        style={{ backgroundColor: 'var(--primary)' }}
+        className="absolute -top-24 -right-24 h-64 w-64 rounded-full opacity-20 pointer-events-none blur-3xl bg-primary"
       />
 
       <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
@@ -38,8 +36,8 @@ export const GuestCtaBanner = ({
             <Sparkles className="h-3.5 w-3.5" />
             <span>Otix Account</span>
           </div>
-          <h3 className="text-lg font-bold text-white tracking-tight">{title}</h3>
-          <p className="text-sm text-white/60 leading-relaxed">{description}</p>
+          <h3 className="text-lg font-bold text-foreground tracking-tight">{title}</h3>
+          <p className="text-sm text-muted-foreground leading-relaxed">{description}</p>
         </div>
 
         <div className="flex items-center gap-3 shrink-0 self-stretch sm:self-auto">
@@ -52,7 +50,7 @@ export const GuestCtaBanner = ({
           </Link>
           <Link
             to="/auth/login"
-            className="inline-flex items-center justify-center rounded-xl bg-white/5 hover:bg-white/10 px-4 py-2.5 text-sm font-medium text-white/80 hover:text-white transition-colors"
+            className="inline-flex items-center justify-center rounded-xl bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-glass-hover)] border border-[var(--dk-separator)] px-4 py-2.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
           >
             Sign In
           </Link>

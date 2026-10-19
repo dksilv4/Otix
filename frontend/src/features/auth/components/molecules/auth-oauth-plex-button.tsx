@@ -1,9 +1,10 @@
 import { OAuthButton } from './auth-oauth-button'
 import PlexIcon from '@/assets/provider-logos/plex.svg?react'
-import {openExternal} from '@/lib/utils/open-external'
-import {apiClient} from '@/lib/api/client'
-import {useFeature} from '@/features/_config'
-import type {FeatureName} from "@/features/_config/types.ts";
+import { isDesktop } from '@/lib/desktop/api'
+import { openExternal } from '@/lib/utils/open-external'
+import { apiClient } from '@/lib/api/client'
+import { useFeature } from '@/features/_config'
+import type { FeatureName } from "@/features/_config/types.ts";
 
 /** Plex OAuth login button, gated by the auth:oauth:plex feature flag. (molecule) */
 export const PlexOAuthButton = () => {
@@ -11,7 +12,10 @@ export const PlexOAuthButton = () => {
     if (!enabled) return null
 
     const handlePlexLogin = async () => {
-        const {data} = await apiClient.post('/auth/plex/initiate')
+        const { data } = await apiClient.post(
+            '/auth/plex/initiate',
+            isDesktop() ? { source: 'desktop' } : undefined,
+        )
         openExternal(data.authUrl)
     }
 

@@ -173,13 +173,17 @@ def _login_callback_url(provider: str) -> str:
 # ── Single-use state ──────────────────────────────────────────────────────
 
 
-def _store_state(flow: str, *, user_id: int | None) -> tuple[str, str]:
+def _store_state(
+    flow: str, *, user_id: int | None, source: str | None = None
+) -> tuple[str, str]:
     """Persist one flow state; returns the ``state`` value + PKCE verifier."""
     state = secrets.token_urlsafe(32)
     verifier = secrets.token_urlsafe(48)
     payload: dict[str, Any] = {"v": "1", "flow": flow, "verifier": verifier}
     if user_id is not None:
         payload["user_id"] = user_id
+    if source:
+        payload["source"] = source
     OAuthState.objects.create(key=state, payload=payload)
     return state, verifier
 
@@ -207,10 +211,15 @@ def _require_google_configured(detail: str) -> None:
 
 
 def _authorization_url(
-    flow: str, provider: str, *, user_id: int | None = None, callback: str | None = None
+    flow: str,
+    provider: str,
+    *,
+    user_id: int | None = None,
+    callback: str | None = None,
+    source: str | None = None,
 ) -> tuple[str, str]:
     client_id, _ = _google_credentials()
-    state, verifier = _store_state(flow, user_id=user_id)
+    state, verifier = _store_state(flow, user_id=user_id, source=source)
     if flow == GOOGLE_LOGIN_FLOW:
         scopes = GOOGLE_LOGIN_SCOPES
     elif flow == GOOGLE_OAUTH_FLOW:
@@ -231,22 +240,24 @@ def _authorization_url(
     return f"{GOOGLE_AUTH_URL}?{urllib.parse.urlencode(params)}", state
 
 
-def build_google_link_url(user_id: int) -> tuple[str, str]:
+def build_google_link_url(user_id: int, source: str | None = None) -> tuple[str, str]:
     """Google (youtube-identity scope) link initiate -> ``{auth_url, state}``."""
     _require_google_configured("Google authentication is not configured.")
-    return _authorization_url(GOOGLE_OAUTH_FLOW, "google", user_id=user_id)
+    return _authorization_url(GOOGLE_OAUTH_FLOW, "google", user_id=user_id, source=source)
 
 
-def build_google_drive_link_url(user_id: int) -> tuple[str, str]:
+def build_google_drive_link_url(user_id: int, source: str | None = None) -> tuple[str, str]:
     """Google-Drive link initiate (drive.file scope) -> ``{auth_url, state}``."""
     _require_google_configured("Google authentication not configured.")
-    return _authorization_url(DRIVE_OAUTH_FLOW, "google-drive", user_id=user_id)
+    return _authorization_url(DRIVE_OAUTH_FLOW, "google-drive", user_id=user_id, source=source)
 
 
-def build_google_login_url() -> tuple[str, str]:
+def build_google_login_url(source: str | None = None) -> tuple[str, str]:
     """Google login initiate (no owning user) -> ``{auth_url, state}``."""
     _require_google_configured("Google authentication is not configured.")
-    return _authorization_url(GOOGLE_LOGIN_FLOW, "google", callback=_login_callback_url("google"))
+    return _authorization_url(
+        GOOGLE_LOGIN_FLOW, "google", callback=_login_callback_url("google"), source=source
+    )
 
 
 # ── Callback: code -> tokens -> profile -> user columns ──────────────────
@@ -318,7 +329,7 @@ def _expiry_from(tokens: dict):
         return None
 
 
-def link_google_to_user(request_user, code: str, state: str) -> None:
+def link_google_to_user(request_user, code: str, state: str) -> str | None:
     """Consume the link state and bind Google to the owning user."""
     _require_google_configured("Google authentication is not configured.")
     payload = _consume_state(state)
@@ -339,9 +350,10 @@ def link_google_to_user(request_user, code: str, state: str) -> None:
     user.google_refresh_token = tokens.get("refresh_token")
     user.google_token_expires_at = _expiry_from(tokens)
     user.save(update_fields=_GOOGLE_TOKEN_COLUMNS)
+    return payload.get("source")
 
 
-def link_google_drive_to_user(request_user, code: str, state: str) -> None:
+def link_google_drive_to_user(request_user, code: str, state: str) -> str | None:
     """Consume the link state and bind Google-Drive to the owning user.
 
     Drive has no profile fetch and no duplicate/revoke guard: the refresh token
@@ -357,6 +369,7 @@ def link_google_drive_to_user(request_user, code: str, state: str) -> None:
     user.drive_refresh_token = tokens.get("refresh_token")
     user.drive_token_expires_at = _expiry_from(tokens)
     user.save(update_fields=_DRIVE_TOKEN_COLUMNS)
+    return payload.get("source")
 
 
 # ── Google login family (find-or-create, no owning user) ──────────────────
@@ -417,7 +430,7 @@ def authenticate_google_login(code: str, state: str) -> User:
     )
     profile = _fetch_google_profile(tokens["access_token"])
     google_id = profile["sub"]
-    return find_or_create_google_user(
+    user = find_or_create_google_user(
         google_id,
         email=profile.get("email", ""),
         name=profile.get("name", ""),
@@ -426,6 +439,9 @@ def authenticate_google_login(code: str, state: str) -> User:
         refresh_token=tokens.get("refresh_token"),
         expires_in=tokens.get("expires_in", 3600),
     )
+    if payload.get("source"):
+        user._oauth_source = payload.get("source")
+    return user
 
 
 # ── Disconnect ────────────────────────────────────────────────────────────
@@ -626,8 +642,11 @@ def _create_plex_pin(start_error: str, invalid_error: str) -> tuple[str, str]:
     return str(pin_id), str(code)
 
 
-def _plex_auth_url(code: str, state: str, callback: str) -> str:
-    forward_url = f"{callback}?{urllib.parse.urlencode({'state': state})}"
+def _plex_auth_url(code: str, state: str, callback: str, source: str | None = None) -> str:
+    forward_params = {"state": state}
+    if source:
+        forward_params["source"] = source
+    forward_url = f"{callback}?{urllib.parse.urlencode(forward_params)}"
     params = {
         "clientID": getattr(settings, "PLEX_CLIENT_IDENTIFIER", "otix-web"),
         "code": code,
@@ -638,28 +657,34 @@ def _plex_auth_url(code: str, state: str, callback: str) -> str:
     return f"{_plex_auth_base()}#?{urllib.parse.urlencode(params)}"
 
 
-def build_plex_link_url(user_id: int) -> tuple[str, str, str]:
+def build_plex_link_url(user_id: int, source: str | None = None) -> tuple[str, str, str]:
     """Plex link initiate -> ``(auth_url, state, pin_id)``."""
     pin_id, code = _create_plex_pin(
         "Unable to start Plex linking. Please try again.",
         "Plex returned an invalid linking response. Please try again.",
     )
     state = secrets.token_urlsafe(32)
-    OAuthState.objects.create(key=state, payload={"v": "1", "pin_id": pin_id, "user_id": user_id})
+    payload = {"v": "1", "pin_id": pin_id, "user_id": user_id}
+    if source:
+        payload["source"] = source
+    OAuthState.objects.create(key=state, payload=payload)
     callback = _callback_url("plex")
-    return _plex_auth_url(code, state, callback), state, pin_id
+    return _plex_auth_url(code, state, callback, source=source), state, pin_id
 
 
-def build_plex_login_url() -> tuple[str, str, str]:
+def build_plex_login_url(source: str | None = None) -> tuple[str, str, str]:
     """Plex login initiate (no owning user) -> ``(auth_url, state, pin_id)``."""
     pin_id, code = _create_plex_pin(
         "Unable to start Plex login. Please try again.",
         "Plex returned an invalid response. Please try again.",
     )
     state = secrets.token_urlsafe(32)
-    OAuthState.objects.create(key=state, payload={"v": "1", "pin_id": pin_id, "flow": "login"})
+    payload = {"v": "1", "pin_id": pin_id, "flow": "login"}
+    if source:
+        payload["source"] = source
+    OAuthState.objects.create(key=state, payload=payload)
     callback = f"{_frontend_base()}/auth/callback/plex-login"
-    return _plex_auth_url(code, state, callback), state, pin_id
+    return _plex_auth_url(code, state, callback, source=source), state, pin_id
 
 
 def _get_plex_pin_auth_token(pin_id: str) -> str | None:
@@ -697,7 +722,7 @@ def _plex_identity(profile: dict) -> str:
     return plex_id
 
 
-def link_plex_to_user(request_user, state: str, pin_id: str | None) -> None:
+def link_plex_to_user(request_user, state: str, pin_id: str | None) -> str | None:
     """Consume the link state and bind the Plex account to the owning user."""
     payload = _consume_state(state, ttl_seconds=PLEX_STATE_TTL_SECONDS)
     if payload is None:
@@ -721,6 +746,7 @@ def link_plex_to_user(request_user, state: str, pin_id: str | None) -> None:
     user.plex_thumb = profile.get("thumb")
     user.plex_auth_token = token
     user.save(update_fields=_PLEX_TOKEN_COLUMNS)
+    return payload.get("source")
 
 
 def unlink_plex_from_user(user: User) -> None:
@@ -782,13 +808,16 @@ def authenticate_plex(state: str, pin_id: str | None = None) -> User:
         raise OAuthFlowError(400, "Plex has not approved this link yet. Please finish signing in.")
     profile = _get_plex_user_info(token)
     plex_id = _plex_identity(profile)
-    return find_or_create_plex_user(
+    user = find_or_create_plex_user(
         plex_id,
         username=profile.get("username") or profile.get("title"),
         email=profile.get("email"),
         thumb=profile.get("thumb"),
         auth_token=token,
     )
+    if payload.get("source"):
+        user._oauth_source = payload.get("source")
+    return user
 
 
 # ── Steam (OpenID 2.0; link + login) ─────────────────────────────────────
@@ -830,10 +859,14 @@ def _steam_build_url(return_to: str, state: str) -> str:
     return f"{STEAM_OPENID_URL}?{urllib.parse.urlencode(params)}"
 
 
-def _store_steam_state(state: str, *, link: bool, user_id: int | None = None) -> None:
+def _store_steam_state(
+    state: str, *, link: bool, user_id: int | None = None, source: str | None = None
+) -> None:
     payload: dict[str, Any] = {"v": "1", "flow": "link" if link else "login"}
     if link and user_id is not None:
         payload["user_id"] = user_id
+    if source:
+        payload["source"] = source
     OAuthState.objects.create(key=state, payload=payload)
 
 
@@ -856,7 +889,7 @@ def _consume_steam_state(state: str, *, link: bool) -> dict | None:
 def build_steam_link_url(source: str | None, *, user_id: int) -> tuple[str, str]:
     """Steam OpenID link initiate -> ``(auth_url, state)``."""
     state = secrets.token_urlsafe(32)
-    _store_steam_state(state, link=True, user_id=user_id)
+    _store_steam_state(state, link=True, user_id=user_id, source=source)
     return_to = _steam_source_url(f"{_frontend_base()}/auth/callback/steam-connect", source)
     return _steam_build_url(return_to, state), state
 
@@ -864,7 +897,7 @@ def build_steam_link_url(source: str | None, *, user_id: int) -> tuple[str, str]
 def build_steam_login_url(source: str | None = None) -> tuple[str, str]:
     """Steam OpenID login initiate (no owning user) -> ``(auth_url, state)``."""
     state = secrets.token_urlsafe(32)
-    _store_steam_state(state, link=False)
+    _store_steam_state(state, link=False, source=source)
     return_to = _steam_source_url(f"{_frontend_base()}/auth/callback/steam", source)
     return _steam_build_url(return_to, state), state
 
@@ -932,6 +965,10 @@ def _validate_openid_response(params: dict, raw_query: str | None) -> str:
     return match.group(1)
 
 
+class SteamAuthResult(str):
+    source: str | None = None
+
+
 def validate_steam_callback(params: dict, raw_query: str | None) -> str:
     """Validate the Steam login callback and return the steam64 id."""
     flat = _steam_flat_params(params, raw_query)
@@ -940,11 +977,15 @@ def validate_steam_callback(params: dict, raw_query: str | None) -> str:
         raise OAuthFlowError(
             400, "Steam authentication session expired. Please try signing in again."
         )
-    if _consume_steam_state(str(state), link=False) is None:
+    payload = _consume_steam_state(str(state), link=False)
+    if payload is None:
         raise OAuthFlowError(
             400, "Steam authentication session expired. Please try signing in again."
         )
-    return _validate_openid_response(params, raw_query)
+    steam_id = _validate_openid_response(params, raw_query)
+    res = SteamAuthResult(steam_id)
+    res.source = (payload or {}).get("source") or flat.get("source")
+    return res
 
 
 def validate_steam_link_callback(params: dict, raw_query: str | None) -> tuple[str, int | None]:
@@ -1040,10 +1081,14 @@ def unlink_steam_from_user(user: User) -> None:
     user.save(update_fields=("steam_id",))
 
 
-def authenticate_steam(params: dict, raw_query: str | None) -> User:
+def authenticate_steam(params: dict, raw_query: str | None = None) -> User:
     """Consume a login callback and return the resolved/created Steam user."""
     steam_id = validate_steam_callback(params, raw_query)
-    return find_or_create_steam_user(steam_id)
+    user = find_or_create_steam_user(steam_id)
+    source = getattr(steam_id, "source", None) or _steam_flat_params(params, raw_query).get("source")
+    if source:
+        user._oauth_source = source
+    return user
 
 
 # ── TMDb (request_token -> session_id dance; link + login) ───────────────
@@ -1065,8 +1110,25 @@ def _tmdb_rt_key(request_token: str) -> str:
     return f"tmdb_rt:{request_token}"
 
 
+class TMDbTokenResult(tuple):
+    source: str | None = None
+
+    def __new__(cls, stored_token: str, user_id: int | None, source: str | None = None):
+        return super().__new__(cls, (stored_token, user_id))
+
+    def __init__(self, stored_token: str, user_id: int | None, source: str | None = None):
+        self.stored_token = stored_token
+        self.user_id = user_id
+        self.source = source
+
+
 def _store_tmdb_state(
-    state: str, request_token: str, *, link: bool, user_id: int | None = None
+    state: str,
+    request_token: str,
+    *,
+    link: bool,
+    user_id: int | None = None,
+    source: str | None = None,
 ) -> None:
     """Persist the flow under both the state key and the request token key.
 
@@ -1077,6 +1139,8 @@ def _store_tmdb_state(
     payload["flow"] = "link" if link else "login"
     if link and user_id is not None:
         payload["user_id"] = user_id
+    if source:
+        payload["source"] = source
     OAuthState.objects.create(key=state, payload=payload)
     OAuthState.objects.create(key=_tmdb_rt_key(request_token), payload=payload)
 
@@ -1091,11 +1155,12 @@ def _consume_tmdb_request_token(state: str, request_token: str | None) -> tuple[
     payload = row.payload or {}
     stored_token = str(payload.get("request_token") or "")
     user_id = payload.get("user_id")
+    source = payload.get("source")
     delete_keys = {state, request_token, stored_token}
     OAuthState.objects.filter(key__in=[k for k in delete_keys if k]).delete()
     if request_token and stored_token != str(request_token):
         raise OAuthFlowError(400, "Invalid TMDb linking session. Please try again.")
-    return stored_token, user_id
+    return TMDbTokenResult(stored_token, user_id, source=source)
 
 
 def _tmdb_fetch_request_token(start_error: str) -> str:
@@ -1114,24 +1179,30 @@ def _tmdb_fetch_request_token(start_error: str) -> str:
     return request_token
 
 
-def build_tmdb_link_url(user_id: int, redirect_url: str) -> tuple[str, str]:
+def build_tmdb_link_url(
+    user_id: int, redirect_url: str, source: str | None = None
+) -> tuple[str, str]:
     """TMDb connect initiate -> ``(auth_url, state)``; user links server-side."""
     state = secrets.token_urlsafe(32)
     request_token = _tmdb_fetch_request_token("Unable to start TMDb linking. Please try again.")
-    _store_tmdb_state(state, request_token, link=True, user_id=user_id)
+    _store_tmdb_state(state, request_token, link=True, user_id=user_id, source=source)
     separator = "&" if "?" in redirect_url else "?"
-    redirect_to = urllib.parse.quote(f"{redirect_url}{separator}state={state}", safe="")
+    redirect_target = f"{redirect_url}{separator}state={state}"
+    if source:
+        redirect_target += f"&source={source}"
+    redirect_to = urllib.parse.quote(redirect_target, safe="")
     return f"{TMDB_AUTH_BASE}/{request_token}?redirect_to={redirect_to}", state
 
 
-def build_tmdb_login_url() -> tuple[str, str]:
+def build_tmdb_login_url(source: str | None = None) -> tuple[str, str]:
     """TMDb login initiate (unauthed) -> ``(auth_url, state)``."""
     state = secrets.token_urlsafe(32)
     request_token = _tmdb_fetch_request_token("Unable to start TMDb login. Please try again.")
-    _store_tmdb_state(state, request_token, link=False)
-    redirect_to = urllib.parse.quote(
-        f"{_frontend_base()}/auth/callback/tmdb-login?state={state}", safe=""
-    )
+    _store_tmdb_state(state, request_token, link=False, source=source)
+    redirect_target = f"{_frontend_base()}/auth/callback/tmdb-login?state={state}"
+    if source:
+        redirect_target += f"&source={source}"
+    redirect_to = urllib.parse.quote(redirect_target, safe="")
     return f"{TMDB_AUTH_BASE}/{request_token}?redirect_to={redirect_to}", state
 
 
@@ -1197,18 +1268,22 @@ def _tmdb_link_account(
 
 def link_tmdb_to_user(request_user, state: str, request_token: str) -> None:
     """Bind TMDb to the authenticated user from a link callback."""
-    stored_token, state_user_id = _consume_tmdb_request_token(state, request_token)
+    res = _consume_tmdb_request_token(state, request_token)
+    stored_token, state_user_id = res
     if state_user_id is not None and state_user_id != request_user.pk:
         raise OAuthFlowError(400, "Invalid TMDb linking session. Please try again.")
     if request_user.tmdb_session_id is not None:
         raise OAuthFlowError(400, "TMDb account already linked")
     session_id = _tmdb_create_session(stored_token)
     _tmdb_link_account(request_user, stored_token, session_id, _tmdb_account(session_id))
+    if getattr(res, "source", None):
+        request_user._oauth_source = res.source
 
 
 def link_tmdb_state_to_user(state: str, request_token: str | None = None) -> User:
     """Bind TMDb resolving the owning user from the flow state (303 hop / no JWT)."""
-    stored_token, state_user_id = _consume_tmdb_request_token(state, request_token)
+    res = _consume_tmdb_request_token(state, request_token)
+    stored_token, state_user_id = res
     if not state_user_id:
         raise OAuthFlowError(400, "Invalid TMDb linking session. Please try again.")
     user = User.objects.filter(pk=state_user_id).first()
@@ -1218,6 +1293,8 @@ def link_tmdb_state_to_user(state: str, request_token: str | None = None) -> Use
         raise OAuthFlowError(400, "TMDb account already linked")
     session_id = _tmdb_create_session(stored_token)
     _tmdb_link_account(user, stored_token, session_id, _tmdb_account(session_id))
+    if getattr(res, "source", None):
+        user._oauth_source = res.source
     return user
 
 
@@ -1264,7 +1341,8 @@ def find_or_create_tmdb_user(session_id: str, account_id: int, username: str = "
 
 def authenticate_tmdb_login(state: str, request_token: str | None) -> User:
     """Consume a TMDb login callback and return the resolved/created user."""
-    stored_token, _user_id = _consume_tmdb_request_token(state, request_token)
+    res = _consume_tmdb_request_token(state, request_token)
+    stored_token, _user_id = res
     session_id = _tmdb_create_session(stored_token)
     account = _tmdb_account(session_id)
     if account is None:
@@ -1272,9 +1350,12 @@ def authenticate_tmdb_login(state: str, request_token: str | None) -> User:
     account_id = account.get("id")
     if not account_id:
         raise OAuthFlowError(502, "TMDb returned an invalid account profile. Please try again.")
-    return find_or_create_tmdb_user(
+    user = find_or_create_tmdb_user(
         session_id, int(account_id), account.get("username") or account.get("name", "")
     )
+    if getattr(res, "source", None):
+        user._oauth_source = res.source
+    return user
 
 
 # ── OAuth aggregate reads (GET /auth/oauth + GET /auth/me/integrations) ──

@@ -61,7 +61,7 @@ export const TokenizedTemplateDisplay = ({
             key={`lit-${idx}`}
             className={cn(
               'font-mono tracking-normal',
-              isSlash ? 'text-white/70 font-bold px-0.5' : 'text-white/40',
+              isSlash ? 'text-foreground font-bold px-0.5' : 'text-muted-foreground',
             )}
           >
             {span.text}

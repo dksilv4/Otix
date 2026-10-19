@@ -59,12 +59,13 @@ def _best_asset(item: MediaItem, asset_type: str, context: str = "general") -> M
     across runs), otherwise the lower ``pk`` wins.
     """
     best = None
+    orig_lang = getattr(item, "original_language", None)
     for asset in item.assets.all():
         if (asset.asset_type or "").lower() != asset_type:
             continue
         if not asset.url:
             continue
-        if best is None or _asset_outranks(asset, best, context):
+        if best is None or _asset_outranks(asset, best, context, original_language=orig_lang):
             best = asset
     return best
 
@@ -151,7 +152,27 @@ def _selection_rank(asset: MediaAsset, context: str) -> int:
     return 0
 
 
-def _asset_outranks(candidate: MediaAsset, current: MediaAsset, context: str) -> bool:
+def _lang_rank(asset: MediaAsset, original_language: str | None = None) -> int:
+    """Evaluate language priority for text-bearing assets (logos, icons, posters)."""
+    asset_type = (asset.asset_type or "").lower()
+    if asset_type not in ("logo", "icon", "poster"):
+        return 0
+    lang = (asset.lang or "").lower().strip()
+    if lang in ("en", "eng"):
+        return 3
+    if not lang or lang in ("00", "zxx", "xx"):
+        return 2
+    if original_language and lang == original_language.lower().strip():
+        return 1
+    return 0
+
+
+def _asset_outranks(
+    candidate: MediaAsset,
+    current: MediaAsset,
+    context: str,
+    original_language: str | None = None,
+) -> bool:
     # 1. A row pinned for this context always wins; a general pin is the shared
     # fallback for the theme contexts.
     candidate_rank = _selection_rank(candidate, context)
@@ -159,23 +180,30 @@ def _asset_outranks(candidate: MediaAsset, current: MediaAsset, context: str) ->
     if candidate_rank != current_rank:
         return candidate_rank > current_rank
 
-    # 2. Theme compatibility/contrast rank when context is dark or light
+    # 2. Language rank: English > neutral/empty > original language > foreign
+    candidate_lang = _lang_rank(candidate, original_language)
+    current_lang = _lang_rank(current, original_language)
+    if candidate_lang != current_lang:
+        return candidate_lang > current_lang
+
+    # 3. Theme compatibility/contrast rank when context is dark or light
     if context in ("dark", "light"):
         cand_theme = _theme_contrast_rank(candidate, context)
         curr_theme = _theme_contrast_rank(current, context)
         if cand_theme != curr_theme:
             return cand_theme > curr_theme
 
-    # 3. Community score
+    # 4. Community score
     if (candidate.score or 0) != (current.score or 0):
         return (candidate.score or 0) > (current.score or 0)
 
-    # 4. Mirror state
+    # 5. Mirror state
     if bool(candidate.local_name) != bool(current.local_name):
         return bool(candidate.local_name)
 
-    # 5. Deterministic tie-breaker
+    # 6. Deterministic tie-breaker
     return candidate.pk < current.pk
+
 
 
 def _local_asset_url(asset: MediaAsset | None) -> str | None:

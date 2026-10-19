@@ -127,7 +127,7 @@ export const EpicFreeGamesSection = () => {
       <Carousel
         title="🎮 Free Epic Games"
         subtitle={
-          <span className="text-xs text-white/40">
+          <span className="text-xs text-muted-foreground">
             {isClaimable
               ? `${unclaimed} unclaimed · ${alreadyOwned} owned`
               : isAuthenticated
@@ -167,8 +167,8 @@ const EpicFreeGameCard = ({
   const displayTitle = match?.title || game.title
 
   const endDate = game.freeEndDate
-    ? new Date(game.freeEndDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
-    : null
+  ? new Date(game.freeEndDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+  : null
 
   const handleClick = () => {
     if (hasMatch && match?.media_item_id) {
@@ -191,7 +191,7 @@ const EpicFreeGameCard = ({
       onKeyDown={(e) => { if (e.key === 'Enter') handleClick() }}
     >
       {/* Poster */}
-      <div className="aspect-[2/3] rounded-xl overflow-hidden bg-white/5 relative">
+      <div className="aspect-[2/3] rounded-xl overflow-hidden bg-muted relative">
         {poster ? (
           <img
             src={poster}
@@ -201,7 +201,7 @@ const EpicFreeGameCard = ({
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center">
-            <Gamepad2 className="h-8 w-8 text-white/20" />
+            <Gamepad2 className="h-8 w-8 text-muted-foreground" />
           </div>
         )}
 
@@ -231,15 +231,15 @@ const EpicFreeGameCard = ({
 
       {/* Info */}
       <div className="mt-2 px-0.5">
-        <p className="text-xs font-medium text-white/80 truncate leading-tight">{displayTitle}</p>
+        <p className="text-xs font-medium text-foreground truncate leading-tight">{displayTitle}</p>
         <div className="flex items-center gap-1.5 mt-0.5">
           <span className="text-[10px] font-semibold text-emerald-400">FREE</span>
           {game.originalPrice && (
-            <span className="text-[10px] text-white/30 line-through">{game.originalPrice}</span>
+            <span className="text-[10px] text-muted-foreground line-through">{game.originalPrice}</span>
           )}
         </div>
         {game.seller && !hasMatch && (
-          <p className="text-[10px] text-white/30 truncate mt-0.5">{game.seller}</p>
+          <p className="text-[10px] text-muted-foreground truncate mt-0.5">{game.seller}</p>
         )}
       </div>
 
@@ -259,7 +259,7 @@ const EpicFreeGameCard = ({
             Claim on Epic
           </span>
         ) : (
-          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/10 text-white/80 text-xs font-semibold shadow-lg backdrop-blur-sm">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[var(--dk-surface-ghost)] text-foreground border border-[var(--dk-separator)] text-xs font-semibold shadow-lg backdrop-blur-sm">
             <ExternalLink className="h-3.5 w-3.5" />
             View on Epic
           </span>

@@ -150,7 +150,7 @@ export const NavSearch = () => {
  animate={{ opacity: 1, y: 0, scale: 1 }}
  exit={{ opacity: 0, y: -8, scale: 0.96 }}
  transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
- className="absolute right-0 z-[9999] top-[calc(100%+0.75rem)] w-80 max-h-[22rem] overflow-y-auto p-2 rounded-2xl flex flex-col gap-0.5 bg-[var(--dk-surface-overlay)] backdrop-blur-[20px] shadow-[var(--dk-shadow-glass)]"
+ className="absolute right-0 z-[9999] top-[calc(100%+0.75rem)] w-80 max-h-[22rem] overflow-y-auto p-2 rounded-2xl flex flex-col gap-1 bg-[var(--dk-surface-root)]/90 backdrop-blur-2xl shadow-[var(--dk-shadow-dialog)] border border-[var(--dk-separator)]"
  role="listbox"
  >
  {suggestions.map((item, idx) => {
@@ -173,12 +173,12 @@ export const NavSearch = () => {
  const year = item.releaseDate ? new Date(item.releaseDate).getFullYear() : null
 
 	 const badgeClass = item.mediaType === 'movie'
-	   ? 'bg-rose-500/10 text-rose-400 border-rose-500/10'
+	   ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20'
 	   : item.mediaType === 'show'
-	   ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/10'
+	   ? 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20'
 	   : item.mediaType === 'game'
-	   ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/10'
-	   : 'bg-purple-500/10 text-purple-400 border-purple-500/10'
+	   ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
+	   : 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20'
 
  return (
  <Link
@@ -186,7 +186,7 @@ export const NavSearch = () => {
   
  to={`/media/${item.mediaType}/${item.id}` as string}
  onClick={() => collapse()}
- className={'flex items-center gap-3 p-2 rounded-xl select-none text-left w-full cursor-pointer transition-all duration-150 hover:bg-white/5' + (idx === activeIndex ? ' bg-white/[0.08] scale-[1.01]' : '')}
+ className={'flex items-center gap-3 p-2 rounded-xl select-none text-left w-full cursor-pointer transition-colors ' + (idx === activeIndex ? 'bg-[var(--dk-surface-raised)] ring-1 ring-primary/40' : 'bg-[var(--dk-surface-raised)]/60 hover:bg-[var(--dk-surface-raised)] border border-[var(--dk-separator)]')}
  role="option"
  aria-selected={idx === activeIndex}
  >
@@ -194,10 +194,10 @@ export const NavSearch = () => {
  <img
  src={item.posterUrl}
  alt=""
- className="w-9 h-12 rounded object-cover shrink-0 shadow-md bg-white/5"
+ className="w-9 h-12 rounded object-cover shrink-0 shadow-md bg-[var(--dk-surface-ghost)]"
  />
  ) : (
- <div className="w-9 h-12 rounded flex items-center justify-center shrink-0 bg-white/5">
+ <div className="w-9 h-12 rounded flex items-center justify-center shrink-0 bg-[var(--dk-surface-ghost)]">
  <Icon className="w-5 h-5 text-muted-foreground" />
  </div>
  )}

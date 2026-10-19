@@ -39,7 +39,7 @@
     color: hsl(var(--muted-foreground) / 0.4);
 
     &--warning {
-      color: #f59e0b;
+      @apply text-amber-600 dark:text-amber-400;
     }
 
     &--danger {
@@ -67,7 +67,7 @@
     @apply flex items-center gap-2 rounded-2xl px-4 py-2.5 text-sm;
 
     &--lock {
-      @apply bg-amber-500/10 text-amber-400;
+      @apply bg-amber-500/10 text-amber-600 dark:text-amber-400;
     }
 
     &--error {

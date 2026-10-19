@@ -76,23 +76,23 @@ export interface PlayWidget {
 const FileDetails = ({ file }: { file: NonNullable<RequestInstance['file']> }) => {
   return (
     <div className="mt-1">
-      <div className="text-[11px] leading-relaxed text-white/40">
-        {file.quality && <span className="text-white/70 font-medium mr-1.5">{file.quality}</span>}
+      <div className="text-[11px] leading-relaxed text-muted-foreground">
+        {file.quality && <span className="text-foreground font-medium mr-1.5">{file.quality}</span>}
         {file.video && <span className="mr-1.5">{file.video}</span>}
         {file.audio && <span className="mr-1.5">· {file.audio}</span>}
-        {formatBytes(file.size) && <span className="text-white/50">{formatBytes(file.size)}</span>}
+        {formatBytes(file.size) && <span className="text-muted-foreground">{formatBytes(file.size)}</span>}
       </div>
-      {file.name && <div className="text-[10px] text-white/25 mt-0.5 break-all">{file.name}</div>}
+      {file.name && <div className="text-[10px] text-muted-foreground/60 mt-0.5 break-all">{file.name}</div>}
     </div>
   )
 };
 
 const STATUS_CHIP: Record<RequestInstance['status'], { cls: string; icon: React.ReactNode; label: string }> = {
-  downloaded: { cls: 'bg-green-500/10 text-green-400/90', icon: <Check className="h-3 w-3" />, label: 'Available' },
-  partially_available: { cls: 'bg-amber-500/10 text-amber-300/90', icon: <Clock className="h-3 w-3" />, label: 'Partially Available' },
-  requested: { cls: 'bg-amber-500/10 text-amber-300/90', icon: <Clock className="h-3 w-3" />, label: 'Requested' },
-  not_exists: { cls: 'bg-white/5 text-white/40', icon: <ArrowDownToLine className="h-3 w-3" />, label: 'Not in library' },
-  error: { cls: 'bg-red-500/10 text-red-400/90', icon: <AlertTriangle className="h-3 w-3" />, label: 'Error' },
+  downloaded: { cls: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400', icon: <Check className="h-3 w-3" />, label: 'Available' },
+  partially_available: { cls: 'bg-amber-500/10 text-amber-600 dark:text-amber-400', icon: <Clock className="h-3 w-3" />, label: 'Partially Available' },
+  requested: { cls: 'bg-amber-500/10 text-amber-600 dark:text-amber-400', icon: <Clock className="h-3 w-3" />, label: 'Requested' },
+  not_exists: { cls: 'bg-[var(--dk-surface-glass)] text-muted-foreground', icon: <ArrowDownToLine className="h-3 w-3" />, label: 'Not in library' },
+  error: { cls: 'bg-destructive/10 text-destructive', icon: <AlertTriangle className="h-3 w-3" />, label: 'Error' },
 }
 
 const StatusChip = ({ status }: { status: RequestInstance['status'] }) => {
@@ -111,8 +111,8 @@ const StatusChip = ({ status }: { status: RequestInstance['status'] }) => {
 const LibraryStatusPanel = ({ widget }: { widget: RequestWidget }) => {
   const instances = widget.props.instances || []
   return (
-    <div className="w-full rounded-xl border border-white/[0.08] bg-white/[0.02] p-3 text-left">
-      <div className="mb-2 text-[10px] font-bold uppercase tracking-wider text-white/35">
+    <div className="w-full rounded-xl border border-[var(--dk-separator)] bg-[var(--dk-surface-glass)] p-3 text-left">
+      <div className="mb-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
         {widget.label} library status
       </div>
       <ul className="space-y-2.5">
@@ -120,7 +120,7 @@ const LibraryStatusPanel = ({ widget }: { widget: RequestWidget }) => {
           <li key={instance.id} className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                <span className="truncate text-xs font-medium text-white/90">{instance.name}</span>
+                <span className="truncate text-xs font-medium text-foreground">{instance.name}</span>
                 <StatusChip status={instance.status} />
               </div>
               {instance.status === 'downloaded' && instance.file && <FileDetails file={instance.file} />}
@@ -237,7 +237,7 @@ const RequestButton = ({
         title={buttonTitle}
         className={cn(
           variant === 'pill'
-            ? 'inline-flex items-center gap-2 rounded-full h-10 px-4 sm:px-5 py-2 text-sm font-semibold bg-white/[0.08] hover:bg-white/[0.14] text-white/90 border border-white/10 shadow-lg backdrop-blur-md transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed [&_svg]:h-4 [&_svg]:w-4 [&_svg]:scale-100'
+            ? 'inline-flex items-center gap-2 rounded-full h-10 px-4 sm:px-5 py-2 text-sm font-semibold bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-glass-hover)] text-foreground border border-[var(--dk-separator)] shadow-lg backdrop-blur-md transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed [&_svg]:h-4 [&_svg]:w-4 [&_svg]:scale-100'
             : cn(
                 'dk-interaction__btn glass-inset disabled:cursor-not-allowed',
                 requesting && 'dk-interaction__btn--pending',
@@ -259,15 +259,15 @@ const RequestButton = ({
         createPortal(
           <div
             ref={menuRef}
-            className="fixed z-[99999] rounded-xl border border-white/10 bg-[var(--dk-surface-overlay)] p-1 shadow-2xl backdrop-blur-md"
+            className="fixed z-[99999] rounded-xl border border-[var(--dk-separator)] bg-[var(--dk-surface-overlay)] p-1 shadow-2xl backdrop-blur-md"
             style={{
               top: `${coords.top}px`,
               left: `${coords.left}px`,
               minWidth: `${Math.max(coords.width, 220)}px`,
             }}
           >
-            <div className="px-2.5 py-1.5 border-b border-white/5">
-              <span className="text-[10px] uppercase font-bold tracking-wider text-white/35">{widget.label} Instances</span>
+            <div className="px-2.5 py-1.5 border-b border-[var(--dk-separator)]">
+              <span className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground">{widget.label} Instances</span>
             </div>
             <div className="mt-1 space-y-0.5">
               {requestable.map((instance) => (
@@ -279,7 +279,7 @@ const RequestButton = ({
                     onRequest(widget.pluginId, instance.id)
                     setOpen(false)
                   }}
-                  className="w-full flex items-center justify-between px-2.5 py-2 text-xs rounded-lg transition-colors text-left text-white/80 hover:bg-white/5 hover:text-white disabled:opacity-50"
+                  className="w-full flex items-center justify-between px-2.5 py-2 text-xs rounded-lg transition-colors text-left text-foreground hover:bg-[var(--dk-surface-glass-hover)] disabled:opacity-50"
                 >
                   <span className="font-medium truncate">{instance.name}</span>
                   <span className="text-[10px] text-primary">Request</span>
@@ -356,7 +356,7 @@ const StreamMediaButton = ({
 
         {/* Illuminated Progress Bar Accent */}
         {isResume && progressPercent > 0 && (
-          <span className="absolute bottom-0 left-3 right-3 h-[2px] bg-white/20 rounded-full overflow-hidden">
+          <span className="absolute bottom-0 left-3 right-3 h-[2px] bg-foreground/20 rounded-full overflow-hidden">
             <span
               className={cn('block h-full transition-all duration-300', theme.progressBarClassName)}
               style={{ width: `${progressPercent}%` }}
@@ -403,7 +403,7 @@ const StreamMediaButton = ({
         <ChevronDown className="h-3.5 w-3.5 opacity-60 ml-0.5" />
 
         {isResume && progressPercent > 0 && (
-          <span className="absolute bottom-0 left-3 right-3 h-[2px] bg-white/20 rounded-full overflow-hidden">
+          <span className="absolute bottom-0 left-3 right-3 h-[2px] bg-foreground/20 rounded-full overflow-hidden">
             <span
               className={cn('block h-full', theme.progressBarClassName)}
               style={{ width: `${progressPercent}%` }}
@@ -416,10 +416,10 @@ const StreamMediaButton = ({
         createPortal(
           <div className="fixed inset-0 z-[120]" onMouseDown={() => setCoords(null)}>
             <div
-              className="absolute overflow-hidden rounded-2xl border border-white/10 bg-[#14161b]/95 backdrop-blur-2xl p-1.5 shadow-2xl shadow-black/80 space-y-1"
+              className="absolute overflow-hidden rounded-2xl border border-[var(--dk-separator)] bg-[var(--dk-surface-base)]/95 backdrop-blur-2xl p-1.5 shadow-2xl space-y-1"
               style={{ top: coords.top, left: coords.left, width: Math.max(coords.width, 240) }}
             >
-              <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-white/40 border-b border-white/5">
+              <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground border-b border-[var(--dk-separator)]">
                 Available Stream Sources
               </div>
               {instances.map((inst) => {
@@ -430,19 +430,19 @@ const StreamMediaButton = ({
                     type="button"
                     disabled={busy != null}
                     onClick={() => run(inst)}
-                    className="flex w-full items-center justify-between gap-2 px-3 py-2.5 rounded-xl text-left text-xs text-white/90 hover:bg-white/[0.08] transition-all cursor-pointer disabled:opacity-50 group"
+                    className="flex w-full items-center justify-between gap-2 px-3 py-2.5 rounded-xl text-left text-xs text-foreground hover:bg-[var(--dk-surface-glass)] transition-all cursor-pointer disabled:opacity-50 group"
                   >
                     <div className="flex items-center gap-2 min-w-0">
                       {busy === inst.id ? (
                         <Loader2 className="h-4 w-4 animate-spin text-primary shrink-0" />
                       ) : pres.isWatched ? (
-                        <RotateCcw className={cn('h-4 w-4 shrink-0', pres.isPlex ? 'text-amber-400' : 'text-emerald-400')} />
+                        <RotateCcw className={cn('h-4 w-4 shrink-0', pres.isPlex ? 'text-amber-600 dark:text-amber-400' : 'text-primary')} />
                       ) : (
-                        <Play className={cn('h-4 w-4 fill-current shrink-0', pres.isPlex ? 'text-amber-400' : 'text-primary')} />
+                        <Play className={cn('h-4 w-4 fill-current shrink-0', pres.isPlex ? 'text-amber-600 dark:text-amber-400' : 'text-primary')} />
                       )}
                       <div className="min-w-0">
-                        <div className="font-semibold truncate text-white">{inst.name}</div>
-                        <div className="text-[10px] text-white/50 truncate">
+                        <div className="font-semibold truncate text-foreground">{inst.name}</div>
+                        <div className="text-[10px] text-muted-foreground truncate">
                           {pres.primaryText} {pres.subText ? `· ${pres.subText}` : ''}
                         </div>
                       </div>
@@ -452,8 +452,8 @@ const StreamMediaButton = ({
                         className={cn(
                           'text-[9px] uppercase font-bold px-1.5 py-0.5 rounded shrink-0',
                           pres.isPlex
-                            ? 'bg-amber-500/15 text-amber-300 border border-amber-500/20'
-                            : 'bg-white/10 text-white/60',
+                            ? 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/20'
+                            : 'bg-[var(--dk-surface-glass)] text-muted-foreground',
                         )}
                       >
                         {inst.providerLabel}

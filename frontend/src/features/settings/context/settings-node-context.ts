@@ -4,10 +4,10 @@ import type { GameServer } from '@/features/downloads/types'
 import { isLocalDesktopNode, mergeLocalDesktopNode, pickSettingsNode, syncServersWithPendingNodes } from '../local-desktop-node'
 import { nodeUrlKey, type PendingNode } from '@/features/downloads/pending-nodes'
 
-function resolveUsePending(): () => { data?: PendingNode[] } {
+function resolveUsePending(): (options?: { enabled?: boolean }) => { data?: PendingNode[] } {
   try {
     const fn = (serverDownloads as Record<string, unknown>)['usePendingGameServers']
-    if (typeof fn === 'function') return fn as () => { data?: PendingNode[] }
+    if (typeof fn === 'function') return fn as (options?: { enabled?: boolean }) => { data?: PendingNode[] }
   } catch {
     // Vitest throws on missing mock export
   }
@@ -51,9 +51,18 @@ function readStoredNodeId(): number | null {
   }
 }
 
-export function SettingsNodeProvider({ children }: { children: ReactNode }) {
-  const { data: remoteServers = [], isLoading } = useGameServers({ refetchInterval: 10_000 })
-  const { data: pendingNodes = [] } = usePendingGameServers()
+export function SettingsNodeProvider({
+  children,
+  enabled = true,
+}: {
+  children: ReactNode
+  enabled?: boolean
+}) {
+  const { data: remoteServers = [], isLoading } = useGameServers({
+    enabled,
+    refetchInterval: enabled ? 10_000 : false,
+  })
+  const { data: pendingNodes = [] } = usePendingGameServers({ enabled })
   const updateServerMutation = useUpdateGameServer()
 
   const servers = useMemo(

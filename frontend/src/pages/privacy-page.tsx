@@ -204,7 +204,7 @@ export const PrivacyPage = () => {
           Core Privacy Commitments At A Glance
         </h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="rounded-2xl p-5 bg-[var(--dk-surface-base)] backdrop-blur-xl border border-white/[0.04] shadow-[var(--dk-shadow-xs)] hover:shadow-[var(--dk-shadow-sm)] transition-all space-y-2.5">
+          <div className="rounded-2xl p-5 bg-[var(--dk-surface-base)] backdrop-blur-xl border border-[var(--dk-separator)] shadow-[var(--dk-shadow-xs)] hover:shadow-[var(--dk-shadow-sm)] transition-all space-y-2.5">
             <div className="h-8 w-8 rounded-xl bg-rose-500/10 text-rose-500 flex items-center justify-center">
               <ShieldOff className="h-4 w-4" />
             </div>
@@ -214,7 +214,7 @@ export const PrivacyPage = () => {
             </p>
           </div>
 
-          <div className="rounded-2xl p-5 bg-[var(--dk-surface-base)] backdrop-blur-xl border border-white/[0.04] shadow-[var(--dk-shadow-xs)] hover:shadow-[var(--dk-shadow-sm)] transition-all space-y-2.5">
+          <div className="rounded-2xl p-5 bg-[var(--dk-surface-base)] backdrop-blur-xl border border-[var(--dk-separator)] shadow-[var(--dk-shadow-xs)] hover:shadow-[var(--dk-shadow-sm)] transition-all space-y-2.5">
             <div className="h-8 w-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
               <Server className="h-4 w-4" />
             </div>
@@ -224,7 +224,7 @@ export const PrivacyPage = () => {
             </p>
           </div>
 
-          <div className="rounded-2xl p-5 bg-[var(--dk-surface-base)] backdrop-blur-xl border border-white/[0.04] shadow-[var(--dk-shadow-xs)] hover:shadow-[var(--dk-shadow-sm)] transition-all space-y-2.5">
+          <div className="rounded-2xl p-5 bg-[var(--dk-surface-base)] backdrop-blur-xl border border-[var(--dk-separator)] shadow-[var(--dk-shadow-xs)] hover:shadow-[var(--dk-shadow-sm)] transition-all space-y-2.5">
             <div className="h-8 w-8 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center">
               <Lock className="h-4 w-4" />
             </div>
@@ -234,7 +234,7 @@ export const PrivacyPage = () => {
             </p>
           </div>
 
-          <div className="rounded-2xl p-5 bg-[var(--dk-surface-base)] backdrop-blur-xl border border-white/[0.04] shadow-[var(--dk-shadow-xs)] hover:shadow-[var(--dk-shadow-sm)] transition-all space-y-2.5">
+          <div className="rounded-2xl p-5 bg-[var(--dk-surface-base)] backdrop-blur-xl border border-[var(--dk-separator)] shadow-[var(--dk-shadow-xs)] hover:shadow-[var(--dk-shadow-sm)] transition-all space-y-2.5">
             <div className="h-8 w-8 rounded-xl bg-sky-500/10 text-sky-500 flex items-center justify-center">
               <Trash2 className="h-4 w-4" />
             </div>
@@ -268,7 +268,7 @@ export const PrivacyPage = () => {
       {/* Policy Detailed Sections */}
       <div className="space-y-8 text-sm leading-relaxed text-foreground/80">
         {/* Section 1: Entity Details & Contact */}
-        <section id="controller" className="rounded-2xl sm:rounded-3xl p-6 sm:p-8 bg-[var(--dk-surface-base)] backdrop-blur-xl border border-white/[0.04] shadow-[var(--dk-shadow-sm)] space-y-4 scroll-mt-28">
+        <section id="controller" className="rounded-2xl sm:rounded-3xl p-6 sm:p-8 bg-[var(--dk-surface-base)] backdrop-blur-xl border border-[var(--dk-separator)] shadow-[var(--dk-shadow-sm)] space-y-4 scroll-mt-28">
           <div className="flex items-center gap-3">
             <div className="h-9 w-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
               <FileText className="h-4.5 w-4.5" />
@@ -287,7 +287,7 @@ export const PrivacyPage = () => {
             Otix (&ldquo;we&rdquo;, &ldquo;us&rdquo;, or &ldquo;our&rdquo;) operates as the data controller for personal account credentials and application settings. For any privacy inquiries, data deletion requests, or questions regarding this policy, contact our dedicated privacy desk:
           </p>
 
-          <div className="rounded-xl bg-[var(--dk-surface-raised)] p-4 sm:p-5 text-xs text-foreground/90 space-y-2 border border-white/[0.04]">
+          <div className="rounded-xl bg-[var(--dk-surface-raised)] p-4 sm:p-5 text-xs text-foreground/90 space-y-2 border border-[var(--dk-separator)]">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <span className="font-mono text-muted-foreground">Official Privacy Desk:</span>
               <div className="flex items-center gap-2">
@@ -336,7 +336,7 @@ export const PrivacyPage = () => {
         </section>
 
         {/* Section 2: Data We Collect vs Data We Do Not Collect */}
-        <section id="data-collected" className="rounded-2xl sm:rounded-3xl p-6 sm:p-8 bg-[var(--dk-surface-base)] backdrop-blur-xl border border-white/[0.04] shadow-[var(--dk-shadow-sm)] space-y-5 scroll-mt-28">
+        <section id="data-collected" className="rounded-2xl sm:rounded-3xl p-6 sm:p-8 bg-[var(--dk-surface-base)] backdrop-blur-xl border border-[var(--dk-separator)] shadow-[var(--dk-shadow-sm)] space-y-5 scroll-mt-28">
           <div className="flex items-center gap-3">
             <div className="h-9 w-9 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center shrink-0">
               <Lock className="h-4.5 w-4.5" />
@@ -431,7 +431,7 @@ export const PrivacyPage = () => {
         </section>
 
         {/* Section 3: Direct Streaming Privacy (BYOS) */}
-        <section id="byos-streaming" className="rounded-2xl sm:rounded-3xl p-6 sm:p-8 bg-[var(--dk-surface-base)] backdrop-blur-xl border border-white/[0.04] shadow-[var(--dk-shadow-sm)] space-y-5 scroll-mt-28">
+        <section id="byos-streaming" className="rounded-2xl sm:rounded-3xl p-6 sm:p-8 bg-[var(--dk-surface-base)] backdrop-blur-xl border border-[var(--dk-separator)] shadow-[var(--dk-shadow-sm)] space-y-5 scroll-mt-28">
           <div className="flex items-center gap-3">
             <div className="h-9 w-9 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center shrink-0">
               <Server className="h-4.5 w-4.5" />
@@ -451,12 +451,12 @@ export const PrivacyPage = () => {
           </p>
 
           {/* Visual Architecture Representation */}
-          <div className="rounded-2xl bg-[var(--dk-surface-raised)] p-5 border border-white/[0.04] space-y-4">
+          <div className="rounded-2xl bg-[var(--dk-surface-raised)] p-5 border border-[var(--dk-separator)] space-y-4">
             <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
               Technical Architecture Flow
             </span>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-center">
-              <div className="rounded-xl bg-[var(--dk-surface-overlay)] p-3.5 space-y-1.5 border border-white/[0.04]">
+              <div className="rounded-xl bg-[var(--dk-surface-overlay)] p-3.5 space-y-1.5 border border-[var(--dk-separator)]">
                 <Laptop className="h-5 w-5 mx-auto text-primary" />
                 <div className="font-semibold text-xs text-foreground">Your Web Browser / App</div>
                 <div className="text-[11px] text-muted-foreground">Direct video renderer &amp; HLS player</div>
@@ -470,7 +470,7 @@ export const PrivacyPage = () => {
                 <div className="w-full h-0.5 bg-emerald-500/30 my-2 hidden md:block" />
               </div>
 
-              <div className="rounded-xl bg-[var(--dk-surface-overlay)] p-3.5 space-y-1.5 border border-white/[0.04]">
+              <div className="rounded-xl bg-[var(--dk-surface-overlay)] p-3.5 space-y-1.5 border border-[var(--dk-separator)]">
                 <Server className="h-5 w-5 mx-auto text-amber-500" />
                 <div className="font-semibold text-xs text-foreground">Your Private Server</div>
                 <div className="text-[11px] text-muted-foreground">Plex / Jellyfin endpoint you own</div>
@@ -493,7 +493,7 @@ export const PrivacyPage = () => {
         </section>
 
         {/* Section 4: Third-Party SDKs & APIs Audit */}
-        <section id="third-party-apis" className="rounded-2xl sm:rounded-3xl p-6 sm:p-8 bg-[var(--dk-surface-base)] backdrop-blur-xl border border-white/[0.04] shadow-[var(--dk-shadow-sm)] space-y-4 scroll-mt-28">
+        <section id="third-party-apis" className="rounded-2xl sm:rounded-3xl p-6 sm:p-8 bg-[var(--dk-surface-base)] backdrop-blur-xl border border-[var(--dk-separator)] shadow-[var(--dk-shadow-sm)] space-y-4 scroll-mt-28">
           <div className="flex items-center gap-3">
             <div className="h-9 w-9 rounded-xl bg-sky-500/10 text-sky-500 flex items-center justify-center shrink-0">
               <Layers className="h-4.5 w-4.5" />
@@ -556,7 +556,7 @@ export const PrivacyPage = () => {
         </section>
 
         {/* Section 5: Cookie & Local Storage Policy */}
-        <section id="cookies" className="rounded-2xl sm:rounded-3xl p-6 sm:p-8 bg-[var(--dk-surface-base)] backdrop-blur-xl border border-white/[0.04] shadow-[var(--dk-shadow-sm)] space-y-4 scroll-mt-28">
+        <section id="cookies" className="rounded-2xl sm:rounded-3xl p-6 sm:p-8 bg-[var(--dk-surface-base)] backdrop-blur-xl border border-[var(--dk-separator)] shadow-[var(--dk-shadow-sm)] space-y-4 scroll-mt-28">
           <div className="flex items-center gap-3">
             <div className="h-9 w-9 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center shrink-0">
               <Cookie className="h-4.5 w-4.5" />
@@ -576,7 +576,7 @@ export const PrivacyPage = () => {
           </p>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-            <div className="p-4 rounded-xl bg-[var(--dk-surface-raised)] border border-white/[0.04] space-y-2">
+            <div className="p-4 rounded-xl bg-[var(--dk-surface-raised)] border border-[var(--dk-separator)] space-y-2">
               <div className="font-bold text-foreground flex items-center gap-1.5">
                 <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
                 <span>Strictly Necessary (Required)</span>
@@ -587,7 +587,7 @@ export const PrivacyPage = () => {
               </ul>
             </div>
 
-            <div className="p-4 rounded-xl bg-[var(--dk-surface-raised)] border border-white/[0.04] space-y-2">
+            <div className="p-4 rounded-xl bg-[var(--dk-surface-raised)] border border-[var(--dk-separator)] space-y-2">
               <div className="font-bold text-foreground flex items-center gap-1.5">
                 <Sparkles className="h-3.5 w-3.5 text-primary" />
                 <span>Functional &amp; UI Preferences</span>
@@ -600,7 +600,7 @@ export const PrivacyPage = () => {
           </div>
 
           {/* Interactive Cookie Preference Box */}
-          <div className="rounded-xl p-4 bg-[var(--dk-surface-raised)] border border-white/[0.04] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="rounded-xl p-4 bg-[var(--dk-surface-raised)] border border-[var(--dk-separator)] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <div className="text-xs font-semibold text-foreground flex items-center gap-2">
                 <span>Current Consent Status:</span>
@@ -629,7 +629,7 @@ export const PrivacyPage = () => {
         </section>
 
         {/* Section 6: Children's Privacy (COPPA & GDPR-K) */}
-        <section id="children" className="rounded-2xl sm:rounded-3xl p-6 sm:p-8 bg-[var(--dk-surface-base)] backdrop-blur-xl border border-white/[0.04] shadow-[var(--dk-shadow-sm)] space-y-4 scroll-mt-28">
+        <section id="children" className="rounded-2xl sm:rounded-3xl p-6 sm:p-8 bg-[var(--dk-surface-base)] backdrop-blur-xl border border-[var(--dk-separator)] shadow-[var(--dk-shadow-sm)] space-y-4 scroll-mt-28">
           <div className="flex items-center gap-3">
             <div className="h-9 w-9 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center shrink-0">
               <UserCheck className="h-4.5 w-4.5" />
@@ -653,7 +653,7 @@ export const PrivacyPage = () => {
         </section>
 
         {/* Section 7: Data Deletion & Right to Erasure */}
-        <section id="data-deletion" className="rounded-2xl sm:rounded-3xl p-6 sm:p-8 bg-[var(--dk-surface-base)] backdrop-blur-xl border border-white/[0.04] shadow-[var(--dk-shadow-sm)] space-y-4 scroll-mt-28">
+        <section id="data-deletion" className="rounded-2xl sm:rounded-3xl p-6 sm:p-8 bg-[var(--dk-surface-base)] backdrop-blur-xl border border-[var(--dk-separator)] shadow-[var(--dk-shadow-sm)] space-y-4 scroll-mt-28">
           <div className="flex items-center gap-3">
             <div className="h-9 w-9 rounded-xl bg-rose-500/10 text-rose-500 flex items-center justify-center shrink-0">
               <Trash2 className="h-4.5 w-4.5" />
@@ -673,7 +673,7 @@ export const PrivacyPage = () => {
           </p>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="p-4 rounded-xl bg-[var(--dk-surface-raised)] border border-white/[0.04] space-y-3">
+            <div className="p-4 rounded-xl bg-[var(--dk-surface-raised)] border border-[var(--dk-separator)] space-y-3">
               <div className="font-bold text-xs uppercase tracking-wider text-foreground">
                 Option A: Self-Service Erasure
               </div>
@@ -688,7 +688,7 @@ export const PrivacyPage = () => {
               </DkButton>
             </div>
 
-            <div className="p-4 rounded-xl bg-[var(--dk-surface-raised)] border border-white/[0.04] space-y-3">
+            <div className="p-4 rounded-xl bg-[var(--dk-surface-raised)] border border-[var(--dk-separator)] space-y-3">
               <div className="font-bold text-xs uppercase tracking-wider text-foreground">
                 Option B: Written Request
               </div>
@@ -708,7 +708,7 @@ export const PrivacyPage = () => {
         </section>
 
         {/* Section 8: Refund & Cancellation Policy */}
-        <section id="refunds" className="rounded-2xl sm:rounded-3xl p-6 sm:p-8 bg-[var(--dk-surface-base)] backdrop-blur-xl border border-white/[0.04] shadow-[var(--dk-shadow-sm)] space-y-4 scroll-mt-28">
+        <section id="refunds" className="rounded-2xl sm:rounded-3xl p-6 sm:p-8 bg-[var(--dk-surface-base)] backdrop-blur-xl border border-[var(--dk-separator)] shadow-[var(--dk-shadow-sm)] space-y-4 scroll-mt-28">
           <div className="flex items-center gap-3">
             <div className="h-9 w-9 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center shrink-0">
               <DollarSign className="h-4.5 w-4.5" />
@@ -735,7 +735,7 @@ export const PrivacyPage = () => {
         </section>
 
         {/* Section 9: Communications & Unsubscribe */}
-        <section id="communications" className="rounded-2xl sm:rounded-3xl p-6 sm:p-8 bg-[var(--dk-surface-base)] backdrop-blur-xl border border-white/[0.04] shadow-[var(--dk-shadow-sm)] space-y-4 scroll-mt-28">
+        <section id="communications" className="rounded-2xl sm:rounded-3xl p-6 sm:p-8 bg-[var(--dk-surface-base)] backdrop-blur-xl border border-[var(--dk-separator)] shadow-[var(--dk-shadow-sm)] space-y-4 scroll-mt-28">
           <div className="flex items-center gap-3">
             <div className="h-9 w-9 rounded-xl bg-sky-500/10 text-sky-500 flex items-center justify-center shrink-0">
               <Mail className="h-4.5 w-4.5" />
@@ -759,7 +759,7 @@ export const PrivacyPage = () => {
         </section>
 
         {/* Section 10: Font & Asset Licensing */}
-        <section id="licensing" className="rounded-2xl sm:rounded-3xl p-6 sm:p-8 bg-[var(--dk-surface-base)] backdrop-blur-xl border border-white/[0.04] shadow-[var(--dk-shadow-sm)] space-y-4 scroll-mt-28">
+        <section id="licensing" className="rounded-2xl sm:rounded-3xl p-6 sm:p-8 bg-[var(--dk-surface-base)] backdrop-blur-xl border border-[var(--dk-separator)] shadow-[var(--dk-shadow-sm)] space-y-4 scroll-mt-28">
           <div className="flex items-center gap-3">
             <div className="h-9 w-9 rounded-xl bg-purple-500/10 text-purple-500 flex items-center justify-center shrink-0">
               <Layers className="h-4.5 w-4.5" />

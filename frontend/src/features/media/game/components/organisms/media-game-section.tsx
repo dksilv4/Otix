@@ -66,7 +66,7 @@ export const GameSection = ({ className }: GameSectionProps = {}) => {
                   key={p.id}
                   title={p.platform.name}
                   aria-label={p.platform.name}
-                  className="glass-inset flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-all hover:scale-105 hover:bg-white/[0.06] hover:text-foreground"
+                  className="glass-inset flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-all hover:scale-105 hover:bg-[var(--dk-surface-glass)] hover:text-foreground"
                 >
                   <PlatformIcon slug={p.platform.slug} className="h-4 w-4" />
                 </div>
@@ -106,7 +106,7 @@ export const GameSection = ({ className }: GameSectionProps = {}) => {
             {steamPlaytime2weeks != null && steamPlaytime2weeks > 0 && (
               <div>
                 <dt className="text-xs text-muted-foreground">Recent (2 weeks)</dt>
-                <dd className="text-sm font-medium text-green-500">{formatPlaytime(steamPlaytime2weeks)}</dd>
+                <dd className="text-sm font-medium text-emerald-600 dark:text-emerald-400">{formatPlaytime(steamPlaytime2weeks)}</dd>
               </div>
             )}
             {steamRtimeLastPlayed != null && (
@@ -182,7 +182,7 @@ export const GameSection = ({ className }: GameSectionProps = {}) => {
             {game.isFree && (
               <div>
                 <dt className="text-xs text-muted-foreground">Price</dt>
-                <dd className="text-sm font-medium text-green-600 dark:text-green-400">Free</dd>
+                <dd className="text-sm font-medium text-emerald-600 dark:text-emerald-400">Free</dd>
               </div>
             )}
             {game.hasMultiplayer && (
@@ -215,7 +215,7 @@ export const GameSection = ({ className }: GameSectionProps = {}) => {
         <MediaGameServersSection
           mediaId={mediaId}
           gameTitle={data.title}
-          className="pt-4 border-t border-white/[0.08]"
+          className="pt-4 border-t border-[var(--dk-separator)]"
         />
       )}
     </section>

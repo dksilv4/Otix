@@ -244,10 +244,10 @@ export const NodeConnectionsGroup = ({
 
   return (
     <div
-      className="rounded-2xl sm:rounded-3xl overflow-hidden backdrop-blur-xl transition-all duration-200 border border-white/[0.04]"
+      className="rounded-2xl sm:rounded-3xl overflow-hidden backdrop-blur-xl transition-all duration-200 border border-[var(--dk-separator)]"
       style={{
         backgroundColor: 'var(--dk-surface-raised)',
-        boxShadow: 'inset 0 1px 0 0 rgba(255, 255, 255, 0.05), 0 4px 20px -4px rgba(0, 0, 0, 0.3)',
+        boxShadow: 'var(--dk-shadow-md)',
       }}
     >
       {/* Node header bar */}
@@ -267,7 +267,7 @@ export const NodeConnectionsGroup = ({
           className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
           style={{
             backgroundColor: 'var(--dk-surface-glass)',
-            boxShadow: 'inset 0 1px 0 0 rgba(255, 255, 255, 0.08)',
+            boxShadow: 'var(--dk-shadow-sm)',
           }}
         >
           <Server className="w-5 h-5 text-primary" />
@@ -276,7 +276,7 @@ export const NodeConnectionsGroup = ({
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-sm font-semibold text-foreground truncate">{server.name}</span>
-            <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-white/[0.06] text-muted-foreground">
+            <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-[var(--dk-surface-field)] border border-[var(--dk-separator)] text-muted-foreground">
               {nodeDefs.filter((d) => d.isConnected).length} of {nodeDefs.length} connected
             </span>
             {server.isOnline ? (
@@ -387,7 +387,7 @@ export const NodeConnectionsGroup = ({
                   />
                   {isProwlarrConfigured && (
                     <>
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl bg-white/[0.02] border border-white/[0.04]">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl bg-[var(--dk-surface-field)] border border-[var(--dk-separator)]">
                         <div className="min-w-0">
                           <p className="text-xs font-semibold text-foreground">Sync Indexers</p>
                           <p className="text-xs text-muted-foreground mt-0.5">

@@ -94,12 +94,12 @@ export const FolderPickerModal = ({
             </label>
           )}
 
-          <div className="flex items-center gap-2 overflow-x-auto text-xs text-white/50">
+          <div className="flex items-center gap-2 overflow-x-auto text-xs text-muted-foreground">
             {browseData?.parent_path && (
               <button
                 type="button"
                 onClick={() => setCurrentPath(browseData.parent_path || undefined)}
-                className="rounded-lg p-1 hover:bg-white/10 hover:text-white"
+                className="rounded-lg p-1 hover:bg-[var(--dk-surface-ghost-hover)] hover:text-foreground"
                 title="Go up"
               >
                 <CornerLeftUp className="h-3.5 w-3.5" />
@@ -109,7 +109,7 @@ export const FolderPickerModal = ({
               type="button"
               onClick={() => setCurrentPath(undefined)}
               className={cn(
-                'shrink-0 rounded-lg px-2 py-1 hover:text-white',
+                'shrink-0 rounded-lg px-2 py-1 hover:text-foreground',
                 !currentPath ? 'bg-primary/10 font-semibold text-primary' : '',
               )}
             >
@@ -117,13 +117,13 @@ export const FolderPickerModal = ({
             </button>
             {breadcrumbs.map((crumb, idx) => (
               <span key={crumb.fullPath} className="flex items-center gap-1.5">
-                <ChevronRight className="h-3 w-3 text-white/20" />
+                <ChevronRight className="h-3 w-3 text-muted-foreground/40" />
                 <button
                   type="button"
                   onClick={() => setCurrentPath(crumb.fullPath)}
                   className={cn(
                     'max-w-[140px] truncate rounded-lg px-2 py-1',
-                    idx === breadcrumbs.length - 1 ? 'bg-white/10 font-semibold text-white' : 'hover:text-white',
+                    idx === breadcrumbs.length - 1 ? 'bg-[var(--dk-surface-ghost-active)] font-semibold text-foreground' : 'hover:text-foreground',
                   )}
                 >
                   {crumb.label}
@@ -133,43 +133,43 @@ export const FolderPickerModal = ({
             <button
               type="button"
               onClick={() => refetch()}
-              className="ml-auto rounded-lg p-1 text-white/40 hover:bg-white/10 hover:text-white"
+              className="ml-auto rounded-lg p-1 text-muted-foreground hover:bg-[var(--dk-surface-ghost-hover)] hover:text-foreground"
               title="Refresh"
             >
               <RefreshCw className={cn('h-3.5 w-3.5', isFetching && 'animate-spin')} />
             </button>
           </div>
 
-          <div className="max-h-72 min-h-[180px] overflow-y-auto rounded-2xl bg-white/[0.03]">
+          <div className="max-h-72 min-h-[180px] overflow-y-auto rounded-2xl bg-[var(--dk-surface-ghost)]">
             {isLoading && !browseData ? (
-              <div className="flex items-center justify-center gap-2 py-12 text-xs text-white/40">
+              <div className="flex items-center justify-center gap-2 py-12 text-xs text-muted-foreground">
                 <RefreshCw className="h-4 w-4 animate-spin text-primary" />
                 Scanning folders...
               </div>
             ) : error ? (
-              <div className="space-y-1 px-4 py-8 text-center text-xs text-rose-400">
+              <div className="space-y-1 px-4 py-8 text-center text-xs text-rose-500 dark:text-rose-400">
                 <p className="font-semibold">Unable to access directory</p>
-                <p className="text-[11px] text-white/50">
+                <p className="text-[11px] text-muted-foreground">
                   {(error as any)?.response?.data?.detail || error.message || 'Node may be offline or disconnected.'}
                 </p>
               </div>
             ) : folders.length === 0 ? (
-              <div className="px-4 py-10 text-center text-xs text-white/40">
-                <Folder className="mx-auto mb-2 h-7 w-7 text-white/20" />
+              <div className="px-4 py-10 text-center text-xs text-muted-foreground">
+                <Folder className="mx-auto mb-2 h-7 w-7 text-muted-foreground/40" />
                 This folder is empty
               </div>
             ) : (
-              <div className="divide-y divide-white/5">
+              <div className="divide-y divide-[var(--dk-separator)]">
                 {folders.map((folder) => (
                   <button
                     key={folder.path}
                     type="button"
                     onClick={() => setCurrentPath(folder.path)}
-                    className="flex w-full items-center gap-3 px-4 py-2.5 text-left hover:bg-white/5"
+                    className="flex w-full items-center gap-3 px-4 py-2.5 text-left hover:bg-[var(--dk-surface-ghost-hover)]"
                   >
-                    <Folder className="h-4 w-4 shrink-0 text-amber-300" />
-                    <span className="truncate text-xs font-semibold text-white">{folder.name}</span>
-                    <ChevronRight className="ml-auto h-3.5 w-3.5 text-white/20" />
+                    <Folder className="h-4 w-4 shrink-0 text-amber-500 dark:text-amber-300" />
+                    <span className="truncate text-xs font-semibold text-foreground">{folder.name}</span>
+                    <ChevronRight className="ml-auto h-3.5 w-3.5 text-muted-foreground/40" />
                   </button>
                 ))}
               </div>
@@ -177,9 +177,9 @@ export const FolderPickerModal = ({
           </div>
 
           <div className="flex items-center justify-between gap-3 pt-1">
-            <div className="flex min-w-0 items-center gap-2 text-xs text-white/50">
+            <div className="flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
               <HardDrive className="h-3.5 w-3.5 shrink-0 text-primary" />
-              <span className="truncate font-mono text-[11px] text-white/70">{currentFolderPath}</span>
+              <span className="truncate font-mono text-[11px] text-foreground/80">{currentFolderPath}</span>
             </div>
             <div className="flex items-center gap-2 shrink-0">
               <DkButton

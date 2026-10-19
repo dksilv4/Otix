@@ -54,7 +54,7 @@ export const AddNodeModal = ({
               {unclaimedNodes.map((pending, idx) => (
                 <div
                   key={`${pending.localUrl || 'local'}-${idx}`}
-                  className="flex items-center justify-between p-2.5 rounded-xl bg-white/[0.04] border border-white/[0.06] gap-3"
+                  className="flex items-center justify-between p-2.5 rounded-xl bg-[var(--dk-surface-field)] border border-[var(--dk-separator)] gap-3"
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
                     <div className="h-8 w-8 rounded-lg bg-primary/15 text-primary flex items-center justify-center shrink-0">
@@ -106,7 +106,7 @@ export const AddNodeModal = ({
               tabIndex={0}
               onClick={() => handleSelect('worker')}
               onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && handleSelect('worker')}
-              className="group p-3.5 rounded-2xl bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.05] hover:border-primary/40 cursor-pointer transition-all duration-150 space-y-2 text-left"
+              className="group p-3.5 rounded-2xl bg-[var(--dk-surface-field)] hover:bg-[var(--dk-surface-hover)] border border-[var(--dk-separator)] hover:border-primary/40 cursor-pointer transition-all duration-150 space-y-2 text-left"
             >
               <div className="flex items-center justify-between">
                 <div className="h-9 w-9 rounded-xl bg-primary/15 text-primary flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
@@ -128,7 +128,7 @@ export const AddNodeModal = ({
               tabIndex={0}
               onClick={() => handleSelect('server')}
               onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && handleSelect('server')}
-              className="group p-3.5 rounded-2xl bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.05] hover:border-primary/40 cursor-pointer transition-all duration-150 space-y-2 text-left"
+              className="group p-3.5 rounded-2xl bg-[var(--dk-surface-field)] hover:bg-[var(--dk-surface-hover)] border border-[var(--dk-separator)] hover:border-primary/40 cursor-pointer transition-all duration-150 space-y-2 text-left"
             >
               <div className="flex items-center justify-between">
                 <div className="h-9 w-9 rounded-xl bg-primary/15 text-primary flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
@@ -150,7 +150,7 @@ export const AddNodeModal = ({
               tabIndex={0}
               onClick={() => handleSelect('home')}
               onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && handleSelect('home')}
-              className="group p-3.5 rounded-2xl bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.05] hover:border-primary/40 cursor-pointer transition-all duration-150 space-y-2 text-left"
+              className="group p-3.5 rounded-2xl bg-[var(--dk-surface-field)] hover:bg-[var(--dk-surface-hover)] border border-[var(--dk-separator)] hover:border-primary/40 cursor-pointer transition-all duration-150 space-y-2 text-left"
             >
               <div className="flex items-center justify-between">
                 <div className="h-9 w-9 rounded-xl bg-primary/15 text-primary flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
@@ -172,7 +172,7 @@ export const AddNodeModal = ({
               tabIndex={0}
               onClick={() => handleSelect('samba')}
               onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && handleSelect('samba')}
-              className="group p-3.5 rounded-2xl bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.05] hover:border-primary/40 cursor-pointer transition-all duration-150 space-y-2 text-left"
+              className="group p-3.5 rounded-2xl bg-[var(--dk-surface-field)] hover:bg-[var(--dk-surface-hover)] border border-[var(--dk-separator)] hover:border-primary/40 cursor-pointer transition-all duration-150 space-y-2 text-left"
             >
               <div className="flex items-center justify-between">
                 <div className="h-9 w-9 rounded-xl bg-primary/15 text-primary flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">

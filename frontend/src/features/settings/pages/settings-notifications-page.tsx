@@ -215,21 +215,21 @@ export const SettingsNotificationsPage = () => {
         {quietEnabled && (
           <div className="flex flex-col sm:flex-row gap-4 pt-1">
             <div className="flex-1">
-              <label className="text-xs text-white/60 block mb-1 font-medium">Start</label>
+              <label className="text-xs text-muted-foreground block mb-1 font-medium">Start</label>
               <input
                 type="time"
                 value={(preferences._quiet_start as string) || '22:00'}
                 onChange={(e) => handleQuietTimeChange('_quiet_start', e.target.value)}
-                className="w-full rounded-xl bg-white/5 px-3.5 py-2 text-sm text-white/90 focus:outline-none"
+                className="w-full rounded-xl bg-[var(--dk-surface-field)] px-3.5 py-2 text-sm text-foreground focus:outline-none"
               />
             </div>
             <div className="flex-1">
-              <label className="text-xs text-white/60 block mb-1 font-medium">End</label>
+              <label className="text-xs text-muted-foreground block mb-1 font-medium">End</label>
               <input
                 type="time"
                 value={(preferences._quiet_end as string) || '08:00'}
                 onChange={(e) => handleQuietTimeChange('_quiet_end', e.target.value)}
-                className="w-full rounded-xl bg-white/5 px-3.5 py-2 text-sm text-white/90 focus:outline-none"
+                className="w-full rounded-xl bg-[var(--dk-surface-field)] px-3.5 py-2 text-sm text-foreground focus:outline-none"
               />
             </div>
           </div>

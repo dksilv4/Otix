@@ -51,7 +51,7 @@ export const ActivityModuleGame = ({ onClose }: ActivityModuleGameProps = {}) =>
       )}
 
       <div className="relative flex items-start gap-3">
-        <div className="relative w-14 h-20 rounded-xl overflow-hidden shrink-0 bg-white/[0.04] shadow-md transition-colors">
+        <div className="relative w-14 h-20 rounded-xl overflow-hidden shrink-0 bg-muted shadow-md transition-colors">
           {posterUrl ? (
             <img
               src={posterUrl}
@@ -60,19 +60,19 @@ export const ActivityModuleGame = ({ onClose }: ActivityModuleGameProps = {}) =>
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center">
-              <Gamepad2 size={24} className="text-white/30" />
+              <Gamepad2 size={24} className="text-muted-foreground" />
             </div>
           )}
         </div>
 
         <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between gap-1 mb-1">
-            <span className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-400">
+            <span className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-500 dark:text-emerald-400">
               Now Playing
             </span>
             {matchedGame?.rating != null && (
-              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-400">
-                <Star size={10} className="fill-amber-400 text-amber-400" />
+              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-500 dark:text-amber-400">
+                <Star size={10} className="fill-amber-500 dark:fill-amber-400 text-amber-500 dark:text-amber-400" />
                 {matchedGame.rating.toFixed(1)}
               </span>
             )}
@@ -83,29 +83,29 @@ export const ActivityModuleGame = ({ onClose }: ActivityModuleGameProps = {}) =>
               to="/launcher/$gameId"
               params={{ gameId: matchedGame.id }}
               onClick={onClose}
-              className="group/link flex items-center gap-1 text-[15px] font-bold text-white/95 hover:text-primary transition-colors truncate leading-tight"
+              className="group/link flex items-center gap-1 text-[15px] font-bold text-foreground hover:text-primary transition-colors truncate leading-tight"
             >
               <span className="truncate">{displayTitle}</span>
               <ExternalLink className="h-3 w-3 opacity-0 group-hover/link:opacity-80 transition-opacity shrink-0" />
             </Link>
           ) : (
-            <h3 className="text-[15px] font-bold text-white/95 truncate leading-tight">
+            <h3 className="text-[15px] font-bold text-foreground truncate leading-tight">
               {displayTitle}
             </h3>
           )}
 
           {subtitle && (
-            <p className="text-[11px] text-white/50 truncate mt-0.5 font-medium">
+            <p className="text-[11px] text-muted-foreground truncate mt-0.5 font-medium">
               {subtitle}
             </p>
           )}
 
-          <div className="flex items-center justify-between gap-2 mt-2 text-[11px] text-white/70">
+          <div className="flex items-center justify-between gap-2 mt-2 text-[11px] text-muted-foreground">
             <div className="flex items-center gap-1.5 flex-wrap min-w-0">
-              <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-white/[0.06] text-white/70 font-mono shrink-0">
+              <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-muted text-muted-foreground font-mono shrink-0">
                 {runningGame.game.platform.toUpperCase()}
               </span>
-              <span className="inline-flex items-center gap-1 tabular-nums font-mono text-emerald-300 shrink-0">
+              <span className="inline-flex items-center gap-1 tabular-nums font-mono text-emerald-600 dark:text-emerald-400 shrink-0">
                 <Clock size={10} />
                 {formatDuration(elapsedMs)}
               </span>

@@ -19,39 +19,57 @@ export const NotificationCard = ({ notification, onMarkRead, actionCallbacks }: 
   const link = config?.getLink?.(notification)
   const actions = config?.getActions?.(notification, actionCallbacks)
 
+  const isClickable = Boolean(link || !notification.isRead)
+
   const handleClick = () => {
-    if (link) navigate({ to: link })
+    if (!notification.isRead) {
+      onMarkRead(notification.id)
+    }
+    if (link) {
+      navigate({ to: link })
+    }
   }
 
   return (
     <div
       className={cn(
         'flex items-start gap-3 px-3 py-3 rounded-xl transition-colors',
-        !notification.isRead && 'bg-white/[0.03]',
-        link && 'cursor-pointer hover:bg-white/[0.06]',
+        !notification.isRead && 'bg-primary/5',
+        isClickable && 'cursor-pointer hover:bg-[var(--dk-surface-ghost-hover)]',
       )}
       onClick={handleClick}
-      onKeyDown={(e) => { if (e.key === 'Enter' && link) handleClick() }}
-      role={link ? 'button' : undefined}
-      tabIndex={link ? 0 : undefined}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' && isClickable) {
+          handleClick()
+        }
+      }}
+      role={isClickable ? 'button' : undefined}
+      tabIndex={isClickable ? 0 : undefined}
     >
       <NotificationIcon type={notification.type} />
 
       <div className="min-w-0 flex-1">
         <div className="flex items-start justify-between gap-2">
-          <p className="text-xs font-medium text-white/80">{notification.title}</p>
+          <p className="text-xs font-medium text-foreground">{notification.title}</p>
           <NotificationTime createdAt={notification.createdAt} />
         </div>
         {notification.body && (
-          <p className="text-xs text-white/40 mt-0.5 line-clamp-2">{notification.body}</p>
+          <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{notification.body}</p>
         )}
-        {actions && <NotificationActions actions={actions} />}
+        {actions && (
+          <div onClick={(e) => e.stopPropagation()}>
+            <NotificationActions actions={actions} />
+          </div>
+        )}
       </div>
 
       {!notification.isRead && (
         <button
           type="button"
-          onClick={(e) => { e.stopPropagation(); onMarkRead(notification.id) }}
+          onClick={(e) => {
+            e.stopPropagation()
+            onMarkRead(notification.id)
+          }}
           className="shrink-0 mt-1 cursor-pointer"
           aria-label="Mark as read"
         >

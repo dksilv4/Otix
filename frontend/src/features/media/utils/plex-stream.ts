@@ -5,8 +5,11 @@ import type {
   EpisodeContext,
 } from '../types/stream-player'
 import { getPlexClientId } from './player'
+import { apiClient } from '@/lib/api/client'
 
 export interface PlexConnectInfoData {
+  isSharedServer?: boolean
+  is_shared_server?: boolean
   baseUrl?: string
   base_url?: string
   token?: string
@@ -221,6 +224,7 @@ export const buildPlexPlaybackSession = (
     audioCodec: info.audioCodec || info.audio_codec || 'aac',
     episodeContext,
     baseUrls,
+    isSharedServer: Boolean(info.isSharedServer ?? info.is_shared_server),
   }
 }
 
@@ -260,5 +264,79 @@ export const switchPlexSessionServer = (
     hlsUrl: newHlsUrl,
     directUrl: newDirectUrl,
     subtitles: newSubtitles,
+    isSharedServer: session.isSharedServer,
   }
+}
+
+interface CachedConnectInfo {
+  data: PlexConnectInfoData
+  timestamp: number
+}
+
+const connectInfoCache = new Map<string, CachedConnectInfo>()
+const connectInfoInFlight = new Map<string, Promise<PlexConnectInfoData | null>>()
+
+const CONNECT_INFO_CACHE_TTL_MS = 30_000
+
+export interface FetchPlexConnectInfoParams {
+  season?: number | string
+  episode?: number | string
+  tmdbId?: number | string
+  tvdbId?: number | string
+  imdbId?: string
+  title?: string
+  year?: number | string
+  mediaType?: string
+}
+
+export const fetchPlexConnectInfoCached = async (
+  mediaIdentifier: string | number,
+  params?: FetchPlexConnectInfoParams,
+): Promise<PlexConnectInfoData | null> => {
+  const ident = encodeURIComponent(String(mediaIdentifier).trim())
+  if (!ident) return null
+
+  const queryParams: Record<string, string> = {}
+  if (params?.season != null) queryParams.season = String(params.season)
+  if (params?.episode != null) queryParams.episode = String(params.episode)
+  if (params?.tmdbId != null) queryParams.tmdbId = String(params.tmdbId)
+  if (params?.tvdbId != null) queryParams.tvdbId = String(params.tvdbId)
+  if (params?.imdbId) queryParams.imdbId = params.imdbId
+  if (params?.title) queryParams.title = params.title
+  if (params?.year != null) queryParams.year = String(params.year)
+  if (params?.mediaType) queryParams.mediaType = params.mediaType
+
+  const cacheKey = `${ident}:${JSON.stringify(queryParams)}`
+  const now = Date.now()
+
+  const cached = connectInfoCache.get(cacheKey)
+  if (cached && now - cached.timestamp < CONNECT_INFO_CACHE_TTL_MS) {
+    return cached.data
+  }
+
+  const existingPromise = connectInfoInFlight.get(cacheKey)
+  if (existingPromise) {
+    return existingPromise
+  }
+
+  const fetchPromise = (async () => {
+    try {
+      const { data } = await apiClient.get<PlexConnectInfoData>(
+        `/integrations/plex/connect-info/${ident}`,
+        { params: queryParams },
+      )
+      if (data && (data.ratingKey || data.rating_key)) {
+        connectInfoCache.set(cacheKey, { data, timestamp: Date.now() })
+        return data
+      }
+      return null
+    } catch {
+      return null
+    } finally {
+      connectInfoInFlight.delete(cacheKey)
+    }
+  })()
+
+  connectInfoInFlight.set(cacheKey, fetchPromise)
+  return fetchPromise
 }

@@ -87,7 +87,7 @@ export const CastCrew = ({ credits = [], className = '' }: CastCrewProps) => {
         <div className="flex items-center gap-3">
           {/* Segmented Category Filter */}
           {categories.length > 1 && (
-            <div className="flex items-center gap-1 rounded-xl bg-white/[0.04] p-0.5 overflow-x-auto scrollbar-none">
+            <div className="flex items-center gap-1 rounded-xl bg-[var(--dk-surface-glass)] p-0.5 overflow-x-auto scrollbar-none">
               {categories.map((cat) => {
                 const isActive = activeTab === cat.key
                 return (
@@ -101,7 +101,7 @@ export const CastCrew = ({ credits = [], className = '' }: CastCrewProps) => {
                     className={cn(
                       'rounded-lg px-2.5 py-1 text-xs font-medium transition-all whitespace-nowrap',
                       isActive
-                        ? 'bg-white/10 text-foreground shadow-sm'
+                        ? 'bg-[var(--dk-surface-base)] text-foreground shadow-sm'
                         : 'text-muted-foreground hover:text-foreground',
                     )}
                   >
@@ -119,7 +119,7 @@ export const CastCrew = ({ credits = [], className = '' }: CastCrewProps) => {
               type="button"
               disabled={!canScrollLeft}
               onClick={() => scrollBy(-260)}
-              className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/[0.05] hover:bg-white/[0.1] text-foreground disabled:opacity-25 transition-all"
+              className="flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-base)] text-foreground disabled:opacity-25 transition-all"
               aria-label="Scroll left"
             >
               <ChevronLeft className="h-4 w-4" />
@@ -128,7 +128,7 @@ export const CastCrew = ({ credits = [], className = '' }: CastCrewProps) => {
               type="button"
               disabled={!canScrollRight}
               onClick={() => scrollBy(260)}
-              className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/[0.05] hover:bg-white/[0.1] text-foreground disabled:opacity-25 transition-all"
+              className="flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-base)] text-foreground disabled:opacity-25 transition-all"
               aria-label="Scroll right"
             >
               <ChevronRight className="h-4 w-4" />

@@ -492,7 +492,7 @@ export const NodesTopologyCanvas = ({
                         className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium backdrop-blur-md transition-all shadow-md ${
                           isHovered
                             ? 'bg-destructive text-destructive-foreground cursor-pointer'
-                            : 'bg-[#181a20]/90 text-foreground/80 border border-white/[0.08]'
+                            : 'bg-[var(--dk-surface-overlay)] text-foreground border border-[var(--dk-separator)]'
                         }`}
                         onPointerDown={(e) => e.stopPropagation()}
                         onClick={(e) => {
@@ -617,7 +617,7 @@ export const NodesTopologyCanvas = ({
         {/* Empty State when no nodes exist */}
         {items.length === 0 && (
           <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center space-y-3 pointer-events-none pl-20 sm:pl-72 lg:pl-80">
-            <div className="h-14 w-14 rounded-2xl bg-white/[0.04] flex items-center justify-center text-muted-foreground">
+            <div className="h-14 w-14 rounded-2xl bg-[var(--dk-surface-field)] border border-[var(--dk-separator)] flex items-center justify-center text-muted-foreground">
               <Server size={28} />
             </div>
             <div className="space-y-1">
@@ -651,7 +651,7 @@ export const NodesTopologyCanvas = ({
           <button
             type="button"
             onClick={handleCancelConnecting}
-            className="flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-lg bg-white/10 hover:bg-white/20 text-foreground transition-colors"
+            className="flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-lg bg-[var(--dk-surface-field)] hover:bg-[var(--dk-surface-hover)] border border-[var(--dk-separator)] text-foreground transition-colors"
           >
             <X size={12} />
             <span>Cancel</span>
@@ -662,7 +662,7 @@ export const NodesTopologyCanvas = ({
 
       {/* Floating HUD in bottom-right corner for Canvas Navigation Controls */}
       <div
-        className="absolute bottom-6 right-6 z-20 pointer-events-auto flex items-center gap-1 p-1.5 rounded-2xl bg-black/60 backdrop-blur-2xl border border-white/[0.06] shadow-2xl"
+        className="absolute bottom-6 right-6 z-20 pointer-events-auto flex items-center gap-1 p-1.5 rounded-2xl bg-[var(--dk-surface-overlay)] backdrop-blur-2xl border border-[var(--dk-separator)] shadow-xl"
         onClick={(e) => e.stopPropagation()}
         onPointerDown={(e) => e.stopPropagation()}
       >
@@ -688,7 +688,7 @@ export const NodesTopologyCanvas = ({
           <Maximize2 size={13} />
         </DkButton>
 
-        <div className="h-3.5 w-px bg-white/10 mx-0.5" />
+        <div className="h-3.5 w-px bg-[var(--dk-separator)] mx-0.5" />
 
         <DkButton
           type="button"

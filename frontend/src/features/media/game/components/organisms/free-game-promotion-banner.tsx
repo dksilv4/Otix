@@ -128,10 +128,10 @@ const FreePromoCard = ({
               className={cn(
                 'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold',
                 isDlcOrPack
-                  ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
+                  ? 'bg-purple-500/15 text-purple-700 dark:text-purple-300 border border-purple-500/30'
                   : isNow
-                    ? 'bg-emerald-500/15 text-emerald-400'
-                    : 'bg-sky-500/15 text-sky-400',
+                    ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400'
+                    : 'bg-sky-500/15 text-sky-700 dark:text-sky-400',
               )}
             >
               <Gift className="h-3.5 w-3.5 shrink-0" />
@@ -143,14 +143,14 @@ const FreePromoCard = ({
             </span>
 
             {/* Store Badge */}
-            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/[0.06] text-white/90 text-xs font-medium">
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[var(--dk-surface-glass)] text-foreground text-xs font-medium">
               <StoreIcon store={currentPromo.store} className="h-3.5 w-3.5 shrink-0" />
               <span>{currentPromo.storeName}</span>
             </div>
 
             {/* Multiple Stores Toggle */}
             {promotions.length > 1 && (
-              <div className="flex items-center gap-1 bg-white/[0.04] p-0.5 rounded-xl">
+              <div className="flex items-center gap-1 bg-[var(--dk-surface-glass)] p-0.5 rounded-xl">
                 {promotions.map((p, idx) => (
                   <button
                     key={p.id}
@@ -159,7 +159,7 @@ const FreePromoCard = ({
                     className={cn(
                       'px-2.5 py-1 rounded-lg text-xs font-medium transition-all flex items-center gap-1',
                       selectedIndex === idx
-                        ? 'bg-white/10 text-foreground font-semibold shadow-sm'
+                        ? 'bg-[var(--dk-surface-base)] text-foreground font-semibold shadow-sm'
                         : 'text-muted-foreground hover:text-foreground',
                     )}
                   >
@@ -173,7 +173,7 @@ const FreePromoCard = ({
 
           {/* Heading + Price */}
           <div className="flex flex-wrap items-baseline gap-2.5">
-            <h3 className="text-lg sm:text-xl font-bold tracking-tight text-white flex items-center gap-2">
+            <h3 className="text-lg sm:text-xl font-bold tracking-tight text-foreground flex items-center gap-2">
               <span>
                 {isNow
                   ? (isDlcOrPack && currentPromo.title
@@ -183,15 +183,15 @@ const FreePromoCard = ({
                     ? `Free ${typeLabel} coming soon: ${currentPromo.title}`
                     : 'Free giveaway coming soon!')}
               </span>
-              <Sparkles className="h-4 w-4 text-amber-400 shrink-0" />
+              <Sparkles className="h-4 w-4 text-amber-500 dark:text-amber-400 shrink-0" />
             </h3>
 
             {isNow && currentPromo.originalPrice && (
               <div className="flex items-center gap-2 text-sm font-semibold">
-                <span className="line-through text-white/35">
+                <span className="line-through text-muted-foreground/60">
                   {currentPromo.originalPrice}
                 </span>
-                <span className="text-emerald-400 font-bold">
+                <span className="text-emerald-600 dark:text-emerald-400 font-bold">
                   100% OFF · FREE
                 </span>
               </div>
@@ -205,18 +205,18 @@ const FreePromoCard = ({
                 className={cn(
                   'inline-flex items-center gap-1.5 font-medium px-2.5 py-1 rounded-xl',
                   ending
-                    ? 'bg-amber-500/15 text-amber-400'
-                    : 'bg-white/[0.05] text-white/80',
+                    ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400'
+                    : 'bg-[var(--dk-surface-glass)] text-muted-foreground',
                 )}
               >
                 {ending ? (
-                  <AlertCircle className="h-3.5 w-3.5 text-amber-400 shrink-0" />
+                  <AlertCircle className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
                 ) : (
-                  <Timer className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+                  <Timer className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
                 )}
                 <span>{countdown}</span>
                 {currentPromo.endDate && (
-                  <span className="text-white/40 font-normal">
+                  <span className="text-muted-foreground/70 font-normal">
                     (Ends {formatDate(currentPromo.endDate)})
                   </span>
                 )}
@@ -224,7 +224,7 @@ const FreePromoCard = ({
             )}
 
             {!isNow && currentPromo.startDate && (
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-sky-500/15 text-sky-400 font-medium">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-sky-500/15 text-sky-700 dark:text-sky-400 font-medium">
                 <Clock className="h-3.5 w-3.5 shrink-0" />
                 <span>Starts {formatDate(currentPromo.startDate)}</span>
               </span>
@@ -238,7 +238,7 @@ const FreePromoCard = ({
             <button
               type="button"
               onClick={() => handleClaim(currentPromo)}
-              className="inline-flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-xs sm:text-sm font-semibold transition-all active:scale-[0.98] hover:scale-[1.02] bg-emerald-500 hover:bg-emerald-400 text-black shadow-md shadow-emerald-500/20"
+              className="inline-flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-xs sm:text-sm font-semibold transition-all active:scale-[0.98] hover:scale-[1.02] bg-primary hover:bg-primary/90 text-primary-foreground shadow-md"
             >
               <Gift className="h-4 w-4 shrink-0" />
               <span>
@@ -254,13 +254,13 @@ const FreePromoCard = ({
             <button
               type="button"
               onClick={() => handleCopyLink(currentPromo)}
-              className="inline-flex items-center justify-center gap-2 rounded-xl px-3.5 py-2 text-xs font-medium text-white/80 hover:text-white bg-white/[0.06] hover:bg-white/[0.10] transition-colors"
+              className="inline-flex items-center justify-center gap-2 rounded-xl px-3.5 py-2 text-xs font-medium text-muted-foreground hover:text-foreground bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-base)] transition-colors"
               title="Copy store link to clipboard"
             >
               {copied ? (
                 <>
-                  <Check className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
-                  <span className="text-emerald-400 font-medium">Link Copied</span>
+                  <Check className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                  <span className="text-emerald-600 dark:text-emerald-400 font-medium">Link Copied</span>
                 </>
               ) : (
                 <>

@@ -49,8 +49,9 @@ class GoogleLinkInitiateView(GenericAPIView):
     """POST /oauth/google — start the google (youtube-identity) link flow."""
 
     def post(self, request, *args, **kwargs):
+        source = request.data.get("source") if request.data else None
         try:
-            auth_url, state = oauth_service.build_google_link_url(request.user.pk)
+            auth_url, state = oauth_service.build_google_link_url(request.user.pk, source=source)
         except OAuthFlowError as exc:
             return Response({"detail": exc.detail}, status=exc.status_code)
         return Response({"auth_url": auth_url, "state": state}, status=status.HTTP_200_OK)
@@ -68,7 +69,7 @@ class GoogleLinkCallbackView(GenericAPIView):
         code = serializer.validated_data["code"]
         state = serializer.validated_data["state"]
         try:
-            oauth_service.link_google_to_user(request.user, code, state)
+            source = oauth_service.link_google_to_user(request.user, code, state)
         except OAuthFlowError as exc:
             return Response({"detail": exc.detail}, status=exc.status_code)
         except Exception:  # noqa: BLE001 - surface a stable detail on unexpected failures
@@ -77,9 +78,10 @@ class GoogleLinkCallbackView(GenericAPIView):
                 {"detail": "Failed to link Google account. Please try again."},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
-        return Response(
-            {"message": "Google account linked successfully"}, status=status.HTTP_200_OK
-        )
+        resp_data = {"message": "Google account linked successfully"}
+        if source:
+            resp_data["source"] = source
+        return Response(resp_data, status=status.HTTP_200_OK)
 
 
 class GoogleLinkTokenView(GenericAPIView):
@@ -112,8 +114,9 @@ class GoogleDriveLinkInitiateView(GenericAPIView):
     """POST /oauth/google-drive — start the google-drive (drive.file) link flow."""
 
     def post(self, request, *args, **kwargs):
+        source = request.data.get("source") if request.data else None
         try:
-            auth_url, state = oauth_service.build_google_drive_link_url(request.user.pk)
+            auth_url, state = oauth_service.build_google_drive_link_url(request.user.pk, source=source)
         except OAuthFlowError as exc:
             return Response({"detail": exc.detail}, status=exc.status_code)
         return Response({"auth_url": auth_url, "state": state}, status=status.HTTP_200_OK)
@@ -131,7 +134,7 @@ class GoogleDriveLinkCallbackView(GenericAPIView):
         code = serializer.validated_data["code"]
         state = serializer.validated_data["state"]
         try:
-            oauth_service.link_google_drive_to_user(request.user, code, state)
+            source = oauth_service.link_google_drive_to_user(request.user, code, state)
         except OAuthFlowError as exc:
             return Response({"detail": exc.detail}, status=exc.status_code)
         except Exception:  # noqa: BLE001 - surface a stable detail on unexpected failures
@@ -140,7 +143,10 @@ class GoogleDriveLinkCallbackView(GenericAPIView):
                 {"detail": "Failed to link Google Drive. Please try again."},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
-        return Response({"message": "Google Drive linked successfully"}, status=status.HTTP_200_OK)
+        resp_data = {"message": "Google Drive linked successfully"}
+        if source:
+            resp_data["source"] = source
+        return Response(resp_data, status=status.HTTP_200_OK)
 
 
 class GoogleDriveDisconnectView(GenericAPIView):
@@ -165,8 +171,9 @@ class PlexLinkInitiateView(GenericAPIView):
             return Response(
                 {"detail": "Plex account already linked"}, status=status.HTTP_400_BAD_REQUEST
             )
+        source = request.data.get("source") if request.data else None
         try:
-            auth_url, state, pin_id = oauth_service.build_plex_link_url(request.user.pk)
+            auth_url, state, pin_id = oauth_service.build_plex_link_url(request.user.pk, source=source)
         except OAuthFlowError as exc:
             return Response({"detail": exc.detail}, status=exc.status_code)
         return Response(
@@ -187,7 +194,7 @@ class PlexLinkCallbackView(GenericAPIView):
         state = serializer.validated_data["state"]
         pin_id = serializer.validated_data.get("pin_id") or None
         try:
-            oauth_service.link_plex_to_user(request.user, state, pin_id)
+            source = oauth_service.link_plex_to_user(request.user, state, pin_id)
         except OAuthFlowError as exc:
             return Response({"detail": exc.detail}, status=exc.status_code)
         except Exception:  # noqa: BLE001 - surface a stable detail on unexpected failures
@@ -196,7 +203,10 @@ class PlexLinkCallbackView(GenericAPIView):
                 {"detail": "Failed to link Plex account. Please try again."},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
-        return Response({"message": "Plex account linked successfully"}, status=status.HTTP_200_OK)
+        resp_data = {"message": "Plex account linked successfully"}
+        if source:
+            resp_data["source"] = source
+        return Response(resp_data, status=status.HTTP_200_OK)
 
 
 class PlexDisconnectView(GenericAPIView):
@@ -218,8 +228,9 @@ class PlexLoginInitiateView(GenericAPIView):
     permission_classes = (permissions.AllowAny,)
 
     def post(self, request, *args, **kwargs):
+        source = request.data.get("source") if request.data else None
         try:
-            auth_url, state, pin_id = oauth_service.build_plex_login_url()
+            auth_url, state, pin_id = oauth_service.build_plex_login_url(source=source)
         except OAuthFlowError as exc:
             return Response({"detail": exc.detail}, status=exc.status_code)
         except Exception:  # noqa: BLE001 - surface a stable detail on unexpected failures
@@ -257,9 +268,11 @@ class PlexLoginCallbackView(GenericAPIView):
                 {"detail": "Failed to sign in with Plex. Please try again."},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
-        response = Response(
-            {"access_token": access, "token_type": "bearer"}, status=status.HTTP_200_OK
-        )
+        resp_data = {"access_token": access, "token_type": "bearer"}
+        oauth_source = getattr(user, "_oauth_source", None)
+        if oauth_source:
+            resp_data["source"] = oauth_source
+        response = Response(resp_data, status=status.HTTP_200_OK)
         set_refresh_cookie(response, refresh)
         return response
 
@@ -270,8 +283,9 @@ class GoogleLoginInitiateView(GenericAPIView):
     permission_classes = (permissions.AllowAny,)
 
     def post(self, request, *args, **kwargs):
+        source = request.data.get("source") if request.data else None
         try:
-            auth_url, state = oauth_service.build_google_login_url()
+            auth_url, state = oauth_service.build_google_login_url(source=source)
         except OAuthFlowError as exc:
             return Response({"detail": exc.detail}, status=exc.status_code)
         return Response({"auth_url": auth_url, "state": state}, status=status.HTTP_200_OK)
@@ -299,9 +313,11 @@ class GoogleLoginCallbackView(GenericAPIView):
                 {"detail": "Failed to sign in with Google. Please try again."},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
-        response = Response(
-            {"access_token": access, "token_type": "bearer"}, status=status.HTTP_200_OK
-        )
+        resp_data = {"access_token": access, "token_type": "bearer"}
+        oauth_source = getattr(user, "_oauth_source", None)
+        if oauth_source:
+            resp_data["source"] = oauth_source
+        response = Response(resp_data, status=status.HTTP_200_OK)
         set_refresh_cookie(response, refresh)
         return response
 
@@ -385,9 +401,11 @@ class SteamLoginCallbackView(GenericAPIView):
             access, refresh = session_service.begin_session(user, request)
         except OAuthFlowError as exc:
             return Response({"detail": exc.detail}, status=exc.status_code)
-        response = Response(
-            {"access_token": access, "token_type": "bearer"}, status=status.HTTP_200_OK
-        )
+        resp_data = {"access_token": access, "token_type": "bearer"}
+        oauth_source = getattr(user, "_oauth_source", None)
+        if oauth_source:
+            resp_data["source"] = oauth_source
+        response = Response(resp_data, status=status.HTTP_200_OK)
         set_refresh_cookie(response, refresh)
         return response
 
@@ -400,6 +418,7 @@ class TMDbLinkInitiateView(GenericAPIView):
             return Response(
                 {"detail": "TMDb account already linked"}, status=status.HTTP_400_BAD_REQUEST
             )
+        source = request.data.get("source") if request.data else None
         frontend_base = oauth_service.frontend_base()
         redirect_path = reverse("accounts:oauth-tmdb-redirect")
         redirect_url = (
@@ -408,7 +427,7 @@ class TMDbLinkInitiateView(GenericAPIView):
             else request.build_absolute_uri(redirect_path)
         )
         try:
-            auth_url, state = oauth_service.build_tmdb_link_url(request.user.pk, redirect_url)
+            auth_url, state = oauth_service.build_tmdb_link_url(request.user.pk, redirect_url, source=source)
         except OAuthFlowError as exc:
             return Response({"detail": exc.detail}, status=exc.status_code)
         return Response({"auth_url": auth_url, "state": state}, status=status.HTTP_200_OK)
@@ -419,10 +438,12 @@ class TMDbLinkRedirectView(GenericAPIView):
 
     permission_classes = (permissions.AllowAny,)
 
-    def _redirect(self, status_value: str, message: str | None = None) -> HttpResponseRedirect:
+    def _redirect(self, status_value: str, message: str | None = None, source: str | None = None) -> HttpResponseRedirect:
         query = {"tmdb_link": status_value}
         if message:
             query["message"] = message
+        if source:
+            query["source"] = source
         target = f"{oauth_service.frontend_base()}/auth/callback/tmdb?{urllib.parse.urlencode(query)}"
         return HttpResponseRedirect(target, status=303)
 
@@ -430,18 +451,20 @@ class TMDbLinkRedirectView(GenericAPIView):
         approved = request.query_params.get("approved")
         state = request.query_params.get("state") or ""
         request_token = request.query_params.get("request_token")
+        source = request.query_params.get("source")
         if approved == "false":
-            return self._redirect("error", "TMDb authorization was cancelled.")
+            return self._redirect("error", "TMDb authorization was cancelled.", source=source)
         if not state and not request_token:
             return self._redirect(
-                "error", "TMDb did not return the expected authorization details."
+                "error", "TMDb did not return the expected authorization details.", source=source
             )
         try:
-            oauth_service.link_tmdb_state_to_user(state, request_token)
+            user = oauth_service.link_tmdb_state_to_user(state, request_token)
+            source = getattr(user, "_oauth_source", None) or source
         except Exception:  # noqa: BLE001 - the hop always bounces back to the frontend
             oauth_service.logger.exception("tmdb redirect link failed")
-            return self._redirect("error", "Failed to link TMDb account. Please try again.")
-        return self._redirect("success")
+            return self._redirect("error", "Failed to link TMDb account. Please try again.", source=source)
+        return self._redirect("success", source=source)
 
 
 class TMDbLinkCallbackView(GenericAPIView):
@@ -455,11 +478,14 @@ class TMDbLinkCallbackView(GenericAPIView):
         serializer.is_valid(raise_exception=True)
         state = serializer.validated_data["state"]
         request_token = serializer.validated_data["request_token"]
+        source = None
         try:
             if request.user.is_authenticated:
                 oauth_service.link_tmdb_to_user(request.user, state, request_token)
+                source = getattr(request.user, "_oauth_source", None)
             else:
-                oauth_service.link_tmdb_state_to_user(state, request_token)
+                user = oauth_service.link_tmdb_state_to_user(state, request_token)
+                source = getattr(user, "_oauth_source", None)
         except OAuthFlowError as exc:
             return Response({"detail": exc.detail}, status=exc.status_code)
         except Exception:  # noqa: BLE001 - surface a stable detail on unexpected failures
@@ -468,7 +494,10 @@ class TMDbLinkCallbackView(GenericAPIView):
                 {"detail": "Failed to link TMDb account. Please try again."},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
-        return Response({"message": "TMDb account linked successfully"}, status=status.HTTP_200_OK)
+        resp_data = {"message": "TMDb account linked successfully"}
+        if source:
+            resp_data["source"] = source
+        return Response(resp_data, status=status.HTTP_200_OK)
 
 
 class TMDbDisconnectView(GenericAPIView):
@@ -490,8 +519,9 @@ class TMDbLoginInitiateView(GenericAPIView):
     permission_classes = (permissions.AllowAny,)
 
     def post(self, request, *args, **kwargs):
+        source = request.data.get("source") if request.data else None
         try:
-            auth_url, state = oauth_service.build_tmdb_login_url()
+            auth_url, state = oauth_service.build_tmdb_login_url(source=source)
         except OAuthFlowError as exc:
             return Response({"detail": exc.detail}, status=exc.status_code)
         except Exception:  # noqa: BLE001 - surface a stable detail on unexpected failures
@@ -527,9 +557,11 @@ class TMDbLoginCallbackView(GenericAPIView):
                 {"detail": "Failed to sign in with TMDb. Please try again."},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
-        response = Response(
-            {"access_token": access, "token_type": "bearer"}, status=status.HTTP_200_OK
-        )
+        resp_data = {"access_token": access, "token_type": "bearer"}
+        oauth_source = getattr(user, "_oauth_source", None)
+        if oauth_source:
+            resp_data["source"] = oauth_source
+        response = Response(resp_data, status=status.HTTP_200_OK)
         set_refresh_cookie(response, refresh)
         return response
 
