@@ -19,7 +19,7 @@ describe('useAppUpdater', () => {
 
     expect(result.current.isDesktop).toBe(false)
     expect(result.current.status).toBe('idle')
-    expect(result.current.currentVersion).toBe('0.1.22')
+    expect(result.current.currentVersion).toBe('0.1.23')
     expect(result.current.isChecking).toBe(false)
     expect(result.current.isDownloading).toBe(false)
     expect(result.current.isDownloaded).toBe(false)

@@ -1,10 +1,12 @@
 import { app, Tray, Menu, BrowserWindow, nativeImage } from 'electron';
 import * as path from 'path';
+import * as fs from 'fs';
 
 let tray: Tray | null = null;
 
 function loadIcon(): Electron.NativeImage {
-  const iconPath = path.join(__dirname, '..', 'assets', 'tray-icon.png');
+  const p1 = path.join(process.resourcesPath, 'assets', 'tray-icon.png');
+  const iconPath = fs.existsSync(p1) ? p1 : path.join(__dirname, '..', 'assets', 'tray-icon.png');
   const img = nativeImage.createFromPath(iconPath);
   if (process.platform === 'darwin') {
     img.setTemplateImage(true);

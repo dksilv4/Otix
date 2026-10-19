@@ -1,9 +1,10 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, beforeEach } from 'vitest'
 import {
   formatBytes,
   formatSpeed,
   getUpdateStatusLabel,
   parseReleaseNotes,
+  formatUpdateError,
   readAutoCheckPreference,
   saveAutoCheckPreference,
   readAutoDownloadPreference,
@@ -97,6 +98,30 @@ describe('updater-utils', () => {
       expect(readAutoDownloadPreference()).toBe(false)
       saveAutoDownloadPreference(true)
       expect(readAutoDownloadPreference()).toBe(true)
+    })
+  })
+
+  describe('formatUpdateError', () => {
+    it('returns null for empty or null error', () => {
+      expect(formatUpdateError(null)).toBeNull()
+      expect(formatUpdateError(undefined)).toBeNull()
+      expect(formatUpdateError('')).toBeNull()
+    })
+
+    it('sanitizes 404 releases.atom private repo error', () => {
+      const raw = `404 "method: GET url: https://github.com/dksilv4/Otix/releases.atom\n\nPlease double check that your authentication token is correct. Due to security reasons, actual status maybe not reported, but 404.\n"`
+      expect(formatUpdateError(raw)).toBe(
+        'Update check unavailable: GitHub repository is private or requires authentication.'
+      )
+    })
+
+    it('sanitizes raw HTTP header dumps and cleans message', () => {
+      const raw = `500 Internal Server Error\nHeaders: { ... }`
+      expect(formatUpdateError(raw)).toBe('Internal Server Error')
+    })
+
+    it('passes through ordinary friendly error messages', () => {
+      expect(formatUpdateError('Network connection lost')).toBe('Network connection lost')
     })
   })
 })

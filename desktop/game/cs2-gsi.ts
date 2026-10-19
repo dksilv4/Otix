@@ -87,11 +87,42 @@ export class Cs2GsiManager extends EventEmitter {
   private createServerInstance(targetPort: number): Promise<http.Server | null> {
     return new Promise((resolve) => {
       const srv = http.createServer((req, res) => {
+        // Universal CORS headers so web frontend (browser) can query live state without cross-origin blocks
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+        res.setHeader('Access-Control-Allow-Headers', '*');
+
+        if (req.method === 'OPTIONS') {
+          res.writeHead(204);
+          res.end();
+          return;
+        }
+
+        if (req.method === 'GET') {
+          const urlPath = req.url?.split('?')[0];
+          if (
+            urlPath === '/api/cs2-gsi/state' ||
+            urlPath === '/api/cs2-gsi' ||
+            urlPath === '/state' ||
+            urlPath === '/'
+          ) {
+            res.writeHead(200, {
+              'Content-Type': 'application/json',
+              'Connection': 'close',
+            });
+            res.end(JSON.stringify(this.currentState));
+            return;
+          }
+          res.writeHead(404, { 'Content-Type': 'text/plain', 'Connection': 'close' });
+          res.end('Not Found');
+          return;
+        }
+
         if (req.method === 'POST') {
           let body = '';
           req.on('data', (chunk) => {
             body += chunk;
-            if (body.length > 1e6) {
+            if (body.length > 2e6) {
               req.destroy();
             }
           });
@@ -315,11 +346,17 @@ export class Cs2GsiManager extends EventEmitter {
       // Check standard Windows drives
       const standardDrives = ['C:', 'D:', 'E:', 'F:', 'G:'];
       for (const drive of standardDrives) {
-        candidates.push(
-          path.join(drive, 'Program Files (x86)', 'Steam', 'steamapps', 'common', 'Counter-Strike Global Offensive', 'game', 'csgo', 'cfg'),
-          path.join(drive, 'Program Files', 'Steam', 'steamapps', 'common', 'Counter-Strike Global Offensive', 'game', 'csgo', 'cfg'),
-          path.join(drive, 'SteamLibrary', 'steamapps', 'common', 'Counter-Strike Global Offensive', 'game', 'csgo', 'cfg')
-        );
+        const roots = [
+          path.join(drive, 'Program Files (x86)', 'Steam'),
+          path.join(drive, 'Program Files', 'Steam'),
+          path.join(drive, 'SteamLibrary'),
+        ];
+        for (const root of roots) {
+          candidates.push(
+            path.join(root, 'steamapps', 'common', 'Counter-Strike Global Offensive', 'game', 'csgo', 'cfg'),
+            path.join(root, 'steamapps', 'common', 'Counter-Strike Global Offensive', 'csgo', 'cfg')
+          );
+        }
       }
 
       // Check Steam's libraryfolders.vdf if Steam install root exists
@@ -337,7 +374,8 @@ export class Cs2GsiManager extends EventEmitter {
               for (const m of matches) {
                 const sub = m.replace(/"path"\s+"/, '').replace(/"$/, '').replace(/\\\\/g, '\\');
                 candidates.push(
-                  path.join(sub, 'steamapps', 'common', 'Counter-Strike Global Offensive', 'game', 'csgo', 'cfg')
+                  path.join(sub, 'steamapps', 'common', 'Counter-Strike Global Offensive', 'game', 'csgo', 'cfg'),
+                  path.join(sub, 'steamapps', 'common', 'Counter-Strike Global Offensive', 'csgo', 'cfg')
                 );
               }
             }
@@ -345,22 +383,6 @@ export class Cs2GsiManager extends EventEmitter {
             // Ignore VDF parse failures
           }
         }
-      }
-
-      // Find first existing cfg directory
-      let targetCfgDir: string | null = null;
-      for (const cand of candidates) {
-        if (fs.existsSync(cand)) {
-          targetCfgDir = cand;
-          break;
-        }
-      }
-
-      if (!targetCfgDir) {
-        return {
-          success: false,
-          message: 'Counter-Strike 2 installation directory could not be located automatically.',
-        };
       }
 
       const cfgContent = `"Otix CS2 Integration"
@@ -383,13 +405,32 @@ export class Cs2GsiManager extends EventEmitter {
 }
 `;
 
-      const targetFile = path.join(targetCfgDir, 'gamestate_integration_otix.cfg');
-      fs.writeFileSync(targetFile, cfgContent, 'utf-8');
+      const writtenPaths: string[] = [];
+      const seen = new Set<string>();
+      for (const cand of candidates) {
+        if (!seen.has(cand) && fs.existsSync(cand)) {
+          seen.add(cand);
+          try {
+            const targetFile = path.join(cand, 'gamestate_integration_otix.cfg');
+            fs.writeFileSync(targetFile, cfgContent, 'utf-8');
+            writtenPaths.push(targetFile);
+          } catch {
+            // Ignore single folder write error
+          }
+        }
+      }
+
+      if (writtenPaths.length === 0) {
+        return {
+          success: false,
+          message: 'Counter-Strike installation directory could not be located automatically.',
+        };
+      }
 
       return {
         success: true,
-        path: targetFile,
-        message: 'CS2 Game State Integration configuration written successfully.',
+        path: writtenPaths[0],
+        message: `CS Game State Integration configuration written successfully (${writtenPaths.length} location(s)).`,
       };
     } catch (err: any) {
       return {

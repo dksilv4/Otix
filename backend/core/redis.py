@@ -20,6 +20,7 @@ _sync_client_url: str | None = None
 _async_clients: weakref.WeakKeyDictionary[asyncio.AbstractEventLoop, dict[str, Any]] = (
     weakref.WeakKeyDictionary()
 )
+_fallback_async_clients: dict[str, Any] = {}
 
 
 def get_client() -> Any:
@@ -55,7 +56,11 @@ def get_async_client() -> Any:
     try:
         loop = asyncio.get_running_loop()
     except RuntimeError:
-        return Redis.from_url(url)
+        if url in _fallback_async_clients:
+            return _fallback_async_clients[url]
+        client = Redis.from_url(url)
+        _fallback_async_clients[url] = client
+        return client
 
     loop_clients = _async_clients.get(loop)
     if loop_clients is not None and url in loop_clients:
@@ -80,4 +85,5 @@ def close_redis_clients() -> None:
         _sync_client = None
         _sync_client_url = None
     _async_clients.clear()
+    _fallback_async_clients.clear()
 

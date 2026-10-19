@@ -197,5 +197,69 @@ describe('CS2 GSI Manager', () => {
 
       expect(response.statusCode).toBe(400);
     });
+
+    it('handles OPTIONS preflight requests with CORS headers', async () => {
+      const response = await new Promise<{ statusCode: number; headers: http.IncomingHttpHeaders }>((resolve, reject) => {
+        const req = http.request(
+          {
+            hostname: '127.0.0.1',
+            port: testPort,
+            path: CS2_GSI_PATH + '/state',
+            method: 'OPTIONS',
+          },
+          (res) => {
+            res.resume();
+            res.on('end', () => {
+              resolve({ statusCode: res.statusCode || 0, headers: res.headers });
+            });
+          }
+        );
+        req.on('error', reject);
+        req.end();
+      });
+
+      expect(response.statusCode).toBe(204);
+      expect(response.headers['access-control-allow-origin']).toBe('*');
+      expect(response.headers['access-control-allow-methods']).toContain('GET');
+    });
+
+    it('returns live state JSON on GET /api/cs2-gsi/state with CORS headers', async () => {
+      // First, set up active state
+      manager.handlePayload({
+        map: { name: 'de_mirage', mode: 'competitive', round: 5, team_ct: { score: 3 }, team_t: { score: 2 } },
+        player: { name: 'DK', team: 'CT', state: { health: 100, armor: 100 } },
+      });
+
+      const response = await new Promise<{ statusCode: number; headers: http.IncomingHttpHeaders; body: any }>((resolve, reject) => {
+        const req = http.request(
+          {
+            hostname: '127.0.0.1',
+            port: testPort,
+            path: CS2_GSI_PATH + '/state',
+            method: 'GET',
+          },
+          (res) => {
+            let body = '';
+            res.on('data', (c) => (body += c));
+            res.on('end', () => {
+              resolve({
+                statusCode: res.statusCode || 0,
+                headers: res.headers,
+                body: JSON.parse(body),
+              });
+            });
+          }
+        );
+        req.on('error', reject);
+        req.end();
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.headers['access-control-allow-origin']).toBe('*');
+      expect(response.body?.mapName).toBe('Mirage');
+      expect(response.body?.scoreCt).toBe(3);
+      expect(response.body?.scoreT).toBe(2);
+    });
   });
 });
+

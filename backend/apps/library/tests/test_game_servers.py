@@ -888,3 +888,71 @@ class NonExistentNodeApiTests(TestCase):
         self.assertEqual(self.client.delete(f"/api/v1/library/servers/{node.id}").status_code, 404)
         self.assertEqual(self.client.post(f"/api/v1/library/servers/{node.id}/ping").status_code, 404)
 
+    def test_desktop_node_heartbeat_registers_and_updates(self):
+        # 1. Desktop heartbeat registers desktop node
+        payload = {
+            "name": "Gaming PC (DESKTOP-ABC)",
+            "device_id": "win-device-123",
+            "is_online": True,
+            "total_files": 15,
+            "storage_free_bytes": 500000000000,
+            "storage_total_bytes": 1000000000000,
+        }
+        res = self.client.post("/api/v1/library/nodes/desktop-heartbeat", payload, format="json")
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertEqual(data["name"], "Gaming PC (DESKTOP-ABC)")
+        self.assertTrue(data["is_local_desktop"])
+        self.assertTrue(data["is_online"])
+        self.assertEqual(data["total_files"], 15)
+        self.assertEqual(data["storage_free_bytes"], 500000000000)
+
+        # Verify DB entry
+        node = UserGameServer.objects.get(user=self.user, is_local_desktop=True)
+        self.assertEqual(node.local_url, "otix://desktop/win-device-123")
+        self.assertTrue(node.is_online)
+
+        # 2. GET /nodes shows this node
+        list_res = self.client.get("/api/v1/library/nodes")
+        self.assertEqual(list_res.status_code, 200)
+        nodes = list_res.json()
+        self.assertEqual(len(nodes), 1)
+        self.assertEqual(nodes[0]["id"], node.id)
+        self.assertTrue(nodes[0]["is_local_desktop"])
+        self.assertTrue(nodes[0]["is_online"])
+
+        # 3. Subsequent heartbeat updates same node
+        update_payload = {
+            "name": "Gaming PC",
+            "device_id": "win-device-123",
+            "is_online": True,
+            "total_files": 16,
+        }
+        res2 = self.client.post("/api/v1/library/nodes/desktop-heartbeat", update_payload, format="json")
+        self.assertEqual(res2.status_code, 200)
+        self.assertEqual(UserGameServer.objects.filter(user=self.user, is_local_desktop=True).count(), 1)
+        node.refresh_from_db()
+        self.assertEqual(node.name, "Gaming PC")
+        self.assertEqual(node.total_files, 16)
+
+        # 4. App quit / offline heartbeat sets is_online=False, node still appears in list as offline
+        offline_payload = {
+            "device_id": "win-device-123",
+            "is_online": False,
+        }
+        res_off = self.client.post("/api/v1/library/nodes/desktop-heartbeat", offline_payload, format="json")
+        self.assertEqual(res_off.status_code, 200)
+        self.assertFalse(res_off.json()["is_online"])
+
+        # Verify it still shows in GET /nodes but as offline
+        list_res_off = self.client.get("/api/v1/library/nodes")
+        self.assertEqual(list_res_off.status_code, 200)
+        self.assertEqual(len(list_res_off.json()), 1)
+        self.assertFalse(list_res_off.json()[0]["is_online"])
+
+        # 5. Ping on desktop node verifies freshness without HTTP errors
+        ping_res = self.client.post(f"/api/v1/library/nodes/{node.id}/ping")
+        self.assertEqual(ping_res.status_code, 200)
+        self.assertFalse(ping_res.json()["online"])  # offline
+
+

@@ -12,11 +12,12 @@ export const IS_TEST = import.meta.env.TEST
 
 function resolveApiBaseUrl(): string {
   if (import.meta.env.VITE_API_BASE_URL) return import.meta.env.VITE_API_BASE_URL
-  // Desktop talks to the API directly. The browser must stay same-origin
-  // (`/api/v1`) so Vite / the reverse proxy handles it. Hitting
-  // localhost:8000 from the page bypasses the proxy and fails with
-  // TypeError: Failed to fetch (IPv6 localhost, CORS, unpublished port).
-  if (isDesktop()) return 'http://127.0.0.1:8000/api/v1'
+  // Desktop talks to the API directly.
+  // In development, desktop connects to the local dev backend.
+  // In production (packaged release app), desktop connects to the production API.
+  if (isDesktop()) {
+    return import.meta.env.DEV ? 'http://127.0.0.1:8000/api/v1' : 'https://otix.app/api/v1'
+  }
   return '/api/v1'
 }
 

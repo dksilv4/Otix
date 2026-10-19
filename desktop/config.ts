@@ -1,6 +1,13 @@
 // ponytail: single source of truth for desktop API configuration
 export function getApiBaseUrl(): string {
-  return process.env.OTIX_BACKEND_URL || 'http://127.0.0.1:8000'
+  if (process.env.OTIX_BACKEND_URL) return process.env.OTIX_BACKEND_URL;
+  try {
+    const { app } = require('electron');
+    if (app && app.isPackaged) {
+      return 'https://otix.app';
+    }
+  } catch {}
+  return process.env.NODE_ENV === 'production' ? 'https://otix.app' : 'http://127.0.0.1:8000';
 }
 
 export function getApiUrl(path: string): string {

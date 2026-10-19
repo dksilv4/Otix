@@ -2,6 +2,7 @@
 
 import os
 import time
+from datetime import timedelta
 from pathlib import Path
 from urllib.parse import urlparse, urlunparse
 
@@ -227,6 +228,15 @@ def apply_node_heartbeat(payload: dict) -> dict:
         node["claimed_by"] = getattr(server.user, "username", node.get("claimed_by", "admin"))
         node["auth_token"] = server.auth_token or token
         node["server_name"] = server.name
+
+        running_game = payload.get("running_game")
+        if running_game and isinstance(running_game, dict) and (running_game.get("title") or running_game.get("id")):
+            cache_key = f"user_running_game:{server.user_id}"
+            cache.set(cache_key, {
+                "running": True,
+                "game": running_game,
+                "games": [running_game],
+            }, timeout=90)
     return node
 
 
@@ -749,6 +759,14 @@ def _mark_offline(server: UserGameServer, error: str) -> dict:
 
 def ping_node_sync(server: UserNode) -> dict:
     """Probe node /api/v1/status and update node model state."""
+    if getattr(server, "is_local_desktop", False):
+        cutoff = timezone.now() - timedelta(seconds=90)
+        is_online = bool(server.is_online and server.last_seen_at and server.last_seen_at >= cutoff)
+        if server.is_online != is_online:
+            server.is_online = is_online
+            server.save(update_fields=["is_online", "updated_at"])
+        return {"online": is_online, "latency_ms": 0}
+
     targets: list[str] = []
     if getattr(server, "is_local", False):
         if server.local_url:
@@ -1078,6 +1096,8 @@ def node_get_sessions(
 
 def node_get_running_games(server: UserGameServer) -> tuple[int, dict | list]:
     """Fetch currently running game(s) from the node."""
+    if getattr(server, "is_local_desktop", False):
+        return 200, {"running": False, "game": None, "games": []}
     return usenet_proxy_request(server, "GET", "/api/v1/games/running", timeout=4.0)
 
 

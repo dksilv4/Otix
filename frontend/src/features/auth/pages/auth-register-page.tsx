@@ -12,7 +12,6 @@ import { PlexOAuthButton } from '@auth/components/molecules/auth-oauth-plex-butt
 import { TmdbOAuthButton } from '@auth/components/molecules/auth-oauth-tmdb-button'
 import { SteamOAuthButton } from '@auth/components/molecules/auth-oauth-steam-button'
 import { Logo } from '@ui/atoms/logo'
-import { AuthBackButton } from '@auth/components/molecules/auth-back-button'
 
 export const RegisterPage = () => {
   const navigate = useNavigate()
@@ -38,8 +37,6 @@ export const RegisterPage = () => {
       </Helmet>
 
       <AuthBackground />
-
-      <AuthBackButton />
 
       <AuthCard>
         <div className="mb-6 flex justify-center">

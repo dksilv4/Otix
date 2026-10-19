@@ -10,6 +10,7 @@ from django.urls import path, register_converter
 
 from apps.library.converters import SignedIntConverter
 from apps.library.views import (
+    DesktopNodeHeartbeatView,
     EpicLibraryView,
     EpicStatusView,
     EpicUnmatchedView,
@@ -134,6 +135,16 @@ urlpatterns = [
     path("game-sessions", UserGameSessionsView.as_view(), name="library-user-game-sessions"),
     path("game-running", UserGameRunningView.as_view(), name="library-user-game-running"),
     path("nodes", GameServerListCreateView.as_view(), name="library-nodes"),
+    path(
+        "nodes/desktop-heartbeat",
+        DesktopNodeHeartbeatView.as_view(),
+        name="library-nodes-desktop-heartbeat",
+    ),
+    path(
+        "servers/desktop-heartbeat",
+        DesktopNodeHeartbeatView.as_view(),
+        name="library-servers-desktop-heartbeat",
+    ),
     path("nodes/claim", GameServerClaimView.as_view(), name="library-nodes-claim"),
     path(
         "nodes/claim-direct",

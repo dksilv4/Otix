@@ -10,8 +10,15 @@ export function isLocalDesktopNodeId(id: number | null | undefined): boolean {
   return id === LOCAL_DESKTOP_NODE_ID
 }
 
-export function isLocalDesktopNode(server: { id?: number; isLocalDesktop?: boolean } | null | undefined): boolean {
-  return Boolean(server?.isLocalDesktop || isLocalDesktopNodeId(server?.id))
+export function isLocalDesktopNode(
+  server: { id?: number; isLocalDesktop?: boolean; localUrl?: string | null; primaryUrl?: string | null } | null | undefined,
+): boolean {
+  return Boolean(
+    server?.isLocalDesktop ||
+      isLocalDesktopNodeId(server?.id) ||
+      server?.localUrl?.startsWith('otix://desktop') ||
+      server?.primaryUrl?.startsWith('otix://desktop'),
+  )
 }
 
 export function localDesktopNodeName(): string {
@@ -44,9 +51,13 @@ export function getLocalDesktopNode(): GameServer | null {
 }
 
 export function mergeLocalDesktopNode(servers: GameServer[]): GameServer[] {
+  // If servers already contains a registered desktop node (from backend DB), keep it
+  if (servers.some((server) => isLocalDesktopNode(server))) {
+    return servers
+  }
+  // Otherwise, if in desktop app environment, prepend local desktop fallback
   const local = getLocalDesktopNode()
   if (!local) return servers
-  if (servers.some((server) => isLocalDesktopNode(server))) return servers
   return [local, ...servers]
 }
 

@@ -19,6 +19,7 @@ from apps.library.views.library import (
     YoutubeLibraryView,
 )
 from apps.library.views.nodes import (
+    DesktopNodeHeartbeatView,
     GameServerClaimDirectView,
     GameServerClaimView,
     GameServerConnectionsSyncView,
@@ -109,6 +110,7 @@ from apps.library.views.server_machines import (
 )
 
 __all__ = [
+    "DesktopNodeHeartbeatView",
     "GameServerClaimView",
     "GameServerClaimDirectView",
     "GameServerUnclaimView",

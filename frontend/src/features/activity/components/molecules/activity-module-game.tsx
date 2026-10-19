@@ -13,16 +13,17 @@ interface ActivityModuleGameProps {
 export const ActivityModuleGame = ({ onClose }: ActivityModuleGameProps = {}) => {
   const { runningGame, elapsedMs, matchedGame } = useMatchedRunningGame()
   const { sessionXp } = useGamingSessionXp()
-  const isCs2 = Boolean(
+  const isCs2FromRunningGame = Boolean(
     runningGame &&
       isCs2Game(runningGame.game.title || runningGame.game.exePath || runningGame.game.processName),
   )
-  const { gameState } = useCs2GameState({ enabled: isCs2 })
+  const { gameState } = useCs2GameState({ enabled: isCs2FromRunningGame || !runningGame })
+  const hasActiveCs2Gsi = Boolean(gameState && (gameState.isInGame || gameState.activity === 'playing'))
 
-  if (!runningGame) return null
+  if (!runningGame && !hasActiveCs2Gsi) return null
 
-  const displayTitle = matchedGame?.title || runningGame.game.title
-  const posterUrl = matchedGame?.posterUrl || runningGame.game.posterUrl || runningGame.game.iconUrl
+  const displayTitle = matchedGame?.title || runningGame?.game.title || 'Counter-Strike 2'
+  const posterUrl = matchedGame?.posterUrl || runningGame?.game.posterUrl || runningGame?.game.iconUrl
   const releaseYear = matchedGame?.releaseDate ? new Date(matchedGame.releaseDate).getFullYear() : null
   const genresStr = matchedGame?.genres?.slice(0, 2).join(' · ')
   const subtitle = genresStr
@@ -30,8 +31,9 @@ export const ActivityModuleGame = ({ onClose }: ActivityModuleGameProps = {}) =>
     : releaseYear
       ? `${releaseYear}`
       : null
-  const currentFps = runningGame.fpsSnapshot?.currentFps ?? 0
+  const currentFps = runningGame?.fpsSnapshot?.currentFps ?? 0
   const fpsRounded = Math.round(currentFps)
+  const gamePlatform = runningGame?.game.platform ? runningGame.game.platform.toUpperCase() : 'PC'
 
   const fpsColorClass =
     fpsRounded >= 60
@@ -103,7 +105,7 @@ export const ActivityModuleGame = ({ onClose }: ActivityModuleGameProps = {}) =>
           <div className="flex items-center justify-between gap-2 mt-2 text-[11px] text-muted-foreground">
             <div className="flex items-center gap-1.5 flex-wrap min-w-0">
               <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-muted text-muted-foreground font-mono shrink-0">
-                {runningGame.game.platform.toUpperCase()}
+                {gamePlatform}
               </span>
               <span className="inline-flex items-center gap-1 tabular-nums font-mono text-emerald-600 dark:text-emerald-400 shrink-0">
                 <Clock size={10} />

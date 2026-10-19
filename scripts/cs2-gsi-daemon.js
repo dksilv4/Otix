@@ -208,16 +208,37 @@ const server = http.createServer((req, res) => {
         res.end('Invalid JSON');
       }
     });
-  } else if (req.method === 'GET' && req.url === '/api/cs2-gsi/state') {
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify(latestState));
+  } else if (req.method === 'GET') {
+    const urlPath = req.url?.split('?')[0];
+    if (urlPath === '/api/cs2-gsi/state' || urlPath === '/api/cs2-gsi' || urlPath === '/state' || urlPath === '/') {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(latestState));
+    } else {
+      res.writeHead(404);
+      res.end('Not Found');
+    }
   } else {
     res.writeHead(404);
     res.end();
   }
 });
 
-const PORT = 5000;
-server.listen(PORT, '0.0.0.0', () => {
-  console.log(`[CS2 GSI Daemon] Listening on http://0.0.0.0:${PORT} and exposing /api/cs2-gsi/state`);
-});
+const DEFAULT_PORT = 31337;
+const LEGACY_PORT = 5000;
+const ports = [process.env.PORT ? parseInt(process.env.PORT, 10) : DEFAULT_PORT];
+if (!ports.includes(LEGACY_PORT)) ports.push(LEGACY_PORT);
+
+for (const p of ports) {
+  try {
+    const s = http.createServer(server.listeners('request')[0]);
+    s.on('error', (err) => {
+      console.warn(`[CS2 GSI Daemon] Port ${p} skipped (${err.message})`);
+    });
+    s.listen(p, '0.0.0.0', () => {
+      console.log(`[CS2 GSI Daemon] Listening on http://0.0.0.0:${p} and exposing /api/cs2-gsi/state`);
+    });
+  } catch (err) {
+    console.warn(`[CS2 GSI Daemon] Could not bind port ${p}:`, err.message);
+  }
+}
+

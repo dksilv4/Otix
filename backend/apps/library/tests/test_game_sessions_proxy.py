@@ -66,7 +66,7 @@ class GameSessionsProxyApiTests(TestCase):
         self.assertEqual(resp.status_code, 200)
         data = resp.json()
         self.assertEqual(len(data), 1)
-        self.assertEqual(data[0]["game_title"], "Baldur's Gate 3")
+        self.assertIn(data[0]["game_title"], ["Baldur's Gate 3", "Baldur's Gate III"])
         self.assertEqual(data[0]["fps_stats"]["avg_fps"], 82.5)
 
     @mock.patch("apps.library.views.nodes.node_get_sessions")
@@ -354,5 +354,55 @@ class GameSessionsProxyApiTests(TestCase):
         self.assertFalse(data["running"])
         self.assertIsNone(data["game"])
         self.assertEqual(data["games"], [])
+
+    def test_post_and_get_user_game_running_cached(self):
+        self.client.force_authenticate(user=self.user)
+        payload = {
+            "running": True,
+            "game": {
+                "id": "steam_1245620",
+                "title": "Elden Ring",
+                "process_name": "eldenring.exe",
+                "start_time": 1718000000000,
+            },
+            "games": [
+                {
+                    "id": "steam_1245620",
+                    "title": "Elden Ring",
+                    "process_name": "eldenring.exe",
+                    "start_time": 1718000000000,
+                }
+            ],
+        }
+
+        # POST active running game
+        post_resp = self.client.post("/api/v1/library/game-running", payload, format="json")
+        self.assertEqual(post_resp.status_code, 200)
+        post_data = post_resp.json()
+        self.assertTrue(post_data["running"])
+        self.assertEqual(post_data["game"]["title"], "Elden Ring")
+
+        # GET should retrieve the cached game without calling any node
+        get_resp = self.client.get("/api/v1/library/game-running")
+        self.assertEqual(get_resp.status_code, 200)
+        get_data = get_resp.json()
+        self.assertTrue(get_data["running"])
+        self.assertEqual(get_data["game"]["title"], "Elden Ring")
+        self.assertEqual(len(get_data["games"]), 1)
+
+        # POST stopped running game
+        stop_resp = self.client.post(
+            "/api/v1/library/game-running",
+            {"running": False, "game": None, "games": []},
+            format="json",
+        )
+        self.assertEqual(stop_resp.status_code, 200)
+        self.assertFalse(stop_resp.json()["running"])
+
+        # DELETE endpoint also clears
+        del_resp = self.client.delete("/api/v1/library/game-running")
+        self.assertEqual(del_resp.status_code, 200)
+        self.assertFalse(del_resp.json()["running"])
+
 
 

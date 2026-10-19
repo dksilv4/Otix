@@ -45,7 +45,11 @@ services:
       - "6380:6379"
     volumes:
       - redis_data:/data
-    command: redis-server --appendonly yes
+    command: redis-server --appendonly yes --timeout 120 --tcp-keepalive 60 --maxclients 20000
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -122,7 +126,7 @@ services:
       CELERY_BROKER_URL: redis://redis:6379/0
       CELERY_RESULT_BACKEND: redis://redis:6379/0
       REDIS_URL: redis://redis:6379/1
-    command: celery -A config worker -Q celery -c 2 -n otix-worker@%h --loglevel INFO
+    command: celery -A config worker -Q celery -c 2 -n otix-worker@%h --loglevel INFO --max-tasks-per-child 100
     ulimits:
       nofile:
         soft: 65536

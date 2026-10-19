@@ -31,6 +31,7 @@ class UserNode(TimestampedModel):
     auth_token = models.CharField(max_length=512, null=True, blank=True)
     is_online = models.BooleanField(default=True)
     is_local = models.BooleanField(default=False)
+    is_local_desktop = models.BooleanField(default=False, db_index=True)
     last_seen_at = models.DateTimeField(null=True, blank=True)
     total_files = models.IntegerField(default=0)
     storage_free_bytes = models.BigIntegerField(default=0)

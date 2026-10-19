@@ -31,7 +31,6 @@ from core.providers.framework.errors import (
 )
 from core.providers.metrics import CIRCUIT_BREAKER_STATE, track_api_call
 from core.ratelimit import RateLimiter
-from core.redis import get_async_client
 
 logger = logging.getLogger(__name__)
 
@@ -82,9 +81,8 @@ class BaseProvider:
         self.http = http_client
         # An explicit async Redis client (tests, shared connections) wins over
         # the core.redis seam; the limiter exposes it back via ``.redis``.
-        client = redis if redis is not None else get_async_client()
         self.rate_limiter = RateLimiter(
-            client=client,
+            client=redis,
             key_prefix=f"ratelimit:{name}",
             default_rate=rate,
             default_burst=burst,
@@ -257,18 +255,24 @@ def resolve_shared_http_client(
 
     if current_client is not None and (current_loop_id != active_loop_id or current_client.is_closed):
         if not current_client.is_closed:
-            if active_loop is not None and active_loop.is_running():
+            if active_loop is not None and active_loop.is_running() and current_loop_id == active_loop_id:
                 try:
                     active_loop.create_task(current_client.aclose())
                 except Exception:
                     pass
             else:
                 try:
-                    temp_loop = asyncio.new_event_loop()
-                    try:
-                        temp_loop.run_until_complete(current_client.aclose())
-                    finally:
-                        temp_loop.close()
+                    transport = getattr(current_client, "_transport", None)
+                    pool = getattr(transport, "_pool", None)
+                    if pool is not None:
+                        for conn in list(getattr(pool, "_connections", [])):
+                            try:
+                                stream = getattr(conn, "_network_stream", None)
+                                raw = getattr(stream, "_raw_stream", None)
+                                if hasattr(raw, "close"):
+                                    raw.close()
+                            except Exception:
+                                pass
                 except Exception:
                     pass
         current_client = None

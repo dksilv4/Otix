@@ -13,6 +13,7 @@ import {
   formatBytes,
   formatSpeed,
   parseReleaseNotes,
+  formatUpdateError,
 } from '../utils/updater-utils'
 
 export interface UpdateModalProps {
@@ -197,7 +198,7 @@ export const UpdateModal = ({
             <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
             <div className="space-y-0.5 text-xs leading-relaxed">
               <span className="font-semibold">Update encountered an issue</span>
-              <p className="text-muted-foreground">{error}</p>
+              <p className="text-muted-foreground">{formatUpdateError(error)}</p>
             </div>
           </div>
         )}

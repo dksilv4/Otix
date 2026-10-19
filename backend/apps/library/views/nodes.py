@@ -11,6 +11,7 @@ from django.core.cache import cache
 from django.db.models import Q
 from django.db.utils import OperationalError, ProgrammingError
 from django.http import FileResponse, Http404
+from django.utils import timezone
 from rest_framework import permissions, status
 from rest_framework.exceptions import NotAuthenticated, NotFound, ValidationError
 from rest_framework.permissions import AllowAny
@@ -175,7 +176,13 @@ class GameServerListCreateView(APIView):
             return Response([])
         collapse_duplicate_game_servers(user)
         servers = list(UserGameServer.objects.filter(user=user))
-        return Response(UserGameServerSerializer(servers, many=True).data)
+        now = timezone.now()
+        for server in servers:
+            if getattr(server, "is_local_desktop", False) and server.is_online:
+                if not server.last_seen_at or (now - server.last_seen_at).total_seconds() > 90:
+                    server.is_online = False
+                    server.save(update_fields=["is_online", "updated_at"])
+        return Response(UserGameServerSerializer(servers, many=True, context={"request": request}).data)
 
     def post(self, request: Request) -> Response:
         user = _resolve_user(request)
@@ -241,6 +248,137 @@ class GameServerHeartbeatView(APIView):
             resp["server_name"] = result.get("server_name", "")
             resp["username"] = result.get("claimed_by", "")
         return Response(resp)
+
+
+class DesktopNodeHeartbeatView(APIView):
+    """``POST /api/v1/library/nodes/desktop-heartbeat`` — register/refresh desktop client node.
+    Treats local desktop app (otix.exe) as an official node registered to the user account.
+    """
+
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def post(self, request: Request) -> Response:
+        user = _resolve_user(request)
+        if not user:
+            raise NotAuthenticated("User authentication required")
+
+        data = request.data if isinstance(request.data, dict) else {}
+        name = (data.get("name") or "").strip()
+        device_id = (data.get("device_id") or "").strip()
+        is_online = bool(data.get("is_online", True))
+        total_files = data.get("total_files")
+        storage_free_bytes = data.get("storage_free_bytes")
+        storage_total_bytes = data.get("storage_total_bytes")
+
+        if not name:
+            name = "This PC"
+
+        local_url = f"otix://desktop/{device_id}" if device_id else "otix://desktop"
+
+        # Find existing desktop node for this user
+        node = None
+        if device_id:
+            node = UserGameServer.objects.filter(
+                user=user, is_local_desktop=True, local_url=f"otix://desktop/{device_id}"
+            ).first()
+        if not node:
+            node = UserGameServer.objects.filter(
+                user=user, is_local_desktop=True, local_url="otix://desktop"
+            ).first()
+        if not node:
+            node = UserGameServer.objects.filter(user=user, is_local_desktop=True).first()
+
+        now = timezone.now()
+        if node:
+            fields = ["is_online", "last_seen_at", "updated_at"]
+            node.is_online = is_online
+            node.last_seen_at = now
+            if not node.is_local_desktop:
+                node.is_local_desktop = True
+                fields.append("is_local_desktop")
+            if not node.is_local:
+                node.is_local = True
+                fields.append("is_local")
+            if name and node.name != name:
+                node.name = name
+                fields.append("name")
+            if device_id and node.local_url != local_url:
+                node.local_url = local_url
+                fields.append("local_url")
+            if total_files is not None:
+                try:
+                    node.total_files = int(total_files)
+                    fields.append("total_files")
+                except (ValueError, TypeError):
+                    pass
+            if storage_free_bytes is not None:
+                try:
+                    node.storage_free_bytes = int(storage_free_bytes)
+                    fields.append("storage_free_bytes")
+                except (ValueError, TypeError):
+                    pass
+            if storage_total_bytes is not None:
+                try:
+                    node.storage_total_bytes = int(storage_total_bytes)
+                    fields.append("storage_total_bytes")
+                except (ValueError, TypeError):
+                    pass
+            node.save(update_fields=fields)
+        else:
+            tf = 0
+            if total_files is not None:
+                try:
+                    tf = int(total_files)
+                except (ValueError, TypeError):
+                    pass
+            sf = 0
+            if storage_free_bytes is not None:
+                try:
+                    sf = int(storage_free_bytes)
+                except (ValueError, TypeError):
+                    pass
+            st = 0
+            if storage_total_bytes is not None:
+                try:
+                    st = int(storage_total_bytes)
+                except (ValueError, TypeError):
+                    pass
+
+            node = UserGameServer.objects.create(
+                user=user,
+                name=name,
+                local_url=local_url,
+                remote_url=None,
+                is_local=True,
+                is_local_desktop=True,
+                is_online=is_online,
+                last_seen_at=now,
+                total_files=tf,
+                storage_free_bytes=sf,
+                storage_total_bytes=st,
+            )
+
+        # Also sync running game if provided in heartbeat payload
+        raw_game = data.get("running_game") or data.get("game")
+        raw_games = data.get("running_games") or data.get("games")
+        cache_key = f"user_running_game:{user.id}"
+        if not is_online:
+            cache.delete(cache_key)
+        elif raw_games or raw_game:
+            glist = raw_games if isinstance(raw_games, list) else ([raw_game] if isinstance(raw_game, dict) else [])
+            if glist:
+                enriched = enrich_sessions_with_media([dict(g, game_id=g.get("id"), game_title=g.get("title")) for g in glist])
+                for orig, enr in zip(glist, enriched, strict=False):
+                    orig.setdefault("poster_url", enr.get("poster_url"))
+                    orig.setdefault("backdrop_url", enr.get("backdrop_url"))
+                    orig.setdefault("otix_media_id", enr.get("otix_media_id"))
+                cache.set(cache_key, {
+                    "running": True,
+                    "game": glist[0],
+                    "games": glist,
+                }, timeout=90)
+
+        return Response(UserNodeSerializer(node, context={"request": request}).data)
 
 
 class GameServerScanCompleteView(APIView):
@@ -2139,12 +2277,20 @@ class GameServerRunningView(APIView):
 
 
 class UserGameRunningView(APIView):
-    """GET /library/game-running — aggregate currently running games across user's active node(s)."""
+    """GET /library/game-running — aggregate currently running games across user's active node(s) or cached desktop state.
+    POST /library/game-running — record or clear currently running games reported by desktop client or node.
+    DELETE /library/game-running — clear currently running games for this user.
+    """
 
     permission_classes = (permissions.IsAuthenticated,)
 
     def get(self, request: Request) -> Response:
         user = request.user
+        cache_key = f"user_running_game:{user.id}"
+        cached = cache.get(cache_key)
+        if isinstance(cached, dict) and cached.get("running") and cached.get("games"):
+            return Response(cached)
+
         servers = list(UserGameServer.objects.filter(user=user, is_online=True))
         if not servers:
             servers = list(UserGameServer.objects.filter(user=user)[:3])
@@ -2153,6 +2299,8 @@ class UserGameRunningView(APIView):
         seen_ids = set()
 
         for server in servers:
+            if getattr(server, "is_local_desktop", False):
+                continue
             try:
                 code, body = node_get_running_games(server)
                 if code == 200 and isinstance(body, dict):
@@ -2190,6 +2338,56 @@ class UserGameRunningView(APIView):
             "game": single,
             "games": all_running_games,
         })
+
+    def post(self, request: Request) -> Response:
+        """Record or clear currently running games reported by desktop client or node."""
+        user = request.user
+        cache_key = f"user_running_game:{user.id}"
+        data = request.data if isinstance(request.data, dict) else {}
+        is_running = bool(data.get("running", False))
+
+        if not is_running:
+            cache.delete(cache_key)
+            return Response({"running": False, "game": None, "games": []})
+
+        raw_games = data.get("games")
+        raw_game = data.get("game")
+        games_list: list[dict] = []
+        if isinstance(raw_games, list) and raw_games:
+            games_list = [g for g in raw_games if isinstance(g, dict)]
+        elif isinstance(raw_game, dict):
+            games_list = [raw_game]
+
+        if not games_list:
+            cache.delete(cache_key)
+            return Response({"running": False, "game": None, "games": []})
+
+        # Enrich missing poster/backdrop/metadata via catalog
+        items = [
+            dict(g, game_id=g.get("id"), game_title=g.get("title"))
+            for g in games_list
+        ]
+        enriched = enrich_sessions_with_media(items)
+        for orig, enr in zip(games_list, enriched, strict=False):
+            orig.setdefault("poster_url", enr.get("poster_url"))
+            orig.setdefault("backdrop_url", enr.get("backdrop_url"))
+            orig.setdefault("otix_media_id", enr.get("otix_media_id"))
+
+        single = games_list[0]
+        payload = {
+            "running": True,
+            "game": single,
+            "games": games_list,
+        }
+        # Keep cached for 90 seconds (desktop app sends heartbeat while running)
+        cache.set(cache_key, payload, timeout=90)
+        return Response(payload)
+
+    def delete(self, request: Request) -> Response:
+        """Clear currently running games for this user."""
+        cache_key = f"user_running_game:{request.user.id}"
+        cache.delete(cache_key)
+        return Response({"running": False, "game": None, "games": []})
 
 
 # Modern Node view aliases

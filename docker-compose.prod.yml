@@ -126,7 +126,11 @@ services:
 
   redis:
     image: redis:7-alpine
-    command: redis-server --maxmemory 400mb --maxmemory-policy allkeys-lru --save 60 1
+    command: redis-server --maxmemory 400mb --maxmemory-policy allkeys-lru --save 60 1 --timeout 120 --tcp-keepalive 60 --maxclients 20000
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
     healthcheck:
       test: ["CMD-SHELL", "redis-cli ping | grep -q PONG && redis-cli debug sleep 0"]
       interval: 5s
@@ -184,7 +188,7 @@ services:
       dockerfile: Dockerfile
     environment:
       <<: *otix-env
-    command: celery -A config worker -Q celery -c ${CELERY_WORKER_CONCURRENCY:-4} -n otix-worker@%h --loglevel WARNING
+    command: celery -A config worker -Q celery -c ${CELERY_WORKER_CONCURRENCY:-4} -n otix-worker@%h --loglevel WARNING --max-tasks-per-child 100
     ulimits:
       nofile:
         soft: 65536

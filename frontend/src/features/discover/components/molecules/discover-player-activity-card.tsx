@@ -23,6 +23,7 @@ export interface LiveMediaActivityItem {
   durationMs?: number
   fps?: number | null
   sessionXp?: number
+  cs2Status?: string
 }
 
 // Backward compatibility alias
@@ -137,6 +138,12 @@ export const DiscoverPlayerActivityCard = ({ item }: DiscoverPlayerActivityCardP
 
         {/* Metric Pills Row */}
         <div className="flex items-center gap-1.5 flex-wrap">
+          {item.cs2Status && (
+            <span className="inline-flex items-center gap-1 font-mono font-bold text-[10px] text-emerald-300 bg-emerald-500/25 px-2 py-0.5 rounded-lg backdrop-blur-xl shadow-md border border-emerald-500/30">
+              {item.cs2Status}
+            </span>
+          )}
+
           {item.elapsedMs != null && item.elapsedMs > 0 && (
             <span className="inline-flex items-center gap-1 font-mono text-[10px] font-medium text-white/90 bg-white/15 px-2 py-0.5 rounded-lg backdrop-blur-xl shadow-md">
               ⏱ {formatDuration(item.elapsedMs)}

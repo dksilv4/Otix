@@ -21,29 +21,30 @@ const parseNodeGames = (data: any): RunningGameData[] => {
     : (data.game ? [data.game] : [])
 
   return rawList.map((g) => {
-    const rawStart = new Date(g.startTime).getTime()
-    const elapsedFallback = Date.now() - ((g.currentDurationSeconds || 0) * 1000)
+    const rawStart = new Date(g.startTime || g.start_time || g.startedAt).getTime()
+    const duration = g.currentDurationSeconds ?? g.current_duration_seconds ?? 0
+    const elapsedFallback = Date.now() - (duration * 1000)
     const startTime = isNaN(rawStart) || rawStart <= 0 ? elapsedFallback : rawStart
     return {
       game: {
-        id: g.id || '',
-        title: g.title || '',
-        platform: 'pc',
-        exePath: g.exePath || '',
-        processName: g.processName || '',
-        otixMediaId: g.otixMediaId,
-        posterUrl: g.posterUrl,
-        backdropUrl: g.backdropUrl,
+        id: g.id || g.game_id || '',
+        title: g.title || g.game_title || '',
+        platform: g.platform || 'pc',
+        exePath: g.exePath || g.exe_path || '',
+        processName: g.processName || g.process_name || '',
+        otixMediaId: g.otixMediaId ?? g.otix_media_id,
+        posterUrl: g.posterUrl || g.poster_url,
+        backdropUrl: g.backdropUrl || g.backdrop_url,
       },
       startTime,
-      launchedByOtix: false,
+      launchedByOtix: Boolean(g.launchedByOtix ?? g.launched_by_otix),
       pid: g.pid || 0,
-      fpsAvailable: Boolean(g.fpsAvailable),
-      fpsSnapshot: g.fpsSnapshot ? {
-        currentFps: g.fpsSnapshot.fps ?? 0,
-        frameCount: g.fpsSnapshot.frameCount ?? 0,
+      fpsAvailable: Boolean(g.fpsAvailable ?? g.fps_available),
+      fpsSnapshot: (g.fpsSnapshot || g.fps_snapshot) ? {
+        currentFps: (g.fpsSnapshot?.currentFps ?? g.fpsSnapshot?.fps ?? g.fps_snapshot?.current_fps ?? g.fps_snapshot?.fps) ?? 0,
+        frameCount: (g.fpsSnapshot?.frameCount ?? g.fps_snapshot?.frame_count) ?? 0,
         captureDurationMs: 0,
-        gameId: g.id || '',
+        gameId: g.id || g.game_id || '',
       } : null,
     }
   })
@@ -275,6 +276,61 @@ export const useRunningGame = () => {
       clearTimer()
     }
   }, [isDesktopEnv, clearTimer])
+
+  // When in desktop environment, sync running games to the backend so web browsers can display them
+  useEffect(() => {
+    if (!isDesktopEnv || !hasAccessToken()) return
+
+    const syncToBackend = async () => {
+      try {
+        if (runningGames.length > 0) {
+          const single = runningGames[0]
+          await apiClient.post('/library/game-running', {
+            running: true,
+            game: {
+              id: single.game.id,
+              title: single.game.title,
+              platform: single.game.platform || 'pc',
+              exePath: single.game.exePath || '',
+              processName: single.game.processName || '',
+              otixMediaId: single.game.otixMediaId,
+              posterUrl: single.game.posterUrl,
+              backdropUrl: single.game.backdropUrl,
+              startTime: single.startTime,
+            },
+            games: runningGames.map((rg) => ({
+              id: rg.game.id,
+              title: rg.game.title,
+              platform: rg.game.platform || 'pc',
+              exePath: rg.game.exePath || '',
+              processName: rg.game.processName || '',
+              otixMediaId: rg.game.otixMediaId,
+              posterUrl: rg.game.posterUrl,
+              backdropUrl: rg.game.backdropUrl,
+              startTime: rg.startTime,
+            })),
+          })
+        } else {
+          await apiClient.post('/library/game-running', {
+            running: false,
+            game: null,
+            games: [],
+          })
+        }
+      } catch {
+        // ignore network error
+      }
+    }
+
+    void syncToBackend()
+
+    if (runningGames.length > 0) {
+      const interval = setInterval(() => {
+        void syncToBackend()
+      }, 25000)
+      return () => clearInterval(interval)
+    }
+  }, [isDesktopEnv, runningGames])
 
   const runningGame = runningGames[0] ?? null
 

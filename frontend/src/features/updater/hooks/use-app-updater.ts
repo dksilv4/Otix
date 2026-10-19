@@ -8,7 +8,7 @@ import {
   saveAutoDownloadPreference,
 } from '../utils/updater-utils'
 
-const FALLBACK_VERSION = '0.1.22'
+const FALLBACK_VERSION = '0.1.23'
 
 let globalIsModalOpen = false
 const modalSubscribers = new Set<(open: boolean) => void>()

@@ -172,6 +172,7 @@ class UserNodeSerializer(serializers.ModelSerializer):
             "auth_token",
             "is_online",
             "is_local",
+            "is_local_desktop",
             "last_seen_at",
             "total_files",
             "storage_free_bytes",
@@ -187,6 +188,7 @@ class UserNodeSerializer(serializers.ModelSerializer):
             "home_id",
             "home_name",
             "is_online",
+            "is_local_desktop",
             "last_seen_at",
             "total_files",
             "storage_free_bytes",
@@ -230,6 +232,7 @@ class UserNodeCreateSerializer(serializers.ModelSerializer):
             "remote_url",
             "auth_token",
             "is_local",
+            "is_local_desktop",
             "is_active",
         ]
 

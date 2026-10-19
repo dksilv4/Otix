@@ -92,3 +92,24 @@ export const saveAutoDownloadPreference = (enabled: boolean): void => {
     // ignore
   }
 }
+
+/**
+ * Sanitize and format updater errors into user-friendly messages,
+ * hiding verbose HTTP headers, raw JSON, and 404/atom-feed noise.
+ */
+export const formatUpdateError = (raw: string | null | undefined): string | null => {
+  if (!raw) return null
+  const str = String(raw).trim()
+  if (
+    str.includes('releases.atom') ||
+    str.includes('authentication token') ||
+    (str.includes('404') && (str.includes('github.com') || str.includes('dksilv4/Otix')))
+  ) {
+    return 'Update check unavailable: GitHub repository is private or requires authentication.'
+  }
+  if (str.includes('method: GET url:') || /^(?:404|500|502|503)\b/.test(str)) {
+    const firstLine = str.split('\n')[0]
+    return firstLine.replace(/^\d+\s+["']?/, '').replace(/["']$/, '').trim() || 'Failed to check for updates.'
+  }
+  return str
+}

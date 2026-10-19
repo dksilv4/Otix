@@ -1,5 +1,6 @@
 import { app, BrowserWindow, ipcMain } from 'electron';
 import { autoUpdater } from 'electron-updater';
+import { execSync } from 'child_process';
 import { getSettings } from '../desktop-settings';
 
 export type UpdateStatus =
@@ -49,6 +50,70 @@ export function setAutoDownloadUpdates(enabled: boolean): void {
   autoUpdater.autoDownload = enabled;
 }
 
+/**
+ * Attempt to resolve a GitHub token to allow checking/downloading releases
+ * from private GitHub repositories.
+ */
+export function resolveGitHubToken(): string | null {
+  if (process.env.GH_TOKEN) return process.env.GH_TOKEN;
+  if (process.env.GITHUB_TOKEN) return process.env.GITHUB_TOKEN;
+  try {
+    const settings = getSettings();
+    if (settings?.githubToken) return settings.githubToken;
+  } catch {
+    // ignore
+  }
+  try {
+    const token = execSync('gh auth token', {
+      encoding: 'utf-8',
+      stdio: ['pipe', 'pipe', 'ignore'],
+      timeout: 1500,
+    }).trim();
+    if (token) return token;
+  } catch {
+    // ignore
+  }
+  return null;
+}
+
+/**
+ * Configure private feed URL if a token is available.
+ */
+export function configureAutoUpdaterFeed(): void {
+  const token = resolveGitHubToken();
+  if (token && typeof autoUpdater.setFeedURL === 'function') {
+    try {
+      autoUpdater.setFeedURL({
+        provider: 'github',
+        owner: 'dksilv4',
+        repo: 'Otix',
+        private: true,
+        token,
+      });
+      console.log('[updater] Configured private GitHub feed URL with auth token.');
+    } catch (err: any) {
+      console.warn('[updater] Failed to setFeedURL with token:', err?.message || err);
+    }
+  }
+}
+
+/**
+ * Normalize and sanitize updater errors so ugly raw 404/atom XML headers
+ * never leak to the renderer or user UI.
+ */
+export function sanitizeUpdaterError(err: any): string {
+  if (err == null) return 'Unknown update error';
+  const msg = typeof err === 'string' ? err : err.message || String(err);
+  if (
+    msg.includes('releases.atom') ||
+    msg.includes('authentication token') ||
+    (msg.includes('404') && (msg.includes('github.com') || msg.includes('dksilv4/Otix')))
+  ) {
+    return 'Update check unavailable: GitHub repository is private or requires authentication.';
+  }
+  return msg;
+}
+
 export function registerUpdaterIPC(win: BrowserWindow | null): void {
   mainWindowRef = win;
 
@@ -70,6 +135,8 @@ export function registerUpdaterIPC(win: BrowserWindow | null): void {
   // Configure autoUpdater defaults
   autoUpdater.autoDownload = settings.autoDownloadUpdates !== false;
   autoUpdater.autoInstallOnAppQuit = true;
+
+  configureAutoUpdaterFeed();
 
   autoUpdater.on('checking-for-update', () => {
     notifyRenderer({ status: 'checking', error: undefined });
@@ -123,7 +190,7 @@ export function registerUpdaterIPC(win: BrowserWindow | null): void {
   });
 
   autoUpdater.on('error', (err) => {
-    const errorMsg = err == null ? 'Unknown update error' : (err.message || String(err));
+    const errorMsg = sanitizeUpdaterError(err);
     notifyRenderer({
       status: 'error',
       error: errorMsg,
@@ -143,7 +210,7 @@ export function registerUpdaterIPC(win: BrowserWindow | null): void {
     if (!app.isPackaged) {
       notifyRenderer({
         status: 'not-available',
-        error: 'Updates are only checked in packaged app releases.',
+        error: undefined,
       });
       return {
         status: 'not-available',
@@ -151,12 +218,13 @@ export function registerUpdaterIPC(win: BrowserWindow | null): void {
         currentVersion: app.getVersion(),
       };
     }
+    configureAutoUpdaterFeed();
     try {
       notifyRenderer({ status: 'checking', error: undefined });
       const result = await autoUpdater.checkForUpdates();
       return { status: 'checking', updateInfo: result?.updateInfo };
     } catch (err: any) {
-      const errMsg = err == null ? 'Unknown update error' : (err.message || String(err));
+      const errMsg = sanitizeUpdaterError(err);
       notifyRenderer({ status: 'error', error: errMsg });
       return { status: 'error', error: errMsg };
     }
@@ -171,7 +239,7 @@ export function registerUpdaterIPC(win: BrowserWindow | null): void {
       await autoUpdater.downloadUpdate();
       return { status: 'downloading' };
     } catch (err: any) {
-      const errMsg = err == null ? 'Unknown download error' : (err.message || String(err));
+      const errMsg = sanitizeUpdaterError(err);
       notifyRenderer({ status: 'error', error: errMsg });
       return { status: 'error', error: errMsg };
     }
@@ -194,13 +262,13 @@ export function checkForUpdatesOnStartup(): void {
     return;
   }
   if (app.isPackaged) {
+    configureAutoUpdaterFeed();
     // Delay check slightly to let app initialize smoothly
     setTimeout(() => {
       console.log('[updater] Performing startup background update check...');
       autoUpdater.checkForUpdates().catch((err) => {
-        console.warn('[updater] Background update check error:', err?.message || err);
+        console.warn('[updater] Background update check error:', sanitizeUpdaterError(err));
       });
     }, 5000);
   }
 }
-

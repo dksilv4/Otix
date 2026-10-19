@@ -40,21 +40,40 @@ const scheduleNextCs2Poll = () => {
 
   // Adaptive backoff:
   // CS2 bridge online (0 failures): poll every 1s
-  // 1 failure: retry in 5s
-  // 2 failures: retry in 15s
-  // 3+ failures: stop continuous polling timer; only re-check on tab focus
+  // 1 failure: retry in 3s
+  // 2 failures: retry in 8s
+  // 3+ failures: keep relaxed background heartbeat every 20s
   let delayMs = 1000
   if (cs2ConsecutiveFailures === 1) {
-    delayMs = 5000
+    delayMs = 3000
   } else if (cs2ConsecutiveFailures === 2) {
-    delayMs = 15000
+    delayMs = 8000
   } else if (cs2ConsecutiveFailures >= 3) {
-    return
+    delayMs = 20000
   }
 
   cs2PollTimer = setTimeout(() => {
     void executeCs2WebCheck()
   }, delayMs)
+}
+
+const CS2_GSI_PORTS = [31337, 5000]
+
+const fetchCs2StateFromHost = async (host: string): Promise<any> => {
+  let lastError: unknown = null
+  for (const port of CS2_GSI_PORTS) {
+    try {
+      const res = await fetch(`http://${host}:${port}/api/cs2-gsi/state`, {
+        signal: AbortSignal.timeout(1200),
+      })
+      if (res.ok) {
+        return await res.json()
+      }
+    } catch (err) {
+      lastError = err
+    }
+  }
+  throw lastError || new Error('No CS2 GSI port responded')
 }
 
 const executeCs2WebCheck = async (force = false) => {
@@ -66,13 +85,7 @@ const executeCs2WebCheck = async (force = false) => {
 
   try {
     const host = typeof window !== 'undefined' ? (window.location.hostname || '127.0.0.1') : '127.0.0.1'
-    const res = await fetch(`http://${host}:5000/api/cs2-gsi/state`, {
-      signal: AbortSignal.timeout(1500),
-    })
-    if (!res.ok) {
-      throw new Error(`HTTP ${res.status}`)
-    }
-    const data = await res.json()
+    const data = await fetchCs2StateFromHost(host)
     cs2ConsecutiveFailures = 0
 
     let nextState: Cs2LiveState | null = null

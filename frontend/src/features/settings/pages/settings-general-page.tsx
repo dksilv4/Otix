@@ -21,6 +21,7 @@ import {
   getUpdateStatusLabel,
   formatBytes,
   formatSpeed,
+  formatUpdateError,
 } from '@/features/updater'
 import { useWelcomePreferences, SetupWizardModal } from '@/features/welcome'
 import { router } from '@/lib/router'
@@ -363,7 +364,7 @@ export const SettingsGeneralPage = () => {
                 {updateError && (
                   <div className="flex items-start gap-2 p-3 rounded-xl text-xs text-destructive bg-[var(--dk-surface-ghost)]">
                     <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
-                    <span className="leading-relaxed">{updateError}</span>
+                    <span className="leading-relaxed">{formatUpdateError(updateError)}</span>
                   </div>
                 )}
 

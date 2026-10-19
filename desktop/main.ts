@@ -1,12 +1,26 @@
 import { app, BrowserWindow, ipcMain, dialog, screen, shell, nativeImage, protocol, net } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
+import * as os from 'os';
 import { execSync } from 'child_process';
+import { pathToFileURL } from 'url';
 
 protocol.registerSchemesAsPrivileged([
   {
+    scheme: 'app',
+    privileges: {
+      standard: true,
+      secure: true,
+      allowServiceWorkers: true,
+      supportFetchAPI: true,
+      corsEnabled: true,
+      stream: true,
+    },
+  },
+  {
     scheme: 'media-cache',
     privileges: {
+      standard: true,
       bypassCSP: true,
       secure: true,
       supportFetchAPI: true,
@@ -16,7 +30,7 @@ protocol.registerSchemesAsPrivileged([
   },
 ]);
 import { getApiBaseUrl } from './config';
-import { GameDetector } from './game/detector';
+import { GameDetector, type RunningGame } from './game/detector';
 import { registerDownloadsIPC, setPluginCaller } from './ipc/downloads';
 import { registerScannerIPC, setScanOrchestrator, registerPluginScanIPC, setPluginManager } from './ipc/scanner';
 import { registerInstallerIPC } from './ipc/installer';
@@ -194,7 +208,7 @@ function openStandaloneWindow(url: string): void {
     width: 1200,
     height: 850,
     autoHideMenuBar: true,
-    backgroundColor: '#09090b',
+    backgroundColor: '#000000',
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
@@ -224,9 +238,11 @@ function createWindow() {
     y: bounds.y,
     width: bounds.width,
     height: bounds.height,
-    icon: path.join(__dirname, '..', 'assets', 'icon.png'),
+    icon: fs.existsSync(path.join(process.resourcesPath, 'assets', 'icon.png'))
+      ? path.join(process.resourcesPath, 'assets', 'icon.png')
+      : path.join(__dirname, '..', 'assets', 'icon.png'),
     title: 'Otix',
-    backgroundColor: '#0a0b1e',
+    backgroundColor: '#000000',
     // macOS: hidden title bar keeps native traffic lights
     // Windows/Linux: fully frameless — we draw our own title bar
     titleBarStyle: isMac ? 'hidden' : 'default',
@@ -298,17 +314,21 @@ function createWindow() {
     console.error('[main] RENDERER UNRESPONSIVE')
   })
 
-  if (isDev) {
+  // Keyboard shortcut to toggle DevTools (F12 / Ctrl+Shift+I)
+  mainWindow.webContents.on('before-input-event', (event, input) => {
+    if (input.type === 'keyDown') {
+      if (input.key === 'F12' || (input.control && input.shift && input.key.toLowerCase() === 'i')) {
+        mainWindow?.webContents.toggleDevTools();
+        event.preventDefault();
+      }
+    }
+  });
+
+  if (isDev && process.env.NODE_ENV === 'development') {
     mainWindow.loadURL('http://127.0.0.1:5174/');
     mainWindow.webContents.openDevTools();
   } else {
-    const candidatePaths = [
-      path.join(process.resourcesPath, 'frontend', 'index.html'),
-      path.join(__dirname, '../../frontend/dist/index.html'),
-      path.join(__dirname, '../dist/index.html'),
-    ];
-    const htmlPath = candidatePaths.find((p) => fs.existsSync(p)) || candidatePaths[0];
-    mainWindow.loadFile(htmlPath);
+    mainWindow.loadURL('app://otix/');
   }
 
   // Ensure window is visible
@@ -412,9 +432,96 @@ app.on('ready', async () => {
     callback({ cancel: false, responseHeaders });
   });
 
+  // Register app:// scheme to serve the production frontend safely with SPA fallback
+  const candidateDirs = [
+    path.join(process.resourcesPath, 'frontend'),
+    path.resolve(__dirname, '../../frontend/dist'),
+    path.resolve(__dirname, '../frontend/dist'),
+    path.resolve(__dirname, '../../dist'),
+    path.resolve(__dirname, '../dist'),
+  ];
+  const frontendDir = candidateDirs.find((p) => fs.existsSync(p)) || candidateDirs[0];
+
+  const MIME_TYPES: Record<string, string> = {
+    '.html': 'text/html; charset=utf-8',
+    '.js': 'text/javascript; charset=utf-8',
+    '.mjs': 'text/javascript; charset=utf-8',
+    '.css': 'text/css; charset=utf-8',
+    '.json': 'application/json; charset=utf-8',
+    '.png': 'image/png',
+    '.jpg': 'image/jpeg',
+    '.jpeg': 'image/jpeg',
+    '.gif': 'image/gif',
+    '.webp': 'image/webp',
+    '.svg': 'image/svg+xml',
+    '.ico': 'image/x-icon',
+    '.woff': 'font/woff',
+    '.woff2': 'font/woff2',
+    '.ttf': 'font/ttf',
+    '.otf': 'font/otf',
+    '.mp4': 'video/mp4',
+    '.webm': 'video/webm',
+  };
+
+  const handleAppProtocol = async (request: Request) => {
+    try {
+      const parsed = new URL(request.url);
+      let relativePath = decodeURIComponent(parsed.pathname).replace(/^\/+/, '');
+      if (!relativePath) relativePath = 'index.html';
+
+      let targetPath = path.normalize(path.join(frontendDir, relativePath));
+      const normFrontendDir = path.normalize(frontendDir);
+      if (!targetPath.startsWith(normFrontendDir)) {
+        return new Response('Forbidden', { status: 403 });
+      }
+
+      if (!fs.existsSync(targetPath) && parsed.pathname.includes('/assets/')) {
+        const assetsIdx = parsed.pathname.indexOf('/assets/');
+        const fallbackAsset = path.normalize(path.join(frontendDir, parsed.pathname.slice(assetsIdx + 1)));
+        if (fallbackAsset.startsWith(normFrontendDir) && fs.existsSync(fallbackAsset) && fs.statSync(fallbackAsset).isFile()) {
+          targetPath = fallbackAsset;
+        }
+      }
+
+      const ext = path.extname(targetPath).toLowerCase();
+      if (!fs.existsSync(targetPath) || !fs.statSync(targetPath).isFile()) {
+        if (!ext || ext === '.html') {
+          targetPath = path.join(frontendDir, 'index.html');
+        } else {
+          return new Response('Not found', { status: 404 });
+        }
+      }
+
+      const fileUrl = pathToFileURL(targetPath).toString();
+      const response = await net.fetch(fileUrl);
+      const targetExt = path.extname(targetPath).toLowerCase();
+      const mime = MIME_TYPES[targetExt];
+      if (mime) {
+        const headers = new Headers(response.headers);
+        headers.set('content-type', mime);
+        return new Response(response.body, {
+          status: response.status,
+          statusText: response.statusText,
+          headers,
+        });
+      }
+      return response;
+    } catch (err) {
+      console.error('[main] app protocol error:', err);
+      return new Response('Internal error', { status: 500 });
+    }
+  };
+
+  if (!sess.protocol.isProtocolHandled('app')) {
+    sess.protocol.handle('app', handleAppProtocol);
+  }
+  if (!protocol.isProtocolHandled('app')) {
+    protocol.handle('app', handleAppProtocol);
+  }
+
   // Register media-cache protocol handler for caching images locally
   sess.protocol.handle('media-cache', async (request: Request) => {
-    const originalUrl = 'https://' + request.url.replace(/^media-cache:\/\//, '');
+    const originalUrl = 'https://' + request.url.replace(/^media-cache:(?:\/\/)?/, '');
     const cacheDir = path.join(app.getPath('userData'), 'image-cache');
     if (!fs.existsSync(cacheDir)) {
       fs.mkdirSync(cacheDir, { recursive: true });
@@ -460,18 +567,104 @@ app.on('ready', async () => {
     }
   });
 
-  // Intercept HTTPS image requests and redirect them to media-cache protocol
-  sess.webRequest.onBeforeRequest({ urls: ['https://*/*'] }, (details: any, callback: any) => {
-    if (details.resourceType === 'image' && details.url.startsWith('https://')) {
-      const url = details.url;
-      // Do not cache images from localhost/127.0.0.1 (local backend or local dev server)
-      if (!url.includes('localhost') && !url.includes('127.0.0.1')) {
-        callback({ redirectURL: 'media-cache://' + url.slice(8) });
-        return;
-      }
+  let runningGameSyncTimer: NodeJS.Timeout | null = null;
+
+  const syncRunningGamesToBackend = async (games: RunningGame[]) => {
+    if (!currentAuthToken) return;
+    const apiBase = getApiBaseUrl();
+    const url = `${apiBase}/api/v1/library/game-running`;
+    const isRunning = games.length > 0;
+    const single = games[0];
+    const payload = isRunning
+      ? {
+          running: true,
+          game: {
+            id: single.game.id,
+            title: single.game.title,
+            platform: single.game.platform || 'pc',
+            exe_path: single.game.exePath || '',
+            process_name: single.game.exePath ? path.basename(single.game.exePath) : (single.game as any).processName || '',
+            otix_media_id: single.game.otixMediaId,
+            poster_url: single.game.posterUrl || single.game.otixPosterUrl,
+            backdrop_url: (single.game as any).backdropUrl,
+            start_time: single.startTime,
+          },
+          games: games.map((g) => ({
+            id: g.game.id,
+            title: g.game.title,
+            platform: g.game.platform || 'pc',
+            exe_path: g.game.exePath || '',
+            process_name: g.game.exePath ? path.basename(g.game.exePath) : (g.game as any).processName || '',
+            otix_media_id: g.game.otixMediaId,
+            poster_url: g.game.posterUrl || g.game.otixPosterUrl,
+            backdrop_url: (g.game as any).backdropUrl,
+            start_time: g.startTime,
+          })),
+        }
+      : {
+          running: false,
+          game: null,
+          games: [],
+        };
+
+    try {
+      await net.fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${currentAuthToken}`,
+        },
+        body: JSON.stringify(payload),
+      });
+    } catch (err) {
+      console.debug('[main] Failed to sync running game to backend:', err);
     }
-    callback({});
-  });
+  };
+
+  let desktopNodeHeartbeatTimer: NodeJS.Timeout | null = null;
+
+  const syncDesktopNodeToBackend = async (isOnline = true) => {
+    if (!currentAuthToken) return;
+    const apiBase = getApiBaseUrl();
+    const url = `${apiBase}/api/v1/library/nodes/desktop-heartbeat`;
+    const deviceId = fetchBridge?.deviceId || os.hostname();
+    const platformLabel =
+      process.platform === 'darwin' ? 'This Mac' : process.platform === 'win32' ? 'This PC' : 'This computer';
+    const name = `${platformLabel} (${os.hostname()})`;
+    const runningList = gameDetector ? gameDetector.getRunningGames() : [];
+    const totalFiles = gameDetector ? gameDetector.getLibrary().length : 0;
+
+    const payload = {
+      name,
+      device_id: deviceId,
+      is_online: isOnline,
+      total_files: totalFiles,
+      running_games: runningList.map((g) => ({
+        id: g.game.id,
+        title: g.game.title,
+        platform: g.game.platform || 'pc',
+        exe_path: g.game.exePath || '',
+        process_name: g.game.exePath ? path.basename(g.game.exePath) : (g.game as any).processName || '',
+        otix_media_id: g.game.otixMediaId,
+        poster_url: g.game.posterUrl || g.game.otixPosterUrl,
+        backdrop_url: (g.game as any).backdropUrl,
+        start_time: g.startTime,
+      })),
+    };
+
+    try {
+      await net.fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${currentAuthToken}`,
+        },
+        body: JSON.stringify(payload),
+      });
+    } catch (err) {
+      console.debug('[main] Failed to sync desktop node heartbeat to backend:', err);
+    }
+  };
 
   // Forward game detection events to renderer AND bridge to plugin event bus.
   // Guard with isDestroyed() — detector fires from timer callbacks
@@ -489,6 +682,21 @@ app.on('ready', async () => {
       hardware: runningGame.hardware ?? null,
       shareEligible: runningGame.shareEligible ?? false,
     });
+
+    if (gameDetector) {
+      const runningList = gameDetector.getRunningGames();
+      void syncRunningGamesToBackend(runningList);
+      if (!runningGameSyncTimer) {
+        runningGameSyncTimer = setInterval(() => {
+          if (gameDetector && gameDetector.getRunningGames().length > 0) {
+            void syncRunningGamesToBackend(gameDetector.getRunningGames());
+          } else if (runningGameSyncTimer) {
+            clearInterval(runningGameSyncTimer);
+            runningGameSyncTimer = null;
+          }
+        }, 25000);
+      }
+    }
   });
   gameDetector.on('game:ended', (session) => {
     if (mainWindow && !mainWindow.isDestroyed()) {
@@ -505,6 +713,15 @@ app.on('ready', async () => {
       hardware: session.hardware ?? null,
       shareEligible: session.shareEligible ?? false,
     });
+
+    if (gameDetector) {
+      const runningList = gameDetector.getRunningGames();
+      void syncRunningGamesToBackend(runningList);
+      if (runningList.length === 0 && runningGameSyncTimer) {
+        clearInterval(runningGameSyncTimer);
+        runningGameSyncTimer = null;
+      }
+    }
 
     // Auto-save backup or cloud sync on game session end
     if (saveDaemon) {
@@ -719,6 +936,11 @@ app.on('ready', async () => {
     cs2GsiManager.start().catch((err) => {
       console.warn('[main] Failed to start CS2 GSI listener:', err);
     });
+    try {
+      cs2GsiManager.setupCs2GsiConfig();
+    } catch {
+      // Non-fatal if Steam / CS directory is not yet found
+    }
     cs2GsiManager.on('update', (state) => {
       if (mainWindow && !mainWindow.isDestroyed()) {
         mainWindow.webContents.send('game:cs2-gsi-update', state);
@@ -745,6 +967,22 @@ app.on('ready', async () => {
       currentAuthToken = token;
       orchestrator.setAuthToken(token);
       fetchBridge?.setCredentials(getApiBaseUrl(), token);
+      if (token) {
+        void syncDesktopNodeToBackend(true);
+        if (!desktopNodeHeartbeatTimer) {
+          desktopNodeHeartbeatTimer = setInterval(() => {
+            void syncDesktopNodeToBackend(true);
+          }, 30000);
+        }
+        if (gameDetector && gameDetector.getRunningGames().length > 0) {
+          void syncRunningGamesToBackend(gameDetector.getRunningGames());
+        }
+      } else {
+        if (desktopNodeHeartbeatTimer) {
+          clearInterval(desktopNodeHeartbeatTimer);
+          desktopNodeHeartbeatTimer = null;
+        }
+      }
     };
     setScanOrchestrator(orchestrator);
     setPluginManager(pluginManager);
@@ -875,6 +1113,16 @@ app.on('ready', async () => {
   // ── Clean-quit signal for last-route restore ──
   app.on('before-quit', () => {
     console.log('[main] before-quit fired');
+    if (desktopNodeHeartbeatTimer) {
+      clearInterval(desktopNodeHeartbeatTimer);
+      desktopNodeHeartbeatTimer = null;
+    }
+    if (currentAuthToken) {
+      void syncDesktopNodeToBackend(false);
+      if (gameDetector && gameDetector.getRunningGames().length > 0) {
+        void syncRunningGamesToBackend([]);
+      }
+    }
     mainWindow?.webContents.send('app:clean-quit');
     nodeDaemon?.dispose().catch(() => {});
     pluginManager?.shutdown().catch(() => {});

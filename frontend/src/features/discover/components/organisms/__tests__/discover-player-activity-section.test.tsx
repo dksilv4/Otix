@@ -25,6 +25,9 @@ beforeAll(() => {
 vi.mock('@/features/launcher', () => ({
   useMatchedRunningGame: vi.fn(),
   useGamingSessionXp: vi.fn().mockReturnValue({ sessionXp: 0, dailyXp: 0, isGaming: false }),
+  useCs2GameState: vi.fn().mockReturnValue({ gameState: null, isCs2Active: false }),
+  isCs2Game: vi.fn().mockReturnValue(false),
+  formatCs2Status: vi.fn().mockReturnValue('In Game'),
 }))
 
 vi.mock('@/features/auth/hooks/use-auth', () => ({
@@ -168,4 +171,45 @@ describe('DiscoverPlayerActivitySection', () => {
     expect(screen.getByText('Live Activity')).toBeInTheDocument()
     expect(screen.getByText('Interstellar')).toBeInTheDocument()
   })
+
+  it('renders live CS2 match details when GSI telemetry is active', () => {
+    vi.mocked(launcherHooks.useMatchedRunningGame).mockReturnValue({
+      runningGame: null,
+      elapsedMs: 0,
+      matchedGame: null,
+      isMatching: false,
+    })
+    vi.mocked(launcherHooks.useCs2GameState).mockReturnValue({
+      gameState: {
+        activity: 'playing',
+        isInGame: true,
+        rawMapName: 'de_inferno',
+        mapName: 'Inferno',
+        mode: 'competitive',
+        phase: 'live',
+        round: 10,
+        scoreCt: 6,
+        scoreT: 4,
+        health: 100,
+        armor: 100,
+        helmet: true,
+        team: 'CT',
+        kills: 12,
+        deaths: 4,
+        assists: 2,
+        mvps: 1,
+        roundKills: 0,
+        timestamp: Date.now(),
+      },
+      isCs2Active: true,
+    })
+    vi.mocked(launcherHooks.formatCs2Status).mockReturnValue('Inferno (CT 6 : 4 T)')
+
+    render(<DiscoverPlayerActivitySection />)
+
+    expect(screen.getByText('Live Activity')).toBeInTheDocument()
+    expect(screen.getByText('Counter-Strike 2')).toBeInTheDocument()
+    expect(screen.getByText('Inferno (CT 6 : 4 T)')).toBeInTheDocument()
+  })
 })
+

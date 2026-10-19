@@ -90,5 +90,24 @@ describe('local desktop node', () => {
     const synced = syncServersWithPendingNodes(servers, pending)
     expect(synced[0].name).toBe('DK PC')
   })
+
+  it('preserves registered desktop node on the web even when offline', () => {
+    const registeredOfflineDesktopNode = remote(42, {
+      name: 'Gaming PC (DESKTOP-ABC)',
+      localUrl: 'otix://desktop/device-123',
+      primaryUrl: 'otix://desktop/device-123',
+      isLocalDesktop: true,
+      isOnline: false,
+    })
+    const workerNode = remote(5)
+
+    expect(isLocalDesktopNode(registeredOfflineDesktopNode)).toBe(true)
+    const merged = mergeLocalDesktopNode([registeredOfflineDesktopNode, workerNode])
+    expect(merged.length).toBe(2)
+    expect(merged[0].id).toBe(42)
+    expect(merged[0].isOnline).toBe(false)
+    expect(merged[0].isLocalDesktop).toBe(true)
+    expect(merged[0].name).toBe('Gaming PC (DESKTOP-ABC)')
+  })
 })
 

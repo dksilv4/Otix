@@ -1,7 +1,13 @@
 import { useMemo } from 'react'
 import { motion } from 'framer-motion'
 import { useAuth } from '@/features/auth/hooks/use-auth'
-import { useMatchedRunningGame, useGamingSessionXp } from '@/features/launcher'
+import {
+  useMatchedRunningGame,
+  useGamingSessionXp,
+  useCs2GameState,
+  isCs2Game,
+  formatCs2Status,
+} from '@/features/launcher'
 import { usePlexSessions } from '@/features/activity/hooks/use-plex-sessions'
 import { usePlayer } from '@/lib/player/hooks/use-player'
 import { Carousel } from '@ui/molecules/carousel'
@@ -19,6 +25,12 @@ export const DiscoverPlayerActivitySection = () => {
   const { user } = useAuth()
   const { runningGame, elapsedMs: gameElapsedMs, matchedGame } = useMatchedRunningGame()
   const { sessionXp } = useGamingSessionXp()
+  const isCs2FromRunningGame = Boolean(
+    runningGame &&
+      isCs2Game(runningGame.game.title || runningGame.game.exePath || runningGame.game.processName),
+  )
+  const { gameState } = useCs2GameState({ enabled: isCs2FromRunningGame || !runningGame })
+  const hasActiveCs2Gsi = Boolean(gameState && (gameState.isInGame || gameState.activity === 'playing'))
   const { sessions: plexSessions = [] } = usePlexSessions()
   const { isPlaying: isMusicPlaying, currentTrack, source: musicSource } = usePlayer()
 
@@ -26,27 +38,33 @@ export const DiscoverPlayerActivitySection = () => {
     const list: LiveMediaActivityItem[] = []
 
     // 1. Active Gaming Session
-    if (runningGame && user) {
-      const displayTitle = matchedGame?.title || runningGame.game.title
-      const mediaId = matchedGame?.id || (runningGame.game.otixMediaId ? runningGame.game.otixMediaId : null)
+    if ((runningGame || hasActiveCs2Gsi) && user) {
+      const displayTitle = matchedGame?.title || runningGame?.game.title || 'Counter-Strike 2'
+      const mediaId = matchedGame?.id || runningGame?.game.otixMediaId || null
+      const gamePlatform = runningGame?.game.platform ? runningGame.game.platform.toUpperCase() : 'PC'
+      const subtitle = matchedGame?.developer || gamePlatform
+      const cs2Status = gameState ? formatCs2Status(gameState) : undefined
 
       list.push({
-        id: `game-${runningGame.game.id}-${runningGame.startTime}`,
+        id: runningGame
+          ? `game-${runningGame.game.id}-${runningGame.startTime}`
+          : `game-cs2-${gameState?.timestamp || 'active'}`,
         mediaType: 'game',
         mediaId,
         title: displayTitle,
-        subtitle: matchedGame?.developer || runningGame.game.platform.toUpperCase(),
+        subtitle,
         user: {
           id: user.id,
           username: user.username,
           avatarUrl: user.avatarUrl,
         },
-        posterUrl: matchedGame?.posterUrl || runningGame.game.posterUrl,
-        backdropUrl: matchedGame?.backdropUrl || runningGame.game.backdropUrl,
+        posterUrl: matchedGame?.posterUrl || runningGame?.game.posterUrl,
+        backdropUrl: matchedGame?.backdropUrl || runningGame?.game.backdropUrl,
         textlessPosterUrl: null,
         elapsedMs: gameElapsedMs,
-        fps: runningGame.fpsSnapshot?.currentFps ?? null,
+        fps: runningGame?.fpsSnapshot?.currentFps ?? null,
         sessionXp,
+        cs2Status,
       })
     }
 
@@ -98,6 +116,8 @@ export const DiscoverPlayerActivitySection = () => {
     return list
   }, [
     runningGame,
+    hasActiveCs2Gsi,
+    gameState,
     user,
     matchedGame,
     gameElapsedMs,

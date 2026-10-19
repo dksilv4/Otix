@@ -25,6 +25,8 @@ export interface DesktopSettings {
   autoCheckUpdates?: boolean;
   /** Automatically download update packages when available (default: true). */
   autoDownloadUpdates?: boolean;
+  /** Personal Access Token for private GitHub updates. */
+  githubToken?: string;
 }
 
 export function getDefaultGamesInstallPath(): string {
