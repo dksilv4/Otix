@@ -211,7 +211,7 @@ jobs:
               desktop/release/*.dmg
               desktop/release/*.zip
               desktop/release/latest-mac.yml
-          - os: windows-latest
+          - os: windows-2022
             target: "--win"
             artifact_pattern: |
               desktop/release/*.exe
@@ -232,7 +232,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup MSVC developer environment (Windows)
-        if: matrix.os == 'windows-latest'
+        if: startsWith(matrix.os, 'windows')
         uses: ilammy/msvc-dev-cmd@v1
         with:
           vsversion: "2022"
@@ -274,7 +274,7 @@ jobs:
         run: |
           mkdir -p desktop/bin
           case "${{ matrix.os }}" in
-            windows-latest)
+            windows*)
               (cd node && CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" -o ../desktop/bin/otix-node.exe ./main.go)
               ;;
             macos-latest)
