@@ -104,6 +104,7 @@ export default defineConfig({
           if (id.includes('node_modules/@tanstack')) return 'tanstack'
           if (id.includes('node_modules/axios')) return 'axios'
           if (id.includes('node_modules/lucide-react')) return 'lucide'
+          if (id.includes('chunk-reload')) return 'chunk-reload'
         },
       },
     },
