@@ -90,7 +90,7 @@ _FAMILY_TEXTLESS_TYPE = {
 class MediaAssetOutSerializer(serializers.Serializer):
     id = serializers.IntegerField()
     asset_type = serializers.CharField()
-    url = serializers.CharField()
+    url = serializers.SerializerMethodField()
     width = serializers.IntegerField(allow_null=True)
     height = serializers.IntegerField(allow_null=True)
     lang = serializers.CharField(allow_null=True)
@@ -107,6 +107,11 @@ class MediaAssetOutSerializer(serializers.Serializer):
     # url is the current general winner of the family's textless slot. The slot
     # may be backed by a hidden materialized row sharing this url.
     is_textless = serializers.SerializerMethodField()
+
+    def get_url(self, obj: MediaAsset) -> str | None:
+        from apps.media.services.catalog import _clean_asset_url
+
+        return _clean_asset_url(obj.url)
 
     def get_current_contexts(self, obj: MediaAsset) -> list[str]:
         current_ids = self.context.get("current_ids", {})
@@ -209,6 +214,10 @@ class CollectionOutSerializer(serializers.Serializer):
                 from apps.media.services.catalog import _pick_asset
 
                 poster = _pick_asset(item, "poster", self.context.get("theme", "general"))
+            if poster:
+                from apps.media.services.catalog import _clean_asset_url
+
+                poster = _clean_asset_url(poster)
             out.append(
                 {
                     "id": item.id,

@@ -37,6 +37,8 @@ export interface User {
   discoverEmphases?: string[]
   dateOfBirth?: string | null
   showAdultContent?: boolean
+  saveGameSessions?: boolean
+  gameSessionsPrivate?: boolean
   country?: string | null
   notificationPreferences?: Record<string, boolean> | null
 }

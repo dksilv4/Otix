@@ -242,6 +242,8 @@ class UploadFileView(APIView):
             raise
 
         proto = request.META.get("HTTP_X_FORWARDED_PROTO") or request.scheme
+        if "," in proto:
+            proto = proto.split(",")[0].strip()
         host = request.META.get("HTTP_X_FORWARDED_HOST") or request.get_host()
         if host in ("api", "api:8000") or host.startswith("api:") or host.startswith("otix-api"):
             frontend_url = getattr(settings, "FRONTEND_BASE_URL", "") or getattr(
@@ -254,6 +256,23 @@ class UploadFileView(APIView):
                 host = frontend_url.rstrip("/")
         elif proto == "https" and host.endswith(":80"):
             host = host[:-3]
+
+        if proto == "http" and not (
+            host.startswith("localhost") or host.startswith("127.0.0.1") or host == "testserver"
+        ):
+            frontend_url = getattr(settings, "FRONTEND_BASE_URL", "") or getattr(
+                settings, "FRONTEND_URL", ""
+            )
+            cf_visitor = request.META.get("HTTP_CF_VISITOR", "")
+            if (
+                frontend_url.startswith("https://")
+                or request.is_secure()
+                or request.META.get("HTTP_X_FORWARDED_SSL") == "on"
+                or (cf_visitor and '"https"' in cf_visitor)
+                or request.META.get("SERVER_PORT") == "443"
+            ):
+                proto = "https"
+
         url = f"{proto}://{host}/uploads/{filename}"
         logger.info("file uploaded safely and renamed to %s", filename)
         return Response({"url": url}, status=status.HTTP_201_CREATED)

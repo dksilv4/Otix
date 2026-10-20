@@ -201,9 +201,12 @@ def _enqueue_detail_rehydrate(item: MediaItem) -> bool:
     recently_synced = bool(
         item.synced_at and item.synced_at > timezone.now() - timedelta(minutes=15)
     )
+    if recently_synced:
+        return False
+
     needs_episodes = item.media_type == "show" and show_needs_episodes(item.pk)
 
-    if needs_episodes and server_can_fetch(provider) and not recently_synced:
+    if needs_episodes and server_can_fetch(provider):
         job = ensure_catalog_job(
             provider, item.media_type, ext, priority=0, force=True, dispatch=False
         )
@@ -214,7 +217,7 @@ def _enqueue_detail_rehydrate(item: MediaItem) -> bool:
             except Exception:
                 logger.exception("Synchronous episode sync failed for %s:%s", provider, ext)
     else:
-        ensure_catalog_job(provider, item.media_type, ext, priority=0, force=needs_episodes)
+        ensure_catalog_job(provider, item.media_type, ext, priority=4, dispatch=False)
     return False
 
 
@@ -287,7 +290,8 @@ class MediaDetailView(APIView):
                 catalog_service.enrich_summaries([item], request.user, context)
 
         # Automated hydration: if a game has 0 characters and 0 credits, trigger background task
-        if item.media_type == "game" and item.characters.count() == 0 and item.credits.count() == 0:
+        # Use prefetched collections instead of calling .count() which triggers extra SQL queries
+        if item.media_type == "game" and not item.characters.all() and not item.credits.all():
             try:
                 from apps.media.tasks import hydrate_game_characters_and_credits_task
 
@@ -295,17 +299,18 @@ class MediaDetailView(APIView):
             except Exception:
                 pass
 
-        # Hydrate ratings when missing
-        if item.overall_rating is None:
+        # Hydrate ratings when missing (only compute if not marked empty)
+        if item.overall_rating is None and item.overall_rating_source != "empty":
             from apps.media.services.rating import compute_and_store_overall_rating
 
             score, source = compute_and_store_overall_rating(item.pk)
-            if score is not None:
-                item.overall_rating = score
-                item.overall_rating_source = source
+            item.overall_rating = score
+            item.overall_rating_source = source
 
         if item.avg_rating is None:
-            first_ext = item.external_ratings.filter(max_score__gt=0).first()
+            first_ext = next(
+                (r for r in item.external_ratings.all() if r.max_score and r.max_score > 0), None
+            )
             if first_ext and first_ext.score > 0:
                 norm = float(first_ext.score) / float(first_ext.max_score) * 10
                 item.avg_rating = round(norm, 2)
@@ -316,7 +321,7 @@ class MediaDetailView(APIView):
                 )
 
         data = MediaItemDetailSerializer(item).data
-        cache.set(cache_key, data, 120)
+        cache.set(cache_key, data, 600)
         return Response(data)
 
 

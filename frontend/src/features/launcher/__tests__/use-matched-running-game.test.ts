@@ -11,6 +11,9 @@ describe('cleanGameTitle', () => {
     expect(cleanGameTitle('BloonsTD6.exe')).toBe('Bloons TD 6')
     expect(cleanGameTitle('bloonstd6.exe')).toBe('Bloons TD 6')
     expect(cleanGameTitle('D:\\SteamLibrary\\steamapps\\common\\BloonsTD6\\BloonsTD6.exe')).toBe('Bloons TD 6')
+    expect(cleanGameTitle('WardogsClient-Win64-Shipping.exe')).toBe('Wardogs')
+    expect(cleanGameTitle('D:\\SteamLibrary\\steamapps\\common\\Wardogs\\Wardogs\\Binaries\\Win64\\WardogsClient-Win64-Shipping.exe')).toBe('Wardogs')
+    expect(cleanGameTitle('WardogsLauncher-Shipping.exe')).toBe('Wardogs')
   })
 
   it('cleans suffixes and format characters for unknown games', () => {

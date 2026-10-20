@@ -8,6 +8,7 @@ used, so serializers can read ``obj.poster_url`` etc. without per-field queries.
 
 from __future__ import annotations
 
+import re
 from datetime import date
 
 from django.contrib.auth.models import AbstractBaseUser, AnonymousUser
@@ -206,6 +207,17 @@ def _asset_outranks(
 
 
 
+def _clean_asset_url(url: str | None) -> str | None:
+    """Normalize local upload URLs to root-relative /uploads/<filename> to avoid Mixed Content."""
+    if not url:
+        return url
+    if "/uploads/" in url:
+        match = re.search(r"/(?:api/v1/)?uploads/([0-9a-f]{32}\.[a-z0-9]+)$", url, re.IGNORECASE)
+        if match:
+            return f"/uploads/{match.group(1)}"
+    return url
+
+
 def _local_asset_url(asset: MediaAsset | None) -> str | None:
     """Serve URL for a locally mirrored asset, or None when not downloaded."""
     if asset is not None and asset.local_name:
@@ -217,7 +229,8 @@ def _pick_asset(item: MediaItem, asset_type: str, context: str = "general") -> s
     best = _best_asset(item, asset_type, context)
     if best is None:
         return None
-    return _local_asset_url(best) or best.url
+    raw = _local_asset_url(best) or best.url
+    return _clean_asset_url(raw)
 
 
 def _pick_backdrop(item: MediaItem, context: str = "general") -> str | None:
@@ -230,7 +243,8 @@ def _pick_backdrop(item: MediaItem, context: str = "general") -> str | None:
     """
     tless = _best_asset(item, "textless_backdrop", "general")
     if tless is not None:
-        return _local_asset_url(tless) or tless.url
+        raw = _local_asset_url(tless) or tless.url
+        return _clean_asset_url(raw)
     return _pick_asset(item, "backdrop", context)
 
 
@@ -523,6 +537,8 @@ def media_detail_queryset(media_id: int) -> MediaItem | None:
             "media_genres__genre",
             "credits__person",
             "characters__character",
+            "characters__character__assets",
+            "characters__character__external_ids",
             "involved_companies__company",
             "platforms__platform",
             "game_modes__game_mode",
@@ -530,6 +546,7 @@ def media_detail_queryset(media_id: int) -> MediaItem | None:
             "show__seasons__episodes",
             "movie__collection__movies__media_item",
             "movie__collection__movies__media_item__assets",
+            "external_ratings",
         )
         .filter(pk=media_id)
         .first()

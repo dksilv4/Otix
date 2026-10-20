@@ -17,7 +17,6 @@ import { SettingsLockedState } from '../components/molecules/settings-locked-sta
 import { useSettingsSaveBar } from '../context/settings-save-context'
 import { useToast } from '@ui/molecules/toast'
 import { normalizeUploadedUrl } from '../utils/profile'
-export { normalizeUploadedUrl }
 
 const BIO_MAX_LENGTH = 250
 
@@ -397,6 +396,8 @@ export const SettingsProfilePage = () => {
   )
   const [country, setCountry] = useState(user?.country ?? '')
   const [showAdultContent, setShowAdultContent] = useState(user?.showAdultContent ?? false)
+  const [saveGameSessions, setSaveGameSessions] = useState(user?.saveGameSessions ?? true)
+  const [gameSessionsPrivate, setGameSessionsPrivate] = useState(user?.gameSessionsPrivate ?? true)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [initialized, setInitialized] = useState(false)
@@ -462,6 +463,8 @@ export const SettingsProfilePage = () => {
       setPlexVisibility(user.integrationVisibility?.plex ?? 'hidden')
       setTmdbVisibility(user.integrationVisibility?.tmdb ?? 'hidden')
       setCountry(user.country ?? '')
+      setSaveGameSessions(user.saveGameSessions ?? true)
+      setGameSessionsPrivate(user.gameSessionsPrivate ?? true)
       setInitialized(true)
     }
   }, [user, initialized])
@@ -643,6 +646,54 @@ export const SettingsProfilePage = () => {
     }
   }
 
+  const handleToggleSaveSessions = async (checked: boolean) => {
+    setSaveGameSessions(checked)
+    try {
+      await apiClient.patch('/auth/me', { saveGameSessions: checked })
+      await refreshUser()
+      await queryClient.invalidateQueries({ queryKey: ['user'] })
+      await queryClient.invalidateQueries({ queryKey: ['user-game-sessions'] })
+      toast({
+        title: checked ? 'Session recording enabled' : 'Session recording paused',
+        description: checked
+          ? 'Gameplay sessions and telemetry will be recorded.'
+          : 'Otix will not record new gameplay sessions to your profile.',
+        variant: 'success',
+      })
+    } catch {
+      setSaveGameSessions(!checked)
+      toast({
+        title: 'Failed to update setting',
+        description: 'An error occurred while saving your session preferences.',
+        variant: 'error',
+      })
+    }
+  }
+
+  const handleToggleSessionPrivacy = async (checked: boolean) => {
+    setGameSessionsPrivate(checked)
+    try {
+      await apiClient.patch('/auth/me', { gameSessionsPrivate: checked })
+      await refreshUser()
+      await queryClient.invalidateQueries({ queryKey: ['user'] })
+      await queryClient.invalidateQueries({ queryKey: ['user-game-sessions'] })
+      toast({
+        title: checked ? 'Sessions set to private' : 'Sessions set to public',
+        description: checked
+          ? 'New gameplay sessions are private to your profile.'
+          : 'New gameplay sessions will be visible to other users on your profile.',
+        variant: 'success',
+      })
+    } catch {
+      setGameSessionsPrivate(!checked)
+      toast({
+        title: 'Failed to update setting',
+        description: 'An error occurred while saving your privacy preferences.',
+        variant: 'error',
+      })
+    }
+  }
+
   return (
     <div id="settings-profile-section" className="space-y-5">
       <SectionHeader
@@ -808,6 +859,45 @@ export const SettingsProfilePage = () => {
                     await queryClient.invalidateQueries({ queryKey: ['discover'] })
                   } catch { setShowAdultContent(!checked) }
                 }}
+              />
+            </div>
+          </div>
+        </div>
+      </SettingsCard>
+
+      {/* Game Sessions & Privacy */}
+      <SettingsCard>
+        <SectionHeader
+          title="Game Sessions & Privacy"
+          description="Manage automated gameplay session recording and default visibility."
+        />
+        <div className="space-y-1 mt-4">
+          <div className="flex items-center justify-between py-3">
+            <div>
+              <p className="text-sm font-medium text-foreground">Save Gameplay Sessions</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Automatically record play history, playtime, and FPS telemetry across your devices.
+              </p>
+            </div>
+            <div className="flex-shrink-0">
+              <DkSwitch
+                checked={saveGameSessions}
+                onCheckedChange={handleToggleSaveSessions}
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between py-3">
+            <div>
+              <p className="text-sm font-medium text-foreground">Default Session Privacy</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Keep newly recorded gameplay sessions private. When enabled, other users cannot view your play sessions.
+              </p>
+            </div>
+            <div className="flex-shrink-0">
+              <DkSwitch
+                checked={gameSessionsPrivate}
+                onCheckedChange={handleToggleSessionPrivacy}
               />
             </div>
           </div>

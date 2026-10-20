@@ -99,6 +99,11 @@ const KNOWN_GAME_SIGNATURES: Record<string, string> = {
   'tekken8.exe': 'Tekken 8',
   'risk of rain 2.exe': 'Risk of Rain 2',
   'riskofrain2.exe': 'Risk of Rain 2',
+  'wardogs.exe': 'Wardogs',
+  'wardogsclient.exe': 'Wardogs',
+  'wardogsclient-win64-shipping.exe': 'Wardogs',
+  'wardogslauncher-shipping.exe': 'Wardogs',
+  'wardogs-win64-shipping.exe': 'Wardogs',
 };
 
 function normalizeTitle(title: string): string {
@@ -128,6 +133,14 @@ function titleToExeCandidates(title: string): string[] {
   if (mainWord.length > 4) {
     candidates.push(mainWord + '.exe');
   }
+
+  // Unreal Engine & Client/Launcher candidate patterns
+  const joined = words.join('');
+  candidates.push(joined + '-win64-shipping.exe');
+  candidates.push(joined + 'client-win64-shipping.exe');
+  candidates.push(joined + 'client.exe');
+  candidates.push(joined + 'launcher.exe');
+  candidates.push(joined + 'launcher-shipping.exe');
 
   return candidates;
 }
@@ -326,6 +339,10 @@ export class GameDetector extends EventEmitter {
         // (e.g. SB.exe launches SB-Win64-Shipping.exe which does actual rendering)
         if (detectedPid !== undefined) {
           const rendererPid = this.findRendererProcess(game, processes, detectedPid);
+          if (rendererPid !== undefined) detectedPid = rendererPid;
+        } else {
+          // Check for Unreal Engine renderer even if launcher is no longer running
+          const rendererPid = this.findRendererProcess(game, processes, 0);
           if (rendererPid !== undefined) detectedPid = rendererPid;
         }
 

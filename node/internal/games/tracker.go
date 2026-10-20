@@ -115,6 +115,11 @@ var KnownGameSignatures = map[string]string{
 	"tekken8.exe":                         "Tekken 8",
 	"risk of rain 2.exe":                  "Risk of Rain 2",
 	"riskofrain2.exe":                     "Risk of Rain 2",
+	"wardogs.exe":                         "Wardogs",
+	"wardogsclient.exe":                   "Wardogs",
+	"wardogsclient-win64-shipping.exe":    "Wardogs",
+	"wardogslauncher-shipping.exe":        "Wardogs",
+	"wardogs-win64-shipping.exe":          "Wardogs",
 }
 
 var NoiseProcesses = map[string]bool{
@@ -420,6 +425,36 @@ func (gt *GameTracker) identifyGameFull(processName string) *IdentifiedGame {
 		return &IdentifiedGame{
 			ID:    slug,
 			Title: title,
+		}
+	}
+
+	// 4. Try stripping common UE/client/shipping suffixes to match KnownGameSignatures
+	cleanLower := lower
+	for _, suffix := range []string{
+		"-win64-shipping.exe",
+		"_win64_shipping.exe",
+		"-shipping.exe",
+		"_shipping.exe",
+		"client.exe",
+		"launcher.exe",
+	} {
+		if strings.HasSuffix(cleanLower, suffix) {
+			baseCandidate := strings.TrimSuffix(cleanLower, suffix)
+			if title, ok := KnownGameSignatures[baseCandidate+".exe"]; ok {
+				slug := strings.ToLower(strings.ReplaceAll(title, " ", "-"))
+				return &IdentifiedGame{
+					ID:    slug,
+					Title: title,
+				}
+			}
+			if title, ok := KnownGameSignatures[baseCandidate+"client.exe"]; ok {
+				slug := strings.ToLower(strings.ReplaceAll(title, " ", "-"))
+				return &IdentifiedGame{
+					ID:    slug,
+					Title: title,
+				}
+			}
+			break
 		}
 	}
 

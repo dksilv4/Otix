@@ -112,6 +112,11 @@ const KNOWN_GAME_SIGNATURES: Record<string, string> = {
   'tekken8.exe': 'Tekken 8',
   'risk of rain 2.exe': 'Risk of Rain 2',
   'riskofrain2.exe': 'Risk of Rain 2',
+  'wardogs.exe': 'Wardogs',
+  'wardogsclient.exe': 'Wardogs',
+  'wardogsclient-win64-shipping.exe': 'Wardogs',
+  'wardogslauncher-shipping.exe': 'Wardogs',
+  'wardogs-win64-shipping.exe': 'Wardogs',
   'subnautica.exe': 'Subnautica',
   'factorio.exe': 'Factorio',
   'terraria.exe': 'Terraria',
@@ -160,6 +165,8 @@ export function cleanGameTitle(rawTitle: string, exePath?: string): string {
     .replace(/-shipping$/i, '')
     .replace(/_x64$/i, '')
     .replace(/_win64$/i, '')
+    .replace(/client$/i, '')
+    .replace(/launcher$/i, '')
 
   if (KNOWN_GAME_SIGNATURES[cleanedFilename]) {
     return KNOWN_GAME_SIGNATURES[cleanedFilename]
@@ -187,6 +194,8 @@ export function cleanGameTitle(rawTitle: string, exePath?: string): string {
     .replace(/-shipping$/i, '')
     .replace(/_x64$/i, '')
     .replace(/_win64$/i, '')
+    .replace(/client$/i, '')
+    .replace(/launcher$/i, '')
     .replace(/-voices\d*$/i, '')
     .replace(/-i know$/i, '')
     .replace(/-razor1911$/i, '')

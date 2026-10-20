@@ -11,7 +11,11 @@ import {
   BarChart3,
   Copy,
   Check,
+  Lock,
+  Globe,
 } from 'lucide-react'
+import { useQueryClient } from '@tanstack/react-query'
+import { apiClient } from '@/lib/api/client'
 import { DkDialog } from '@ui/molecules/dialog'
 import type { NormalizedPlaySession } from '../../hooks/use-user-game-sessions'
 import { fullDateTime, humanPlaytime } from '../../utils'
@@ -29,6 +33,32 @@ export const SessionDetailModal = ({
 }: SessionDetailModalProps) => {
   const [showNerdStats, setShowNerdStats] = useState(false)
   const [copied, setCopied] = useState(false)
+  let queryClient: ReturnType<typeof useQueryClient> | null = null
+  try {
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    queryClient = useQueryClient()
+  } catch {
+    // Isolated unit test environment without QueryClientProvider
+  }
+  const [isPrivate, setIsPrivate] = useState<boolean>(session.isPrivate ?? true)
+  const [updatingPrivacy, setUpdatingPrivacy] = useState(false)
+
+  const handleTogglePrivacy = async () => {
+    if (!session.id || updatingPrivacy) return
+    const next = !isPrivate
+    setIsPrivate(next)
+    setUpdatingPrivacy(true)
+    try {
+      await apiClient.patch('/library/game-sessions', { id: session.id, isPrivate: next })
+      if (queryClient) {
+        queryClient.invalidateQueries({ queryKey: ['user-game-sessions'] })
+      }
+    } catch {
+      setIsPrivate(!next)
+    } finally {
+      setUpdatingPrivacy(false)
+    }
+  }
 
   const handleCopyJson = () => {
     navigator.clipboard.writeText(JSON.stringify(session, null, 2))
@@ -50,9 +80,29 @@ export const SessionDetailModal = ({
         )}
 
         <div className="min-w-0 flex-1 pt-0.5">
-          <h3 className="text-base font-bold text-foreground leading-tight truncate">
-            {session.gameTitle}
-          </h3>
+          <div className="flex items-center justify-between gap-2">
+            <h3 className="text-base font-bold text-foreground leading-tight truncate">
+              {session.gameTitle}
+            </h3>
+            <button
+              type="button"
+              onClick={handleTogglePrivacy}
+              title={isPrivate ? 'Private session (Click to make public)' : 'Public session (Click to make private)'}
+              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-secondary/60 hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors cursor-pointer shrink-0"
+            >
+              {isPrivate ? (
+                <>
+                  <Lock size={10} className="text-muted-foreground/70" />
+                  <span>Private</span>
+                </>
+              ) : (
+                <>
+                  <Globe size={10} className="text-primary" />
+                  <span>Public</span>
+                </>
+              )}
+            </button>
+          </div>
           <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
             {fullDateTime(session.startTime)}
           </p>

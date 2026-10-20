@@ -210,9 +210,12 @@ export function useMediaDetailPluginActions(
           const serverName = String(plexInfo?.serverName || plexInfo?.server_name || 'Plex')
           const title = String(plexInfo?.title || '')
           const mediaTypeVal = (plexInfo?.mediaType || plexInfo?.media_type || mediaType) as 'movie' | 'show' | 'episode'
-          const seasonNumber = plexInfo?.seasonNumber != null ? Number(plexInfo.seasonNumber) : (plexInfo?.season_number != null ? Number(plexInfo.season_number) : undefined)
-          const episodeNumber = plexInfo?.episodeNumber != null ? Number(plexInfo.episodeNumber) : (plexInfo?.episode_number != null ? Number(plexInfo.episode_number) : undefined)
-          const episodeTitle = plexInfo?.episodeTitle ? String(plexInfo.episodeTitle) : (plexInfo?.episode_title ? String(plexInfo.episode_title) : undefined)
+          const rawSeason = plexInfo?.seasonNumber ?? plexInfo?.season_number
+          const seasonNumber = rawSeason != null ? Number(rawSeason) : undefined
+          const rawEpisode = plexInfo?.episodeNumber ?? plexInfo?.episode_number
+          const episodeNumber = rawEpisode != null ? Number(rawEpisode) : undefined
+          const rawTitle = plexInfo?.episodeTitle ?? plexInfo?.episode_title
+          const episodeTitle = rawTitle ? String(rawTitle) : undefined
           const viewOffset = Number(plexInfo?.viewOffset ?? plexInfo?.view_offset ?? 0)
           const duration = Number(plexInfo?.duration ?? 0)
           const progressPercent = Number(plexInfo?.progressPercent ?? plexInfo?.progress_percent ?? 0)

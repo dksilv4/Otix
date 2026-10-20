@@ -49,6 +49,7 @@ export interface NormalizedPlaySession {
   backdropUrl?: string | null
   slug?: string | null
   otixMediaId?: string | number | null
+  isPrivate?: boolean
 }
 
 export interface UserGameSessionsSummary {
@@ -174,11 +175,18 @@ export function normalizeSession(raw: Record<string, unknown>): NormalizedPlaySe
     bannerUrl: ((raw.banner_url ?? raw.bannerUrl ?? raw.banner) as string) || null,
     backdropUrl: ((raw.backdrop_url ?? raw.backdropUrl ?? raw.backdrop) as string) || null,
     slug: (raw.slug as string) || null,
-    otixMediaId: ((raw.otix_media_id ?? raw.otixMediaId ?? raw.media_item_id ?? raw.mediaItemId) as string | number) || null,
+    otixMediaId:
+      ((raw.otix_media_id ?? raw.otixMediaId ?? raw.media_item_id ?? raw.mediaItemId) as string | number) || null,
+    isPrivate:
+      typeof raw.is_private === 'boolean'
+        ? raw.is_private
+        : typeof raw.isPrivate === 'boolean'
+          ? raw.isPrivate
+          : true,
   }
 }
 
-export const useUserGameSessions = (options?: { enabled?: boolean }) => {
+export const useUserGameSessions = (options?: { enabled?: boolean; username?: string }) => {
   const queryClient = useQueryClient()
   const { runningGame, runningGames = [], elapsedMs } = useRunningGame()
   const { data: localGames } = useLocalGames()
@@ -203,12 +211,23 @@ export const useUserGameSessions = (options?: { enabled?: boolean }) => {
         gameMap.byTitle.get(session.gameTitle.toLowerCase())
       : null
 
+    const fallbackPoster =
+      match?.data?.textlessPosterUrl ||
+      match?.otixTextlessPosterUrl ||
+      match?.otixPosterUrl ||
+      match?.posterUrl ||
+      match?.data?.posterUrl ||
+      null
+    const fallbackBackdrop =
+      match?.otixBackdropUrl ||
+      match?.data?.backdropUrl ||
+      null
     const resolved = resolveSessionArtwork(
       session.gameId,
       match?.otixMediaTitle || match?.title || session.gameTitle,
       session.processName,
-      session.posterUrl || match?.data?.textlessPosterUrl || match?.otixTextlessPosterUrl || match?.otixPosterUrl || match?.posterUrl || match?.data?.posterUrl || null,
-      session.backdropUrl || match?.otixBackdropUrl || match?.data?.backdropUrl || null
+      session.posterUrl || fallbackPoster,
+      session.backdropUrl || fallbackBackdrop
     )
 
     return {
@@ -256,13 +275,13 @@ export const useUserGameSessions = (options?: { enabled?: boolean }) => {
   }, [queryClient])
 
   const query = useQuery<UserGameSessionsSummary>({
-    queryKey: ['user-game-sessions'],
+    queryKey: ['user-game-sessions', options?.username || ''],
     queryFn: async () => {
       let rawSessions: Record<string, unknown>[] = []
 
       // 1. Electron Desktop API
       const api = getDesktopAPI()
-      if (api?.getRecentSessions) {
+      if (!options?.username && api?.getRecentSessions) {
         try {
           const desk = await api.getRecentSessions()
           if (Array.isArray(desk)) {
@@ -276,7 +295,10 @@ export const useUserGameSessions = (options?: { enabled?: boolean }) => {
       // 2. Central Backend Proxy
       if (rawSessions.length === 0) {
         try {
-          const { data } = await apiClient.get<Record<string, unknown>[]>('/library/game-sessions')
+          const endpoint = options?.username
+            ? `/library/game-sessions?username=${encodeURIComponent(options.username)}`
+            : '/library/game-sessions'
+          const { data } = await apiClient.get<Record<string, unknown>[]>(endpoint)
           if (Array.isArray(data)) {
             rawSessions.push(...data)
           }

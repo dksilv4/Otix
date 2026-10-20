@@ -76,8 +76,21 @@ export function formatAlbumDuration(ms?: number | null): string {
 }
 
 export function backdropSrc(url: string): string {
-  if (url.includes('/w500/')) return url.replace(/\/w500\//, '/original/')
-  return url
+  if (!url) return ''
+  let clean = url
+  if (clean.includes('/w500/')) clean = clean.replace(/\/w500\//, '/original/')
+  if (typeof window !== 'undefined' && window.location.protocol === 'https:' && clean.startsWith('http://')) {
+    try {
+      const parsed = new URL(clean)
+      if (parsed.host === window.location.host || clean.includes('/uploads/')) {
+        parsed.protocol = 'https:'
+        return parsed.toString()
+      }
+    } catch {
+      // ignore invalid URLs
+    }
+  }
+  return clean
 }
 
 export function languageName(code: string): string {

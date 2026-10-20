@@ -16,7 +16,7 @@ interface UserProfileGameSessionsProps {
 }
 
 export const UserProfileGameSessions = ({ username }: UserProfileGameSessionsProps) => {
-  const { data, isLoading } = useUserGameSessions()
+  const { data, isLoading } = useUserGameSessions({ username })
   const [selectedSession, setSelectedSession] = useState<NormalizedPlaySession | null>(null)
 
   const sessions = useMemo(() => data?.sessions || [], [data?.sessions])

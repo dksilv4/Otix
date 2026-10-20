@@ -253,6 +253,7 @@ services:
       - api
     volumes:
       - frontend_static:/usr/share/nginx/html
+      - uploads:/usr/share/nginx/uploads:ro
     restart: unless-stopped
     deploy:
       resources:

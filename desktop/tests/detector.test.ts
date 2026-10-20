@@ -243,6 +243,26 @@ describe('GameDetector', () => {
       const results = await detector.scanRunningProcesses()
       expect(results).toHaveLength(0)
     })
+
+    it('detects unindexed games with known signatures like Wardogs', async () => {
+      detector.setLibrary([])
+      mockProcesses(['WardogsClient-Win64-Shipping.exe'])
+
+      const results = await detector.scanRunningProcesses()
+      expect(results).toHaveLength(1)
+      expect(results[0].game.title).toBe('Wardogs')
+      expect(results[0].game.id).toBe('wardogs')
+    })
+
+    it('matches Unreal Engine shipping executable candidates for library games', async () => {
+      const game = makeGame({ id: 'wardogs', title: 'Wardogs' })
+      detector.setLibrary([game])
+      mockProcesses(['WardogsClient-Win64-Shipping.exe'])
+
+      const results = await detector.scanRunningProcesses()
+      expect(results).toHaveLength(1)
+      expect(results[0].game.id).toBe('wardogs')
+    })
   })
 
   // ── Custom process mappings ──

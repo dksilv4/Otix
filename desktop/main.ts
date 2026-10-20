@@ -30,7 +30,7 @@ protocol.registerSchemesAsPrivileged([
   },
 ]);
 import { getApiBaseUrl } from './config';
-import { GameDetector, type RunningGame } from './game/detector';
+import { GameDetector, type RunningGame, type PlaySession } from './game/detector';
 import { registerDownloadsIPC, setPluginCaller } from './ipc/downloads';
 import { registerScannerIPC, setScanOrchestrator, registerPluginScanIPC, setPluginManager } from './ipc/scanner';
 import { registerInstallerIPC } from './ipc/installer';
@@ -621,6 +621,28 @@ app.on('ready', async () => {
     }
   };
 
+  const syncGameSessionToBackend = async (sessions: PlaySession | PlaySession[]) => {
+    if (!currentAuthToken) return;
+    const apiBase = getApiBaseUrl();
+    const url = `${apiBase}/api/v1/library/game-sessions`;
+    const list = Array.isArray(sessions) ? sessions : [sessions];
+    if (list.length === 0) return;
+    const payload = { sessions: list };
+
+    try {
+      await net.fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${currentAuthToken}`,
+        },
+        body: JSON.stringify(payload),
+      });
+    } catch (err) {
+      console.debug('[main] Failed to sync game session to backend:', err);
+    }
+  };
+
   let desktopNodeHeartbeatTimer: NodeJS.Timeout | null = null;
 
   const syncDesktopNodeToBackend = async (isOnline = true) => {
@@ -724,6 +746,7 @@ app.on('ready', async () => {
     }
 
     // Auto-save backup or cloud sync on game session end
+    void syncGameSessionToBackend(session);
     if (saveDaemon) {
       (async () => {
         try {
@@ -762,6 +785,11 @@ app.on('ready', async () => {
   eventBus.on('fps:stats', (payload: any) => {
     if (payload?.gameId && payload?.fpsStats && gameDetector) {
       gameDetector.updateSessionFpsStats(payload.gameId, payload.fpsStats);
+      const recent = gameDetector.getRecentSessions();
+      const updated = recent.find((s) => s.gameId === payload.gameId);
+      if (updated) {
+        void syncGameSessionToBackend(updated);
+      }
     }
     if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.webContents.send('game:fps-stats', payload);
@@ -976,6 +1004,13 @@ app.on('ready', async () => {
         }
         if (gameDetector && gameDetector.getRunningGames().length > 0) {
           void syncRunningGamesToBackend(gameDetector.getRunningGames());
+        }
+        if (gameDetector) {
+          const recent = gameDetector.getRecentSessions();
+          if (recent.length > 0) {
+            void syncGameSessionToBackend(recent);
+          }
+
         }
       } else {
         if (desktopNodeHeartbeatTimer) {

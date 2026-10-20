@@ -111,7 +111,9 @@ urlpatterns = [
     path("installed", InstalledGamesView.as_view(), name="library-installed"),
     path("homes", UserHomeListCreateView.as_view(), name="library-homes"),
     path("homes/<int:home_id>", UserHomeDetailView.as_view(), name="library-home-detail"),
-    path("server-machines", UserServerMachineListCreateView.as_view(), name="library-server-machines"),
+    path(
+        "server-machines", UserServerMachineListCreateView.as_view(), name="library-server-machines"
+    ),
     path(
         "server-machines/detect-drives",
         UserServerMachineDetectDrivesView.as_view(),

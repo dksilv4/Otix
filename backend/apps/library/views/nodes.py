@@ -189,7 +189,9 @@ class GameServerListCreateView(APIView):
                 if not server.last_seen_at or (now - server.last_seen_at).total_seconds() > 90:
                     server.is_online = False
                     server.save(update_fields=["is_online", "updated_at"])
-        return Response(UserGameServerSerializer(servers, many=True, context={"request": request}).data)
+        return Response(
+            UserGameServerSerializer(servers, many=True, context={"request": request}).data
+        )
 
     def post(self, request: Request) -> Response:
         user = _resolve_user(request)
@@ -201,7 +203,11 @@ class GameServerListCreateView(APIView):
 
         # Auto-naming fallback: prefer announced node name over generic Node ID:<X>
         raw_name = (data.get("name") or "").strip()
-        if not raw_name or raw_name in ("Otix Game Server", "Otix Node") or raw_name.startswith("Node ID:"):
+        if (
+            not raw_name
+            or raw_name in ("Otix Game Server", "Otix Node")
+            or raw_name.startswith("Node ID:")
+        ):
             pending_matches = [
                 n
                 for n in list_pending_nodes()
@@ -209,7 +215,11 @@ class GameServerListCreateView(APIView):
                 or (data.get("auth_token") and n.get("auth_token") == data.get("auth_token"))
             ]
             announced = pending_matches[0].get("server_name") if pending_matches else ""
-            if announced and announced not in ("Otix Game Server", "Otix Node") and not announced.startswith("Node ID:"):
+            if (
+                announced
+                and announced not in ("Otix Game Server", "Otix Node")
+                and not announced.startswith("Node ID:")
+            ):
                 data["name"] = announced
             elif raw_name:
                 data["name"] = raw_name
@@ -372,18 +382,28 @@ class DesktopNodeHeartbeatView(APIView):
         if not is_online:
             cache.delete(cache_key)
         elif raw_games or raw_game:
-            glist = raw_games if isinstance(raw_games, list) else ([raw_game] if isinstance(raw_game, dict) else [])
+            glist = (
+                raw_games
+                if isinstance(raw_games, list)
+                else ([raw_game] if isinstance(raw_game, dict) else [])
+            )
             if glist:
-                enriched = enrich_sessions_with_media([dict(g, game_id=g.get("id"), game_title=g.get("title")) for g in glist])
+                enriched = enrich_sessions_with_media(
+                    [dict(g, game_id=g.get("id"), game_title=g.get("title")) for g in glist]
+                )
                 for orig, enr in zip(glist, enriched, strict=False):
                     orig.setdefault("poster_url", enr.get("poster_url"))
                     orig.setdefault("backdrop_url", enr.get("backdrop_url"))
                     orig.setdefault("otix_media_id", enr.get("otix_media_id"))
-                cache.set(cache_key, {
-                    "running": True,
-                    "game": glist[0],
-                    "games": glist,
-                }, timeout=90)
+                cache.set(
+                    cache_key,
+                    {
+                        "running": True,
+                        "game": glist[0],
+                        "games": glist,
+                    },
+                    timeout=90,
+                )
 
         return Response(UserNodeSerializer(node, context={"request": request}).data)
 
@@ -491,10 +511,9 @@ class GameServerClaimDirectView(APIView):
             raise NotAuthenticated("User authentication required to claim a server node")
 
         payload = request.data if isinstance(request.data, dict) else {}
-        client_ip = (
-            request.META.get("HTTP_X_FORWARDED_FOR", "").split(",")[0].strip()
-            or request.META.get("REMOTE_ADDR")
-        )
+        client_ip = request.META.get("HTTP_X_FORWARDED_FOR", "").split(",")[
+            0
+        ].strip() or request.META.get("REMOTE_ADDR")
         try:
             server, created = claim_node_direct(
                 user=user,
@@ -554,8 +573,6 @@ class GameServerUnclaimView(APIView):
                 "unclaimed": deleted_count,
             }
         )
-
-
 
 
 class GameServerProbeView(APIView):
@@ -2036,7 +2053,9 @@ def enrich_sessions_with_media(sessions: list[dict]) -> list[dict]:
             titles.add(title)
             clean_title = title.lower()
             norm_key = clean_title.replace(":", "").replace("-", " ").replace("  ", " ").strip()
-            known_app_id = KNOWN_GAME_STEAM_APP_IDS.get(clean_title) or KNOWN_GAME_STEAM_APP_IDS.get(norm_key)
+            known_app_id = KNOWN_GAME_STEAM_APP_IDS.get(
+                clean_title
+            ) or KNOWN_GAME_STEAM_APP_IDS.get(norm_key)
             if known_app_id:
                 steam_candidates.add(known_app_id)
 
@@ -2079,7 +2098,9 @@ def enrich_sessions_with_media(sessions: list[dict]) -> list[dict]:
                 new_ids = [x for x in extra_ids if x not in existing_ids]
                 if new_ids:
                     extra_items = list(
-                        MediaItem.objects.filter(media_type="game", pk__in=new_ids).prefetch_related("assets")
+                        MediaItem.objects.filter(
+                            media_type="game", pk__in=new_ids
+                        ).prefetch_related("assets")
                     )
                     media_items.extend(extra_items)
         except Exception as exc:
@@ -2128,7 +2149,9 @@ def enrich_sessions_with_media(sessions: list[dict]) -> list[dict]:
         elif gid.isdigit() and int(gid) > 1000:
             candidate_steam_id = gid
         if not candidate_steam_id:
-            candidate_steam_id = KNOWN_GAME_STEAM_APP_IDS.get(clean_title) or KNOWN_GAME_STEAM_APP_IDS.get(norm_key)
+            candidate_steam_id = KNOWN_GAME_STEAM_APP_IDS.get(
+                clean_title
+            ) or KNOWN_GAME_STEAM_APP_IDS.get(norm_key)
 
         igdb_id_cand: str | None = None
         if gid.startswith("igdb:"):
@@ -2168,7 +2191,11 @@ def enrich_sessions_with_media(sessions: list[dict]) -> list[dict]:
         if matched:
             s["poster_url"] = getattr(matched, "poster_url", None) or s.get("poster_url")
             s["backdrop_url"] = getattr(matched, "backdrop_url", None) or s.get("backdrop_url")
-            s["banner_url"] = getattr(matched, "banner_url", None) or getattr(matched, "logo_url", None) or s.get("banner_url")
+            s["banner_url"] = (
+                getattr(matched, "banner_url", None)
+                or getattr(matched, "logo_url", None)
+                or s.get("banner_url")
+            )
             s["slug"] = getattr(matched, "slug", None) or s.get("slug")
             s["game_title"] = getattr(matched, "title", None) or s.get("game_title")
             s["gameTitle"] = getattr(matched, "title", None) or s.get("gameTitle")
@@ -2179,9 +2206,13 @@ def enrich_sessions_with_media(sessions: list[dict]) -> list[dict]:
         if not s.get("poster_url"):
             app_id = candidate_steam_id
             if app_id:
-                s["poster_url"] = f"https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/{app_id}/library_600x900.jpg"
+                s["poster_url"] = (
+                    f"https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/{app_id}/library_600x900.jpg"
+                )
                 if not s.get("backdrop_url"):
-                    s["backdrop_url"] = f"https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/{app_id}/page_bg_generated_v6b.jpg"
+                    s["backdrop_url"] = (
+                        f"https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/{app_id}/page_bg_generated_v6b.jpg"
+                    )
 
     return sessions
 
@@ -2230,7 +2261,9 @@ def save_or_update_game_session(user, session_dict: dict) -> UserGameSession | N
     from apps.media.models import MediaItem
 
     game_id = str(session_dict.get("game_id") or session_dict.get("gameId") or "").strip()
-    game_title = str(session_dict.get("game_title") or session_dict.get("gameTitle") or "Unknown Game").strip()
+    game_title = str(
+        session_dict.get("game_title") or session_dict.get("gameTitle") or "Unknown Game"
+    ).strip()
     if not game_id and not game_title:
         return None
 
@@ -2255,7 +2288,12 @@ def save_or_update_game_session(user, session_dict: dict) -> UserGameSession | N
     else:
         is_private = getattr(user, "game_sessions_private", True)
 
-    session_id = str(session_dict.get("session_id") or session_dict.get("sessionId") or session_dict.get("id") or "").strip()
+    session_id = str(
+        session_dict.get("session_id")
+        or session_dict.get("sessionId")
+        or session_dict.get("id")
+        or ""
+    ).strip()
     if session_id.isdigit():
         session_id = None
 
@@ -2263,11 +2301,28 @@ def save_or_update_game_session(user, session_dict: dict) -> UserGameSession | N
     if not isinstance(fps, dict):
         fps = {}
 
-    avg_fps = fps.get("avg_fps") or fps.get("avgFps") or session_dict.get("avg_fps") or session_dict.get("avgFps")
-    min_fps = fps.get("min_fps") or fps.get("minFps") or session_dict.get("min_fps") or session_dict.get("minFps")
-    max_fps = fps.get("max_fps") or fps.get("maxFps") or session_dict.get("max_fps") or session_dict.get("maxFps")
+    avg_fps = (
+        fps.get("avg_fps")
+        or fps.get("avgFps")
+        or session_dict.get("avg_fps")
+        or session_dict.get("avgFps")
+    )
+    min_fps = (
+        fps.get("min_fps")
+        or fps.get("minFps")
+        or session_dict.get("min_fps")
+        or session_dict.get("minFps")
+    )
+    max_fps = (
+        fps.get("max_fps")
+        or fps.get("maxFps")
+        or session_dict.get("max_fps")
+        or session_dict.get("maxFps")
+    )
     low_1 = fps.get("low_1_percent") or fps.get("onePercentLow") or fps.get("low1Percent")
-    low_01 = fps.get("low_01_percent") or fps.get("zeroPointOnePercentLow") or fps.get("low01Percent")
+    low_01 = (
+        fps.get("low_01_percent") or fps.get("zeroPointOnePercentLow") or fps.get("low01Percent")
+    )
     total_frames = fps.get("total_frames") or fps.get("totalFrames")
 
     node_info = session_dict.get("node") or session_dict.get("node_info") or {}
@@ -2389,6 +2444,7 @@ class UserGameSessionsView(APIView):
 
     def get(self, request: Request) -> Response:
         from django.contrib.auth import get_user_model
+
         User = get_user_model()
 
         limit = int(request.query_params.get("limit", 100))
@@ -2404,43 +2460,53 @@ class UserGameSessionsView(APIView):
 
         # If viewing another user's profile, only return non-private sessions
         if not is_self:
-            qs = UserGameSession.objects.filter(user=target_user, is_private=False).order_by("-start_time")[:limit]
+            qs = UserGameSession.objects.filter(user=target_user, is_private=False).order_by(
+                "-start_time"
+            )[:limit]
             return Response(UserGameSessionSerializer(qs, many=True).data)
 
         # Self: Fetch DB sessions
-        db_sessions = list(UserGameSession.objects.filter(user=target_user).order_by("-start_time")[:limit])
+        db_sessions = list(
+            UserGameSession.objects.filter(user=target_user).order_by("-start_time")[:limit]
+        )
 
-        # Also probe user's active game servers for any live/unpersisted node sessions
-        servers = list(UserGameServer.objects.filter(user=target_user, is_online=True))
-        if not servers and not db_sessions:
-            servers = list(UserGameServer.objects.filter(user=target_user)[:3])
+        # If DB has sessions and no explicit sync requested, return DB sessions directly
+        force_sync = request.query_params.get("sync") in ("1", "true", "True")
+        if not db_sessions or force_sync:
+            servers = list(UserGameServer.objects.filter(user=target_user, is_online=True))
+            if not servers and not db_sessions:
+                servers = list(UserGameServer.objects.filter(user=target_user)[:3])
 
-        node_sessions: list[dict] = []
-        if servers:
-            for server in servers:
-                if getattr(server, "is_local_desktop", False):
-                    continue
-                try:
-                    code, body = node_get_sessions(server, limit=limit)
-                    if code == 200 and isinstance(body, list):
-                        node_sessions.extend(body)
-                except Exception as exc:
-                    logger.debug("Failed to fetch sessions from server %s: %s", server.id, exc)
+            node_sessions: list[dict] = []
+            if servers:
+                for server in servers:
+                    if getattr(server, "is_local_desktop", False):
+                        continue
+                    try:
+                        code, body = node_get_sessions(server, limit=limit)
+                        if code == 200 and isinstance(body, list):
+                            node_sessions.extend(body)
+                    except Exception as exc:
+                        logger.debug("Failed to fetch sessions from server %s: %s", server.id, exc)
 
-        if node_sessions:
-            enriched_node = enrich_sessions_with_media(node_sessions)
-            if getattr(target_user, "save_game_sessions", True):
-                for s in enriched_node:
-                    save_or_update_game_session(target_user, s)
-                db_sessions = list(UserGameSession.objects.filter(user=target_user).order_by("-start_time")[:limit])
-            else:
-                db_data = UserGameSessionSerializer(db_sessions, many=True).data
-                seen_ids = {s.get("id") for s in db_data}
-                for s in enriched_node:
-                    sid = s.get("id") or f"{s.get('game_id')}-{s.get('start_time')}"
-                    if sid not in seen_ids:
-                        db_data.append(s)
-                return Response(db_data[:limit])
+            if node_sessions:
+                enriched_node = enrich_sessions_with_media(node_sessions)
+                if getattr(target_user, "save_game_sessions", True):
+                    for s in enriched_node:
+                        save_or_update_game_session(target_user, s)
+                    db_sessions = list(
+                        UserGameSession.objects.filter(user=target_user).order_by("-start_time")[
+                            :limit
+                        ]
+                    )
+                else:
+                    db_data = UserGameSessionSerializer(db_sessions, many=True).data
+                    seen_ids = {s.get("id") for s in db_data}
+                    for s in enriched_node:
+                        sid = s.get("id") or f"{s.get('game_id')}-{s.get('start_time')}"
+                        if sid not in seen_ids:
+                            db_data.append(s)
+                    return Response(db_data[:limit])
 
         return Response(UserGameSessionSerializer(db_sessions, many=True).data)
 
@@ -2453,7 +2519,12 @@ class UserGameSessionsView(APIView):
             raw = data.get("sessions")
             if isinstance(raw, list):
                 sessions = raw
-            elif data.get("game_id") or data.get("game_title") or data.get("gameId") or data.get("gameTitle"):
+            elif (
+                data.get("game_id")
+                or data.get("game_title")
+                or data.get("gameId")
+                or data.get("gameTitle")
+            ):
                 sessions = [data]
         elif isinstance(data, list):
             sessions = data
@@ -2635,8 +2706,7 @@ class UserGameRunningView(APIView):
 
         if all_running_games:
             items = [
-                dict(g, game_id=g.get("id"), game_title=g.get("title"))
-                for g in all_running_games
+                dict(g, game_id=g.get("id"), game_title=g.get("title")) for g in all_running_games
             ]
             enriched = enrich_sessions_with_media(items)
             for orig, enr in zip(all_running_games, enriched, strict=False):
@@ -2645,11 +2715,13 @@ class UserGameRunningView(APIView):
                 orig.setdefault("otix_media_id", enr.get("otix_media_id"))
 
         single = all_running_games[0] if all_running_games else None
-        return Response({
-            "running": len(all_running_games) > 0,
-            "game": single,
-            "games": all_running_games,
-        })
+        return Response(
+            {
+                "running": len(all_running_games) > 0,
+                "game": single,
+                "games": all_running_games,
+            }
+        )
 
     def post(self, request: Request) -> Response:
         """Record or clear currently running games reported by desktop client or node."""
@@ -2675,10 +2747,7 @@ class UserGameRunningView(APIView):
             return Response({"running": False, "game": None, "games": []})
 
         # Enrich missing poster/backdrop/metadata via catalog
-        items = [
-            dict(g, game_id=g.get("id"), game_title=g.get("title"))
-            for g in games_list
-        ]
+        items = [dict(g, game_id=g.get("id"), game_title=g.get("title")) for g in games_list]
         enriched = enrich_sessions_with_media(items)
         for orig, enr in zip(games_list, enriched, strict=False):
             orig.setdefault("poster_url", enr.get("poster_url"))
@@ -2729,4 +2798,3 @@ NodeScanClearView = GameServerScanClearView
 NodeSessionsView = GameServerSessionsView
 NodeRunningView = GameServerRunningView
 NodeUnclaimView = GameServerUnclaimView
-

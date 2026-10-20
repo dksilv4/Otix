@@ -7,7 +7,11 @@ import {
   CheckCircle2,
   ArrowRight,
   Sparkles,
+  Lock,
 } from 'lucide-react'
+import { useAuth } from '@/lib/providers/auth'
+import { useQueryClient } from '@tanstack/react-query'
+import { apiClient } from '@/lib/api/client'
 import { SectionHeader } from '../components/molecules/settings-section-header'
 import { SettingsCard } from '../components/molecules/settings-card'
 import { SettingsRow } from '../components/molecules/settings-row'
@@ -33,6 +37,52 @@ export const SettingsLauncherPage = () => {
   const { toast } = useToast()
   const { settings, update } = useLauncherSettings()
   useSettingsHashScroll()
+  const { user, refreshUser } = useAuth()
+  const queryClient = useQueryClient()
+
+  const handleToggleSaveSessions = async (checked: boolean) => {
+    try {
+      await apiClient.patch('/auth/me', { saveGameSessions: checked })
+      await refreshUser()
+      await queryClient.invalidateQueries({ queryKey: ['user'] })
+      await queryClient.invalidateQueries({ queryKey: ['user-game-sessions'] })
+      toast({
+        title: checked ? 'Session recording enabled' : 'Session recording paused',
+        description: checked
+          ? 'Gameplay sessions and telemetry will be recorded.'
+          : 'Otix will not record new gameplay sessions to your profile.',
+        variant: 'success',
+      })
+    } catch {
+      toast({
+        title: 'Failed to update setting',
+        description: 'An error occurred while saving your session preferences.',
+        variant: 'error',
+      })
+    }
+  }
+
+  const handleToggleSessionPrivacy = async (checked: boolean) => {
+    try {
+      await apiClient.patch('/auth/me', { gameSessionsPrivate: checked })
+      await refreshUser()
+      await queryClient.invalidateQueries({ queryKey: ['user'] })
+      await queryClient.invalidateQueries({ queryKey: ['user-game-sessions'] })
+      toast({
+        title: checked ? 'Sessions set to private' : 'Sessions set to public',
+        description: checked
+          ? 'New gameplay sessions are private to your profile.'
+          : 'New gameplay sessions will be visible to other users on your profile.',
+        variant: 'success',
+      })
+    } catch {
+      toast({
+        title: 'Failed to update setting',
+        description: 'An error occurred while saving your privacy preferences.',
+        variant: 'error',
+      })
+    }
+  }
 
   const [activeCategory, setActiveCategory] = useState<ThemeCategory>('all')
 
@@ -149,7 +199,8 @@ export const SettingsLauncherPage = () => {
                 <FeatureStatusTag kind="beta" />
               </div>
               <p className="text-muted-foreground mt-0.5 leading-relaxed text-xs">
-                Select your default launcher interface. All 10 themes read the same game library, user profiles, and active play sessions.
+                Select your default launcher interface. All 10 themes read the same game library,
+                user profiles, and active play sessions.
               </p>
             </div>
 
@@ -306,6 +357,40 @@ export const SettingsLauncherPage = () => {
                 value={settings.defaultPage}
                 onChange={(v) => update('defaultPage', v as typeof settings.defaultPage)}
                 className="w-48"
+              />
+            }
+          />
+        </div>
+      </SettingsCard>
+
+      {/* ── Game Sessions & Privacy ── */}
+      <SettingsCard>
+        <SectionHeader
+          title="Game Sessions & Privacy"
+          description="Manage automated gameplay session recording and profile session visibility."
+        />
+
+        <div className="space-y-2 mt-2">
+          <SettingsRow
+            icon={<Gamepad2 className="h-5 w-5" />}
+            label="Record Game Sessions"
+            description="Automatically track play duration, telemetry, and FPS performance when playing games"
+            action={
+              <DkSwitch
+                checked={user?.saveGameSessions ?? true}
+                onCheckedChange={handleToggleSaveSessions}
+              />
+            }
+          />
+
+          <SettingsRow
+            icon={<Lock className="h-5 w-5" />}
+            label="Default Session Privacy"
+            description="Keep recorded game sessions private to your profile by default"
+            action={
+              <DkSwitch
+                checked={user?.gameSessionsPrivate ?? true}
+                onCheckedChange={handleToggleSessionPrivacy}
               />
             }
           />

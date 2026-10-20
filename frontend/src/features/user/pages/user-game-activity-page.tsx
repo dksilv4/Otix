@@ -31,7 +31,7 @@ export const UserGameActivityPage = () => {
   const { username } = useParams({ strict: false }) as { username?: string }
   const displayUsername = username || 'User'
 
-  const { data } = useUserGameSessions()
+  const { data } = useUserGameSessions({ username })
   const [selectedSession, setSelectedSession] = useState<NormalizedPlaySession | null>(null)
   const [search, setSearch] = useState('')
   const [sortBy, setSortBy] = useState<SessionSortOption>('recent')

@@ -138,7 +138,15 @@ class GameSessionsProxyApiTests(TestCase):
 
         resp = self.client.post(
             "/api/v1/library/game-sessions",
-            {"sessions": [{"game_title": "Hades II", "game_id": "hades-2", "start_time": "2026-10-01T12:00:00Z"}]},
+            {
+                "sessions": [
+                    {
+                        "game_title": "Hades II",
+                        "game_id": "hades-2",
+                        "start_time": "2026-10-01T12:00:00Z",
+                    }
+                ]
+            },
             format="json",
         )
         self.assertEqual(resp.status_code, 200)
@@ -453,7 +461,9 @@ class GameSessionsProxyApiTests(TestCase):
     def test_opt_out_game_sessions_in_settings_does_not_save_to_db(self):
         self.client.force_authenticate(user=self.user)
         # Opt out via PATCH /auth/me
-        patch_res = self.client.patch("/api/v1/auth/me", {"save_game_sessions": False}, format="json")
+        patch_res = self.client.patch(
+            "/api/v1/auth/me", {"save_game_sessions": False}, format="json"
+        )
         self.assertEqual(patch_res.status_code, 200)
         self.user.refresh_from_db()
         self.assertFalse(self.user.save_game_sessions)
@@ -531,6 +541,3 @@ class GameSessionsProxyApiTests(TestCase):
         del_res = self.client.delete(f"/api/v1/library/game-sessions/{sess.id}")
         self.assertEqual(del_res.status_code, 204)
         self.assertEqual(UserGameSession.objects.filter(pk=sess.id).count(), 0)
-
-
-
