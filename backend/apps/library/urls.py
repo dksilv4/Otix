@@ -93,6 +93,7 @@ from apps.library.views import (
     SteamUnmatchedView,
     SteamWishlistView,
     UserGameRunningView,
+    UserGameSessionDetailView,
     UserGameSessionsView,
     UserHomeDetailView,
     UserHomeListCreateView,
@@ -133,6 +134,11 @@ urlpatterns = [
         name="library-node-connections-sync",
     ),
     path("game-sessions", UserGameSessionsView.as_view(), name="library-user-game-sessions"),
+    path(
+        "game-sessions/<int:session_id>",
+        UserGameSessionDetailView.as_view(),
+        name="library-user-game-session-detail",
+    ),
     path("game-running", UserGameRunningView.as_view(), name="library-user-game-running"),
     path("nodes", GameServerListCreateView.as_view(), name="library-nodes"),
     path(

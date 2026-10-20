@@ -7,7 +7,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.test import TestCase
 from rest_framework.test import APIClient
 
-from apps.library.models import UserGameServer
+from apps.library.models import UserGameServer, UserGameSession
 from apps.media.models import ExternalID, MediaAsset, MediaItem
 
 User = get_user_model()
@@ -403,6 +403,134 @@ class GameSessionsProxyApiTests(TestCase):
         del_resp = self.client.delete("/api/v1/library/game-running")
         self.assertEqual(del_resp.status_code, 200)
         self.assertFalse(del_resp.json()["running"])
+
+    def test_user_defaults_for_game_sessions(self):
+        self.assertTrue(self.user.save_game_sessions)
+        self.assertTrue(self.user.game_sessions_private)
+
+    def test_post_saves_game_session_to_database_by_default_private(self):
+        self.client.force_authenticate(user=self.user)
+        payload = {
+            "sessions": [
+                {
+                    "game_id": "steam_730",
+                    "game_title": "Counter-Strike 2",
+                    "process_name": "cs2.exe",
+                    "start_time": "2026-10-15T18:00:00Z",
+                    "end_time": "2026-10-15T19:30:00Z",
+                    "duration_seconds": 5400,
+                    "fps_stats": {
+                        "avg_fps": 240.5,
+                        "min_fps": 160.0,
+                        "max_fps": 310.0,
+                    },
+                }
+            ]
+        }
+        res = self.client.post("/api/v1/library/game-sessions", payload, format="json")
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertEqual(len(data), 1)
+        self.assertTrue(data[0]["is_private"])
+        self.assertEqual(data[0]["game_title"], "Counter-Strike 2")
+        self.assertEqual(data[0]["fps_stats"]["avg_fps"], 240.5)
+
+        # Verify persisted in database
+        db_session = UserGameSession.objects.get(user=self.user, game_id="steam_730")
+        self.assertEqual(db_session.game_title, "Counter-Strike 2")
+        self.assertTrue(db_session.is_private)
+        self.assertEqual(db_session.duration_seconds, 5400)
+        self.assertEqual(db_session.avg_fps, 240.5)
+
+        # GET /library/game-sessions retrieves this session from DB
+        get_res = self.client.get("/api/v1/library/game-sessions")
+        self.assertEqual(get_res.status_code, 200)
+        get_data = get_res.json()
+        self.assertEqual(len(get_data), 1)
+        self.assertEqual(get_data[0]["game_id"], "steam_730")
+        self.assertTrue(get_data[0]["is_private"])
+
+    def test_opt_out_game_sessions_in_settings_does_not_save_to_db(self):
+        self.client.force_authenticate(user=self.user)
+        # Opt out via PATCH /auth/me
+        patch_res = self.client.patch("/api/v1/auth/me", {"save_game_sessions": False}, format="json")
+        self.assertEqual(patch_res.status_code, 200)
+        self.user.refresh_from_db()
+        self.assertFalse(self.user.save_game_sessions)
+
+        # Post session
+        payload = {
+            "sessions": [
+                {
+                    "game_id": "steam_105600",
+                    "game_title": "Terraria",
+                    "start_time": "2026-10-16T14:00:00Z",
+                    "end_time": "2026-10-16T15:00:00Z",
+                }
+            ]
+        }
+        res = self.client.post("/api/v1/library/game-sessions", payload, format="json")
+        self.assertEqual(res.status_code, 200)
+        # In memory it's enriched
+        self.assertEqual(len(res.json()), 1)
+        # But DB has 0 sessions saved!
+        self.assertEqual(UserGameSession.objects.filter(user=self.user).count(), 0)
+
+    def test_other_user_cannot_see_private_sessions(self):
+        # gamer_dan has 1 private session and 1 public session
+        UserGameSession.objects.create(
+            user=self.user,
+            game_id="steam_private",
+            game_title="Secret Game",
+            start_time="2026-10-10T10:00:00Z",
+            is_private=True,
+        )
+        UserGameSession.objects.create(
+            user=self.user,
+            game_id="steam_public",
+            game_title="Public Halo",
+            start_time="2026-10-11T10:00:00Z",
+            is_private=False,
+        )
+
+        # gamer_bob queries gamer_dan's sessions
+        self.client.force_authenticate(user=self.other_user)
+        res = self.client.get(f"/api/v1/library/game-sessions?username={self.user.username}")
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertEqual(len(data), 1)
+        self.assertEqual(data[0]["game_title"], "Public Halo")
+        self.assertFalse(data[0]["is_private"])
+
+        # gamer_dan viewing self sees both
+        self.client.force_authenticate(user=self.user)
+        self_res = self.client.get("/api/v1/library/game-sessions")
+        self.assertEqual(len(self_res.json()), 2)
+
+    def test_patch_and_delete_game_session(self):
+        self.client.force_authenticate(user=self.user)
+        sess = UserGameSession.objects.create(
+            user=self.user,
+            game_id="steam_570",
+            game_title="Dota 2",
+            start_time="2026-10-12T12:00:00Z",
+            is_private=True,
+        )
+
+        # PATCH to make public
+        patch_res = self.client.patch(
+            f"/api/v1/library/game-sessions/{sess.id}",
+            {"is_private": False},
+            format="json",
+        )
+        self.assertEqual(patch_res.status_code, 200)
+        sess.refresh_from_db()
+        self.assertFalse(sess.is_private)
+
+        # DELETE session
+        del_res = self.client.delete(f"/api/v1/library/game-sessions/{sess.id}")
+        self.assertEqual(del_res.status_code, 204)
+        self.assertEqual(UserGameSession.objects.filter(pk=sess.id).count(), 0)
 
 
 

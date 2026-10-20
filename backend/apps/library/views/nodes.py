@@ -2,6 +2,7 @@
 
 import logging
 import mimetypes
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -20,10 +21,16 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 import apps.library.services.node as node_service
-from apps.library.models import UserGameServer, UserNode, UserNodeShare
+from apps.library.models import (
+    UserGameServer,
+    UserGameSession,
+    UserNode,
+    UserNodeShare,
+)
 from apps.library.serializers import (
     UserGameServerCreateSerializer,
     UserGameServerSerializer,
+    UserGameSessionSerializer,
     UserNodeCreateSerializer,
     UserNodeSerializer,
     UserNodeShareSerializer,
@@ -2193,54 +2200,359 @@ class GameServerSessionsView(APIView):
         return Response(body, status=code)
 
 
+def _parse_session_timestamp(val: Any) -> datetime | None:
+    if val is None or val == "":
+        return None
+    if isinstance(val, datetime):
+        if timezone.is_naive(val):
+            return timezone.make_aware(val, timezone.utc)
+        return val
+    if isinstance(val, (int, float)):
+        secs = val / 1000.0 if val > 1e11 else float(val)
+        return datetime.fromtimestamp(secs, tz=timezone.utc)
+    if isinstance(val, str):
+        val = val.strip()
+        if val.isdigit() or (val.replace(".", "", 1).isdigit() and len(val) > 8):
+            num = float(val)
+            secs = num / 1000.0 if num > 1e11 else num
+            return datetime.fromtimestamp(secs, tz=timezone.utc)
+        try:
+            dt = datetime.fromisoformat(val.replace("Z", "+00:00"))
+            if timezone.is_naive(dt):
+                return timezone.make_aware(dt, timezone.utc)
+            return dt
+        except Exception:
+            return None
+    return None
+
+
+def save_or_update_game_session(user, session_dict: dict) -> UserGameSession | None:
+    from apps.media.models import MediaItem
+
+    game_id = str(session_dict.get("game_id") or session_dict.get("gameId") or "").strip()
+    game_title = str(session_dict.get("game_title") or session_dict.get("gameTitle") or "Unknown Game").strip()
+    if not game_id and not game_title:
+        return None
+
+    raw_start = session_dict.get("start_time") or session_dict.get("startTime")
+    start_time = _parse_session_timestamp(raw_start) or timezone.now()
+
+    raw_end = session_dict.get("end_time") or session_dict.get("endTime")
+    end_time = _parse_session_timestamp(raw_end)
+
+    duration = session_dict.get("duration_seconds")
+    if duration is None:
+        duration = session_dict.get("durationSeconds")
+    if duration is None and end_time:
+        duration = int(max(0, (end_time - start_time).total_seconds()))
+    duration = int(duration or 0)
+
+    # Privacy: user option if explicitly passed, otherwise user.game_sessions_private (default True)
+    if "is_private" in session_dict and session_dict["is_private"] is not None:
+        is_private = bool(session_dict["is_private"])
+    elif "isPrivate" in session_dict and session_dict["isPrivate"] is not None:
+        is_private = bool(session_dict["isPrivate"])
+    else:
+        is_private = getattr(user, "game_sessions_private", True)
+
+    session_id = str(session_dict.get("session_id") or session_dict.get("sessionId") or session_dict.get("id") or "").strip()
+    if session_id.isdigit():
+        session_id = None
+
+    fps = session_dict.get("fps_stats") or session_dict.get("fpsStats") or {}
+    if not isinstance(fps, dict):
+        fps = {}
+
+    avg_fps = fps.get("avg_fps") or fps.get("avgFps") or session_dict.get("avg_fps") or session_dict.get("avgFps")
+    min_fps = fps.get("min_fps") or fps.get("minFps") or session_dict.get("min_fps") or session_dict.get("minFps")
+    max_fps = fps.get("max_fps") or fps.get("maxFps") or session_dict.get("max_fps") or session_dict.get("maxFps")
+    low_1 = fps.get("low_1_percent") or fps.get("onePercentLow") or fps.get("low1Percent")
+    low_01 = fps.get("low_01_percent") or fps.get("zeroPointOnePercentLow") or fps.get("low01Percent")
+    total_frames = fps.get("total_frames") or fps.get("totalFrames")
+
+    node_info = session_dict.get("node") or session_dict.get("node_info") or {}
+    if not isinstance(node_info, dict):
+        node_info = {}
+    node_name = session_dict.get("node_name") or node_info.get("name") or ""
+
+    hardware = session_dict.get("hardware") or {}
+    if not isinstance(hardware, dict):
+        hardware = {}
+
+    poster_url = session_dict.get("poster_url") or session_dict.get("posterUrl")
+    backdrop_url = session_dict.get("backdrop_url") or session_dict.get("backdropUrl")
+    banner_url = session_dict.get("banner_url") or session_dict.get("bannerUrl")
+    slug = session_dict.get("slug")
+    process_name = session_dict.get("process_name") or session_dict.get("processName")
+    platform = session_dict.get("platform") or "pc"
+
+    media_item_id = session_dict.get("otix_media_id") or session_dict.get("media_item_id")
+    media_item = None
+    if media_item_id and str(media_item_id).isdigit():
+        media_item = MediaItem.objects.filter(pk=int(media_item_id)).first()
+
+    existing = None
+    if session_id:
+        existing = UserGameSession.objects.filter(user=user, session_id=session_id).first()
+    if not existing and game_id:
+        time_window_start = start_time - timezone.timedelta(seconds=30)
+        time_window_end = start_time + timezone.timedelta(seconds=30)
+        existing = UserGameSession.objects.filter(
+            user=user,
+            game_id=game_id,
+            start_time__gte=time_window_start,
+            start_time__lte=time_window_end,
+        ).first()
+
+    if existing:
+        existing.game_title = game_title or existing.game_title
+        if session_id:
+            existing.session_id = session_id
+        if end_time:
+            existing.end_time = end_time
+        if duration > 0:
+            existing.duration_seconds = max(existing.duration_seconds, duration)
+        if avg_fps is not None:
+            existing.avg_fps = avg_fps
+        if min_fps is not None:
+            existing.min_fps = min_fps
+        if max_fps is not None:
+            existing.max_fps = max_fps
+        if low_1 is not None:
+            existing.low_1_percent = low_1
+        if low_01 is not None:
+            existing.low_01_percent = low_01
+        if total_frames is not None:
+            existing.total_frames = total_frames
+        if fps:
+            existing.fps_stats = {**existing.fps_stats, **fps}
+        if node_info:
+            existing.node_info = node_info
+        if node_name:
+            existing.node_name = node_name
+        if hardware:
+            existing.hardware = hardware
+        if poster_url:
+            existing.poster_url = poster_url
+        if backdrop_url:
+            existing.backdrop_url = backdrop_url
+        if banner_url:
+            existing.banner_url = banner_url
+        if slug:
+            existing.slug = slug
+        if process_name:
+            existing.process_name = process_name
+        if media_item:
+            existing.media_item = media_item
+        if "is_private" in session_dict or "isPrivate" in session_dict:
+            existing.is_private = is_private
+        existing.save()
+        return existing
+    else:
+        return UserGameSession.objects.create(
+            user=user,
+            session_id=session_id,
+            game_id=game_id,
+            game_title=game_title,
+            process_name=process_name,
+            platform=platform,
+            media_item=media_item,
+            start_time=start_time,
+            end_time=end_time,
+            duration_seconds=duration,
+            avg_fps=avg_fps,
+            min_fps=min_fps,
+            max_fps=max_fps,
+            low_1_percent=low_1,
+            low_01_percent=low_01,
+            total_frames=total_frames,
+            fps_stats=fps,
+            node_name=node_name,
+            node_info=node_info,
+            hardware=hardware,
+            poster_url=poster_url,
+            backdrop_url=backdrop_url,
+            banner_url=banner_url,
+            slug=slug,
+            is_private=is_private,
+        )
+
+
 class UserGameSessionsView(APIView):
-    """GET /library/game-sessions — aggregate play sessions across user's active node(s).
-    POST /library/game-sessions — hydrate and enrich arbitrary play sessions with Otix catalog data.
+    """GET /library/game-sessions — aggregate play sessions from DB and active node(s).
+    POST /library/game-sessions — hydrate, enrich, and save input sessions in DB.
+    PATCH /library/game-sessions — update session privacy.
+    DELETE /library/game-sessions — delete a specific session or clear all sessions.
     """
 
     permission_classes = (permissions.IsAuthenticated,)
 
     def get(self, request: Request) -> Response:
-        user = request.user
-        servers = list(UserGameServer.objects.filter(user=user, is_online=True))
-        if not servers:
-            servers = list(UserGameServer.objects.filter(user=user)[:3])
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
 
         limit = int(request.query_params.get("limit", 100))
-        all_sessions: list[dict] = []
-        seen_ids = set()
+        target_username = request.query_params.get("username")
+        target_user = request.user
+        is_self = True
 
-        for server in servers:
-            try:
-                code, body = node_get_sessions(server, limit=limit)
-                if code == 200 and isinstance(body, list):
-                    for sess in body:
-                        sess_id = sess.get("id") or f"{sess.get('game_id')}-{sess.get('start_time')}"
-                        if sess_id not in seen_ids:
-                            seen_ids.add(sess_id)
-                            all_sessions.append(sess)
-            except Exception as exc:
-                logger.debug("Failed to fetch sessions from server %s: %s", server.id, exc)
+        if target_username and target_username != request.user.username:
+            target_user = User.objects.filter(username=target_username).first()
+            if not target_user:
+                return Response([])
+            is_self = False
 
-        def sort_key(s):
-            return s.get("end_time") or s.get("start_time") or ""
+        # If viewing another user's profile, only return non-private sessions
+        if not is_self:
+            qs = UserGameSession.objects.filter(user=target_user, is_private=False).order_by("-start_time")[:limit]
+            return Response(UserGameSessionSerializer(qs, many=True).data)
 
-        all_sessions.sort(key=sort_key, reverse=True)
-        enriched = enrich_sessions_with_media(all_sessions[:limit])
-        return Response(enriched)
+        # Self: Fetch DB sessions
+        db_sessions = list(UserGameSession.objects.filter(user=target_user).order_by("-start_time")[:limit])
+
+        # Also probe user's active game servers for any live/unpersisted node sessions
+        servers = list(UserGameServer.objects.filter(user=target_user, is_online=True))
+        if not servers and not db_sessions:
+            servers = list(UserGameServer.objects.filter(user=target_user)[:3])
+
+        node_sessions: list[dict] = []
+        if servers:
+            for server in servers:
+                if getattr(server, "is_local_desktop", False):
+                    continue
+                try:
+                    code, body = node_get_sessions(server, limit=limit)
+                    if code == 200 and isinstance(body, list):
+                        node_sessions.extend(body)
+                except Exception as exc:
+                    logger.debug("Failed to fetch sessions from server %s: %s", server.id, exc)
+
+        if node_sessions:
+            enriched_node = enrich_sessions_with_media(node_sessions)
+            if getattr(target_user, "save_game_sessions", True):
+                for s in enriched_node:
+                    save_or_update_game_session(target_user, s)
+                db_sessions = list(UserGameSession.objects.filter(user=target_user).order_by("-start_time")[:limit])
+            else:
+                db_data = UserGameSessionSerializer(db_sessions, many=True).data
+                seen_ids = {s.get("id") for s in db_data}
+                for s in enriched_node:
+                    sid = s.get("id") or f"{s.get('game_id')}-{s.get('start_time')}"
+                    if sid not in seen_ids:
+                        db_data.append(s)
+                return Response(db_data[:limit])
+
+        return Response(UserGameSessionSerializer(db_sessions, many=True).data)
 
     def post(self, request: Request) -> Response:
-        """POST /library/game-sessions — hydrate and enrich input sessions with Otix catalog data."""
+        """POST /library/game-sessions — hydrate, enrich, and save input sessions in DB."""
+        user = request.user
         data = request.data
         sessions: list[dict] = []
         if isinstance(data, dict):
             raw = data.get("sessions")
             if isinstance(raw, list):
                 sessions = raw
+            elif data.get("game_id") or data.get("game_title") or data.get("gameId") or data.get("gameTitle"):
+                sessions = [data]
         elif isinstance(data, list):
             sessions = data
+
         enriched = enrich_sessions_with_media(sessions)
+
+        save_enabled = getattr(user, "save_game_sessions", True)
+        if save_enabled:
+            saved_objects: list[UserGameSession] = []
+            for s in enriched:
+                saved = save_or_update_game_session(user, s)
+                if saved:
+                    saved_objects.append(saved)
+            return Response(UserGameSessionSerializer(saved_objects, many=True).data)
+
+        # Opted out: add default privacy in memory without persisting
+        for s in enriched:
+            s["is_private"] = getattr(user, "game_sessions_private", True)
         return Response(enriched)
+
+    def patch(self, request: Request) -> Response:
+        """PATCH /library/game-sessions — update session privacy or fields."""
+        user = request.user
+        data = request.data if isinstance(request.data, dict) else {}
+        session_id = data.get("id") or data.get("session_id") or data.get("db_id")
+        if not session_id:
+            raise ValidationError("Session id required.")
+
+        session = None
+        if str(session_id).isdigit():
+            session = UserGameSession.objects.filter(user=user, pk=int(session_id)).first()
+        if not session:
+            session = UserGameSession.objects.filter(user=user, session_id=str(session_id)).first()
+        if not session:
+            raise NotFound("Game session not found.")
+
+        if "is_private" in data:
+            session.is_private = bool(data["is_private"])
+        elif "isPrivate" in data:
+            session.is_private = bool(data["isPrivate"])
+
+        session.save(update_fields=["is_private", "updated_at"])
+        return Response(UserGameSessionSerializer(session).data)
+
+    def delete(self, request: Request) -> Response:
+        """DELETE /library/game-sessions — delete session or clear all sessions."""
+        user = request.user
+        session_id = request.query_params.get("id") or (
+            request.data.get("id") if isinstance(request.data, dict) else None
+        )
+        if session_id:
+            qs = UserGameSession.objects.filter(user=user)
+            if str(session_id).isdigit():
+                deleted, _ = qs.filter(pk=int(session_id)).delete()
+            else:
+                deleted, _ = qs.filter(session_id=str(session_id)).delete()
+            return Response({"deleted": deleted > 0})
+
+        count, _ = UserGameSession.objects.filter(user=user).delete()
+        return Response({"deleted_count": count})
+
+
+class UserGameSessionDetailView(APIView):
+    """GET /library/game-sessions/{session_id} — get a specific session.
+    PATCH /library/game-sessions/{session_id} — update privacy or metadata.
+    DELETE /library/game-sessions/{session_id} — delete this session.
+    """
+
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def _get_session(self, user, session_id: int) -> UserGameSession:
+        session = UserGameSession.objects.filter(pk=session_id).first()
+        if not session:
+            raise NotFound("Game session not found.")
+        if session.user_id != user.id and session.is_private:
+            raise NotFound("Game session not found.")
+        return session
+
+    def get(self, request: Request, session_id: int) -> Response:
+        session = self._get_session(request.user, session_id)
+        return Response(UserGameSessionSerializer(session).data)
+
+    def patch(self, request: Request, session_id: int) -> Response:
+        session = UserGameSession.objects.filter(user=request.user, pk=session_id).first()
+        if not session:
+            raise NotFound("Game session not found.")
+        data = request.data if isinstance(request.data, dict) else {}
+        if "is_private" in data:
+            session.is_private = bool(data["is_private"])
+        elif "isPrivate" in data:
+            session.is_private = bool(data["isPrivate"])
+        session.save(update_fields=["is_private", "updated_at"])
+        return Response(UserGameSessionSerializer(session).data)
+
+    def delete(self, request: Request, session_id: int) -> Response:
+        deleted, _ = UserGameSession.objects.filter(user=request.user, pk=session_id).delete()
+        if not deleted:
+            raise NotFound("Game session not found.")
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class GameServerRunningView(APIView):

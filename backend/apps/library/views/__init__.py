@@ -99,6 +99,7 @@ from apps.library.views.nodes import (
     NodeShareListCreateView,
     NodeUnclaimView,
     UserGameRunningView,
+    UserGameSessionDetailView,
     UserGameSessionsView,
 )
 from apps.library.views.server_machines import (
@@ -203,10 +204,11 @@ __all__ = [
     "YoutubeLibraryView",
     "GameServerSessionsView",
     "NodeSessionsView",
-    "UserGameSessionsView",
     "GameServerRunningView",
     "NodeRunningView",
     "UserGameRunningView",
+    "UserGameSessionDetailView",
+    "UserGameSessionsView",
     "UserHomeListCreateView",
     "UserHomeDetailView",
     "UserServerMachineListCreateView",

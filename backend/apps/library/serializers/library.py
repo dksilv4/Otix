@@ -17,7 +17,12 @@ from apps.integrations.models import (
     UserSteamGame,
     UserYoutubeLikedVideo,
 )
-from apps.library.models import UserGameServer, UserLocalGame, UserNodeShare
+from apps.library.models import (
+    UserGameServer,
+    UserGameSession,
+    UserLocalGame,
+    UserNodeShare,
+)
 from apps.library.services.summaries import build_media_item_summary
 from apps.media.models import MediaItem
 
@@ -274,3 +279,84 @@ class UserNodeShareSerializer(serializers.ModelSerializer):
 # Backward compatibility aliases
 UserGameServerSerializer = UserNodeSerializer
 UserGameServerCreateSerializer = UserNodeCreateSerializer
+
+
+class UserGameSessionSerializer(serializers.ModelSerializer):
+    """Representation of a persisted user gameplay session."""
+
+    id = serializers.SerializerMethodField()
+    db_id = serializers.IntegerField(source="id", read_only=True)
+    fps_stats = serializers.SerializerMethodField()
+    node = serializers.SerializerMethodField()
+    otix_media_id = serializers.SerializerMethodField()
+    start_time = serializers.SerializerMethodField()
+    end_time = serializers.SerializerMethodField()
+
+    class Meta:
+        model = UserGameSession
+        fields = (
+            "id",
+            "db_id",
+            "session_id",
+            "game_id",
+            "game_title",
+            "process_name",
+            "platform",
+            "start_time",
+            "end_time",
+            "duration_seconds",
+            "avg_fps",
+            "min_fps",
+            "max_fps",
+            "low_1_percent",
+            "low_01_percent",
+            "total_frames",
+            "fps_stats",
+            "node",
+            "node_name",
+            "hardware",
+            "poster_url",
+            "backdrop_url",
+            "banner_url",
+            "slug",
+            "otix_media_id",
+            "is_private",
+            "created_at",
+            "updated_at",
+        )
+        read_only_fields = fields
+
+    def get_id(self, obj: UserGameSession) -> str:
+        return obj.session_id or str(obj.id)
+
+    def get_start_time(self, obj: UserGameSession) -> str | None:
+        return _iso(obj.start_time)
+
+    def get_end_time(self, obj: UserGameSession) -> str | None:
+        return _iso(obj.end_time)
+
+    def get_otix_media_id(self, obj: UserGameSession) -> str | None:
+        return str(obj.media_item_id) if obj.media_item_id else None
+
+    def get_node(self, obj: UserGameSession) -> dict | None:
+        if obj.node_info and isinstance(obj.node_info, dict):
+            return obj.node_info
+        if obj.node_name:
+            return {"name": obj.node_name}
+        return None
+
+    def get_fps_stats(self, obj: UserGameSession) -> dict:
+        stats = dict(obj.fps_stats or {})
+        if obj.avg_fps is not None and "avg_fps" not in stats:
+            stats["avg_fps"] = obj.avg_fps
+        if obj.min_fps is not None and "min_fps" not in stats:
+            stats["min_fps"] = obj.min_fps
+        if obj.max_fps is not None and "max_fps" not in stats:
+            stats["max_fps"] = obj.max_fps
+        if obj.low_1_percent is not None and "low_1_percent" not in stats:
+            stats["low_1_percent"] = obj.low_1_percent
+        if obj.low_01_percent is not None and "low_01_percent" not in stats:
+            stats["low_01_percent"] = obj.low_01_percent
+        if obj.total_frames is not None and "total_frames" not in stats:
+            stats["total_frames"] = obj.total_frames
+        return stats
