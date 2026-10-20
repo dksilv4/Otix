@@ -92,6 +92,7 @@ export const removeCachedGameServer = removeCachedNode
 // ── Hooks: Node CRUD ──
 
 export function useNodes(options?: { enabled?: boolean; refetchInterval?: number | false }) {
+  const isEnabled = options?.enabled ?? hasAccessToken()
   return useQuery<OtixNode[]>({
     queryKey: nodeKeys.lists(),
     queryFn: async () => {
@@ -103,6 +104,9 @@ export function useNodes(options?: { enabled?: boolean; refetchInterval?: number
       } catch (error) {
         const cached = getCachedNodes()
         if (cached.length > 0) return cached
+        if ((error as any)?.response?.status === 401) {
+          return []
+        }
         throw error
       }
     },
@@ -113,7 +117,8 @@ export function useNodes(options?: { enabled?: boolean; refetchInterval?: number
     initialDataUpdatedAt: 0,
     staleTime: 5_000,
     refetchInterval: options?.refetchInterval,
-    enabled: options?.enabled ?? true,
+    enabled: isEnabled,
+    retry: (failureCount, error: any) => error?.response?.status !== 401 && failureCount < 2,
   })
 }
 

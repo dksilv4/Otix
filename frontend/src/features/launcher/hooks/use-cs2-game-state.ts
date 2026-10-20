@@ -31,12 +31,19 @@ const areCs2StatesEqual = (a: Cs2LiveState | null, b: Cs2LiveState | null): bool
   )
 }
 
+export const canPollLocalCs2Web = (): boolean => {
+  if (typeof window === 'undefined') return false
+  if (window.location.protocol === 'https:') return false
+  const host = window.location.hostname
+  return host === 'localhost' || host === '127.0.0.1' || host === '0.0.0.0'
+}
+
 const scheduleNextCs2Poll = () => {
   if (cs2PollTimer !== null) {
     clearTimeout(cs2PollTimer)
     cs2PollTimer = null
   }
-  if (!cs2IsActive || cs2WebSubscribers.size === 0) return
+  if (!cs2IsActive || cs2WebSubscribers.size === 0 || !canPollLocalCs2Web()) return
 
   // Adaptive backoff:
   // CS2 bridge online (0 failures): poll every 1s
@@ -60,6 +67,9 @@ const scheduleNextCs2Poll = () => {
 const CS2_GSI_PORTS = [31337, 5000]
 
 const fetchCs2StateFromHost = async (host: string): Promise<any> => {
+  if (!canPollLocalCs2Web()) {
+    throw new Error('Local CS2 GSI polling is disabled in this environment')
+  }
   let lastError: unknown = null
   for (const port of CS2_GSI_PORTS) {
     try {
@@ -77,6 +87,7 @@ const fetchCs2StateFromHost = async (host: string): Promise<any> => {
 }
 
 const executeCs2WebCheck = async (force = false) => {
+  if (!canPollLocalCs2Web()) return
   if (!cs2IsActive && !force) return
 
   const now = Date.now()
@@ -84,8 +95,7 @@ const executeCs2WebCheck = async (force = false) => {
   cs2LastCheckTime = now
 
   try {
-    const host = typeof window !== 'undefined' ? (window.location.hostname || '127.0.0.1') : '127.0.0.1'
-    const data = await fetchCs2StateFromHost(host)
+    const data = await fetchCs2StateFromHost('127.0.0.1')
     cs2ConsecutiveFailures = 0
 
     let nextState: Cs2LiveState | null = null
@@ -121,6 +131,11 @@ const onCs2WindowFocus = () => {
 
 const subscribeCs2Web = (cb: () => void) => {
   cs2WebSubscribers.add(cb)
+  if (!canPollLocalCs2Web()) {
+    return () => {
+      cs2WebSubscribers.delete(cb)
+    }
+  }
   if (cs2WebSubscribers.size === 1) {
     cs2IsActive = true
     if (typeof window !== 'undefined') {
