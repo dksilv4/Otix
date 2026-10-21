@@ -28,6 +28,7 @@ import {
   serverMachineToInput,
   createDefaultServerInput,
   createDefaultDriveConfig,
+  getOSLabel,
 } from '../../utils/server-machines'
 import {
   useUpdateServerMachine,
@@ -232,6 +233,27 @@ export const EditServerMachineModal = ({
         description="Configure homelab computer, OS, node hosting, hard drives, and SMB access."
       >
         <div className="space-y-4 pt-3">
+          {/* Status Light Bar */}
+          <div className="p-3 rounded-xl bg-white/[0.03] border border-white/[0.04] flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2 min-w-0">
+              <span
+                className={cn(
+                  'h-2.5 w-2.5 rounded-full shrink-0',
+                  server.isOnline ? 'bg-primary animate-pulse' : 'bg-amber-400',
+                )}
+              />
+              <p className="text-xs font-semibold text-foreground truncate">
+                {server.isOnline ? 'Machine Online' : 'Machine Offline'}
+                <span className="ml-2 text-[10px] text-muted-foreground font-normal">
+                  {(server as any).ipAddress || server.host || 'No IP Configured'}
+                </span>
+              </p>
+            </div>
+            <span className="text-[10px] text-muted-foreground font-mono">
+              {getOSLabel(server.os)}
+            </span>
+          </div>
+
           {/* Navigation tabs */}
           <div className="flex items-center gap-1 border-b border-white/[0.06] pb-2 text-xs">
             <button

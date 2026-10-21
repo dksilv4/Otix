@@ -15,7 +15,7 @@ import { NodeSettingsModal } from '../components/organisms/node-settings-modal'
 export const SettingsNodeDetailPage = () => {
   const navigate = useNavigate()
   const location = useLocation()
-  const { user, isAuthenticated } = useAuth()
+  const { isAuthenticated } = useAuth()
   const params = useParams({ strict: false }) as { nodeId?: string }
   const nodeId = parseNodeIdParam(params.nodeId)
   const { servers, isLoading, setSelectedNodeId } = useSettingsNode()
@@ -49,11 +49,11 @@ export const SettingsNodeDetailPage = () => {
     void navigate({ to: '/settings/nodes' })
   }, [navigate])
 
-  if (!isAuthenticated || !user?.isAdmin) {
+  if (!isAuthenticated) {
     return (
       <SettingsLockedState
-        title="Admin access required"
-        description="Only server admins can inspect and configure individual node details."
+        title="Sign in required"
+        description="Sign in to inspect and configure individual node details."
         icon={ShieldAlert}
         action={<span />}
       />

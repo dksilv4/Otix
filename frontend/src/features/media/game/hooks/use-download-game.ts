@@ -231,7 +231,7 @@ export function useDownloadGame(): DownloadGameState {
   // ── Derived / computed state ──
 
   const isDesktop = !!window.desktopAPI
-  const canLocalDownload = isDesktop && !!user?.isAdmin && downloadsEnabled
+  const canLocalDownload = isDesktop && downloadsEnabled
   const dataMissing = !data
 
   const matchingScannedGame =

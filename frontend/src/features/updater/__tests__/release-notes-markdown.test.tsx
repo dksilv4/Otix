@@ -73,4 +73,58 @@ describe('ReleaseNotesMarkdown', () => {
       { newTab: true }
     )
   })
+
+  it('renders markdown tables properly', () => {
+    const md = `
+| Feature | Status |
+| --- | --- |
+| Auto-updater | Complete |
+| Modal Changelog | Complete |
+    `
+    const { container } = render(<ReleaseNotesMarkdown content={md} />)
+
+    expect(container.querySelector('table')).toBeInTheDocument()
+    expect(screen.getByText('Feature')).toBeInTheDocument()
+    expect(screen.getByText('Auto-updater')).toBeInTheDocument()
+    expect(screen.getAllByText('Complete').length).toBe(2)
+  })
+
+  it('auto-links raw URLs and GitHub user mentions', () => {
+    const openExternalSpy = vi.spyOn(openExternalModule, 'openExternal').mockImplementation(() => {})
+    const md = 'Thanks to @dksilv4 for contribution in https://github.com/dksilv4/Otix/pull/42'
+    render(<ReleaseNotesMarkdown content={md} />)
+
+    const userBtn = screen.getByRole('button', { name: '@dksilv4' })
+    expect(userBtn).toBeInTheDocument()
+    fireEvent.click(userBtn)
+    expect(openExternalSpy).toHaveBeenCalledWith('https://github.com/dksilv4', { newTab: true })
+
+    const urlBtn = screen.getByRole('button', { name: 'https://github.com/dksilv4/Otix/pull/42' })
+    expect(urlBtn).toBeInTheDocument()
+    fireEvent.click(urlBtn)
+    expect(openExternalSpy).toHaveBeenCalledWith('https://github.com/dksilv4/Otix/pull/42', { newTab: true })
+  })
+
+  it('renders task list checkmarks correctly', () => {
+    const md = `
+- [x] Finished item
+- [ ] Todo item
+    `
+    render(<ReleaseNotesMarkdown content={md} />)
+
+    expect(screen.getByText('Finished item')).toBeInTheDocument()
+    expect(screen.getByText('Todo item')).toBeInTheDocument()
+  })
+
+  it('renders conventional commit badges', () => {
+    const md = `
+* feat(updater): add dedicated release notes modal
+* fix: resolve race condition
+    `
+    render(<ReleaseNotesMarkdown content={md} />)
+
+    expect(screen.getByText('feat(updater)')).toBeInTheDocument()
+    expect(screen.getByText('fix')).toBeInTheDocument()
+    expect(screen.getByText(/add dedicated release notes modal/i)).toBeInTheDocument()
+  })
 })

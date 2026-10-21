@@ -13,6 +13,7 @@ import {
   ArrowRight,
   AlertCircle,
   BookOpen,
+  ScrollText,
   Lightbulb,
   RotateCcw,
   Globe,
@@ -30,7 +31,6 @@ import {
   formatBytes,
   formatSpeed,
   formatUpdateError,
-  ReleaseNotesMarkdown,
 } from '@/features/updater'
 import { useWelcomePreferences, SetupWizardModal } from '@/features/welcome'
 import { openFeatureSpotlight, useFeatureSpotlight } from '@/features/spotlight'
@@ -67,7 +67,6 @@ export const SettingsGeneralPage = () => {
     status: updateStatus,
     currentVersion,
     availableVersion,
-    releaseNotes,
     progress: updateProgress,
     error: updateError,
     isChecking: isUpdateChecking,
@@ -80,6 +79,7 @@ export const SettingsGeneralPage = () => {
     setAutoDownload,
     setAllowPrerelease,
     openUpdateModal,
+    openReleaseNotesModal,
     checkForUpdates,
     downloadUpdate,
     installUpdate,
@@ -303,9 +303,26 @@ export const SettingsGeneralPage = () => {
 
             <div className="flex items-center justify-between text-xs pt-1">
               <span className="text-muted-foreground">Installed Version</span>
-              <span className="font-mono text-foreground font-semibold">
-                v{currentVersion}
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="font-mono text-foreground font-semibold">
+                  v{currentVersion}
+                </span>
+                <DkButton
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => {
+                    if (openReleaseNotesModal) {
+                      openReleaseNotesModal()
+                    } else {
+                      openUpdateModal()
+                    }
+                  }}
+                  className="rounded-xl px-2.5 py-0.5 text-xs font-semibold h-7"
+                >
+                  Release Notes
+                </DkButton>
+              </div>
             </div>
 
             <div className="flex items-center justify-between text-xs pt-1">
@@ -318,21 +335,40 @@ export const SettingsGeneralPage = () => {
             <div className="mt-4 pt-4 border-t border-[var(--dk-separator)] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="space-y-0.5">
                 <span className="text-xs font-semibold text-foreground">
-                  Documentation &amp; Guides
+                  Documentation &amp; Release Notes
                 </span>
                 <p className="text-xs text-muted-foreground">
-                  Explore ecosystem setup, BYOS streaming, Node companion, and plugin development.
+                  Explore ecosystem setup, latest changelogs, BYOS streaming, and guides.
                 </p>
               </div>
-              <DkButton
-                size="sm"
-                variant="secondary"
-                leftIcon={BookOpen}
-                onClick={() => void router.navigate({ to: '/docs' })}
-                className="rounded-xl px-4 text-xs font-semibold shrink-0"
-              >
-                View Docs
-              </DkButton>
+              <div className="flex items-center gap-2 shrink-0">
+                <DkButton
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  leftIcon={ScrollText}
+                  onClick={() => {
+                    if (openReleaseNotesModal) {
+                      openReleaseNotesModal()
+                    } else {
+                      openUpdateModal()
+                    }
+                  }}
+                  className="rounded-xl px-3 text-xs font-semibold"
+                >
+                  Release Notes
+                </DkButton>
+                <DkButton
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  leftIcon={BookOpen}
+                  onClick={() => void router.navigate({ to: '/docs' })}
+                  className="rounded-xl px-4 text-xs font-semibold"
+                >
+                  View Docs
+                </DkButton>
+              </div>
             </div>
           </div>
         </SettingsCard>
@@ -363,7 +399,13 @@ export const SettingsGeneralPage = () => {
                   <DkButton
                     size="sm"
                     variant="ghost"
-                    onClick={openUpdateModal}
+                    onClick={() => {
+                      if (openReleaseNotesModal) {
+                        openReleaseNotesModal()
+                      } else {
+                        openUpdateModal()
+                      }
+                    }}
                     className="rounded-xl px-3 text-xs font-semibold"
                   >
                     Show Release Notes
@@ -482,17 +524,6 @@ export const SettingsGeneralPage = () => {
                 <div className="flex items-start gap-2 p-3 rounded-xl text-xs text-destructive bg-[var(--dk-surface-ghost)]">
                   <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
                   <span className="leading-relaxed">{formatUpdateError(updateError)}</span>
-                </div>
-              )}
-
-              {releaseNotes && (
-                <div className="space-y-1 pt-1">
-                  <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
-                    Release Notes
-                  </span>
-                  <div className="p-4 rounded-xl bg-[var(--dk-surface-base)] text-xs text-muted-foreground max-h-48 overflow-y-auto">
-                    <ReleaseNotesMarkdown content={releaseNotes} />
-                  </div>
                 </div>
               )}
             </div>

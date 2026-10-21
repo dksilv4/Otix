@@ -1,13 +1,7 @@
 import { useState, useRef, useMemo, useEffect } from 'react'
 import {
   AlertTriangle,
-  FolderTree,
-  HardDrive,
-  Home as HomeIcon,
-  KeyRound,
-  Plus,
   ShieldAlert,
-  Sparkles,
   Trash2,
 } from 'lucide-react'
 import { DkButton } from '@ui/atoms/button'
@@ -16,7 +10,6 @@ import { useToast } from '@ui/molecules/toast'
 import { useModal } from '@/lib/modals'
 import { useAuth } from '@/lib/providers/auth'
 import { SettingsLockedState } from '../components/molecules/settings-locked-state'
-import { cn } from '@/lib/utils'
 import {
   useClaimGameServer,
   useDeleteGameServer,
@@ -27,7 +20,6 @@ import {
 import type { GameServer } from '@/features/downloads/types'
 import type { PendingNode } from '@/features/downloads/pending-nodes'
 import { DownloadNodeModal } from '@/features/downloads/molecules/download-node-modal'
-import { NodesFeatureTags } from '../components/nodes-feature-tags'
 import { NodeSettingsModal } from '../components/organisms/node-settings-modal'
 import { useSettingsNode } from '../context/settings-node-context'
 import { isDesktop } from '@/lib/desktop/api'
@@ -49,6 +41,7 @@ import { CreateSambaShareModal } from '../components/organisms/create-samba-shar
 import { EditSambaShareModal } from '../components/organisms/edit-samba-share-modal'
 import { AddNodeModal } from '../components/organisms/add-node-modal'
 import { NodesTopologyCanvas } from '../components/organisms/nodes-topology-canvas'
+import { NodesCentralHubNode } from '../components/organisms/nodes-central-hub-node'
 import type { UserHome, UserServerMachine } from '../types/server-machines'
 import type { SambaShareConfig } from '../types/node-map'
 import {
@@ -59,7 +52,7 @@ import {
 
 export const SettingsNodesPage = () => {
   useSettingsHashScroll()
-  const { user, isAuthenticated } = useAuth()
+  const { isAuthenticated } = useAuth()
   const { toast } = useToast()
   const { openModal } = useModal()
 
@@ -360,11 +353,11 @@ export const SettingsNodesPage = () => {
     }
   }
 
-  if (!isAuthenticated || !user?.isAdmin) {
+  if (!isAuthenticated) {
     return (
       <SettingsLockedState
-        title="Admin access required"
-        description="Only server admins can configure Otix nodes, homes, and homelab server machines."
+        title="Sign in required"
+        description="Sign in to view and configure your Otix nodes, homes, and homelab server machines."
         icon={ShieldAlert}
         action={<span />}
       />
@@ -408,145 +401,18 @@ export const SettingsNodesPage = () => {
         onPingNode={handlePingServerInstance}
       />
 
-      {/* Foreground Container in the exact same spot as all settings pages */}
-      <div className="absolute inset-0 z-10 pointer-events-none overflow-hidden">
-        <div
-          ref={sectionContainerRef}
-          className={cn(
-            'min-h-full w-full max-w-5xl xl:max-w-6xl 2xl:max-w-7xl 3xl:max-w-[92rem] mx-auto px-2 sm:px-4 lg:px-6 pb-28',
-            desktop ? 'pt-20 sm:pt-24 lg:pt-28' : 'pt-14 sm:pt-16 lg:pt-20',
-          )}
-        >
-          {/* Frosted Glass Header Pod */}
-          <div
-            ref={headerRef}
-            className={cn(
-              'pointer-events-auto rounded-3xl p-4 sm:p-5 transition-all duration-300 shadow-2xl',
-              'backdrop-blur-2xl bg-[var(--dk-surface-base)]/85',
-            )}
-          >
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-              {/* Left: Title, Badges & Homelab Topology Stats */}
-              <div className="space-y-1.5 min-w-0">
-                <div className="flex items-center gap-2.5 flex-wrap">
-                  <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">
-                    Nodes
-                  </h1>
-                  <NodesFeatureTags />
-                </div>
-
-                <div className="flex flex-col gap-1.5">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    {stats.offlineNodes > 0 && (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500/15 text-amber-500 dark:text-amber-400">
-                        <AlertTriangle size={10} />
-                        <span>{stats.offlineNodes} offline</span>
-                      </span>
-                    )}
-
-                    <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-medium bg-[var(--dk-surface-field)] text-muted-foreground">
-                      <span>
-                        {stats.onlineNodes}/{stats.totalNodes} {stats.totalNodes === 1 ? 'node' : 'nodes'} active
-                      </span>
-                    </span>
-
-                    {stats.serverCount > 0 && (
-                      <span className="hidden md:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-medium bg-[var(--dk-surface-field)] text-muted-foreground">
-                        <HardDrive size={10} className="text-primary" />
-                        <span>{stats.serverCount} machines</span>
-                      </span>
-                    )}
-
-                    {stats.homeCount > 0 && (
-                      <span className="hidden xl:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-medium bg-[var(--dk-surface-field)] text-muted-foreground">
-                        <HomeIcon size={10} className="text-primary" />
-                        <span>{stats.homeCount} {stats.homeCount === 1 ? 'home' : 'homes'}</span>
-                      </span>
-                    )}
-
-                    {stats.sambaCount > 0 && (
-                      <span className="hidden xl:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-medium bg-[var(--dk-surface-field)] text-muted-foreground">
-                        <FolderTree size={10} className="text-primary" />
-                        <span>{stats.sambaCount} {stats.sambaCount === 1 ? 'samba share' : 'samba shares'}</span>
-                      </span>
-                    )}
-                  </div>
-
-                  <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed max-w-2xl">
-                    Interactive homelab topology map. Connect worker nodes, server machines,
-                    household environments, and network storage.
-                  </p>
-                </div>
-              </div>
-
-              {/* Right: Add Node Action Button */}
-              <div className="flex items-center gap-2 flex-wrap shrink-0 self-start lg:self-center">
-                <DkButton
-                  type="button"
-                  variant="primary"
-                  size="sm"
-                  onClick={() => setAddNodeModalOpen(true)}
-                  className="gap-1.5 font-semibold shadow-md shadow-primary/20"
-                >
-                  <Plus size={14} />
-                  <span>Add Node</span>
-                  {unclaimedNodes.length > 0 && (
-                    <span className="ml-1 px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-primary-foreground/20 text-primary-foreground">
-                      {unclaimedNodes.length}
-                    </span>
-                  )}
-                </DkButton>
-              </div>
-            </div>
-
-            {/* Unclaimed Nodes Notice (if any freshly discovered node with PIN exists) */}
-            {unclaimedNodes.length > 0 && (
-              <div className="mt-4 p-3.5 sm:p-4 rounded-2xl bg-primary/[0.08] backdrop-blur-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm">
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-primary/20 flex items-center justify-center shrink-0">
-                    <Sparkles className="w-4 h-4 text-primary" />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <p className="text-xs font-bold text-foreground">
-                        Unclaimed Otix Node Detected:{' '}
-                        <span className="text-primary">{unclaimedNodes[0].serverName}</span>
-                      </p>
-                      {unclaimedNodes[0].claimCode && (
-                        <span className="px-2 py-0.5 rounded font-mono text-[10px] font-bold bg-[var(--dk-surface-field)] text-foreground">
-                          PIN: {unclaimedNodes[0].claimCode}
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-[11px] text-muted-foreground truncate">
-                      Available at {unclaimedNodes[0].localUrl}. Claim this node to link it to your account.
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
-                  {unclaimedNodes[0].claimCode ? (
-                    <DkButton
-                      size="sm"
-                      variant="primary"
-                      onClick={() => handleClaimQuickNode(unclaimedNodes[0])}
-                      className="text-xs font-bold"
-                    >
-                      <KeyRound className="w-3.5 h-3.5 mr-1" />
-                      Claim Node
-                    </DkButton>
-                  ) : (
-                    <DkButton
-                      size="sm"
-                      variant="primary"
-                      onClick={() => openConnectModal(unclaimedNodes[0].localUrl)}
-                      className="text-xs font-bold"
-                    >
-                      Claim with PIN
-                    </DkButton>
-                  )}
-                </div>
-              </div>
-            )}
+      {/* Central Fixed Node in the middle of the page replacing the title bar */}
+      <div className="absolute inset-0 z-10 pointer-events-none flex items-center justify-center p-4">
+        <div ref={sectionContainerRef} className="contents">
+          <div ref={headerRef} className="pointer-events-auto">
+            <NodesCentralHubNode
+              stats={stats}
+              unclaimedNodes={unclaimedNodes}
+              onAddNode={() => setAddNodeModalOpen(true)}
+              onClaimPendingNode={handleClaimQuickNode}
+              onOpenConnectModal={(url) => openConnectModal(url)}
+              onOpenDownloadModal={openDownloadNodeModal}
+            />
           </div>
         </div>
       </div>

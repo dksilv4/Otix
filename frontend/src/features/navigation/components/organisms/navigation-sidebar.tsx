@@ -1,7 +1,7 @@
 import { useEffect, useRef, useCallback } from "react"
 import { useLocation } from "@tanstack/react-router"
 import { motion, AnimatePresence } from "framer-motion"
-import { Calendar, Compass, Search, Gamepad2, Settings, List, Sparkles, Users, BookOpen, Download } from "lucide-react"
+import { Calendar, Compass, Search, Gamepad2, Settings, List, Sparkles, Users, BookOpen, Download, ScrollText } from "lucide-react"
 import { useNavigation } from "@navigation/hooks/use-navigation"
 import { NavLink } from "@navigation/components/atoms/navigation-link"
 import { useDesktopPlatform } from "@/lib/desktop/platform"
@@ -66,6 +66,7 @@ export const MenuDropdown = () => {
           )}
           <NavLink to="/docs" icon={<BookOpen className="h-4 w-4" />} label="Documentation" />
           <NavLink to="/downloads" icon={<Download className="h-4 w-4" />} label="Downloads" />
+          <NavLink to="/release-notes" icon={<ScrollText className="h-4 w-4" />} label="Release Notes" />
         </motion.div>
       )}
     </AnimatePresence>

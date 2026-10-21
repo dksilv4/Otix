@@ -38,16 +38,7 @@ const execFileAsync = promisify(execFile)
 // This is a transitional safety net: as plugins migrate to framework data
 // layers (e.g. the downloads plugin using the framework downloads API), they
 // stop needing raw SQL access entirely.
-const SYSTEM_TABLE_GRANTS: Record<string, string[]> = {
-  downloads: ['downloads'],
-  // Radarr/Sonarr mirror their libraries into the shared local media catalog
-  // (bare `media` table — must stay out of the plugin's db.tables or it would
-  // be namespace-prefixed). See migrations/010_media.ts. They also mirror
-  // their active-download queue into the framework `downloads` table via the
-  // ctx.downloads.* API (worker-bridge gates it behind table:downloads).
-  radarr: ['media', 'downloads'],
-  sonarr: ['media', 'downloads'],
-}
+const SYSTEM_TABLE_GRANTS: Record<string, string[]> = {}
 
 const PAGE_SLOT_MAP: Record<string, string[]> = {
   'settings/library': ['settings/library/extensions'],

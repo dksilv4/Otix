@@ -163,6 +163,7 @@ class UserNodeSerializer(serializers.ModelSerializer):
     shared_by = serializers.SerializerMethodField()
     home_id = serializers.IntegerField(source="home.id", read_only=True, allow_null=True)
     home_name = serializers.CharField(source="home.name", read_only=True, allow_null=True)
+    pending_updates = serializers.SerializerMethodField()
 
     class Meta:
         model = UserGameServer
@@ -185,6 +186,7 @@ class UserNodeSerializer(serializers.ModelSerializer):
             "is_active",
             "is_shared",
             "shared_by",
+            "pending_updates",
             "created_at",
             "updated_at",
         ]
@@ -220,6 +222,11 @@ class UserNodeSerializer(serializers.ModelSerializer):
             "username": owner.username,
             "display_name": getattr(owner, "display_name", None) or owner.username,
         }
+
+    def get_pending_updates(self, obj: UserGameServer) -> list[dict]:
+        from apps.library.services.node import get_node_pending_updates
+
+        return get_node_pending_updates(obj.id)
 
 
 class UserNodeCreateSerializer(serializers.ModelSerializer):

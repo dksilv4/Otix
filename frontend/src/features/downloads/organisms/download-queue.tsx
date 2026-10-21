@@ -76,7 +76,7 @@ export const DownloadQueuePage = () => {
 
   const desktop = isDesktop();
   const hasGameServers = (serverData?.servers?.length ?? 0) > 0;
-  const canAccess = user?.isAdmin && (downloadsEnabled || hasGameServers || activeTransfers.length > 0);
+  const canAccess = Boolean(user?.isAdmin || downloadsEnabled || hasGameServers || activeTransfers.length > 0);
 
   // Admin + experiment gate
   if (!canAccess) {

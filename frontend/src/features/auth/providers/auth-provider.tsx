@@ -6,6 +6,7 @@ import { queryClient } from '@/lib/query/client'
 import type { User, TwoFactorChallenge, LoginResponse } from '@auth/types'
 import { AuthContext } from '@auth/hooks/use-auth'
 import { useDeepLink } from '@auth/hooks/use-deep-link'
+import { useDeviceSync } from '@/features/settings/hooks/use-device-sync'
 import { xpGainListeners } from '@ui/atoms/xp-toast'
 
 import { ACCESS_TOKEN_KEY } from '@/lib/config'
@@ -28,6 +29,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return !getCachedUser()
   })
   const [twoFactorChallenge, setTwoFactorChallenge] = useState<TwoFactorChallenge | null>(null)
+
+  // Register device node and sync offline pending updates when online
+  useDeviceSync()
 
   // Initialize auth state — runs once on mount
   useEffect(() => {

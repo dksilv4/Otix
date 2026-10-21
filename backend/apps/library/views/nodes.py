@@ -292,18 +292,18 @@ class DesktopNodeHeartbeatView(APIView):
 
         local_url = f"otix://desktop/{device_id}" if device_id else "otix://desktop"
 
-        # Find existing desktop node for this user
+        # Find existing desktop/device node for this user
         node = None
         if device_id:
             node = UserGameServer.objects.filter(
                 user=user, is_local_desktop=True, local_url=f"otix://desktop/{device_id}"
             ).first()
-        if not node:
+        else:
             node = UserGameServer.objects.filter(
                 user=user, is_local_desktop=True, local_url="otix://desktop"
             ).first()
-        if not node:
-            node = UserGameServer.objects.filter(user=user, is_local_desktop=True).first()
+            if not node:
+                node = UserGameServer.objects.filter(user=user, is_local_desktop=True).first()
 
         now = timezone.now()
         if node:
@@ -406,6 +406,35 @@ class DesktopNodeHeartbeatView(APIView):
                 )
 
         return Response(UserNodeSerializer(node, context={"request": request}).data)
+
+
+class GameServerPendingUpdatesView(APIView):
+    """``GET /api/v1/library/servers/{server_id}/pending-updates`` — ask for updates queued while offline."""
+
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get(self, request: Request, server_id: int) -> Response:
+        server = _get_server_or_404(request, server_id)
+        updates = node_service.get_node_pending_updates(server.id)
+        return Response({
+            "node_id": server.id,
+            "name": server.name,
+            "is_online": server.is_online,
+            "pending_updates": updates,
+            "count": len(updates),
+        })
+
+
+class GameServerAcknowledgeUpdatesView(APIView):
+    """``POST /api/v1/library/servers/{server_id}/acknowledge-updates`` — acknowledge receipt of offline updates."""
+
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def post(self, request: Request, server_id: int) -> Response:
+        server = _get_server_or_404(request, server_id)
+        update_ids = request.data.get("update_ids") if isinstance(request.data, dict) else None
+        remaining = node_service.acknowledge_node_updates(server.id, update_ids=update_ids)
+        return Response({"status": "ok", "remaining_updates": len(remaining)})
 
 
 class GameServerScanCompleteView(APIView):

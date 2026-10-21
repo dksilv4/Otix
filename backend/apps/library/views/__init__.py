@@ -20,6 +20,7 @@ from apps.library.views.library import (
 )
 from apps.library.views.nodes import (
     DesktopNodeHeartbeatView,
+    GameServerAcknowledgeUpdatesView,
     GameServerClaimDirectView,
     GameServerClaimView,
     GameServerConnectionsSyncView,
@@ -47,6 +48,7 @@ from apps.library.views.nodes import (
     GameServerOtixMatchView,
     GameServerOtixSettingsView,
     GameServerOtixSyncView,
+    GameServerPendingUpdatesView,
     GameServerPendingView,
     GameServerPingView,
     GameServerProbeView,
@@ -112,8 +114,10 @@ from apps.library.views.server_machines import (
 
 __all__ = [
     "DesktopNodeHeartbeatView",
+    "GameServerAcknowledgeUpdatesView",
     "GameServerClaimView",
     "GameServerClaimDirectView",
+    "GameServerPendingUpdatesView",
     "GameServerUnclaimView",
     "NodeClaimView",
     "NodeClaimDirectView",

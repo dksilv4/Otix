@@ -217,13 +217,13 @@ export const EditWorkerNodeModal = ({
         description="Configure node name, assigned home environment, hosted machine, and connectivity."
       >
         <div className="space-y-4 pt-3">
-          {/* Status & Probe Bar */}
+          {/* Status & Probe Bar with Status Light */}
           <div className="p-3 rounded-xl bg-white/[0.03] border border-white/[0.04] flex items-center justify-between gap-3">
             <div className="flex items-center gap-2 min-w-0">
               <span
                 className={cn(
                   'h-2.5 w-2.5 rounded-full shrink-0',
-                  activeServer.isOnline ? 'bg-primary' : 'bg-muted-foreground/40',
+                  activeServer.isOnline ? 'bg-primary animate-pulse' : 'bg-amber-400',
                 )}
               />
               <div className="min-w-0">
@@ -253,6 +253,12 @@ export const EditWorkerNodeModal = ({
               <span>Probe</span>
             </DkButton>
           </div>
+
+          {!activeServer.isOnline && (
+            <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-500 text-[11px] leading-relaxed">
+              Node is currently offline. You can configure and save all node settings now — updates are queued and will automatically sync once this node connects.
+            </div>
+          )}
 
           <div>
             <label className="block text-xs font-medium text-muted-foreground mb-1">

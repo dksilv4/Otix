@@ -29,6 +29,9 @@ export interface AppUpdaterState {
   dismissNotification: () => void
   openUpdateModal: () => void
   closeUpdateModal: () => void
+  isReleaseNotesOpen?: boolean
+  openReleaseNotesModal?: () => void
+  closeReleaseNotesModal?: () => void
   setAutoCheck: (enabled: boolean) => void
   setAutoDownload: (enabled: boolean) => void
   setAllowPrerelease: (enabled: boolean) => void

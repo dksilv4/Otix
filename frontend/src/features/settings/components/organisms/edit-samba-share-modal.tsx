@@ -6,6 +6,7 @@ import { DkInput } from '@ui/atoms/input'
 import { DkSwitch } from '@ui/atoms/switch'
 import { DkSelect } from '@ui/atoms/select'
 import { useToast } from '@ui/molecules/toast'
+import { cn } from '@/lib/utils'
 import type { UserServerMachine } from '../../types/server-machines'
 import type { SambaShareConfig } from '../../types/node-map'
 import { useUpdateServerMachine } from '../../hooks/use-server-machines'
@@ -188,6 +189,27 @@ export const EditSambaShareModal = ({
       className="max-w-md"
     >
       <div className="space-y-4 pt-2">
+        {/* Status Light Bar */}
+        <div className="p-3 rounded-xl bg-white/[0.03] border border-white/[0.04] flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2 min-w-0">
+            <span
+              className={cn(
+                'h-2.5 w-2.5 rounded-full shrink-0',
+                activeSamba.isOnline !== false ? 'bg-primary animate-pulse' : 'bg-amber-400',
+              )}
+            />
+            <p className="text-xs font-semibold text-foreground truncate">
+              {activeSamba.isOnline !== false ? 'SMB Share Available' : 'SMB Share Offline'}
+              <span className="ml-2 text-[10px] text-muted-foreground font-normal">
+                Port {port || 445}
+              </span>
+            </p>
+          </div>
+          <span className="text-[10px] text-muted-foreground font-mono">
+            /{shareName}
+          </span>
+        </div>
+
         <div className="space-y-1.5">
           <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
             <FolderTree size={14} className="text-primary" />

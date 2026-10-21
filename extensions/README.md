@@ -6,7 +6,8 @@ Community plugins for the [Otix](https://github.com/dksilv4/Otix) desktop app. B
 
 | Plugin | Description | Category |
 |---|---|---|
-| [Deals](plugins/deals/) | CheapShark 100%-off game deal detection | media |
+| [shadPS4 Emulator](plugins/shadps4/) | PlayStation 4 emulator integration for .pkg ROMs | emulator |
+| [Jellyfin](plugins/jellyfin/) | In-app video streaming and library integration | media |
 
 ## Plugin Structure
 
@@ -18,7 +19,7 @@ plugins/my-plugin/
   main.js          # Plugin entry point (CommonJS)
 ```
 
-See [Deals](plugins/deals/) for a complete example.
+See [shadPS4 Emulator](plugins/shadps4/) for a complete example.
 
 ## Adding Your Plugin
 

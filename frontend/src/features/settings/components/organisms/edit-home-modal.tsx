@@ -130,6 +130,24 @@ export const EditHomeModal = ({
         description="Update network IP subnet and settings for this physical location."
       >
         <div className="space-y-4 pt-3">
+          {/* Status Light Bar */}
+          <div className="p-3 rounded-xl bg-white/[0.03] border border-white/[0.04] flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="h-2.5 w-2.5 rounded-full shrink-0 bg-primary animate-pulse" />
+              <p className="text-xs font-semibold text-foreground truncate">
+                Home Environment Active
+                {isDefault && (
+                  <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-primary/15 text-primary font-medium">
+                    Default Network
+                  </span>
+                )}
+              </p>
+            </div>
+            <span className="text-[10px] text-muted-foreground font-mono">
+              {subnetCidr || 'Local Network'}
+            </span>
+          </div>
+
           <div>
             <label className="block text-xs font-medium text-muted-foreground mb-1.5">
               Home Name *

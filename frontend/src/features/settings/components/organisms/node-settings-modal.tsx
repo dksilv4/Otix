@@ -6,6 +6,7 @@ import { useToast } from '@ui/molecules/toast'
 import { DkTabs, DkTabList, DkTab, DkTabPanel } from '@ui/molecules/tabs'
 import { useDeleteGameServer, useUpdateGameServer } from '@/features/downloads/use-server-downloads'
 import type { GameServer } from '@/features/downloads/types'
+import { cn } from '@/lib/utils'
 import { isLocalDesktopNode } from '../../local-desktop-node'
 import { useSettingsNode } from '../../context/settings-node-context'
 import {
@@ -162,6 +163,36 @@ export const NodeSettingsModal = ({
         description={description}
         className="max-w-4xl w-full max-h-[90vh] flex flex-col overflow-hidden"
       >
+        {/* Status Light Bar */}
+        <div className="p-3 rounded-xl bg-white/[0.03] border border-white/[0.04] flex items-center justify-between gap-3 shrink-0 mb-3">
+          <div className="flex items-center gap-2 min-w-0">
+            <span
+              className={cn(
+                'h-2.5 w-2.5 rounded-full shrink-0',
+                server.isOnline ? 'bg-primary animate-pulse' : 'bg-amber-400',
+              )}
+            />
+            <div className="min-w-0">
+              <p className="text-xs font-semibold text-foreground truncate">
+                {server.isOnline ? 'Node Online' : 'Node Offline'}
+                {local && (
+                  <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-primary/15 text-primary font-medium">
+                    Local Desktop
+                  </span>
+                )}
+              </p>
+              <p className="text-[10px] text-muted-foreground truncate">
+                {server.primaryUrl || (local ? 'otix://desktop' : 'Standalone')}
+              </p>
+            </div>
+          </div>
+          {!server.isOnline && (
+            <span className="text-[11px] font-medium text-amber-500 bg-amber-500/10 px-2.5 py-0.5 rounded-full">
+              Offline Setup Active — Changes sync when online
+            </span>
+          )}
+        </div>
+
         <DkTabs
           defaultValue={activeTab}
           value={activeTab}

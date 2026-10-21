@@ -808,7 +808,7 @@ app.on('ready', async () => {
     };
 
     try {
-      await net.fetch(url, {
+      const resp = await net.fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -816,6 +816,31 @@ app.on('ready', async () => {
         },
         body: JSON.stringify(payload),
       });
+      if (resp.ok) {
+        const data = (await resp.json().catch(() => null)) as any;
+        if (data && Array.isArray(data.pending_updates) && data.pending_updates.length > 0 && data.id) {
+          const updateIds: string[] = [];
+          for (const upd of data.pending_updates) {
+            updateIds.push(upd.id);
+            if (upd.type === 'desktop_settings' && upd.data) {
+              try {
+                settingsStore.saveSettings(upd.data);
+              } catch (e) {
+                console.debug('[main] Failed to apply offline desktop settings:', e);
+              }
+            }
+          }
+          const ackUrl = `${apiBase}/api/v1/library/servers/${data.id}/acknowledge-updates`;
+          await net.fetch(ackUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${currentAuthToken}`,
+            },
+            body: JSON.stringify({ update_ids: updateIds }),
+          }).catch(() => {});
+        }
+      }
     } catch (err) {
       console.debug('[main] Failed to sync desktop node heartbeat to backend:', err);
     }

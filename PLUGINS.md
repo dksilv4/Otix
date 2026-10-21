@@ -15,7 +15,7 @@ plugin-runtime connects to.
 ---
 
 ## `backend/bundled_plugins/`
-**What:** First-party server-side plugins that ship with the app (currently only `plex/`).
+**What:** First-party server-side plugins that ship with the app (currently `plex/`).
 These are discovered automatically by `plugin_framework` on startup.
 
 ---
@@ -30,30 +30,25 @@ main process. This is the *engine* that loads and isolates plugin JS packages.
 ---
 
 ## `extensions/plugins/`
-**What:** The canonical community plugin packages — fully built JavaScript modules
-that the desktop plugin-runtime loads and executes. This is where all feature logic
-for integrations lives.
+**What:** The canonical desktop community and system plugin packages — fully built JavaScript modules
+that the desktop plugin-runtime loads and executes.
 
-| Plugin | Purpose |
-|---|---|
-| `downloads` | Orchestrates the full download lifecycle |
-| `radarr` | Radarr movie import and watchlist |
-| `sonarr` | Sonarr TV show import and watchlist |
-| `sabnzbd` | SABnzbd Usenet download client |
-| `prowlarr` | Indexer aggregator / search provider |
-| `nzbplanet` | NZBPlanet Usenet search |
-| `otix-epic` | Epic Games OAuth, library sync, free games |
-| `steam` | Steam library scan + free promotions |
-| `steam-source` | Resolves Steam AppIDs to titles + artwork |
-| `igdb-source` | Matches games to IGDB canonical entries |
-| `steamgriddb-source` | Fetches game art from SteamGridDB |
-| `game-matching-pipeline` | Auto-resolves scanned games to known titles |
-| `fps-capture` | Intel PresentMon FPS logging + playtime |
-| `plex` | Plex library sync and remote playback |
-| `deals` | CheapShark 100%-off game deal detection |
-| `shared` | Internal utility lib (not a plugin — no manifest) |
+| Plugin | Purpose | Status |
+|---|---|---|
+| `fps-capture` | Intel PresentMon FPS logging + playtime tracking on Windows | Active (System) |
+| `local-files` | Local filesystem scanner for installed games, ROMs, repacks, and Steam ACF manifests | Active (System) |
+| `jellyfin` | In-app video streaming, session reporting, and playback provider | Active |
+| `shadps4` | PlayStation 4 emulator integration for `.pkg` ROM launching and saves | Active |
 
-**Not:** The plugin framework or runtime engine.
+### Migrated / Retired Plugins
+- **`radarr` / `sonarr`**: Migrated directly to Otix Node (`node/internal/arr/`) and backend services.
+- **`sabnzbd`**: Migrated directly to Otix Node (`node/internal/usenet/`).
+- **`prowlarr` / `nzbplanet`**: Migrated directly to Otix Node (`node/internal/indexer/`).
+- **`downloads`**: Download management and installer orchestration absorbed natively into Otix Desktop (`desktop/downloads`, `desktop/installer`) and Otix Node (`node/internal/organize`).
+- **`otix-epic`**: Epic Games authentication, library syncing, and store integration migrated natively to backend and Otix Node (`node/internal/epic`).
+- **`deals` / `steam`**: Free game tracking migrated to Otix Node (`node/internal/plugins/deals.go`) and server-side deals sync.
+- **`plex`**: Desktop plugin retired in favor of backend Plex integration (`backend/bundled_plugins/plex` & `backend/apps/library/`).
+- **`game-matching-pipeline` & catalog sources (`steam-source`, `steamgriddb-source`, `igdb-source`)**: Replaced by full server-side catalog matching in the Otix Backend and Otix Node metadata services.
 
 ---
 

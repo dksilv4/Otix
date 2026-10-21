@@ -264,7 +264,7 @@ def scan_extensions() -> list[dict]:
 
         existing = Plugin.objects.filter(name=plugin_id).first()
         if existing is None:
-            is_default_enabled = plugin_id in {"sabnzbd", "prowlarr", "fps-capture", "local-files"}
+            is_default_enabled = plugin_id in {"fps-capture", "local-files"}
             plugin = Plugin.objects.create(
                 name=plugin_id,
                 version=version,

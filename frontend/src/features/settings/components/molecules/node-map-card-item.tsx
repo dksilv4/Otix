@@ -169,7 +169,7 @@ export const NodeMapCardItem = ({
             {type === 'samba' && <FolderTree size={14} />}
             {type === 'unclaimed_node' && <Sparkles size={14} />}
           </div>
-          {/* Status Indicator Dot */}
+          {/* Status Indicator Dot for all nodes */}
           {type === 'node' && (
             <span
               className={cn(
@@ -185,6 +185,28 @@ export const NodeMapCardItem = ({
                 'absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full ring-2 ring-[var(--dk-surface-base)]',
                 data.type === 'server' && data.machine.isOnline ? 'bg-primary' : 'bg-amber-400',
               )}
+              title={data.type === 'server' && data.machine.isOnline ? 'Online' : 'Offline'}
+            />
+          )}
+          {type === 'samba' && (
+            <span
+              className={cn(
+                'absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full ring-2 ring-[var(--dk-surface-base)]',
+                data.type === 'samba' && data.samba.isOnline !== false ? 'bg-primary' : 'bg-amber-400',
+              )}
+              title={data.type === 'samba' && data.samba.isOnline !== false ? 'SMB Share Available' : 'SMB Share Offline'}
+            />
+          )}
+          {type === 'home' && (
+            <span
+              className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full ring-2 ring-[var(--dk-surface-base)] bg-primary"
+              title="Home Environment Active"
+            />
+          )}
+          {type === 'unclaimed_node' && (
+            <span
+              className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full ring-2 ring-[var(--dk-surface-base)] bg-primary animate-pulse"
+              title="Discovered Beaconing Node"
             />
           )}
         </div>

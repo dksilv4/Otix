@@ -19,7 +19,7 @@ describe('useAppUpdater', () => {
 
     expect(result.current.isDesktop).toBe(false)
     expect(result.current.status).toBe('idle')
-    expect(result.current.currentVersion).toBe('0.1.23')
+    expect(result.current.currentVersion).toBe('0.1.24')
     expect(result.current.isChecking).toBe(false)
     expect(result.current.isDownloading).toBe(false)
     expect(result.current.isDownloaded).toBe(false)
@@ -124,6 +124,17 @@ describe('useAppUpdater', () => {
     })
     expect(result.current.isModalOpen).toBe(false)
 
+    // Test release notes modal open / close
+    expect(result.current.isReleaseNotesOpen).toBe(false)
+    act(() => {
+      result.current.openReleaseNotesModal?.()
+    })
+    expect(result.current.isReleaseNotesOpen).toBe(true)
+    act(() => {
+      result.current.closeReleaseNotesModal?.()
+    })
+    expect(result.current.isReleaseNotesOpen).toBe(false)
+
     // Test auto-check and auto-download
     act(() => {
       result.current.setAutoCheck(false)
@@ -155,7 +166,7 @@ describe('useAppUpdater', () => {
       getDesktopSettings: mockGetDesktopSettings,
       setDesktopSettings: mockSetDesktopSettings,
       updater: {
-        getVersion: vi.fn().mockResolvedValue('0.1.23'),
+        getVersion: vi.fn().mockResolvedValue('0.1.24'),
         getStatus: vi.fn().mockResolvedValue({ status: 'idle' }),
         onStatusChanged: vi.fn().mockReturnValue(() => {}),
         validateToken: mockValidateToken,

@@ -20,12 +20,15 @@ import { DownloadHero } from '../components/molecules/download-hero'
 import { DownloadOptionsGrid } from '../components/molecules/download-options-grid'
 import { DownloadNodeSection } from '../components/molecules/download-node-section'
 import { DownloadSuccessBanner } from '../components/molecules/download-success-banner'
+import { DkButton } from '@ui/atoms/button'
+import { ReleaseNotesModal } from '@/features/updater'
 import type { PlatformDownloadOption, PlatformId } from '../types'
 
 export const DownloadPage = () => {
   const { detectedPlatform, activeTab, setActiveTab } = useDetectedPlatform()
   const { releaseInfo, options, isLoading, refetch } = useLatestRelease()
   const [lastDownloaded, setLastDownloaded] = useState<PlatformDownloadOption | null>(null)
+  const [showReleaseNotesModal, setShowReleaseNotesModal] = useState(false)
 
   const primaryOption = getPrimaryOptionForPlatform(options, detectedPlatform)
   const highlights = parseReleaseNotesHighlights(releaseInfo.releaseNotes)
@@ -77,6 +80,13 @@ export const DownloadPage = () => {
         </nav>
 
         <div className="flex items-center gap-3 text-xs">
+          <button
+            type="button"
+            onClick={() => setShowReleaseNotesModal(true)}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-medium text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-ghost)] transition-colors cursor-pointer"
+          >
+            <span>Release Notes</span>
+          </button>
           <a
             href="https://github.com/dksilv4/Otix"
             target="_blank"
@@ -121,15 +131,26 @@ export const DownloadPage = () => {
               <Sparkles className="h-4 w-4 text-primary" />
               <span>What&apos;s New in Otix {releaseInfo.tagName}</span>
             </div>
-            <button
-              type="button"
-              onClick={() => refetch()}
-              className="text-muted-foreground hover:text-foreground p-1 rounded-lg hover:bg-[var(--dk-surface-ghost)] transition-colors"
-              title="Refresh release info"
-              aria-label="Refresh release info"
-            >
-              <RefreshCw className={`h-3.5 w-3.5 ${isLoading ? 'animate-spin' : ''}`} />
-            </button>
+            <div className="flex items-center gap-2">
+              <DkButton
+                type="button"
+                size="sm"
+                variant="ghost"
+                onClick={() => setShowReleaseNotesModal(true)}
+                className="rounded-xl px-2.5 py-1 text-xs font-semibold"
+              >
+                View Full Release Notes
+              </DkButton>
+              <button
+                type="button"
+                onClick={() => refetch()}
+                className="text-muted-foreground hover:text-foreground p-1 rounded-lg hover:bg-[var(--dk-surface-ghost)] transition-colors"
+                title="Refresh release info"
+                aria-label="Refresh release info"
+              >
+                <RefreshCw className={`h-3.5 w-3.5 ${isLoading ? 'animate-spin' : ''}`} />
+              </button>
+            </div>
           </div>
 
           <ul className="space-y-1.5 text-xs text-muted-foreground">
@@ -224,6 +245,15 @@ export const DownloadPage = () => {
           ))}
         </div>
       </section>
+
+      {showReleaseNotesModal && (
+        <ReleaseNotesModal
+          isOpen={showReleaseNotesModal}
+          onClose={() => setShowReleaseNotesModal(false)}
+          version={releaseInfo.tagName}
+          releaseNotes={releaseInfo.releaseNotes}
+        />
+      )}
     </div>
   )
 }

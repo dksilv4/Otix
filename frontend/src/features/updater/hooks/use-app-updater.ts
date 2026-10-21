@@ -11,14 +11,19 @@ import {
   fetchLatestReleaseNotes,
 } from '../utils/updater-utils'
 
-const FALLBACK_VERSION = '0.1.23'
+const FALLBACK_VERSION = '0.1.24'
 
 let globalIsModalOpen = false
 const modalSubscribers = new Set<(open: boolean) => void>()
 
+let globalIsReleaseNotesOpen = false
+const releaseNotesSubscribers = new Set<(open: boolean) => void>()
+
 export const resetUpdateModalStateForTesting = (): void => {
   globalIsModalOpen = false
   modalSubscribers.clear()
+  globalIsReleaseNotesOpen = false
+  releaseNotesSubscribers.clear()
 }
 
 export const useAppUpdater = (): AppUpdaterState => {
@@ -31,6 +36,7 @@ export const useAppUpdater = (): AppUpdaterState => {
   const [error, setError] = useState<string | null>(null)
   const [isDismissed, setIsDismissed] = useState<boolean>(false)
   const [isModalOpen, setIsModalOpen] = useState<boolean>(globalIsModalOpen)
+  const [isReleaseNotesOpen, setIsReleaseNotesOpen] = useState<boolean>(globalIsReleaseNotesOpen)
   const [autoCheck, setAutoCheckState] = useState<boolean>(readAutoCheckPreference)
   const [autoDownload, setAutoDownloadState] = useState<boolean>(readAutoDownloadPreference)
   const [allowPrerelease, setAllowPrereleaseState] = useState<boolean>(readAllowPrereleasePreference)
@@ -44,6 +50,14 @@ export const useAppUpdater = (): AppUpdaterState => {
     modalSubscribers.add(handler)
     return () => {
       modalSubscribers.delete(handler)
+    }
+  }, [])
+
+  useEffect(() => {
+    const handler = (open: boolean) => setIsReleaseNotesOpen(open)
+    releaseNotesSubscribers.add(handler)
+    return () => {
+      releaseNotesSubscribers.delete(handler)
     }
   }, [])
 
@@ -195,6 +209,29 @@ export const useAppUpdater = (): AppUpdaterState => {
     modalSubscribers.forEach((fn) => fn(false))
   }, [])
 
+  const openReleaseNotesModal = useCallback(() => {
+    globalIsReleaseNotesOpen = true
+    releaseNotesSubscribers.forEach((fn) => fn(true))
+
+    if (!releaseNotes) {
+      fetchLatestReleaseNotes()
+        .then((latest) => {
+          if (latest?.notes) {
+            setReleaseNotes(latest.notes)
+            if (!availableVersion && latest.version) {
+              setAvailableVersion(latest.version)
+            }
+          }
+        })
+        .catch(() => {})
+    }
+  }, [releaseNotes, availableVersion])
+
+  const closeReleaseNotesModal = useCallback(() => {
+    globalIsReleaseNotesOpen = false
+    releaseNotesSubscribers.forEach((fn) => fn(false))
+  }, [])
+
   const setAutoCheck = useCallback((enabled: boolean) => {
     setAutoCheckState(enabled)
     saveAutoCheckPreference(enabled)
@@ -263,6 +300,9 @@ export const useAppUpdater = (): AppUpdaterState => {
     dismissNotification,
     openUpdateModal,
     closeUpdateModal,
+    isReleaseNotesOpen,
+    openReleaseNotesModal,
+    closeReleaseNotesModal,
     setAutoCheck,
     setAutoDownload,
     setAllowPrerelease,

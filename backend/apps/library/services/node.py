@@ -4,6 +4,7 @@ import os
 import time
 from datetime import timedelta
 from pathlib import Path
+from typing import Any
 from urllib.parse import urlparse, urlunparse
 
 import httpx
@@ -1332,26 +1333,115 @@ NO_GOG_NODE = "Connect an Otix Server to link GOG."
 # ── Desktop Operations ──────────────────────────────────────────────────
 
 
+# Node offline configuration caching & pending update queue helpers
+NODE_CACHE_TTL = 60 * 60 * 24 * 30  # 30 days
+
+
+def get_node_pending_updates(server_id: int) -> list[dict]:
+    """Retrieve all configuration updates queued for this node while it was offline."""
+    return cache.get(f"node_pending_updates:{server_id}") or []
+
+
+def queue_node_update(server_id: int, update_type: str, data: Any) -> dict:
+    """Queue a configuration update for an offline node so it can receive it when returning online."""
+    import uuid
+
+    updates = get_node_pending_updates(server_id)
+    entry = {
+        "id": str(uuid.uuid4()),
+        "type": update_type,
+        "data": data,
+        "created_at": timezone.now().isoformat(),
+    }
+    updates.append(entry)
+    cache.set(f"node_pending_updates:{server_id}", updates, timeout=NODE_CACHE_TTL)
+    return entry
+
+
+def acknowledge_node_updates(server_id: int, update_ids: list[str] | None = None) -> list[dict]:
+    """Acknowledge and clear received updates for a node."""
+    updates = get_node_pending_updates(server_id)
+    if not update_ids:
+        cache.delete(f"node_pending_updates:{server_id}")
+        return []
+    remaining = [u for u in updates if u.get("id") not in update_ids]
+    cache.set(f"node_pending_updates:{server_id}", remaining, timeout=NODE_CACHE_TTL)
+    return remaining
+
+
+def get_cached_node_config(server_id: int, config_type: str) -> Any:
+    """Retrieve staged/cached configuration for a node."""
+    return cache.get(f"node_cached_config:{server_id}:{config_type}")
+
+
+def set_cached_node_config(server_id: int, config_type: str, data: Any):
+    """Store staged/cached configuration for a node so it remains available offline."""
+    cache.set(f"node_cached_config:{server_id}:{config_type}", data, timeout=NODE_CACHE_TTL)
+
+
 def desktop_get_settings(
     server: UserGameServer, params: dict | None = None
 ) -> tuple[int, dict | list]:
-    return usenet_proxy_request(server, "GET", "/api/v1/desktop/settings", params=params, timeout=10.0)
+    cached = get_cached_node_config(server.id, "desktop_settings")
+    if not server.is_online or server.is_local_desktop or not server.primary_url:
+        return 200, cached if cached is not None else {}
+    status_code, data = usenet_proxy_request(server, "GET", "/api/v1/desktop/settings", params=params, timeout=10.0)
+    if status_code < 400:
+        set_cached_node_config(server.id, "desktop_settings", data)
+        return status_code, data
+    if cached is not None:
+        return 200, cached
+    return 200, {}
 
 
 def node_list_libraries(server: UserGameServer) -> tuple[int, dict | list]:
-    return usenet_proxy_request(server, "GET", "/api/v1/libraries", timeout=8.0)
+    cached = get_cached_node_config(server.id, "libraries")
+    if not server.is_online or server.is_local_desktop or not server.primary_url:
+        return 200, cached if cached is not None else []
+    status_code, data = usenet_proxy_request(server, "GET", "/api/v1/libraries", timeout=8.0)
+    if status_code < 400:
+        set_cached_node_config(server.id, "libraries", data)
+        return status_code, data
+    if cached is not None:
+        return 200, cached
+    return 200, []
 
 
 def node_replace_libraries(server: UserGameServer, payload: dict) -> tuple[int, dict | list]:
-    return usenet_proxy_request(server, "PUT", "/api/v1/libraries", json=payload, timeout=20.0)
+    set_cached_node_config(server.id, "libraries", payload)
+    if not server.is_online or server.is_local_desktop or not server.primary_url:
+        queue_node_update(server.id, "libraries", payload)
+        return 200, {"status": "queued", "message": "Libraries saved and queued for sync", "queued": True}
+    status_code, data = usenet_proxy_request(server, "PUT", "/api/v1/libraries", json=payload, timeout=20.0)
+    if status_code >= 400:
+        queue_node_update(server.id, "libraries", payload)
+        return 200, {"status": "queued", "message": "Node unreachable; changes saved and queued for sync", "queued": True}
+    return status_code, data
 
 
 def node_get_organize(server: UserGameServer) -> tuple[int, dict | list]:
-    return usenet_proxy_request(server, "GET", "/api/v1/organize", timeout=6.0)
+    cached = get_cached_node_config(server.id, "organize")
+    if not server.is_online or server.is_local_desktop or not server.primary_url:
+        return 200, cached if cached is not None else {"enabled": False, "rules": []}
+    status_code, data = usenet_proxy_request(server, "GET", "/api/v1/organize", timeout=6.0)
+    if status_code < 400:
+        set_cached_node_config(server.id, "organize", data)
+        return status_code, data
+    if cached is not None:
+        return 200, cached
+    return 200, {"enabled": False, "rules": []}
 
 
 def node_save_organize(server: UserGameServer, payload: dict) -> tuple[int, dict | list]:
-    return usenet_proxy_request(server, "POST", "/api/v1/organize", json=payload, timeout=10.0)
+    set_cached_node_config(server.id, "organize", payload)
+    if not server.is_online or server.is_local_desktop or not server.primary_url:
+        queue_node_update(server.id, "organize", payload)
+        return 200, {"status": "queued", "message": "Organize settings saved and queued for sync", "queued": True}
+    status_code, data = usenet_proxy_request(server, "POST", "/api/v1/organize", json=payload, timeout=10.0)
+    if status_code >= 400:
+        queue_node_update(server.id, "organize", payload)
+        return 200, {"status": "queued", "message": "Node unreachable; changes saved and queued for sync", "queued": True}
+    return status_code, data
 
 
 def node_preview_organize(server: UserGameServer, payload: dict) -> tuple[int, dict | list]:
@@ -1363,9 +1453,17 @@ def node_execute_organize(server: UserGameServer, payload: dict) -> tuple[int, d
 
 
 def desktop_save_settings(server: UserGameServer, payload: dict) -> tuple[int, dict | list]:
-    return usenet_proxy_request(
+    set_cached_node_config(server.id, "desktop_settings", payload)
+    if not server.is_online or server.is_local_desktop or not server.primary_url:
+        queue_node_update(server.id, "desktop_settings", payload)
+        return 200, {"status": "queued", "message": "Desktop settings saved and queued for sync", "queued": True}
+    status_code, data = usenet_proxy_request(
         server, "POST", "/api/v1/desktop/settings", json=payload, timeout=10.0
     )
+    if status_code >= 400:
+        queue_node_update(server.id, "desktop_settings", payload)
+        return 200, {"status": "queued", "message": "Node unreachable; changes saved and queued for sync", "queued": True}
+    return status_code, data
 
 
 def pick_online_game_server(user) -> UserGameServer | None:

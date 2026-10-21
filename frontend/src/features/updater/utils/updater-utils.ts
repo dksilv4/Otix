@@ -234,3 +234,22 @@ export const formatUpdateError = (raw: string | null | undefined): string | null
   }
   return str
 }
+
+/**
+ * Format ISO timestamp into a user-friendly release date (e.g. Oct 21, 2026)
+ */
+export const formatReleaseNotesDate = (isoDate?: string | null): string => {
+  if (!isoDate) return ''
+  try {
+    const d = new Date(isoDate)
+    if (Number.isNaN(d.getTime())) return ''
+    return d.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    })
+  } catch {
+    return ''
+  }
+}
+
