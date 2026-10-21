@@ -14,6 +14,8 @@ import {
   formatSpeed,
   parseReleaseNotes,
   formatUpdateError,
+  getUpdateModalTitle,
+  getUpdateModalDescription,
 } from '../utils/updater-utils'
 
 export interface UpdateModalProps {
@@ -52,24 +54,7 @@ export const UpdateModal = ({
   }
 
   const notesList = parseReleaseNotes(releaseNotes)
-
-  const getTitle = () => {
-    if (isDownloaded) return 'Update Ready to Install'
-    if (isDownloading) return 'Downloading Update'
-    if (status === 'available') return 'New Update Available'
-    if (status === 'error') return 'Update Error'
-    if (status === 'not-available') return 'Otix is Up to Date'
-    return 'Software Update'
-  }
-
-  const getDescription = () => {
-    if (isDownloaded) return 'The latest version has been downloaded and is ready to apply.'
-    if (isDownloading) return 'Downloading the update package in the background.'
-    if (status === 'available') return 'A newer release is available with updates and improvements.'
-    if (status === 'error') return 'Could not complete update check or download.'
-    if (status === 'not-available') return 'You are running the newest version of Otix.'
-    return 'Manage client software updates and release notes.'
-  }
+  const formattedError = formatUpdateError(error)
 
   return (
     <DkDialog
@@ -77,8 +62,8 @@ export const UpdateModal = ({
       onOpenChange={(open) => {
         if (!open) handleClose()
       }}
-      title={getTitle()}
-      description={getDescription()}
+      title={getUpdateModalTitle(status, isDownloaded, isDownloading)}
+      description={getUpdateModalDescription(status, isDownloaded, isDownloading)}
       className="max-w-lg"
     >
       <div className="space-y-4 pt-1">
@@ -198,7 +183,7 @@ export const UpdateModal = ({
             <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
             <div className="space-y-0.5 text-xs leading-relaxed">
               <span className="font-semibold">Update encountered an issue</span>
-              <p className="text-muted-foreground">{formatUpdateError(error)}</p>
+              <p className="text-muted-foreground">{formattedError}</p>
             </div>
           </div>
         )}
@@ -207,7 +192,7 @@ export const UpdateModal = ({
         {(notesList.length > 0 || status === 'available' || isDownloaded) && (
           <div className="space-y-1.5 pt-1">
             <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
-              {availableVersion ? `What's New in v${availableVersion}` : "Release Notes"}
+              {availableVersion ? `What's New in v${availableVersion}` : 'Release Notes'}
             </span>
             <div
               className="rounded-2xl p-4 text-xs text-muted-foreground max-h-48 overflow-y-auto space-y-2"
@@ -358,4 +343,4 @@ export const UpdateModal = ({
       </div>
     </DkDialog>
   )
-};
+}

@@ -7,10 +7,10 @@ on:
   workflow_dispatch:
     inputs:
       version_tag:
-        description: "Release tag (e.g. v0.1.23)"
+        description: "Release tag (e.g. v0.1.24)"
         required: false
         type: string
-        default: "v0.1.23"
+        default: "v0.1.24"
       push_images:
         description: "Push Node Docker image to GHCR"
         required: true

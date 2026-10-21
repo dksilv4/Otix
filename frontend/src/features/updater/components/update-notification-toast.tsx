@@ -2,12 +2,7 @@ import { Sparkles, ArrowRight, X } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { DkButton } from '@ui/atoms/button'
 import { useAppUpdater } from '../hooks/use-app-updater'
-
-const toastAnimation = {
-  initial: { opacity: 0, y: 30, scale: 0.95 },
-  animate: { opacity: 1, y: 0, scale: 1 },
-  exit: { opacity: 0, y: 20, scale: 0.95 },
-}
+import { toastAnimation } from '../utils/updater-utils'
 
 export const UpdateNotificationToast = () => {
   const {
@@ -116,4 +111,4 @@ export const UpdateNotificationToast = () => {
       </div>
     </AnimatePresence>
   )
-};
+}

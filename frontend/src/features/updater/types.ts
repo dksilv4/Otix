@@ -21,6 +21,8 @@ export interface AppUpdaterState {
   isModalOpen: boolean
   autoCheck: boolean
   autoDownload: boolean
+  allowPrerelease: boolean
+  githubToken: string
   checkForUpdates: () => Promise<void>
   downloadUpdate: () => Promise<void>
   installUpdate: () => Promise<void>
@@ -29,4 +31,7 @@ export interface AppUpdaterState {
   closeUpdateModal: () => void
   setAutoCheck: (enabled: boolean) => void
   setAutoDownload: (enabled: boolean) => void
+  setAllowPrerelease: (enabled: boolean) => void
+  setGithubToken: (token: string) => Promise<void>
+  validateToken: (token?: string) => Promise<{ valid: boolean; repo?: string; error?: string }>
 }

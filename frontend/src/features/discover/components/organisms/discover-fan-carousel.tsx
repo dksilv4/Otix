@@ -75,6 +75,15 @@ export const DiscoverFanCarousel = ({ className }: DiscoverFanCarouselProps) => 
         navigate({
           to: '/media/$mediaType/$mediaId',
           params: { mediaType: item.mediaType, mediaId: item.id },
+          state: {
+            preview: {
+              title: item.title,
+              logoUrl: item.logoUrl,
+              logoColorGuess: item.logoColorGuess,
+              backdropUrl: item.backdropUrl,
+              posterUrl: item.posterUrl,
+            },
+          },
         })
       } else {
         navigateTo(itemIndex)

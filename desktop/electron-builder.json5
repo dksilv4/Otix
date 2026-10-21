@@ -121,7 +121,6 @@
   "publish": {
     "provider": "github",
     "owner": "dksilv4",
-    "repo": "Otix",
-    "private": true
+    "repo": "Otix"
   }
 }

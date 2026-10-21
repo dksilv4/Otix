@@ -1,4 +1,4 @@
-﻿import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { renderHook, waitFor, act } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AuthProvider, useAuth } from '@auth'
@@ -160,5 +160,27 @@ describe('auth session', () => {
 
     const { queryClient } = await import('@/lib/query/client')
     expect(queryClient.clear).toHaveBeenCalled()
+  })
+
+  it('completeLogin sets token, loads user and sets isAuthenticated to true', async () => {
+    mockGet.mockResolvedValueOnce({ data: mockUser })
+    mockGet.mockResolvedValueOnce({ data: {} }) // mergeIntegrations
+
+    const { result } = renderHook(() => useAuth(), {
+      wrapper: createWrapper(),
+    })
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+    expect(result.current.isAuthenticated).toBe(false)
+
+    await act(async () => {
+      const loaded = await result.current.completeLogin('oauth-access-token')
+      expect(loaded).toEqual(mockUser)
+    })
+
+    expect(result.current.isAuthenticated).toBe(true)
+    expect(result.current.user).toEqual(mockUser)
+    expect(localStorage.getItem('otix-access-token')).toBe('oauth-access-token')
+    expect(mockGet).toHaveBeenCalledWith('/auth/me')
   })
 })

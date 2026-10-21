@@ -44,6 +44,8 @@ describe('useMediaStreamPlayer', () => {
     expect(result.current.session).toBe(null)
     expect(result.current.isPlaying).toBe(false)
     expect(result.current.currentTime).toBe(0)
+    expect(result.current.isInAppPip).toBe(false)
+    expect(result.current.isOverallPip).toBe(false)
   })
 
   it('opens stream and correctly initializes session state', () => {
@@ -61,6 +63,7 @@ describe('useMediaStreamPlayer', () => {
     expect(result.current.currentTime).toBe(5) // 5000ms -> 5s
     expect(result.current.duration).toBe(120) // 120000ms -> 120s
     expect(result.current.playbackMethod).toBe('direct-play')
+    expect(result.current.isInAppPip).toBe(false)
   })
 
   it('routes to direct-stream when audio is AC3', () => {
@@ -118,5 +121,55 @@ describe('useMediaStreamPlayer', () => {
     })
     expect(result.current.isOpen).toBe(false)
     expect(result.current.session).toBe(null)
+    expect(result.current.isInAppPip).toBe(false)
+    expect(result.current.isOverallPip).toBe(false)
+  })
+
+  it('manages in-app PiP mode correctly', () => {
+    const { result } = renderHook(() => useMediaStreamPlayer(), {
+      wrapper: MediaStreamPlayerProvider,
+    })
+
+    act(() => {
+      result.current.openStream(mockSession)
+    })
+    expect(result.current.isInAppPip).toBe(false)
+
+    act(() => {
+      result.current.setInAppPip(true)
+    })
+    expect(result.current.isInAppPip).toBe(true)
+
+    act(() => {
+      result.current.toggleInAppPip()
+    })
+    expect(result.current.isInAppPip).toBe(false)
+  })
+
+  it('manages overall PiP mode with registered video element', async () => {
+    const { result } = renderHook(() => useMediaStreamPlayer(), {
+      wrapper: MediaStreamPlayerProvider,
+    })
+
+    const video = document.createElement('video')
+    video.requestPictureInPicture = vi.fn().mockResolvedValue({} as PictureInPictureWindow)
+
+    act(() => {
+      result.current.openStream(mockSession)
+      result.current.registerVideoElement(video)
+    })
+
+    expect(result.current.isOverallPip).toBe(false)
+
+    await act(async () => {
+      await result.current.requestOverallPip()
+    })
+    expect(video.requestPictureInPicture).toHaveBeenCalledTimes(1)
+    expect(result.current.isOverallPip).toBe(true)
+
+    act(() => {
+      result.current.setIsOverallPip(false)
+    })
+    expect(result.current.isOverallPip).toBe(false)
   })
 })

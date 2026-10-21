@@ -452,6 +452,10 @@ export interface DesktopSettings {
   gamesDownloadPath?: string;
   gamesInstallPath?: string;
   isoDownloadPath?: string;
+  autoCheckUpdates?: boolean;
+  autoDownloadUpdates?: boolean;
+  allowPrerelease?: boolean;
+  githubToken?: string;
 }
 
 export interface IDesktopAPI {
@@ -632,6 +636,7 @@ export interface IDesktopAPI {
       progress?: { percent: number; bytesPerSecond: number; transferred: number; total: number };
       error?: string;
     }>;
+    validateToken: (token?: string) => Promise<{ valid: boolean; repo?: string; error?: string }>;
     onStatusChanged: (callback: (state: {
       status: 'idle' | 'checking' | 'available' | 'not-available' | 'downloading' | 'downloaded' | 'error';
       version?: string;

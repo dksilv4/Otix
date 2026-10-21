@@ -48,7 +48,19 @@ export const GameCard = ({ game, index, onAcceptSuggestion, onRejectSuggestion }
   const isMatched = !!game.data?.id;
   const mediaId = game.data?.id || game.matchSuggestion?.id;
   const linkTo = mediaId
-    ? { to: "/media/$mediaType/$mediaId" as const, params: { mediaType: "game" as const, mediaId } }
+    ? {
+        to: "/media/$mediaType/$mediaId" as const,
+        params: { mediaType: "game" as const, mediaId },
+        state: {
+          preview: {
+            title: game.data?.title || game.title,
+            logoUrl: game.data?.logoUrl || null,
+            logoColorGuess: game.data?.logoColorGuess || null,
+            backdropUrl: (game.data as any)?.backdropUrl || null,
+            posterUrl: game.data?.posterUrl || game.posterUrl || null,
+          },
+        },
+      }
     : null;
 
   const handlePlay = async (e: React.MouseEvent) => {

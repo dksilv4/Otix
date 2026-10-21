@@ -448,6 +448,52 @@
     animation: shimmer 1.6s infinite linear;
 }
 
+/* ── Media Detail Loading Logo Breathe Animation ── */
+@keyframes mediaLogoBreathe {
+    0%, 100% {
+        transform: scale(0.97) translateY(0);
+        opacity: 0.94;
+    }
+    50% {
+        transform: scale(1.03) translateY(-4px);
+        opacity: 1;
+    }
+}
+
+.animate-media-logo-breathe {
+    animation: mediaLogoBreathe 3s ease-in-out infinite;
+}
+
+/* ── Media Detail Loading Glow Pulse ── */
+@keyframes mediaLogoGlow {
+    0%, 100% {
+        opacity: 0.25;
+        transform: scale(0.92);
+    }
+    50% {
+        opacity: 0.65;
+        transform: scale(1.08);
+    }
+}
+
+.animate-media-logo-glow {
+    animation: mediaLogoGlow 3s ease-in-out infinite;
+}
+
+/* ── Media Detail Loading Shimmer Progress Line ── */
+@keyframes mediaLoadingSweep {
+    0% {
+        transform: translateX(-100%);
+    }
+    100% {
+        transform: translateX(100%);
+    }
+}
+
+.animate-media-loading-sweep {
+    animation: mediaLoadingSweep 1.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
 .bg-grid-pattern {
     background-size: 50px 50px;
     background-image: linear-gradient(to right, var(--dk-separator) 1px, transparent 1px),

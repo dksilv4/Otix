@@ -74,6 +74,9 @@ export interface StreamPlayerState {
   isMuted: boolean
   isTheater: boolean
   isZoomedOut: boolean
+  isInAppPip: boolean
+  isOverallPip: boolean
+  isOverallPipSupported: boolean
   activeSubtitleId: string | null
   activeAudioIndex: number | null
   playbackMethod: PlaybackMethod

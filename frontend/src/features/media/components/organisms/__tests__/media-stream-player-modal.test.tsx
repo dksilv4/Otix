@@ -32,11 +32,19 @@ const mockSession: StreamPlaybackSession = {
 }
 
 const TestPlayerTrigger = () => {
-  const { openStream } = useMediaStreamPlayer()
+  const { openStream, toggleInAppPip, toggleOverallPip } = useMediaStreamPlayer()
   return (
-    <button type="button" onClick={() => openStream(mockSession)}>
-      Open Stream
-    </button>
+    <div>
+      <button type="button" onClick={() => openStream(mockSession)}>
+        Open Stream
+      </button>
+      <button type="button" onClick={toggleInAppPip}>
+        Toggle In-App PiP
+      </button>
+      <button type="button" onClick={toggleOverallPip}>
+        Toggle Overall PiP
+      </button>
+    </div>
   )
 };
 
@@ -50,7 +58,7 @@ describe('MediaStreamPlayerModal', () => {
     const { container } = render(
       <MediaStreamPlayerProvider>
         <MediaStreamPlayerModal />
-      </MediaStreamPlayerProvider>
+      </MediaStreamPlayerProvider>,
     )
 
     expect(container.firstChild).toBe(null)
@@ -61,7 +69,7 @@ describe('MediaStreamPlayerModal', () => {
       <MediaStreamPlayerProvider>
         <TestPlayerTrigger />
         <MediaStreamPlayerModal />
-      </MediaStreamPlayerProvider>
+      </MediaStreamPlayerProvider>,
     )
 
     fireEvent.click(screen.getByText('Open Stream'))
@@ -69,6 +77,8 @@ describe('MediaStreamPlayerModal', () => {
     expect(screen.getByText('Interstellar')).toBeInTheDocument()
     expect(screen.getByText('jellyfin')).toBeInTheDocument()
     expect(screen.getByTitle(/Close/i)).toBeInTheDocument()
+    expect(screen.getByTitle(/Minimize to in-app player/i)).toBeInTheDocument()
+    expect(screen.getByTitle(/Picture-in-Picture \(OS window\)/i)).toBeInTheDocument()
   })
 
   it('toggles play/pause when transport button clicked', () => {
@@ -76,7 +86,7 @@ describe('MediaStreamPlayerModal', () => {
       <MediaStreamPlayerProvider>
         <TestPlayerTrigger />
         <MediaStreamPlayerModal />
-      </MediaStreamPlayerProvider>
+      </MediaStreamPlayerProvider>,
     )
 
     fireEvent.click(screen.getByText('Open Stream'))
@@ -96,17 +106,88 @@ describe('MediaStreamPlayerModal', () => {
       <MediaStreamPlayerProvider>
         <TestPlayerTrigger />
         <MediaStreamPlayerModal />
-      </MediaStreamPlayerProvider>
+      </MediaStreamPlayerProvider>,
     )
 
     fireEvent.click(screen.getByText('Open Stream'))
     expect(screen.getByText('Interstellar')).toBeInTheDocument()
 
-    const closeBtn = screen.getByTitle(/Close/i)
+    const closeBtn = screen.getByTitle(/Close \(Esc\)/i)
     act(() => {
       fireEvent.click(closeBtn)
     })
 
     expect(screen.queryByText('Interstellar')).not.toBeInTheDocument()
+  })
+
+  it('minimizes into in-app PiP mode and restores back to full modal', () => {
+    render(
+      <MediaStreamPlayerProvider>
+        <TestPlayerTrigger />
+        <MediaStreamPlayerModal />
+      </MediaStreamPlayerProvider>,
+    )
+
+    fireEvent.click(screen.getByText('Open Stream'))
+
+    // Click minimize to in-app player
+    const minimizeBtn = screen.getByTitle(/Minimize to in-app player/i)
+    act(() => {
+      fireEvent.click(minimizeBtn)
+    })
+
+    // In-app PiP mini overlay should now be visible with Restore button
+    const restoreBtn = screen.getByTitle(/Expand to full player/i)
+    expect(restoreBtn).toBeInTheDocument()
+
+    // Clicking restore returns to full modal view
+    act(() => {
+      fireEvent.click(restoreBtn)
+    })
+
+    expect(screen.getByTitle(/Minimize to in-app player/i)).toBeInTheDocument()
+  })
+
+  it('toggles in-app PiP using keyboard shortcut "i"', () => {
+    render(
+      <MediaStreamPlayerProvider>
+        <TestPlayerTrigger />
+        <MediaStreamPlayerModal />
+      </MediaStreamPlayerProvider>,
+    )
+
+    fireEvent.click(screen.getByText('Open Stream'))
+
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'i' }))
+    })
+
+    expect(screen.getByTitle(/Expand to full player/i)).toBeInTheDocument()
+
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'i' }))
+    })
+
+    expect(screen.getByTitle(/Minimize to in-app player/i)).toBeInTheDocument()
+  })
+
+  it('displays overall PiP overlay and toggles overall PiP using "p"', async () => {
+    render(
+      <MediaStreamPlayerProvider>
+        <TestPlayerTrigger />
+        <MediaStreamPlayerModal />
+      </MediaStreamPlayerProvider>,
+    )
+
+    fireEvent.click(screen.getByText('Open Stream'))
+
+    // Press 'p' to trigger overall PiP
+    await act(async () => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'p' }))
+    })
+
+    // Check bottom-right PiP button
+    const pipBtn = screen.getByTitle(/Picture-in-Picture \(OS window\)/i)
+    expect(pipBtn).toBeInTheDocument()
   })
 })

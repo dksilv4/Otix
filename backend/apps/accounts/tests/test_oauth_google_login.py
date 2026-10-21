@@ -266,3 +266,20 @@ class GoogleLoginCallbackTests(TestCase):
         self.assertEqual(cb_resp.status_code, 200)
         self.assertEqual(cb_resp.data["source"], "desktop")
         self.assertTrue(cb_resp.data["access_token"])
+
+    @override_settings(**GOOGLE_SETTINGS)
+    def test_callback_via_link_endpoint_completes_login(self) -> None:
+        init_resp = self.client.post("/api/v1/auth/google/initiate", format="json")
+        self.assertEqual(init_resp.status_code, 200)
+        state = init_resp.data["state"]
+
+        with self._mock_google():
+            cb_resp = self.client.post(
+                "/api/v1/auth/oauth/google/callback",
+                {"code": "auth-code", "state": state},
+                format="json",
+            )
+        self.assertEqual(cb_resp.status_code, 200)
+        self.assertIn("access_token", cb_resp.data)
+        self.assertEqual(cb_resp.data["token_type"], "bearer")
+        self.assertFalse(OAuthState.objects.filter(key=state).exists())

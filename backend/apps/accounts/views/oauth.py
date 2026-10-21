@@ -68,6 +68,28 @@ class GoogleLinkCallbackView(GenericAPIView):
         serializer.is_valid(raise_exception=True)
         code = serializer.validated_data["code"]
         state = serializer.validated_data["state"]
+
+        peeked = oauth_service.peek_state(state)
+        if peeked and peeked.get("flow") == oauth_service.GOOGLE_LOGIN_FLOW:
+            try:
+                user = oauth_service.authenticate_google_login(code, state)
+                access, refresh = session_service.begin_session(user, request)
+            except OAuthFlowError as exc:
+                return Response({"detail": exc.detail}, status=exc.status_code)
+            except Exception:  # noqa: BLE001 - surface a stable detail on unexpected failures
+                oauth_service.logger.exception("google login callback (via link view) failed")
+                return Response(
+                    {"detail": "Failed to sign in with Google. Please try again."},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                )
+            resp_data = {"access_token": access, "token_type": "bearer"}
+            oauth_source = getattr(user, "_oauth_source", None)
+            if oauth_source:
+                resp_data["source"] = oauth_source
+            response = Response(resp_data, status=status.HTTP_200_OK)
+            set_refresh_cookie(response, refresh)
+            return response
+
         try:
             source = oauth_service.link_google_to_user(request.user, code, state)
         except OAuthFlowError as exc:
@@ -193,6 +215,7 @@ class PlexLinkCallbackView(GenericAPIView):
         serializer.is_valid(raise_exception=True)
         state = serializer.validated_data["state"]
         pin_id = serializer.validated_data.get("pin_id") or None
+
         try:
             source = oauth_service.link_plex_to_user(request.user, state, pin_id)
         except OAuthFlowError as exc:
@@ -302,6 +325,27 @@ class GoogleLoginCallbackView(GenericAPIView):
         serializer.is_valid(raise_exception=True)
         code = serializer.validated_data["code"]
         state = serializer.validated_data["state"]
+
+        peeked = oauth_service.peek_state(state)
+        if peeked and peeked.get("flow") in (oauth_service.GOOGLE_OAUTH_FLOW, oauth_service.DRIVE_OAUTH_FLOW):
+            try:
+                if peeked.get("flow") == oauth_service.DRIVE_OAUTH_FLOW:
+                    source = oauth_service.link_google_drive_to_user(request.user, code, state)
+                else:
+                    source = oauth_service.link_google_to_user(request.user, code, state)
+            except OAuthFlowError as exc:
+                return Response({"detail": exc.detail}, status=exc.status_code)
+            except Exception:  # noqa: BLE001 - surface a stable detail on unexpected failures
+                oauth_service.logger.exception("google link callback (via login view) failed")
+                return Response(
+                    {"detail": "Failed to link Google account. Please try again."},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                )
+            resp_data = {"message": "Google account linked successfully"}
+            if source:
+                resp_data["source"] = source
+            return Response(resp_data, status=status.HTTP_200_OK)
+
         try:
             user = oauth_service.authenticate_google_login(code, state)
             access, refresh = session_service.begin_session(user, request)

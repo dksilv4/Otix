@@ -1,6 +1,6 @@
 import { useEffect, useCallback, useState, useRef } from 'react'
 import { createPortal } from 'react-dom'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion, AnimatePresence, useMotionValue } from 'framer-motion'
 import Hls from 'hls.js'
 import {
   Clapperboard,
@@ -27,8 +27,8 @@ import {
 } from 'lucide-react'
 import { useMediaStreamPlayer } from '../../hooks/use-media-stream-player'
 import { cn } from '@/lib/utils'
-
 import { safePlay, safePause, formatSeconds } from '../../utils/player'
+import { MediaPlayerInAppPipOverlay } from '../molecules/media-player-in-app-pip-overlay'
 
 export const MediaStreamPlayerModal = () => {
   const {
@@ -43,6 +43,8 @@ export const MediaStreamPlayerModal = () => {
     playbackSpeed,
     isMuted,
     isTheater,
+    isInAppPip,
+    isOverallPip,
     activeSubtitle,
     activeAudio,
     playbackMethod,
@@ -54,6 +56,11 @@ export const MediaStreamPlayerModal = () => {
     setPlaybackSpeed,
     toggleMute,
     setTheater,
+    setInAppPip,
+    toggleInAppPip,
+    setIsOverallPip,
+    toggleOverallPip,
+    registerVideoElement,
     setActiveSubtitle,
     setActiveAudio,
     onTimeUpdate,
@@ -81,10 +88,25 @@ export const MediaStreamPlayerModal = () => {
 
   const [splashAction, setSplashAction] = useState<'play' | 'pause' | 'skip-fwd' | 'skip-back' | null>(null)
   const [isFullscreen, setIsFullscreen] = useState(false)
+  const [isDraggingPip, setIsDraggingPip] = useState(false)
+
+  const pipX = useMotionValue(0)
+  const pipY = useMotionValue(0)
+
+  // Reset dragged PiP position when returning to full modal
+  useEffect(() => {
+    if (!isInAppPip) {
+      pipX.set(0)
+      pipY.set(0)
+    }
+  }, [isInAppPip, pipX, pipY])
 
   const videoRef = useRef<HTMLVideoElement>(null)
   const hlsRef = useRef<Hls | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+  const dragBoundaryRef = useRef<HTMLDivElement>(null)
+  const dragStartPosRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 })
+  const hasDraggedRef = useRef(false)
   const progressBarRef = useRef<HTMLDivElement>(null)
   const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const splashTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -137,20 +159,46 @@ export const MediaStreamPlayerModal = () => {
     }
   }, [])
 
-  // Picture in Picture
-  const togglePiP = useCallback(async () => {
+  // Video element registration & Picture in Picture listener
+  useEffect(() => {
     const video = videoRef.current
+    registerVideoElement(video)
     if (!video) return
+
     try {
-      if (document.pictureInPictureElement) {
-        await document.exitPictureInPicture()
-      } else if (document.pictureInPictureEnabled) {
-        await video.requestPictureInPicture()
-      }
-    } catch (err) {
-      console.warn('[StreamPlayer] PiP toggle failed:', err)
+      ;(video as unknown as { autoPictureInPicture?: boolean }).autoPictureInPicture = true
+      video.setAttribute('webkit-playsinline', 'true')
+      video.setAttribute('playsinline', 'true')
+    } catch {
+      // Ignore if properties unsupported
     }
-  }, [])
+
+    const handleEnterPip = () => setIsOverallPip(true)
+    const handleLeavePip = () => setIsOverallPip(false)
+    const handleWkPip = () => {
+      const isWk = (video as unknown as { webkitPresentationMode?: string }).webkitPresentationMode === 'picture-in-picture'
+      setIsOverallPip(isWk)
+    }
+
+    video.addEventListener('enterpictureinpicture', handleEnterPip)
+    video.addEventListener('leavepictureinpicture', handleLeavePip)
+    video.addEventListener('webkitpresentationmodechanged', handleWkPip)
+
+    return () => {
+      video.removeEventListener('enterpictureinpicture', handleEnterPip)
+      video.removeEventListener('leavepictureinpicture', handleLeavePip)
+      video.removeEventListener('webkitpresentationmodechanged', handleWkPip)
+      registerVideoElement(null)
+    }
+  }, [registerVideoElement, setIsOverallPip])
+
+  const handleToggleOverallPip = useCallback(async () => {
+    try {
+      await toggleOverallPip()
+    } catch (err) {
+      console.warn('[StreamPlayer] Overall PiP toggle failed:', err)
+    }
+  }, [toggleOverallPip])
 
   // Splash trigger
   const triggerSplash = (action: 'play' | 'pause' | 'skip-fwd' | 'skip-back') => {
@@ -372,7 +420,10 @@ export const MediaStreamPlayerModal = () => {
         setTheater(!isTheater)
       } else if (e.key === 'p' || e.key === 'P') {
         e.preventDefault()
-        togglePiP()
+        handleToggleOverallPip()
+      } else if (e.key === 'i' || e.key === 'I') {
+        e.preventDefault()
+        toggleInAppPip()
       } else if (e.key === 'c' || e.key === 'C') {
         e.preventDefault()
         if (session && session.subtitles.length > 0) {
@@ -404,7 +455,8 @@ export const MediaStreamPlayerModal = () => {
     volume,
     toggleFullscreen,
     toggleMute,
-    togglePiP,
+    handleToggleOverallPip,
+    toggleInAppPip,
     setVolume,
     setTheater,
     isTheater,
@@ -508,40 +560,96 @@ export const MediaStreamPlayerModal = () => {
   return createPortal(
     <AnimatePresence>
       <div
-        ref={containerRef}
+        ref={dragBoundaryRef}
         className={cn(
-          'fixed inset-0 z-[99999] flex items-center justify-center bg-black/95 select-none font-sans transition-all duration-300',
-          !controlsVisible && isPlaying ? 'cursor-none' : 'cursor-default'
+          'fixed z-[99999] select-none font-sans',
+          isInAppPip
+            ? 'inset-4 pointer-events-none'
+            : 'inset-0 flex items-center justify-center bg-black/95 transition-colors duration-300 pointer-events-auto',
         )}
-        onMouseMove={showControls}
-        onClick={() => {
-          setShowSubtitleMenu(false)
-          setShowAudioMenu(false)
-          setShowSpeedMenu(false)
-        }}
       >
-        {/* Subtle Ambient Glow Behind Video */}
-        <div className="absolute inset-0 max-w-5xl max-h-[75vh] m-auto bg-primary/10 rounded-full blur-[140px] pointer-events-none opacity-60" />
+        {/* Subtle Ambient Glow Behind Video (only in full modal mode) */}
+        {!isInAppPip && (
+          <>
+            <div
+              className="absolute inset-0 cursor-default"
+              onClick={() => {
+                setShowSubtitleMenu(false)
+                setShowAudioMenu(false)
+                setShowSpeedMenu(false)
+              }}
+            />
+            <div className="absolute inset-0 max-w-5xl max-h-[75vh] m-auto bg-primary/10 rounded-full blur-[140px] pointer-events-none opacity-60" />
+          </>
+        )}
 
         {/* Video Surface Container */}
         <motion.div
+          ref={containerRef}
+          style={{ x: pipX, y: pipY }}
+          layout={!isInAppPip}
+          drag={isInAppPip}
+          dragConstraints={isInAppPip ? dragBoundaryRef : undefined}
+          dragElastic={0}
+          dragMomentum={false}
+          whileDrag={{
+            scale: 1.02,
+            cursor: 'grabbing',
+          }}
+          onDragStart={(_e, info) => {
+            setIsDraggingPip(true)
+            dragStartPosRef.current = { x: info.point.x, y: info.point.y }
+          }}
+          onDragEnd={(_e, info) => {
+            const dx = Math.abs(info.point.x - dragStartPosRef.current.x)
+            const dy = Math.abs(info.point.y - dragStartPosRef.current.y)
+            if (dx > 5 || dy > 5) {
+              hasDraggedRef.current = true
+              setTimeout(() => {
+                hasDraggedRef.current = false
+              }, 250)
+            }
+            setIsDraggingPip(false)
+          }}
+          onDoubleClick={() => {
+            if (isInAppPip && !hasDraggedRef.current) {
+              setInAppPip(false)
+            }
+          }}
+          onMouseMove={isDraggingPip ? undefined : showControls}
           initial={{ opacity: 0, scale: 0.98 }}
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.98 }}
-          transition={{ duration: 0.22, ease: 'easeOut' }}
+          transition={{
+            opacity: { duration: 0.22, ease: 'easeOut' },
+            scale: { duration: 0.22, ease: 'easeOut' },
+          }}
           className={cn(
-            'relative overflow-hidden flex items-center justify-center bg-black transition-all duration-300 shadow-[0_32px_80px_rgba(0,0,0,0.9),0_0_0_1px_rgba(255,255,255,0.08)]',
-            isFullscreen
-              ? 'w-full h-full rounded-none'
-              : isTheater
-              ? 'w-full max-w-6xl aspect-video rounded-3xl'
-              : 'w-full max-w-5xl aspect-video rounded-3xl'
+            'pointer-events-auto overflow-hidden bg-black',
+            !isInAppPip && 'transition-all duration-300',
+            isInAppPip
+              ? cn(
+                  'group/pip fixed bottom-6 right-6 w-[360px] max-w-[calc(100vw-32px)] aspect-video rounded-2xl shadow-[0_24px_60px_rgba(0,0,0,0.85)] border cursor-grab active:cursor-grabbing touch-none will-change-transform',
+                  isDraggingPip
+                    ? '!transition-none border-primary/40 ring-1 ring-primary/25 shadow-[0_32px_70px_rgba(0,0,0,0.95)]'
+                    : 'transition-colors duration-150 border-white/[0.08] hover:border-white/[0.16]',
+                )
+              : cn(
+                  'relative flex items-center justify-center shadow-[0_32px_80px_rgba(0,0,0,0.9),0_0_0_1px_rgba(255,255,255,0.08)]',
+                  isFullscreen
+                    ? 'w-full h-full rounded-none'
+                    : isTheater
+                    ? 'w-full max-w-6xl aspect-video rounded-3xl'
+                    : 'w-full max-w-5xl aspect-video rounded-3xl',
+                  !controlsVisible && isPlaying ? 'cursor-none' : 'cursor-default',
+                ),
           )}
         >
           {/* HTML5 Video Element */}
           <video
             ref={videoRef}
             playsInline
+            disablePictureInPicture={false}
             className="w-full h-full object-contain"
             onLoadedMetadata={() => {
               applyInitialSeek()
@@ -583,21 +691,76 @@ export const MediaStreamPlayerModal = () => {
             )}
           </video>
 
-          {/* Interactive Click Surface for Gestures */}
-          <div
-            className="absolute inset-0 z-10"
-            onClick={handleCanvasClick}
-          />
+          {isInAppPip ? (
+            <MediaPlayerInAppPipOverlay
+              title={session.title}
+              source={session.source}
+              isPlaying={isPlaying}
+              isBuffering={isBuffering}
+              isOverallPip={isOverallPip}
+              isDragging={isDraggingPip}
+              currentTime={currentTime}
+              duration={duration}
+              isMuted={isMuted}
+              controlsVisible={controlsVisible}
+              onTogglePlay={handleTogglePlay}
+              onSkipBack={handleSkipBack}
+              onSkipForward={handleSkipForward}
+              onSeek={(time) => {
+                seek(time)
+                if (videoRef.current) videoRef.current.currentTime = time
+              }}
+              onToggleMute={toggleMute}
+              onRestore={() => setInAppPip(false)}
+              onToggleOverallPip={handleToggleOverallPip}
+              onClose={closeStream}
+            />
+          ) : (
+            <>
+              {/* Interactive Click Surface for Gestures */}
+              <div
+                className="absolute inset-0 z-10"
+                onClick={handleCanvasClick}
+              />
 
-          {/* Buffering Indicator */}
-          {isBuffering && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/40 backdrop-blur-sm pointer-events-none z-20">
-              <div className="p-4 rounded-2xl bg-black/70 border border-white/10 shadow-2xl flex flex-col items-center gap-3">
-                <Loader2 className="h-9 w-9 text-brand-primary animate-spin" />
-                <span className="text-xs font-semibold tracking-wide text-white/90 uppercase">Buffering</span>
-              </div>
-            </div>
-          )}
+              {/* Overall PiP Overlay (when video is detached into OS PiP) */}
+              {isOverallPip && (
+                <div className="absolute inset-0 z-40 flex flex-col items-center justify-center p-6 text-center bg-[var(--dk-surface-base)]/85 backdrop-blur-xl">
+                  <div className="h-16 w-16 rounded-3xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary mb-3 shadow-lg">
+                    <PictureInPicture2 className="h-8 w-8 animate-pulse" />
+                  </div>
+                  <h3 className="text-base font-bold text-foreground mb-1">Playing in Picture-in-Picture</h3>
+                  <p className="text-xs text-muted-foreground max-w-sm mb-5 leading-relaxed">
+                    Video is playing in an external Picture-in-Picture window. You can keep watching while using other apps.
+                  </p>
+                  <div className="flex items-center gap-2.5">
+                    <button
+                      type="button"
+                      onClick={handleToggleOverallPip}
+                      className="px-4 py-2 rounded-full bg-primary text-primary-foreground font-semibold text-xs hover:brightness-110 active:scale-95 transition-all shadow-md"
+                    >
+                      Return Video to Player
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setInAppPip(true)}
+                      className="px-4 py-2 rounded-full bg-[var(--dk-surface-glass)] text-foreground hover:bg-[var(--dk-surface-ghost-hover)] font-medium text-xs active:scale-95 transition-all border border-white/[0.04]"
+                    >
+                      Minimize to In-App PiP
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Buffering Indicator */}
+              {isBuffering && !isOverallPip && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/40 backdrop-blur-sm pointer-events-none z-20">
+                  <div className="p-4 rounded-2xl bg-black/70 border border-white/10 shadow-2xl flex flex-col items-center gap-3">
+                    <Loader2 className="h-9 w-9 text-brand-primary animate-spin" />
+                    <span className="text-xs font-semibold tracking-wide text-white/90 uppercase">Buffering</span>
+                  </div>
+                </div>
+              )}
 
           {/* Splash Action Micro-animation */}
           <AnimatePresence>
@@ -714,7 +877,11 @@ export const MediaStreamPlayerModal = () => {
                       <kbd className="px-2 py-0.5 rounded bg-[var(--dk-surface-glass-hover)] font-mono font-bold text-[11px]">T</kbd>
                     </div>
                     <div className="flex items-center justify-between p-2 rounded-xl bg-[var(--dk-surface-glass)]">
-                      <span className="text-foreground">Picture in Pic</span>
+                      <span className="text-foreground">In-App Mini Player</span>
+                      <kbd className="px-2 py-0.5 rounded bg-[var(--dk-surface-glass-hover)] font-mono font-bold text-[11px]">I</kbd>
+                    </div>
+                    <div className="flex items-center justify-between p-2 rounded-xl bg-[var(--dk-surface-glass)]">
+                      <span className="text-foreground">Picture in Pic (OS)</span>
                       <kbd className="px-2 py-0.5 rounded bg-[var(--dk-surface-glass-hover)] font-mono font-bold text-[11px]">P</kbd>
                     </div>
                     <div className="flex items-center justify-between p-2 rounded-xl bg-[var(--dk-surface-glass)]">
@@ -794,6 +961,14 @@ export const MediaStreamPlayerModal = () => {
 
               {/* Top Right Actions */}
               <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setInAppPip(true)}
+                  className="h-8 w-8 rounded-full bg-white/10 hover:bg-white/20 active:scale-95 text-white/80 hover:text-white flex items-center justify-center transition-all border border-white/10 shadow-sm"
+                  title="Minimize to in-app player (I)"
+                >
+                  <Minimize2 className="h-4 w-4" />
+                </button>
                 <button
                   type="button"
                   onClick={() => setShowShortcutsModal(true)}
@@ -1141,9 +1316,14 @@ export const MediaStreamPlayerModal = () => {
                   {/* Picture in Picture */}
                   <button
                     type="button"
-                    onClick={togglePiP}
-                    className="h-8 w-8 rounded-xl text-white/70 hover:text-white hover:bg-white/10 active:scale-95 flex items-center justify-center transition-all"
-                    title="Picture-in-Picture (P)"
+                    onClick={handleToggleOverallPip}
+                    className={cn(
+                      'h-8 w-8 rounded-xl flex items-center justify-center transition-all active:scale-95',
+                      isOverallPip
+                        ? 'bg-primary text-primary-foreground shadow-sm'
+                        : 'text-white/70 hover:text-white hover:bg-white/10'
+                    )}
+                    title="Picture-in-Picture (OS window) (P)"
                   >
                     <PictureInPicture2 className="h-4 w-4" />
                   </button>
@@ -1178,8 +1358,10 @@ export const MediaStreamPlayerModal = () => {
               </div>
             </div>
           </div>
-        </motion.div>
-      </div>
+        </>
+      )}
+    </motion.div>
+  </div>
     </AnimatePresence>,
     document.body
   )

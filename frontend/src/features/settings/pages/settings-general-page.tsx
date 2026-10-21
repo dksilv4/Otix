@@ -12,6 +12,7 @@ import {
   DownloadCloud,
   ArrowRight,
   AlertCircle,
+  BookOpen,
 } from 'lucide-react'
 import { SectionHeader } from '../components/molecules/settings-section-header'
 import { SettingsCard } from '../components/molecules/settings-card'
@@ -57,8 +58,10 @@ export const SettingsGeneralPage = () => {
     isDownloaded: isUpdateDownloaded,
     autoCheck,
     autoDownload,
+    allowPrerelease,
     setAutoCheck,
     setAutoDownload,
+    setAllowPrerelease,
     openUpdateModal,
     checkForUpdates,
     downloadUpdate,
@@ -230,7 +233,7 @@ export const SettingsGeneralPage = () => {
             <div className="flex items-center justify-between text-xs">
               <span className="text-muted-foreground">Platform Environment</span>
               <span className="font-semibold text-foreground">
-                {desktop ? 'Otix Desktop App (Electron)' : 'Otix Web App'}
+                {desktop ? 'Otix Desktop App' : 'Otix Web App'}
               </span>
             </div>
 
@@ -246,6 +249,26 @@ export const SettingsGeneralPage = () => {
               <span className="text-xs font-semibold text-primary">
                 Operational
               </span>
+            </div>
+
+            <div className="mt-4 pt-4 border-t border-[var(--dk-separator)] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="space-y-0.5">
+                <span className="text-xs font-semibold text-foreground">
+                  Documentation &amp; Guides
+                </span>
+                <p className="text-xs text-muted-foreground">
+                  Explore ecosystem setup, BYOS streaming, Node companion, and plugin development.
+                </p>
+              </div>
+              <DkButton
+                size="sm"
+                variant="secondary"
+                leftIcon={BookOpen}
+                onClick={() => void router.navigate({ to: '/docs' })}
+                className="rounded-xl px-4 text-xs font-semibold shrink-0"
+              >
+                View Docs
+              </DkButton>
             </div>
 
             {desktop && (
@@ -340,6 +363,24 @@ export const SettingsGeneralPage = () => {
                     <DkSwitch
                       checked={autoDownload}
                       onCheckedChange={setAutoDownload}
+                    />
+                  </div>
+
+                  <div
+                    className="flex items-center justify-between rounded-xl p-3 sm:p-3.5"
+                    style={{ backgroundColor: 'var(--dk-surface-ghost)' }}
+                  >
+                    <div className="space-y-0.5 pr-4">
+                      <span className="text-xs font-semibold text-foreground">
+                        Include pre-release builds
+                      </span>
+                      <p className="text-[11px] text-muted-foreground">
+                        Receive early access releases, release candidates, and experimental updates.
+                      </p>
+                    </div>
+                    <DkSwitch
+                      checked={allowPrerelease}
+                      onCheckedChange={setAllowPrerelease}
                     />
                   </div>
                 </div>

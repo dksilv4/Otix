@@ -72,7 +72,7 @@ const ArtistAlbumsSection = safeLazy(() =>
 )
 import { DeferredSection } from '@ui/molecules/deferred-section'
 import { SectionSkeleton } from '../components/organisms/media-detail-section-skeleton'
-import { DetailSkeleton } from '../components/organisms/media-detail-skeleton'
+import { MediaDetailLoading } from '../components/organisms/media-detail-loading'
 import { ErrorState } from '../components/organisms/media-detail-error-state'
 
 import { mediaQueries } from '../queries/media-queries'
@@ -172,9 +172,9 @@ export const MediaDetailPage = () => {
     }
   }, [detail, mediaId, mediaType, navigate, queryClient, search])
 
-  if (!mediaId || isPending) return <DetailSkeleton mediaType={mediaType} />
+  if (!mediaId || isPending) return <MediaDetailLoading mediaType={mediaType} mediaId={mediaId} />
   if (isError || !detail) {
-    if (isFetching) return <DetailSkeleton mediaType={mediaType} />
+    if (isFetching) return <MediaDetailLoading mediaType={mediaType} mediaId={mediaId} />
     return <ErrorState mediaType={mediaType} />
   }
 

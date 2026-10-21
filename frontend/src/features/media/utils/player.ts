@@ -31,6 +31,18 @@ export const formatSeconds = (sec: number): string => {
   return `${m}:${String(s).padStart(2, '0')}`
 }
 
+export const calculateProgressFromEvent = (
+  clientX: number,
+  element: HTMLElement | null,
+  duration: number,
+): number => {
+  if (!element || duration <= 0) return 0
+  const rect = element.getBoundingClientRect()
+  if (rect.width <= 0) return 0
+  const percent = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width))
+  return percent * duration
+}
+
 export interface PluginApi {
   callData: (pluginId: string, method: string, ...args: unknown[]) => Promise<unknown>
 }

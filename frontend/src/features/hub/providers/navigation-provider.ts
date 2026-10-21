@@ -1,10 +1,10 @@
 import type { ComponentType } from 'react'
-import { Compass, Search, Library, Calendar, Bell, Settings, Sparkles } from 'lucide-react'
+import { Compass, Search, Library, Calendar, Bell, Settings, Sparkles, BookOpen } from 'lucide-react'
 import { router } from '@/lib/router'
 import { openDecideWatch } from '@/features/discover/open-decide-watch'
 import type { Command, CommandProvider } from '../types'
 
-type AppPath = '/' | '/search' | '/library' | '/calendar' | '/notifications' | '/settings' | '/welcome'
+type AppPath = '/' | '/search' | '/library' | '/calendar' | '/notifications' | '/settings' | '/welcome' | '/docs'
 
 interface NavEntry {
   id: string
@@ -22,6 +22,7 @@ const NAV_ENTRIES: NavEntry[] = [
   { id: 'calendar', title: 'Calendar', to: '/calendar', icon: Calendar, keywords: ['releases', 'schedule'] },
   { id: 'notifications', title: 'Notifications', to: '/notifications', icon: Bell, keywords: ['alerts'] },
   { id: 'settings', title: 'Settings', to: '/settings', icon: Settings, keywords: ['preferences'] },
+  { id: 'docs', title: 'Documentation', to: '/docs', icon: BookOpen, keywords: ['documentation', 'docs', 'guide', 'manual', 'help', 'api', 'setup', 'tutorial'] },
 ]
 
 const DECIDE_KEYWORDS = ['decide', 'watch', 'pick', 'for you', 'recommend', 'tonight']

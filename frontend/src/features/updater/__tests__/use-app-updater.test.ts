@@ -142,4 +142,50 @@ describe('useAppUpdater', () => {
 
     expect(mockUpdater.installUpdate).toHaveBeenCalled()
   })
+
+  it('manages prerelease preferences and github token in desktop mode', async () => {
+    const mockSetDesktopSettings = vi.fn().mockResolvedValue({})
+    const mockGetDesktopSettings = vi.fn().mockResolvedValue({
+      allowPrerelease: true,
+      githubToken: 'ghp_saved_token_123',
+    })
+    const mockValidateToken = vi.fn().mockResolvedValue({ valid: true, repo: 'dksilv4/Otix' })
+
+    ;(window as any).desktopAPI = {
+      getDesktopSettings: mockGetDesktopSettings,
+      setDesktopSettings: mockSetDesktopSettings,
+      updater: {
+        getVersion: vi.fn().mockResolvedValue('0.1.23'),
+        getStatus: vi.fn().mockResolvedValue({ status: 'idle' }),
+        onStatusChanged: vi.fn().mockReturnValue(() => {}),
+        validateToken: mockValidateToken,
+      },
+    }
+
+    const { result } = renderHook(() => useAppUpdater())
+
+    await waitFor(() => {
+      expect(result.current.allowPrerelease).toBe(true)
+      expect(result.current.githubToken).toBe('ghp_saved_token_123')
+    })
+
+    act(() => {
+      result.current.setAllowPrerelease(false)
+    })
+    expect(result.current.allowPrerelease).toBe(false)
+    expect(mockSetDesktopSettings).toHaveBeenCalledWith({ allowPrerelease: false })
+
+    await act(async () => {
+      await result.current.setGithubToken('ghp_new_secret_token')
+    })
+    expect(result.current.githubToken).toBe('ghp_new_secret_token')
+    expect(mockSetDesktopSettings).toHaveBeenCalledWith({ githubToken: 'ghp_new_secret_token' })
+
+    let validationResult
+    await act(async () => {
+      validationResult = await result.current.validateToken('ghp_new_secret_token')
+    })
+    expect(mockValidateToken).toHaveBeenCalledWith('ghp_new_secret_token')
+    expect(validationResult).toEqual({ valid: true, repo: 'dksilv4/Otix' })
+  })
 })

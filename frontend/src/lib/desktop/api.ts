@@ -60,6 +60,8 @@ export interface DesktopSettingsData {
   embeddedNodePort?: number;
   autoCheckUpdates?: boolean;
   autoDownloadUpdates?: boolean;
+  allowPrerelease?: boolean;
+  githubToken?: string;
 }
 
 export interface NodeDaemonStatus {
@@ -454,6 +456,7 @@ export interface DesktopAPI {
     installUpdate: () => Promise<boolean>
     getVersion: () => Promise<string>
     getStatus: () => Promise<UpdateStatePayload>
+    validateToken?: (token?: string) => Promise<{ valid: boolean; repo?: string; error?: string }>
     onStatusChanged: (callback: (state: UpdateStatePayload) => void) => () => void
   }
 }

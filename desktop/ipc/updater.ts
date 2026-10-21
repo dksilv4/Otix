@@ -2,6 +2,7 @@ import { app, BrowserWindow, ipcMain } from 'electron';
 import { autoUpdater } from 'electron-updater';
 import { execSync } from 'child_process';
 import { getSettings } from '../desktop-settings';
+import { setTrayUpdaterState } from '../tray';
 
 export type UpdateStatus =
   | 'idle'
@@ -27,6 +28,8 @@ export interface UpdateStatePayload {
 
 let mainWindowRef: BrowserWindow | null = null;
 let isInitialized = false;
+let startupCheckTimeout: NodeJS.Timeout | null = null;
+let periodicCheckTimer: NodeJS.Timeout | null = null;
 
 let currentPayload: UpdateStatePayload = {
   status: 'idle',
@@ -44,10 +47,19 @@ function notifyRenderer(payload: Partial<UpdateStatePayload> & { status: UpdateS
   if (mainWindowRef && !mainWindowRef.isDestroyed()) {
     mainWindowRef.webContents.send('updater:status-changed', currentPayload);
   }
+  try {
+    setTrayUpdaterState(currentPayload);
+  } catch {
+    // tray may not be initialized yet
+  }
 }
 
 export function setAutoDownloadUpdates(enabled: boolean): void {
   autoUpdater.autoDownload = enabled;
+}
+
+export function setAllowPrerelease(enabled: boolean): void {
+  autoUpdater.allowPrerelease = enabled;
 }
 
 /**
@@ -55,11 +67,17 @@ export function setAutoDownloadUpdates(enabled: boolean): void {
  * from private GitHub repositories.
  */
 export function resolveGitHubToken(): string | null {
-  if (process.env.GH_TOKEN) return process.env.GH_TOKEN;
-  if (process.env.GITHUB_TOKEN) return process.env.GITHUB_TOKEN;
+  if (process.env.GH_TOKEN && process.env.GH_TOKEN.trim()) {
+    return process.env.GH_TOKEN.trim();
+  }
+  if (process.env.GITHUB_TOKEN && process.env.GITHUB_TOKEN.trim()) {
+    return process.env.GITHUB_TOKEN.trim();
+  }
   try {
     const settings = getSettings();
-    if (settings?.githubToken) return settings.githubToken;
+    if (settings?.githubToken && settings.githubToken.trim()) {
+      return settings.githubToken.trim();
+    }
   } catch {
     // ignore
   }
@@ -77,23 +95,50 @@ export function resolveGitHubToken(): string | null {
 }
 
 /**
- * Configure private feed URL if a token is available.
+ * Configure autoUpdater feed URL for public GitHub releases.
  */
 export function configureAutoUpdaterFeed(): void {
-  const token = resolveGitHubToken();
-  if (token && typeof autoUpdater.setFeedURL === 'function') {
+  if (typeof autoUpdater.setFeedURL === 'function') {
     try {
       autoUpdater.setFeedURL({
         provider: 'github',
         owner: 'dksilv4',
         repo: 'Otix',
-        private: true,
-        token,
       });
-      console.log('[updater] Configured private GitHub feed URL with auth token.');
+      console.log('[updater] Configured public GitHub feed URL.');
     } catch (err: any) {
-      console.warn('[updater] Failed to setFeedURL with token:', err?.message || err);
+      console.warn('[updater] Failed to configure feed URL:', err?.message || err);
     }
+  }
+}
+
+/**
+ * Test connectivity against the GitHub releases API.
+ */
+export async function validateGitHubToken(token?: string): Promise<{
+  valid: boolean;
+  repo?: string;
+  error?: string;
+}> {
+  try {
+    const headers: Record<string, string> = {
+      'User-Agent': 'Otix-Desktop-Updater',
+      Accept: 'application/vnd.github.v3+json',
+    };
+    if (token?.trim()) {
+      headers.Authorization = `Bearer ${token.trim()}`;
+    }
+    const res = await fetch('https://api.github.com/repos/dksilv4/Otix', { headers });
+    if (res.ok) {
+      const data = (await res.json()) as any;
+      return {
+        valid: true,
+        repo: data?.full_name || 'dksilv4/Otix',
+      };
+    }
+    return { valid: false, error: `GitHub API returned ${res.status}: ${res.statusText}` };
+  } catch (err: any) {
+    return { valid: false, error: err?.message || 'Failed to reach GitHub API.' };
   }
 }
 
@@ -106,12 +151,107 @@ export function sanitizeUpdaterError(err: any): string {
   const msg = typeof err === 'string' ? err : err.message || String(err);
   if (
     msg.includes('releases.atom') ||
-    msg.includes('authentication token') ||
     (msg.includes('404') && (msg.includes('github.com') || msg.includes('dksilv4/Otix')))
   ) {
-    return 'Update check unavailable: GitHub repository is private or requires authentication.';
+    return 'Update check unavailable: release servers returned 404.';
+  }
+  if (
+    msg.includes('403') ||
+    msg.includes('rate limit exceeded')
+  ) {
+    return 'GitHub API rate limit exceeded. Please try again later.';
+  }
+  if (
+    msg.includes('ERR_INTERNET_DISCONNECTED') ||
+    msg.includes('ERR_NAME_NOT_RESOLVED') ||
+    msg.includes('ENOTFOUND')
+  ) {
+    return 'Network error: Unable to reach update servers. Check your connection.';
+  }
+  if (msg.includes('ETIMEDOUT')) {
+    return 'Connection timed out while checking for updates.';
+  }
+  if (msg.includes('sha512 checksum mismatch')) {
+    return 'Update package verification failed: Checksum mismatch.';
   }
   return msg;
+}
+
+export async function triggerManualUpdateCheck(): Promise<{
+  status: UpdateStatus;
+  updateInfo?: any;
+  error?: string;
+  reason?: string;
+  currentVersion?: string;
+}> {
+  if (!app.isPackaged) {
+    notifyRenderer({
+      status: 'not-available',
+      error: undefined,
+    });
+    return {
+      status: 'not-available',
+      reason: 'Development mode',
+      currentVersion: app.getVersion(),
+    };
+  }
+  if (currentPayload.status === 'checking') {
+    return { status: 'checking' };
+  }
+  if (currentPayload.status === 'downloading') {
+    return { status: 'downloading' };
+  }
+  configureAutoUpdaterFeed();
+  try {
+    notifyRenderer({ status: 'checking', error: undefined });
+    const result = await autoUpdater.checkForUpdates();
+    return { status: 'checking', updateInfo: result?.updateInfo };
+  } catch (err: any) {
+    const errMsg = sanitizeUpdaterError(err);
+    notifyRenderer({ status: 'error', error: errMsg });
+    return { status: 'error', error: errMsg };
+  }
+}
+
+export async function downloadAvailableUpdate(): Promise<{
+  status: UpdateStatus;
+  error?: string;
+  reason?: string;
+}> {
+  if (!app.isPackaged) {
+    return { status: 'not-available', reason: 'Development mode' };
+  }
+  if (currentPayload.status === 'downloading') {
+    return { status: 'downloading' };
+  }
+  if (currentPayload.status === 'downloaded') {
+    return { status: 'downloaded' };
+  }
+  try {
+    notifyRenderer({ status: 'downloading', error: undefined });
+    await autoUpdater.downloadUpdate();
+    return { status: 'downloading' };
+  } catch (err: any) {
+    const errMsg = sanitizeUpdaterError(err);
+    notifyRenderer({ status: 'error', error: errMsg });
+    return { status: 'error', error: errMsg };
+  }
+}
+
+export function installDownloadedUpdate(): boolean {
+  if (currentPayload.status === 'downloaded') {
+    console.log('[updater] Quitting and installing update...');
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const { markAppQuitting } = require('../main');
+      markAppQuitting?.();
+    } catch {
+      // ignore
+    }
+    autoUpdater.quitAndInstall(false, true);
+    return true;
+  }
+  return false;
 }
 
 export function registerUpdaterIPC(win: BrowserWindow | null): void {
@@ -135,6 +275,7 @@ export function registerUpdaterIPC(win: BrowserWindow | null): void {
   // Configure autoUpdater defaults
   autoUpdater.autoDownload = settings.autoDownloadUpdates !== false;
   autoUpdater.autoInstallOnAppQuit = true;
+  autoUpdater.allowPrerelease = settings.allowPrerelease === true;
 
   configureAutoUpdaterFeed();
 
@@ -207,51 +348,19 @@ export function registerUpdaterIPC(win: BrowserWindow | null): void {
   });
 
   ipcMain.handle('updater:check-for-updates', async () => {
-    if (!app.isPackaged) {
-      notifyRenderer({
-        status: 'not-available',
-        error: undefined,
-      });
-      return {
-        status: 'not-available',
-        reason: 'Development mode',
-        currentVersion: app.getVersion(),
-      };
-    }
-    configureAutoUpdaterFeed();
-    try {
-      notifyRenderer({ status: 'checking', error: undefined });
-      const result = await autoUpdater.checkForUpdates();
-      return { status: 'checking', updateInfo: result?.updateInfo };
-    } catch (err: any) {
-      const errMsg = sanitizeUpdaterError(err);
-      notifyRenderer({ status: 'error', error: errMsg });
-      return { status: 'error', error: errMsg };
-    }
+    return triggerManualUpdateCheck();
   });
 
   ipcMain.handle('updater:download-update', async () => {
-    if (!app.isPackaged) {
-      return { status: 'not-available', reason: 'Development mode' };
-    }
-    try {
-      notifyRenderer({ status: 'downloading', error: undefined });
-      await autoUpdater.downloadUpdate();
-      return { status: 'downloading' };
-    } catch (err: any) {
-      const errMsg = sanitizeUpdaterError(err);
-      notifyRenderer({ status: 'error', error: errMsg });
-      return { status: 'error', error: errMsg };
-    }
+    return downloadAvailableUpdate();
   });
 
   ipcMain.handle('updater:install-update', () => {
-    if (currentPayload.status === 'downloaded') {
-      console.log('[updater] Quitting and installing update...');
-      autoUpdater.quitAndInstall(false, true);
-      return true;
-    }
-    return false;
+    return installDownloadedUpdate();
+  });
+
+  ipcMain.handle('updater:validate-token', async (_event, token?: string) => {
+    return validateGitHubToken(token);
   });
 }
 
@@ -263,12 +372,44 @@ export function checkForUpdatesOnStartup(): void {
   }
   if (app.isPackaged) {
     configureAutoUpdaterFeed();
-    // Delay check slightly to let app initialize smoothly
-    setTimeout(() => {
+    if (startupCheckTimeout) clearTimeout(startupCheckTimeout);
+    startupCheckTimeout = setTimeout(() => {
       console.log('[updater] Performing startup background update check...');
       autoUpdater.checkForUpdates().catch((err) => {
         console.warn('[updater] Background update check error:', sanitizeUpdaterError(err));
       });
     }, 5000);
+  }
+}
+
+export function startPeriodicUpdateChecks(intervalMs: number = 4 * 60 * 60 * 1000): void {
+  stopPeriodicUpdateChecks();
+  const settings = getSettings();
+  if (settings.autoCheckUpdates === false) {
+    return;
+  }
+  if (!app.isPackaged) {
+    return;
+  }
+  periodicCheckTimer = setInterval(() => {
+    console.log('[updater] Performing periodic background update check...');
+    configureAutoUpdaterFeed();
+    autoUpdater.checkForUpdates().catch((err) => {
+      console.warn('[updater] Periodic background update check error:', sanitizeUpdaterError(err));
+    });
+  }, intervalMs);
+  if (periodicCheckTimer.unref) {
+    periodicCheckTimer.unref();
+  }
+}
+
+export function stopPeriodicUpdateChecks(): void {
+  if (periodicCheckTimer) {
+    clearInterval(periodicCheckTimer);
+    periodicCheckTimer = null;
+  }
+  if (startupCheckTimeout) {
+    clearTimeout(startupCheckTimeout);
+    startupCheckTimeout = null;
   }
 }

@@ -5,7 +5,13 @@ import {
   applyDesktopSettings,
   type DesktopSettings,
 } from '../desktop-settings';
-import { setAutoDownloadUpdates } from './updater';
+import {
+  setAutoDownloadUpdates,
+  setAllowPrerelease,
+  configureAutoUpdaterFeed,
+  startPeriodicUpdateChecks,
+  stopPeriodicUpdateChecks,
+} from './updater';
 
 import type { NodeDaemonManager } from '../node-daemon';
 
@@ -28,6 +34,22 @@ export function registerDesktopSettingsIPC(
 
       if (partial.autoDownloadUpdates !== undefined) {
         setAutoDownloadUpdates(partial.autoDownloadUpdates);
+      }
+
+      if (partial.allowPrerelease !== undefined) {
+        setAllowPrerelease(partial.allowPrerelease);
+      }
+
+      if (partial.autoCheckUpdates !== undefined) {
+        if (partial.autoCheckUpdates) {
+          startPeriodicUpdateChecks();
+        } else {
+          stopPeriodicUpdateChecks();
+        }
+      }
+
+      if (partial.githubToken !== undefined) {
+        configureAutoUpdaterFeed();
       }
 
       if (nodeDaemon && partial.embeddedNodeEnabled !== undefined) {

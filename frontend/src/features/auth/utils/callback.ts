@@ -165,21 +165,31 @@ export const handleCallback = async (
   cfg: ServiceCfg,
   params: URLSearchParams,
 ): Promise<Record<string, unknown> | null> => {
+  let data: Record<string, unknown> | null = null
   if (cfg.useOpenId) {
     const oid = collectOpenId(params)
     const body = { params: oid.params, rawQuery: oid.rawQuery }
-    const { data } = await apiClient.post<Record<string, unknown>>(cfg.endpoint, body)
-    cfg.onSuccess?.(data)
-    return data
+    const res = await apiClient.post<Record<string, unknown>>(cfg.endpoint, body)
+    data = res.data
   } else {
     const paramErr = cfg.validateParams?.(params) ?? null
     if (paramErr) throw new Error(paramErr)
     const body = cfg.buildBody(params)
     if (body) {
-      const { data } = await apiClient.post<Record<string, unknown>>(cfg.endpoint, body)
-      cfg.onSuccess?.(data)
-      return data
+      const res = await apiClient.post<Record<string, unknown>>(cfg.endpoint, body)
+      data = res.data
     }
-    return null
   }
+  if (data) {
+    const token = (data.accessToken as string | undefined) || (data.access_token as string | undefined)
+    if (token) {
+      try {
+        localStorage.setItem(ACCESS_TOKEN_KEY, token)
+      } catch {
+        // ignore
+      }
+    }
+    cfg.onSuccess?.(data)
+  }
+  return data
 }

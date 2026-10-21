@@ -25,6 +25,8 @@ export interface DesktopSettings {
   autoCheckUpdates?: boolean;
   /** Automatically download update packages when available (default: true). */
   autoDownloadUpdates?: boolean;
+  /** Include pre-release / beta builds when checking for updates (default: false). */
+  allowPrerelease?: boolean;
   /** Personal Access Token for private GitHub updates. */
   githubToken?: string;
 }
@@ -55,6 +57,8 @@ const DEFAULT_SETTINGS: DesktopSettings = {
   embeddedNodePort: 8090,
   autoCheckUpdates: true,
   autoDownloadUpdates: true,
+  allowPrerelease: false,
+  githubToken: '',
   emulatorPaths: {},
   defaultPlatformEmulators: {
     snes: 'retroarch',

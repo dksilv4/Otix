@@ -6,6 +6,8 @@ import {
   saveAutoCheckPreference,
   readAutoDownloadPreference,
   saveAutoDownloadPreference,
+  readAllowPrereleasePreference,
+  saveAllowPrereleasePreference,
 } from '../utils/updater-utils'
 
 const FALLBACK_VERSION = '0.1.23'
@@ -30,6 +32,8 @@ export const useAppUpdater = (): AppUpdaterState => {
   const [isModalOpen, setIsModalOpen] = useState<boolean>(globalIsModalOpen)
   const [autoCheck, setAutoCheckState] = useState<boolean>(readAutoCheckPreference)
   const [autoDownload, setAutoDownloadState] = useState<boolean>(readAutoDownloadPreference)
+  const [allowPrerelease, setAllowPrereleaseState] = useState<boolean>(readAllowPrereleasePreference)
+  const [githubToken, setGithubTokenState] = useState<string>('')
 
   const apiRef = useRef(getDesktopAPI()?.updater)
 
@@ -57,6 +61,13 @@ export const useAppUpdater = (): AppUpdaterState => {
           if (s?.autoDownloadUpdates !== undefined) {
             setAutoDownloadState(s.autoDownloadUpdates)
             saveAutoDownloadPreference(s.autoDownloadUpdates)
+          }
+          if (s?.allowPrerelease !== undefined) {
+            setAllowPrereleaseState(s.allowPrerelease)
+            saveAllowPrereleasePreference(s.allowPrerelease)
+          }
+          if (s?.githubToken !== undefined) {
+            setGithubTokenState(s.githubToken)
           }
         })
         .catch(() => {})
@@ -181,6 +192,32 @@ export const useAppUpdater = (): AppUpdaterState => {
     }
   }, [])
 
+  const setAllowPrerelease = useCallback((enabled: boolean) => {
+    setAllowPrereleaseState(enabled)
+    saveAllowPrereleasePreference(enabled)
+    const api = getDesktopAPI()
+    if (api?.setDesktopSettings) {
+      api.setDesktopSettings({ allowPrerelease: enabled }).catch(() => {})
+    }
+  }, [])
+
+  const setGithubToken = useCallback(async (token: string) => {
+    const trimmed = token.trim()
+    setGithubTokenState(trimmed)
+    const api = getDesktopAPI()
+    if (api?.setDesktopSettings) {
+      await api.setDesktopSettings({ githubToken: trimmed }).catch(() => {})
+    }
+  }, [])
+
+  const validateToken = useCallback(async (token?: string) => {
+    const api = apiRef.current ?? getDesktopAPI()?.updater
+    if (api?.validateToken) {
+      return await api.validateToken(token)
+    }
+    return { valid: false, error: 'Token validation is only supported in Desktop mode.' }
+  }, [])
+
   return {
     status,
     currentVersion,
@@ -197,6 +234,8 @@ export const useAppUpdater = (): AppUpdaterState => {
     isModalOpen,
     autoCheck,
     autoDownload,
+    allowPrerelease,
+    githubToken,
     checkForUpdates,
     downloadUpdate,
     installUpdate,
@@ -205,6 +244,8 @@ export const useAppUpdater = (): AppUpdaterState => {
     closeUpdateModal,
     setAutoCheck,
     setAutoDownload,
+    setAllowPrerelease,
+    setGithubToken,
+    validateToken,
   }
 }
-

@@ -274,6 +274,7 @@ contextBridge.exposeInMainWorld('desktopAPI', {
     installUpdate: () => ipcRenderer.invoke('updater:install-update'),
     getVersion: () => ipcRenderer.invoke('updater:get-version'),
     getStatus: () => ipcRenderer.invoke('updater:get-status'),
+    validateToken: (token?: string) => ipcRenderer.invoke('updater:validate-token', token),
     onStatusChanged: (callback: (state: any) => void) => {
       const handler = (_event: any, state: any) => callback(state);
       ipcRenderer.on('updater:status-changed', handler);

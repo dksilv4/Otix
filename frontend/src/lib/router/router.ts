@@ -34,6 +34,7 @@ import { createNotificationRoutes } from '@/features/notifications/router'
 import { createGenreRoutes } from '@genre/router'
 import { createWelcomeRoutes } from '@/features/welcome/router'
 import { createFriendsRoutes } from '@/features/friends/router'
+import { createDocsRoutes } from '@/features/docs/router'
 import { RoutePending } from './route-pending'
 import { RouteError } from './route-error'
 
@@ -89,6 +90,7 @@ const routeTree = rootRoute.addChildren([
   ...createNotificationRoutes(rootRoute),
   ...createFriendsRoutes(rootRoute),
   ...createWelcomeRoutes(rootRoute),
+  ...createDocsRoutes(rootRoute),
 ])
 
 export interface RouterContext {

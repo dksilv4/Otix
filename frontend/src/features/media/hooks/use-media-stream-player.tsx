@@ -10,6 +10,16 @@ import { loadPlayerSettings, savePlayerSettings } from '@/features/discover/util
 import { apiClient } from '@/lib/api/client'
 import { getPluginApi, getPlexClientId } from '../utils/player'
 import { switchPlexSessionServer } from '../utils/plex-stream'
+import {
+  isOverallPipSupported,
+  isOverallPipActive,
+  requestOverallPip,
+  exitOverallPip,
+  toggleOverallPip,
+  syncMediaSessionMetadata,
+  syncMediaSessionPlaybackState,
+  registerMediaSessionActions,
+} from '../utils/pip'
 
 export interface MediaStreamPlayerContextValue {
   session: StreamPlaybackSession | null
@@ -24,6 +34,9 @@ export interface MediaStreamPlayerContextValue {
   isMuted: boolean
   isTheater: boolean
   isZoomedOut: boolean
+  isInAppPip: boolean
+  isOverallPip: boolean
+  isOverallPipSupported: boolean
   activeSubtitle: SubtitleTrack | null
   activeAudio: AudioTrack | null
   playbackMethod: PlaybackMethod
@@ -46,6 +59,15 @@ export interface MediaStreamPlayerContextValue {
   setZoomedOut: (isZoomed: boolean) => void
   setActiveSubtitle: (subtitleId: string | null) => void
   setActiveAudio: (audioIndex: number | null) => void
+
+  // Picture-in-Picture actions
+  setInAppPip: (inAppPip: boolean) => void
+  toggleInAppPip: () => void
+  setIsOverallPip: (overallPip: boolean) => void
+  requestOverallPip: () => Promise<void>
+  exitOverallPip: () => Promise<void>
+  toggleOverallPip: () => Promise<void>
+  registerVideoElement: (el: HTMLVideoElement | null) => void
 
   // Internal bindings for the video element
   onTimeUpdate: (time: number, duration: number) => void
@@ -71,6 +93,8 @@ export const MediaStreamPlayerProvider = ({ children }: { children: React.ReactN
   const [isMuted, setIsMutedState] = useState(initialSettings.isMuted)
   const [isTheater, setIsTheaterState] = useState(initialSettings.isTheater)
   const [isZoomedOut, setIsZoomedOutState] = useState(initialSettings.isZoomedOut)
+  const [isInAppPip, setIsInAppPipState] = useState(false)
+  const [isOverallPip, setIsOverallPipState] = useState(false)
   const [activeSubtitleId, setActiveSubtitleId] = useState<string | null>(null)
   const [activeAudioIndex, setActiveAudioIndex] = useState<number | null>(null)
   const [playbackMethod, setPlaybackMethod] = useState<PlaybackMethod>('direct-play')
@@ -79,12 +103,37 @@ export const MediaStreamPlayerProvider = ({ children }: { children: React.ReactN
   const sessionRef = useRef<StreamPlaybackSession | null>(null)
   const currentTimeRef = useRef(currentTime)
   const isPlayingRef = useRef(isPlaying)
+  const videoElementRef = useRef<HTMLVideoElement | null>(null)
 
   useEffect(() => {
     sessionRef.current = session
     currentTimeRef.current = currentTime
     isPlayingRef.current = isPlaying
   }, [session, currentTime, isPlaying])
+
+  // MediaSession API metadata synchronization
+  useEffect(() => {
+    if (!session || !isOpen) {
+      syncMediaSessionMetadata(null)
+      return
+    }
+
+    syncMediaSessionMetadata({
+      title: session.title,
+      subtitle: session.subtitle,
+      seriesTitle: session.episodeContext?.seriesTitle,
+      seasonNumber: session.episodeContext?.seasonNumber,
+      episodeNumber: session.episodeContext?.episodeNumber,
+      episodeTitle: session.episodeContext?.episodeTitle,
+      source: session.source,
+    })
+  }, [session, isOpen])
+
+  // MediaSession API playback state synchronization
+  useEffect(() => {
+    if (!isOpen || !session) return
+    syncMediaSessionPlaybackState(isPlaying, currentTime, duration, playbackSpeed)
+  }, [isOpen, session, isPlaying, currentTime, duration, playbackSpeed])
 
   // Send playback heartbeat to the media server (Plex Timeline & desktop plugin)
   const sendProgressHeartbeat = useCallback(
@@ -125,9 +174,6 @@ export const MediaStreamPlayerProvider = ({ children }: { children: React.ReactN
         // On shared servers, skip direct PMS timeline calls to avoid corrupting the server owner's watch offset.
         if (!active.isSharedServer) {
           try {
-            // Use fetch with keepalive: isStopped instead of navigator.sendBeacon.
-            // sendBeacon sends an HTTP POST which Plex rejects on GET /:/timeline,
-            // preventing Plex from stopping active transcode sessions and leaving duplicate streams.
             await fetch(directTimelineUrl, {
               method: 'GET',
               mode: 'no-cors',
@@ -140,7 +186,6 @@ export const MediaStreamPlayerProvider = ({ children }: { children: React.ReactN
 
         // Keep Otix backend UserPlexItem viewOffset in sync locally without proxying
         // duplicate /:/timeline requests to the Plex server from backend.
-        // For shared servers, always sync progress so the friend's position is strictly tracked for their account.
         if (active.isSharedServer || isStopped || state === 'paused' || Math.random() < 0.25) {
           apiClient
             .post('/integrations/plex/timeline', {
@@ -159,7 +204,6 @@ export const MediaStreamPlayerProvider = ({ children }: { children: React.ReactN
       }
 
       // 2. Also notify desktop plugin if running in Electron environment (non-Plex sources)
-      // For Plex, timeline is already reported peer-to-peer with matching session/client identifiers.
       const api = getPluginApi()
       if (api?.callData && active.source !== 'plex') {
         if (isStopped) {
@@ -231,6 +275,8 @@ export const MediaStreamPlayerProvider = ({ children }: { children: React.ReactN
     )
     setError(null)
     setIsPlaying(true)
+    setIsInAppPipState(false)
+    setIsOverallPipState(false)
     setIsOpen(true)
 
     // Notify server of session start
@@ -241,8 +287,14 @@ export const MediaStreamPlayerProvider = ({ children }: { children: React.ReactN
 
   // Close stream session & clean up
   const closeStream = useCallback(() => {
+    if (videoElementRef.current && isOverallPipActive(videoElementRef.current)) {
+      exitOverallPip(videoElementRef.current).catch(() => {})
+    }
+    syncMediaSessionMetadata(null)
     sendProgressHeartbeat(true)
     setIsOpen(false)
+    setIsInAppPipState(false)
+    setIsOverallPipState(false)
     setIsPlaying(false)
     setSession(null)
     setError(null)
@@ -258,7 +310,7 @@ export const MediaStreamPlayerProvider = ({ children }: { children: React.ReactN
 
   // Transport actions
   const togglePlay = useCallback(() => {
-    setIsPlaying((prev) => {
+    setIsPlaying((prev: boolean) => {
       const next = !prev
       isPlayingRef.current = next
       setTimeout(() => sendProgressHeartbeat(false), 50)
@@ -284,6 +336,21 @@ export const MediaStreamPlayerProvider = ({ children }: { children: React.ReactN
     setTimeout(() => sendProgressHeartbeat(false), 50)
   }, [sendProgressHeartbeat])
 
+  // MediaSession Action Handlers registration
+  useEffect(() => {
+    if (!isOpen || !session) return
+    const cleanup = registerMediaSessionActions(
+      {
+        onPlay: play,
+        onPause: pause,
+        onSeek: seek,
+      },
+      () => currentTimeRef.current,
+      () => duration,
+    )
+    return cleanup
+  }, [isOpen, session, play, pause, seek, duration])
+
   const setPlaybackSpeed = useCallback((speed: number) => {
     setPlaybackSpeedState(speed)
   }, [])
@@ -304,7 +371,7 @@ export const MediaStreamPlayerProvider = ({ children }: { children: React.ReactN
   }, [isMuted])
 
   const toggleMute = useCallback(() => {
-    setIsMutedState((prev) => {
+    setIsMutedState((prev: boolean) => {
       const next = !prev
       savePlayerSettings({ isMuted: next })
       return next
@@ -321,13 +388,53 @@ export const MediaStreamPlayerProvider = ({ children }: { children: React.ReactN
     savePlayerSettings({ isZoomedOut: val })
   }, [])
 
+  const setInAppPip = useCallback((val: boolean) => {
+    setIsInAppPipState(val)
+  }, [])
+
+  const toggleInAppPip = useCallback(() => {
+    setIsInAppPipState((prev: boolean) => !prev)
+  }, [])
+
+  const setIsOverallPip = useCallback((val: boolean) => {
+    setIsOverallPipState(val)
+  }, [])
+
+  const requestOverallPipAction = useCallback(async () => {
+    if (videoElementRef.current) {
+      await requestOverallPip(videoElementRef.current)
+      setIsOverallPipState(true)
+    }
+  }, [])
+
+  const exitOverallPipAction = useCallback(async () => {
+    await exitOverallPip(videoElementRef.current)
+    setIsOverallPipState(false)
+  }, [])
+
+  const toggleOverallPipAction = useCallback(async () => {
+    if (videoElementRef.current) {
+      const entered = await toggleOverallPip(videoElementRef.current)
+      setIsOverallPipState(entered)
+    }
+  }, [])
+
+  const [isOverallPipSupportedState, setIsOverallPipSupportedState] = useState<boolean>(() => isOverallPipSupported())
+
+  const registerVideoElement = useCallback((el: HTMLVideoElement | null) => {
+    videoElementRef.current = el
+    if (el) {
+      setIsOverallPipState(isOverallPipActive(el))
+      setIsOverallPipSupportedState(isOverallPipSupported(el))
+    }
+  }, [])
+
   const setActiveSubtitle = useCallback((subId: string | null) => {
     setActiveSubtitleId(subId)
   }, [])
 
   const setActiveAudio = useCallback((audioIdx: number | null) => {
     setActiveAudioIndex(audioIdx)
-    // Reload transcode if needed
   }, [])
 
   const onTimeUpdate = useCallback((time: number, dur: number) => {
@@ -373,6 +480,9 @@ export const MediaStreamPlayerProvider = ({ children }: { children: React.ReactN
     isMuted,
     isTheater,
     isZoomedOut,
+    isInAppPip,
+    isOverallPip,
+    isOverallPipSupported: isOverallPipSupportedState,
     activeSubtitle,
     activeAudio,
     playbackMethod,
@@ -390,6 +500,13 @@ export const MediaStreamPlayerProvider = ({ children }: { children: React.ReactN
     toggleMute,
     setTheater,
     setZoomedOut,
+    setInAppPip,
+    toggleInAppPip,
+    setIsOverallPip,
+    requestOverallPip: requestOverallPipAction,
+    exitOverallPip: exitOverallPipAction,
+    toggleOverallPip: toggleOverallPipAction,
+    registerVideoElement,
     setActiveSubtitle,
     setActiveAudio,
     onTimeUpdate,
@@ -407,6 +524,7 @@ export const MediaStreamPlayerProvider = ({ children }: { children: React.ReactN
 };
 
 const noop = () => {}
+const asyncNoop = async () => {}
 const defaultPlayerContextValue: MediaStreamPlayerContextValue = {
   session: null,
   isOpen: false,
@@ -420,12 +538,16 @@ const defaultPlayerContextValue: MediaStreamPlayerContextValue = {
   isBuffering: false,
   isTheater: false,
   isZoomedOut: false,
+  isInAppPip: false,
+  isOverallPip: false,
+  isOverallPipSupported: false,
   activeSubtitle: null,
   activeAudio: null,
   playbackMethod: 'direct-play',
   error: null,
   openStream: noop,
   closeStream: noop,
+  failoverToBaseUrl: noop,
   togglePlay: noop,
   play: noop,
   pause: noop,
@@ -435,6 +557,13 @@ const defaultPlayerContextValue: MediaStreamPlayerContextValue = {
   toggleMute: noop,
   setTheater: noop,
   setZoomedOut: noop,
+  setInAppPip: noop,
+  toggleInAppPip: noop,
+  setIsOverallPip: noop,
+  requestOverallPip: asyncNoop,
+  exitOverallPip: asyncNoop,
+  toggleOverallPip: asyncNoop,
+  registerVideoElement: noop,
   setActiveSubtitle: noop,
   setActiveAudio: noop,
   onTimeUpdate: noop,

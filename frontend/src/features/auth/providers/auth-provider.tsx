@@ -74,32 +74,38 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [])
 
+  const completeLogin = useCallback(async (accessToken: string) => {
+    localStorage.setItem(ACCESS_TOKEN_KEY, accessToken)
+    window.desktopAPI?.plugin?.setAuthToken(accessToken)
+    resetAuthRefreshState()
+    const loaded = await fetchAuthenticatedUser()
+    setUser(loaded)
+    if (loaded) emitOtixEvent('otix:user:login', { userId: loaded.id })
+    return loaded
+  }, [])
+
   // Handle otix:// deep links (OAuth return from system browser)
   useDeepLink(
     useCallback(
       (data) => {
         if (data.params?.accessToken) {
-          localStorage.setItem(ACCESS_TOKEN_KEY, data.params.accessToken)
-          window.desktopAPI?.plugin?.setAuthToken(data.params.accessToken)
-          resetAuthRefreshState()
-          fetchAuthenticatedUser().then((loaded) => {
-            setUser(loaded)
-            if (loaded) emitOtixEvent('otix:user:login', { userId: loaded.id })
-            if (typeof window !== 'undefined' && window.location.pathname.startsWith('/auth/')) {
-              import('@/lib/router').then(({ router }) => {
+          completeLogin(data.params.accessToken).then(() => {
+            import('@/lib/router').then(({ router }) => {
+              const currentPath = router.state.location.pathname
+              if (currentPath.startsWith('/auth/')) {
                 void router.navigate({ to: '/' })
-              }).catch(() => {})
-            }
+              }
+            }).catch(() => {})
           })
         }
 
-        if (data.action?.startsWith('auth/callback/')) {
+        if (data.action?.startsWith('auth/callback/') && !data.params?.accessToken) {
           queryClient.invalidateQueries({ queryKey: ['integrations'] })
           queryClient.invalidateQueries({ queryKey: ['user'] })
           window.dispatchEvent(new CustomEvent('otix:integrations:refresh'))
         }
       },
-      [],
+      [completeLogin],
     ),
   )
 
@@ -182,12 +188,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     isAuthenticated: !!user,
     twoFactorChallenge,
     login,
+    completeLogin,
     verifyTwoFactor,
     cancelTwoFactor,
     register,
     logout,
     refreshUser,
-  }), [user, isLoading, twoFactorChallenge, login, verifyTwoFactor, cancelTwoFactor, register, logout, refreshUser])
+  }), [user, isLoading, twoFactorChallenge, login, completeLogin, verifyTwoFactor, cancelTwoFactor, register, logout, refreshUser])
 
   return (
     <AuthContext.Provider value={contextValue}>

@@ -56,7 +56,12 @@ import { registerPluginIPC, setPluginMainWebContents } from './plugin-runtime/ip
 import { wireOrchestratorEvents } from './ipc/plugins';
 import { GameScanOrchestrator } from './game/orchestrator'; import { FetchWorkerBridge } from './fetch/bridge';
 import { registerNotificationIPC } from './ipc/notifications';
-import { registerUpdaterIPC, checkForUpdatesOnStartup } from './ipc/updater';
+import {
+  registerUpdaterIPC,
+  checkForUpdatesOnStartup,
+  startPeriodicUpdateChecks,
+  stopPeriodicUpdateChecks,
+} from './ipc/updater';
 import { NodeDaemonManager } from './node-daemon';
 import { registerNodeDaemonIPC } from './ipc/node-daemon';
 import { setDefaultAutoSelectFamily } from 'node:net';
@@ -76,6 +81,12 @@ let permissionManager: PermissionManager | null = null;
 let fetchBridge: FetchWorkerBridge | null = null;
 let nodeDaemon: NodeDaemonManager | null = null;
 let pendingDeepLink: string | null = null;
+let isQuitting = false;
+
+export function markAppQuitting(): void {
+  isQuitting = true;
+}
+
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
 
 // Disable GPU disk cache to prevent 'Unable to move the cache: Access is denied'
@@ -289,6 +300,9 @@ function createWindow() {
   // Handle close-to-tray
   mainWindow.on('close', (event) => {
     console.log('[main] Window close event fired');
+    if (isQuitting) {
+      return;
+    }
     saveWindowState(mainWindow!)
     const settings = getSettings()
     if (settings.closeToTray) {
@@ -1138,6 +1152,7 @@ app.on('ready', async () => {
 
   // Check for auto-updates in the background (packaged release only)
   checkForUpdatesOnStartup();
+  startPeriodicUpdateChecks();
 
   // Signal renderer that all IPC handlers are registered.
   // The renderer's loadFromDatabase() waits for this before calling IPC.
@@ -1148,6 +1163,8 @@ app.on('ready', async () => {
   // ── Clean-quit signal for last-route restore ──
   app.on('before-quit', () => {
     console.log('[main] before-quit fired');
+    isQuitting = true;
+    stopPeriodicUpdateChecks();
     if (desktopNodeHeartbeatTimer) {
       clearInterval(desktopNodeHeartbeatTimer);
       desktopNodeHeartbeatTimer = null;

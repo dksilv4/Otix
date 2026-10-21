@@ -1,6 +1,14 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { ipcMain } from 'electron';
-import { registerUpdaterIPC } from '../ipc/updater';
+import {
+  registerUpdaterIPC,
+  sanitizeUpdaterError,
+  setAllowPrerelease,
+  setAutoDownloadUpdates,
+  startPeriodicUpdateChecks,
+  stopPeriodicUpdateChecks,
+} from '../ipc/updater';
+import { autoUpdater } from 'electron-updater';
 
 vi.mock('electron-updater', () => {
   const EventEmitter = require('events');
@@ -8,6 +16,7 @@ vi.mock('electron-updater', () => {
   mockAutoUpdater.logger = null;
   mockAutoUpdater.autoDownload = true;
   mockAutoUpdater.autoInstallOnAppQuit = true;
+  mockAutoUpdater.allowPrerelease = false;
   mockAutoUpdater.setFeedURL = vi.fn();
   mockAutoUpdater.checkForUpdates = vi.fn().mockResolvedValue({ updateInfo: { version: '1.0.0' } });
   mockAutoUpdater.downloadUpdate = vi.fn().mockResolvedValue([]);
@@ -54,5 +63,66 @@ describe('Desktop Auto-Updater IPC', () => {
   it('handles updater:install-update safely when update is not downloaded', async () => {
     const res = await (ipcMain as any)._invoke('updater:install-update');
     expect(res).toBe(false);
+  });
+
+  it('handles updater:validate-token and connects to public repo', async () => {
+    const res = await (ipcMain as any)._invoke('updater:validate-token');
+    expect(res.valid).toBe(true);
+    expect(res.repo).toBe('dksilv4/Otix');
+  });
+
+  it('allows setting autoDownload and allowPrerelease', () => {
+    setAutoDownloadUpdates(false);
+    expect(autoUpdater.autoDownload).toBe(false);
+    setAutoDownloadUpdates(true);
+    expect(autoUpdater.autoDownload).toBe(true);
+
+    setAllowPrerelease(true);
+    expect(autoUpdater.allowPrerelease).toBe(true);
+    setAllowPrerelease(false);
+    expect(autoUpdater.allowPrerelease).toBe(false);
+  });
+
+  it('starts and stops periodic checks without crashing', () => {
+    expect(() => startPeriodicUpdateChecks(1000)).not.toThrow();
+    expect(() => stopPeriodicUpdateChecks()).not.toThrow();
+  });
+
+  describe('sanitizeUpdaterError', () => {
+    it('handles null/undefined gracefully', () => {
+      expect(sanitizeUpdaterError(null)).toBe('Unknown update error');
+      expect(sanitizeUpdaterError(undefined)).toBe('Unknown update error');
+    });
+
+    it('sanitizes 404 releases.atom errors', () => {
+      const err = new Error('404 Not Found https://github.com/dksilv4/Otix/releases.atom');
+      expect(sanitizeUpdaterError(err)).toBe(
+        'Update check unavailable: release servers returned 404.'
+      );
+    });
+
+    it('sanitizes 403 rate limit errors', () => {
+      expect(sanitizeUpdaterError('API rate limit exceeded for user')).toBe(
+        'GitHub API rate limit exceeded. Please try again later.'
+      );
+    });
+
+    it('sanitizes network disconnection errors', () => {
+      expect(sanitizeUpdaterError('net::ERR_INTERNET_DISCONNECTED')).toBe(
+        'Network error: Unable to reach update servers. Check your connection.'
+      );
+    });
+
+    it('sanitizes timeout errors', () => {
+      expect(sanitizeUpdaterError('ETIMEDOUT connection to host')).toBe(
+        'Connection timed out while checking for updates.'
+      );
+    });
+
+    it('sanitizes checksum mismatch errors', () => {
+      expect(sanitizeUpdaterError('sha512 checksum mismatch for installer')).toBe(
+        'Update package verification failed: Checksum mismatch.'
+      );
+    });
   });
 });

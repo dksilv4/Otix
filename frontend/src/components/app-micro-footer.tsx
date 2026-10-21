@@ -39,6 +39,9 @@ export const AppMicroFooter = () => {
         <span className="text-muted-foreground">© {currentYear}</span>
 
         <span className="text-muted-foreground/30">·</span>
+        <a href="/docs" onClick={handleNav('/docs')} className="text-muted-foreground hover:text-foreground transition-colors">Docs</a>
+
+        <span className="text-muted-foreground/30">·</span>
         <a href="/terms" onClick={handleNav('/terms')} className="text-muted-foreground hover:text-foreground transition-colors">Terms</a>
 
         <span className="text-muted-foreground/30">·</span>

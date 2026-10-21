@@ -132,4 +132,46 @@ describe('SettingsGeneralPage - About & Updates', () => {
     expect(screen.getByText('Automatically check for updates')).toBeDefined()
     expect(screen.getByText('Automatically download updates')).toBeDefined()
   })
+
+  it('renders pre-release toggle and clean desktop app label without token prompt', () => {
+    const setAllowPrereleaseMock = vi.fn()
+
+    vi.spyOn(updaterModule, 'useAppUpdater').mockReturnValue({
+      status: 'idle',
+      currentVersion: '0.1.23',
+      availableVersion: null,
+      releaseNotes: null,
+      progress: null,
+      error: null,
+      isChecking: false,
+      isDownloading: false,
+      isDownloaded: false,
+      isUpdateAvailable: false,
+      isDesktop: true,
+      isDismissed: false,
+      isModalOpen: false,
+      autoCheck: true,
+      autoDownload: true,
+      allowPrerelease: false,
+      githubToken: '',
+      checkForUpdates: vi.fn(),
+      downloadUpdate: vi.fn(),
+      installUpdate: vi.fn(),
+      dismissNotification: vi.fn(),
+      openUpdateModal: vi.fn(),
+      closeUpdateModal: vi.fn(),
+      setAutoCheck: vi.fn(),
+      setAutoDownload: vi.fn(),
+      setAllowPrerelease: setAllowPrereleaseMock,
+      setGithubToken: vi.fn(),
+      validateToken: vi.fn(),
+    })
+
+    render(<SettingsGeneralPage />)
+
+    expect(screen.getByText('Otix Desktop App')).toBeDefined()
+    expect(screen.queryByText(/Electron/)).toBeNull()
+    expect(screen.getByText('Include pre-release builds')).toBeDefined()
+    expect(screen.queryByText('GitHub Release Access Token')).toBeNull()
+  })
 })

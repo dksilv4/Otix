@@ -92,9 +92,19 @@ const DkMediaCard = memo(({
   const linkProps = useMemo(() => ({
     to: '/media/$mediaType/$mediaId' as const,
     params,
-  }), [params])
+    state: {
+      preview: {
+        title,
+        logoUrl,
+        logoColorGuess,
+        backdropUrl,
+        posterUrl,
+        releaseDate,
+      },
+    },
+  }), [params, title, logoUrl, logoColorGuess, backdropUrl, posterUrl, releaseDate])
 
-  const Root = interactive ? Link : 'div'
+  const Root = (interactive ? Link : 'div') as React.ElementType
 
   return (
     <Root

@@ -44,7 +44,50 @@ export const getUpdateStatusLabel = (status: UpdateStatus, version?: string): st
 }
 
 /**
- * Split and clean raw release notes into individual bullet points
+ * Title helper for UpdateModal
+ */
+export const getUpdateModalTitle = (
+  status: UpdateStatus,
+  isDownloaded: boolean,
+  isDownloading: boolean
+): string => {
+  if (isDownloaded) return 'Update Ready to Install'
+  if (isDownloading) return 'Downloading Update'
+  if (status === 'available') return 'New Update Available'
+  if (status === 'error') return 'Update Error'
+  if (status === 'not-available') return 'Otix is Up to Date'
+  return 'Software Update'
+}
+
+/**
+ * Description helper for UpdateModal
+ */
+export const getUpdateModalDescription = (
+  status: UpdateStatus,
+  isDownloaded: boolean,
+  isDownloading: boolean
+): string => {
+  if (isDownloaded) return 'The latest version has been downloaded and is ready to apply.'
+  if (isDownloading) return 'Downloading the update package in the background.'
+  if (status === 'available') return 'A newer release is available with updates and improvements.'
+  if (status === 'error') return 'Could not complete update check or download.'
+  if (status === 'not-available') return 'You are running the newest version of Otix.'
+  return 'Manage client software updates and release notes.'
+}
+
+/**
+ * Animation variant for UpdateNotificationToast
+ */
+export const toastAnimation = {
+  initial: { opacity: 0, y: 30, scale: 0.95 },
+  animate: { opacity: 1, y: 0, scale: 1 },
+  exit: { opacity: 0, y: 20, scale: 0.95 },
+}
+
+/**
+ * Split and clean raw release notes into individual bullet points.
+ * Filters out top-level markdown headings (#, ##, ###), horizontal dividers,
+ * and automated compare URLs / footers.
  */
 export const parseReleaseNotes = (raw: string | null | undefined): string[] => {
   if (!raw || typeof raw !== 'string') return []
@@ -52,12 +95,17 @@ export const parseReleaseNotes = (raw: string | null | undefined): string[] => {
     .split(/\r?\n/)
     .map((line) => line.trim())
     .filter(Boolean)
+    .filter((line) => !/^#+\s+/.test(line))
+    .filter((line) => !/^[-*_]{3,}$/.test(line))
+    .filter((line) => !/^\*\*Full Changelog\*\*/i.test(line))
+    .filter((line) => !/^Full Changelog:/i.test(line))
     .map((line) => line.replace(/^([*\-•]|\d+\.)\s+/, '').trim())
     .filter(Boolean)
 }
 
 export const STORAGE_KEY_AUTO_CHECK = 'otix:updater:auto-check'
 export const STORAGE_KEY_AUTO_DOWNLOAD = 'otix:updater:auto-download'
+export const STORAGE_KEY_ALLOW_PRERELEASE = 'otix:updater:allow-prerelease'
 
 export const readAutoCheckPreference = (): boolean => {
   try {
@@ -93,6 +141,23 @@ export const saveAutoDownloadPreference = (enabled: boolean): void => {
   }
 }
 
+export const readAllowPrereleasePreference = (): boolean => {
+  try {
+    const val = localStorage.getItem(STORAGE_KEY_ALLOW_PRERELEASE)
+    return val === null ? false : val === 'true'
+  } catch {
+    return false
+  }
+}
+
+export const saveAllowPrereleasePreference = (enabled: boolean): void => {
+  try {
+    localStorage.setItem(STORAGE_KEY_ALLOW_PRERELEASE, String(enabled))
+  } catch {
+    // ignore
+  }
+}
+
 /**
  * Sanitize and format updater errors into user-friendly messages,
  * hiding verbose HTTP headers, raw JSON, and 404/atom-feed noise.
@@ -102,10 +167,25 @@ export const formatUpdateError = (raw: string | null | undefined): string | null
   const str = String(raw).trim()
   if (
     str.includes('releases.atom') ||
-    str.includes('authentication token') ||
     (str.includes('404') && (str.includes('github.com') || str.includes('dksilv4/Otix')))
   ) {
-    return 'Update check unavailable: GitHub repository is private or requires authentication.'
+    return 'Update check unavailable: release servers returned 404.'
+  }
+  if (str.includes('403') || str.includes('rate limit exceeded')) {
+    return 'GitHub API rate limit exceeded. Please try again later.'
+  }
+  if (
+    str.includes('ERR_INTERNET_DISCONNECTED') ||
+    str.includes('ERR_NAME_NOT_RESOLVED') ||
+    str.includes('ENOTFOUND')
+  ) {
+    return 'Network error: Unable to reach update servers. Check your connection.'
+  }
+  if (str.includes('ETIMEDOUT')) {
+    return 'Connection timed out while checking for updates.'
+  }
+  if (str.includes('sha512 checksum mismatch')) {
+    return 'Update package verification failed: Checksum mismatch.'
   }
   if (str.includes('method: GET url:') || /^(?:404|500|502|503)\b/.test(str)) {
     const firstLine = str.split('\n')[0]

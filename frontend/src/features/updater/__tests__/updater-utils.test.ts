@@ -9,6 +9,10 @@ import {
   saveAutoCheckPreference,
   readAutoDownloadPreference,
   saveAutoDownloadPreference,
+  readAllowPrereleasePreference,
+  saveAllowPrereleasePreference,
+  getUpdateModalTitle,
+  getUpdateModalDescription,
 } from '../utils/updater-utils'
 
 describe('updater-utils', () => {
@@ -52,6 +56,26 @@ describe('updater-utils', () => {
     })
   })
 
+  describe('getUpdateModalTitle and getUpdateModalDescription', () => {
+    it('returns correct titles for different update phases', () => {
+      expect(getUpdateModalTitle('downloaded', true, false)).toBe('Update Ready to Install')
+      expect(getUpdateModalTitle('downloading', false, true)).toBe('Downloading Update')
+      expect(getUpdateModalTitle('available', false, false)).toBe('New Update Available')
+      expect(getUpdateModalTitle('error', false, false)).toBe('Update Error')
+      expect(getUpdateModalTitle('not-available', false, false)).toBe('Otix is Up to Date')
+      expect(getUpdateModalTitle('idle', false, false)).toBe('Software Update')
+    })
+
+    it('returns correct descriptions for different update phases', () => {
+      expect(getUpdateModalDescription('downloaded', true, false)).toContain('ready to apply')
+      expect(getUpdateModalDescription('downloading', false, true)).toContain('Downloading the update')
+      expect(getUpdateModalDescription('available', false, false)).toContain('newer release is available')
+      expect(getUpdateModalDescription('error', false, false)).toContain('Could not complete update')
+      expect(getUpdateModalDescription('not-available', false, false)).toContain('newest version')
+      expect(getUpdateModalDescription('idle', false, false)).toContain('Manage client software updates')
+    })
+  })
+
   describe('parseReleaseNotes', () => {
     it('returns empty array when given null, undefined, or empty string', () => {
       expect(parseReleaseNotes(null)).toEqual([])
@@ -77,6 +101,26 @@ describe('updater-utils', () => {
         'Plain text line without prefix',
       ])
     })
+
+    it('filters out markdown headings, horizontal dividers, and automated changelog links', () => {
+      const raw = `
+        ## Otix Release v0.1.23
+
+        ### 🚀 What's Changed
+
+        * feat(updater): private feed check (72b8203e)
+        * fix(desktop): ps-list unpack (80624955)
+
+        ---
+        **Full Changelog**: https://github.com/dksilv4/Otix/compare/v0.1.22...v0.1.23
+        Full Changelog: https://github.com/dksilv4/Otix
+      `
+      const parsed = parseReleaseNotes(raw)
+      expect(parsed).toEqual([
+        'feat(updater): private feed check (72b8203e)',
+        'fix(desktop): ps-list unpack (80624955)',
+      ])
+    })
   })
 
   describe('preferences storage', () => {
@@ -99,6 +143,14 @@ describe('updater-utils', () => {
       saveAutoDownloadPreference(true)
       expect(readAutoDownloadPreference()).toBe(true)
     })
+
+    it('reads and saves allowPrerelease preference correctly', () => {
+      expect(readAllowPrereleasePreference()).toBe(false)
+      saveAllowPrereleasePreference(true)
+      expect(readAllowPrereleasePreference()).toBe(true)
+      saveAllowPrereleasePreference(false)
+      expect(readAllowPrereleasePreference()).toBe(false)
+    })
   })
 
   describe('formatUpdateError', () => {
@@ -108,10 +160,34 @@ describe('updater-utils', () => {
       expect(formatUpdateError('')).toBeNull()
     })
 
-    it('sanitizes 404 releases.atom private repo error', () => {
-      const raw = `404 "method: GET url: https://github.com/dksilv4/Otix/releases.atom\n\nPlease double check that your authentication token is correct. Due to security reasons, actual status maybe not reported, but 404.\n"`
+    it('sanitizes 404 releases.atom error', () => {
+      const raw = `404 "method: GET url: https://github.com/dksilv4/Otix/releases.atom\n"`
       expect(formatUpdateError(raw)).toBe(
-        'Update check unavailable: GitHub repository is private or requires authentication.'
+        'Update check unavailable: release servers returned 404.'
+      )
+    })
+
+    it('sanitizes 403 rate limit error', () => {
+      expect(formatUpdateError('API rate limit exceeded')).toBe(
+        'GitHub API rate limit exceeded. Please try again later.'
+      )
+    })
+
+    it('sanitizes network disconnected error', () => {
+      expect(formatUpdateError('net::ERR_INTERNET_DISCONNECTED')).toBe(
+        'Network error: Unable to reach update servers. Check your connection.'
+      )
+    })
+
+    it('sanitizes ETIMEDOUT error', () => {
+      expect(formatUpdateError('ETIMEDOUT to host')).toBe(
+        'Connection timed out while checking for updates.'
+      )
+    })
+
+    it('sanitizes checksum mismatch error', () => {
+      expect(formatUpdateError('sha512 checksum mismatch')).toBe(
+        'Update package verification failed: Checksum mismatch.'
       )
     })
 

@@ -175,7 +175,11 @@ def _login_callback_url(provider: str) -> str:
 
 
 def _store_state(
-    flow: str, *, user_id: int | None, source: str | None = None
+    flow: str,
+    *,
+    user_id: int | None,
+    source: str | None = None,
+    redirect_uri: str | None = None,
 ) -> tuple[str, str]:
     """Persist one flow state; returns the ``state`` value + PKCE verifier."""
     state = secrets.token_urlsafe(32)
@@ -185,8 +189,22 @@ def _store_state(
         payload["user_id"] = user_id
     if source:
         payload["source"] = source
+    if redirect_uri:
+        payload["redirect_uri"] = redirect_uri
     OAuthState.objects.create(key=state, payload=payload)
     return state, verifier
+
+
+def peek_state(state: str, *, ttl_seconds: int = OAUTH_STATE_TTL_SECONDS) -> dict | None:
+    """Non-destructively read one state; ``None`` when absent or expired."""
+    try:
+        row = OAuthState.objects.get(key=state)
+    except OAuthState.DoesNotExist:
+        return None
+    age = timezone.now() - row.created_at
+    if age > timedelta(seconds=ttl_seconds):
+        return None
+    return row.payload
 
 
 def _consume_state(state: str, *, ttl_seconds: int = OAUTH_STATE_TTL_SECONDS) -> dict | None:
@@ -220,7 +238,10 @@ def _authorization_url(
     source: str | None = None,
 ) -> tuple[str, str]:
     client_id, _ = _google_credentials()
-    state, verifier = _store_state(flow, user_id=user_id, source=source)
+    redirect_uri = callback or _callback_url(provider)
+    state, verifier = _store_state(
+        flow, user_id=user_id, source=source, redirect_uri=redirect_uri
+    )
     if flow == GOOGLE_LOGIN_FLOW:
         scopes = GOOGLE_LOGIN_SCOPES
     elif flow == GOOGLE_OAUTH_FLOW:
@@ -230,7 +251,7 @@ def _authorization_url(
     params = {
         "client_id": client_id,
         "response_type": "code",
-        "redirect_uri": callback or _callback_url(provider),
+        "redirect_uri": redirect_uri,
         "state": state,
         "scope": " ".join(scopes),
         "access_type": "offline",
@@ -339,7 +360,9 @@ def link_google_to_user(request_user, code: str, state: str) -> str | None:
     user = _resolve_callback_user(payload, request_user)
     if user.google_id:
         raise OAuthFlowError(400, "Google account already linked")
-    tokens = _exchange_code(code, payload.get("verifier", ""), "google")
+    tokens = _exchange_code(
+        code, payload.get("verifier", ""), "google", redirect_uri=payload.get("redirect_uri")
+    )
     profile = _fetch_google_profile(tokens["access_token"])
     if User.objects.filter(google_id=profile["sub"]).exclude(pk=user.pk).exists():
         raise OAuthFlowError(409, "This Google account is already linked to another Otix account.")
@@ -365,7 +388,9 @@ def link_google_drive_to_user(request_user, code: str, state: str) -> str | None
     if payload is None:
         raise OAuthFlowError(400, "Google linking session expired. Please try again.")
     user = _resolve_callback_user(payload, request_user)
-    tokens = _exchange_code(code, payload.get("verifier", ""), "google-drive")
+    tokens = _exchange_code(
+        code, payload.get("verifier", ""), "google-drive", redirect_uri=payload.get("redirect_uri")
+    )
     user.drive_access_token = tokens.get("access_token")
     user.drive_refresh_token = tokens.get("refresh_token")
     user.drive_token_expires_at = _expiry_from(tokens)
@@ -427,7 +452,7 @@ def authenticate_google_login(code: str, state: str) -> User:
         code,
         payload.get("verifier", ""),
         "google",
-        redirect_uri=_login_callback_url("google"),
+        redirect_uri=payload.get("redirect_uri") or _login_callback_url("google"),
     )
     profile = _fetch_google_profile(tokens["access_token"])
     google_id = profile["sub"]
@@ -1144,6 +1169,26 @@ def _store_tmdb_state(
         payload["source"] = source
     OAuthState.objects.create(key=state, payload=payload)
     OAuthState.objects.create(key=_tmdb_rt_key(request_token), payload=payload)
+
+
+def peek_tmdb_state(
+    state: str | None,
+    request_token: str | None,
+    *,
+    ttl_seconds: int = OAUTH_STATE_TTL_SECONDS,
+) -> dict | None:
+    """Non-destructively read TMDb state; None when absent or expired."""
+    row = None
+    if state:
+        row = OAuthState.objects.filter(key=state).first()
+    if row is None and request_token:
+        row = OAuthState.objects.filter(key=_tmdb_rt_key(request_token)).first()
+    if row is None:
+        return None
+    age = timezone.now() - row.created_at
+    if age > timedelta(seconds=ttl_seconds):
+        return None
+    return row.payload
 
 
 def _consume_tmdb_request_token(state: str, request_token: str | None) -> tuple[str, int | None]:
