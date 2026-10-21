@@ -64,6 +64,47 @@ describe('useMediaStreamPlayer', () => {
     expect(result.current.duration).toBe(120) // 120000ms -> 120s
     expect(result.current.playbackMethod).toBe('direct-play')
     expect(result.current.isInAppPip).toBe(false)
+    expect(result.current.currentQuality).toBe('auto')
+    expect(result.current.availableQualities.length).toBeGreaterThan(0)
+  })
+
+  it('manages video quality state and session updates', () => {
+    const { result } = renderHook(() => useMediaStreamPlayer(), {
+      wrapper: MediaStreamPlayerProvider,
+    })
+
+    act(() => {
+      result.current.openStream(mockSession)
+    })
+
+    expect(result.current.currentQuality).toBe('auto')
+
+    act(() => {
+      result.current.setQuality('720p')
+      result.current.setActiveLevelHeight(720)
+    })
+    expect(result.current.currentQuality).toBe('720p')
+    expect(result.current.activeLevelHeight).toBe(720)
+
+    act(() => {
+      result.current.updateSessionQuality({
+        id: '720p',
+        label: '720p HD',
+        maxVideoBitrate: 4000,
+        videoResolution: '1280x720',
+      })
+    })
+
+    expect(result.current.session?.selectedQuality).toBe('720p')
+    expect(result.current.session?.maxVideoBitrate).toBe(4000)
+    expect(result.current.session?.videoResolution).toBe('1280x720')
+
+    act(() => {
+      result.current.closeStream()
+    })
+
+    expect(result.current.currentQuality).toBe('auto')
+    expect(result.current.activeLevelHeight).toBe(null)
   })
 
   it('routes to direct-stream when audio is AC3', () => {

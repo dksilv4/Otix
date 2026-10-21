@@ -53,9 +53,19 @@ class UserProfileHubApiTests(TestCase):
         self.assertEqual(response.data["friendship_status"]["status"], "none")
         self.assertEqual(response.data["follower_count"], 0)
         self.assertEqual(response.data["friend_count"], 0)
-        self.assertEqual(response.data["profile_sections"], DEFAULT_PROFILE_SECTIONS)
+        # Visitor sees only public sections (game_sessions is private by default)
+        expected_visitor_sections = [
+            sec for sec in DEFAULT_PROFILE_SECTIONS if sec != "game_sessions"
+        ]
+        self.assertEqual(response.data["profile_sections"], expected_visitor_sections)
         self.assertEqual(response.data["total_xp"], 0)
         self.assertFalse(response.data["is_private"])
+
+        # Owner sees all sections including private ones
+        self_resp = self.alice_client.get("/api/v1/users/alice")
+        self.assertEqual(self_resp.status_code, 200)
+        self.assertEqual(self_resp.data["profile_sections"], DEFAULT_PROFILE_SECTIONS)
+        self.assertEqual(self_resp.data["section_visibility"]["game_sessions"], "private")
 
     def test_user_search_is_public(self) -> None:
         response = self.anon.get("/api/v1/users/search", {"q": "ali"})

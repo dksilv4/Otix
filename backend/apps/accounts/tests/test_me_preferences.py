@@ -101,6 +101,7 @@ class MeProfilePreferencesTests(TestCase):
                 "profile_sections",
                 "profile_card_sections",
                 "integration_visibility",
+                "section_visibility",
                 "notification_preferences",
                 "save_game_sessions",
                 "game_sessions_private",
@@ -113,8 +114,9 @@ class MeProfilePreferencesTests(TestCase):
         self.assertTrue(response.data["daily_mood_checkins_enabled"])
         self.assertEqual(response.data["hall_of_fame_media_ids"], {})
         self.assertEqual(response.data["integration_visibility"], {})
+        self.assertEqual(response.data["section_visibility"], {"game_sessions": "private"})
         self.assertEqual(response.data["notification_preferences"], {})
-        self.assertIn("mood_timeline", response.data["profile_sections"])
+        self.assertIn("library_breakdown", response.data["profile_sections"])
         self.assertIn("reviews", response.data["profile_card_sections"])
 
     def test_preferences_update_via_me_patch_round_trips(self) -> None:
@@ -149,6 +151,29 @@ class MeProfilePreferencesTests(TestCase):
         self.user.refresh_from_db()
         self.assertEqual(self.user.preferred_genres, ["sci-fi", "thriller"])
         self.assertEqual(self.user.profile_sections, new_sections)
+
+    def test_section_visibility_toggle_and_sync(self) -> None:
+        response = self.client.patch(
+            "/api/v1/auth/me",
+            {
+                "section_visibility": {
+                    "game_sessions": "public",
+                    "reviews": "private",
+                }
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.data["section_visibility"],
+            {"game_sessions": "public", "reviews": "private"},
+        )
+        self.user.refresh_from_db()
+        self.assertFalse(self.user.game_sessions_private)
+        self.assertEqual(
+            self.user.section_visibility,
+            {"game_sessions": "public", "reviews": "private"},
+        )
 
     # ── POST /auth/me/taste/reset ────────────────────────────────────
     def test_taste_reset_requires_auth(self) -> None:

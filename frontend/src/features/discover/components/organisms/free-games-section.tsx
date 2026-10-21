@@ -10,6 +10,7 @@ import {
   AlertCircle,
   Timer,
   ChevronRight,
+  Check,
 } from 'lucide-react'
 import EpicIcon from '@/assets/provider-logos/epic.svg?react'
 import SteamIcon from '@/assets/provider-logos/steam.svg?react'
@@ -17,8 +18,11 @@ import GOGIcon from '@/assets/provider-logos/gog.svg?react'
 import { Carousel } from '@ui/molecules/carousel'
 import { MediaCard } from '@ui/molecules/media-card'
 import { MediaLogo } from '@/lib/media/media-logo'
-import { discoverQueries, type FreeGameItem } from '@/features/discover/queries/discover-queries'
+import { discoverQueries, type FreeGameItem, type FreeGamesResponse } from '@/features/discover/queries/discover-queries'
 import { useSteamFreePacksSetting } from '@/features/settings/hooks/use-steam-free-packs-setting'
+import { useCountdown } from '@/features/discover/hooks/use-countdown'
+import { useClaimedFreeGames } from '@/features/discover/hooks/use-claimed-free-games'
+import { storeLabel, formatDate, isEndingSoon, isSteamPackItem } from '@/features/discover/utils/free-games'
 import { cn } from '@/lib/utils'
 import './free-games-section.scss'
 
@@ -37,14 +41,12 @@ const StoreIcon = ({ store, className }: { store: string; className?: string }) 
   }
 };
 
-import { storeLabel, formatDate, isEndingSoon } from '@/features/discover/utils/free-games'
-import { useCountdown } from '@/features/discover/hooks/use-countdown'
-
 // ── Main Section ──────────────────────────────────────────────────────
 
 export const FreeGamesSection = () => {
   const { data, isLoading, error } = useQuery(discoverQueries.freeGames())
   const [showSteamPacks] = useSteamFreePacksSetting()
+  const { isClaimed, toggleClaimed, hideClaimed, setHideClaimed } = useClaimedFreeGames()
 
   // ── Loading ──
   if (isLoading) {
@@ -94,16 +96,11 @@ export const FreeGamesSection = () => {
     )
   }
 
-  const isSteamPackItem = (item: FreeGameItem) => {
-    if (item.store?.toLowerCase() !== 'steam') return false
-    const type = item.itemType?.toLowerCase()
-    return type === 'dlc' || type === 'pack' || type === 'bundle'
-  }
-
-  const rawCurrent = data?.current || []
-  const rawUpcoming = data?.upcoming || []
-  const currentItems = showSteamPacks ? rawCurrent : rawCurrent.filter((i) => !isSteamPackItem(i))
-  const upcomingItems = showSteamPacks ? rawUpcoming : rawUpcoming.filter((i) => !isSteamPackItem(i))
+  const freeGamesData = data as FreeGamesResponse | undefined
+  const rawCurrent = freeGamesData?.current || []
+  const rawUpcoming = freeGamesData?.upcoming || []
+  const currentItems = showSteamPacks ? rawCurrent : rawCurrent.filter((i: FreeGameItem) => !isSteamPackItem(i))
+  const upcomingItems = showSteamPacks ? rawUpcoming : rawUpcoming.filter((i: FreeGameItem) => !isSteamPackItem(i))
   // Free now first, then coming soon — single rail, no tabs.
   const allItems = [...currentItems, ...upcomingItems]
 
@@ -111,7 +108,37 @@ export const FreeGamesSection = () => {
     return null
   }
 
-  const [featured, ...rest] = allItems
+  const claimedCount = allItems.filter((i) => isClaimed(i)).length
+  const displayedItems = hideClaimed ? allItems.filter((i) => !isClaimed(i)) : allItems
+
+  if (displayedItems.length === 0) {
+    return (
+      <motion.section
+        id="discover-free-games"
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="px-8"
+      >
+        <div className="flex items-center justify-between gap-3 p-4 rounded-2xl bg-[var(--dk-surface-base)] border border-white/[0.04]">
+          <div className="flex items-center gap-2">
+            <Check className="h-4 w-4 text-primary" />
+            <span className="text-sm font-medium text-foreground">
+              All {claimedCount} free {claimedCount === 1 ? 'game' : 'games'} claimed
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setHideClaimed(false)}
+            className="text-xs font-semibold text-primary hover:underline cursor-pointer"
+          >
+            Show Claimed
+          </button>
+        </div>
+      </motion.section>
+    )
+  }
+
+  const [featured, ...rest] = displayedItems
 
   return (
     <motion.section
@@ -122,13 +149,25 @@ export const FreeGamesSection = () => {
       transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
     >
       {/* ═══ Header ═══ */}
-      <div className="px-8 flex items-center gap-2.5 flex-wrap mb-4">
-        <h2 className="text-xl font-bold text-foreground">Free Games</h2>
-        {currentItems.length > 0 && (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/20">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-            {currentItems.length} Free Now
-          </span>
+      <div className="px-8 flex items-center justify-between gap-2.5 flex-wrap mb-4">
+        <div className="flex items-center gap-2.5 flex-wrap">
+          <h2 className="text-xl font-bold text-foreground">Free Games</h2>
+          {currentItems.length > 0 && (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/20">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              {currentItems.length} Free Now
+            </span>
+          )}
+        </div>
+        {claimedCount > 0 && (
+          <button
+            type="button"
+            onClick={() => setHideClaimed((prev) => !prev)}
+            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-medium text-muted-foreground hover:text-foreground bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)] transition-colors cursor-pointer"
+          >
+            <Check className="h-3.5 w-3.5 text-primary" />
+            {hideClaimed ? `Show Claimed (${claimedCount})` : `Hide Claimed (${claimedCount})`}
+          </button>
         )}
       </div>
 
@@ -151,7 +190,11 @@ export const FreeGamesSection = () => {
           </div>
 
           <div className="relative z-10 px-8">
-            <SpotlightCard item={featured} />
+            <SpotlightCard
+              item={featured}
+              isClaimed={isClaimed(featured)}
+              onToggleClaimed={() => toggleClaimed(featured)}
+            />
           </div>
 
           {rest.length > 0 && (
@@ -163,7 +206,12 @@ export const FreeGamesSection = () => {
                 trackPaddingInline="32px"
               >
                 {rest.map((item) => (
-                  <FreeGameCard key={`${item.store}:${item.id}`} item={item} />
+                  <FreeGameCard
+                    key={`${item.store}:${item.id}`}
+                    item={item}
+                    isClaimed={isClaimed(item)}
+                    onToggleClaimed={() => toggleClaimed(item)}
+                  />
                 ))}
               </Carousel>
             </div>
@@ -176,7 +224,15 @@ export const FreeGamesSection = () => {
 
 // ── Spotlight Card (Featured, Large — Borderless) ─────────────────────
 
-const SpotlightCard = ({ item }: { item: FreeGameItem }) => {
+const SpotlightCard = ({
+  item,
+  isClaimed,
+  onToggleClaimed,
+}: {
+  item: FreeGameItem
+  isClaimed: boolean
+  onToggleClaimed: () => void
+}) => {
   const isNow = item.isFreeNow
   const countdown = useCountdown(item.endDate)
   const ending = isEndingSoon(item.endDate)
@@ -193,7 +249,7 @@ const SpotlightCard = ({ item }: { item: FreeGameItem }) => {
   const logoUrl = isDlcOrPack ? (item.logoUrl || null) : (media?.logoUrl || item.logoUrl)
   const logoColorGuess = media?.logoColorGuess ?? null
   const title = isDlcOrPack ? item.title : (media?.title || item.title)
-  const description = item.description || media?.overview
+  const description = item.description || (media as (typeof media & { overview?: string | null }) | undefined)?.overview
   const accentStyle = {
     '--free-accent': 'var(--primary)',
   } as CSSProperties
@@ -249,12 +305,19 @@ const SpotlightCard = ({ item }: { item: FreeGameItem }) => {
 
           {/* Top left — status badge */}
           <div className="absolute top-3 left-3 z-10 flex items-center gap-2">
-            {isNow ? (
+            {isClaimed && (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold tracking-wider uppercase bg-primary text-primary-foreground shadow-lg">
+                <Check className="h-3 w-3" />
+                Claimed
+              </span>
+            )}
+            {!isClaimed && isNow && (
               <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold tracking-wider uppercase bg-emerald-500 text-black shadow-lg shadow-emerald-500/30">
                 <Gift className="h-3 w-3" />
                 {isDlcOrPack ? `100% OFF · ${typeLabel}` : '100% OFF'}
               </span>
-            ) : (
+            )}
+            {!isClaimed && !isNow && (
               <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold tracking-wider uppercase bg-sky-500/90 text-white shadow-lg shadow-sky-500/30">
                 <Clock className="h-3 w-3" />
                 Coming Soon
@@ -265,7 +328,7 @@ const SpotlightCard = ({ item }: { item: FreeGameItem }) => {
                 {typeLabel}
               </span>
             )}
-            {ending && countdown && (
+            {ending && countdown && !isClaimed && (
               <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-semibold bg-amber-500/90 text-black shadow-lg shadow-amber-500/30 animate-pulse">
                 <Timer className="h-3 w-3" />
                 {countdown}
@@ -312,13 +375,13 @@ const SpotlightCard = ({ item }: { item: FreeGameItem }) => {
           )}
 
           {/* Countdown bar */}
-          {isNow && countdown && !ending && (
+          {isNow && countdown && !ending && !isClaimed && (
             <div className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground mb-3">
               <Clock className="h-3 w-3" />
               {countdown} · Ends {formatDate(item.endDate)}
             </div>
           )}
-          {!isNow && item.startDate && (
+          {!isNow && item.startDate && !isClaimed && (
             <div className="flex items-center gap-1.5 text-[11px] font-medium text-sky-400/70 mb-3">
               <Clock className="h-3 w-3" />
               Unlocks {formatDate(item.startDate)}
@@ -347,17 +410,35 @@ const SpotlightCard = ({ item }: { item: FreeGameItem }) => {
                 rel="noopener noreferrer"
                 className={cn(
                   'inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold transition-all active:scale-[0.97]',
-                  isNow
-                    ? 'bg-emerald-500 hover:bg-emerald-400 text-black shadow-md shadow-emerald-500/20'
-                    : 'bg-sky-500 hover:bg-sky-400 text-white shadow-md shadow-sky-500/20',
+                  isClaimed
+                    ? 'bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)] text-foreground/90 border border-[var(--dk-separator)]'
+                    : isNow
+                      ? 'bg-emerald-500 hover:bg-emerald-400 text-black shadow-md shadow-emerald-500/20'
+                      : 'bg-sky-500 hover:bg-sky-400 text-white shadow-md shadow-sky-500/20',
                 )}
               >
                 <ExternalLink className="h-3.5 w-3.5" />
-                {isNow
-                  ? `Claim ${isDlcOrPack ? typeLabel : ''} on ${storeLabel(item.store, item.storeName)}`.trim()
-                  : `View on ${storeLabel(item.store, item.storeName)}`}
+                {isClaimed
+                  ? `View on ${storeLabel(item.store, item.storeName)}`
+                  : isNow
+                    ? `Claim ${isDlcOrPack ? typeLabel : ''} on ${storeLabel(item.store, item.storeName)}`.trim()
+                    : `View on ${storeLabel(item.store, item.storeName)}`}
               </a>
             )}
+            <button
+              type="button"
+              onClick={onToggleClaimed}
+              aria-label={isClaimed ? `Mark ${title} as unclaimed` : `Mark ${title} as claimed`}
+              className={cn(
+                'inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-semibold transition-all active:scale-[0.97] cursor-pointer',
+                isClaimed
+                  ? 'bg-primary/20 text-primary hover:bg-primary/30 border border-primary/30'
+                  : 'text-foreground/80 hover:text-foreground bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)] border border-[var(--dk-separator)]',
+              )}
+            >
+              <Check className={cn('h-3.5 w-3.5', isClaimed ? 'text-primary' : 'text-muted-foreground')} />
+              {isClaimed ? 'Claimed' : 'Mark as Claimed'}
+            </button>
             {item.matched && media ? (
               <Link
                 to="/media/$mediaType/$mediaId"
@@ -378,7 +459,15 @@ const SpotlightCard = ({ item }: { item: FreeGameItem }) => {
 
 // ── Free Game Card (always MediaCard; catalog data when matched) ───────
 
-const FreeGameCard = ({ item }: { item: FreeGameItem }) => {
+const FreeGameCard = ({
+  item,
+  isClaimed,
+  onToggleClaimed,
+}: {
+  item: FreeGameItem
+  isClaimed: boolean
+  onToggleClaimed: () => void
+}) => {
   const isNow = item.isFreeNow
   const countdown = useCountdown(item.endDate)
   const ending = isEndingSoon(item.endDate)
@@ -435,15 +524,21 @@ const FreeGameCard = ({ item }: { item: FreeGameItem }) => {
         <span
           className={cn(
             'inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold shadow-md',
-            isDlcOrPack
-              ? 'bg-purple-500 text-white'
-              : isNow
-                ? 'bg-emerald-500 text-black'
-                : 'bg-sky-500/90 text-white',
+            isClaimed
+              ? 'bg-primary text-primary-foreground'
+              : isDlcOrPack
+                ? 'bg-purple-500 text-white'
+                : isNow
+                  ? 'bg-emerald-500 text-black'
+                  : 'bg-sky-500/90 text-white',
           )}
         >
-          <Gift className="h-2.5 w-2.5" />
-          {isDlcOrPack ? `${isNow ? 'FREE ' : 'SOON '}${typeLabel}` : (isNow ? 'FREE' : 'SOON')}
+          {isClaimed ? <Check className="h-2.5 w-2.5" /> : <Gift className="h-2.5 w-2.5" />}
+          {isClaimed
+            ? 'CLAIMED'
+            : isDlcOrPack
+              ? `${isNow ? 'FREE ' : 'SOON '}${typeLabel}`
+              : (isNow ? 'FREE' : 'SOON')}
         </span>
       </div>
       <div className="absolute top-2 right-2 z-20 pointer-events-none">
@@ -451,7 +546,7 @@ const FreeGameCard = ({ item }: { item: FreeGameItem }) => {
           <StoreIcon store={item.store} className="h-3 w-3" />
         </span>
       </div>
-      {isNow && countdown && (
+      {isNow && countdown && !isClaimed && (
         <div className="absolute bottom-[72px] left-2 right-2 z-20 pointer-events-none">
           <span
             className={cn(
@@ -466,13 +561,35 @@ const FreeGameCard = ({ item }: { item: FreeGameItem }) => {
           </span>
         </div>
       )}
-      {!isNow && item.startDate && (
+      {!isNow && item.startDate && !isClaimed && (
         <div className="absolute bottom-[72px] left-2 right-2 z-20 pointer-events-none">
           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium bg-black/50 text-white/60 backdrop-blur-md border border-white/10">
             Unlocks {formatDate(item.startDate)}
           </span>
         </div>
       )}
+
+      {/* Mark as claimed toggle button */}
+      <button
+        type="button"
+        title={isClaimed ? 'Mark as unclaimed' : 'Mark as claimed'}
+        aria-label={isClaimed ? `Mark ${displayTitle} as unclaimed` : `Mark ${displayTitle} as claimed`}
+        className={cn(
+          'absolute bottom-2 left-2 z-30 inline-flex items-center gap-1 rounded-md px-2 py-1',
+          'text-[10px] font-semibold shadow-md backdrop-blur-md transition-all active:scale-[0.96] cursor-pointer',
+          isClaimed
+            ? 'bg-primary text-primary-foreground border border-primary/40 opacity-95 group-hover/free:opacity-100'
+            : 'bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-ghost-hover)] text-foreground/90 border border-white/[0.06] opacity-80 hover:opacity-100 group-hover/free:opacity-100',
+        )}
+        onClick={(e) => {
+          e.preventDefault()
+          e.stopPropagation()
+          onToggleClaimed()
+        }}
+      >
+        <Check className="h-2.5 w-2.5" />
+        {isClaimed ? 'Claimed' : 'Mark Claimed'}
+      </button>
 
       {/* Claim — secondary control; card click opens Otix when matched */}
       {item.claimUrl && (
@@ -486,9 +603,11 @@ const FreeGameCard = ({ item }: { item: FreeGameItem }) => {
             'absolute bottom-2 right-2 z-30 inline-flex items-center gap-1 rounded-md px-2 py-1',
             'text-[10px] font-semibold shadow-md backdrop-blur-md border transition-opacity',
             'opacity-90 group-hover/free:opacity-100',
-            isNow
-              ? 'bg-emerald-500/90 text-black border-emerald-400/30'
-              : 'bg-sky-500/90 text-white border-sky-400/30',
+            isClaimed
+              ? 'bg-[var(--dk-surface-glass)] text-foreground/90 border-white/[0.06]'
+              : isNow
+                ? 'bg-emerald-500/90 text-black border-emerald-400/30'
+                : 'bg-sky-500/90 text-white border-sky-400/30',
           )}
           onClick={(e) => e.stopPropagation()}
         >

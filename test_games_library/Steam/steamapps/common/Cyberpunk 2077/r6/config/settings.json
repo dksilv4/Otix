@@ -1,0 +1,5 @@
+{
+  "version": "2.12",
+  "ray_tracing": true,
+  "dlss": "auto"
+}

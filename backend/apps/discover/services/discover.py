@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from datetime import date, timedelta
 
-from django.db.models import OuterRef, Subquery
+from django.db.models import OuterRef, Q, Subquery
 from django.db.models.query import QuerySet
 
 from apps.media.models import MediaItem, Season
@@ -90,6 +90,7 @@ def hero_items(*, exclude_adult: bool, limit: int) -> list[MediaItem]:
             has_artwork=True,
             exclude_adult=exclude_adult,
             prefer_local=True,
+            exclude_genres=catalog_service.TALK_SHOW_GENRE_SLUGS,
         )[:pool_size]
     )
     local = [item for item in pool if getattr(item, "_has_local", False)]
@@ -132,9 +133,16 @@ def list_feed(
         date_filter_name = _GAME_WINDOW_OVERRIDE.get(list_type, date_filter_name)
     date_from, date_to = _date_filter(date_filter_name)
     require_artwork = not (language or is_anime is not None)
+
+    exclude_genres: set[str] | None = None
+    if media_type == "show":
+        if not (genre and genre.lower() in catalog_service.TALK_SHOW_GENRE_SLUGS):
+            exclude_genres = catalog_service.TALK_SHOW_GENRE_SLUGS
+
     return catalog_service.list_media(
         media_type=media_type,
         genre=genre,
+        exclude_genres=exclude_genres,
         language=language,
         is_anime=is_anime,
         platform=platform,
@@ -191,6 +199,11 @@ def trending_seasons(
     )
     if genre:
         qs = qs.filter(show__media_item__media_genres__genre__slug=genre)
+    if not (genre and genre.lower() in catalog_service.TALK_SHOW_GENRE_SLUGS):
+        qs = qs.exclude(
+            Q(show__media_item__media_genres__genre__slug__in=catalog_service.TALK_SHOW_GENRE_SLUGS)
+            | Q(show__media_item__media_genres__genre__name__in=catalog_service.TALK_SHOW_GENRE_NAMES)
+        )
     if language:
         qs = qs.filter(show__media_item__original_language=language)
     if is_anime is not None:

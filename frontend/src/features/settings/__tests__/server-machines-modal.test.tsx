@@ -118,6 +118,8 @@ vi.mock('@/features/downloads/use-server-downloads', () => ({
   usePingGameServer: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useProbeGameServer: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useUnclaimLocalNode: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useClaimGameServer: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useCreateGameServer: () => ({ mutateAsync: vi.fn(), isPending: false }),
 }))
 
 describe('ServerMachineModal and NodesManagementModal', () => {

@@ -233,7 +233,7 @@ export const MediaDetailPage = () => {
 
         {/* ── TV SHOWS: ELEVATE EPISODES & SEASONS BROWSER FRONT-AND-CENTER ── */}
         {isShow(detail) && (
-          <section className="glass-card p-6 sm:p-7 space-y-5">
+          <section className="glass-card py-6 sm:py-7 space-y-5 overflow-visible">
             <Suspense fallback={<SectionSkeleton height={220} />}>
               <ShowSection />
             </Suspense>

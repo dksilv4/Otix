@@ -15,7 +15,7 @@ from django.contrib.auth import get_user_model
 from django.db.models import Count, Sum
 
 from apps.lists.models import UserList
-from apps.media.models import Episode, Movie
+from apps.media.models import Episode, MediaItem, Movie
 from apps.social.models import Review, UserMediaInteraction
 from apps.workout.models import Workout
 
@@ -37,13 +37,60 @@ def get_user_stats(user_id: int) -> dict:
     }
 
 
-def get_hall_of_fame(user_id: int, media_type: str | None) -> list[dict]:
-    """The user's curated hall-of-fame picks.
+def get_hall_of_fame(user_id: int, media_type: str | None = None) -> list[dict]:
+    """The user's curated hall-of-fame or top-5 favorite picks."""
+    user = get_user_model().objects.filter(pk=user_id).first()
+    if not user:
+        return []
+    hof_data = user.hall_of_fame_media_ids or {}
 
-    Legacy sourced these ids from ``User.hof_ids``; that column is not ported,
-    so there are no stored picks to return yet.
-    """
-    return []
+    target_ids = []
+    if media_type and isinstance(hof_data, dict) and media_type in hof_data:
+        target_ids = hof_data[media_type]
+    elif isinstance(hof_data, dict) and "top_5" in hof_data:
+        target_ids = hof_data["top_5"]
+    elif isinstance(hof_data, list):
+        target_ids = hof_data
+    elif isinstance(hof_data, dict):
+        for val in hof_data.values():
+            if isinstance(val, list):
+                target_ids.extend(val)
+
+    if not target_ids or not isinstance(target_ids, list):
+        return []
+
+    clean_ids = [str(x) for x in target_ids if x]
+    if not clean_ids:
+        return []
+
+    media_items = {
+        str(m.id): m
+        for m in MediaItem.objects.filter(id__in=clean_ids).prefetch_related("assets")
+    }
+    user_reviews = {
+        str(r.media_item_id): r.score
+        for r in Review.objects.filter(user_id=user_id, media_item_id__in=clean_ids)
+    }
+
+    results = []
+    for mid in clean_ids:
+        item = media_items.get(mid)
+        if not item:
+            continue
+        assets = {a.asset_type.lower(): a.url for a in item.assets.all()}
+        release_year = item.release_date.year if item.release_date else None
+        results.append(
+            {
+                "id": item.id,
+                "title": item.title,
+                "media_type": item.media_type,
+                "poster_url": assets.get("poster"),
+                "backdrop_url": assets.get("backdrop"),
+                "release_year": release_year,
+                "score": user_reviews.get(mid),
+            }
+        )
+    return results
 
 
 def _movie_watch_time_minutes(user_id: int) -> int:

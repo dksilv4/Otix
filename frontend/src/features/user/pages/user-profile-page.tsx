@@ -10,6 +10,7 @@ import {
   Clock,
   Shield,
   Sparkles,
+  Lock,
 } from 'lucide-react'
 
 import { DkAvatar } from '@ui/atoms/avatar'
@@ -25,7 +26,9 @@ import { UserRatingSection } from '../components/molecules/user-rating-section'
 import { FollowButton } from '../components/molecules/follow-button'
 import { StreakDisplay } from '../components/molecules/streak-display'
 import { UserSocialCounts } from '../components/molecules/user-social-counts'
-import { UserProfileGameSessions } from '../components/organisms/user-profile-game-sessions'
+import { UserProfileSectionItem } from '../components/molecules/user-profile-section-item'
+import { AddSectionButton } from '../components/molecules/user-add-section-button'
+import { DEFAULT_SECTION_IDS } from '../utils/profile-sections'
 
 import { computeGamification, getLevelTier, pickGradient, formatMemberSince } from '@user/utils'
 import { XPProgressRing } from '@user/components/atoms/user-xp-progress-ring'
@@ -53,6 +56,14 @@ export const UserProfilePage = () => {
     () => (reviewsQuery.data ? computeReviewStats(reviewsQuery.data) : null),
     [reviewsQuery.data],
   )
+
+  const isOwner = currentUser?.username === profile?.username
+  const activeSections = useMemo(() => {
+    if (Array.isArray(profile?.profileSections) && profile.profileSections.length > 0) {
+      return profile.profileSections
+    }
+    return isOwner ? DEFAULT_SECTION_IDS : []
+  }, [profile?.profileSections, isOwner])
 
   useEffect(() => {
     if (profile) {
@@ -469,10 +480,40 @@ export const UserProfilePage = () => {
       )}
       </div>
 
-      {/* Private Gaming Performance & Sessions (Owner only) */}
-      {currentUser?.username === profile.username && (
-        <div className="w-full mt-10">
-          <UserProfileGameSessions username={username} />
+      {/* Dynamic Profile Sections */}
+      {activeSections.length > 0 ? (
+        <div className="w-full mt-10 space-y-12">
+          {activeSections.map((sectionId) => (
+            <UserProfileSectionItem
+              key={sectionId}
+              sectionId={sectionId}
+              username={username}
+              isOwner={isOwner}
+              visibilityMap={profile.sectionVisibility}
+            />
+          ))}
+        </div>
+      ) : !isOwner ? (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-12 w-full">
+          <div className="py-12 flex flex-col items-center justify-center text-center rounded-2xl border border-[var(--dk-separator)] bg-[var(--dk-surface-base)]">
+            <Lock className="h-6 w-6 text-muted-foreground/40 mb-2" />
+            <p className="text-sm font-semibold text-foreground">
+              No public sections available
+            </p>
+            <p className="text-xs text-muted-foreground/60 max-w-sm mt-1">
+              This profile’s sections are either empty or set to private.
+            </p>
+          </div>
+        </div>
+      ) : null}
+
+      {/* Add Section Button (Owner only) */}
+      {isOwner && (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-12 w-full">
+          <AddSectionButton
+            currentSections={activeSections}
+            username={username}
+          />
         </div>
       )}
 

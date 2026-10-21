@@ -3,6 +3,7 @@ import { queryOptions } from '@tanstack/react-query'
 import { apiClient } from '@/lib/api'
 import { emitOtixEvent } from '@/lib/plugin-events'
 import type { MediaItemSummary } from '@/features/media/queries/media-queries'
+import type { Top5Item, UserHardwareSpecs, SectionVisibility } from './types'
 
 export interface SteamPublicProfile {
   personaname: string | null
@@ -35,6 +36,7 @@ export interface UserProfile {
   userRatingCount: number
   compositeScore: number | null
   profileSections: string[] | null
+  sectionVisibility?: Record<string, SectionVisibility> | null
   steam?: SteamPublicProfile | null
   plex?: PlexPublicProfile | null
   tmdbUsername?: string | null
@@ -371,6 +373,44 @@ export const userQueries = {
       staleTime: 1000 * 60 * 5,
     }),
 
+  userActivityHeatmap: (username: string, weeks = 52) =>
+    queryOptions({
+      queryKey: ['user', username, 'activity-heatmap', weeks],
+      queryFn: async () => {
+        const { data } = await apiClient.get<ActivityHeatmapResponse>(
+          `/users/${username}/activity-heatmap`,
+          { params: { weeks } }
+        )
+        return data
+      },
+      staleTime: 1000 * 60 * 5,
+    }),
+
+  top5: (username: string) =>
+    queryOptions({
+      queryKey: ['user', username, 'top-5'],
+      queryFn: async () => {
+        const { data } = await apiClient.get<Top5Item[]>(
+          `/users/${username}/hall-of-fame`,
+          { params: { media_type: 'top_5' } }
+        )
+        return Array.isArray(data) ? data : []
+      },
+      staleTime: 1000 * 60 * 5,
+    }),
+
+  hardware: (username: string) =>
+    queryOptions({
+      queryKey: ['user', username, 'hardware'],
+      queryFn: async () => {
+        const { data } = await apiClient.get<UserHardwareSpecs>(
+          `/library/users/${username}/hardware`
+        )
+        return data
+      },
+      staleTime: 1000 * 60 * 5,
+    }),
+
   badges: (username: string) =>
     queryOptions({
       queryKey: ['user', username, 'badges'],
@@ -462,15 +502,19 @@ export interface LibraryStats {
 
 export interface ActivityHeatmapEntry {
   date: string
-  workout: number
-  movie: number
-  show: number
-  music: number
+  total?: number
+  workout?: number
+  movie?: number
+  show?: number
+  music?: number
+  game?: number
+  review?: number
 }
 
 export interface ActivityHeatmapResponse {
   weeks: number
   dates: ActivityHeatmapEntry[]
+  totalActiveDays?: number
 }
 
 export interface ContinueItem extends MediaItemSummary {

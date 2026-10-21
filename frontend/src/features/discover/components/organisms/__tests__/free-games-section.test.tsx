@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeAll, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, fireEvent, act } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
 beforeAll(() => {
@@ -52,6 +52,7 @@ const renderWithClient = (ui: React.ReactElement) => {
 describe('FreeGamesSection', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    localStorage.clear()
   })
 
   it('renders nothing when there are no free games', async () => {
@@ -326,5 +327,143 @@ describe('FreeGamesSection', () => {
     expect(screen.getByText('FREE DLC')).toBeInTheDocument()
     expect(screen.getByText('DLC · MXGP 26')).toBeInTheDocument()
     localStorage.removeItem('otix:show-steam-free-packs')
+  })
+
+  it('allows marking a game as claimed from the spotlight card and toggles button and badge', async () => {
+    mockGet.mockResolvedValueOnce({
+      data: {
+        current: [
+          {
+            id: 'epic:astrea',
+            store: 'epic',
+            storeName: 'Epic Games Store',
+            title: 'Astrea: Six-Sided Oracles',
+            originalPrice: '$24.99',
+            isFreeNow: true,
+            claimUrl: 'https://store.epicgames.com/p/astrea',
+          },
+          {
+            id: 'steam:4059370',
+            store: 'steam',
+            storeName: 'Steam',
+            title: 'Explosive Odds',
+            originalPrice: '$1.99',
+            isFreeNow: true,
+            claimUrl: 'https://store.steampowered.com/app/4059370',
+          },
+        ],
+        upcoming: [],
+        total: 2,
+      },
+    })
+
+    renderWithClient(<FreeGamesSection />)
+
+    expect(await screen.findByText('Astrea: Six-Sided Oracles')).toBeInTheDocument()
+
+    // Spotlight card has "Mark as Claimed" button
+    const markAsClaimedBtn = screen.getByRole('button', { name: /mark astrea.*as claimed/i })
+    expect(markAsClaimedBtn).toBeInTheDocument()
+
+    // Click "Mark as Claimed"
+    await act(async () => {
+      fireEvent.click(markAsClaimedBtn)
+    })
+
+    // Button should now show "Claimed"
+    expect(screen.getByRole('button', { name: /mark astrea: six-sided oracles as unclaimed/i })).toBeInTheDocument()
+
+    // Header now shows the "Hide Claimed (1)" toggle
+    const hideBtn = screen.getByRole('button', { name: /hide claimed \(1\)/i })
+    expect(hideBtn).toBeInTheDocument()
+
+    // Clicking "Hide Claimed (1)" hides Astrea from view, leaving Explosive Odds as featured
+    await act(async () => {
+      fireEvent.click(hideBtn)
+    })
+
+    expect(screen.queryByText('Astrea: Six-Sided Oracles')).not.toBeInTheDocument()
+    expect(screen.getByText('Explosive Odds')).toBeInTheDocument()
+
+    // Header button flips to "Show Claimed (1)"
+    expect(screen.getByRole('button', { name: /show claimed \(1\)/i })).toBeInTheDocument()
+  })
+
+  it('allows marking a carousel card as claimed', async () => {
+    mockGet.mockResolvedValueOnce({
+      data: {
+        current: [
+          {
+            id: 'epic:astrea',
+            store: 'epic',
+            storeName: 'Epic Games Store',
+            title: 'Astrea: Six-Sided Oracles',
+            originalPrice: '$24.99',
+            isFreeNow: true,
+            claimUrl: 'https://store.epicgames.com/p/astrea',
+          },
+          {
+            id: 'steam:4059370',
+            store: 'steam',
+            storeName: 'Steam',
+            title: 'Explosive Odds',
+            originalPrice: '$1.99',
+            isFreeNow: true,
+            claimUrl: 'https://store.steampowered.com/app/4059370',
+          },
+        ],
+        upcoming: [],
+        total: 2,
+      },
+    })
+
+    renderWithClient(<FreeGamesSection />)
+
+    expect(await screen.findByText('Explosive Odds')).toBeInTheDocument()
+
+    const carouselClaimBtn = screen.getByRole('button', { name: /mark explosive odds as claimed/i })
+    expect(carouselClaimBtn).toBeInTheDocument()
+
+    await act(async () => {
+      fireEvent.click(carouselClaimBtn)
+    })
+
+    expect(screen.getByRole('button', { name: /mark explosive odds as unclaimed/i })).toBeInTheDocument()
+  })
+
+  it('shows all-claimed state when all games are claimed and hideClaimed is true', async () => {
+    localStorage.setItem('otix:claimed-free-games', JSON.stringify(['epic:astrea']))
+    localStorage.setItem('otix:hide-claimed-free-games', 'true')
+
+    mockGet.mockResolvedValueOnce({
+      data: {
+        current: [
+          {
+            id: 'epic:astrea',
+            store: 'epic',
+            storeName: 'Epic Games Store',
+            title: 'Astrea: Six-Sided Oracles',
+            originalPrice: '$24.99',
+            isFreeNow: true,
+            claimUrl: 'https://store.epicgames.com/p/astrea',
+          },
+        ],
+        upcoming: [],
+        total: 1,
+      },
+    })
+
+    renderWithClient(<FreeGamesSection />)
+
+    expect(await screen.findByText(/all 1 free game claimed/i)).toBeInTheDocument()
+    const showClaimedBtn = screen.getByRole('button', { name: /show claimed/i })
+    expect(showClaimedBtn).toBeInTheDocument()
+
+    // Clicking "Show Claimed" unhides it
+    await act(async () => {
+      fireEvent.click(showClaimedBtn)
+    })
+
+    expect(await screen.findByText('Astrea: Six-Sided Oracles')).toBeInTheDocument()
   })
 })

@@ -6,6 +6,8 @@ import type { GenreOption } from '@/features/genre/types'
 
 const PREFETCH_MARGIN = '0px 0px 200px 0px'
 
+const TALK_SHOW_GENRE_SLUGS = new Set(['talk', 'talk-show', 'talk-shows'])
+
 /**
  * Click-propensity ranking for entertainment and gaming categories on discovery surfaces.
  * Lower number = higher engagement / click propensity.
@@ -79,7 +81,7 @@ export function useGenreSectionFetch(
     const seen = new Set<string>()
     const unique = rawGenres.filter((g) => {
       const slug = g.slug?.toLowerCase()
-      if (!slug || seen.has(slug)) return false
+      if (!slug || seen.has(slug) || TALK_SHOW_GENRE_SLUGS.has(slug)) return false
       seen.add(slug)
       return true
     })

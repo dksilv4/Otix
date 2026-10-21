@@ -2,7 +2,6 @@ import { useState, useMemo } from 'react'
 import { Link } from '@tanstack/react-router'
 import {
   Gamepad2,
-  Lock,
   ArrowRight,
 } from 'lucide-react'
 import { useUserGameSessions, type NormalizedPlaySession } from '../../hooks/use-user-game-sessions'
@@ -10,12 +9,26 @@ import { partitionSessionsForShowcase } from '../../utils/game-activity-stats'
 import { GameSessionCard } from '../molecules/game-session-card'
 import { GameSessionIconTile } from '../molecules/game-session-icon-tile'
 import { SessionDetailModal } from '../molecules/session-detail-modal'
+import { SectionHeader } from '../molecules/section-header'
+import type { SectionVisibility } from '../../types'
 
 interface UserProfileGameSessionsProps {
   username: string
+  isOwner?: boolean
+  visibility?: SectionVisibility
+  onToggleVisibility?: () => void | Promise<void>
+  onChangeVisibility?: (visibility: SectionVisibility) => void | Promise<void>
+  isUpdatingVisibility?: boolean
 }
 
-export const UserProfileGameSessions = ({ username }: UserProfileGameSessionsProps) => {
+export const UserProfileGameSessions = ({
+  username,
+  isOwner = false,
+  visibility = 'private',
+  onToggleVisibility,
+  onChangeVisibility,
+  isUpdatingVisibility = false,
+}: UserProfileGameSessionsProps) => {
   const { data, isLoading } = useUserGameSessions({ username })
   const [selectedSession, setSelectedSession] = useState<NormalizedPlaySession | null>(null)
 
@@ -51,29 +64,17 @@ export const UserProfileGameSessions = ({ username }: UserProfileGameSessionsPro
 
   return (
     <div data-testid="user-profile-game-sessions" className="w-full space-y-4">
-      {/* Header Bar with standard rail gutters */}
-      <div className="flex items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
-        <div className="flex flex-wrap items-center gap-2 text-xs">
-          <span className="font-bold text-foreground uppercase tracking-wider flex items-center gap-1.5">
-            <Gamepad2 className="h-3.5 w-3.5 text-primary" />
-            Game Sessions
-          </span>
-          {summaryParts.length > 0 && (
-            <>
-              <span className="text-muted-foreground/30">·</span>
-              <span className="text-muted-foreground font-medium">
-                {summaryParts.join(' · ')}
-              </span>
-            </>
-          )}
-        </div>
-
-        <div className="flex items-center gap-3">
-          <span className="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground/60">
-            <Lock className="h-3 w-3 text-muted-foreground/50" />
-            Private
-          </span>
-
+      {/* Header Bar with SectionHeader */}
+      <SectionHeader
+        icon={Gamepad2}
+        title="Game Sessions"
+        summary={summaryParts.length > 0 ? summaryParts.join(' · ') : undefined}
+        isOwner={isOwner}
+        visibility={visibility}
+        onToggleVisibility={onToggleVisibility}
+        onChangeVisibility={onChangeVisibility}
+        isUpdatingVisibility={isUpdatingVisibility}
+        actions={
           <Link
             to="/u/$username/activity"
             params={{ username }}
@@ -82,8 +83,8 @@ export const UserProfileGameSessions = ({ username }: UserProfileGameSessionsPro
             <span>View All</span>
             <ArrowRight className="h-3.5 w-3.5" />
           </Link>
-        </div>
-      </div>
+        }
+      />
 
       {/* Empty State */}
       {sessions.length === 0 && activeSessions.length === 0 ? (

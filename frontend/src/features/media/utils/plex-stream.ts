@@ -3,6 +3,7 @@ import type {
   AudioTrack,
   SubtitleTrack,
   EpisodeContext,
+  StreamQualityOption,
 } from '../types/stream-player'
 import { getPlexClientId } from './player'
 import { apiClient } from '@/lib/api/client'
@@ -64,16 +65,22 @@ export interface BuildPlexPlaybackOptions {
   clientId?: string
 }
 
+export interface PlexHlsQualityOptions {
+  maxVideoBitrate?: number
+  videoResolution?: string
+}
+
 export const buildPlexHlsUrl = (
   baseUrl: string,
   ratingKey: string,
   token: string,
   playSessionId: string,
   clientId?: string,
+  qualityOptions?: PlexHlsQualityOptions,
 ): string => {
   const cleanBase = baseUrl.replace(/\/$/, '')
   const cid = clientId || getPlexClientId()
-  return `${cleanBase}/video/:/transcode/universal/start.m3u8?path=${encodeURIComponent(
+  let url = `${cleanBase}/video/:/transcode/universal/start.m3u8?path=${encodeURIComponent(
     '/library/metadata/' + ratingKey,
   )}&mediaIndex=0&partIndex=0&protocol=hls&fastSeek=1&directPlay=0&directStream=1&hasMDE=1&session=${encodeURIComponent(
     playSessionId,
@@ -86,6 +93,15 @@ export const buildPlexHlsUrl = (
   )}&X-Plex-Product=Otix&X-Plex-Platform=Web&X-Plex-Token=${encodeURIComponent(
     token,
   )}`
+
+  if (qualityOptions?.maxVideoBitrate) {
+    url += `&maxVideoBitrate=${qualityOptions.maxVideoBitrate}`
+  }
+  if (qualityOptions?.videoResolution) {
+    url += `&videoResolution=${encodeURIComponent(qualityOptions.videoResolution)}`
+  }
+
+  return url
 }
 
 export const buildPlexDirectUrl = (
@@ -243,6 +259,12 @@ export const switchPlexSessionServer = (
     session.token,
     session.playSessionId,
     session.clientId,
+    session.maxVideoBitrate || session.videoResolution
+      ? {
+          maxVideoBitrate: session.maxVideoBitrate,
+          videoResolution: session.videoResolution,
+        }
+      : undefined,
   )
 
   const newDirectUrl = session.directUrl
@@ -265,6 +287,37 @@ export const switchPlexSessionServer = (
     directUrl: newDirectUrl,
     subtitles: newSubtitles,
     isSharedServer: session.isSharedServer,
+  }
+}
+
+export const updatePlexSessionQuality = (
+  session: StreamPlaybackSession,
+  qualityOption: StreamQualityOption,
+): StreamPlaybackSession => {
+  const isAutoOrOriginal = qualityOption.isAuto || qualityOption.isOriginal
+  const maxVideoBitrate = isAutoOrOriginal ? undefined : qualityOption.maxVideoBitrate
+  const videoResolution = isAutoOrOriginal ? undefined : qualityOption.videoResolution
+
+  const newHlsUrl = buildPlexHlsUrl(
+    session.serverUrl,
+    session.itemId,
+    session.token,
+    session.playSessionId,
+    session.clientId,
+    maxVideoBitrate || videoResolution
+      ? {
+          maxVideoBitrate,
+          videoResolution,
+        }
+      : undefined,
+  )
+
+  return {
+    ...session,
+    selectedQuality: qualityOption.id,
+    maxVideoBitrate,
+    videoResolution,
+    hlsUrl: newHlsUrl,
   }
 }
 

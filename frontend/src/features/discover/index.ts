@@ -20,4 +20,5 @@ export { DiscoverPlayerActivityCard, type PlayerActivityItem } from './component
 export { DiscoverContinueWatchingSection } from './components/organisms/discover-continue-watching-section'
 export { DiscoverContinueWatchingCard } from './components/molecules/discover-continue-watching-card'
 export { useDiscoverContinueWatching } from './hooks/use-discover-continue-watching'
+export { useClaimedFreeGames } from './hooks/use-claimed-free-games'
 export type { DiscoverContinueWatchingItem } from './types'

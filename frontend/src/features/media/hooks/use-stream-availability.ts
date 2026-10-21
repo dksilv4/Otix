@@ -20,8 +20,14 @@ interface UseStreamAvailabilityParams {
 }
 
 export const useStreamableCatalog = () => {
-  const { user } = useAuth()
-  const isPlexConnected = Boolean(user?.plexId)
+  let plexId: string | null | undefined
+  try {
+    const auth = useAuth()
+    plexId = auth?.user?.plexId
+  } catch {
+    plexId = undefined
+  }
+  const isPlexConnected = Boolean(plexId)
 
   // Query user's plex library when connected
   const { data, isLoading, isError } = useLibraryTab('plex', undefined)

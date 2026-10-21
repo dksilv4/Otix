@@ -190,4 +190,68 @@ describe('MediaStreamPlayerModal', () => {
     const pipBtn = screen.getByTitle(/Picture-in-Picture \(OS window\)/i)
     expect(pipBtn).toBeInTheDocument()
   })
+
+  it('opens quality menu, displays quality options, and selects a new quality', () => {
+    render(
+      <MediaStreamPlayerProvider>
+        <TestPlayerTrigger />
+        <MediaStreamPlayerModal />
+      </MediaStreamPlayerProvider>,
+    )
+
+    fireEvent.click(screen.getByText('Open Stream'))
+
+    const qualityBtn = screen.getByTitle(/Video Quality \(Q\)/i)
+    expect(qualityBtn).toBeInTheDocument()
+    expect(qualityBtn).toHaveTextContent(/Auto/i)
+
+    // Open Quality Menu
+    act(() => {
+      fireEvent.click(qualityBtn)
+    })
+
+    expect(screen.getByText('720p HD')).toBeInTheDocument()
+    expect(screen.getByText('1080p HD')).toBeInTheDocument()
+
+    // Select 720p HD
+    act(() => {
+      fireEvent.click(screen.getByText('720p HD'))
+    })
+
+    // Button should now show 720p
+    expect(qualityBtn).toHaveTextContent(/720p/i)
+  })
+
+  it('toggles quality menu using keyboard shortcut "q" and displays Quality in shortcuts modal', () => {
+    render(
+      <MediaStreamPlayerProvider>
+        <TestPlayerTrigger />
+        <MediaStreamPlayerModal />
+      </MediaStreamPlayerProvider>,
+    )
+
+    fireEvent.click(screen.getByText('Open Stream'))
+
+    // Press 'q' to open quality menu
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'q' }))
+    })
+
+    expect(screen.getByText('720p HD')).toBeInTheDocument()
+
+    // Press 'q' again to close quality menu
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'q' }))
+    })
+
+    expect(screen.queryByText('720p HD')).not.toBeInTheDocument()
+
+    // Press '?' to view shortcuts modal
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: '?' }))
+    })
+
+    expect(screen.getByText('Keyboard Shortcuts')).toBeInTheDocument()
+    expect(screen.getByText('Quality')).toBeInTheDocument()
+  })
 })

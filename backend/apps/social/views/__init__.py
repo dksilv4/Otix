@@ -29,6 +29,7 @@ from apps.social.views.user_activity import (
     DailyActivityView,
     FriendsActivityView,
     MoodTimelineView,
+    UserActivityHeatmapView,
     UserActivityView,
 )
 from apps.social.views.user_follow import (
@@ -64,6 +65,7 @@ __all__ = [
     "AcceptFriendRequestView",
     "AchievementsView",
     "ActivityHeatmapView",
+    "UserActivityHeatmapView",
     "ClaimBadgeView",
     "DailyActivityView",
     "DeclineFollowRequestView",

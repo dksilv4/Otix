@@ -4,12 +4,14 @@ import type {
   PlaybackMethod,
   SubtitleTrack,
   AudioTrack,
+  StreamQualityOption,
 } from '../types/stream-player'
 import { determinePlaybackMethod } from '../utils/stream-compatibility'
 import { loadPlayerSettings, savePlayerSettings } from '@/features/discover/utils/trailer'
 import { apiClient } from '@/lib/api/client'
 import { getPluginApi, getPlexClientId } from '../utils/player'
-import { switchPlexSessionServer } from '../utils/plex-stream'
+import { switchPlexSessionServer, updatePlexSessionQuality } from '../utils/plex-stream'
+import { buildQualityOptions, DEFAULT_QUALITY_ID } from '../utils/quality'
 import {
   isOverallPipSupported,
   isOverallPipActive,
@@ -39,6 +41,9 @@ export interface MediaStreamPlayerContextValue {
   isOverallPipSupported: boolean
   activeSubtitle: SubtitleTrack | null
   activeAudio: AudioTrack | null
+  currentQuality: string
+  availableQualities: StreamQualityOption[]
+  activeLevelHeight: number | null
   playbackMethod: PlaybackMethod
   error: string | null
 
@@ -59,6 +64,10 @@ export interface MediaStreamPlayerContextValue {
   setZoomedOut: (isZoomed: boolean) => void
   setActiveSubtitle: (subtitleId: string | null) => void
   setActiveAudio: (audioIndex: number | null) => void
+  setQuality: (qualityId: string) => void
+  setAvailableQualities: (qualities: StreamQualityOption[]) => void
+  setActiveLevelHeight: (height: number | null) => void
+  updateSessionQuality: (qualityOption: StreamQualityOption) => void
 
   // Picture-in-Picture actions
   setInAppPip: (inAppPip: boolean) => void
@@ -97,6 +106,9 @@ export const MediaStreamPlayerProvider = ({ children }: { children: React.ReactN
   const [isOverallPip, setIsOverallPipState] = useState(false)
   const [activeSubtitleId, setActiveSubtitleId] = useState<string | null>(null)
   const [activeAudioIndex, setActiveAudioIndex] = useState<number | null>(null)
+  const [currentQuality, setCurrentQuality] = useState<string>(DEFAULT_QUALITY_ID)
+  const [availableQualities, setAvailableQualities] = useState<StreamQualityOption[]>(() => buildQualityOptions())
+  const [activeLevelHeight, setActiveLevelHeightState] = useState<number | null>(null)
   const [playbackMethod, setPlaybackMethod] = useState<PlaybackMethod>('direct-play')
   const [error, setError] = useState<string | null>(null)
 
@@ -261,6 +273,14 @@ export const MediaStreamPlayerProvider = ({ children }: { children: React.ReactN
       newSession.audioCodec
     )
 
+    const initialQualities = buildQualityOptions({
+      hasDirectPlay: Boolean(newSession.directUrl),
+      source: newSession.source,
+    })
+    setAvailableQualities(initialQualities)
+    setCurrentQuality(newSession.selectedQuality || DEFAULT_QUALITY_ID)
+    setActiveLevelHeightState(null)
+
     setSession(newSession)
     setPlaybackMethod(method)
     setCurrentTime((newSession.startPositionMs || 0) / 1000)
@@ -298,6 +318,9 @@ export const MediaStreamPlayerProvider = ({ children }: { children: React.ReactN
     setIsPlaying(false)
     setSession(null)
     setError(null)
+    setCurrentQuality(DEFAULT_QUALITY_ID)
+    setActiveLevelHeightState(null)
+    setAvailableQualities(buildQualityOptions())
   }, [sendProgressHeartbeat])
 
   const failoverToBaseUrl = useCallback((newBaseUrl: string) => {
@@ -437,6 +460,29 @@ export const MediaStreamPlayerProvider = ({ children }: { children: React.ReactN
     setActiveAudioIndex(audioIdx)
   }, [])
 
+  const setQuality = useCallback((qualityId: string) => {
+    setCurrentQuality(qualityId)
+  }, [])
+
+  const setActiveLevelHeight = useCallback((height: number | null) => {
+    setActiveLevelHeightState(height)
+  }, [])
+
+  const updateSessionQuality = useCallback((qualityOption: StreamQualityOption) => {
+    setSession((prev) => {
+      if (!prev) return null
+      if (prev.source === 'plex') {
+        return updatePlexSessionQuality(prev, qualityOption)
+      }
+      return {
+        ...prev,
+        selectedQuality: qualityOption.id,
+        maxVideoBitrate: qualityOption.maxVideoBitrate,
+        videoResolution: qualityOption.videoResolution,
+      }
+    })
+  }, [])
+
   const onTimeUpdate = useCallback((time: number, dur: number) => {
     setCurrentTime(time)
     if (dur > 0 && dur !== duration) {
@@ -485,6 +531,9 @@ export const MediaStreamPlayerProvider = ({ children }: { children: React.ReactN
     isOverallPipSupported: isOverallPipSupportedState,
     activeSubtitle,
     activeAudio,
+    currentQuality,
+    availableQualities,
+    activeLevelHeight,
     playbackMethod,
     error,
 
@@ -509,6 +558,10 @@ export const MediaStreamPlayerProvider = ({ children }: { children: React.ReactN
     registerVideoElement,
     setActiveSubtitle,
     setActiveAudio,
+    setQuality,
+    setAvailableQualities,
+    setActiveLevelHeight,
+    updateSessionQuality,
     onTimeUpdate,
     onBufferedUpdate,
     onBuffering,
@@ -543,6 +596,9 @@ const defaultPlayerContextValue: MediaStreamPlayerContextValue = {
   isOverallPipSupported: false,
   activeSubtitle: null,
   activeAudio: null,
+  currentQuality: 'auto',
+  availableQualities: [],
+  activeLevelHeight: null,
   playbackMethod: 'direct-play',
   error: null,
   openStream: noop,
@@ -566,6 +622,10 @@ const defaultPlayerContextValue: MediaStreamPlayerContextValue = {
   registerVideoElement: noop,
   setActiveSubtitle: noop,
   setActiveAudio: noop,
+  setQuality: noop,
+  setAvailableQualities: noop,
+  setActiveLevelHeight: noop,
+  updateSessionQuality: noop,
   onTimeUpdate: noop,
   onBufferedUpdate: noop,
   onBuffering: noop,

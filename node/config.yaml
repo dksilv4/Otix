@@ -2,13 +2,13 @@ server:
     name: Local Node
     port: 8090
     host: 0.0.0.0
-    auth_token: ""
-    registry_url: https://otix.app/api
+    auth_token: 4b8c39a3446b1bf87bb8019441c54573445bf3c1946012ab
+    registry_url: http://127.0.0.1:8000/api
     enable_upnp: false
     enable_heartbeat: true
-    downloads_path: ./storage/downloads
-    claimed: false
-    claimed_by: ""
+    downloads_path: /Users/dk/Library/Application Support/Otix/storage/downloads
+    claimed: true
+    claimed_by: admin
     write_otix_after_scan: true
     download_otix_images: false
 game_libraries:
@@ -62,7 +62,7 @@ game_libraries:
         - .nsp
         - .xci
 saves:
-    storage_path: ./storage/saves
+    storage_path: /Users/dk/Library/Application Support/Otix/storage/saves
     max_snapshots_per_game: 10
     auto_backup_on_exit: true
 usenet:

@@ -62,8 +62,10 @@ interface NodesTopologyCanvasProps {
   onDeleteServer: (server: UserServerMachine) => void
   onDetectDrives: (server: UserServerMachine) => void
   onOpenNodeSettings: (server: GameServer) => void
+  onEditNode?: (server: GameServer) => void
   onRenameNode: (server: GameServer) => void
   onPingNode?: (server: GameServer) => void
+  onEditSamba?: (samba: SambaShareConfig) => void
 }
 
 export const NodesTopologyCanvas = ({
@@ -90,8 +92,10 @@ export const NodesTopologyCanvas = ({
   onDeleteServer,
   onDetectDrives,
   onOpenNodeSettings,
+  onEditNode,
   onRenameNode,
   onPingNode,
+  onEditSamba,
 }: NodesTopologyCanvasProps) => {
   const { toast } = useToast()
   const assignHomeMutation = useAssignNodeHome()
@@ -604,10 +608,12 @@ export const NodesTopologyCanvas = ({
                   onDeleteServer={onDeleteServer}
                   onDetectDrives={onDetectDrives}
                   onOpenNodeSettings={onOpenNodeSettings}
+                  onEditNode={onEditNode}
                   onRenameNode={onRenameNode}
                   onPingNode={onPingNode}
                   onClaimPendingNode={onClaimPendingNode}
                   onOpenSambaSettings={onOpenSambaSettings}
+                  onEditSamba={onEditSamba}
                 />
               </div>
             )

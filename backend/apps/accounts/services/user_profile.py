@@ -60,6 +60,29 @@ def build_user_profile(user: User, viewer) -> dict:
     level, level_title = calculate_level(user.total_xp)
     xp_rank, xp_percentile = calculate_xp_rank_and_percentile(user)
 
+    user_sec_vis = dict(user.section_visibility or {})
+    if "game_sessions" not in user_sec_vis:
+        user_sec_vis["game_sessions"] = "private" if getattr(user, "game_sessions_private", True) else "public"
+
+    all_sections = list(user.profile_sections or [])
+    if is_own_profile:
+        returned_sections = all_sections
+        returned_visibility = user_sec_vis
+    else:
+        is_friend = bool(
+            friendship_status and friendship_status.get("status") == "friends"
+        )
+        returned_sections = []
+        for sec in all_sections:
+            vis = user_sec_vis.get(sec, "public")
+            if vis == "public":
+                returned_sections.append(sec)
+            elif vis == "friends" and is_friend:
+                returned_sections.append(sec)
+        returned_visibility = {
+            sec: user_sec_vis.get(sec, "public") for sec in returned_sections
+        }
+
     return {
         "id": user.id,
         "username": user.username,
@@ -73,7 +96,8 @@ def build_user_profile(user: User, viewer) -> dict:
         "user_rating_count": rating_aggregates["user_rating_count"],
         "is_admin": bool(user.is_staff or user.is_superuser),
         "composite_score": reputation["composite_score"],
-        "profile_sections": user.profile_sections,
+        "profile_sections": returned_sections,
+        "section_visibility": returned_visibility,
         "hall_of_fame_media_ids": user.hall_of_fame_media_ids,
         "steam": None,
         "plex": None,

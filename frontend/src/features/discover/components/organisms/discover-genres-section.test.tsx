@@ -68,6 +68,8 @@ describe('DiscoverGenresSection', () => {
             { id: 35, name: 'Comedy', slug: 'comedy' },
             { id: 878, name: 'Science Fiction', slug: 'science-fiction' },
             { id: 27, name: 'Horror', slug: 'horror' },
+            { id: 10767, name: 'Talk', slug: 'talk' },
+            { id: 10768, name: 'Talk Show', slug: 'talk-show' },
             { id: 999, name: 'Duplicate Action', slug: 'action' }, // duplicate slug to test deduplication
           ],
         }
@@ -94,6 +96,8 @@ describe('DiscoverGenresSection', () => {
     expect(screen.getByText('Science Fiction')).toBeDefined()
     expect(screen.getByText('Horror')).toBeDefined()
     expect(screen.queryByText('Duplicate Action')).toBeNull()
+    expect(screen.queryByText('Talk')).toBeNull()
+    expect(screen.queryByText('Talk Show')).toBeNull()
 
     const actionLink = screen.getByRole('link', { name: /Explore Action genre/i })
     expect(actionLink.getAttribute('href')).toBe('/genre/action')

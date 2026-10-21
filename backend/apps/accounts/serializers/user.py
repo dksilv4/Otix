@@ -53,6 +53,7 @@ class UserSelfSerializer(serializers.ModelSerializer):
             "show_adult_content",
             "save_game_sessions",
             "game_sessions_private",
+            "section_visibility",
             "is_bot",
             "is_admin",
             "total_xp",
@@ -117,6 +118,7 @@ class UserUpdateSerializer(serializers.ModelSerializer):
             "daily_mood_checkins_enabled",
             "onboarding_completed",
             "integration_visibility",
+            "section_visibility",
             "profile_sections",
             "profile_card_sections",
             "hall_of_fame_media_ids",
@@ -138,8 +140,27 @@ class UserUpdateSerializer(serializers.ModelSerializer):
     def validate_avatar_url(self, value: str | None) -> str | None:
         return self._validate_safe_profile_url(value, "avatar_url")
 
+    def validate_section_visibility(self, value: dict | None) -> dict:
+        if value is None:
+            return {}
+        if not isinstance(value, dict):
+            raise serializers.ValidationError("section_visibility must be a dictionary.")
+        for k, v in value.items():
+            if not isinstance(k, str) or v not in ("public", "friends", "private"):
+                raise serializers.ValidationError(
+                    f"Invalid visibility value for {k}: expected 'public', 'friends', or 'private'."
+                )
+        return value
+
     def validate_background_url(self, value: str | None) -> str | None:
         return self._validate_safe_profile_url(value, "background_url")
+
+    def update(self, instance: User, validated_data: dict) -> User:
+        if "section_visibility" in validated_data and isinstance(validated_data["section_visibility"], dict):
+            sec_vis = validated_data["section_visibility"]
+            if "game_sessions" in sec_vis:
+                instance.game_sessions_private = (sec_vis["game_sessions"] != "public")
+        return super().update(instance, validated_data)
 
     def _validate_safe_profile_url(self, value: str | None, field_name: str) -> str | None:
         if not value or not value.strip():
@@ -181,6 +202,7 @@ class UserPreferencesSerializer(serializers.ModelSerializer):
             "profile_sections",
             "profile_card_sections",
             "integration_visibility",
+            "section_visibility",
             "notification_preferences",
         )
         read_only_fields = fields

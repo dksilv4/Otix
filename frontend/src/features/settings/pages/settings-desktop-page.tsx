@@ -26,7 +26,6 @@ import {
 } from '@/features/downloads/use-server-downloads'
 import type { GameServer } from '@/features/downloads/types'
 import type { PendingNode } from '@/features/downloads/pending-nodes'
-import { ConnectNodeModal } from '@/features/downloads/molecules/connect-node-modal'
 import { DownloadNodeModal } from '@/features/downloads/molecules/download-node-modal'
 import { NodesFeatureTags } from '../components/nodes-feature-tags'
 import { NodeSettingsModal } from '../components/organisms/node-settings-modal'
@@ -40,9 +39,14 @@ import {
   useDetectServerDrives,
   useDeleteHome,
 } from '../hooks/use-server-machines'
-import { ServerMachineModal } from '../components/organisms/server-machine-modal'
-import { HomeManageModal } from '../components/organisms/home-manage-modal'
-import { SambaShareModal } from '../components/organisms/samba-share-modal'
+import { CreateWorkerNodeModal } from '../components/organisms/create-worker-node-modal'
+import { EditWorkerNodeModal } from '../components/organisms/edit-worker-node-modal'
+import { CreateServerMachineModal } from '../components/organisms/create-server-machine-modal'
+import { EditServerMachineModal } from '../components/organisms/edit-server-machine-modal'
+import { CreateHomeModal } from '../components/organisms/create-home-modal'
+import { EditHomeModal } from '../components/organisms/edit-home-modal'
+import { CreateSambaShareModal } from '../components/organisms/create-samba-share-modal'
+import { EditSambaShareModal } from '../components/organisms/edit-samba-share-modal'
 import { AddNodeModal } from '../components/organisms/add-node-modal'
 import { NodesTopologyCanvas } from '../components/organisms/nodes-topology-canvas'
 import type { UserHome, UserServerMachine } from '../types/server-machines'
@@ -72,16 +76,19 @@ export const SettingsNodesPage = () => {
   const detectDrivesMutation = useDetectServerDrives()
   const deleteHomeMutation = useDeleteHome()
 
-  const [serverMachineModalOpen, setServerMachineModalOpen] = useState(false)
+  const [createWorkerNodeOpen, setCreateWorkerNodeOpen] = useState(false)
+  const [editingWorkerNode, setEditingWorkerNode] = useState<GameServer | null>(null)
+  const [createServerMachineOpen, setCreateServerMachineOpen] = useState(false)
+  const [createServerHomeId, setCreateServerHomeId] = useState<number | null>(null)
   const [editingServerMachine, setEditingServerMachine] = useState<UserServerMachine | null>(null)
-  const [homeModalOpen, setHomeModalOpen] = useState(false)
+  const [createHomeOpen, setCreateHomeOpen] = useState(false)
   const [editingHome, setEditingHome] = useState<UserHome | null>(null)
-  const [sambaModalOpen, setSambaModalOpen] = useState(false)
-  const [selectedSambaForModal, setSelectedSambaForModal] = useState<SambaShareConfig | null>(null)
+  const [createSambaOpen, setCreateSambaOpen] = useState(false)
+  const [createSambaPreset, setCreateSambaPreset] = useState<Partial<SambaShareConfig> | null>(null)
+  const [editingSamba, setEditingSamba] = useState<SambaShareConfig | null>(null)
   const [customSambaShares, setCustomSambaShares] = useState<SambaShareConfig[]>(loadStoredSambaShares)
 
   const [addNodeModalOpen, setAddNodeModalOpen] = useState(false)
-  const [connectModalOpen, setConnectModalOpen] = useState(false)
   const [connectInitialUrl, setConnectInitialUrl] = useState('')
   const [nodeToDelete, setNodeToDelete] = useState<GameServer | null>(null)
   const [nodeToRename, setNodeToRename] = useState<GameServer | null>(null)
@@ -93,14 +100,13 @@ export const SettingsNodesPage = () => {
     if (type === 'worker') {
       openConnectModal()
     } else if (type === 'server') {
-      setEditingServerMachine(null)
-      setServerMachineModalOpen(true)
+      setCreateServerHomeId(null)
+      setCreateServerMachineOpen(true)
     } else if (type === 'home') {
-      setEditingHome(null)
-      setHomeModalOpen(true)
+      setCreateHomeOpen(true)
     } else if (type === 'samba') {
-      setSelectedSambaForModal(null)
-      setSambaModalOpen(true)
+      setCreateSambaPreset(null)
+      setCreateSambaOpen(true)
     }
   }
 
@@ -127,11 +133,11 @@ export const SettingsNodesPage = () => {
     if (typeof window !== 'undefined') {
       const hash = (window.location.hash || '').replace(/^#/, '').toLowerCase()
       if (hash === 'servers' || hash === 'server-machines') {
-        setServerMachineModalOpen(true)
+        setCreateServerMachineOpen(true)
       } else if (hash === 'homes') {
-        setHomeModalOpen(true)
+        setCreateHomeOpen(true)
       } else if (hash === 'samba') {
-        setSambaModalOpen(true)
+        setCreateSambaOpen(true)
       }
     }
   }, [])
@@ -162,7 +168,7 @@ export const SettingsNodesPage = () => {
 
   const openConnectModal = (initialUrl = '') => {
     setConnectInitialUrl(initialUrl)
-    setConnectModalOpen(true)
+    setCreateWorkerNodeOpen(true)
   }
 
   const handleSaveCustomSamba = (config: SambaShareConfig) => {
@@ -377,48 +383,27 @@ export const SettingsNodesPage = () => {
         anchor={anchorPos}
         onOpenDownloadModal={openDownloadNodeModal}
         onClaimPendingNode={handleClaimQuickNode}
-        onAddHome={() => {
-          setEditingHome(null)
-          setHomeModalOpen(true)
-        }}
+        onAddHome={() => setCreateHomeOpen(true)}
         onAddServer={(homeId) => {
-          setEditingServerMachine(homeId ? ({ homeId } as any) : null)
-          setServerMachineModalOpen(true)
+          setCreateServerHomeId(homeId ?? null)
+          setCreateServerMachineOpen(true)
         }}
         onAddNode={() => setAddNodeModalOpen(true)}
         onAddSamba={(preset) => {
-          if (preset) {
-            setSelectedSambaForModal({
-              id: '',
-              shareName: preset.shareName || 'games',
-              serverId: preset.serverId || null,
-              serverName: preset.serverName || null,
-              host: preset.host || '',
-              port: preset.port || 445,
-            })
-          } else {
-            setSelectedSambaForModal(null)
-          }
-          setSambaModalOpen(true)
+          setCreateSambaPreset(preset ?? null)
+          setCreateSambaOpen(true)
         }}
-        onOpenSambaSettings={(samba) => {
-          setSelectedSambaForModal(samba)
-          setSambaModalOpen(true)
-        }}
+        onOpenSambaSettings={(samba) => setEditingSamba(samba)}
+        onEditSamba={(samba) => setEditingSamba(samba)}
         onSaveCustomSamba={handleSaveCustomSamba}
         onDeleteSamba={handleDeleteCustomSamba}
-        onEditHome={(home) => {
-          setEditingHome(home)
-          setHomeModalOpen(true)
-        }}
+        onEditHome={(home) => setEditingHome(home)}
         onDeleteHome={handleDeleteHome}
-        onEditServer={(server) => {
-          setEditingServerMachine(server)
-          setServerMachineModalOpen(true)
-        }}
+        onEditServer={(server) => setEditingServerMachine(server)}
         onDeleteServer={handleDeleteMachine}
         onDetectDrives={handleDetectDrivesForMachine}
         onOpenNodeSettings={(node) => setSelectedNodeForModal(node)}
+        onEditNode={(node) => setEditingWorkerNode(node)}
         onRenameNode={(node) => openRenameModal(node)}
         onPingNode={handlePingServerInstance}
       />
@@ -659,12 +644,12 @@ export const SettingsNodesPage = () => {
         </DkDialog>
       )}
 
-      {connectModalOpen && (
-        <ConnectNodeModal
-          isOpen={connectModalOpen}
-          onClose={() => {
-            setConnectModalOpen(false)
-            setConnectInitialUrl('')
+      {createWorkerNodeOpen && (
+        <CreateWorkerNodeModal
+          open={createWorkerNodeOpen}
+          onOpenChange={(open) => {
+            setCreateWorkerNodeOpen(open)
+            if (!open) setConnectInitialUrl('')
           }}
           defaultName={
             unclaimedNodes[0]?.serverName &&
@@ -674,6 +659,21 @@ export const SettingsNodesPage = () => {
               : defaultAutoName
           }
           initialNodeUrl={connectInitialUrl}
+          homes={homes}
+          defaultHomeId={homes.find((h) => h.isDefault)?.id || homes[0]?.id}
+        />
+      )}
+
+      {editingWorkerNode && (
+        <EditWorkerNodeModal
+          open={Boolean(editingWorkerNode)}
+          onOpenChange={(open) => {
+            if (!open) setEditingWorkerNode(null)
+          }}
+          node={editingWorkerNode}
+          homes={homes}
+          serverMachines={serverMachines}
+          onOpenFullSettings={(node) => setSelectedNodeForModal(node)}
         />
       )}
 
@@ -685,38 +685,51 @@ export const SettingsNodesPage = () => {
         }}
       />
 
-      {serverMachineModalOpen && (
-        <ServerMachineModal
-          open={serverMachineModalOpen}
-          onOpenChange={(open) => {
-            setServerMachineModalOpen(open)
-            if (!open) setEditingServerMachine(null)
-          }}
-          server={editingServerMachine}
-          homes={homes}
-          nodes={gameServers}
-          defaultHomeId={homes.find((h) => h.isDefault)?.id || homes[0]?.id}
-        />
-      )}
+      <CreateServerMachineModal
+        open={createServerMachineOpen}
+        onOpenChange={setCreateServerMachineOpen}
+        homes={homes}
+        nodes={gameServers}
+        defaultHomeId={createServerHomeId ?? homes.find((h) => h.isDefault)?.id ?? homes[0]?.id}
+      />
 
-      {homeModalOpen && (
-        <HomeManageModal
-          open={homeModalOpen}
-          onOpenChange={(open) => {
-            setHomeModalOpen(open)
-            if (!open) setEditingHome(null)
-          }}
-          home={editingHome}
-        />
-      )}
-
-      <SambaShareModal
-        open={sambaModalOpen}
+      <EditServerMachineModal
+        open={Boolean(editingServerMachine)}
         onOpenChange={(open) => {
-          setSambaModalOpen(open)
-          if (!open) setSelectedSambaForModal(null)
+          if (!open) setEditingServerMachine(null)
         }}
-        samba={selectedSambaForModal}
+        server={editingServerMachine}
+        homes={homes}
+        nodes={gameServers}
+      />
+
+      <CreateHomeModal
+        open={createHomeOpen}
+        onOpenChange={setCreateHomeOpen}
+      />
+
+      <EditHomeModal
+        open={Boolean(editingHome)}
+        onOpenChange={(open) => {
+          if (!open) setEditingHome(null)
+        }}
+        home={editingHome}
+      />
+
+      <CreateSambaShareModal
+        open={createSambaOpen}
+        onOpenChange={setCreateSambaOpen}
+        serverMachines={serverMachines}
+        preset={createSambaPreset}
+        onSaveCustom={handleSaveCustomSamba}
+      />
+
+      <EditSambaShareModal
+        open={Boolean(editingSamba)}
+        onOpenChange={(open) => {
+          if (!open) setEditingSamba(null)
+        }}
+        samba={editingSamba}
         serverMachines={serverMachines}
         onSaveCustom={handleSaveCustomSamba}
         onDeleteCustom={handleDeleteCustomSamba}

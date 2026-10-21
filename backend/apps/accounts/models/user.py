@@ -26,14 +26,20 @@ MAX_COUNTRY_LENGTH = 100
 
 # New-account defaults mirroring the legacy ``User`` column server defaults.
 DEFAULT_PROFILE_SECTIONS = [
-    "hof_movie",
-    "hof_show",
-    "hof_game",
+    "game_sessions",
+    "reviews",
+    "top_rated",
+    "stats",
+    "achievements",
+    "recent_activity",
     "library_breakdown",
-    "mood_timeline",
+    "rating_distribution",
 ]
 DEFAULT_PROFILE_CARD_SECTIONS = ["reviews", "stats", "top_rated", "recent_activity"]
 DEFAULT_PREFERRED_MEDIA_TYPES = ["movie", "show", "game"]
+DEFAULT_SECTION_VISIBILITY = {
+    "game_sessions": "private",
+}
 
 
 # Importable defaults (migrations can only serialise dotted paths, not lambdas).
@@ -47,6 +53,10 @@ def default_profile_card_sections() -> list[str]:
 
 def default_preferred_media_types() -> list[str]:
     return list(DEFAULT_PREFERRED_MEDIA_TYPES)
+
+
+def default_section_visibility() -> dict[str, str]:
+    return dict(DEFAULT_SECTION_VISIBILITY)
 
 
 class User(TimestampedModel, AbstractBaseUser, PermissionsMixin):
@@ -179,6 +189,7 @@ class User(TimestampedModel, AbstractBaseUser, PermissionsMixin):
     daily_mood_checkins_enabled = models.BooleanField(default=True)
     onboarding_completed = models.BooleanField(default=False)
     integration_visibility = models.JSONField(default=dict, blank=True)
+    section_visibility = models.JSONField(default=default_section_visibility, blank=True)
     profile_sections = models.JSONField(default=default_profile_sections, blank=True)
     profile_card_sections = models.JSONField(default=default_profile_card_sections, blank=True)
     hall_of_fame_media_ids = models.JSONField(default=dict, blank=True)

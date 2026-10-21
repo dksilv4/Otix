@@ -49,6 +49,7 @@ class UserProfileSerializer(serializers.Serializer):
     profile_sections = serializers.ListField(
         child=serializers.CharField(), read_only=True, allow_null=True
     )
+    section_visibility = serializers.DictField(read_only=True, default=dict)
     hall_of_fame_media_ids = serializers.DictField(read_only=True)
     steam = serializers.DictField(read_only=True, allow_null=True)
     plex = serializers.DictField(read_only=True, allow_null=True)

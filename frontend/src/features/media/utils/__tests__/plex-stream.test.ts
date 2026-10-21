@@ -4,6 +4,7 @@ import {
   buildPlexDirectUrl,
   buildPlexPlaybackSession,
   switchPlexSessionServer,
+  updatePlexSessionQuality,
 } from '../plex-stream'
 
 describe('plex-stream utilities', () => {
@@ -89,5 +90,42 @@ describe('plex-stream utilities', () => {
     expect(switched.directUrl).toContain('X-Plex-Session-Identifier=')
     expect(switched.hlsUrl).toContain('https://remote.plex.direct:32400/video/:/transcode')
     expect(switched.subtitles[0].url).toBe('https://remote.plex.direct:32400/sub.vtt')
+  })
+
+  it('builds HLS URL with custom bitrate and resolution quality options', () => {
+    const url = buildPlexHlsUrl(
+      'http://192.168.1.100:32400',
+      '12345',
+      'token-abc',
+      'session-1',
+      'client-xyz',
+      { maxVideoBitrate: 4000, videoResolution: '1280x720' },
+    )
+    expect(url).toContain('maxVideoBitrate=4000')
+    expect(url).toContain('videoResolution=1280x720')
+  })
+
+  it('updates session quality via updatePlexSessionQuality', () => {
+    const initialSession = buildPlexPlaybackSession({
+      baseUrl: 'http://192.168.1.100:32400',
+      token: 'tok-123',
+      ratingKey: '555',
+      title: 'Inception',
+      hlsUrl: 'http://192.168.1.100:32400/video/:/transcode/start.m3u8',
+    })
+
+    const updated = updatePlexSessionQuality(initialSession, {
+      id: '720p',
+      label: '720p HD',
+      height: 720,
+      maxVideoBitrate: 4000,
+      videoResolution: '1280x720',
+    })
+
+    expect(updated.selectedQuality).toBe('720p')
+    expect(updated.maxVideoBitrate).toBe(4000)
+    expect(updated.videoResolution).toBe('1280x720')
+    expect(updated.hlsUrl).toContain('maxVideoBitrate=4000')
+    expect(updated.hlsUrl).toContain('videoResolution=1280x720')
   })
 })

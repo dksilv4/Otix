@@ -6,6 +6,20 @@ export type StreamSource = 'jellyfin' | 'plex'
 
 export type SubtitleFormat = 'vtt' | 'srt' | 'pgs' | 'ass'
 
+export interface StreamQualityOption {
+  id: string
+  label: string
+  description?: string
+  height?: number
+  width?: number
+  bitrate?: number
+  hlsLevelIndex?: number
+  isAuto?: boolean
+  isOriginal?: boolean
+  maxVideoBitrate?: number
+  videoResolution?: string
+}
+
 export interface SubtitleTrack {
   id: string
   index: number
@@ -59,6 +73,9 @@ export interface StreamPlaybackSession {
   audioCodec?: string
   baseUrls?: string[]
   isSharedServer?: boolean
+  selectedQuality?: string
+  maxVideoBitrate?: number
+  videoResolution?: string
 }
 
 export type PlaybackMethod = 'direct-play' | 'direct-stream' | 'transcode'
@@ -79,6 +96,8 @@ export interface StreamPlayerState {
   isOverallPipSupported: boolean
   activeSubtitleId: string | null
   activeAudioIndex: number | null
+  currentQuality: string
+  availableQualities: StreamQualityOption[]
   playbackMethod: PlaybackMethod
   error: string | null
 }

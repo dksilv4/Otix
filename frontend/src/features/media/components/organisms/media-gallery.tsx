@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { Play, Maximize2, ChevronLeft, ChevronRight, Film } from 'lucide-react'
+import { Play, Maximize2, ChevronLeft, ChevronRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useModal } from '@/lib/modals'
 import {
@@ -93,17 +93,13 @@ export const MediaGallery = ({
   return (
     <section
       id="media-gallery-section"
-      className={cn('glass-card p-6 sm:p-7 space-y-4 overflow-visible', className)}
+      className={cn('glass-card py-6 sm:py-7 space-y-4 overflow-visible', className)}
     >
-      {/* Header with Title, Tabs, and Scroll Controls */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      {/* ── Header with Category Tabs & Nav Chevrons ── */}
+      <div className="px-6 sm:px-7 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2.5">
-          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10 text-primary">
-            <Film className="h-4 w-4" />
-          </span>
-          <h3 className="text-base font-semibold text-foreground tracking-tight">
-            Media Gallery
-          </h3>
+          <div className="h-4 w-0.5 rounded-full bg-primary/60 shrink-0" />
+          <h2 className="text-base font-semibold tracking-tight">Media Gallery</h2>
           <span className="text-xs text-muted-foreground font-medium">
             ({parsedVideos.length + validScreenshots.length})
           </span>
@@ -112,39 +108,48 @@ export const MediaGallery = ({
         {/* Tab Pills & Scroll Arrows */}
         <div className="flex items-center gap-3">
           {showTabs && (
-            <div className="flex items-center gap-1 rounded-xl bg-[var(--dk-surface-glass)] p-1">
+            <div className="flex items-center gap-1 rounded-xl bg-[var(--dk-surface-glass)] p-0.5 overflow-x-auto scrollbar-none">
               <button
                 type="button"
-                onClick={() => setActiveTab('all')}
+                onClick={() => {
+                  setActiveTab('all')
+                  if (scrollRef.current) scrollRef.current.scrollLeft = 0
+                }}
                 className={cn(
-                  'rounded-lg px-2.5 py-1 text-xs font-medium transition-all',
+                  'rounded-lg px-2.5 py-1 text-xs font-medium transition-all whitespace-nowrap',
                   activeTab === 'all'
-                    ? 'bg-primary/15 text-primary shadow-sm'
-                    : 'text-muted-foreground hover:bg-[var(--dk-surface-base)] hover:text-foreground',
+                    ? 'bg-[var(--dk-surface-base)] text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground',
                 )}
               >
                 All
               </button>
               <button
                 type="button"
-                onClick={() => setActiveTab('videos')}
+                onClick={() => {
+                  setActiveTab('videos')
+                  if (scrollRef.current) scrollRef.current.scrollLeft = 0
+                }}
                 className={cn(
-                  'rounded-lg px-2.5 py-1 text-xs font-medium transition-all',
+                  'rounded-lg px-2.5 py-1 text-xs font-medium transition-all whitespace-nowrap',
                   activeTab === 'videos'
-                    ? 'bg-primary/15 text-primary shadow-sm'
-                    : 'text-muted-foreground hover:bg-[var(--dk-surface-base)] hover:text-foreground',
+                    ? 'bg-[var(--dk-surface-base)] text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground',
                 )}
               >
                 Videos ({parsedVideos.length})
               </button>
               <button
                 type="button"
-                onClick={() => setActiveTab('screenshots')}
+                onClick={() => {
+                  setActiveTab('screenshots')
+                  if (scrollRef.current) scrollRef.current.scrollLeft = 0
+                }}
                 className={cn(
-                  'rounded-lg px-2.5 py-1 text-xs font-medium transition-all',
+                  'rounded-lg px-2.5 py-1 text-xs font-medium transition-all whitespace-nowrap',
                   activeTab === 'screenshots'
-                    ? 'bg-primary/15 text-primary shadow-sm'
-                    : 'text-muted-foreground hover:bg-[var(--dk-surface-base)] hover:text-foreground',
+                    ? 'bg-[var(--dk-surface-base)] text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground',
                 )}
               >
                 Screenshots ({validScreenshots.length})
@@ -152,28 +157,22 @@ export const MediaGallery = ({
             </div>
           )}
 
-          {/* Scroll Arrows */}
+          {/* Desktop Chevron Controls */}
           <div className="hidden sm:flex items-center gap-1">
             <button
               type="button"
-              onClick={() => scrollBy(-320)}
               disabled={!canScrollLeft}
-              className={cn(
-                'flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--dk-surface-glass)] text-muted-foreground transition-all hover:bg-[var(--dk-surface-ghost-hover)] hover:text-foreground',
-                !canScrollLeft && 'opacity-30 pointer-events-none',
-              )}
+              onClick={() => scrollBy(-320)}
+              className="flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-base)] text-foreground disabled:opacity-25 transition-all"
               aria-label="Scroll media left"
             >
               <ChevronLeft className="h-4 w-4" />
             </button>
             <button
               type="button"
-              onClick={() => scrollBy(320)}
               disabled={!canScrollRight}
-              className={cn(
-                'flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--dk-surface-glass)] text-muted-foreground transition-all hover:bg-[var(--dk-surface-ghost-hover)] hover:text-foreground',
-                !canScrollRight && 'opacity-30 pointer-events-none',
-              )}
+              onClick={() => scrollBy(320)}
+              className="flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-base)] text-foreground disabled:opacity-25 transition-all"
               aria-label="Scroll media right"
             >
               <ChevronRight className="h-4 w-4" />
@@ -182,10 +181,12 @@ export const MediaGallery = ({
         </div>
       </div>
 
-      {/* Horizontal Carousel */}
+      {/* ── Horizontal Carousel Track (Full-Bleed Across Card, No Padding Clipping, No Masking) ── */}
       <div
         ref={scrollRef}
-        className="flex gap-3.5 overflow-x-auto pb-2 pt-1 scrollbar-none [scroll-snap-type:x_mandatory]"
+        className="flex gap-3.5 overflow-x-auto overscroll-x-contain scroll-smooth scrollbar-none px-6 sm:px-7 py-3.5 -my-2.5 [mask-image:none] [-webkit-mask-image:none]"
+        style={{ scrollPaddingInline: '1.5rem' }}
+        aria-label="Media items"
       >
         {/* Videos */}
         {(activeTab === 'all' || activeTab === 'videos') &&
@@ -196,14 +197,7 @@ export const MediaGallery = ({
               <div
                 key={video.youtubeId}
                 onClick={() => handleOpenVideo(video.youtubeId, video.videoType)}
-                onMouseEnter={(e) =>
-                  e.currentTarget.scrollIntoView({
-                    behavior: 'smooth',
-                    block: 'nearest',
-                    inline: 'nearest',
-                  })
-                }
-                className="group relative aspect-video w-64 sm:w-72 shrink-0 cursor-pointer overflow-hidden rounded-2xl bg-black/40 shadow-sm transition-all duration-200 hover:scale-[1.02] hover:shadow-lg [scroll-snap-align:start]"
+                className="group relative aspect-video w-64 sm:w-72 shrink-0 cursor-pointer overflow-hidden rounded-2xl bg-black/40 shadow-sm transition-all duration-200 hover:scale-[1.02] hover:shadow-lg"
               >
                 <img
                   src={thumbUrl}
@@ -236,14 +230,7 @@ export const MediaGallery = ({
             <div
               key={shot.id || shot.url}
               onClick={() => handleOpenScreenshot(idx)}
-              onMouseEnter={(e) =>
-                e.currentTarget.scrollIntoView({
-                  behavior: 'smooth',
-                  block: 'nearest',
-                  inline: 'nearest',
-                })
-              }
-              className="group relative aspect-video w-64 sm:w-72 shrink-0 cursor-pointer overflow-hidden rounded-2xl bg-black/40 shadow-sm transition-all duration-200 hover:scale-[1.02] hover:shadow-lg [scroll-snap-align:start]"
+              className="group relative aspect-video w-64 sm:w-72 shrink-0 cursor-pointer overflow-hidden rounded-2xl bg-black/40 shadow-sm transition-all duration-200 hover:scale-[1.02] hover:shadow-lg"
             >
               <img
                 src={shot.url}
@@ -264,4 +251,4 @@ export const MediaGallery = ({
       </div>
     </section>
   )
-};
+}

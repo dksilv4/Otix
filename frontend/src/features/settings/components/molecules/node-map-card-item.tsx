@@ -43,11 +43,12 @@ interface NodeMapCardItemProps {
   onEditServer?: (server: UserServerMachine) => void
   onDeleteServer?: (server: UserServerMachine) => void
   onDetectDrives?: (server: UserServerMachine) => void
-  onOpenNodeSettings?: (server: GameServer) => void
+  onEditNode?: (server: GameServer) => void
   onRenameNode?: (server: GameServer) => void
   onPingNode?: (server: GameServer) => void
   onClaimPendingNode?: (pending: PendingNode) => void
   onOpenSambaSettings?: (samba: SambaShareConfig) => void
+  onEditSamba?: (samba: SambaShareConfig) => void
 }
 
 export const NodeMapCardItem = ({
@@ -69,10 +70,12 @@ export const NodeMapCardItem = ({
   onDeleteServer,
   onDetectDrives,
   onOpenNodeSettings,
+  onEditNode,
   onRenameNode,
   onPingNode,
   onClaimPendingNode,
   onOpenSambaSettings,
+  onEditSamba,
 }: NodeMapCardItemProps) => {
   const { type, name, data } = item
 
@@ -87,10 +90,17 @@ export const NodeMapCardItem = ({
 
   const handleDoubleClick = (e: React.MouseEvent) => {
     e.stopPropagation()
-    if (data.type === 'node') onOpenNodeSettings?.(data.server)
-    else if (data.type === 'server') onEditServer?.(data.machine)
-    else if (data.type === 'home') onEditHome?.(data.home)
-    else if (data.type === 'samba') onOpenSambaSettings?.(data.samba)
+    if (data.type === 'node') {
+      if (onEditNode) onEditNode(data.server)
+      else onOpenNodeSettings?.(data.server)
+    } else if (data.type === 'server') {
+      onEditServer?.(data.machine)
+    } else if (data.type === 'home') {
+      onEditHome?.(data.home)
+    } else if (data.type === 'samba') {
+      if (onEditSamba) onEditSamba(data.samba)
+      else onOpenSambaSettings?.(data.samba)
+    }
   }
 
   const handlePointerUp = (e: React.PointerEvent) => {
@@ -267,17 +277,33 @@ export const NodeMapCardItem = ({
                 <span>Open</span>
               </DkButton>
 
-              <DkButton
-                type="button"
-                variant="ghost"
-                size="sm"
-                aria-label={`Rename ${data.server.name}`}
-                onClick={() => onRenameNode?.(data.server)}
-                className="h-6 px-2 text-[11px] font-medium gap-1 text-foreground hover:bg-[var(--dk-surface-hover)] rounded-lg"
-              >
-                <Pencil size={11} />
-                <span>Rename</span>
-              </DkButton>
+              {onEditNode && (
+                <DkButton
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  aria-label={`Edit ${data.server.name}`}
+                  onClick={() => onEditNode(data.server)}
+                  className="h-6 px-2 text-[11px] font-medium gap-1 text-foreground hover:bg-[var(--dk-surface-hover)] rounded-lg"
+                >
+                  <Pencil size={11} />
+                  <span>Edit</span>
+                </DkButton>
+              )}
+
+              {onRenameNode && (
+                <DkButton
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  aria-label={`Rename ${data.server.name}`}
+                  onClick={() => onRenameNode(data.server)}
+                  className="h-6 px-2 text-[11px] font-medium gap-1 text-foreground hover:bg-[var(--dk-surface-hover)] rounded-lg"
+                >
+                  <Pencil size={11} />
+                  <span>Rename</span>
+                </DkButton>
+              )}
 
               {!data.server.isOnline && onPingNode && (
                 <DkButton
@@ -374,11 +400,11 @@ export const NodeMapCardItem = ({
               variant="ghost"
               size="sm"
               aria-label={`Settings for ${data.samba.shareName}`}
-              onClick={() => onOpenSambaSettings?.(data.samba)}
+              onClick={() => (onEditSamba ? onEditSamba(data.samba) : onOpenSambaSettings?.(data.samba))}
               className="h-6 px-2 text-[11px] font-medium gap-1 text-foreground hover:bg-[var(--dk-surface-hover)] rounded-lg"
             >
               <Pencil size={11} />
-              <span>Settings</span>
+              <span>{onEditSamba ? 'Edit' : 'Settings'}</span>
             </DkButton>
           )}
 

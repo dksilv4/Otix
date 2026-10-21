@@ -1,0 +1,13 @@
+{
+  "gameId": "1207664643",
+  "rootGameId": "1207664643",
+  "name": "The Witcher 3: Wild Hunt - Game of the Year Edition",
+  "version": "1.31",
+  "playTasks": [
+    {
+      "path": "bin\\x64\\witcher3.exe",
+      "type": "FileTask",
+      "isPrimary": true
+    }
+  ]
+}

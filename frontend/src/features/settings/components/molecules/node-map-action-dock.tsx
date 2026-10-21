@@ -25,6 +25,7 @@ interface NodeMapActionDockProps {
   onClose: () => void
   onOpenConnectPicker?: (item: NodeMapItem) => void
   onOpenNodeSettings?: (server: GameServer) => void
+  onEditNode?: (server: GameServer) => void
   onRenameNode?: (server: GameServer) => void
   onPingNode?: (server: GameServer) => void
   onEditServer?: (server: UserServerMachine) => void
@@ -33,6 +34,7 @@ interface NodeMapActionDockProps {
   onEditHome?: (home: UserHome) => void
   onDeleteHome?: (home: UserHome) => void
   onOpenSambaSettings?: (samba: SambaShareConfig) => void
+  onEditSamba?: (samba: SambaShareConfig) => void
   onClaimPendingNode?: (pending: PendingNode) => void
 }
 
@@ -41,6 +43,7 @@ export const NodeMapActionDock = ({
   onClose,
   onOpenConnectPicker,
   onOpenNodeSettings,
+  onEditNode,
   onRenameNode,
   onPingNode,
   onEditServer,
@@ -49,6 +52,7 @@ export const NodeMapActionDock = ({
   onEditHome,
   onDeleteHome,
   onOpenSambaSettings,
+  onEditSamba,
   onClaimPendingNode,
 }: NodeMapActionDockProps) => {
   if (!selectedItem) return null
@@ -118,17 +122,33 @@ export const NodeMapActionDock = ({
               <span>Open</span>
             </DkButton>
 
-            <DkButton
-              type="button"
-              variant="ghost"
-              size="sm"
-              aria-label={`Rename ${data.server.name}`}
-              onClick={() => onRenameNode?.(data.server)}
-              className="h-7 px-2 text-xs font-medium gap-1.5 text-foreground hover:bg-[var(--dk-surface-hover)]"
-            >
-              <Pencil size={12} />
-              <span className="hidden sm:inline">Rename</span>
-            </DkButton>
+            {onEditNode && (
+              <DkButton
+                type="button"
+                variant="ghost"
+                size="sm"
+                aria-label={`Edit ${data.server.name}`}
+                onClick={() => onEditNode(data.server)}
+                className="h-7 px-2 text-xs font-medium gap-1.5 text-foreground hover:bg-[var(--dk-surface-hover)]"
+              >
+                <Pencil size={12} />
+                <span>Edit</span>
+              </DkButton>
+            )}
+
+            {onRenameNode && (
+              <DkButton
+                type="button"
+                variant="ghost"
+                size="sm"
+                aria-label={`Rename ${data.server.name}`}
+                onClick={() => onRenameNode(data.server)}
+                className="h-7 px-2 text-xs font-medium gap-1.5 text-foreground hover:bg-[var(--dk-surface-hover)]"
+              >
+                <Pencil size={12} />
+                <span className="hidden sm:inline">Rename</span>
+              </DkButton>
+            )}
 
             {!data.server.isOnline && onPingNode && (
               <DkButton
@@ -225,11 +245,11 @@ export const NodeMapActionDock = ({
             variant="ghost"
             size="sm"
             aria-label={`Configure /${data.samba.shareName}`}
-            onClick={() => onOpenSambaSettings?.(data.samba)}
+            onClick={() => (onEditSamba ? onEditSamba(data.samba) : onOpenSambaSettings?.(data.samba))}
             className="h-7 px-2 text-xs font-medium gap-1.5 text-foreground hover:bg-[var(--dk-surface-hover)]"
           >
             <Pencil size={12} />
-            <span>Configure</span>
+            <span>{onEditSamba ? 'Edit' : 'Configure'}</span>
           </DkButton>
         )}
 

@@ -161,11 +161,13 @@ def get_mood_timeline(user_id: int) -> dict:
 
 
 def get_activity_heatmap(user_id: int, weeks: int) -> dict:
-    """Daily workout/movie/show/music counts for the past N weeks."""
+    """Daily workout/movie/show/music/game/review counts for the past N weeks."""
+    from apps.library.models import UserGameSession
+
     today = dj_timezone.localdate()
     start_date = today - timedelta(days=weeks * 7 - 1)
     date_map: dict[date, dict[str, int]] = defaultdict(
-        lambda: {"workout": 0, "movie": 0, "show": 0, "music": 0}
+        lambda: {"workout": 0, "movie": 0, "show": 0, "music": 0, "game": 0, "review": 0}
     )
 
     for workout in Workout.objects.filter(user_id=user_id, started_at__date__gte=start_date).only(
@@ -184,18 +186,37 @@ def get_activity_heatmap(user_id: int, weeks: int) -> dict:
             key["movie"] += 1
         elif media_type == "show":
             key["show"] += 1
+        elif media_type == "music":
+            key["music"] += 1
+        elif media_type == "game":
+            key["game"] += 1
 
     for episode_interaction in UserEpisodeInteraction.objects.filter(
         user_id=user_id, created_at__date__gte=start_date
     ).only("created_at"):
         date_map[episode_interaction.created_at.date()]["show"] += 1
 
+    for session in UserGameSession.objects.filter(
+        user_id=user_id, start_time__date__gte=start_date
+    ).only("start_time"):
+        date_map[session.start_time.date()]["game"] += 1
+
+    for review in Review.objects.filter(
+        user_id=user_id, created_at__date__gte=start_date
+    ).only("created_at"):
+        date_map[review.created_at.date()]["review"] += 1
+
     dates_list = []
     cursor = start_date
+    total_active_days = 0
     while cursor <= today:
-        dates_list.append({"date": cursor.isoformat(), **date_map[cursor]})
+        counts = date_map[cursor]
+        total_count = sum(counts.values())
+        if total_count > 0:
+            total_active_days += 1
+        dates_list.append({"date": cursor.isoformat(), "total": total_count, **counts})
         cursor += timedelta(days=1)
-    return {"weeks": weeks, "dates": dates_list}
+    return {"weeks": weeks, "dates": dates_list, "total_active_days": total_active_days}
 
 
 def _day_boundaries(day: date) -> tuple[datetime, datetime]:

@@ -8,6 +8,7 @@ used, so serializers can read ``obj.poster_url`` etc. without per-field queries.
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from datetime import date
 
 from django.contrib.auth.models import AbstractBaseUser, AnonymousUser
@@ -367,11 +368,15 @@ def _attach_summary_derived(item: MediaItem) -> None:
 # single-outlet 100s (indie + retro titles that a lone outlet rated perfectly).
 _MIN_GAME_RATING_VOTES = 4
 
+TALK_SHOW_GENRE_SLUGS = {"talk", "talk-show", "talk-shows"}
+TALK_SHOW_GENRE_NAMES = {"Talk", "Talk Show", "Talk Shows", "Talk-Show"}
+
 
 def list_media(
     *,
     media_type: str | None = None,
     genre: str | None = None,
+    exclude_genres: Iterable[str] | None = None,
     company: str | None = None,
     language: str | None = None,
     is_anime: bool | None = None,
@@ -420,6 +425,21 @@ def list_media(
                 else:
                     genre_q |= Q(media_genres__genre__slug=genre_str)
             qs = qs.filter(genre_q)
+    if exclude_genres:
+        exclude_tokens = [
+            part.strip().lower() for part in exclude_genres if part and str(part).strip()
+        ]
+        if exclude_tokens:
+            exclude_names = {token.title() for token in exclude_tokens}
+            if any("talk" in t for t in exclude_tokens):
+                exclude_names.update(TALK_SHOW_GENRE_NAMES)
+            exclude_q = Q(media_genres__genre__slug__in=exclude_tokens) | Q(
+                media_genres__genre__name__in=exclude_names
+            )
+            id_tokens = [int(t) for t in exclude_tokens if t.isdigit()]
+            if id_tokens:
+                exclude_q |= Q(media_genres__genre_id__in=id_tokens)
+            qs = qs.exclude(exclude_q)
     if company:
         qs = qs.filter(involved_companies__company_id=company)
     if platform:
@@ -682,6 +702,11 @@ def _apply_decide_filters(
                     genre_id__in=genre_ids,
                 )
             )
+        )
+    else:
+        qs = qs.exclude(
+            Q(media_genres__genre__slug__in=TALK_SHOW_GENRE_SLUGS)
+            | Q(media_genres__genre__name__in=TALK_SHOW_GENRE_NAMES)
         )
     if runtime and runtime in _RUNTIME_BUCKETS:
         lo, hi = _RUNTIME_BUCKETS[runtime]

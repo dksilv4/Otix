@@ -24,13 +24,16 @@ import {
   useProbeGameServer,
   type ServerProbeResult,
 } from '@/features/downloads/use-server-downloads'
-import { isLocalDesktopNode } from '../../local-desktop-node'
-import { ConnectNodeModal } from '@/features/downloads/molecules/connect-node-modal'
+import { CreateWorkerNodeModal } from './create-worker-node-modal'
+import { EditWorkerNodeModal } from './edit-worker-node-modal'
 import { NodeSettingsModal } from './node-settings-modal'
-import { ServerMachineModal } from './server-machine-modal'
-import { HomeManageModal } from './home-manage-modal'
+import { CreateServerMachineModal } from './create-server-machine-modal'
+import { EditServerMachineModal } from './edit-server-machine-modal'
+import { CreateHomeModal } from './create-home-modal'
+import { EditHomeModal } from './edit-home-modal'
 import type { UserHome, UserServerMachine } from '../../types/server-machines'
 import { getOSLabel } from '../../utils/server-machines'
+import { isLocalDesktopNode } from '../../local-desktop-node'
 import {
   useUserHomes,
   useServerMachines,
@@ -67,12 +70,13 @@ export const NodesManagementModal = ({
   const deleteHomeMutation = useDeleteHome()
 
   const [activeTab, setActiveTab] = useState<'nodes' | 'servers' | 'homes'>(initialTab)
-  const [connectModalOpen, setConnectModalOpen] = useState(false)
+  const [createNodeModalOpen, setCreateNodeModalOpen] = useState(false)
+  const [editingNode, setEditingNode] = useState<GameServer | null>(null)
   const [selectedNodeSettings, setSelectedNodeSettings] = useState<GameServer | null>(null)
+  const [createServerMachineOpen, setCreateServerMachineOpen] = useState(false)
   const [editingServerMachine, setEditingServerMachine] = useState<UserServerMachine | null>(null)
-  const [serverMachineModalOpen, setServerMachineModalOpen] = useState(false)
+  const [createHomeOpen, setCreateHomeOpen] = useState(false)
   const [editingHome, setEditingHome] = useState<UserHome | null>(null)
-  const [homeModalOpen, setHomeModalOpen] = useState(false)
   const [probingServerId, setProbingServerId] = useState<number | null>(null)
   const [probeResults, setProbeResults] = useState<Record<number, ServerProbeResult>>({})
   const [detectingMachineId, setDetectingMachineId] = useState<number | null>(null)
@@ -218,7 +222,7 @@ export const NodesManagementModal = ({
                 <DkButton
                   size="sm"
                   variant="primary"
-                  onClick={() => setConnectModalOpen(true)}
+                  onClick={() => setCreateNodeModalOpen(true)}
                   className="gap-1.5"
                 >
                   <Plus className="h-3.5 w-3.5" />
@@ -229,10 +233,7 @@ export const NodesManagementModal = ({
                 <DkButton
                   size="sm"
                   variant="primary"
-                  onClick={() => {
-                    setEditingServerMachine(null)
-                    setServerMachineModalOpen(true)
-                  }}
+                  onClick={() => setCreateServerMachineOpen(true)}
                   className="gap-1.5"
                 >
                   <Plus className="h-3.5 w-3.5" />
@@ -243,10 +244,7 @@ export const NodesManagementModal = ({
                 <DkButton
                   size="sm"
                   variant="primary"
-                  onClick={() => {
-                    setEditingHome(null)
-                    setHomeModalOpen(true)
-                  }}
+                  onClick={() => setCreateHomeOpen(true)}
                   className="gap-1.5"
                 >
                   <Plus className="h-3.5 w-3.5" />
@@ -321,7 +319,7 @@ export const NodesManagementModal = ({
                   <DkButton
                     size="sm"
                     variant="primary"
-                    onClick={() => setConnectModalOpen(true)}
+                    onClick={() => setCreateNodeModalOpen(true)}
                   >
                     Claim Node
                   </DkButton>
@@ -345,7 +343,7 @@ export const NodesManagementModal = ({
                     size="sm"
                     variant="primary"
                     className="mt-4 gap-1.5"
-                    onClick={() => setConnectModalOpen(true)}
+                    onClick={() => setCreateNodeModalOpen(true)}
                   >
                     <Plus className="h-3.5 w-3.5" />
                     Connect Your First Node
@@ -411,6 +409,15 @@ export const NodesManagementModal = ({
                             >
                               <RefreshCw className={cn('h-3.5 w-3.5', isProbing && 'animate-spin')} />
                               Probe
+                            </DkButton>
+                            <DkButton
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => setEditingNode(node)}
+                              className="gap-1.5"
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                              Edit
                             </DkButton>
                             <DkButton
                               size="sm"
@@ -512,10 +519,7 @@ export const NodesManagementModal = ({
                 <DkButton
                   size="sm"
                   variant="primary"
-                  onClick={() => {
-                    setEditingServerMachine(null)
-                    setServerMachineModalOpen(true)
-                  }}
+                  onClick={() => setCreateServerMachineOpen(true)}
                   className="gap-1.5"
                 >
                   <Plus className="h-3.5 w-3.5" />
@@ -540,10 +544,7 @@ export const NodesManagementModal = ({
                     size="sm"
                     variant="primary"
                     className="mt-4 gap-1.5"
-                    onClick={() => {
-                      setEditingServerMachine(null)
-                      setServerMachineModalOpen(true)
-                    }}
+                    onClick={() => setCreateServerMachineOpen(true)}
                   >
                     <Plus className="h-3.5 w-3.5" />
                     Add Your First Server Machine
@@ -605,10 +606,7 @@ export const NodesManagementModal = ({
                             <DkButton
                               size="sm"
                               variant="secondary"
-                              onClick={() => {
-                                setEditingServerMachine(machine)
-                                setServerMachineModalOpen(true)
-                              }}
+                              onClick={() => setEditingServerMachine(machine)}
                               className="gap-1.5"
                             >
                               <Pencil className="h-3.5 w-3.5" />
@@ -703,10 +701,7 @@ export const NodesManagementModal = ({
                 <DkButton
                   size="sm"
                   variant="primary"
-                  onClick={() => {
-                    setEditingHome(null)
-                    setHomeModalOpen(true)
-                  }}
+                  onClick={() => setCreateHomeOpen(true)}
                   className="gap-1.5"
                 >
                   <Plus className="h-3.5 w-3.5" />
@@ -727,10 +722,7 @@ export const NodesManagementModal = ({
                     size="sm"
                     variant="primary"
                     className="mt-4 gap-1.5"
-                    onClick={() => {
-                      setEditingHome(null)
-                      setHomeModalOpen(true)
-                    }}
+                    onClick={() => setCreateHomeOpen(true)}
                   >
                     <Plus className="h-3.5 w-3.5" />
                     Create Default Home
@@ -771,10 +763,7 @@ export const NodesManagementModal = ({
                             <DkButton
                               size="sm"
                               variant="secondary"
-                              onClick={() => {
-                                setEditingHome(h)
-                                setHomeModalOpen(true)
-                              }}
+                              onClick={() => setEditingHome(h)}
                               className="gap-1.5"
                             >
                               <Pencil className="h-3.5 w-3.5" />
@@ -816,12 +805,18 @@ export const NodesManagementModal = ({
       </DkDialog>
 
       {/* Child Modals */}
-      {connectModalOpen && (
-        <ConnectNodeModal
-          isOpen={connectModalOpen}
-          onClose={() => setConnectModalOpen(false)}
-        />
-      )}
+      <CreateWorkerNodeModal
+        open={createNodeModalOpen}
+        onOpenChange={setCreateNodeModalOpen}
+      />
+
+      <EditWorkerNodeModal
+        open={Boolean(editingNode)}
+        onOpenChange={(open) => {
+          if (!open) setEditingNode(null)
+        }}
+        node={editingNode}
+      />
 
       {selectedNodeSettings && (
         <NodeSettingsModal
@@ -833,24 +828,36 @@ export const NodesManagementModal = ({
         />
       )}
 
-      {serverMachineModalOpen && (
-        <ServerMachineModal
-          open={serverMachineModalOpen}
-          onOpenChange={setServerMachineModalOpen}
-          server={editingServerMachine}
-          homes={homes}
-          nodes={servers}
-          defaultHomeId={defaultHome?.id}
-        />
-      )}
+      <CreateServerMachineModal
+        open={createServerMachineOpen}
+        onOpenChange={setCreateServerMachineOpen}
+        homes={homes}
+        nodes={servers}
+        defaultHomeId={defaultHome?.id}
+      />
 
-      {homeModalOpen && (
-        <HomeManageModal
-          open={homeModalOpen}
-          onOpenChange={setHomeModalOpen}
-          home={editingHome}
-        />
-      )}
+      <EditServerMachineModal
+        open={Boolean(editingServerMachine)}
+        onOpenChange={(open) => {
+          if (!open) setEditingServerMachine(null)
+        }}
+        server={editingServerMachine}
+        homes={homes}
+        nodes={servers}
+      />
+
+      <CreateHomeModal
+        open={createHomeOpen}
+        onOpenChange={setCreateHomeOpen}
+      />
+
+      <EditHomeModal
+        open={Boolean(editingHome)}
+        onOpenChange={(open) => {
+          if (!open) setEditingHome(null)
+        }}
+        home={editingHome}
+      />
     </>
   )
 };

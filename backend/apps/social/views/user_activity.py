@@ -59,6 +59,36 @@ class ActivityHeatmapView(APIView):
         return Response(services.get_activity_heatmap(request.user.id, weeks))
 
 
+class UserActivityHeatmapView(APIView):
+    """``GET /users/{username}/activity-heatmap`` — daily activity counts for a user."""
+
+    permission_classes = (permissions.AllowAny,)
+
+    def get(self, request: Request, username: str) -> Response:
+        user = services.get_user_by_username(username)
+        if user is None:
+            raise NotFound(USER_NOT_FOUND)
+        is_owner = request.user.is_authenticated and request.user.id == user.id
+        sec_vis = getattr(user, "section_visibility", {}) or {}
+        vis = sec_vis.get("activity_heatmap", "public")
+        if not is_owner:
+            if vis == "private":
+                return Response({"weeks": 52, "dates": [], "total_active_days": 0})
+            if vis == "friends":
+                is_friend = False
+                if request.user.is_authenticated:
+                    status = services.get_friendship_status(request.user.id, user.id)
+                    is_friend = status.get("status") == "friends"
+                if not is_friend:
+                    return Response({"weeks": 52, "dates": [], "total_active_days": 0})
+        try:
+            weeks = int(request.query_params.get("weeks", 52))
+        except (TypeError, ValueError):
+            weeks = 52
+        weeks = max(4, min(weeks, 52))
+        return Response(services.get_activity_heatmap(user.id, weeks))
+
+
 class DailyActivityView(APIView):
     """``GET /users/me/daily-activity`` — a day's activity for the current user."""
 

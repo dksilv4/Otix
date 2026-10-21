@@ -30,7 +30,7 @@ interface FreeCheckResult {
   alreadyOwned: number
 }
 
-import { claimUrl } from '../../utils/free-games'
+import { claimUrl, EPIC_FREE_PAGE } from '../../utils/free-games'
 
 const FreeClaimCard = ({ game }: { game: EpicFreeGame }) => {
   const [posterError, setPosterError] = useState(false)

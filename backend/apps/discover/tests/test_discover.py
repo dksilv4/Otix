@@ -603,6 +603,15 @@ class TrendingShowsSeasonTests(TestCase):
         staff_ids = [i["show_id"] for i in response.data["items"]]
         self.assertIn(adult.pk, staff_ids)
 
+    def test_trending_seasons_excludes_talk_shows(self) -> None:
+        normal_show = _make_show("Normal Show", seasons=[(1, _days(-10))])
+        talk_show = _make_show("Nightly Talk Show", seasons=[(1, _days(-5))], genre="talk")
+
+        anon_items = self._feed()
+        show_ids = [item["show_id"] for item in anon_items]
+        self.assertIn(normal_show.pk, show_ids)
+        self.assertNotIn(talk_show.pk, show_ids)
+
     def test_movie_trending_still_returns_media_item_summary(self) -> None:
         _item("Film", popularity=90, release_date=_days(-5))
         _make_show("Runner", seasons=[(1, _days(-10))])
@@ -634,3 +643,45 @@ class TrendingShowsSeasonTests(TestCase):
         self.assertEqual(item["media_type"], "show")
         self.assertLessEqual(SUMMARY_KEYS, set(item.keys()))
         self.assertNotIn("show_id", item)
+
+    def test_hero_excludes_talk_shows(self) -> None:
+        normal = _item("Normal Show", media_type="show", popularity=100)
+        talk = _item("Late Night Talk", media_type="show", popularity=200)
+        talk_genre, _ = Genre.objects.get_or_create(name="Talk", slug="talk")
+        MediaGenre.objects.create(media_item=talk, genre=talk_genre)
+
+        response = self.client.get("/api/v1/discover/hero?limit=10")
+        self.assertEqual(response.status_code, 200)
+        pks = [item["id"] for item in response.data["items"]]
+        self.assertIn(normal.pk, pks)
+        self.assertNotIn(talk.pk, pks)
+
+    def test_show_trending_excludes_talk_shows(self) -> None:
+        normal = _item(
+            "Drama Series",
+            media_type="show",
+            popularity=100,
+            release_date=_days(-10),
+        )
+        talk = _item(
+            "Tonight Talk Show",
+            media_type="show",
+            popularity=200,
+            release_date=_days(-5),
+        )
+        talk_genre, _ = Genre.objects.get_or_create(name="Talk", slug="talk")
+        MediaGenre.objects.create(media_item=talk, genre=talk_genre)
+
+        # Default trending rail excludes talk shows
+        response = self.client.get(_list_url("show", "trending"))
+        self.assertEqual(response.status_code, 200)
+        pks = [item["id"] for item in response.data["items"]]
+        self.assertIn(normal.pk, pks)
+        self.assertNotIn(talk.pk, pks)
+
+        # Explicit genre=talk query still returns talk shows
+        talk_response = self.client.get(_list_url("show", "trending"), {"genre": "talk"})
+        self.assertEqual(talk_response.status_code, 200)
+        talk_pks = [item["id"] for item in talk_response.data["items"]]
+        self.assertIn(talk.pk, talk_pks)
+        self.assertNotIn(normal.pk, talk_pks)

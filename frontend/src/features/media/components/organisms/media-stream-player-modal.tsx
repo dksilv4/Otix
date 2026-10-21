@@ -21,6 +21,7 @@ import {
   Loader2,
   HelpCircle,
   Gauge,
+  Settings2,
   PictureInPicture2,
   Check,
   Keyboard,
@@ -30,6 +31,8 @@ import { useQuickStream } from '../../hooks/use-quick-stream'
 import { OPEN_QUICK_STREAM_EVENT, type QuickStreamEventDetail } from '../../utils/open-quick-stream'
 import { cn } from '@/lib/utils'
 import { safePlay, safePause, formatSeconds } from '../../utils/player'
+import { buildQualityOptions, findQualityOption, getQualityBadgeLabel } from '../../utils/quality'
+import { updatePlexSessionQuality } from '../../utils/plex-stream'
 import { MediaPlayerInAppPipOverlay } from '../molecules/media-player-in-app-pip-overlay'
 
 export const MediaStreamPlayerModal = () => {
@@ -49,6 +52,9 @@ export const MediaStreamPlayerModal = () => {
     isOverallPip,
     activeSubtitle,
     activeAudio,
+    currentQuality,
+    availableQualities,
+    activeLevelHeight,
     playbackMethod,
     error,
     closeStream,
@@ -65,6 +71,10 @@ export const MediaStreamPlayerModal = () => {
     registerVideoElement,
     setActiveSubtitle,
     setActiveAudio,
+    setQuality,
+    setAvailableQualities,
+    setActiveLevelHeight,
+    updateSessionQuality,
     onTimeUpdate,
     onBufferedUpdate,
     onBuffering,
@@ -93,6 +103,7 @@ export const MediaStreamPlayerModal = () => {
   const [showSubtitleMenu, setShowSubtitleMenu] = useState(false)
   const [showAudioMenu, setShowAudioMenu] = useState(false)
   const [showSpeedMenu, setShowSpeedMenu] = useState(false)
+  const [showQualityMenu, setShowQualityMenu] = useState(false)
   const [showShortcutsModal, setShowShortcutsModal] = useState(false)
   const [showRemainingTime, setShowRemainingTime] = useState(false)
 
@@ -138,6 +149,7 @@ export const MediaStreamPlayerModal = () => {
           !showSubtitleMenu &&
           !showAudioMenu &&
           !showSpeedMenu &&
+          !showQualityMenu &&
           !showShortcutsModal &&
           !isDraggingProgress
         ) {
@@ -151,6 +163,7 @@ export const MediaStreamPlayerModal = () => {
     showSubtitleMenu,
     showAudioMenu,
     showSpeedMenu,
+    showQualityMenu,
     showShortcutsModal,
     isDraggingProgress,
   ])
@@ -245,6 +258,107 @@ export const MediaStreamPlayerModal = () => {
     showControls()
   }, [currentTime, duration, seek, showControls])
 
+  const handleQualityChange = useCallback(
+    (targetQualityId: string) => {
+      const targetOption = findQualityOption(availableQualities, targetQualityId)
+      if (!targetOption) return
+
+      setQuality(targetQualityId)
+      setShowQualityMenu(false)
+
+      const video = videoRef.current
+      const resumeTime = video ? video.currentTime : currentTime
+
+      // Case 1: Switching to Original / Direct Play
+      if (targetOption.isOriginal) {
+        if (session?.directUrl) {
+          if (hlsRef.current) {
+            hlsRef.current.destroy()
+            hlsRef.current = null
+          }
+          if (video) {
+            video.src = session.directUrl
+            video.playbackRate = playbackSpeed
+            video.currentTime = resumeTime
+            if (isPlaying) {
+              safePlay(video)
+            }
+          }
+        }
+        return
+      }
+
+      // Case 2: Switching to Auto
+      if (targetOption.isAuto) {
+        if (hlsRef.current) {
+          hlsRef.current.currentLevel = -1
+        } else if (playbackMethod === 'direct-play') {
+          fallbackToHls()
+        }
+        return
+      }
+
+      // Case 3: Switching to an explicit HLS multi-variant level
+      if (targetOption.hlsLevelIndex != null) {
+        if (hlsRef.current) {
+          hlsRef.current.currentLevel = targetOption.hlsLevelIndex
+          const lvl = hlsRef.current.levels[targetOption.hlsLevelIndex]
+          if (lvl?.height) {
+            setActiveLevelHeight(lvl.height)
+          }
+        } else if (playbackMethod === 'direct-play') {
+          fallbackToHls()
+        }
+        return
+      }
+
+      // Case 4: Transcode preset (1080p, 720p, etc.) when Hls has multiple levels in memory
+      if (hlsRef.current && hlsRef.current.levels.length > 1) {
+        const matchIdx = hlsRef.current.levels.findIndex((l) => l.height === targetOption.height)
+        if (matchIdx !== -1) {
+          hlsRef.current.currentLevel = matchIdx
+          setActiveLevelHeight(targetOption.height || null)
+          return
+        }
+      }
+
+      // Case 5: Single-level or server-side transcode preset switch
+      updateSessionQuality(targetOption)
+
+      if (playbackMethod === 'direct-play') {
+        fallbackToHls()
+      } else if (hlsRef.current && session) {
+        const newUrl =
+          session.source === 'plex'
+            ? updatePlexSessionQuality(session, targetOption).hlsUrl
+            : session.hlsUrl
+        hlsRef.current.loadSource(newUrl)
+        if (video) {
+          video.currentTime = resumeTime
+        }
+      } else if (video && session?.source === 'plex') {
+        const newUrl = updatePlexSessionQuality(session, targetOption).hlsUrl
+        video.src = newUrl
+        video.currentTime = resumeTime
+        if (isPlaying) {
+          safePlay(video)
+        }
+      }
+    },
+    [
+      availableQualities,
+      currentTime,
+      fallbackToHls,
+      isPlaying,
+      playbackMethod,
+      playbackSpeed,
+      session,
+      setActiveLevelHeight,
+      setQuality,
+      updateSessionQuality,
+    ],
+  )
+
   const initialSeekDoneRef = useRef(false)
   const targetSeekTime = (session?.startPositionMs || 0) / 1000
 
@@ -291,6 +405,12 @@ export const MediaStreamPlayerModal = () => {
     const useDirect = playbackMethod === 'direct-play' && !!session.directUrl
 
     if (useDirect) {
+      setAvailableQualities(
+        buildQualityOptions({
+          hasDirectPlay: true,
+          source: session.source,
+        }),
+      )
       video.src = session.directUrl!
       video.playbackRate = playbackSpeed
       if (isPlaying) {
@@ -308,7 +428,24 @@ export const MediaStreamPlayerModal = () => {
         hls.loadSource(session.hlsUrl)
         hls.attachMedia(video)
 
-        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+        hls.on(Hls.Events.MANIFEST_PARSED, (_event, data) => {
+          if (data?.levels && data.levels.length > 1) {
+            setAvailableQualities(
+              buildQualityOptions({
+                hlsLevels: data.levels,
+                hasDirectPlay: Boolean(session.directUrl),
+                source: session.source,
+              }),
+            )
+          } else {
+            setAvailableQualities(
+              buildQualityOptions({
+                hasDirectPlay: Boolean(session.directUrl),
+                source: session.source,
+              }),
+            )
+          }
+
           applyInitialSeek()
           video.playbackRate = playbackSpeed
           if (isPlaying) {
@@ -321,6 +458,13 @@ export const MediaStreamPlayerModal = () => {
             } catch (_err) {
               void _err
             }
+          }
+        })
+
+        hls.on(Hls.Events.LEVEL_SWITCHED, (_event, data) => {
+          const lvl = hls.levels[data.level]
+          if (lvl?.height) {
+            setActiveLevelHeight(lvl.height)
           }
         })
 
@@ -448,6 +592,13 @@ export const MediaStreamPlayerModal = () => {
             setActiveSubtitle(session.subtitles[0].id || String(session.subtitles[0].index))
           }
         }
+      } else if (e.key === 'q' || e.key === 'Q') {
+        e.preventDefault()
+        setShowQualityMenu((v) => !v)
+        setShowSpeedMenu(false)
+        setShowAudioMenu(false)
+        setShowSubtitleMenu(false)
+        showControls()
       } else if (e.key === '?') {
         e.preventDefault()
         setShowShortcutsModal((v) => !v)
@@ -592,6 +743,7 @@ export const MediaStreamPlayerModal = () => {
                 setShowSubtitleMenu(false)
                 setShowAudioMenu(false)
                 setShowSpeedMenu(false)
+                setShowQualityMenu(false)
               }}
             />
             <div className="absolute inset-0 max-w-5xl max-h-[75vh] m-auto bg-primary/10 rounded-full blur-[140px] pointer-events-none opacity-60" />
@@ -903,6 +1055,10 @@ export const MediaStreamPlayerModal = () => {
                       <span className="text-foreground">Subtitles</span>
                       <kbd className="px-2 py-0.5 rounded bg-[var(--dk-surface-glass-hover)] font-mono font-bold text-[11px]">C</kbd>
                     </div>
+                    <div className="flex items-center justify-between p-2 rounded-xl bg-[var(--dk-surface-glass)]">
+                      <span className="text-foreground">Quality</span>
+                      <kbd className="px-2 py-0.5 rounded bg-[var(--dk-surface-glass-hover)] font-mono font-bold text-[11px]">Q</kbd>
+                    </div>
                   </div>
                 </div>
               </motion.div>
@@ -955,6 +1111,11 @@ export const MediaStreamPlayerModal = () => {
                         {session.videoCodec}
                       </span>
                     )}
+
+                    {/* Active Quality Badge */}
+                    <span className="text-[10px] uppercase font-semibold text-white/60 px-1.5 py-0.5 rounded bg-white/5">
+                      {getQualityBadgeLabel(currentQuality, availableQualities, activeLevelHeight)}
+                    </span>
                   </div>
 
                   {session.subtitle && (
@@ -1135,7 +1296,7 @@ export const MediaStreamPlayerModal = () => {
                   </button>
                 </div>
 
-                {/* Right Cluster: Speed, Audio, Subtitles, PiP, Theater, Fullscreen */}
+                {/* Right Cluster: Speed, Quality, Audio, Subtitles, PiP, Theater, Fullscreen */}
                 <div className="flex items-center gap-1.5 relative">
                   {/* Playback Speed Popover */}
                   <div className="relative">
@@ -1144,6 +1305,7 @@ export const MediaStreamPlayerModal = () => {
                       onClick={(e) => {
                         e.stopPropagation()
                         setShowSpeedMenu((v) => !v)
+                        setShowQualityMenu(false)
                         setShowAudioMenu(false)
                         setShowSubtitleMenu(false)
                       }}
@@ -1188,6 +1350,60 @@ export const MediaStreamPlayerModal = () => {
                     )}
                   </div>
 
+                  {/* Quality Selector Popover */}
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setShowQualityMenu((v) => !v)
+                        setShowSpeedMenu(false)
+                        setShowAudioMenu(false)
+                        setShowSubtitleMenu(false)
+                      }}
+                      className={cn(
+                        'h-8 px-2.5 rounded-xl border text-xs font-semibold transition-all flex items-center gap-1.5',
+                        currentQuality !== 'auto'
+                          ? 'bg-brand-primary/20 text-brand-primary border-brand-primary/40'
+                          : 'text-white/70 border-transparent hover:bg-white/10 hover:text-white'
+                      )}
+                      title="Video Quality (Q)"
+                    >
+                      <Settings2 className="h-3.5 w-3.5" />
+                      <span>{getQualityBadgeLabel(currentQuality, availableQualities, activeLevelHeight)}</span>
+                    </button>
+
+                    {showQualityMenu && (
+                      <div
+                        className="absolute bottom-full right-0 mb-2.5 w-48 rounded-2xl border border-white/15 bg-black/90 backdrop-blur-2xl p-1.5 shadow-2xl z-50 text-left animate-in fade-in zoom-in-95 duration-150"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <div className="px-2.5 py-1 text-[10px] uppercase font-bold text-white/40">Quality</div>
+                        {availableQualities.map((qual) => (
+                          <button
+                            key={qual.id}
+                            type="button"
+                            onClick={() => handleQualityChange(qual.id)}
+                            className={cn(
+                              'w-full text-left px-2.5 py-1.5 rounded-xl text-xs transition-colors flex items-center justify-between',
+                              currentQuality === qual.id
+                                ? 'bg-brand-primary/20 text-brand-primary font-bold'
+                                : 'text-white/80 hover:bg-white/10'
+                            )}
+                          >
+                            <div className="truncate min-w-0 pr-2">
+                              <div className="truncate font-medium">{qual.label}</div>
+                              {qual.description && (
+                                <div className="text-[10px] text-white/50">{qual.description}</div>
+                              )}
+                            </div>
+                            {currentQuality === qual.id && <Check className="h-3.5 w-3.5 shrink-0" />}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
                   {/* Audio Track Selector */}
                   {session.audioTracks.length > 0 && (
                     <div className="relative">
@@ -1196,6 +1412,7 @@ export const MediaStreamPlayerModal = () => {
                         onClick={(e) => {
                           e.stopPropagation()
                           setShowAudioMenu((v) => !v)
+                          setShowQualityMenu(false)
                           setShowSubtitleMenu(false)
                           setShowSpeedMenu(false)
                         }}
@@ -1258,6 +1475,7 @@ export const MediaStreamPlayerModal = () => {
                       onClick={(e) => {
                         e.stopPropagation()
                         setShowSubtitleMenu((v) => !v)
+                        setShowQualityMenu(false)
                         setShowAudioMenu(false)
                         setShowSpeedMenu(false)
                       }}

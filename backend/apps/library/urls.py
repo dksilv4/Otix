@@ -102,6 +102,7 @@ from apps.library.views import (
     UserServerMachineListCreateView,
     YoutubeLibraryView,
 )
+from apps.library.views.user_hardware import UserHardwareView
 
 register_converter(SignedIntConverter, "sint")
 
@@ -136,6 +137,11 @@ urlpatterns = [
         name="library-node-connections-sync",
     ),
     path("game-sessions", UserGameSessionsView.as_view(), name="library-user-game-sessions"),
+    path(
+        "users/<str:username>/hardware",
+        UserHardwareView.as_view(),
+        name="library-user-hardware",
+    ),
     path(
         "game-sessions/<int:session_id>",
         UserGameSessionDetailView.as_view(),

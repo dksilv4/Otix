@@ -400,6 +400,21 @@ export const saveStoredSambaShares = (shares: SambaShareConfig[]): void => {
   }
 }
 
+export const createDefaultSambaConfig = (serverId?: number | null, serverHost?: string): SambaShareConfig => ({
+  id: `samba-custom-${Date.now()}`,
+  serverId: serverId ?? null,
+  serverName: null,
+  shareName: 'games',
+  host: serverHost || '',
+  port: 445,
+  username: '',
+  password: '',
+  workgroup: 'WORKGROUP',
+  mountPath: '',
+  isOnline: true,
+  nodeIds: [],
+})
+
 export type CardBorderSide = 'top' | 'bottom' | 'left' | 'right'
 
 export interface BorderAnchorResult {

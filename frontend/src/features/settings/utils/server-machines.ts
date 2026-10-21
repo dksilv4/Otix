@@ -49,6 +49,18 @@ export const calculateTotalCapacity = (drives: ServerDriveConfig[]): { totalByte
   return { totalBytes, freeBytes, usedBytes }
 }
 
+export const createDefaultDriveConfig = (index: number): ServerDriveConfig => ({
+  id: `drive-${index}`,
+  drive: `/mnt/disk${index}`,
+  label: `Disk ${index}`,
+  fileSystem: 'xfs',
+  totalBytes: 1024 * 1024 * 1024 * 1000,
+  freeBytes: 1024 * 1024 * 1024 * 500,
+  usedBytes: 1024 * 1024 * 1024 * 500,
+  type: 'hdd',
+  mountPoint: '',
+})
+
 export const createDefaultServerInput = (defaultHomeId?: number | null): ServerMachineInput => ({
   name: '',
   homeId: defaultHomeId ?? null,
