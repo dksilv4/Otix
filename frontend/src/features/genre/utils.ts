@@ -1,4 +1,4 @@
-import { languageName } from '@media'
+import { languageName } from '@media/utils'
 import type { DkDropdownOption } from '@ui/atoms/dropdown'
 import type { GenreMediaType } from './types'
 

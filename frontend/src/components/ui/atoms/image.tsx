@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { cn } from '@/lib/utils'
+import { sanitizeImageUrl } from '@/lib/utils/image-url'
 import { DkSkeleton } from './skeleton'
 
 interface DkImageProps extends React.ImgHTMLAttributes<HTMLImageElement> {
@@ -21,20 +22,22 @@ const DkImage = ({
   priority = false,
   ...props
 }: DkImageProps) => {
-  if (!src) {
+  const cleanSrc = sanitizeImageUrl(src)
+
+  if (!cleanSrc) {
     return (
       <div className={cn('flex items-center justify-center bg-muted text-xs text-muted-foreground', className)}>
         {fallback ?? alt?.[0]?.toUpperCase() ?? '?'}
       </div>
     )
   }
-  // key=src remounts the loader per URL: while a new image loads, the previous
+  // key=cleanSrc remounts the loader per URL: while a new image loads, the previous
   // frame is never shown — a placeholder renders first, then the new one fades in.
   return (
     <div className={cn('relative overflow-hidden', className)}>
       <DkImageInner
-        key={src}
-        src={src}
+        key={cleanSrc}
+        src={cleanSrc}
         alt={alt}
         fallback={fallback}
         imgClassName={imgClassName}

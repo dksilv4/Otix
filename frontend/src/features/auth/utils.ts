@@ -1,3 +1,5 @@
+import { sanitizeImageUrl } from '@/lib/utils/image-url'
+
 export function calculatePasswordStrength(password: string): number {
   let score = 0
   if (password.length >= 8) score += 25
@@ -75,13 +77,50 @@ export function validateRegisterFields(fields: {
   return errors
 }
 
+export function validateRegistrationStep(step: number, data: Record<string, string>): Record<string, string> {
+  const errors: Record<string, string> = {}
+  if (step === 1) {
+    if (!data.username?.trim()) errors.username = 'Username is required'
+    else if (data.username.length < 3) errors.username = 'Username must be at least 3 characters'
+    else if (!/^[a-zA-Z0-9_-]+$/.test(data.username)) errors.username = 'Only letters, numbers, hyphens, and underscores'
+  } else if (step === 2) {
+    if (!data.email?.trim()) errors.email = 'Email is required'
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)) errors.email = 'Please enter a valid email address'
+  } else if (step === 3) {
+    if (!data.password) errors.password = 'Password is required'
+    else if (data.password.length < 8) errors.password = 'Password must be at least 8 characters'
+    else if (calculatePasswordStrength(data.password) < 40) errors.password = 'Please choose a stronger password'
+    if (data.confirmPassword !== data.password) errors.confirmPassword = 'Passwords do not match'
+  } else if (step === 4) {
+    if (!data.dateOfBirth) errors.dateOfBirth = 'Date of birth is required'
+    else {
+      const dob = new Date(data.dateOfBirth)
+      if (isNaN(dob.getTime())) errors.dateOfBirth = 'Please enter a valid date'
+      else {
+        const today = new Date()
+        let age = today.getFullYear() - dob.getFullYear()
+        const m = today.getMonth() - dob.getMonth()
+        if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) age--
+        if (age < 13) errors.dateOfBirth = 'You must be at least 13 years old'
+        else if (age > 120) errors.dateOfBirth = 'Please enter a valid date'
+      }
+    }
+  }
+  return errors
+}
+
 export const CACHED_USER_KEY = 'otix_cached_user'
 
 export const getCachedUser = (): import('@auth/types').User | null => {
   try {
     const raw = localStorage.getItem(CACHED_USER_KEY)
     if (!raw) return null
-    return JSON.parse(raw) as import('@auth/types').User
+    const parsed = JSON.parse(raw) as import('@auth/types').User
+    if (parsed) {
+      if (parsed.avatarUrl) parsed.avatarUrl = sanitizeImageUrl(parsed.avatarUrl) || null
+      if (parsed.backgroundUrl) parsed.backgroundUrl = sanitizeImageUrl(parsed.backgroundUrl) || null
+    }
+    return parsed
   } catch {
     return null
   }
@@ -90,7 +129,10 @@ export const getCachedUser = (): import('@auth/types').User | null => {
 export const setCachedUser = (user: import('@auth/types').User | null): void => {
   try {
     if (user) {
-      localStorage.setItem(CACHED_USER_KEY, JSON.stringify(user))
+      const sanitized = { ...user }
+      if (sanitized.avatarUrl) sanitized.avatarUrl = sanitizeImageUrl(sanitized.avatarUrl) || null
+      if (sanitized.backgroundUrl) sanitized.backgroundUrl = sanitizeImageUrl(sanitized.backgroundUrl) || null
+      localStorage.setItem(CACHED_USER_KEY, JSON.stringify(sanitized))
     } else {
       localStorage.removeItem(CACHED_USER_KEY)
     }
@@ -121,4 +163,3 @@ export const fetchAuthenticatedUser = async (): Promise<import('@auth/types').Us
     return null
   }
 }
-

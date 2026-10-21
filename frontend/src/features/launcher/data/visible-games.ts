@@ -1,4 +1,4 @@
-import { isTitleMatch } from '@media'
+import { isTitleMatch } from '@media/utils'
 import { isApplicationGame } from '@/features/launcher/utils'
 import {
   classifyReleaseKind,

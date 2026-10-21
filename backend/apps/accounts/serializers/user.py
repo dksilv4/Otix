@@ -9,6 +9,7 @@ from rest_framework import serializers
 
 from apps.accounts.models import User
 from apps.accounts.models.user import MAX_AVATAR_URL_LENGTH, MAX_BACKGROUND_URL_LENGTH
+from core.image_url import clean_image_url
 
 
 class UserIdentitySerializer(serializers.ModelSerializer):
@@ -65,6 +66,14 @@ class UserSelfSerializer(serializers.ModelSerializer):
     def get_is_admin(self, obj: User) -> bool:
         return bool(obj.is_staff)
 
+    def to_representation(self, instance: User) -> dict:
+        data = super().to_representation(instance)
+        if data.get("avatar_url"):
+            data["avatar_url"] = clean_image_url(data["avatar_url"])
+        if data.get("background_url"):
+            data["background_url"] = clean_image_url(data["background_url"])
+        return data
+
 
 class UserUpdateSerializer(serializers.ModelSerializer):
     """Partial self-update of the authenticated user (``PATCH /auth/me``).
@@ -118,6 +127,14 @@ class UserUpdateSerializer(serializers.ModelSerializer):
             "discover_emphases",
         )
 
+    def to_representation(self, instance: User) -> dict:
+        data = super().to_representation(instance)
+        if data.get("avatar_url"):
+            data["avatar_url"] = clean_image_url(data["avatar_url"])
+        if data.get("background_url"):
+            data["background_url"] = clean_image_url(data["background_url"])
+        return data
+
     def validate_avatar_url(self, value: str | None) -> str | None:
         return self._validate_safe_profile_url(value, "avatar_url")
 
@@ -127,7 +144,9 @@ class UserUpdateSerializer(serializers.ModelSerializer):
     def _validate_safe_profile_url(self, value: str | None, field_name: str) -> str | None:
         if not value or not value.strip():
             return None
-        val = value.strip()
+        val = clean_image_url(value.strip())
+        if not val:
+            return None
         if val.startswith("/uploads/") or val.startswith("/api/v1/uploads/"):
             return val
         lower = val.lower()

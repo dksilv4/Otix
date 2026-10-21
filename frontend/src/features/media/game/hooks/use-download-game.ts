@@ -34,7 +34,8 @@ import { useLocalGames } from '@/features/launcher/data/game-queries'
 import { setLocalGamesMapEntry, getLocalGamesMap } from '@/features/launcher/data/storage'
 import { useInstallProgress } from '@/features/launcher/data/install-store'
 import type { InstallStoreEntry } from '@/features/launcher/types'
-import { isTitleMatch, mediaQueries } from '@media'
+import { isTitleMatch } from '@media/utils'
+import { mediaQueries } from '@media/queries/media-queries'
 import { formatBytes } from '@/lib/utils'
 
 type LocalGame = import('@/features/launcher/types').LocalGame

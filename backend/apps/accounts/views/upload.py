@@ -241,9 +241,14 @@ class UploadFileView(APIView):
             logger.exception("failed to write upload: %s", filename)
             raise
 
-        proto = request.META.get("HTTP_X_FORWARDED_PROTO") or request.scheme
-        if "," in proto:
-            proto = proto.split(",")[0].strip()
+        forwarded_proto = request.META.get("HTTP_X_FORWARDED_PROTO", "")
+        if "https" in forwarded_proto.lower():
+            proto = "https"
+        elif forwarded_proto:
+            proto = forwarded_proto.split(",")[0].strip()
+        else:
+            proto = request.scheme
+
         host = request.META.get("HTTP_X_FORWARDED_HOST") or request.get_host()
         if host in ("api", "api:8000") or host.startswith("api:") or host.startswith("otix-api"):
             frontend_url = getattr(settings, "FRONTEND_BASE_URL", "") or getattr(
@@ -257,9 +262,19 @@ class UploadFileView(APIView):
         elif proto == "https" and host.endswith(":80"):
             host = host[:-3]
 
-        if proto == "http" and not (
-            host.startswith("localhost") or host.startswith("127.0.0.1") or host == "testserver"
-        ):
+        # In production on any public domain (e.g. otix.app), force https scheme
+        # to guarantee no mixed content even if an outer proxy stripped X-Forwarded-Proto.
+        is_local_host = (
+            host.startswith("localhost")
+            or host.startswith("127.0.0.1")
+            or host == "testserver"
+            or host.startswith("192.168.")
+            or host.startswith("10.")
+            or bool(re.match(r"^172\.(1[6-9]|2[0-9]|3[0-1])\.", host))
+        )
+        if proto == "http" and not is_local_host:
+            proto = "https"
+        elif proto == "http":
             frontend_url = getattr(settings, "FRONTEND_BASE_URL", "") or getattr(
                 settings, "FRONTEND_URL", ""
             )
@@ -268,14 +283,17 @@ class UploadFileView(APIView):
                 frontend_url.startswith("https://")
                 or request.is_secure()
                 or request.META.get("HTTP_X_FORWARDED_SSL") == "on"
+                or request.META.get("HTTP_X_FORWARDED_SCHEME") == "https"
+                or request.META.get("HTTP_X_SCHEME") == "https"
                 or (cf_visitor and '"https"' in cf_visitor)
                 or request.META.get("SERVER_PORT") == "443"
             ):
                 proto = "https"
 
         url = f"{proto}://{host}/uploads/{filename}"
+        relative_url = f"/uploads/{filename}"
         logger.info("file uploaded safely and renamed to %s", filename)
-        return Response({"url": url}, status=status.HTTP_201_CREATED)
+        return Response({"url": url, "relative_url": relative_url}, status=status.HTTP_201_CREATED)
 
 
 class UploadedFileView(APIView):

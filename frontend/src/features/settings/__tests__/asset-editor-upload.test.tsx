@@ -148,18 +148,18 @@ describe('AssetEditor image upload component', () => {
 
 describe('normalizeUploadedUrl', () => {
   it('rewrites internal container hosts to window origin', async () => {
-    const { normalizeUploadedUrl } = await import('../pages/settings-profile-page')
+    const { normalizeUploadedUrl } = await import('../utils/profile')
     expect(normalizeUploadedUrl('http://api:8000/uploads/test.png')).toBe('http://localhost:3000/uploads/test.png')
     expect(normalizeUploadedUrl('http://otix-api:8000/uploads/test.png')).toBe('http://localhost:3000/uploads/test.png')
   })
 
   it('prepends origin for relative uploads path', async () => {
-    const { normalizeUploadedUrl } = await import('../pages/settings-profile-page')
+    const { normalizeUploadedUrl } = await import('../utils/profile')
     expect(normalizeUploadedUrl('/uploads/test.png')).toBe('http://localhost:3000/uploads/test.png')
   })
 
   it('preserves external image URLs intact', async () => {
-    const { normalizeUploadedUrl } = await import('../pages/settings-profile-page')
+    const { normalizeUploadedUrl } = await import('../utils/profile')
     expect(normalizeUploadedUrl('https://example.com/avatar.png')).toBe('https://example.com/avatar.png')
   })
 })

@@ -2,7 +2,7 @@ import { memo } from 'react'
 import { Link } from '@tanstack/react-router'
 import { Image } from '@ui/atoms/image'
 import { cn } from '@/lib/utils'
-import { formatDate } from '@media'
+import { formatDate } from '@media/utils'
 import type { SeasonSummary } from '@media/queries/media-queries'
 
 interface DiscoverSeasonCardProps {

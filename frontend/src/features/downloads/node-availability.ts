@@ -1,4 +1,4 @@
-import { isTitleMatch } from '@media'
+import { isTitleMatch } from '@media/utils'
 import { classifyReleaseKind, releaseMatchesSearchHint } from './release-parse'
 import type { ServerGameFile } from './types'
 import type { ServerDownloadHistoryItem } from './usenet-types'

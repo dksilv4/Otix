@@ -102,6 +102,8 @@ class MeProfilePreferencesTests(TestCase):
                 "profile_card_sections",
                 "integration_visibility",
                 "notification_preferences",
+                "save_game_sessions",
+                "game_sessions_private",
             },
         )
         self.assertEqual(response.data["preferred_media_types"], ["movie", "show", "game"])

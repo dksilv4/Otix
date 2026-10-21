@@ -8,7 +8,6 @@ used, so serializers can read ``obj.poster_url`` etc. without per-field queries.
 
 from __future__ import annotations
 
-import re
 from datetime import date
 
 from django.contrib.auth.models import AbstractBaseUser, AnonymousUser
@@ -209,13 +208,9 @@ def _asset_outranks(
 
 def _clean_asset_url(url: str | None) -> str | None:
     """Normalize local upload URLs to root-relative /uploads/<filename> to avoid Mixed Content."""
-    if not url:
-        return url
-    if "/uploads/" in url:
-        match = re.search(r"/(?:api/v1/)?uploads/([0-9a-f]{32}\.[a-z0-9]+)$", url, re.IGNORECASE)
-        if match:
-            return f"/uploads/{match.group(1)}"
-    return url
+    from core.image_url import clean_image_url
+
+    return clean_image_url(url)
 
 
 def _local_asset_url(asset: MediaAsset | None) -> str | None:

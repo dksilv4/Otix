@@ -1,7 +1,7 @@
 import { useParams, useNavigate } from '@tanstack/react-router'
 import { FolderOpen, Server, Pause, Play, X } from 'lucide-react'
 import { formatBytes } from '@/lib/utils'
-import { isTitleMatch } from '@media'
+import { isTitleMatch } from '@media/utils'
 import { useLocalGame } from '@/features/launcher/data/game-queries'
 import { useInstallProgress } from '@/features/launcher/data/install-store'
 import { useServerGames, useRemoteDownloads } from '@/features/downloads/use-server-downloads'

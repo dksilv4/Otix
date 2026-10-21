@@ -9,6 +9,7 @@ whose keys this serializer re-declares so the API surface stays explicit.
 from rest_framework import serializers
 
 from apps.social.serializers.friend import FriendshipStatusSerializer
+from core.image_url import clean_image_url
 
 
 class UserSearchResultSerializer(serializers.Serializer):
@@ -22,6 +23,12 @@ class UserSearchResultSerializer(serializers.Serializer):
     level_title = serializers.CharField(read_only=True)
     is_admin = serializers.BooleanField(read_only=True)
     media_type = serializers.CharField(read_only=True)
+
+    def to_representation(self, instance: dict) -> dict:
+        data = super().to_representation(instance)
+        if data.get("avatar_url"):
+            data["avatar_url"] = clean_image_url(data["avatar_url"])
+        return data
 
 
 class UserProfileSerializer(serializers.Serializer):
@@ -63,6 +70,14 @@ class UserProfileSerializer(serializers.Serializer):
     current_review_streak = serializers.IntegerField(read_only=True)
     longest_review_streak = serializers.IntegerField(read_only=True)
 
+    def to_representation(self, instance: dict) -> dict:
+        data = super().to_representation(instance)
+        if data.get("avatar_url"):
+            data["avatar_url"] = clean_image_url(data["avatar_url"])
+        if data.get("background_url"):
+            data["background_url"] = clean_image_url(data["background_url"])
+        return data
+
 
 class ContinueItemSerializer(serializers.Serializer):
     """Continue-watching item (legacy ``ContinueItem``)."""
@@ -78,4 +93,14 @@ class ContinueItemSerializer(serializers.Serializer):
     popularity = serializers.FloatField(read_only=True)
     interaction_type = serializers.CharField(read_only=True)
     interacted_at = serializers.DateTimeField(read_only=True)
+
+    def to_representation(self, instance: dict) -> dict:
+        data = super().to_representation(instance)
+        if data.get("poster_url"):
+            data["poster_url"] = clean_image_url(data["poster_url"])
+        if data.get("backdrop_url"):
+            data["backdrop_url"] = clean_image_url(data["backdrop_url"])
+        if data.get("logo_url"):
+            data["logo_url"] = clean_image_url(data["logo_url"])
+        return data
     episode_context = serializers.CharField(read_only=True, allow_null=True)

@@ -144,7 +144,7 @@ export const EpicFreeGamesSection = () => {
             key={entry.game.id}
             entry={entry}
             isClaimable={isClaimable}
-            onViewDetails={(mediaId) => navigate({ to: '/media/game/$mediaId', params: { mediaId } })}
+            onViewDetails={(mediaId) => navigate({ to: '/media/$mediaType/$mediaId', params: { mediaType: 'game', mediaId } })}
           />
         ))}
       </Carousel>

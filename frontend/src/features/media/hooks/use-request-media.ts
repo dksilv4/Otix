@@ -16,7 +16,7 @@ import {
 } from '@/features/downloads/use-server-arr'
 import { readyArrInstances } from '@/features/downloads/arr-instances'
 import type { ServerArrQueueItem } from '@/features/downloads/arr-types'
-import { mediaQueries } from '@media'
+import { mediaQueries } from '@media/queries/media-queries'
 import { useMediaParams } from './use-media-params'
 import type { RequestInstance, RequestWidget } from '../components/organisms/plugin-detail-actions'
 import {

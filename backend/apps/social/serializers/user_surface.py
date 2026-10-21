@@ -8,6 +8,8 @@ plain dicts by the views and are intentionally not modelled here.
 
 from rest_framework import serializers
 
+from core.image_url import clean_image_url
+
 
 class FollowUserSerializer(serializers.Serializer):
     """A follower/following row (legacy ``FollowUserOut``).
@@ -23,6 +25,12 @@ class FollowUserSerializer(serializers.Serializer):
 
     def get_is_private(self, _obj) -> bool:
         return False
+
+    def to_representation(self, instance: dict) -> dict:
+        data = super().to_representation(instance)
+        if data.get("avatar_url"):
+            data["avatar_url"] = clean_image_url(data["avatar_url"])
+        return data
 
 
 class FollowCountsSerializer(serializers.Serializer):
@@ -46,6 +54,12 @@ class FollowRequestRequesterSerializer(serializers.Serializer):
     id = serializers.IntegerField(read_only=True)
     username = serializers.CharField(read_only=True)
     avatar_url = serializers.CharField(read_only=True, allow_null=True)
+
+    def to_representation(self, instance: dict) -> dict:
+        data = super().to_representation(instance)
+        if data.get("avatar_url"):
+            data["avatar_url"] = clean_image_url(data["avatar_url"])
+        return data
 
 
 class FollowRequestOutSerializer(serializers.Serializer):

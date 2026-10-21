@@ -24,6 +24,11 @@ import { DkTab, DkTabList, DkTabPanel, DkTabs } from './molecules/tabs'
 import { DkToastProvider, useToast } from './molecules/toast'
 
 describe('dk-ui atoms', () => {
+  it('normalizes insecure absolute upload URLs to root-relative path to avoid mixed content', () => {
+    render(<DkAvatar src="http://otix.app/uploads/c58230d426e24fc3947df07347c19d4c.webp" name="Insecure User" />)
+    expect(screen.getByAltText('Insecure User')).toHaveAttribute('src', '/uploads/c58230d426e24fc3947df07347c19d4c.webp')
+  })
+
   it('renders avatar initials and falls back when image loading fails', () => {
     render(<DkAvatar src="/missing.jpg" name="Ada Lovelace" />)
     fireEvent.error(screen.getByAltText('Ada Lovelace'))

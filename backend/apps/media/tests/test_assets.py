@@ -104,7 +104,7 @@ class AssetTestCase(TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         super().setUpClass()
-        cls._media_tmp = tempfile.TemporaryDirectory()
+        cls._media_tmp = tempfile.TemporaryDirectory(ignore_cleanup_errors=True)
         cls._media_override = override_settings(MEDIA_DIR=cls._media_tmp.name)
         cls._media_override.enable()
 
@@ -118,9 +118,12 @@ class AssetTestCase(TestCase):
         media_root = Path(self._media_tmp.name)
         for child in media_root.iterdir():
             if child.is_dir():
-                shutil.rmtree(child)
+                shutil.rmtree(child, ignore_errors=True)
             else:
-                child.unlink()
+                try:
+                    child.unlink()
+                except OSError:
+                    pass
 
         self.user = User.objects.create_user(username="alice", password="a-strong-pass")
         self.token = Token.objects.create(user=self.user)

@@ -1,6 +1,7 @@
 import { forwardRef, useState } from 'react'
 import { cn } from '@/lib/utils'
 import { getInitials } from '@/lib/utils/avatar'
+import { sanitizeImageUrl } from '@/lib/utils/image-url'
 
 interface DkAvatarProps {
   src?: string | null
@@ -20,12 +21,13 @@ const sizeClasses: Record<string, string> = {
 const DkAvatar = forwardRef<HTMLDivElement, DkAvatarProps>(
   ({ src, name, size = 'md', className, icon }, ref) => {
     const [imgError, setImgError] = useState(false)
+    const cleanSrc = sanitizeImageUrl(src)
 
-    if (src && !imgError) {
+    if (cleanSrc && !imgError) {
       return (
         <div ref={ref} className={cn('relative shrink-0', sizeClasses[size], className)}>
           <img
-            src={src}
+            src={cleanSrc}
             alt={name}
             onError={() => setImgError(true)}
             className="h-full w-full rounded-full object-cover shadow-sm"

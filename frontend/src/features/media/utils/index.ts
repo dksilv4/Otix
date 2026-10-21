@@ -1,4 +1,5 @@
 import type { MediaItemDetail, SeasonOut } from '../queries/media-queries'
+import { sanitizeImageUrl } from '@/lib/utils/image-url'
 
 // ── Type guards ──
 
@@ -79,18 +80,7 @@ export function backdropSrc(url: string): string {
   if (!url) return ''
   let clean = url
   if (clean.includes('/w500/')) clean = clean.replace(/\/w500\//, '/original/')
-  if (typeof window !== 'undefined' && window.location.protocol === 'https:' && clean.startsWith('http://')) {
-    try {
-      const parsed = new URL(clean)
-      if (parsed.host === window.location.host || clean.includes('/uploads/')) {
-        parsed.protocol = 'https:'
-        return parsed.toString()
-      }
-    } catch {
-      // ignore invalid URLs
-    }
-  }
-  return clean
+  return sanitizeImageUrl(clean)
 }
 
 export function languageName(code: string): string {

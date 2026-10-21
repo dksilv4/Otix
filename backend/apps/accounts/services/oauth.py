@@ -37,6 +37,7 @@ from django.conf import settings
 from django.utils import timezone
 
 from apps.accounts.models import OAUTH_STATE_TTL_SECONDS, OAuthState, User
+from core.image_url import clean_image_url
 
 logger = logging.getLogger(__name__)
 
@@ -345,7 +346,7 @@ def link_google_to_user(request_user, code: str, state: str) -> str | None:
     user.google_id = profile["sub"]
     user.google_email = profile.get("email")
     user.google_name = profile.get("name")
-    user.google_avatar_url = profile.get("picture")
+    user.google_avatar_url = clean_image_url(profile.get("picture"))
     user.google_access_token = tokens.get("access_token")
     user.google_refresh_token = tokens.get("refresh_token")
     user.google_token_expires_at = _expiry_from(tokens)
@@ -434,7 +435,7 @@ def authenticate_google_login(code: str, state: str) -> User:
         google_id,
         email=profile.get("email", ""),
         name=profile.get("name", ""),
-        avatar_url=profile.get("picture"),
+        avatar_url=clean_image_url(profile.get("picture")),
         access_token=tokens.get("access_token"),
         refresh_token=tokens.get("refresh_token"),
         expires_in=tokens.get("expires_in", 3600),
@@ -783,11 +784,11 @@ def find_or_create_plex_user(
         email=(email or f"plex_{plex_id}@user.otix") or None,
         password=secrets.token_urlsafe(32),
         is_verified=True,
-        avatar_url=thumb,
+        avatar_url=clean_image_url(thumb),
         plex_id=plex_id,
         plex_username=username,
         plex_email=email,
-        plex_thumb=thumb,
+        plex_thumb=clean_image_url(thumb),
         plex_auth_token=auth_token,
     )
     return user
@@ -1031,7 +1032,7 @@ def find_or_create_steam_user(steam_id: str) -> User:
     avatar_url = None
     if profile is not None:
         persona_name = profile.get("personaname", f"steam_user_{steam_id}")
-        avatar_url = profile.get("avatarfull")
+        avatar_url = clean_image_url(profile.get("avatarfull"))
     base = re.sub(r"[^a-zA-Z0-9_-]", "", persona_name)[:64]
     if not base:
         base = f"steam_{steam_id[:8]}"
@@ -1454,7 +1455,7 @@ def user_integrations_payload(user: User) -> dict:
         "google_id": user.google_id,
         "google_email": user.google_email,
         "google_name": user.google_name,
-        "google_avatar_url": user.google_avatar_url,
+        "google_avatar_url": clean_image_url(user.google_avatar_url),
         "drive_connected": user.drive_refresh_token is not None,
         "plex_watch_history_enabled": user.plex_watch_history_enabled,
     }
@@ -1528,7 +1529,7 @@ def oauth_providers_payload(user: User) -> list[dict]:
                 "connected": user.google_id is not None,
                 "google_email": user.google_email,
                 "google_name": user.google_name,
-                "google_avatar_url": user.google_avatar_url,
+                "google_avatar_url": clean_image_url(user.google_avatar_url),
             }
         ),
         row(
