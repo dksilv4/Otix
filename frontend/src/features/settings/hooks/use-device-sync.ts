@@ -1,13 +1,17 @@
 import { useEffect, useRef } from 'react'
-import { useAuth } from '@/lib/providers/auth'
+import { useOptionalAuth } from '@auth/hooks/use-auth'
+import type { User } from '@auth/types'
 import {
   registerDeviceSession,
   fetchDevicePendingUpdates,
   acknowledgeDeviceUpdates,
 } from '../utils/device-registration'
 
-export const useDeviceSync = () => {
-  const { isAuthenticated, user } = useAuth()
+export const useDeviceSync = (userOverride?: User | null, isAuthenticatedOverride?: boolean) => {
+  const optionalAuth = useOptionalAuth()
+  const user = userOverride !== undefined ? userOverride : (optionalAuth?.user ?? null)
+  const isAuthenticated =
+    isAuthenticatedOverride !== undefined ? isAuthenticatedOverride : (optionalAuth?.isAuthenticated ?? !!user)
   const registeredNodeIdRef = useRef<number | null>(null)
 
   useEffect(() => {

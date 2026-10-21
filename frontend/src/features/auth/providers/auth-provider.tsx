@@ -31,7 +31,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [twoFactorChallenge, setTwoFactorChallenge] = useState<TwoFactorChallenge | null>(null)
 
   // Register device node and sync offline pending updates when online
-  useDeviceSync()
+  useDeviceSync(user, !!user)
 
   // Initialize auth state — runs once on mount
   useEffect(() => {
@@ -198,7 +198,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     register,
     logout,
     refreshUser,
-  }), [user, isLoading, twoFactorChallenge, login, completeLogin, verifyTwoFactor, cancelTwoFactor, register, logout, refreshUser])
+  }), [
+    user,
+    isLoading,
+    twoFactorChallenge,
+    login,
+    completeLogin,
+    verifyTwoFactor,
+    cancelTwoFactor,
+    register,
+    logout,
+    refreshUser,
+  ])
 
   return (
     <AuthContext.Provider value={contextValue}>
