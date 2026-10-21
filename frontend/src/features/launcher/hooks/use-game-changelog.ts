@@ -100,8 +100,8 @@ export function resolveSteamAppId(game: LocalGame | DisplayGame | null, catalogS
 
   // 3. Raw game data
   const raw = ('rawGame' in game && game.rawGame ? game.rawGame : game) as LocalGame
-  if (raw.data?.steamAppId) {
-    return raw.data.steamAppId
+  if ((raw.data as any)?.steamAppId) {
+    return (raw.data as any).steamAppId
   }
 
   // 4. Check title against known dictionary

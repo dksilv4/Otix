@@ -281,7 +281,7 @@ export const LauncherLibraryPage = () => {
                   {featuredGames.map((_, i) => (
                     <button
                       key={i}
-                      onClick={(e) => { e.stopPropagation(); setFeaturedIdx(i, true) }}
+                      onClick={(e) => { e.stopPropagation(); setFeaturedIdx(i) }}
                       className="cursor-pointer transition-all"
                       style={{
                         width: i === featuredIdx ? 20 : 6, height: 6, borderRadius: 9999,

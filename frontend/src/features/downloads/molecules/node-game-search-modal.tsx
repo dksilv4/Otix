@@ -182,7 +182,7 @@ export const NodeGameSearchModal = ({
       toast({
         title: 'Download cancelled',
         description: 'Download removed from downloader queue.',
-        variant: 'neutral',
+        variant: 'default',
       })
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to cancel download'

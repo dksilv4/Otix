@@ -38,8 +38,8 @@ const TrailerCard = ({
         textlessPosterUrl={item.textlessPosterUrl}
         logoUrl={item.logoUrl}
         releaseDate={item.releaseDate}
-        avgRating={item.avgRating}
-        ratingCount={item.ratingCount}
+        avgRating={item.avgRating ?? undefined}
+        ratingCount={item.ratingCount ?? undefined}
         showTypeBadge
       />
       {/* Play button overlay on hover */}
@@ -81,7 +81,7 @@ export const TrendingTrailersSection = ({ className }: { className?: string }) =
       </section>
 
       {/* Video modal */}
-      {activeTrailer && (
+      {activeTrailer && activeTrailer.trailerYoutubeId && (
         <TrailerVideoModal
           youtubeId={activeTrailer.trailerYoutubeId}
           title={activeTrailer.title}

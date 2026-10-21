@@ -6,6 +6,7 @@
 
 export interface Cs2OfficialSvgDef {
   id: string
+  file?: string
   viewBox: string
   innerSvg: string
   names: string[]

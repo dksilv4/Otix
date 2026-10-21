@@ -57,7 +57,8 @@ export const NodeMapActionDock = ({
 }: NodeMapActionDockProps) => {
   if (!selectedItem) return null
 
-  const { type, name, data } = selectedItem
+  const { type, name } = selectedItem
+  const data = selectedItem.data as any
 
   return (
     <div

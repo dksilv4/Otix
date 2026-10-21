@@ -1,16 +1,16 @@
 import { infiniteQueryOptions, queryOptions } from '@tanstack/react-query'
 import { apiClient } from '@/lib/api/client'
 import { discoverKeys } from './discover-keys'
-import { freshUnlessEmpty, retainUnlessEmpty } from '@/lib/query/empty-cache'
+import { freshUnlessEmpty } from '@/lib/query/empty-cache'
 import type { MediaItemSummary, SeasonSummary } from '@media/queries/media-queries'
-import type { PersonalizedSection, DiscoverContinueWatchingResponse } from '../types'
+import type { PersonalizedSection, DiscoverContinueWatchingResponse, TrendingTrailerItem } from '../types'
 import type { GenreOption } from '@/features/genre/types'
 
 const TWO_HOURS = 1000 * 60 * 60 * 2
 const ONE_DAY = 1000 * 60 * 60 * 24
 
 export const discoverStaleTime = freshUnlessEmpty(TWO_HOURS)
-const discoverGcTime = retainUnlessEmpty(ONE_DAY)
+const discoverGcTime = ONE_DAY
 
 export interface DiscoverListResponse {
   items: MediaItemSummary[]
@@ -134,6 +134,16 @@ export const discoverQueries = {
       },
       gcTime: discoverGcTime,
       refetchOnMount: 'always',
+    }),
+
+  trailers: () =>
+    queryOptions({
+      queryKey: discoverKeys.trailers(),
+      queryFn: async () => {
+        const { data } = await apiClient.get<TrendingTrailerItem[]>('/discover/trailers/trending')
+        return data
+      },
+      staleTime: 1000 * 60 * 30,
     }),
 
   continueWatching: () =>

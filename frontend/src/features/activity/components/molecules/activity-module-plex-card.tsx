@@ -16,7 +16,7 @@ import {
   truncate,
 } from '../../utils/plex-helpers'
 
-const DeviceIcon = ({ device, platform }: { device?: string; platform?: string }) => {
+const DeviceIcon = ({ device, platform }: { device?: string | null; platform?: string | null }) => {
   const type = getDeviceType(device ?? null, platform ?? null)
   switch (type) {
     case 'tv':

@@ -27,7 +27,7 @@ export class AppError extends Error {
       this.cause = options.cause
     }
 
-    const ErrorCtor = Error as unknown as { captureStackTrace?: (target: object, constructorOpt?: (...args: unknown[]) => unknown) => void }
+    const ErrorCtor = Error as unknown as { captureStackTrace?: (target: object, constructorOpt?: any) => void }
     if (typeof ErrorCtor.captureStackTrace === 'function') {
       ErrorCtor.captureStackTrace(this, this.constructor)
     }

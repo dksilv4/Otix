@@ -189,7 +189,7 @@ export function usePushSubscription() {
       }
       sub = await registration.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: appKey,
+        applicationServerKey: appKey as unknown as BufferSource,
       })
 
       const subJSON = sub.toJSON()

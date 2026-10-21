@@ -44,8 +44,8 @@ export const SwitchLauncherView = () => {
           otixPosterUrl: pop.posterUrl,
           otixBackdropUrl: pop.backdropUrl,
           otixLogoUrl: pop.logoUrl,
-          description: pop.overview,
-          data: pop,
+          description: (pop as any).overview || '',
+          data: pop as any,
         })
       }
     })
@@ -141,7 +141,7 @@ export const SwitchLauncherView = () => {
           {runningGame && (
             <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-rose-500/20 text-rose-400 text-xs font-bold border border-rose-500/40">
               <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping" />
-              <span>Playing {runningGame.title}</span>
+              <span>Playing {runningGame.game.title}</span>
             </div>
           )}
 
@@ -274,7 +274,6 @@ export const SwitchLauncherView = () => {
       {detailGame && (
         <LauncherGameSheet
           game={detailGame}
-          isOpen={!!detailGame}
           onClose={() => setDetailGame(null)}
         />
       )}

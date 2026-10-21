@@ -1169,7 +1169,7 @@ app.on('ready', async () => {
       console.log(`[plugins] Discovery complete, ${all.length} plugin(s) in DB:`, all.map(p => `${p.id} (${p.status})`).join(', '));
 
       // Auto-enable default plugins (always enabled, no user action needed)
-      const DEFAULT_PLUGINS = ['fps-capture'];
+      const DEFAULT_PLUGINS = ['fps-capture', 'local-files'];
       for (const id of DEFAULT_PLUGINS) {
         const p = pluginManager!.getPlugin(id);
         if (p && p.status !== 'enabled') {

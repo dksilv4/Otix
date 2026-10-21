@@ -100,20 +100,20 @@ export const NodeConnectionsGroup = ({
   const isSabnzbdConfigured =
     Boolean(
       providers?.downloaders?.some(
-        (p) => p.name?.toLowerCase() === 'sabnzbd' && (p.connected || p.configured)
+        (p) => p.name?.toLowerCase() === 'sabnzbd' && ((p as any).connected || p.configured)
       )
     ) || checkSabnzbdConfigured(usenetConfig?.sabnzbd)
 
   const isProwlarrConfigured =
     Boolean(
       providers?.indexers?.some(
-        (p) => p.name?.toLowerCase() === 'prowlarr' && (p.connected || p.configured)
+        (p) => p.name?.toLowerCase() === 'prowlarr' && ((p as any).connected || p.configured)
       ) ||
       providers?.indexer_providers?.some(
-        (p) => p.name?.toLowerCase() === 'prowlarr' && (p.connected || p.configured)
+        (p) => p.name?.toLowerCase() === 'prowlarr' && ((p as any).connected || p.configured)
       ) ||
       providers?.search_providers?.some(
-        (p) => p.name?.toLowerCase() === 'prowlarr' && (p.connected || p.configured)
+        (p) => p.name?.toLowerCase() === 'prowlarr' && ((p as any).connected || p.configured)
       )
     ) || checkProwlarrConfigured(usenetConfig?.prowlarr)
   const isRadarrConfigured = Boolean(
@@ -343,8 +343,8 @@ export const NodeConnectionsGroup = ({
                       items={[
                         { label: 'status', value: sabnzbdQueue?.status || (isQueuePaused ? 'Paused' : 'Idle') },
                         { label: 'speed', value: sabnzbdQueue?.speed || '0 KB/s' },
-                        { label: 'time left', value: sabnzbdQueue?.timeleft || '0:00:00' },
-                        { label: 'size left', value: sabnzbdQueue?.sizeleft || '0 MB' },
+                        { label: 'time left', value: sabnzbdQueue?.time_left || (sabnzbdQueue as any)?.timeleft || '0:00:00' },
+                        { label: 'size left', value: (sabnzbdQueue as any)?.size_left || (sabnzbdQueue as any)?.sizeleft || '0 MB' },
                       ]}
                     />
                   )}
@@ -361,7 +361,6 @@ export const NodeConnectionsGroup = ({
                       description={isQueuePaused ? 'Downloads are currently paused' : 'Pause all active Usenet downloads'}
                       buttonLabel={isQueuePaused ? 'Resume Downloads' : 'Pause Downloads'}
                       buttonIcon={isQueuePaused ? Play : Pause}
-                      buttonVariant={isQueuePaused ? 'primary' : 'secondary'}
                       onPress={handleToggleQueuePause}
                     />
                   )}
@@ -420,10 +419,12 @@ export const NodeConnectionsGroup = ({
                         <p className="text-xs text-primary px-1">{prowlarrSyncMessage}</p>
                       )}
                       <ProwlarrIndexersPanel
+                        protocol={prowlarrSyncProtocol}
+                        onProtocolChange={setProwlarrSyncProtocol}
+                        onSync={handleProwlarrSync}
+                        isSyncing={syncProwlarrMutation.isPending}
                         indexers={prowlarrIndexers}
-                        onSyncSuccess={() => {
-                          void refetchProwlarrIndexers()
-                        }}
+                        syncMessage={prowlarrSyncMessage}
                       />
                     </>
                   )}

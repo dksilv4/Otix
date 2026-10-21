@@ -134,7 +134,7 @@ export const GameCard = ({ game, index, onAcceptSuggestion, onRejectSuggestion }
                   {game.title}
                 </h3>
                 <p className="mt-0.5 text-[11px] text-white/40 truncate">
-                  {game.installDir.split(/[\\/]/).slice(-2).join(" / ")}
+                  {(game.installDir || "").split(/[\\/]/).slice(-2).join(" / ")}
                 </p>
               </div>
             </div>
@@ -189,7 +189,7 @@ export const GameCard = ({ game, index, onAcceptSuggestion, onRejectSuggestion }
         <p className="mt-0.5 text-[11px] text-white/50 truncate">
           {isMatched && game.data?.title && game.data?.title !== game.title
             ? game.data?.title
-            : game.installDir.split(/[\\/]/).slice(-2).join(" / ")}
+            : (game.installDir || "").split(/[\\/]/).slice(-2).join(" / ")}
         </p>
       </div>
 

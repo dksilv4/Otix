@@ -32,11 +32,7 @@ export const DiscoverRailPage = () => {
   const title = getRailTitle(mediaType, listType, platform)
   const isSeasonTrending = mediaType === 'season' && listType === 'trending'
 
-  const query = useInfiniteQuery({
-    ...(isSeasonTrending
-      ? discoverQueries.trendingSeasons()
-      : discoverQueries.list(mediaType, listType, genre, language, isAnime, platform)),
-  })
+  const query = useInfiniteQuery((isSeasonTrending ? discoverQueries.trendingSeasons() : discoverQueries.list(mediaType, listType, genre, language, isAnime, platform)) as any)
 
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading, isError } = query
 

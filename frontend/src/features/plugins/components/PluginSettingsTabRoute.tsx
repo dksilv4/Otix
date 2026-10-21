@@ -13,6 +13,10 @@ import { ServerRadarrSettingsModal } from '@/features/downloads/molecules/server
 import { ServerSonarrSettingsModal } from '@/features/downloads/molecules/server-sonarr-settings-modal'
 import { useServerRadarrConfig, useServerSonarrConfig } from '@/features/downloads/use-server-arr'
 import { pickConnectionNode } from '@/features/downloads/molecules/use-integration-target-server'
+import {
+  isSabnzbdConfigured as checkSabnzbdConfigured,
+  isProwlarrConfigured as checkProwlarrConfigured,
+} from '@/features/downloads/usenet-utils'
 import { useServerProviders } from '@/features/downloads/use-server-providers'
 import { PluginSettingsPage } from './PluginSettingsPage'
 import { useModal } from '@/lib/modals'
@@ -41,28 +45,25 @@ export const PluginSettingsTabRoute = () => {
   const { data: radarrConfig } = useServerRadarrConfig(activeServer?.id)
   const { data: sonarrConfig } = useServerSonarrConfig(activeServer?.id)
 
-  const isSabnzbdConfiguredState =
+  const isSabnzbdConfigured =
     Boolean(
       providers?.downloaders?.some(
-        (p) => p.name?.toLowerCase() === 'sabnzbd' && (p.connected || p.configured)
+        (p) => p.name?.toLowerCase() === 'sabnzbd' && ((p as any).connected || p.configured)
       )
-    ) || isSabnzbdConfigured(usenetConfig?.sabnzbd)
+    ) || checkSabnzbdConfigured(usenetConfig?.sabnzbd)
 
-  const isProwlarrConfiguredState =
+  const isProwlarrConfigured =
     Boolean(
       providers?.indexers?.some(
-        (p) => p.name?.toLowerCase() === 'prowlarr' && (p.connected || p.configured)
+        (p) => p.name?.toLowerCase() === 'prowlarr' && ((p as any).connected || p.configured)
       ) ||
       providers?.indexer_providers?.some(
-        (p) => p.name?.toLowerCase() === 'prowlarr' && (p.connected || p.configured)
+        (p) => p.name?.toLowerCase() === 'prowlarr' && ((p as any).connected || p.configured)
       ) ||
       providers?.search_providers?.some(
-        (p) => p.name?.toLowerCase() === 'prowlarr' && (p.connected || p.configured)
+        (p) => p.name?.toLowerCase() === 'prowlarr' && ((p as any).connected || p.configured)
       )
-    ) || isProwlarrConfigured(usenetConfig?.prowlarr)
-
-  const isSabnzbdConfigured = isSabnzbdConfiguredState
-  const isProwlarrConfigured = isProwlarrConfiguredState
+    ) || checkProwlarrConfigured(usenetConfig?.prowlarr)
 
   const isRadarrConfigured = Boolean(
     radarrConfig?.host &&

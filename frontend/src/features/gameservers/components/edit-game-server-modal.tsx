@@ -585,7 +585,7 @@ export const EditGameServerModal = ({
               </DkButton>
               <DkButton
                 type="button"
-                variant="danger"
+                variant="destructive"
                 size="sm"
                 disabled={deleteMutation.isPending}
                 onClick={handleDelete}

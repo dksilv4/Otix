@@ -76,6 +76,17 @@ var (
 	}
 )
 
+
+func IsDocBasename(lower string) bool {
+	docNames := []string{"readme", "changelog", "install", "license", "instructions", "release", "notes", "contributing", "info", "faq", "todo", "manual"}
+	for _, d := range docNames {
+		if strings.Contains(lower, d) {
+			return true
+		}
+	}
+	return false
+}
+
 func CleanGameTitle(filename string) string {
 	name := filename
 	// Strip file extensions if recognized
@@ -199,8 +210,14 @@ func ParseReleaseName(rawName string) ParsedRelease {
 		res.Platform = "GBC"
 	case ".gb":
 		res.Platform = "GB"
-	case ".md", ".gen":
+	case ".gen":
 		res.Platform = "Genesis"
+	case ".md":
+		if IsDocBasename(strings.ToLower(baseName)) {
+			res.Platform = "PC"
+		} else {
+			res.Platform = "Genesis"
+		}
 	case ".pkg":
 		res.Platform = "PS3"
 	default:

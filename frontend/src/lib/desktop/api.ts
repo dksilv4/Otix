@@ -265,7 +265,7 @@ export interface SaveOverrideResult {
 
 export interface RemoteDownloadProgress {
   id: string
-  status: 'queued' | 'downloading' | 'paused' | 'completed' | 'failed' | 'cancelled'
+  status: 'queued' | 'downloading' | 'paused' | 'completed' | 'failed' | 'cancelled' | 'error'
   gameTitle: string
   filename: string
   bytesDownloaded: number
@@ -277,6 +277,9 @@ export interface RemoteDownloadProgress {
   error?: string | null
   serverUrl: string
   fileId: string
+  mediaItemId?: string | null
+  downloadedBytes?: number
+  speedMBps?: number
 }
 
 export interface RemoteDownloadOptions {
@@ -296,6 +299,9 @@ export interface RemoteDownloadOptions {
 
 export interface DesktopAPI {
   readonly platform: string | undefined
+  openExternal?: (url: string) => Promise<void>
+  smartOrganizePreview?: (dir: string, template?: string) => Promise<unknown[]>
+  executeOrganization?: (items: { sourcePath: string; targetPath: string }[]) => Promise<unknown>
 
   // Query cache persistence
   cacheLoad: () => Promise<unknown>
@@ -491,6 +497,8 @@ export interface DesktopAPI {
   installerCancel?: () => Promise<void>
   uninstallerConfirm?: (options: { removeUserData: boolean }) => Promise<{ success: boolean; error?: string }>
   uninstallerOnProgress?: (callback: (progress: { percent: number; status: string }) => void) => () => void
+  closeWindow?: () => Promise<void>
+  minimizeWindow?: () => Promise<void>
 }
 
 // ── Accessor ─────────────────────────────────────────────────────────

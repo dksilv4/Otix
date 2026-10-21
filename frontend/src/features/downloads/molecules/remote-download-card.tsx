@@ -82,12 +82,12 @@ export const RemoteDownloadCard = ({
           </span>
 
           <span className="text-xs text-muted-foreground">
-            {formatBytes(transfer.downloadedBytes)} / {formatBytes(transfer.totalBytes)}
+            {formatBytes(transfer.downloadedBytes ?? transfer.bytesDownloaded ?? 0)} / {formatBytes(transfer.totalBytes)}
           </span>
 
-          {isDownloading && transfer.speedMBps > 0 && (
+          {isDownloading && (transfer.speedMBps ?? 0) > 0 && (
             <span className="text-xs font-mono text-primary font-semibold">
-              {transfer.speedMBps.toFixed(1)} MB/s
+              {(transfer.speedMBps ?? 0).toFixed(1)} MB/s
             </span>
           )}
 

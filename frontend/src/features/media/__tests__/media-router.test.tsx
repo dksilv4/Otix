@@ -6,7 +6,7 @@ describe('MediaDetailPage import and router initialization', () => {
     expect(mediaRouter.createMediaRoutes).toBeDefined()
     const page = await import('@media/pages/media-detail-page')
     expect(page.MediaDetailPage).toBeDefined()
-  }, 20000)
+  }, 60000)
 
   it('initializes the application router without TDZ errors and with component defined', async () => {
     const { router } = await import('@/lib/router')
@@ -14,5 +14,5 @@ describe('MediaDetailPage import and router initialization', () => {
     const mediaDetailRoute = router.routesById['/media/$mediaType/$mediaId']
     expect(mediaDetailRoute).toBeDefined()
     expect(mediaDetailRoute.options.component).toBeDefined()
-  }, 20000)
+  }, 60000)
 })

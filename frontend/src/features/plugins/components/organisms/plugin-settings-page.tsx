@@ -338,7 +338,7 @@ const SyncCard = ({ pluginId }: { pluginId: string }) => {
   }, [api, pluginId])
 
   const running = syncing || status?.phase === 'running' || status?.phase === 'syncing'
-  const paused = status?.paused || summary?.paused
+  const paused = (status as any)?.paused || summary?.paused
 
   useEffect(() => {
     refreshStatus()
@@ -403,7 +403,7 @@ const SyncCard = ({ pluginId }: { pluginId: string }) => {
               {syncing || running ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
               Sync all
             </Button>
-            {status.instances?.map((inst) => (
+            {status?.instances?.map((inst) => (
               <Button
                 key={inst.id}
                 size="sm"
@@ -1551,7 +1551,7 @@ const PlaylistMappingForm = ({ pluginId }: { pluginId: string }) => {
       <div className="mt-4 space-y-3">
         {loadState === 'idle' || loadState === 'error' ? (
           <div className="flex flex-col gap-2">
-            <Button variant="outline" size="sm" loading={loadState === 'loading'} onClick={loadPlaylists}>
+            <Button variant="outline" size="sm" onClick={loadPlaylists}>
               {loadState === 'error' ? 'Retry loading playlists' : 'Load my Spotify playlists'}
             </Button>
             {loadState === 'error' && loadError && (
@@ -1696,8 +1696,8 @@ export const PluginSettingsPage = ({ tab }: PluginSettingsPageProps) => {
           <ConfigSection section={section} pluginId={tab.pluginId} />
         ) : section.sync ? (
           <div className="flex flex-col gap-4">
-            <SyncCard pluginId={tab.pluginId} />
-            {hasPlaylistMapping && <PlaylistMappingForm pluginId={tab.pluginId} />}
+            {tab.pluginId && <SyncCard pluginId={tab.pluginId} />}
+            {tab.pluginId && hasPlaylistMapping && <PlaylistMappingForm pluginId={tab.pluginId} />}
           </div>
         ) : section.movies ? (
           <MoviesSection pluginId={tab.pluginId} />

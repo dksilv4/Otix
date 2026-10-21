@@ -98,7 +98,7 @@ export const DiscoverTrailerHero = ({ className }: { className?: string }) => {
             <AnimatePresence mode="wait">
               <motion.img
                 key={`poster-${activeItem.id}`}
-                src={heroBackdrop(activeItem.backdropUrl) || heroBackdrop(activeItem.posterUrl) || ''}
+                src={heroBackdrop(activeItem.backdropUrl ?? null) || heroBackdrop(activeItem.posterUrl ?? null) || ''}
                 alt={activeItem.title}
                 initial={{ opacity: 0, scale: 1.05 }}
                 animate={{ opacity: 1, scale: 1 }}
@@ -234,7 +234,7 @@ export const DiscoverTrailerHero = ({ className }: { className?: string }) => {
       </section>
 
       {/* Video modal — only loads iframe on user click */}
-      {activeTrailer && (
+      {activeTrailer && activeTrailer.trailerYoutubeId && (
         <TrailerVideoModal
           youtubeId={activeTrailer.trailerYoutubeId}
           title={activeTrailer.title}

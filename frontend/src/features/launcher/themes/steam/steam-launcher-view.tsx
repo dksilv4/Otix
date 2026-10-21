@@ -98,7 +98,7 @@ export const SteamLauncherView = () => {
     }
   }
 
-  const isSelectedRunning = runningGame && activeGame && runningGame.title?.toLowerCase() === activeGame.title?.toLowerCase()
+  const isSelectedRunning = runningGame && activeGame && runningGame.game.title?.toLowerCase() === activeGame.title?.toLowerCase()
 
   return (
     <div className="w-full h-screen bg-[#1b2838] text-[#c6d4df] font-sans flex flex-col overflow-hidden select-none">
@@ -156,7 +156,7 @@ export const SteamLauncherView = () => {
           {runningGame && (
             <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 text-[10px] font-bold border border-emerald-500/30">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
-              <span>Playing {runningGame.title}</span>
+              <span>Playing {runningGame.game.title}</span>
             </div>
           )}
           <div className="flex items-center gap-2 pl-3 border-l border-[#2a475e]/40">

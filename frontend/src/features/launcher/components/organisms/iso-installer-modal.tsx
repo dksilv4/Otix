@@ -68,7 +68,7 @@ export const IsoInstallerModal = ({
 
   const deriveGameTitle = useCallback((iso: string): string => {
     const game = games.find(
-      (g) => g.exePath === iso || g.exePath.toLowerCase() === iso.toLowerCase(),
+      (g) => g.exePath && (g.exePath === iso || g.exePath.toLowerCase() === iso.toLowerCase()),
     );
     return game?.data?.title || game?.title || cleanTitle(iso.split(/[\\/]/).pop() || "");
   }, [games]);
@@ -140,14 +140,14 @@ export const IsoInstallerModal = ({
       storeComplete(isoPath, res);
       // Update game in storage so main page sees it as installed (pc, not iso)
       if (res.success) {
-        markGameInstalled(isoPath, res.gameExe ?? null, res.installDir)
+        markGameInstalled(isoPath, res.gameExe ?? null, res.installDir || "")
         // Trigger local-files scan to pick up the newly installed game
         const pluginApi = window.desktopAPI?.plugin
         if (pluginApi?.callData) {
           pluginApi.callData('local-files', 'scan').catch(() => {})
         }
         // Direct callback to parent for immediate UI update
-        onInstallComplete?.(isoPath, res.installDir, res.gameExe ?? null)
+        onInstallComplete?.(isoPath, res.installDir || "", res.gameExe ?? null)
       }
       if (!res.success && res.error) {
         setError(res.error);

@@ -43,12 +43,12 @@ export const PlayStationLauncherView = () => {
           id: pop.id,
           title: pop.title,
           platform: "steam",
-          posterUrl: pop.posterUrl,
-          otixPosterUrl: pop.posterUrl,
+          posterUrl: pop.posterUrl ?? undefined,
+          otixPosterUrl: pop.posterUrl ?? undefined,
           otixBackdropUrl: pop.backdropUrl,
           otixLogoUrl: pop.logoUrl,
-          description: pop.overview,
-          data: pop,
+          description: (pop as any).overview || '',
+          data: pop as any,
         })
       }
     })
@@ -149,7 +149,7 @@ export const PlayStationLauncherView = () => {
           {runningGame && (
             <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-400 text-xs font-bold border border-emerald-500/30">
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-              <span>Playing {runningGame.title}</span>
+              <span>Playing {runningGame.game.title}</span>
             </div>
           )}
 
@@ -205,8 +205,8 @@ export const PlayStationLauncherView = () => {
             {activeGame.otixLogoUrl || activeGame.data?.logoUrl ? (
               <div className="max-h-24 max-w-sm drop-shadow-[0_12px_24px_rgba(0,0,0,0.8)]">
                 <MediaLogo
-                  logoUrl={activeGame.otixLogoUrl || activeGame.data?.logoUrl || null}
-                  title={activeGame.title}
+                  src={activeGame.otixLogoUrl || activeGame.data?.logoUrl || ""}
+                  alt={activeGame.title}
                   className="max-h-20 max-w-xs object-contain"
                 />
               </div>
@@ -325,7 +325,6 @@ export const PlayStationLauncherView = () => {
       {detailGame && (
         <LauncherGameSheet
           game={detailGame}
-          isOpen={!!detailGame}
           onClose={() => setDetailGame(null)}
         />
       )}

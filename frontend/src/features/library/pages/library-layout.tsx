@@ -56,8 +56,8 @@ export const LibraryLayout = () => {
     return () => { cancelled = true }
   }, [api])
 
-  const handleAction = useCallback((pluginId: string, actionKey: string, payload: unknown) => {
-    return api?.callData(pluginId, "handleAction", actionKey, payload)
+  const handleAction = useCallback(async (pluginId: string, actionKey: string, payload: unknown): Promise<void> => {
+    await api?.callData(pluginId, "handleAction", actionKey, payload)
   }, [api])
 
   const mediaTabs = useMemo(() => {

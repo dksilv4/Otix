@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { cn } from '@/lib/utils'
 
 interface SettingsCardProps {
+  id?: string
   children: ReactNode
   className?: string
   /** Tighter padding for compact rows */
@@ -14,9 +15,10 @@ interface SettingsCardProps {
  * Standardized glass settings card container.
  * Replaces ad-hoc `rounded-2xl sm:rounded-3xl p-5 sm:p-6 bg-white/5 backdrop-blur-xl` wrappers.
  */
-export const SettingsCard = ({ children, className, compact, tone = 'default' }: SettingsCardProps) => {
+export const SettingsCard = ({ id, children, className, compact, tone = 'default' }: SettingsCardProps) => {
   return (
     <div
+      id={id}
       className={cn(
         'rounded-2xl sm:rounded-3xl backdrop-blur-xl transition-all duration-200',
         compact ? 'p-4 sm:p-5' : 'p-5 sm:p-6',

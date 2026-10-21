@@ -81,7 +81,7 @@ export function useTestSabnzbd(nodeId?: number) {
       api_key?: string;
       use_ssl?: boolean;
       url_base?: string;
-    }) => {
+    } | void) => {
       if (!isValidNodeId(nodeId)) throw new Error('No valid node selected');
       const { data } = await apiClient.post<ConnectionTestResult>(
         `/library/servers/${nodeId}/usenet/test-sabnzbd`,
@@ -101,7 +101,7 @@ export function useTestProwlarr(nodeId?: number) {
       api_key?: string;
       use_ssl?: boolean;
       url_base?: string;
-    }) => {
+    } | void) => {
       if (!isValidNodeId(nodeId)) throw new Error('No valid node selected');
       const { data } = await apiClient.post<ConnectionTestResult>(
         `/library/servers/${nodeId}/usenet/test-prowlarr`,

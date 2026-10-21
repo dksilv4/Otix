@@ -159,7 +159,7 @@ export const SettingsLibraryOverviewSection = ({
   const auth = useOptionalAuth()
   const user = auth?.user ?? null
 
-  const { config: dlConfig, isLoading: configLoading } = useDownloadConfig(user?.id)
+  const { config: dlConfig, loading: configLoading } = useDownloadConfig(user?.id)
   const { servers: gameServers = [], selectedNode, isLoading: serversLoading } = useSettingsNode()
   const nodePage = (tab?: NodeSettingsTab) =>
     selectedNode
@@ -309,7 +309,7 @@ export const SettingsLibraryOverviewSection = ({
           title="Library"
           description="Match titles, review candidates, and manage providers."
           icon={Gamepad2}
-          onClick={() => onNavigate('library')}
+          onClick={() => onNavigate('catalog')}
         >
           <Metric
             icon={HardDrive}
@@ -374,7 +374,7 @@ export const SettingsLibraryOverviewSection = ({
           title="Downloads"
           description="Otix nodes and download clients. Open a node to manage its instances."
           icon={Server}
-          {...nodePage('downloaders')}
+          {...nodePage('paths')}
         >
           <Metric
             icon={Server}

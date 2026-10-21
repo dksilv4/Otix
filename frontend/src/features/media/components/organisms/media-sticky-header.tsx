@@ -94,7 +94,7 @@ export const MediaStickyHeader = ({ detail, mediaType }: MediaStickyHeaderProps)
   }, [updatePlacement])
    
 
-  const interactions = userInteractions ?? detail.userInteractions ?? {}
+  const interactions = (userInteractions ?? detail.userInteractions ?? {}) as Record<string, boolean | undefined>
   const isLiked = Boolean(interactions.liked)
   const isWatchlisted = Boolean(interactions.watchlisted)
   const isWatched = Boolean(

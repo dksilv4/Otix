@@ -7,10 +7,12 @@ interface DkSelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
   label?: string
   hint?: string
   error?: string
+  options?: Array<{ value: string | number; label: string }>
+  onValueChange?: (val: string) => void
 }
 
 const DkSelect = forwardRef<HTMLSelectElement, DkSelectProps>(
-  ({ className, label, hint, error, id, required, children, ...props }, ref) => {
+  ({ className, label, hint, error, id, required, children, options, onValueChange, onChange, ...props }, ref) => {
     const autoId = useId()
     const selectId = id || autoId
     const errorId = `${selectId}-error`
@@ -33,6 +35,10 @@ const DkSelect = forwardRef<HTMLSelectElement, DkSelectProps>(
             aria-describedby={
               error ? errorId : hint ? hintId : undefined
             }
+            onChange={(e) => {
+              onChange?.(e)
+              onValueChange?.(e.target.value)
+            }}
             className={cn(
               'flex h-12 w-full rounded-xl px-4 pr-10 text-base appearance-none bg-[var(--dk-surface-glass)] backdrop-blur-[12px] hover:bg-[var(--dk-surface-glass-hover)] focus:outline-none focus:ring-2 focus:ring-offset-1 focus:[--tw-ring-color:var(--dk-ring-color)]',
               error && 'shadow-[0_0_0_2px_color-mix(in_srgb,var(--destructive)_40%,transparent)] focus:[--tw-ring-color:color-mix(in_srgb,var(--destructive)_40%,transparent)]',
@@ -42,7 +48,13 @@ const DkSelect = forwardRef<HTMLSelectElement, DkSelectProps>(
             style={{ transition: 'all var(--dk-duration-fast) var(--dk-ease-out)' }}
             {...props}
           >
-            {children}
+            {options
+              ? options.map((opt) => (
+                  <option key={opt.value} value={opt.value} className="bg-popover text-popover-foreground">
+                    {opt.label}
+                  </option>
+                ))
+              : children}
           </select>
           <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         </div>

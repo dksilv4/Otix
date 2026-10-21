@@ -302,7 +302,7 @@ export const ShowSection = ({
                  showTitle: data?.title,
                  seasonNumber: currentSeason.seasonNumber,
                  episodeNumber: firstPlayableEpisode.episodeNumber,
-                 episodeTitle: firstPlayableEpisode.name,
+                 episodeTitle: firstPlayableEpisode.name || undefined,
                })
              }
              disabled={loadingKey === `${data?.id ? String(data.id) : mediaId}-s${currentSeason.seasonNumber}-e${firstPlayableEpisode.episodeNumber}`}
@@ -444,7 +444,7 @@ export const ShowSection = ({
                        showTitle: data?.title,
                        seasonNumber: currentSeason.seasonNumber,
                        episodeNumber: episode.episodeNumber,
-                       episodeTitle: episode.name,
+                       episodeTitle: episode.name || undefined,
                      })
                    }}
                    className="pointer-events-auto w-9 h-9 rounded-full bg-foreground text-background flex items-center justify-center shadow-xl hover:scale-110 active:scale-95 transition-transform cursor-pointer"

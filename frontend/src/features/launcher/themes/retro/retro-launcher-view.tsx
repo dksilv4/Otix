@@ -58,8 +58,8 @@ export const RetroLauncherView = () => {
           otixPosterUrl: pop.posterUrl,
           otixBackdropUrl: pop.backdropUrl,
           otixLogoUrl: pop.logoUrl,
-          description: pop.overview,
-          data: pop,
+          description: (pop as any).overview || '',
+          data: pop as any,
         })
       }
     })
@@ -309,7 +309,6 @@ export const RetroLauncherView = () => {
       {detailGame && (
         <LauncherGameSheet
           game={detailGame}
-          isOpen={!!detailGame}
           onClose={() => setDetailGame(null)}
         />
       )}

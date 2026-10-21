@@ -43,6 +43,7 @@ interface NodeMapCardItemProps {
   onEditServer?: (server: UserServerMachine) => void
   onDeleteServer?: (server: UserServerMachine) => void
   onDetectDrives?: (server: UserServerMachine) => void
+  onOpenNodeSettings?: (server: GameServer) => void
   onEditNode?: (server: GameServer) => void
   onRenameNode?: (server: GameServer) => void
   onPingNode?: (server: GameServer) => void
@@ -77,7 +78,8 @@ export const NodeMapCardItem = ({
   onOpenSambaSettings,
   onEditSamba,
 }: NodeMapCardItemProps) => {
-  const { type, name, data } = item
+  const { type, name } = item
+  const data = item.data as any
 
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation()

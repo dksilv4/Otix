@@ -143,8 +143,8 @@ export function useRequestMedia(): RequestMediaState {
             const match = isMovie
               ? (tmdbId ? matchLookupByTmdb(results, tmdbId) : (results[0] as Record<string, unknown> | undefined))
               : (tvdbId || tmdbId ? matchLookupByTvdbOrTmdb(results, tvdbId, tmdbId) : (results[0] as Record<string, unknown> | undefined))
-            const status = isMovie ? radarrStatusFromLookup(match) : sonarrStatusFromLookup(match)
-            const file = isMovie ? fileFromRadarrLookup(match) : fileFromSonarrLookup(match)
+            const status = isMovie ? radarrStatusFromLookup((match as any) ?? null) : sonarrStatusFromLookup((match as any) ?? null)
+            const file = isMovie ? fileFromRadarrLookup((match as any) ?? null) : fileFromSonarrLookup((match as any) ?? null)
             return toRequestInstance(id, name, status, file)
           } catch {
             return toRequestInstance(id, name, 'error')

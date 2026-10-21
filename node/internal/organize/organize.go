@@ -287,6 +287,9 @@ func PreviewOrganization(dir string, template string, sample bool) ([]PreviewIte
 		if isoExtensions[ext] {
 			itemType = "iso"
 		} else if plat, ok := romExtensions[ext]; ok {
+			if ext == ".md" && IsDocBasename(lowerName) {
+				return nil
+			}
 			itemType = "rom"
 			_ = plat
 		} else if ext == ".exe" || ext == ".zip" || ext == ".rar" || ext == ".7z" {

@@ -22,6 +22,7 @@ export type ContextMenuMediaType = 'game' | 'movie' | 'show' | 'music' | 'generi
 export type ContextMenuTargetType =
   | 'movie'
   | 'show'
+  | 'media'
   | 'game'
   | 'music'
   | 'episode'

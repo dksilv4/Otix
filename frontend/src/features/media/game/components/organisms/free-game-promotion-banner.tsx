@@ -15,7 +15,7 @@ import SteamIcon from '@/assets/provider-logos/steam.svg?react'
 import GOGIcon from '@/assets/provider-logos/gog.svg?react'
 import { openSessionWindow } from '@/lib/utils/open-external'
 import { showToast } from '@ui/molecules/toast'
-import type { MediaItemDetail, FreePromotionItem } from '../../queries/media-queries'
+import type { MediaItemDetail, FreePromotionItem } from '../../../queries/media-queries'
 import { useGameFreePromotions } from '../../hooks/use-game-free-promotions'
 import { cn } from '@/lib/utils'
 

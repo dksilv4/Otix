@@ -340,7 +340,7 @@ export const ListDetailPage = () => {
             ) : (
               <div className="max-h-[500px] overflow-y-auto pr-2 pb-4 scrollbar-none rounded-xl">
                 <MediaGrid>
-                  {searchItems.map((item) => {
+                  {searchItems.map((item: any) => {
                     const alreadyAdded = itemIds.has(item.id)
                     return (
                       <div key={item.id} className="relative group">

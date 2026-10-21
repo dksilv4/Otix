@@ -58,7 +58,7 @@ export const useDocsNavigation = (categories: DocCategory[]) => {
       setSearchQuery('')
       navigate({
         to: '/docs',
-        search: (prev) => ({ ...prev, section: sectionId }),
+        search: (prev: Record<string, unknown>) => ({ ...prev, section: sectionId }),
       })
       window.scrollTo({ top: 0, behavior: 'smooth' })
     },

@@ -468,8 +468,55 @@ export async function saveScannedGamesToDb(games: any[]): Promise<void> {
  * Update a scanned game's paths in the local DB after a file move.
  * Searches by exe_path and updates exe_path + install_dir.
  */
-export async function updateGamePathInDb(oldExePath: string, newExePath: string, newInstallDir?: string): Promise<void> {
-  db().prepare('UPDATE scanned_games SET exe_path = ?, install_dir = ? WHERE exe_path = ?').run(newExePath, newInstallDir || newExePath.replace(/\/[^/]*$/, ''), oldExePath);
+export async function updateGamePathInDb(oldPath: string, newPath: string, newInstallDir?: string): Promise<void> {
+  const normOld = oldPath.replace(/[\\/]+/g, '/').toLowerCase();
+  const normNew = newPath.replace(/[\\/]+/g, '/');
+
+  // 1. Exact match on exe_path
+  db().prepare(`
+    UPDATE scanned_games
+    SET exe_path = ?, install_dir = ?, updated_at = datetime('now')
+    WHERE LOWER(REPLACE(exe_path, '\\', '/')) = ?
+  `).run(newPath, newInstallDir || path.dirname(newPath), normOld);
+
+  // 2. Exact match or folder-prefix match on install_dir or exe_path (container / repack moves)
+  const rows = __all('SELECT id, exe_path, install_dir FROM scanned_games');
+  for (const r of rows) {
+    const rInstall = (r.install_dir || '').replace(/[\\/]+/g, '/');
+    const rExe = (r.exe_path || '').replace(/[\\/]+/g, '/');
+    const lowerInstall = rInstall.toLowerCase();
+    const lowerExe = rExe.toLowerCase();
+
+    let updatedInstall = r.install_dir;
+    let updatedExe = r.exe_path;
+    let changed = false;
+
+    if (lowerInstall === normOld) {
+      updatedInstall = newPath;
+      changed = true;
+    } else if (lowerInstall.startsWith(normOld + '/')) {
+      const sub = r.install_dir.slice(oldPath.length);
+      updatedInstall = newPath + (sub.startsWith('/') || sub.startsWith('\\') ? sub : path.sep + sub);
+      changed = true;
+    }
+
+    if (lowerExe === normOld) {
+      updatedExe = newPath;
+      changed = true;
+    } else if (lowerExe.startsWith(normOld + '/')) {
+      const sub = r.exe_path.slice(oldPath.length);
+      updatedExe = newPath + (sub.startsWith('/') || sub.startsWith('\\') ? sub : path.sep + sub);
+      changed = true;
+    }
+
+    if (changed) {
+      db().prepare(`
+        UPDATE scanned_games
+        SET exe_path = ?, install_dir = ?, updated_at = datetime('now')
+        WHERE id = ?
+      `).run(updatedExe, updatedInstall, r.id);
+    }
+  }
 }
 
 export async function getScanPathsFromDb(): Promise<{ path: string; type: 'game' | 'iso' }[]> {

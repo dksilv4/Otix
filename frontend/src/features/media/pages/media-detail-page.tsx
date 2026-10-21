@@ -306,12 +306,12 @@ export const MediaDetailPage = () => {
                       {blueprintSubTab === 'vault' ? (
                         <BlueprintVault
                           pluginId={pluginIdForTab(activeGameTab)}
-                          onViewDetail={(bp) => setDetailBlueprint(bp)}
+                          onViewDetail={(bp: any) => setDetailBlueprint(bp)}
                         />
                       ) : (
                         <BlueprintCommunity
                           pluginId={pluginIdForTab(activeGameTab)}
-                          onViewDetail={(bp) => setDetailBlueprint(bp)}
+                          onViewDetail={(bp: any) => setDetailBlueprint(bp)}
                         />
                       )}
                     </>
@@ -320,8 +320,8 @@ export const MediaDetailPage = () => {
                     <BlueprintDetail
                       blueprint={detailBlueprint}
                       onClose={() => setDetailBlueprint(null)}
-                      onCopy={(raw) => navigator.clipboard.writeText(raw)}
-                      onDelete={(id) => {
+                      onCopy={(raw: any) => navigator.clipboard.writeText(raw)}
+                      onDelete={(id: any) => {
                         handleDeleteBlueprint(id)
                         setDetailBlueprint(null)
                       }}

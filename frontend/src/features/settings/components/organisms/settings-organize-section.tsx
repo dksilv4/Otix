@@ -8,7 +8,7 @@ import { DkButton } from '@ui/atoms/button'
 import { DkSwitch } from '@ui/atoms/switch'
 import { AuthContext } from '@/features/auth/hooks/use-auth'
 import { useDownloadConfig } from '@/features/downloads/use-downloads'
-import { getDesktopAPI } from '@/lib/desktop/api'
+import { getDesktopAPI, type DesktopSettingsData } from '@/lib/desktop/api'
 import { apiClient } from '@/lib/api/client'
 import { PathInput } from '@/components/path-picker'
 import { useSettingsNode } from '../../context/settings-node-context'
@@ -121,7 +121,7 @@ export const SettingsOrganizeSection = ({ nodeId: nodeIdProp }: { nodeId?: numbe
     if (remoteNodeId) return
     const api = getDesktopAPI()
     if (!api?.getDesktopSettings) return
-    api.getDesktopSettings().then((ds: Record<string, unknown>) => {
+    api.getDesktopSettings().then((ds: DesktopSettingsData) => {
       if (typeof ds?.scanOnLaunch === 'boolean') {
         setScanOnLaunch(ds.scanOnLaunch)
         try {
@@ -169,6 +169,19 @@ export const SettingsOrganizeSection = ({ nodeId: nodeIdProp }: { nodeId?: numbe
 
     if (user) {
       await saveConfig({
+        ...(dlConfig ?? {
+          userId: user.id,
+          sabnzbdHost: null,
+          sabnzbdPort: null,
+          sabnzbdApiKey: null,
+          sabnzbdUseSsl: false,
+          nzbplanetApiKey: null,
+          sabnzbdCompletePath: null,
+          downloadPath: null,
+          postProcessEnabled: false,
+          autoSearchWishlist: false,
+          wishlistIntervalHours: 24,
+        }),
         userId: user.id,
         downloadPath: dlConfig?.downloadPath ?? null,
         postProcessEnabled,
@@ -347,7 +360,7 @@ export const SettingsOrganizeSection = ({ nodeId: nodeIdProp }: { nodeId?: numbe
               value={isoDownloadPath}
               onChange={setIsoDownloadPath}
               placeholder="e.g. D:\Games\ISOs or /media/games/iso"
-              nodeId={nodeId}
+              serverId={typeof nodeId === 'number' ? nodeId : undefined}
               confirmLabel="Set Directory"
             />
           </div>

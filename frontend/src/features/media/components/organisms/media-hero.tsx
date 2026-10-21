@@ -83,7 +83,7 @@ export const MediaHero = ({ className = '' }: MediaHeroProps) => {
   const isAnime = detail.movie?.isAnime || detail.show?.isAnime || false
   const isKdrama = mediaType === 'show' && originalLanguage === 'ko'
   const musicCreditsLine = isMusic(detail) ? formatMusicCreditsLine(detail.credits) : null
-  const tagline = detail.movie?.tagline || detail.show?.tagline || detail.game?.reviewSummary || musicCreditsLine
+  const tagline = detail.movie?.tagline || (detail.show as any)?.tagline || detail.game?.reviewSummary || musicCreditsLine
 
   const status = detail.show?.status || detail.game?.releaseStatus
   const runtime = detail.movie?.runtime
@@ -135,7 +135,7 @@ export const MediaHero = ({ className = '' }: MediaHeroProps) => {
   }
 
   // Active interaction states
-  const interactions = userInteractions ?? detail.userInteractions ?? {}
+  const interactions = (userInteractions ?? detail.userInteractions ?? {}) as Record<string, boolean | undefined>
   const isLiked = Boolean(interactions.liked)
   const isWatchlisted = Boolean(interactions.watchlisted)
   const isWatched = Boolean(

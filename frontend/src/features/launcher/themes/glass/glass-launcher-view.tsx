@@ -39,12 +39,12 @@ export const GlassLauncherView = () => {
           id: pop.id,
           title: pop.title,
           platform: "steam",
-          posterUrl: pop.posterUrl,
-          otixPosterUrl: pop.posterUrl,
+          posterUrl: pop.posterUrl ?? undefined,
+          otixPosterUrl: pop.posterUrl ?? undefined,
           otixBackdropUrl: pop.backdropUrl,
           otixLogoUrl: pop.logoUrl,
-          description: pop.overview,
-          data: pop,
+          description: (pop as any).overview || '',
+          data: pop as any,
         })
       }
     })
@@ -149,7 +149,7 @@ export const GlassLauncherView = () => {
             {runningGame && (
               <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-bold border border-emerald-500/30 backdrop-blur-md">
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                <span>Playing {runningGame.title}</span>
+                <span>Playing {runningGame.game.title}</span>
               </div>
             )}
 
@@ -210,8 +210,8 @@ export const GlassLauncherView = () => {
               {activeGame.otixLogoUrl || activeGame.data?.logoUrl ? (
                 <div className="max-h-20 max-w-sm drop-shadow-xl">
                   <MediaLogo
-                    logoUrl={activeGame.otixLogoUrl || activeGame.data?.logoUrl || null}
-                    title={activeGame.title}
+                    src={activeGame.otixLogoUrl || activeGame.data?.logoUrl || ''}
+                    alt={activeGame.title}
                     className="max-h-16 max-w-xs object-contain"
                   />
                 </div>
@@ -283,7 +283,6 @@ export const GlassLauncherView = () => {
       {detailGame && (
         <LauncherGameSheet
           game={detailGame}
-          isOpen={!!detailGame}
           onClose={() => setDetailGame(null)}
         />
       )}

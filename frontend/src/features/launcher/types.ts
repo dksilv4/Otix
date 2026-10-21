@@ -3,7 +3,8 @@
 export interface InstallResult {
   success: boolean
   gameExe?: string | null
-  installDir: string
+  installDir?: string
+  backdropUrl?: string | null | null
   crackApplied?: boolean
   error?: string
 }
@@ -30,11 +31,11 @@ export interface Game {
   slug?: string
   overview?: string | null
   platform?: LauncherPlatform
-  iconUrl?: string
-  posterUrl?: string
+  iconUrl?: string | null
+  posterUrl?: string | null
   textlessPosterUrl?: string | null
-  backdropUrl?: string
-  logoUrl?: string
+  backdropUrl?: string | null
+  logoUrl?: string | null
   logoColorGuess?: string | null
   releaseDate?: string | null
   genres?: { id: string; name: string; slug: string }[]
@@ -56,21 +57,24 @@ export interface Game {
   ratingCount?: number
   mediaId?: string
   screenshots?: { url: string; width?: number; height?: number; provider?: string }[]
+  steamPlaytimeForever?: number | null
+  steamAppId?: number | null
 }
 
 export interface LocalGame {
   id: string
   title: string
-  exePath: string
+  exePath?: string
   localExePath?: string
   platform: LauncherPlatform
-  installDir: string
+  installDir?: string
+  backdropUrl?: string | null | null
   sources?: string[]
   localIconUrl?: string
-  iconUrl?: string
-  posterUrl?: string
+  iconUrl?: string | null
+  posterUrl?: string | null
   textlessPosterUrl?: string | null
-  logoUrl?: string | null
+  logoUrl?: string | null | null
   updateFiles?: UpdateFile[]
   data?: Game
   matchSuggestion?: Game
@@ -114,12 +118,12 @@ export interface CatalogGame {
   mediaType: string
   title: string
   slug: string
-  posterUrl?: string | null
+  posterUrl?: string | null | null
   textlessPosterUrl?: string | null
-  logoUrl?: string | null
+  logoUrl?: string | null | null
   logoColorGuess?: string | null
-  iconUrl?: string | null
-  backdropUrl?: string | null
+  iconUrl?: string | null | null
+  backdropUrl?: string | null | null
   releaseDate?: string | null
   popularity: number
   avgRating?: number | null
@@ -156,11 +160,11 @@ export interface DisplayGame {
   id: string
   title: string
   description?: string
-  backdropUrl?: string
+  backdropUrl?: string | null
   posterUrl: string | null
   localIconUrl?: string
-  iconUrl?: string
-  logoUrl?: string
+  iconUrl?: string | null
+  logoUrl?: string | null
   logoColorGuess?: string | null
   badge?: string
   playtime: string

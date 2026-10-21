@@ -1,5 +1,6 @@
 export { GenrePage } from './pages/genre-page'
 export { GenresDirectoryPage } from './pages/genres-directory-page'
-export { GenreCard, GENRE_VISUAL_MAP } from './components/genre-card'
+export { GenreCard } from './components/genre-card'
+export { GENRE_VISUAL_MAP } from './visual'
 export { createGenreRoutes } from './router'
 export type { GenreOption, GenreSearchParams } from './types'

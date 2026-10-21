@@ -1,0 +1,39 @@
+{
+  "name": "Local Files Scanner",
+  "icon": "folder-search",
+  "version": "1.0.0",
+  "description": "Scan local directories for PC games, Steam libraries, ISOs, and ROMs",
+  "author": "Otix",
+  "repository": "builtin",
+  "system": true,
+  "min_app_version": "0.3.0",
+  "permissions": [
+    "worker:filesystem",
+    "storage:local"
+  ],
+  "config": {
+    "scanDirectories": {
+      "type": "list",
+      "label": "Scan Directories",
+      "description": "Directories to scan for game executables and Steam manifests"
+    },
+    "isoDirectories": {
+      "type": "list",
+      "label": "ISO & ROM Directories",
+      "description": "Directories to scan for ISO and ROM game files"
+    }
+  },
+  "slots": [
+    {
+      "location": "matching:scan",
+      "label": "Local Files"
+    },
+    {
+      "location": "library:scan",
+      "label": "Local Files"
+    }
+  ],
+  "entry": {
+    "main": "main.js"
+  }
+}

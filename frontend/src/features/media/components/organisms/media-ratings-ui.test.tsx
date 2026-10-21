@@ -5,6 +5,7 @@ vi.mock('@tanstack/react-router', () => ({
   Link: ({ children, to, ...props }: any) => <a href={to} {...props}>{children}</a>,
   useLocation: () => ({ href: '/media/movie/1' }),
   useParams: () => ({ mediaType: 'movie', mediaId: '1' }),
+  useRouter: () => ({ state: { matches: [{ params: { mediaType: 'movie', mediaId: '1' } }] } }),
 }))
 
 import { WhereToWatchV4 } from './media-where-to-watch'

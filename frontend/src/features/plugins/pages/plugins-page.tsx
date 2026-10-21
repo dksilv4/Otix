@@ -26,7 +26,7 @@ import { FeatureStatusTags, kindsFromPluginStage } from '@ui/atoms/feature-statu
 import { SettingsCard } from '@/features/settings/components/molecules/settings-card'
 import { SectionHeader } from '@/features/settings/components/molecules/settings-section-header'
 import { SettingsLockedState } from '@/features/settings/components/molecules/settings-locked-state'
-import { buildPluginGraph, getDependents } from '../utils/graph'
+import { buildPluginGraph, getDependents, type GraphEdge } from '../utils/graph'
 
 const PluginTopologyGraph = ({ enabledPlugins }: { enabledPlugins: PluginInfo[] }) => {
   const graph = buildPluginGraph(enabledPlugins)

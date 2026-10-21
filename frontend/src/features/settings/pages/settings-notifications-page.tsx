@@ -254,6 +254,7 @@ export const SettingsNotificationsPage = () => {
             <div className="mt-4 space-y-3">
               {category.types.map((type) => {
                 const config = getTypeConfig(type)
+                if (!config) return null
                 return (
                   <SettingsRow
                     key={type}

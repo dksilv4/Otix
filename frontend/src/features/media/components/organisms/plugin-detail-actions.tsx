@@ -80,7 +80,7 @@ const FileDetails = ({ file }: { file: NonNullable<RequestInstance['file']> }) =
         {file.quality && <span className="text-foreground font-medium mr-1.5">{file.quality}</span>}
         {file.video && <span className="mr-1.5">{file.video}</span>}
         {file.audio && <span className="mr-1.5">· {file.audio}</span>}
-        {formatBytes(file.size) && <span className="text-muted-foreground">{formatBytes(file.size)}</span>}
+        {formatBytes(file.size ?? null) && <span className="text-muted-foreground">{formatBytes(file.size ?? null)}</span>}
       </div>
       {file.name && <div className="text-[10px] text-muted-foreground/60 mt-0.5 break-all">{file.name}</div>}
     </div>
@@ -537,7 +537,7 @@ export const MediaDetailPluginActions = ({
   return (
     <section className="dk-interaction">
       <div className="dk-interaction__btns">
-        <MediaDetailPluginButtons {...p} />
+        <MediaDetailPluginButtons {...p} onRequest={p.handleRequest} onPlay={p.handlePlay} />
       </div>
       {p.hasLibraryStatus && (
         <div className="mt-3">

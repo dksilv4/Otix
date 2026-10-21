@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { ChevronDown, Check, Search, Sparkles, Gamepad2 } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import { findPresetById, getPresetsByCategory, getPresetIconUrl } from '../utils/presets'
 
 interface GameServerPresetSelectProps {

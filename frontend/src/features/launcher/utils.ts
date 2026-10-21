@@ -6,9 +6,10 @@ export type LauncherCardGame = LocalGame | DisplayGame
 
 /** Applications (non-game software) are stored but hidden from the launcher UI for now. */
 export const isApplicationGame = (
-  g: { isApp?: boolean; gameType?: string; contentType?: string } | null | undefined,
+  g: unknown,
 ): boolean => {
-  return !!g && (g.isApp === true || g.gameType === 'application' || g.contentType === 'application')
+  const item = g as { isApp?: boolean; gameType?: string; contentType?: string } | null | undefined
+  return !!item && (item.isApp === true || item.gameType === 'application' || item.contentType === 'application')
 }
 
 /** Convert raw LocalGame → DisplayGame for the launcher view. */

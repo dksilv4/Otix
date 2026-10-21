@@ -31,7 +31,7 @@ export const ActivityModuleDownloads = () => {
   const { data: gameServers = [] } = useGameServers()
   const activeServer = useMemo(
     () =>
-      gameServers.find((s) => typeof s.id === 'number' && s.id > 0 && s.is_active) ??
+      gameServers.find((s) => typeof s.id === 'number' && s.id > 0 && s.isActive) ??
       gameServers.find((s) => typeof s.id === 'number' && s.id > 0),
     [gameServers],
   )

@@ -232,6 +232,12 @@ const ROM_EXTENSIONS = new Set([
   '.gen', '.pkg',
 ]);
 
+const DOC_BASENAMES = new Set([
+  'readme', 'changelog', 'install', 'installation', 'license', 'licence',
+  'instructions', 'notes', 'faq', 'manual', 'help', 'history', 'todo',
+  'credits', 'authors', 'version', 'info', 'guide',
+]);
+
 const ISO_EXTENSIONS = new Set([
   '.iso', '.img', '.bin', '.cue', '.mdf', '.mds', '.nrg',
 ]);
@@ -329,6 +335,10 @@ export async function findDownloadedContent(
           if (ISO_EXTENSIONS.has(ext)) {
             results.push({ path: fullPath, name: entry.name, type: 'iso' });
           } else if (ROM_EXTENSIONS.has(ext)) {
+            const baseNoExt = path.basename(nameLower, ext);
+            if (ext === '.md' && (DOC_BASENAMES.has(baseNoExt) || baseNoExt.startsWith('readme') || baseNoExt.startsWith('install'))) {
+              continue;
+            }
             if (nameLower.includes('[upd]') || nameLower.includes('[v131072]')) {
               results.push({ path: fullPath, name: entry.name, type: 'update' });
             } else if (nameLower.includes('[dlc]')) {

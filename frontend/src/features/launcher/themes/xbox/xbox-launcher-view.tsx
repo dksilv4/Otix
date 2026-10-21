@@ -13,9 +13,11 @@ import {
 import { MediaLogo } from "@/lib/media/media-logo"
 import { useLauncherVisibleGames } from "@/features/launcher/data/game-queries"
 import { usePopularGames } from "@/features/launcher/data/queries"
+import { useRunningGame } from "@/features/launcher/hooks/use-running-game"
 import { useAuth } from "@/lib/providers/auth"
 import { useToast } from "@ui/molecules/toast"
 import { LauncherGameSheet } from "../common/launcher-game-sheet"
+import { getDesktopAPI } from "@/lib/desktop/api"
 import type { LocalGame } from "@/features/launcher/types"
 
 export const XboxLauncherView = () => {
@@ -24,6 +26,7 @@ export const XboxLauncherView = () => {
   const { data: localGames = [] } = useLauncherVisibleGames()
   const { data: popularGames = [] } = usePopularGames()
   const { toast } = useToast()
+  const { runningGame } = useRunningGame()
 
   const [selectedGameId, setSelectedGameId] = useState<string | null>(null)
   const [detailGame, setDetailGame] = useState<LocalGame | null>(null)
@@ -41,8 +44,8 @@ export const XboxLauncherView = () => {
           otixPosterUrl: pop.posterUrl,
           otixBackdropUrl: pop.backdropUrl,
           otixLogoUrl: pop.logoUrl,
-          description: pop.overview,
-          data: pop,
+          description: (pop as any).overview || '',
+          data: pop as any,
         })
       }
     })
@@ -128,7 +131,7 @@ export const XboxLauncherView = () => {
           {runningGame && (
             <div className="flex items-center gap-2 px-3 py-1 rounded-md bg-[#107c10]/20 text-[#107c10] text-xs font-bold border border-[#107c10]/40">
               <span className="w-2 h-2 rounded-full bg-[#107c10] animate-ping" />
-              <span>Playing {runningGame.title}</span>
+              <span>Playing {runningGame.game.title}</span>
             </div>
           )}
 
@@ -211,8 +214,8 @@ export const XboxLauncherView = () => {
                   {activeGame.otixLogoUrl || activeGame.data?.logoUrl ? (
                     <div className="max-h-16 max-w-xs">
                       <MediaLogo
-                        logoUrl={activeGame.otixLogoUrl || activeGame.data?.logoUrl || null}
-                        title={activeGame.title}
+                        src={activeGame.otixLogoUrl || activeGame.data?.logoUrl || ""}
+                        alt={activeGame.title}
                         className="max-h-14 max-w-xs object-contain"
                       />
                     </div>
@@ -350,7 +353,6 @@ export const XboxLauncherView = () => {
       {detailGame && (
         <LauncherGameSheet
           game={detailGame}
-          isOpen={!!detailGame}
           onClose={() => setDetailGame(null)}
         />
       )}

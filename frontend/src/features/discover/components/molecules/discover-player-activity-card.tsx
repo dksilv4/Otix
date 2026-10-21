@@ -85,7 +85,7 @@ export const DiscoverPlayerActivityCard = ({ item }: DiscoverPlayerActivityCardP
           onClick={(e) => e.stopPropagation()}
           className="flex items-center gap-2 px-2.5 py-1.5 rounded-full bg-black/45 hover:bg-black/65 backdrop-blur-xl transition-all shadow-md"
         >
-          <DkAvatar src={item.user.avatarUrl} name={item.user.username} size="xs" className="!h-5 !w-5" />
+          <DkAvatar src={item.user.avatarUrl} name={item.user.username} size="sm" className="!h-5 !w-5" />
           <span className="text-xs font-bold text-white truncate max-w-[120px]">{item.user.username}</span>
         </Link>
 

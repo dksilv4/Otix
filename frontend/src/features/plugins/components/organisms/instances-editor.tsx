@@ -322,7 +322,7 @@ export const InstancesEditor = ({
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      <p className="truncate text-sm font-medium text-foreground">{inst.name || id || 'Unnamed'}</p>
+                      <p className="truncate text-sm font-medium text-foreground">{String(inst.name || id || 'Unnamed')}</p>
                       {typeof inst.enabled === 'boolean' && (
                         <Badge tone={inst.enabled ? 'success' : 'default'}>
                           {inst.enabled ? 'enabled' : 'disabled'}
@@ -510,7 +510,7 @@ const SubFieldInput = ({
         <Field label={subField.label} description={subField.description}>
           <Input
             type="number"
-            value={value ?? ''}
+            value={typeof value === 'number' || typeof value === 'string' ? value : ''}
             placeholder={subField.placeholder}
             onChange={(e) => onChange(e.target.value === '' ? '' : Number(e.target.value))}
           />

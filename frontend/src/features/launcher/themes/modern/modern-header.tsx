@@ -148,7 +148,7 @@ export const ModernHeader = ({
             <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
           </span>
           <span className="font-semibold text-foreground max-w-[180px] truncate">
-            {runningGame.title}
+            {runningGame.game.title}
           </span>
           <span className="text-[11px] font-mono text-emerald-600 dark:text-emerald-300/80 pl-1 border-l border-emerald-500/20">
             {formatElapsed(elapsedMs)}

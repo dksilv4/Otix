@@ -33,12 +33,15 @@ export interface NodeMapItem {
   name: string
   homeId?: number | null
   homeName?: string | null
-  data:
-    | { type: 'home'; home: UserHome }
-    | { type: 'server'; machine: UserServerMachine }
-    | { type: 'node'; server: GameServer }
-    | { type: 'unclaimed_node'; pending: PendingNode }
-    | { type: 'samba'; samba: SambaShareConfig }
+  data: {
+    type: NodeMapItemType
+    home?: UserHome
+    machine?: UserServerMachine
+    server?: GameServer
+    pending?: PendingNode
+    samba?: SambaShareConfig
+    [key: string]: unknown
+  }
 }
 
 export interface NodeMapEdge {

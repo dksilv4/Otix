@@ -99,7 +99,7 @@ const ArrTab = ({
 }: {
   pluginId: string
   label: string
-  icon: React.ComponentType<{ className?: string }>
+  icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }>
 }) => {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -234,7 +234,7 @@ const ArrTab = ({
             >
               <div className="flex items-center gap-3">
                 <div className="flex items-center justify-center w-10 h-10 rounded-xl" style={{ backgroundColor: 'color-mix(in srgb, var(--primary) 12%, transparent)' }}>
-                  <Icon className="h-5 w-5" style={{ color: 'var(--primary)' }} />
+                  <Icon className="h-5 w-5 text-primary" />
                 </div>
                 <div className="text-left">
                   <h3 className="text-sm font-medium text-foreground">{lib.name}</h3>

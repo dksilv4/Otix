@@ -62,3 +62,21 @@ export interface DiscoverContinueWatchingResponse {
   items: DiscoverContinueWatchingItem[]
 }
 
+export interface TrendingTrailerItem {
+  id: string
+  title: string
+  mediaType: string
+  mediaId: string | number
+  youtubeId: string
+  backdropUrl?: string | null
+  posterUrl?: string | null
+  overview?: string | null
+  releaseDate?: string | null
+  voteAverage?: number | null
+  trailerYoutubeId?: string | null
+  textlessPosterUrl?: string | null
+  logoUrl?: string | null
+  avgRating?: number | null
+  ratingCount?: number | null
+}
+

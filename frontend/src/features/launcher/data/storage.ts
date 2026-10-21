@@ -294,7 +294,7 @@ export function markGameInstalled(isoExePath: string, installedExePath: string |
   const findIdx = (): number => {
     const exact = cache.games.findIndex((g) => g.exePath === isoExePath);
     if (exact !== -1) return exact;
-    return cache.games.findIndex((g) => g.exePath.toLowerCase() === isoExePath.toLowerCase());
+    return cache.games.findIndex((g) => g.exePath && g.exePath.toLowerCase() === isoExePath.toLowerCase());
   };
   const idx = findIdx();
   if (idx === -1) return;

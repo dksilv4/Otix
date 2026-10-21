@@ -41,12 +41,12 @@ export const ForgeLauncherView = () => {
           id: pop.id,
           title: pop.title,
           platform: "steam",
-          posterUrl: pop.posterUrl,
+          posterUrl: pop.posterUrl ?? undefined,
           otixPosterUrl: pop.posterUrl,
           otixBackdropUrl: pop.backdropUrl,
           otixLogoUrl: pop.logoUrl,
-          description: pop.overview,
-          data: pop,
+          description: (pop as any).overview || '',
+          data: pop as any,
         })
       }
     })
@@ -220,9 +220,9 @@ export const ForgeLauncherView = () => {
               className="relative h-72 rounded-2xl overflow-hidden border border-[#2a2a2a] group cursor-pointer shadow-xl"
               onClick={() => handlePlayGame(activeGame)}
             >
-              {activeGame.otixBackdropUrl || activeGame.backdropUrl || activeGame.posterUrl ? (
+              {activeGame.otixBackdropUrl || activeGame.data?.backdropUrl || activeGame.posterUrl ? (
                 <img
-                  src={activeGame.otixBackdropUrl || activeGame.backdropUrl || activeGame.posterUrl || ""}
+                  src={activeGame.otixBackdropUrl || activeGame.data?.backdropUrl || activeGame.posterUrl || ""}
                   alt={activeGame.title}
                   className="w-full h-full object-cover group-hover:scale-102 transition-transform duration-500"
                 />
@@ -231,8 +231,8 @@ export const ForgeLauncherView = () => {
                 <div className="space-y-2 max-w-xl">
                   {activeGame.otixLogoUrl || activeGame.data?.logoUrl ? (
                     <MediaLogo
-                      logoUrl={activeGame.otixLogoUrl || activeGame.data?.logoUrl || null}
-                      title={activeGame.title}
+                      src={activeGame.otixLogoUrl || activeGame.data?.logoUrl || ""}
+                      alt={activeGame.title}
                       className="max-h-16 max-w-xs object-contain"
                     />
                   ) : (
@@ -324,7 +324,6 @@ export const ForgeLauncherView = () => {
       {detailGame && (
         <LauncherGameSheet
           game={detailGame}
-          isOpen={!!detailGame}
           onClose={() => setDetailGame(null)}
         />
       )}

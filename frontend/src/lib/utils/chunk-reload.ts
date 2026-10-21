@@ -57,18 +57,18 @@ export const safePrefetchChunk = (importFn: () => Promise<unknown>): void => {
  * Safe React.lazy wrapper that automatically intercepts chunk load failures
  * from stale client deployments and triggers a clean reload.
  */
-export const safeLazy = <T extends ComponentType<any>>(
-  importer: () => Promise<{ default: T } | Record<string, any>>,
+export const safeLazy = <T extends ComponentType<any> = ComponentType<any>>(
+  importer: () => Promise<{ default: T } | any>,
   exportName = 'default',
-) => {
+): React.LazyExoticComponent<T> => {
   return lazy(async () => {
     try {
       const module = await importer()
       const component =
         exportName === 'default'
           ? (module.default || module)
-          : module[exportName]
-      return { default: component }
+          : (module as Record<string, any>)[exportName]
+      return { default: component as T }
     } catch (err) {
       if (isChunkLoadError(err)) {
         reloadForNewChunk()

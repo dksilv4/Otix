@@ -12,6 +12,7 @@ import { useAuth } from "@/lib/providers/auth"
 import { useToast } from "@ui/molecules/toast"
 import { LauncherGameSheet } from "../common/launcher-game-sheet"
 import type { LocalGame } from "@/features/launcher/types"
+import { getDesktopAPI } from "@/lib/desktop/api"
 
 export const MinimalLauncherView = () => {
   const navigate = useNavigate()
@@ -32,12 +33,12 @@ export const MinimalLauncherView = () => {
           id: pop.id,
           title: pop.title,
           platform: "steam",
-          posterUrl: pop.posterUrl,
+          posterUrl: pop.posterUrl ?? undefined,
           otixPosterUrl: pop.posterUrl,
           otixBackdropUrl: pop.backdropUrl,
           otixLogoUrl: pop.logoUrl,
-          description: pop.overview,
-          data: pop,
+          description: (pop as any).overview || '',
+          data: pop as any,
         })
       }
     })
@@ -189,9 +190,9 @@ export const MinimalLauncherView = () => {
 
             {/* Clean Full-Width Hero Art View */}
             <div className="relative aspect-[21/9] rounded-xl overflow-hidden bg-neutral-900 border border-white/5 shadow-2xl">
-              {activeGame.otixBackdropUrl || activeGame.backdropUrl || activeGame.posterUrl ? (
+              {activeGame.otixBackdropUrl || activeGame.data?.backdropUrl || activeGame.posterUrl ? (
                 <img
-                  src={activeGame.otixBackdropUrl || activeGame.backdropUrl || activeGame.posterUrl || ""}
+                  src={activeGame.otixBackdropUrl || activeGame.data?.backdropUrl || activeGame.posterUrl || ""}
                   alt={activeGame.title}
                   className="w-full h-full object-cover filter brightness-95 contrast-105"
                 />
@@ -230,7 +231,6 @@ export const MinimalLauncherView = () => {
       {detailGame && (
         <LauncherGameSheet
           game={detailGame}
-          isOpen={!!detailGame}
           onClose={() => setDetailGame(null)}
         />
       )}

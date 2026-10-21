@@ -79,7 +79,7 @@ export const DiscoverPlayerActivitySection = () => {
         list.push({
           id: `plex-${sess.sessionId || sess.ratingKey || idx}`,
           mediaType: isShow ? 'show' : 'movie',
-          mediaId: sess.mediaItemId || sess.ratingKey,
+          mediaId: String(sess.mediaItemId || sess.ratingKey || ''),
           title,
           subtitle,
           user: {
@@ -101,14 +101,14 @@ export const DiscoverPlayerActivitySection = () => {
         mediaType: 'music',
         mediaId: currentTrack.id,
         title: currentTrack.title,
-        subtitle: currentTrack.artist || currentTrack.album,
+        subtitle: currentTrack.artist || currentTrack.albumName,
         user: {
           id: user.id,
           username: user.username,
           avatarUrl: user.avatarUrl,
         },
-        posterUrl: currentTrack.coverUrl,
-        backdropUrl: currentTrack.coverUrl,
+        posterUrl: currentTrack.albumArt || undefined,
+        backdropUrl: currentTrack.albumArt || undefined,
         elapsedMs: 0,
       })
     }

@@ -12,6 +12,7 @@ import {
 } from 'lucide-react'
 import { DkDialog } from '@ui/molecules/dialog'
 import { DkButton } from '@ui/atoms/button'
+import { getDesktopAPI } from '@/lib/desktop/api'
 import { apiClient } from '@/lib/api/client'
 import { cn } from '@/lib/utils'
 import { TokenizedTemplateDisplay } from '../molecules/tokenized-template-display'
@@ -33,6 +34,9 @@ export interface OrganizeTestRunModalProps {
   template: string
   isoDirectory: string
 }
+
+const getOrganizerApi = () =>
+  getDesktopAPI() ?? (typeof window !== 'undefined' ? ((window as any).desktopAPI ?? (window as any).electronAPI) : null)
 
 export const OrganizeTestRunModal = ({
   open,
@@ -73,8 +77,8 @@ export const OrganizeTestRunModal = ({
           setItems([])
           setUseSamples(true)
         }
-      } else if (typeof window !== 'undefined' && window.electronAPI?.smartOrganizePreview && isoDirectory) {
-        const desktopItems = await window.electronAPI.smartOrganizePreview(isoDirectory, template)
+      } else if (getOrganizerApi()?.smartOrganizePreview && isoDirectory) {
+        const desktopItems = await getOrganizerApi().smartOrganizePreview(isoDirectory, template)
         if (Array.isArray(desktopItems) && desktopItems.length > 0) {
           setItems(desktopItems as PreviewItem[])
         } else {
@@ -120,7 +124,7 @@ export const OrganizeTestRunModal = ({
   const canExecute =
     !useSamples &&
     actionableItems.length > 0 &&
-    (Boolean(nodeId && nodeId > 0) || Boolean(typeof window !== 'undefined' && window.electronAPI?.executeOrganization))
+    (Boolean(nodeId && nodeId > 0) || Boolean(getOrganizerApi()?.executeOrganization))
 
   const handleExecute = useCallback(async () => {
     if (actionableItems.length === 0) return
@@ -136,12 +140,12 @@ export const OrganizeTestRunModal = ({
         await apiClient.post(`/library/servers/${nodeId}/organize/execute`, payload)
         setExecutedCount(actionableItems.length)
         void fetchRealPreview(true)
-      } else if (typeof window !== 'undefined' && window.electronAPI?.executeOrganization) {
+      } else if (getOrganizerApi()?.executeOrganization) {
         const payloadItems = actionableItems.map((i) => ({
           sourcePath: i.sourcePath,
           targetPath: i.targetPath,
         }))
-        await window.electronAPI.executeOrganization(payloadItems)
+        await getOrganizerApi().executeOrganization(payloadItems)
         setExecutedCount(actionableItems.length)
         void fetchRealPreview(true)
       }
@@ -182,7 +186,7 @@ export const OrganizeTestRunModal = ({
               <DkButton
                 size="sm"
                 variant="ghost"
-                onClick={fetchRealPreview}
+                onClick={() => void fetchRealPreview()}
                 disabled={loading}
                 className="text-xs h-7 px-2"
                 title="Refresh scan"

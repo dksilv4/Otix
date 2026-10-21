@@ -221,7 +221,7 @@ export function useMediaDetailPluginActions(
           const progressPercent = Number(plexInfo?.progressPercent ?? plexInfo?.progress_percent ?? 0)
           const viewed = Boolean(plexInfo?.viewed)
 
-          if (ratingKey && baseUrl && token) {
+          if (ratingKey && baseUrl && token && plexInfo) {
             const streamSession = buildPlexPlaybackSession(plexInfo, {
               title: title || (mediaTypeVal === 'movie' ? (mediaTitle || 'Movie') : 'Stream'),
               subtitle: episodeTitle ? `S${seasonNumber}:E${episodeNumber} · ${episodeTitle}` : undefined,
@@ -231,7 +231,6 @@ export function useMediaDetailPluginActions(
               pluginId: 'backend-plex',
               label: providerLabel,
               props: {
-                label: providerLabel,
                 mediaType: mediaType as 'movie' | 'show',
                 mediaId,
                 instances: [

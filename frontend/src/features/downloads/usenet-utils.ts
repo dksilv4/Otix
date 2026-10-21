@@ -223,10 +223,10 @@ export function normalizeProwlarrIndexers(raw: unknown): ProwlarrIndexerItem[] {
 
 /** Filter indexers by protocol ('all' | 'torrent' | 'usenet'). */
 export function filterIndexersByProtocol<T extends { protocol?: string }>(
-  indexers: T[] | unknown,
+  indexers?: T[] | unknown[] | Record<string, unknown> | null,
   protocol: 'all' | 'torrent' | 'usenet' | string = 'all'
 ): T[] {
-  const list = Array.isArray(indexers) ? indexers : []
+  const list = (Array.isArray(indexers) ? indexers : []) as T[]
   const p = (protocol || 'all').toLowerCase().trim();
   if (p === 'all' || !p) return list;
   return list.filter((idx) => (idx.protocol || '').toLowerCase() === p);

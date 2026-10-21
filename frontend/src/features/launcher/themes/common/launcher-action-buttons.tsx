@@ -24,7 +24,7 @@ export const LauncherActionButtons = ({
   game,
   size = "md",
   onOpenDetails,
-  _onOpenMatch,
+  onOpenMatch: _onOpenMatch,
   className = "",
 }: LauncherActionButtonsProps) => {
   const { toast } = useToast()
@@ -122,12 +122,12 @@ export const LauncherActionButtons = ({
           <button
             onClick={(e) => {
               e.stopPropagation()
-              cancelInstall(activeInstall.installId)
+              if (activeInstall.installId) cancelInstall(activeInstall.installId)
             }}
             className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30 text-xs font-bold hover:bg-amber-500/30 transition-all cursor-pointer"
           >
             <Loader2 size={14} className="animate-spin" />
-            <span>Installing ({activeInstall.progress}%)</span>
+            <span>Installing ({activeInstall.progress?.progress ?? 0}%)</span>
           </button>
         ) : (
           <button

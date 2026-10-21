@@ -116,6 +116,7 @@ export interface ServerGameFile {
   serverUrl: string;
   fileId: string;
   filename: string;
+  filepath?: string;
   filesize: number;
   extension: string;
   formatCategory: 'iso' | 'installer' | 'game' | 'archive' | 'rom' | 'update';
@@ -144,3 +145,5 @@ export interface ServerGamesResponse {
   files: ServerGameFile[];
   errors?: { serverId: number; error: string }[] | null;
 }
+
+export * from './usenet-types'

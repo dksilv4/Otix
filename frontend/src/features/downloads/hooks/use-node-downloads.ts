@@ -193,7 +193,7 @@ export function useAutoClaimPendingServers(enabled: boolean) {
 
   const localProbe = useQuery({
     queryKey: [...nodeKeys.all, 'local-probe'],
-    queryFn: probeLocalGameNode,
+    queryFn: () => probeLocalGameNode(),
     enabled: active,
     refetchInterval: 15_000,
     retry: false,
@@ -373,11 +373,17 @@ export function usePingNode() {
 export const usePingGameServer = usePingNode
 
 export interface ServerProbeResult {
-  remote_accessible: boolean
+  remoteAccessible?: boolean
+  remote_accessible?: boolean
+  reachable?: boolean
   status: 'online' | 'unreachable'
-  tested_url: string
-  latency_ms: number
-  message: string
+  testedUrl?: string
+  tested_url?: string
+  latencyMs?: number
+  latency_ms?: number
+  message?: string
+  error?: string
+  suggestion?: string
 }
 
 export type NodeProbeResult = ServerProbeResult

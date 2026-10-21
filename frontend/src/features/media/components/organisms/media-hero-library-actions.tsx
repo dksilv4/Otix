@@ -44,7 +44,7 @@ export const MediaHeroLibraryActions = () => {
         ? new Date((detail as { releaseDate: string }).releaseDate).getFullYear()
         : undefined
       const plexInfo = await fetchPlexConnectInfoCached(effectiveMediaId, {
-        tmdbId: detail?.tmdbId,
+        tmdbId: detail?.tmdbId ?? undefined,
         tvdbId: (detail as { tvdbId?: string | number })?.tvdbId,
         title: detail?.title,
         year: releaseYear && !isNaN(releaseYear) ? releaseYear : undefined,

@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import { X, Calendar, Star, HardDrive, Layers, Image as ImageIcon, BookOpen, Sparkles, Server } from "lucide-react"
 import { MediaLogo } from "@/lib/media/media-logo"
 import { LauncherActionButtons } from "./launcher-action-buttons"
+import { LauncherGameChangelog } from "@/features/launcher/components/molecules/launcher-game-changelog"
 import { MatchGameModal } from "@/features/launcher/components/molecules/launcher-match-game-modal"
 import { MediaGameServersSection, useGameServersByGame } from "@/features/gameservers"
 import { useModal } from "@/lib/modals"
@@ -16,7 +17,7 @@ interface LauncherGameSheetProps {
 
 export const LauncherGameSheet = ({ game, onClose }: LauncherGameSheetProps) => {
   const { openModal } = useModal()
-  const [_selectedScreenshot, setSelectedScreenshot] = useState<string | null>(null)
+  const [selectedScreenshot, setSelectedScreenshot] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<'overview' | 'updates' | 'servers'>('overview')
 
   const raw = game ? (("rawGame" in game && game.rawGame ? game.rawGame : game) as LocalGame) : null

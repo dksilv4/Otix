@@ -647,7 +647,8 @@ function parseReleaseName(rawName, extHint = null) {
   const group = extractGroup(baseName) || '';
 
   // Platform detection
-  let platform = EXTENSION_PLATFORMS[ext] || '';
+  const isDocMd = ext === '.md' && (['readme', 'changelog', 'install', 'license', 'instructions', 'release', 'notes', 'contributing', 'info', 'faq', 'todo', 'manual'].some((b) => baseName.toLowerCase().includes(b)) || baseName.toLowerCase().startsWith('readme'));
+  let platform = isDocMd ? 'PC' : (EXTENSION_PLATFORMS[ext] || '');
   if (!platform) {
     const platMatch = baseName.match(/\[(PC|Switch|NSW|PS[1-5]|Xbox|Wii|GameCube|3DS|NDS|GBA|Genesis)\]/i)
       || baseName.match(/(?:^|[\s._-])(PC|Switch|NSW|PS[1-5]|Xbox|Wii|GameCube|3DS|NDS|GBA|Genesis)(?:[\s._-]|$)/i);
@@ -902,7 +903,7 @@ function classifyArtifact(filename, fullPath, isDir = false, childFiles = []) {
   }
 
   // Preserved Metadata & Extras
-  if (['.nfo', '.sfv', '.diz', '.otixmeta'].includes(ext) || ['cover.jpg', 'poster.png', 'folder.jpg'].includes(lower)) {
+  const DOC_BASENAMES = ['readme', 'changelog', 'install', 'license', 'instructions', 'release', 'notes', 'contributing', 'info', 'faq', 'todo', 'manual']; const baseNoExt = path.basename(filename, ext).toLowerCase(); if (['.nfo', '.sfv', '.diz', '.otixmeta'].includes(ext) || ['cover.jpg', 'poster.png', 'folder.jpg'].includes(lower) || ['.txt', '.doc', '.docx', '.pdf'].includes(ext) || (ext === '.md' && (DOC_BASENAMES.some((b) => baseNoExt.includes(b)) || baseNoExt.startsWith('readme')))) {
     return { category: 'metadata', isPrimary: false, isMetadata: true };
   }
 
