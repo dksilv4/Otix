@@ -288,6 +288,7 @@ export const PlexTabContent = () => {
               logoUrl={item.logoUrl}
               releaseDate={item.releaseDate}
               isAdult={item.isAdult}
+              tmdbId={(item as any).tmdbId}
             />
             {item.mediaType === "music" && item.albumArtistName && (
               <p className="dk-library-plex__artist-name">

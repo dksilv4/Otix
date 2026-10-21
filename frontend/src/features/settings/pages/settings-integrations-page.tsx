@@ -1940,9 +1940,7 @@ export const SettingsIntegrationsPage = () => {
           <p className="font-semibold text-foreground">Personal Media &amp; Streaming Privacy</p>
           <p className="leading-relaxed">
             Otix is a personal media management client. Otix does not host, store, or distribute copyrighted video or audio. Media streaming connections are established directly between your browser and your linked personal servers (Plex, Jellyfin) for private domestic viewing. Read our full{' '}
-            <Link to="/terms" className="text-primary hover:underline underline-offset-2">
-              Terms of Service
-            </Link>
+            <Link to="/terms" className="text-primary hover:underline underline-offset-2">Terms of Service</Link>{' '}and{' '}<Link to="/privacy" className="text-primary hover:underline underline-offset-2">Privacy Policy</Link>
             .
           </p>
         </div>

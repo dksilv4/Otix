@@ -1,5 +1,12 @@
 import { createContext, useContext, useState, useCallback, type ReactNode } from 'react'
-import type { ContextMenuItemDef, ContextMenuPosition, ContextMenuMediaType, ContextMenuState, ContextMenuActions } from './types'
+import type {
+  ContextMenuItemDef,
+  ContextMenuPosition,
+  ContextMenuMediaType,
+  ContextMenuTargetType,
+  ContextMenuState,
+  ContextMenuActions,
+} from './types'
 
 interface ContextMenuContextValue extends ContextMenuState, ContextMenuActions {}
 
@@ -10,6 +17,7 @@ export const ContextMenuProvider = ({ children }: { children: ReactNode }) => {
   const [position, setPosition] = useState<ContextMenuPosition | null>(null)
   const [items, setItems] = useState<ContextMenuItemDef[]>([])
   const [mediaType, setMediaType] = useState<ContextMenuMediaType | null>(null)
+  const [targetType, setTargetType] = useState<ContextMenuTargetType | null>(null)
   const [data, setData] = useState<Record<string, unknown> | null>(null)
 
   const open = useCallback<ContextMenuActions['open']>((e, items, options) => {
@@ -20,6 +28,7 @@ export const ContextMenuProvider = ({ children }: { children: ReactNode }) => {
     setPosition(point)
     setItems(items)
     setMediaType(options?.mediaType ?? null)
+    setTargetType(options?.targetType ?? (options?.mediaType as ContextMenuTargetType | undefined) ?? null)
     setData(options?.data ?? null)
     setIsOpen(true)
   }, [])
@@ -29,11 +38,14 @@ export const ContextMenuProvider = ({ children }: { children: ReactNode }) => {
     setPosition(null)
     setItems([])
     setMediaType(null)
+    setTargetType(null)
     setData(null)
   }, [])
 
   return (
-    <ContextMenuCtx.Provider value={{ isOpen, position, items, mediaType, data, open, close }}>
+    <ContextMenuCtx.Provider
+      value={{ isOpen, position, items, mediaType, targetType, data, open, close }}
+    >
       {children}
     </ContextMenuCtx.Provider>
   )

@@ -370,7 +370,7 @@ export const SettingsGameServersPage = () => {
               </DkButton>
               <DkButton
                 type="button"
-                variant="danger"
+                variant="destructive"
                 size="sm"
                 onClick={handleDeleteConfirm}
                 disabled={deleteMutation.isPending}

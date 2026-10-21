@@ -193,7 +193,18 @@ export interface Cs2LiveState {
   mvps: number;
   roundKills: number;
   bombState?: 'planted' | 'defused' | 'exploded' | null;
+  isSpectating?: boolean;
+  spectatingPlayerName?: string;
   money?: number;
+  loadout?: {
+    primary?: string;
+    secondary?: string;
+    knife?: string;
+    activeWeapon?: string;
+    activeSlot?: 1 | 2 | 3 | 'c4';
+    hasDefuser?: boolean;
+    hasBomb?: boolean;
+  };
   timestamp: number;
 }
 
@@ -708,6 +719,36 @@ export interface IDesktopAPI {
   onMatchingProgress: (callback: (event: any) => void) => () => void;
   onMatchingComplete: (callback: (event: any) => void) => () => void;
   onMatchingCancelled: (callback: () => void) => () => void;
+
+  // ── Setup Installer & Uninstaller ──
+  installerGetInfo: () => Promise<{
+    version: string;
+    defaultInstallPath: string;
+    isElevated: boolean;
+    sourcePath: string;
+  }>;
+  installerGetDiskSpace: (targetPath: string) => Promise<{
+    freeBytes: number;
+    totalBytes: number;
+    drive: string;
+  }>;
+  installerBrowseDirectory: (defaultPath?: string) => Promise<string | null>;
+  installerStartInstall: (options: {
+    installPath: string;
+    createDesktopShortcut: boolean;
+    createStartMenuShortcut: boolean;
+    startOnBoot: boolean;
+  }) => Promise<{ success: boolean; error?: string }>;
+  installerOnProgress: (callback: (progress: {
+    percent: number;
+    status: string;
+    detail?: string;
+    currentFile?: string;
+  }) => void) => () => void;
+  installerFinishAndLaunch: () => Promise<void>;
+  installerCancel: () => Promise<void>;
+  uninstallerConfirm: (options: { removeUserData: boolean }) => Promise<{ success: boolean; error?: string }>;
+  uninstallerOnProgress: (callback: (progress: { percent: number; status: string }) => void) => () => void;
 }
 
 export interface NodeDaemonStatus {

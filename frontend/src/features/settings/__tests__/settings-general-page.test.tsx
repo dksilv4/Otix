@@ -22,7 +22,7 @@ vi.mock('../hooks/use-settings-hash-scroll', () => ({
   useSettingsHashScroll: vi.fn(),
 }))
 
-describe('SettingsGeneralPage - About & Updates', () => {
+describe('SettingsGeneralPage - System & Updates', () => {
   beforeEach(() => {
     vi.restoreAllMocks()
   })
@@ -51,7 +51,8 @@ describe('SettingsGeneralPage - About & Updates', () => {
 
     render(<SettingsGeneralPage />)
 
-    expect(screen.getByText('About & Updates')).toBeDefined()
+    expect(screen.getByText('System & Environment')).toBeDefined()
+    expect(screen.getByText('Software Updates')).toBeDefined()
     expect(screen.getByText('v0.1.0')).toBeDefined()
     expect(screen.getByText('Up to date')).toBeDefined()
 
@@ -91,7 +92,7 @@ describe('SettingsGeneralPage - About & Updates', () => {
     expect(installUpdateMock).toHaveBeenCalled()
   })
 
-  it('renders View Details button and toggles auto-update preferences', () => {
+  it('renders Show Release Notes button and toggles auto-update preferences', () => {
     const openModalMock = vi.fn()
     const setAutoCheckMock = vi.fn()
     const setAutoDownloadMock = vi.fn()
@@ -124,21 +125,21 @@ describe('SettingsGeneralPage - About & Updates', () => {
 
     render(<SettingsGeneralPage />)
 
-    const viewDetailsBtn = screen.getByRole('button', { name: /view details/i })
-    expect(viewDetailsBtn).toBeDefined()
-    fireEvent.click(viewDetailsBtn)
+    const showNotesBtn = screen.getByRole('button', { name: /show release notes/i })
+    expect(showNotesBtn).toBeDefined()
+    fireEvent.click(showNotesBtn)
     expect(openModalMock).toHaveBeenCalled()
 
     expect(screen.getByText('Automatically check for updates')).toBeDefined()
     expect(screen.getByText('Automatically download updates')).toBeDefined()
   })
 
-  it('renders pre-release toggle and clean desktop app label without token prompt', () => {
+  it('renders pre-release toggle and clean platform name with logo without token prompt', () => {
     const setAllowPrereleaseMock = vi.fn()
 
     vi.spyOn(updaterModule, 'useAppUpdater').mockReturnValue({
       status: 'idle',
-      currentVersion: '0.1.23',
+      currentVersion: '0.1.24',
       availableVersion: null,
       releaseNotes: null,
       progress: null,
@@ -169,7 +170,8 @@ describe('SettingsGeneralPage - About & Updates', () => {
 
     render(<SettingsGeneralPage />)
 
-    expect(screen.getByText('Otix Desktop App')).toBeDefined()
+    expect(screen.getByText('Platform Environment')).toBeDefined()
+    expect(screen.getAllByText('Otix').length).toBeGreaterThanOrEqual(1)
     expect(screen.queryByText(/Electron/)).toBeNull()
     expect(screen.getByText('Include pre-release builds')).toBeDefined()
     expect(screen.queryByText('GitHub Release Access Token')).toBeNull()

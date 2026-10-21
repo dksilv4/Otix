@@ -380,4 +380,23 @@ contextBridge.exposeInMainWorld('desktopAPI', {
     ipcRenderer.on('game:matching:cancelled', handler);
     return () => ipcRenderer.removeListener('game:matching:cancelled', handler);
   },
+
+  // ── Setup Installer & Uninstaller ──
+  installerGetInfo: () => ipcRenderer.invoke('setup:get-info'),
+  installerGetDiskSpace: (targetPath: string) => ipcRenderer.invoke('setup:get-disk-space', targetPath),
+  installerBrowseDirectory: (defaultPath?: string) => ipcRenderer.invoke('setup:browse-directory', defaultPath),
+  installerStartInstall: (options: any) => ipcRenderer.invoke('setup:start-install', options),
+  installerOnProgress: (callback: (progress: any) => void) => {
+    const handler = (_event: any, progress: any) => callback(progress);
+    ipcRenderer.on('setup:install-progress', handler);
+    return () => ipcRenderer.removeListener('setup:install-progress', handler);
+  },
+  installerFinishAndLaunch: () => ipcRenderer.invoke('setup:finish-and-launch'),
+  installerCancel: () => ipcRenderer.invoke('setup:cancel'),
+  uninstallerConfirm: (options: { removeUserData: boolean }) => ipcRenderer.invoke('setup:uninstall', options),
+  uninstallerOnProgress: (callback: (progress: any) => void) => {
+    const handler = (_event: any, progress: any) => callback(progress);
+    ipcRenderer.on('setup:uninstall-progress', handler);
+    return () => ipcRenderer.removeListener('setup:uninstall-progress', handler);
+  },
 });

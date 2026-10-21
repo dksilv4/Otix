@@ -1,9 +1,9 @@
-import { memo, useCallback } from 'react'
+import { memo, useMemo } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { MediaCard } from '@ui/molecules/media-card'
-import { ContextMenuTrigger } from '@/features/_config/context-menu'
+import { useModal } from '@/lib/modals'
+import { ContextMenuTrigger, buildMediaMenuItems } from '@/features/_config/context-menu'
 import type { MediaItemSummary } from '@media/queries/media-queries'
-import type { ContextMenuItemDef } from '@/features/_config/context-menu'
 
 interface DiscoverMediaCardProps {
   item: MediaItemSummary
@@ -23,25 +23,22 @@ export const DiscoverMediaCard = memo(({
   interactive = true,
 }: DiscoverMediaCardProps) => {
   const navigate = useNavigate()
+  const { openModal } = useModal()
 
-  const menuItems: ContextMenuItemDef[] = [
-    {
-      id: 'view-details',
-      label: 'View Details',
-      onClick: useCallback(() => {
-        navigate({ to: '/media/$mediaType/$mediaId', params: { mediaType: item.mediaType, mediaId: item.id } })
-      }, [navigate, item.mediaType, item.id]),
-    },
-    {
-      id: 'add-to-library',
-      label: 'Add to Library',
-      subItems: [
-        { id: 'watched', label: 'Mark as Watched', onClick: () => {} },
-        { id: 'owned', label: 'Mark as Owned', onClick: () => {} },
-        { id: 'wishlist', label: 'Add to Wishlist', onClick: () => {} },
-      ],
-    },
-  ]
+  const menuItems = useMemo(() => {
+    return buildMediaMenuItems(
+      {
+        type: 'media',
+        id: item.id,
+        mediaType: item.mediaType as any,
+        title: item.title,
+        posterUrl: item.posterUrl ?? undefined,
+        year: item.releaseDate?.slice(0, 4),
+        tmdbId: item.tmdbId ?? undefined,
+      },
+      { navigate, openModal },
+    )
+  }, [item, navigate, openModal])
 
   return (
     <ContextMenuTrigger

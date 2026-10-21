@@ -1,4 +1,4 @@
-import { Film, Tv, Gamepad2, Gift, SlidersHorizontal, Compass } from 'lucide-react'
+import { Film, Tv, Gamepad2, Gift, SlidersHorizontal, Compass, Play } from 'lucide-react'
 import { type DiscoverIntent } from '../../utils/sections'
 
 interface DiscoverIntentBarProps {
@@ -33,6 +33,19 @@ export const DiscoverIntentBar = ({
           >
             <Compass className="h-3.5 w-3.5" />
             All Media
+          </button>
+
+          <button
+            type="button"
+            onClick={() => onSelectIntent('streamable')}
+            className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-semibold transition-all cursor-pointer backdrop-blur-xl shadow-sm ${
+              activeIntent === 'streamable'
+                ? 'bg-primary text-primary-foreground shadow-md'
+                : 'bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-glass-hover)] border border-[var(--dk-separator)] text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <Play className="h-3.5 w-3.5 fill-current" />
+            Streamable
           </button>
 
           <button

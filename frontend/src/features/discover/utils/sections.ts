@@ -9,7 +9,7 @@ export interface DiscoverSectionDefinition {
 }
 
 export type DiscoverPreset = 'all' | 'gaming' | 'cinema' | 'minimal'
-export type DiscoverIntent = 'all' | 'movies' | 'shows' | 'games' | 'free_games'
+export type DiscoverIntent = 'all' | 'movies' | 'shows' | 'games' | 'free_games' | 'streamable'
 
 export const DISCOVER_SECTIONS_STORAGE_KEY = 'otix:discover:sections:v4'
 
@@ -25,6 +25,13 @@ export const DEFAULT_DISCOVER_SECTIONS: DiscoverSectionDefinition[] = [
     id: 'continue_watching',
     label: 'Continue Watching',
     description: 'Jump back into media currently in progress',
+    category: 'curated',
+    defaultEnabled: true,
+  },
+  {
+    id: 'streamable_media',
+    label: 'Available to Stream',
+    description: 'Movies and TV series ready to watch from your personal media library',
     category: 'curated',
     defaultEnabled: true,
   },

@@ -35,14 +35,15 @@ export const Cs2Source2MinimalConsole = ({ telemetry }: { telemetry: UniversalGa
   )
 
   const money = telemetry.money ?? (isDead ? 1400 : 4850)
-  const primaryWeapon = telemetry.loadout?.primary || (isCt ? 'M4A1-S' : 'AK-47')
-  const secondaryWeapon = telemetry.loadout?.secondary || (isCt ? 'USP-S' : 'Glock-18')
+  const primaryWeapon = telemetry.loadout ? telemetry.loadout.primary : (isCt ? 'M4A1-S' : 'AK-47')
+  const secondaryWeapon = telemetry.loadout ? telemetry.loadout.secondary : (isCt ? 'USP-S' : 'Glock-18')
   const knifeWeapon = telemetry.loadout?.knife || 'Knife'
   const primaryBase = getCs2BaseWeaponName(primaryWeapon)
   const secondaryBase = getCs2BaseWeaponName(secondaryWeapon)
   const knifeBase = getCs2BaseWeaponName(knifeWeapon)
-  const hasKit = telemetry.loadout?.hasDefuser ?? isCt
-  const hasBomb = telemetry.loadout?.hasBomb ?? !isCt
+  const hasKit = telemetry.loadout ? Boolean(telemetry.loadout.hasDefuser) : isCt
+  const hasBomb = telemetry.loadout ? Boolean(telemetry.loadout.hasBomb) : !isCt
+  const activeSlot = telemetry.loadout?.activeSlot ?? (primaryBase ? 1 : 2)
 
   const assistsStat = telemetry.stats?.find((s) => s.label.toLowerCase().includes('assist'))
   const mvpsStat = telemetry.stats?.find((s) => s.label.toLowerCase().includes('mvp'))
@@ -198,41 +199,75 @@ export const Cs2Source2MinimalConsole = ({ telemetry }: { telemetry: UniversalGa
       {/* 3rd Row: Authentic CS2 3-Slot Vector Loadout (Underneath, Full Width) */}
       <div className="grid grid-cols-3 gap-2.5 w-full pt-2 border-t border-white/[0.04] items-center">
         {/* Slot 1: Active Primary */}
-        <div className="flex items-center justify-between text-[#70b5e8] min-w-0 pr-1">
+        <div className={`flex items-center justify-between min-w-0 pr-1 transition-all ${
+          activeSlot === 1
+            ? 'text-[#70b5e8] drop-shadow-[0_0_6px_rgba(112,181,232,0.45)]'
+            : 'text-white/60'
+        }`}>
           <div className="flex flex-col min-w-0">
-            <Cs2RealWeaponIcon
-              weapon={primaryBase}
-              active
-              slot={1}
-              className="h-4.5 w-auto max-w-[65px] object-contain drop-shadow-[0_0_6px_rgba(112,181,232,0.45)]"
-            />
-            <span className="text-[9px] text-white/70 font-semibold truncate uppercase mt-0.5">
-              {primaryBase}
-            </span>
+            {primaryBase ? (
+              <>
+                <Cs2RealWeaponIcon
+                  weapon={primaryBase}
+                  active={activeSlot === 1}
+                  slot={1}
+                  className="h-4.5 w-auto max-w-[65px] object-contain drop-shadow-[0_0_6px_rgba(112,181,232,0.45)]"
+                />
+                <span className="text-[9px] text-white/70 font-semibold truncate uppercase mt-0.5">
+                  {primaryBase}
+                </span>
+              </>
+            ) : (
+              <div className="h-4.5 flex items-center">
+                <span className="text-[9px] text-white/20 font-semibold uppercase">
+                  —
+                </span>
+              </div>
+            )}
           </div>
           <span className="text-[10px] font-bold text-white/40 before:content-['1'] shrink-0" />
         </div>
 
         {/* Slot 2: Secondary Pistol */}
-        <div className="flex items-center justify-between text-white/70 min-w-0 pr-1">
+        <div className={`flex items-center justify-between min-w-0 pr-1 transition-all ${
+          activeSlot === 2
+            ? 'text-[#70b5e8] drop-shadow-[0_0_6px_rgba(112,181,232,0.45)]'
+            : 'text-white/70'
+        }`}>
           <div className="flex flex-col min-w-0">
-            <Cs2RealWeaponIcon
-              weapon={secondaryBase}
-              slot={2}
-              className="h-4 w-auto max-w-[50px] object-contain"
-            />
-            <span className="text-[9px] text-white/50 font-semibold truncate uppercase mt-0.5">
-              {secondaryBase}
-            </span>
+            {secondaryBase ? (
+              <>
+                <Cs2RealWeaponIcon
+                  weapon={secondaryBase}
+                  active={activeSlot === 2}
+                  slot={2}
+                  className="h-4 w-auto max-w-[50px] object-contain"
+                />
+                <span className="text-[9px] text-white/50 font-semibold truncate uppercase mt-0.5">
+                  {secondaryBase}
+                </span>
+              </>
+            ) : (
+              <div className="h-4 flex items-center">
+                <span className="text-[9px] text-white/20 font-semibold uppercase">
+                  —
+                </span>
+              </div>
+            )}
           </div>
           <span className="text-[10px] font-bold text-white/30 before:content-['2'] shrink-0" />
         </div>
 
         {/* Slot 3: Tactical Knife */}
-        <div className="flex items-center justify-between text-white/60 min-w-0">
+        <div className={`flex items-center justify-between min-w-0 transition-all ${
+          activeSlot === 3
+            ? 'text-[#70b5e8] drop-shadow-[0_0_6px_rgba(112,181,232,0.45)]'
+            : 'text-white/60'
+        }`}>
           <div className="flex flex-col min-w-0">
             <Cs2RealWeaponIcon
               weapon={knifeBase}
+              active={activeSlot === 3}
               slot={3}
               className="h-3.5 w-auto max-w-[50px] object-contain"
             />

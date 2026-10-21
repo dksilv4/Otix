@@ -23,11 +23,27 @@ const areCs2StatesEqual = (a: Cs2LiveState | null, b: Cs2LiveState | null): bool
   if (!a || !b) return false
   return (
     a.timestamp === b.timestamp &&
-    a.map?.name === b.map?.name &&
-    a.map?.phase === b.map?.phase &&
-    a.player?.kills === b.player?.kills &&
-    a.player?.deaths === b.player?.deaths &&
-    a.round?.bomb === b.round?.bomb
+    a.mapName === b.mapName &&
+    a.phase === b.phase &&
+    a.round === b.round &&
+    a.scoreCt === b.scoreCt &&
+    a.scoreT === b.scoreT &&
+    a.health === b.health &&
+    a.armor === b.armor &&
+    a.helmet === b.helmet &&
+    a.team === b.team &&
+    a.kills === b.kills &&
+    a.deaths === b.deaths &&
+    a.assists === b.assists &&
+    a.bombState === b.bombState &&
+    a.money === b.money &&
+    a.loadout?.primary === b.loadout?.primary &&
+    a.loadout?.secondary === b.loadout?.secondary &&
+    a.loadout?.knife === b.loadout?.knife &&
+    a.loadout?.activeSlot === b.loadout?.activeSlot &&
+    a.loadout?.activeWeapon === b.loadout?.activeWeapon &&
+    a.loadout?.hasDefuser === b.loadout?.hasDefuser &&
+    a.loadout?.hasBomb === b.loadout?.hasBomb
   )
 }
 

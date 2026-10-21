@@ -26,6 +26,8 @@ import {
   Keyboard,
 } from 'lucide-react'
 import { useMediaStreamPlayer } from '../../hooks/use-media-stream-player'
+import { useQuickStream } from '../../hooks/use-quick-stream'
+import { OPEN_QUICK_STREAM_EVENT, type QuickStreamEventDetail } from '../../utils/open-quick-stream'
 import { cn } from '@/lib/utils'
 import { safePlay, safePause, formatSeconds } from '../../utils/player'
 import { MediaPlayerInAppPipOverlay } from '../molecules/media-player-in-app-pip-overlay'
@@ -70,6 +72,19 @@ export const MediaStreamPlayerModal = () => {
     fallbackToHls,
     failoverToBaseUrl,
   } = useMediaStreamPlayer()
+
+  const { quickStream } = useQuickStream()
+
+  useEffect(() => {
+    const handleQuickStreamEvent = (e: Event) => {
+      const customEvent = e as CustomEvent<QuickStreamEventDetail>
+      if (customEvent.detail) {
+        quickStream(customEvent.detail)
+      }
+    }
+    window.addEventListener(OPEN_QUICK_STREAM_EVENT, handleQuickStreamEvent)
+    return () => window.removeEventListener(OPEN_QUICK_STREAM_EVENT, handleQuickStreamEvent)
+  }, [quickStream])
 
   const triedBaseUrlsRef = useRef<Set<string>>(new Set())
 

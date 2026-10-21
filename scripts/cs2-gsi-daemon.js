@@ -120,35 +120,142 @@ function handlePayload(data) {
 
     // Extract live loadout from player.weapons if available
     let loadout = undefined;
-    if (player?.weapons && typeof player.weapons === 'object') {
-      const weaponsList = Object.values(player.weapons);
-      let primary = undefined;
-      let secondary = undefined;
-      let knife = 'Knife';
-      let hasDefuser = Boolean(player?.state?.defusekit);
-      let hasBomb = false;
+    const weaponsSource = (!isSpectating && player?.weapons)
+      ? player.weapons
+      : (localSteamId && allplayers?.[localSteamId]?.weapons)
+        ? allplayers[localSteamId].weapons
+        : (!isSpectating ? player?.weapons : null);
 
-      for (const w of weaponsList) {
-        const type = (w.type || '').toLowerCase();
-        const name = (w.name || '');
-        if (type === 'c4' || name === 'weapon_c4') {
-          hasBomb = true;
-        } else if (type === 'knife' || name.startsWith('weapon_knife')) {
-          knife = name.replace(/^weapon_knife_/i, '').replace(/^weapon_/i, '') || 'Knife';
-        } else if (type === 'pistol') {
-          secondary = name.replace(/^weapon_/i, '').replace(/_silencer$/i, '-S');
-        } else if (['rifle', 'sniperrifle', 'submachinegun', 'shotgun', 'machinegun'].includes(type)) {
-          primary = name.replace(/^weapon_/i, '').replace(/_silencer$/i, '-S');
+    if (weaponsSource && typeof weaponsSource === 'object') {
+      const weaponsList = Object.values(weaponsSource).filter((w) => w && typeof w === 'object');
+      if (weaponsList.length > 0) {
+        let primary = undefined;
+        let secondary = undefined;
+        let knife = 'Knife';
+        let activeWeapon = undefined;
+        let activeSlot = undefined;
+        let hasBomb = false;
+        let hasDefuser = Boolean(player?.state?.defusekit);
+
+        for (const w of weaponsList) {
+          const name = String(w.name || '').trim();
+          const type = String(w.type || '').toLowerCase().replace(/[\s_-]+/g, '');
+          const state = String(w.state || '').toLowerCase();
+          const isActive = state === 'active' || state === 'reloading';
+
+          if (type === 'c4' || name === 'weapon_c4') {
+            hasBomb = true;
+            if (isActive) {
+              activeSlot = 'c4';
+              activeWeapon = 'weapon_c4';
+            }
+            continue;
+          }
+
+          if (
+            type === 'knife' ||
+            name.startsWith('weapon_knife') ||
+            name === 'weapon_bayonet' ||
+            name === 'weapon_knifegg'
+          ) {
+            knife = name;
+            if (isActive) {
+              activeSlot = 3;
+              activeWeapon = knife;
+            }
+            continue;
+          }
+
+          if (
+            type === 'pistol' ||
+            [
+              'weapon_glock',
+              'weapon_usp_silencer',
+              'weapon_hkp2000',
+              'weapon_p250',
+              'weapon_fiveseven',
+              'weapon_cz75a',
+              'weapon_tec9',
+              'weapon_revolver',
+              'weapon_deagle',
+              'weapon_elite',
+            ].includes(name)
+          ) {
+            secondary = name;
+            if (isActive) {
+              activeSlot = 2;
+              activeWeapon = secondary;
+            }
+            continue;
+          }
+
+          if (
+            [
+              'rifle',
+              'sniperrifle',
+              'sniper',
+              'submachinegun',
+              'smg',
+              'shotgun',
+              'machinegun',
+              'mg',
+            ].includes(type) ||
+            [
+              'weapon_ak47',
+              'weapon_m4a1',
+              'weapon_m4a1_silencer',
+              'weapon_famas',
+              'weapon_galilar',
+              'weapon_aug',
+              'weapon_sg556',
+              'weapon_awp',
+              'weapon_ssg08',
+              'weapon_g3sg1',
+              'weapon_scar20',
+              'weapon_mp9',
+              'weapon_mac10',
+              'weapon_mp7',
+              'weapon_mp5sd',
+              'weapon_ump45',
+              'weapon_p90',
+              'weapon_bizon',
+              'weapon_nova',
+              'weapon_xm1014',
+              'weapon_mag7',
+              'weapon_sawedoff',
+              'weapon_m249',
+              'weapon_negev',
+            ].includes(name)
+          ) {
+            primary = name;
+            if (isActive) {
+              activeSlot = 1;
+              activeWeapon = primary;
+            }
+            continue;
+          }
+
+          if (name === 'weapon_taser' && isActive) {
+            activeWeapon = name;
+          }
         }
-      }
 
-      loadout = {
-        primary,
-        secondary,
-        knife,
-        hasDefuser,
-        hasBomb,
-      };
+        if (!activeSlot) {
+          if (primary) activeSlot = 1;
+          else if (secondary) activeSlot = 2;
+          else activeSlot = 3;
+        }
+
+        loadout = {
+          primary,
+          secondary,
+          knife,
+          activeWeapon,
+          activeSlot,
+          hasDefuser,
+          hasBomb,
+        };
+      }
     }
 
     latestState = {

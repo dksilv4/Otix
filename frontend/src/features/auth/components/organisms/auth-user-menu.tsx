@@ -13,6 +13,7 @@ import {
   ArrowRight,
   Film,
   Search,
+  Lightbulb,
   Settings,
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -30,6 +31,7 @@ import {
   AddFriendModal,
   filterFriends,
 } from '@/features/friends'
+import { openFeatureSpotlight } from '@/features/spotlight'
 
 export interface UserMenuContentProps {
   onClose?: () => void
@@ -143,7 +145,7 @@ export const UserMenuContent = ({ onClose }: UserMenuContentProps) => {
         </Link>
 
         {/* Icon-based Navigation Links under User Section */}
-        <div className="grid grid-cols-4 gap-1.5 pt-2.5 mt-2.5 border-t border-[var(--dk-separator)]">
+        <div className="grid grid-cols-5 gap-1.5 pt-2.5 mt-2.5 border-t border-[var(--dk-separator)]">
           <Link
             to="/u/$username"
             params={{ username: user?.username || '' }}
@@ -174,6 +176,20 @@ export const UserMenuContent = ({ onClose }: UserMenuContentProps) => {
           >
             <Sparkles className="h-4 w-4" />
           </Link>
+
+          <button
+            type="button"
+            onClick={() => {
+              onClose?.()
+              openFeatureSpotlight()
+            }}
+            className="flex h-8 items-center justify-center rounded-xl bg-[var(--dk-surface-overlay)]/70 text-muted-foreground transition-all hover:bg-[var(--dk-surface-overlay)] hover:text-foreground active:scale-95 cursor-pointer border border-[var(--dk-separator)]"
+            title="Feature Tips & Tricks"
+            aria-label="Feature Tips & Tricks"
+          >
+            <Lightbulb className="h-4 w-4" />
+          </button>
+
 
           <button
             type="button"

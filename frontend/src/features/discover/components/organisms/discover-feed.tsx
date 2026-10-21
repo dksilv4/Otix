@@ -5,6 +5,7 @@ import { DiscoverIntentBar } from '../molecules/discover-intent-bar'
 import { DiscoverWelcomeBanner } from '../molecules/discover-welcome-banner'
 import { DiscoverFanCarousel } from './discover-fan-carousel'
 import { DiscoverContinueWatchingSection } from './discover-continue-watching-section'
+import { DiscoverStreamableSection } from './discover-streamable-section'
 import { DiscoverDecideSection } from './discover-decide-section'
 import { TrendingSeasonsSection } from './trending-seasons-section'
 import { FreeGamesSection } from './free-games-section'
@@ -57,6 +58,7 @@ export const DiscoverFeed = () => {
       return (
         id === 'trending_movies' ||
         id === 'continue_watching' ||
+        id === 'streamable_media' ||
         id === 'decide_for_me' ||
         id === 'fan_spotlight' ||
         id === 'genres_explore' ||
@@ -68,6 +70,7 @@ export const DiscoverFeed = () => {
         id === 'trending_shows' ||
         id === 'trending_seasons' ||
         id === 'continue_watching' ||
+        id === 'streamable_media' ||
         id === 'decide_for_me' ||
         id === 'fan_spotlight' ||
         id === 'genres_explore' ||
@@ -88,6 +91,9 @@ export const DiscoverFeed = () => {
     }
     if (activeIntent === 'free_games') {
       return id === 'free_games' || id === 'gaming_rails'
+    }
+    if (activeIntent === 'streamable') {
+      return id === 'continue_watching' || id === 'streamable_media' || id === 'decide_for_me'
     }
     return true
   }
@@ -121,6 +127,9 @@ export const DiscoverFeed = () => {
 
               case 'continue_watching':
                 return <DiscoverContinueWatchingSection key={section.id} eager />
+
+              case 'streamable_media':
+                return <DiscoverStreamableSection key={section.id} />
 
               case 'decide_for_me':
                 return <DiscoverDecideSection key={section.id} />

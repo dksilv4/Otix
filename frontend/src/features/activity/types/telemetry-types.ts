@@ -46,6 +46,8 @@ export interface UniversalGameTelemetry {
     primary?: string
     secondary?: string
     knife?: string
+    activeWeapon?: string
+    activeSlot?: 1 | 2 | 3 | 'c4'
     grenades?: string[]
     hasDefuser?: boolean
     hasBomb?: boolean

@@ -38,6 +38,9 @@ export const LauncherMediaCard = ({
       onClick={open}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
+      data-context-type="game"
+      data-game-id={game.id}
+      data-media-title={art.title}
       className={cn('block text-left cursor-pointer', className)}
       title={raw?.description || art.title}
     >

@@ -16,6 +16,12 @@ const TermsPage = safeLazy(() =>
 const PrivacyPage = safeLazy(() =>
   import("@/pages/privacy-page").then((m) => ({ default: m.PrivacyPage })),
 )
+const InstallerPage = safeLazy(() =>
+  import("@/features/installer").then((m) => ({ default: m.InstallerPage })),
+)
+const UninstallerPage = safeLazy(() =>
+  import("@/features/installer").then((m) => ({ default: m.UninstallerPage })),
+)
 
 import { createAuthRoutes } from '@auth/router'
 import { createDiscoverRoutes } from '@discover/router'
@@ -35,6 +41,8 @@ import { createGenreRoutes } from '@genre/router'
 import { createWelcomeRoutes } from '@/features/welcome/router'
 import { createFriendsRoutes } from '@/features/friends/router'
 import { createDocsRoutes } from '@/features/docs/router'
+import { createDownloadRoutes } from '@/features/download-page/router'
+import { createGameServersRoutes } from '@/features/gameservers/router'
 import { RoutePending } from './route-pending'
 import { RouteError } from './route-error'
 
@@ -68,11 +76,25 @@ const privacyRoute = createRoute({
   component: PrivacyPage,
 })
 
+const installerRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/installer",
+  component: InstallerPage,
+})
+
+const uninstallerRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/uninstaller",
+  component: UninstallerPage,
+})
+
 const routeTree = rootRoute.addChildren([
   logoLoadingTestRoute,
   telemetryTestRoute,
   termsRoute,
   privacyRoute,
+  installerRoute,
+  uninstallerRoute,
   ...createAuthRoutes(rootRoute),
   ...createCalendarRoutes(rootRoute),
   ...createDiscoverRoutes(rootRoute),
@@ -91,6 +113,8 @@ const routeTree = rootRoute.addChildren([
   ...createFriendsRoutes(rootRoute),
   ...createWelcomeRoutes(rootRoute),
   ...createDocsRoutes(rootRoute),
+  ...createDownloadRoutes(rootRoute),
+  ...createGameServersRoutes(rootRoute),
 ])
 
 export interface RouterContext {

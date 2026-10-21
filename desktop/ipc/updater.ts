@@ -303,9 +303,20 @@ export function registerUpdaterIPC(win: BrowserWindow | null): void {
   });
 
   autoUpdater.on('update-not-available', (info) => {
+    let notes: string | null = currentPayload.releaseNotes ?? null;
+    if (typeof info?.releaseNotes === 'string') {
+      notes = info.releaseNotes;
+    } else if (Array.isArray(info?.releaseNotes)) {
+      notes = info.releaseNotes
+        .map((r: any) => (typeof r === 'string' ? r : r?.note || ''))
+        .filter(Boolean)
+        .join('\n');
+    }
+
     notifyRenderer({
       status: 'not-available',
       version: info.version,
+      releaseNotes: notes,
       error: undefined,
     });
   });
@@ -323,9 +334,20 @@ export function registerUpdaterIPC(win: BrowserWindow | null): void {
   });
 
   autoUpdater.on('update-downloaded', (info) => {
+    let notes: string | null = currentPayload.releaseNotes ?? null;
+    if (typeof info?.releaseNotes === 'string') {
+      notes = info.releaseNotes;
+    } else if (Array.isArray(info?.releaseNotes)) {
+      notes = info.releaseNotes
+        .map((r: any) => (typeof r === 'string' ? r : r?.note || ''))
+        .filter(Boolean)
+        .join('\n');
+    }
+
     notifyRenderer({
       status: 'downloaded',
       version: info.version,
+      releaseNotes: notes,
       error: undefined,
     });
   });
@@ -378,7 +400,7 @@ export function checkForUpdatesOnStartup(): void {
       autoUpdater.checkForUpdates().catch((err) => {
         console.warn('[updater] Background update check error:', sanitizeUpdaterError(err));
       });
-    }, 5000);
+    }, 1200);
   }
 }
 

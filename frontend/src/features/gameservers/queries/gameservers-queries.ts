@@ -12,6 +12,7 @@ export const gameServersKeys = {
   detail: (id: number) => [...gameServersKeys.details(), id] as const,
   shares: (id: number) => [...gameServersKeys.detail(id), 'shares'] as const,
   friends: ['friends', 'list'] as const,
+  invite: (code: string) => [...gameServersKeys.all, 'invite', code] as const,
 }
 
 export function useGameServers(params?: { mediaId?: string; serverType?: string }) {
@@ -139,6 +140,28 @@ export function useDisableGameServerInvite() {
     onSuccess: (_data, serverId) => {
       void queryClient.invalidateQueries({ queryKey: gameServersKeys.detail(serverId) })
       void queryClient.invalidateQueries({ queryKey: gameServersKeys.all })
+    },
+  })
+}
+
+export function useResolveGameServerInvite(code: string | undefined | null) {
+  return useQuery({
+    queryKey: gameServersKeys.invite(code || ''),
+    queryFn: () => gameServersApi.resolveInvite(code!),
+    enabled: Boolean(code),
+    retry: 1,
+  })
+}
+
+export function useJoinGameServerInvite() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (code: string) => gameServersApi.joinInvite(code),
+    onSuccess: (server) => {
+      void queryClient.invalidateQueries({ queryKey: gameServersKeys.all })
+      if (server.mediaItemId) {
+        void queryClient.invalidateQueries({ queryKey: gameServersKeys.byGame(server.mediaItemId) })
+      }
     },
   })
 }

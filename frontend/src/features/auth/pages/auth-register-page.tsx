@@ -69,6 +69,14 @@ export const RegisterPage = () => {
             className="text-foreground underline underline-offset-2 hover:text-primary"
           >
             Terms of Service
+          </a>{' '}
+          and{' '}
+          <a
+            href="/privacy"
+            onClick={(e) => { e.preventDefault(); navigate({ to: '/privacy' }) }}
+            className="text-foreground underline underline-offset-2 hover:text-primary"
+          >
+            Privacy Policy
           </a>
           .
         </p>

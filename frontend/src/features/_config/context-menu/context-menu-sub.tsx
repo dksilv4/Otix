@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ContextMenuItem } from './context-menu-item'
+import { useMenuContext } from './context-menu-context'
 import type { ContextMenuItemDef } from './types'
 
 interface ContextMenuSubProps {
@@ -15,6 +16,7 @@ export const ContextMenuSub = ({ item, isOpen, onToggle, parentRef }: ContextMen
   const subRef = useRef<HTMLDivElement>(null)
   const itemRef = useRef<HTMLButtonElement>(null)
   const [subPos, setSubPos] = useState<'right' | 'left'>('right')
+  const { close } = useMenuContext()
 
   // Determine if submenu should flip to left
   useEffect(() => {
@@ -75,7 +77,10 @@ export const ContextMenuSub = ({ item, isOpen, onToggle, parentRef }: ContextMen
                   shortcut={sub.shortcut}
                   disabled={sub.disabled}
                   destructive={sub.destructive}
-                  onClick={() => { sub.onClick?.() }}
+                  onClick={() => {
+                    close()
+                    sub.onClick?.()
+                  }}
                 />
               ))}
             </div>

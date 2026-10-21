@@ -200,6 +200,7 @@ export const MediaTabContent = ({ tab }: { tab: LibraryTab }) => {
             releaseDate={item.releaseDate}
             isAdult={item.isAdult}
             artistName={item.albumArtistName}
+            tmdbId={(item as any).tmdbId}
           />
         ))}
       </MediaGrid>

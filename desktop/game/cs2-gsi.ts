@@ -27,6 +27,15 @@ export interface Cs2LiveState {
   isSpectating?: boolean;
   spectatingPlayerName?: string;
   money?: number;
+  loadout?: {
+    primary?: string;
+    secondary?: string;
+    knife?: string;
+    activeWeapon?: string;
+    activeSlot?: 1 | 2 | 3 | 'c4';
+    hasDefuser?: boolean;
+    hasBomb?: boolean;
+  };
   timestamp: number;
 }
 
@@ -60,6 +69,163 @@ export function cleanCs2MapName(raw: string): string {
   return raw.replace(/^(de_|cs_|ar_)/i, '').replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
+/**
+ * Normalizes player weapons from CS:GO / CS2 GSI into a structured 3-slot loadout.
+ */
+export function parseCs2Loadout(
+  weaponsObj: any,
+  playerState?: any
+): {
+  primary?: string;
+  secondary?: string;
+  knife?: string;
+  activeWeapon?: string;
+  activeSlot?: 1 | 2 | 3 | 'c4';
+  hasDefuser?: boolean;
+  hasBomb?: boolean;
+} | undefined {
+  if (!weaponsObj || typeof weaponsObj !== 'object') {
+    return undefined;
+  }
+
+  const list = Object.values(weaponsObj).filter((w: any) => w && typeof w === 'object');
+  if (list.length === 0) {
+    return undefined;
+  }
+
+  let primary: string | undefined = undefined;
+  let secondary: string | undefined = undefined;
+  let knife = 'Knife';
+  let activeWeapon: string | undefined = undefined;
+  let activeSlot: 1 | 2 | 3 | 'c4' | undefined = undefined;
+  let hasBomb = false;
+  let hasDefuser = Boolean(playerState?.defusekit);
+
+  for (const w of list as any[]) {
+    const name = String(w.name || '').trim();
+    const type = String(w.type || '').toLowerCase().replace(/[\s_-]+/g, '');
+    const state = String(w.state || '').toLowerCase();
+    const isActive = state === 'active' || state === 'reloading';
+
+    // C4 Explosive
+    if (type === 'c4' || name === 'weapon_c4') {
+      hasBomb = true;
+      if (isActive) {
+        activeSlot = 'c4';
+        activeWeapon = 'weapon_c4';
+      }
+      continue;
+    }
+
+    // Knife
+    if (
+      type === 'knife' ||
+      name.startsWith('weapon_knife') ||
+      name === 'weapon_bayonet' ||
+      name === 'weapon_knifegg'
+    ) {
+      knife = name;
+      if (isActive) {
+        activeSlot = 3;
+        activeWeapon = knife;
+      }
+      continue;
+    }
+
+    // Secondary / Pistols
+    if (
+      type === 'pistol' ||
+      [
+        'weapon_glock',
+        'weapon_usp_silencer',
+        'weapon_hkp2000',
+        'weapon_p250',
+        'weapon_fiveseven',
+        'weapon_cz75a',
+        'weapon_tec9',
+        'weapon_revolver',
+        'weapon_deagle',
+        'weapon_elite',
+      ].includes(name)
+    ) {
+      secondary = name;
+      if (isActive) {
+        activeSlot = 2;
+        activeWeapon = secondary;
+      }
+      continue;
+    }
+
+    // Primary: Rifles, Snipers, SMGs, Shotguns, Machine Guns
+    if (
+      [
+        'rifle',
+        'sniperrifle',
+        'sniper',
+        'submachinegun',
+        'smg',
+        'shotgun',
+        'machinegun',
+        'mg',
+      ].includes(type) ||
+      [
+        'weapon_ak47',
+        'weapon_m4a1',
+        'weapon_m4a1_silencer',
+        'weapon_famas',
+        'weapon_galilar',
+        'weapon_aug',
+        'weapon_sg556',
+        'weapon_awp',
+        'weapon_ssg08',
+        'weapon_g3sg1',
+        'weapon_scar20',
+        'weapon_mp9',
+        'weapon_mac10',
+        'weapon_mp7',
+        'weapon_mp5sd',
+        'weapon_ump45',
+        'weapon_p90',
+        'weapon_bizon',
+        'weapon_nova',
+        'weapon_xm1014',
+        'weapon_mag7',
+        'weapon_sawedoff',
+        'weapon_m249',
+        'weapon_negev',
+      ].includes(name)
+    ) {
+      primary = name;
+      if (isActive) {
+        activeSlot = 1;
+        activeWeapon = primary;
+      }
+      continue;
+    }
+
+    // Zeus x27
+    if (name === 'weapon_taser' && isActive) {
+      activeWeapon = name;
+    }
+  }
+
+  if (!activeSlot) {
+    if (primary) activeSlot = 1;
+    else if (secondary) activeSlot = 2;
+    else activeSlot = 3;
+  }
+
+  return {
+    primary,
+    secondary,
+    knife,
+    activeWeapon,
+    activeSlot,
+    hasDefuser,
+    hasBomb,
+  };
+}
+
 export class Cs2GsiManager extends EventEmitter {
   private servers: http.Server[] = [];
   private currentState: Cs2LiveState | null = null;
@@ -73,6 +239,7 @@ export class Cs2GsiManager extends EventEmitter {
     deaths: 0,
     assists: 0,
     mvps: 0,
+    money: 0,
   };
 
   constructor(port = CS2_GSI_DEFAULT_PORT) {
@@ -244,6 +411,8 @@ export class Cs2GsiManager extends EventEmitter {
         roundKills: 0,
         bombState: null,
         isSpectating: false,
+        money: 0,
+        loadout: undefined,
         timestamp: Date.now(),
       };
     } else {
@@ -252,6 +421,7 @@ export class Cs2GsiManager extends EventEmitter {
         const localData = allplayers[localSteamId];
         if (localData.name) this.localPlayerCache.name = localData.name;
         if (localData.team && localData.team !== 'spectator') this.localPlayerCache.team = localData.team;
+        if (localData.state?.money != null) this.localPlayerCache.money = localData.state.money;
         if (localData.match_stats) {
           this.localPlayerCache.kills = localData.match_stats.kills ?? this.localPlayerCache.kills;
           this.localPlayerCache.deaths = localData.match_stats.deaths ?? this.localPlayerCache.deaths;
@@ -263,6 +433,7 @@ export class Cs2GsiManager extends EventEmitter {
         if (observedSteamId) this.localPlayerCache.steamid = observedSteamId;
         if (player?.name) this.localPlayerCache.name = player.name;
         if (player?.team && player.team !== 'spectator') this.localPlayerCache.team = player.team;
+        if (player?.state?.money != null) this.localPlayerCache.money = player.state.money;
         if (player?.match_stats) {
           this.localPlayerCache.kills = player.match_stats.kills ?? 0;
           this.localPlayerCache.deaths = player.match_stats.deaths ?? 0;
@@ -295,6 +466,20 @@ export class Cs2GsiManager extends EventEmitter {
 
       const bombState = round?.bomb || null;
 
+      // Extract live loadout from player.weapons
+      const weaponsSource = (!isSpectating && player?.weapons)
+        ? player.weapons
+        : (localSteamId && allplayers?.[localSteamId]?.weapons)
+          ? allplayers[localSteamId].weapons
+          : (!isSpectating ? player?.weapons : null);
+
+      const loadout = parseCs2Loadout(
+        weaponsSource,
+        isSpectating ? undefined : player?.state
+      );
+
+      const money = isSpectating ? (this.localPlayerCache.money ?? 0) : (player?.state?.money ?? 0);
+
       newState = {
         activity: 'playing',
         isInGame: true,
@@ -317,6 +502,8 @@ export class Cs2GsiManager extends EventEmitter {
         mvps,
         roundKills,
         bombState,
+        money,
+        loadout,
         timestamp: Date.now(),
       };
     }
@@ -401,6 +588,7 @@ export class Cs2GsiManager extends EventEmitter {
         "player_state"        "1"
         "player_weapons"      "1"
         "player_match_stats"  "1"
+        "allplayers_weapons"  "1"
     }
 }
 `;

@@ -4,12 +4,14 @@ import { NavShell } from "@navigation"
 import { TitleBar } from "./title-bar"
 import { XPToastContainer } from "@ui/atoms/xp-toast"
 import { CommandPaletteMount } from "@/features/hub"
+import { GlobalContextMenuListener } from "@/features/_config/context-menu"
 import { PanelProvider } from "@activity/providers/panel-context"
 import { NotificationsProvider } from "@/features/notifications/providers/notifications-provider"
 import { CatalogStreamProvider } from "@/features/media/providers/catalog-stream-provider"
 import { usePluginPermissions } from "@/features/plugins/hooks/use-plugin-permissions"
 import { useModal, ModalRoot } from "@/lib/modals"
 import { DecideWatchHost } from "@/features/discover/components/organisms/decide-watch-host"
+import { FeatureSpotlightHost } from "@/features/spotlight"
 import { LevelUpHost } from "@user/components/organisms/level-up-host"
 import { GamingXpHost } from "@/features/launcher"
 import { IndexerSearchHost } from "@/features/downloads/molecules/indexer-search-host"
@@ -68,6 +70,19 @@ export const RootLayout = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentRequest])
 
+  const isInstallerPage =
+    location.pathname.startsWith('/installer') ||
+    location.pathname.startsWith('/uninstaller')
+
+  if (isInstallerPage) {
+    return (
+      <div className="h-screen w-screen overflow-hidden bg-transparent select-none">
+        <Outlet />
+        <ModalRoot />
+      </div>
+    )
+  }
+
   const isFullScreenPage =
     location.pathname.startsWith('/launcher') ||
     location.pathname.startsWith('/game') ||
@@ -92,8 +107,7 @@ export const RootLayout = () => {
               <div className="flex-1">
                 <Outlet />
               </div>
-              {!isFullScreenPage &&
-                !location.pathname.startsWith('/terms') && <AppMicroFooter />}
+              {!isFullScreenPage && <AppMicroFooter />}
             </main>
           </NavShell>
 
@@ -102,7 +116,9 @@ export const RootLayout = () => {
         </NotificationsProvider>
       </PanelProvider>
       <CommandPaletteMount />
+      <GlobalContextMenuListener />
       <DecideWatchHost />
+      <FeatureSpotlightHost />
       <LevelUpHost />
       <GamingXpHost />
       <IndexerSearchHost />

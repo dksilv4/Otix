@@ -187,7 +187,14 @@ export const TrackRow = ({
   )
 
   return (
-    <tr className="group transition-colors">
+    <tr
+      data-context-type="track"
+      data-track-id={track.id}
+      data-track-title={track.title}
+      data-track-artist={artistName || undefined}
+      data-track-album={albumTitle || undefined}
+      className="group transition-colors"
+    >
       <td
         className={`py-2.5 transition-colors w-10 rounded-l-xl pr-2 text-right font-mono text-xs text-muted-foreground ${cellBg}`}
       >

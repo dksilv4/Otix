@@ -120,4 +120,78 @@ describe('ActivityModuleCs2Telemetry', () => {
     expect(tSpan).toBeInTheDocument()
     expect(tSpan?.textContent).toBe('7 T')
   })
+
+  it('renders live dynamic guns when loadout is provided', () => {
+    const stateWithGuns: Cs2LiveState = {
+      ...baseState,
+      loadout: {
+        primary: 'weapon_awp',
+        secondary: 'weapon_deagle',
+        knife: 'weapon_knife_karambit',
+        activeSlot: 1,
+        hasDefuser: false,
+        hasBomb: false,
+      },
+    }
+
+    render(<ActivityModuleCs2Telemetry state={stateWithGuns} />)
+
+    expect(screen.getByText('AWP')).toBeInTheDocument()
+    expect(screen.getByText('Desert Eagle')).toBeInTheDocument()
+    expect(screen.getByText('Karambit')).toBeInTheDocument()
+  })
+
+  it('renders M4A4 cleanly when GSI sends weapon_m4a1 and M4A1-S for weapon_m4a1_silencer', () => {
+    const m4a4State: Cs2LiveState = {
+      ...baseState,
+      loadout: {
+        primary: 'weapon_m4a1',
+        secondary: 'weapon_hkp2000',
+        knife: 'weapon_knife_butterfly',
+        activeSlot: 1,
+      },
+    }
+
+    const { rerender } = render(<ActivityModuleCs2Telemetry state={m4a4State} />)
+    expect(screen.getByText('M4A4')).toBeInTheDocument()
+    expect(screen.getByText('P2000')).toBeInTheDocument()
+    expect(screen.getByText('Butterfly Knife')).toBeInTheDocument()
+
+    const m4a1sState: Cs2LiveState = {
+      ...baseState,
+      loadout: {
+        primary: 'weapon_m4a1_silencer',
+        secondary: 'weapon_usp_silencer',
+        knife: 'weapon_bayonet',
+        activeSlot: 2,
+      },
+    }
+
+    rerender(<ActivityModuleCs2Telemetry state={m4a1sState} />)
+    expect(screen.getByText('M4A1-S')).toBeInTheDocument()
+    expect(screen.getByText('USP-S')).toBeInTheDocument()
+    expect(screen.getByText('Bayonet')).toBeInTheDocument()
+  })
+
+  it('renders empty slot when player has no primary weapon in eco/pistol rounds', () => {
+    const pistolRoundState: Cs2LiveState = {
+      ...baseState,
+      loadout: {
+        primary: undefined,
+        secondary: 'weapon_glock',
+        knife: 'weapon_knife',
+        activeSlot: 2,
+        hasDefuser: false,
+        hasBomb: true,
+      },
+    }
+
+    render(<ActivityModuleCs2Telemetry state={pistolRoundState} />)
+
+    expect(screen.queryByText('AK-47')).not.toBeInTheDocument()
+    expect(screen.queryByText('M4A1-S')).not.toBeInTheDocument()
+    expect(screen.getByText('Glock-18')).toBeInTheDocument()
+    expect(screen.getByText('Knife')).toBeInTheDocument()
+    expect(screen.getByText('—')).toBeInTheDocument()
+  })
 })

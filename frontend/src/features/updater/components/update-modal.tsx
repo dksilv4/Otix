@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react'
 import {
   Sparkles,
   ArrowRight,
@@ -12,11 +13,12 @@ import { useAppUpdater } from '../hooks/use-app-updater'
 import {
   formatBytes,
   formatSpeed,
-  parseReleaseNotes,
   formatUpdateError,
   getUpdateModalTitle,
   getUpdateModalDescription,
+  fetchLatestReleaseNotes,
 } from '../utils/updater-utils'
+import { ReleaseNotesMarkdown } from './release-notes-markdown'
 
 export interface UpdateModalProps {
   isOpen?: boolean
@@ -47,13 +49,31 @@ export const UpdateModal = ({
   } = useAppUpdater()
 
   const resolvedOpen = isOpen !== undefined ? isOpen : isModalOpen
+  const [fallbackNotes, setFallbackNotes] = useState<string | null>(null)
+  const [fallbackVersion, setFallbackVersion] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (resolvedOpen && !releaseNotes) {
+      fetchLatestReleaseNotes()
+        .then((latest) => {
+          if (latest?.notes) {
+            setFallbackNotes(latest.notes)
+            if (!availableVersion && latest.version) {
+              setFallbackVersion(latest.version)
+            }
+          }
+        })
+        .catch(() => {})
+    }
+  }, [resolvedOpen, releaseNotes, availableVersion])
 
   const handleClose = () => {
     onClose?.()
     closeUpdateModal()
   }
 
-  const notesList = parseReleaseNotes(releaseNotes)
+  const displayNotes = releaseNotes || fallbackNotes
+  const displayVersion = availableVersion || fallbackVersion || currentVersion
   const formattedError = formatUpdateError(error)
 
   return (
@@ -189,31 +209,30 @@ export const UpdateModal = ({
         )}
 
         {/* Release Notes */}
-        {(notesList.length > 0 || status === 'available' || isDownloaded) && (
-          <div className="space-y-1.5 pt-1">
+        <div className="space-y-1.5 pt-1">
+          <div className="flex items-center justify-between">
             <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
-              {availableVersion ? `What's New in v${availableVersion}` : 'Release Notes'}
+              {displayVersion ? `What's New in v${displayVersion}` : 'Release Notes'}
             </span>
-            <div
-              className="rounded-2xl p-4 text-xs text-muted-foreground max-h-48 overflow-y-auto space-y-2"
-              style={{ backgroundColor: 'var(--dk-surface-base)' }}
-            >
-              {notesList.length > 0 ? (
-                <ul className="space-y-1.5 list-disc pl-4">
-                  {notesList.map((item, idx) => (
-                    <li key={idx} className="leading-relaxed text-foreground/90">
-                      {item}
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="leading-relaxed">
-                  Includes stability improvements, bug fixes, and general refinements.
-                </p>
-              )}
-            </div>
+            {displayVersion && displayVersion !== currentVersion && (
+              <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-primary/10 text-primary">
+                v{displayVersion}
+              </span>
+            )}
           </div>
-        )}
+          <div
+            className="rounded-2xl p-4 text-xs text-muted-foreground max-h-56 overflow-y-auto space-y-2"
+            style={{ backgroundColor: 'var(--dk-surface-base)' }}
+          >
+            {displayNotes ? (
+              <ReleaseNotesMarkdown content={displayNotes} />
+            ) : (
+              <p className="leading-relaxed text-muted-foreground">
+                Running latest release v{currentVersion}. Includes stability improvements, bug fixes, and general refinements.
+              </p>
+            )}
+          </div>
+        </div>
 
         {/* Modal Actions */}
         <div className="flex items-center justify-end gap-2.5 pt-2">

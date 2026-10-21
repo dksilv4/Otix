@@ -5,10 +5,27 @@ export { ContextMenuContent } from './context-menu-content'
 export { ContextMenuItem } from './context-menu-item'
 export { ContextMenuSeparator } from './context-menu-separator'
 export { ContextMenuSub } from './context-menu-sub'
+export { GlobalContextMenuListener } from './global-context-menu-listener'
+export { resolveContextMenuTarget } from './utils/dom-resolver'
+export {
+  buildMediaMenuItems,
+  buildGameMenuItems,
+  buildPersonMenuItems,
+  buildListMenuItems,
+  buildTrackMenuItems,
+  buildLinkMenuItems,
+  buildImageMenuItems,
+  buildTextMenuItems,
+  buildInputMenuItems,
+  buildPageMenuItems,
+} from './utils/menu-builders'
 export type {
   ContextMenuItemDef,
   ContextMenuPosition,
   ContextMenuMediaType,
+  ContextMenuTargetType,
   ContextMenuState,
   ContextMenuActions,
 } from './types'
+export type { ContextMenuResolvedTarget } from './utils/dom-resolver'
+export type { MenuBuilderContext } from './utils/menu-builders'

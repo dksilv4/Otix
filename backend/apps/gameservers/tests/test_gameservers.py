@@ -158,11 +158,15 @@ class DedicatedGameServerTests(TestCase):
         resolve_resp = self.client.get(f"/api/v1/game-servers/invites/{code}")
         self.assertEqual(resolve_resp.status_code, status.HTTP_200_OK)
         self.assertEqual(resolve_resp.data["server"]["name"], "Public Minecraft World")
+        self.assertFalse(resolve_resp.data["server"]["is_member"])
+        self.assertFalse(resolve_resp.data["server"]["is_owner"])
 
         # Charlie logs in and accepts the invite
         self.client.force_authenticate(user=self.charlie)
         join_resp = self.client.post(f"/api/v1/game-servers/invites/{code}/join")
         self.assertEqual(join_resp.status_code, status.HTTP_200_OK)
+        self.assertTrue(join_resp.data["is_member"])
+        self.assertFalse(join_resp.data["is_owner"])
 
         # Charlie now has access via the share record
         charlie_list = self.client.get("/api/v1/game-servers/")

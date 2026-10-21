@@ -27,6 +27,7 @@ export interface DedicatedGameServer {
   connectionAddress: string
   ownerUsername: string
   isOwner: boolean
+  isMember?: boolean
   userPermission: GameServerPermission
   activeInviteCode?: string | null
   createdAt: string

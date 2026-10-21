@@ -1,9 +1,11 @@
 import { useState } from 'react'
-import { Tv, ExternalLink, Play } from 'lucide-react'
+import { Tv, ExternalLink, Play, Loader2 } from 'lucide-react'
 import type { MediaWatchProvider } from '@media'
 import PlexIcon from '@/assets/provider-logos/plex.svg?react'
 import { cn } from '@/lib/utils'
 import { resolveProviderUrl } from '../../utils/provider'
+import { useMediaParams } from '../../hooks/use-media-params'
+import { useQuickStream } from '../../hooks/use-quick-stream'
 
 interface WhereToWatchProps {
   watchProviders?: MediaWatchProvider[]
@@ -38,6 +40,8 @@ const COMMERCIAL_MAP: Record<CommercialCategory, { label: string; types: string[
 
 export const WhereToWatch = ({ watchProviders = [], className = '', mediaType }: WhereToWatchProps) => {
   const [activeTab, setActiveTab] = useState<CommercialCategory>('stream')
+  const { mediaType: paramMediaType, mediaId } = useMediaParams()
+  const { quickStream, isStartingStream } = useQuickStream()
 
   // Games do not have "Where to Watch" or movie/show video streaming providers
   if (mediaType === 'game') {
@@ -116,7 +120,7 @@ export const WhereToWatch = ({ watchProviders = [], className = '', mediaType }:
 
       {/* ── Spotlight: Personal Library Highlight Banner ── */}
       {personalProviders.length > 0 && (
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-amber-500/15 via-amber-500/10 to-transparent p-3.5 shadow-lg shadow-amber-500/5 border border-amber-500/20">
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-amber-500/15 via-amber-500/10 to-transparent p-3.5 shadow-lg shadow-amber-500/5 border border-white/[0.06]">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3 min-w-0">
               <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-500 text-black shadow-md shrink-0">
@@ -130,17 +134,25 @@ export const WhereToWatch = ({ watchProviders = [], className = '', mediaType }:
               </div>
             </div>
 
-            {personalProviders[0]?.url && (
-              <a
-                href={resolveProviderUrl(personalProviders[0].url) || '#'}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-3 py-1.5 text-xs font-bold text-primary-foreground shadow hover:bg-primary/90 transition-colors shrink-0"
-              >
+            <button
+              type="button"
+              disabled={isStartingStream}
+              onClick={() => {
+                quickStream({
+                  mediaId,
+                  mediaType: mediaType || paramMediaType,
+                  title: 'Stream',
+                })
+              }}
+              className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-3.5 py-1.5 text-xs font-bold text-primary-foreground shadow hover:bg-primary/90 hover:scale-[1.02] active:scale-[0.98] transition-all shrink-0 cursor-pointer disabled:opacity-75"
+            >
+              {isStartingStream ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
                 <Play className="h-3.5 w-3.5 fill-current" />
-                <span>Play</span>
-              </a>
-            )}
+              )}
+              <span>Stream in Otix</span>
+            </button>
           </div>
         </div>
       )}

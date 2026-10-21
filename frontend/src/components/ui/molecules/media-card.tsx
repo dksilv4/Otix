@@ -1,15 +1,16 @@
 import { memo, useMemo, useCallback, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
-import { Star } from 'lucide-react'
+import { Star, Play, Loader2 } from 'lucide-react'
 import { DkImage } from '@ui/atoms/image'
 import { mediaQueries } from '@media/queries/media-queries'
 import { cn } from '@/lib/utils'
 import { MediaLogo } from '@/lib/media/media-logo'
 import { MEDIA_TYPE_ICON, MEDIA_TYPE_COLOR } from '@/constants/media'
-import { MediaCardBadges } from '@/features/plugins/components/media-card-badges'
 import { parsePositionFromUrl, stripPositionFromUrl } from '@/lib/utils/image-position'
 import { formatSeasonBadgeText } from '@/lib/utils/media-badge'
+import { useStreamAvailability } from '@/features/media/hooks/use-stream-availability'
+import { useQuickStream } from '@/features/media/hooks/use-quick-stream'
 
 interface DkMediaCardProps {
   id: string
@@ -34,6 +35,8 @@ interface DkMediaCardProps {
   subtitle?: string | null
   subtitleColor?: string
   artistName?: string | null
+  /** Whether to show a direct quick-stream play button on card hover. Defaults to true. */
+  enableQuickStream?: boolean
   /** Render as a plain card (no detail link / prefetch) — for items without a backend detail page. */
   interactive?: boolean
   /** Prioritize image loading for above-the-fold cards. */
@@ -62,6 +65,7 @@ const DkMediaCard = memo(({
   subtitle,
   subtitleColor,
   artistName,
+  enableQuickStream = true,
   interactive = true,
   priority = false,
 }: DkMediaCardProps) => {
@@ -71,6 +75,13 @@ const DkMediaCard = memo(({
   const handlePrefetch = useCallback(() => {
     queryClient.prefetchQuery(mediaQueries.detail(mediaType, id))
   }, [queryClient, mediaType, id])
+
+  const { isStreamable, providerLabel } = useStreamAvailability({
+    mediaId: id,
+    tmdbId,
+    mediaType,
+  })
+  const { quickStream, isStartingStream } = useQuickStream()
 
   // Card art resolution:
   // 1. Textless poster (preferred clean art)
@@ -108,10 +119,18 @@ const DkMediaCard = memo(({
 
   return (
     <Root
+      data-context-type="media"
+      data-media-id={id}
+      data-media-type={mediaType}
+      data-media-title={title}
+      data-media-poster={cleanSrc || posterUrl || undefined}
+      data-media-year={year || undefined}
+      data-media-tmdb-id={tmdbId || undefined}
       {...(interactive ? { ...(linkProps as Record<string, unknown>), onMouseEnter: handlePrefetch } : {})}
       className={cn(
-        'group relative block overflow-hidden rounded-lg',
+        'group relative block overflow-hidden rounded-lg transition-shadow duration-300',
         mediaType === 'music' ? 'aspect-square' : 'aspect-[2/3]',
+        isStreamable && 'group-hover:shadow-[0_0_24px_rgba(var(--primary-rgb),0.18)]',
         className,
       )}
     >
@@ -184,8 +203,52 @@ const DkMediaCard = memo(({
         </div>
       )}
 
-      {/* Plugin card badges (e.g. "On Plex") */}
-      <MediaCardBadges mediaId={id} mediaType={mediaType} tmdbId={tmdbId} />
+      {/* Stream Availability Badge */}
+      {isStreamable && (
+        <div
+          className={cn(
+            'absolute z-10',
+            newSeasonReleased ? 'top-10 right-3' : isAdult ? 'top-8 right-2.5' : 'top-3 right-3',
+          )}
+        >
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wide backdrop-blur-md shadow-lg border border-white/[0.06] bg-primary/20 text-primary transition-transform duration-300 group-hover:scale-105">
+            <Play className="h-2.5 w-2.5 fill-current" />
+            <span>{providerLabel || 'Stream'}</span>
+          </span>
+        </div>
+      )}
+
+      {/* Centered Quick-Stream Play Button on Hover */}
+      {isStreamable && enableQuickStream && interactive && (
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-20 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+          <button
+            type="button"
+            aria-label={`Stream ${title} now`}
+            title={`Stream ${title} now`}
+            onClick={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              quickStream({
+                mediaId: id,
+                tmdbId,
+                mediaType,
+                title,
+              })
+            }}
+            disabled={isStartingStream}
+            className={cn(
+              'pointer-events-auto flex items-center justify-center rounded-full shadow-2xl transition-all duration-300 hover:scale-110 active:scale-95 cursor-pointer disabled:opacity-75 bg-primary text-primary-foreground hover:bg-primary/90 shadow-primary/30',
+              mediaType === 'music' ? 'w-10 h-10' : 'w-12 h-12',
+            )}
+          >
+            {isStartingStream ? (
+              <Loader2 className="h-5 w-5 animate-spin" />
+            ) : (
+              <Play className="h-5 w-5 fill-current ml-0.5" />
+            )}
+          </button>
+        </div>
+      )}
 
       {/* Rating */}
       {avgRating != null && avgRating > 0 && (

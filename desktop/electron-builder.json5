@@ -47,11 +47,11 @@
   "win": {
     "target": [
       {
-        "target": "nsis",
+        "target": "portable",
         "arch": ["x64"]
       },
       {
-        "target": "portable",
+        "target": "nsis",
         "arch": ["x64"]
       }
     ],
@@ -66,10 +66,14 @@
     "createStartMenuShortcut": true,
     "shortcutName": "Otix",
     "uninstallDisplayName": "Otix Launcher",
-    "artifactName": "${productName}-Setup-${version}.${ext}"
+    "installerIcon": "assets/icon.ico",
+    "uninstallerIcon": "assets/icon.ico",
+    "installerHeaderIcon": "assets/icon.ico",
+    "artifactName": "${productName}-Legacy-Setup-${version}.${ext}"
   },
   "portable": {
-    "artifactName": "${productName}-Portable-${version}.${ext}"
+    "unpackDirName": "OtixSetup",
+    "artifactName": "${productName}-Setup-${version}.${ext}"
   },
   "mac": {
     "target": [

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
-import { Ban, Dices, Loader2, RefreshCw, Sparkles } from 'lucide-react'
+import { Ban, Dices, Loader2, RefreshCw, Sparkles, Play } from 'lucide-react'
 import { cn, heroImage } from '@/lib/utils'
 import { DkDialog } from '@ui/molecules/dialog'
 import { DkButton } from '@ui/atoms/button'
@@ -9,6 +9,8 @@ import { showToast } from '@ui/molecules/toast'
 import { useAuth } from '@auth/hooks/use-auth'
 import { DiscoverMediaCard } from '@discover/components/molecules/discover-media-card'
 import { mediaQueries, useBlockRecommendation, type DecideRuntime, type MediaItemSummary } from '@media/queries/media-queries'
+import { useStreamAvailability } from '@/features/media/hooks/use-stream-availability'
+import { useQuickStream } from '@/features/media/hooks/use-quick-stream'
 import { apiClient } from '@/lib/api/client'
 import type { GenreOption } from '@/features/genre/types'
 import { MEDIA_TYPE_LABEL } from '@/constants/media'
@@ -120,6 +122,13 @@ export const DecideWatchModal = ({ onClose, isExiting }: DecideWatchModalProps) 
     : unblockedPick
       ? unblockedShortlist
       : unblockedShortlist.slice(1)
+
+  const { isStreamable: isHeroStreamable, providerLabel: heroProviderLabel } = useStreamAvailability({
+    mediaId: hero?.id ? String(hero.id) : '',
+    tmdbId: hero?.tmdbId,
+    mediaType: hero?.mediaType ?? 'movie',
+  })
+  const { quickStream, isStartingStream } = useQuickStream()
 
   const handleBlock = async (item: MediaItemSummary) => {
     setBlockedIds((prev) => new Set(prev).add(item.id))
@@ -343,9 +352,17 @@ export const DecideWatchModal = ({ onClose, isExiting }: DecideWatchModalProps) 
               </button>
               <div className="flex min-w-0 flex-1 flex-col justify-center gap-3 text-center sm:text-left">
                 <div>
-                  <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.18em] text-amber-600 dark:text-amber-400">
-                    Watch this
-                  </p>
+                  <div className="flex items-center justify-center sm:justify-start gap-2 mb-1">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-amber-600 dark:text-amber-400">
+                      Watch this
+                    </p>
+                    {isHeroStreamable && (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-primary/20 text-primary border border-white/[0.06]">
+                        <Play className="h-2.5 w-2.5 fill-current" />
+                        Ready to Stream{heroProviderLabel ? ` · ${heroProviderLabel}` : ''}
+                      </span>
+                    )}
+                  </div>
                   <h3 className="text-xl font-bold leading-tight text-foreground sm:text-2xl">
                     {hero.title}
                   </h3>
@@ -360,7 +377,27 @@ export const DecideWatchModal = ({ onClose, isExiting }: DecideWatchModalProps) 
                   </p>
                 </div>
                 <div className="flex flex-wrap justify-center gap-2 sm:justify-start">
-                  <DkButton size="md" onClick={() => hero && openTitle(hero)} disabled={!hero}>
+                  {isHeroStreamable && (
+                    <DkButton
+                      size="md"
+                      leftIcon={Play}
+                      onClick={() => {
+                        if (hero) {
+                          quickStream({
+                            mediaId: hero.id,
+                            tmdbId: hero.tmdbId,
+                            mediaType: hero.mediaType,
+                            title: hero.title,
+                          })
+                          onClose()
+                        }
+                      }}
+                      disabled={isStartingStream}
+                    >
+                      Stream Now
+                    </DkButton>
+                  )}
+                  <DkButton size="md" variant={isHeroStreamable ? 'glass' : 'primary'} onClick={() => hero && openTitle(hero)} disabled={!hero}>
                     Open
                   </DkButton>
                   <DkButton size="md" variant="glass" leftIcon={RefreshCw} onClick={pickAgain}>

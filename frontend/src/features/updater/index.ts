@@ -3,3 +3,5 @@ export * from './utils/updater-utils'
 export * from './hooks/use-app-updater'
 export * from './components/update-notification-toast'
 export * from './components/update-modal'
+export * from './components/release-notes-markdown'
+

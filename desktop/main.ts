@@ -64,6 +64,7 @@ import {
 } from './ipc/updater';
 import { NodeDaemonManager } from './node-daemon';
 import { registerNodeDaemonIPC } from './ipc/node-daemon';
+import { registerAppInstallerIPC } from './ipc/app-installer';
 import { setDefaultAutoSelectFamily } from 'node:net';
 
 // Node 24's happy-eyeballs (autoSelectFamily) intermittently ETIMEDOUTs
@@ -233,6 +234,98 @@ function openStandaloneWindow(url: string): void {
   void win.loadURL(url)
 }
 
+function createInstallerWindow(mode: 'installer' | 'uninstaller') {
+  try {
+    fs.appendFileSync(
+      path.join(os.tmpdir(), 'otix-installer-debug.log'),
+      `[WINDOW] createInstallerWindow mode=${mode} isDev=${isDev} NODE_ENV=${process.env.NODE_ENV} isPackaged=${app.isPackaged}\n`
+    );
+  } catch {}
+
+  const isUninstaller = mode === 'uninstaller';
+  const width = isUninstaller ? 600 : 780;
+  const height = isUninstaller ? 400 : 540;
+
+  const iconPath = fs.existsSync(path.join(process.resourcesPath, 'assets', 'icon.png'))
+    ? path.join(process.resourcesPath, 'assets', 'icon.png')
+    : path.join(__dirname, '..', 'assets', 'icon.png');
+
+  const logInstaller = (msg: string) => {
+    try {
+      fs.appendFileSync(path.join(os.tmpdir(), 'otix-installer-debug.log'), `[INSTALLER] ${new Date().toISOString()} ${msg}\n`);
+    } catch {}
+  };
+
+  const win = new BrowserWindow({
+    width,
+    height,
+    resizable: false,
+    maximizable: false,
+    frame: false,
+    transparent: false,
+    backgroundColor: '#07080a',
+    title: isUninstaller ? 'Otix Uninstaller' : 'Otix Setup',
+    icon: iconPath,
+    show: false,
+    center: true,
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+      nodeIntegration: false,
+      contextIsolation: true,
+      webSecurity: false,
+      partition: 'persist:main',
+    },
+  });
+
+  registerAppInstallerIPC(win);
+
+  win.once('ready-to-show', () => {
+    logInstaller('ready-to-show fired');
+    win.show();
+    win.focus();
+  });
+
+  // Fallback to guarantee visibility
+  setTimeout(() => {
+    if (!win.isDestroyed() && !win.isVisible()) {
+      logInstaller('visibility fallback triggered - showing window');
+      win.show();
+      win.focus();
+    }
+  }, 800);
+
+  const pagePath = isUninstaller ? 'uninstaller' : 'installer';
+  const targetUrl = isDev && process.env.NODE_ENV === 'development'
+    ? `http://127.0.0.1:5174/${pagePath}`
+    : `app://otix/${pagePath}`;
+
+  logInstaller(`loading URL: ${targetUrl}`);
+  void win.loadURL(targetUrl);
+
+  win.webContents.on('did-finish-load', () => {
+    logInstaller(`did-finish-load url=${win.webContents.getURL()}`);
+  });
+
+  win.webContents.on('did-fail-load', (_event, code, desc, url) => {
+    logInstaller(`Page load failed: code=${code} desc=${desc} url=${url}`);
+  });
+
+  win.webContents.on('console-message', (_event, level, message, line, sourceId) => {
+    logInstaller(`[renderer console][level ${level}] ${message} (${sourceId}:${line})`);
+  });
+
+  win.webContents.on('render-process-gone', (_event, details) => {
+    logInstaller(`render-process-gone: ${JSON.stringify(details)}`);
+  });
+
+  win.on('closed', () => {
+    logInstaller('win closed');
+    app.quit();
+  });
+
+  return win;
+}
+
 function createWindow() {
   // If a deep link was received before the window was created, forward it
   if (pendingDeepLink) {
@@ -365,20 +458,40 @@ function createWindow() {
 const PROTOCOL = 'otix';
 app.setAsDefaultProtocolClient(PROTOCOL);
 
+// ── Installer / Uninstaller mode detection ────────────────────────
+const isSetupExe =
+  path.basename(process.execPath).toLowerCase().includes('setup') ||
+  Boolean(
+    process.env.PORTABLE_EXECUTABLE_FILE &&
+    path.basename(process.env.PORTABLE_EXECUTABLE_FILE).toLowerCase().includes('setup'),
+  );
+
+const isInstallerMode = process.argv.includes('--installer') || process.env.OTIX_INSTALLER === '1' || isSetupExe;
+const isUninstallerMode = process.argv.includes('--uninstall') || process.env.OTIX_UNINSTALLER === '1';
+
+try {
+  fs.appendFileSync(
+    path.join(os.tmpdir(), 'otix-installer-debug.log'),
+    `[START] ${new Date().toISOString()} execPath=${process.execPath} argv=${JSON.stringify(process.argv)} PORTABLE_EXECUTABLE_FILE=${process.env.PORTABLE_EXECUTABLE_FILE} PORTABLE_EXECUTABLE_DIR=${process.env.PORTABLE_EXECUTABLE_DIR} isInstallerMode=${isInstallerMode} isSetupExe=${isSetupExe}\n`
+  );
+} catch {}
+
 // Single-instance lock: on Windows/Linux, deep links arrive via argv
 // of a second instance rather than an open-url event.
-const gotSingleLock = app.requestSingleInstanceLock();
-if (!gotSingleLock) {
-  app.quit();
-} else {
-  app.on('second-instance', (_event, argv) => {
-    const dl = argv.find((a) => a.startsWith(`${PROTOCOL}://`));
-    if (dl) handleDeepLink(dl);
-    if (mainWindow) {
-      if (mainWindow.isMinimized()) mainWindow.restore();
-      mainWindow.focus();
-    }
-  });
+if (!isInstallerMode && !isUninstallerMode) {
+  const gotSingleLock = app.requestSingleInstanceLock();
+  if (!gotSingleLock) {
+    app.quit();
+  } else {
+    app.on('second-instance', (_event, argv) => {
+      const dl = argv.find((a) => a.startsWith(`${PROTOCOL}://`));
+      if (dl) handleDeepLink(dl);
+      if (mainWindow) {
+        if (mainWindow.isMinimized()) mainWindow.restore();
+        mainWindow.focus();
+      }
+    });
+  }
 }
 
 // macOS: deep links arrive via the open-url event
@@ -531,6 +644,12 @@ app.on('ready', async () => {
   }
   if (!protocol.isProtocolHandled('app')) {
     protocol.handle('app', handleAppProtocol);
+  }
+
+  // If running in installer or uninstaller mode, open custom installer window and exit startup sequence
+  if (isInstallerMode || isUninstallerMode) {
+    createInstallerWindow(isUninstallerMode ? 'uninstaller' : 'installer');
+    return;
   }
 
   // Register media-cache protocol handler for caching images locally

@@ -1,5 +1,6 @@
 import type { ComponentType } from 'react'
-import { Compass, Search, Library, Calendar, Bell, Settings, Sparkles, BookOpen } from 'lucide-react'
+import { Compass, Search, Library, Calendar, Bell, Settings, Sparkles, BookOpen, Lightbulb } from 'lucide-react'
+import { openFeatureSpotlight } from '@/features/spotlight'
 import { router } from '@/lib/router'
 import { openDecideWatch } from '@/features/discover/open-decide-watch'
 import type { Command, CommandProvider } from '../types'
@@ -26,6 +27,7 @@ const NAV_ENTRIES: NavEntry[] = [
 ]
 
 const DECIDE_KEYWORDS = ['decide', 'watch', 'pick', 'for you', 'recommend', 'tonight']
+const SPOTLIGHT_KEYWORDS = ['tips', 'pro tips', 'tricks', 'spotlight', 'features', 'did you know', 'help', 'guide']
 
 export function createNavigationProvider(): CommandProvider {
   return {
@@ -67,6 +69,18 @@ export function createNavigationProvider(): CommandProvider {
         })
       }
 
+      const spotlightMatches = !q || 'did you know'.includes(q) || 'pro tips'.includes(q) || SPOTLIGHT_KEYWORDS.some((k) => k.includes(q) || q.includes(k))
+      if (spotlightMatches) {
+        commands.unshift({
+          id: 'nav:feature-spotlight',
+          title: 'Did you know? Pro Tips & Features',
+          subtitle: 'Discover overlooked features, pro-tips, and shortcuts',
+          icon: Lightbulb,
+          domain: 'navigation',
+          keywords: SPOTLIGHT_KEYWORDS,
+          run: () => openFeatureSpotlight(),
+        })
+      }
       return commands
     },
   }

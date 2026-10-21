@@ -2,10 +2,13 @@ import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Link } from '@tanstack/react-router'
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
-import { Film, Tv, Gamepad2, Sparkles, ChevronRight, Star } from 'lucide-react'
+import { Film, Tv, Gamepad2, Sparkles, ChevronRight, Star, Play, Loader2 } from 'lucide-react'
 import { Badge } from '@ui/atoms/badge'
 import { Skeleton } from '@ui/atoms/skeleton'
 import { MediaLogo } from '@/lib/media/media-logo'
+import { cn } from '@/lib/utils'
+import { useStreamAvailability } from '@/features/media/hooks/use-stream-availability'
+import { useQuickStream } from '@/features/media/hooks/use-quick-stream'
 import { discoverQueries } from '@discover/queries/discover-queries'
 import { mediaQueries, type MediaItemSummary } from '@media/queries/media-queries'
 import {
@@ -103,6 +106,13 @@ export const DiscoverHero = ({ className }: DiscoverHeroProps) => {
     ...mediaQueries.detail(activeItem?.mediaType ?? '', activeItem?.id ?? ''),
     enabled: !!activeItem,
   })
+
+  const { isStreamable, providerLabel } = useStreamAvailability({
+    mediaId: activeItem?.id ?? '',
+    tmdbId: activeItem?.tmdbId,
+    mediaType: activeItem?.mediaType ?? 'movie',
+  })
+  const { quickStream, isStartingStream } = useQuickStream()
 
   // Auto rotation
   const advanceSlide = useCallback(() => {
@@ -251,46 +261,54 @@ export const DiscoverHero = ({ className }: DiscoverHeroProps) => {
           {/* Focused Content Area */}
           <div className="flex flex-col gap-3.5 sm:gap-4 max-w-2xl mt-auto pt-6">
             {/* Metadata Badges Row */}
-            {((isShow && (activeDetail?.newSeasonReleased || activeItem.newSeasonReleased)) ||
-              (isGame && activeDetail?.platforms && activeDetail.platforms.length > 0)) && (
-              <div className="flex flex-wrap items-center gap-2">
-                {isShow && (activeDetail?.newSeasonReleased || activeItem.newSeasonReleased) && (
-                  <Badge
-                    size="sm"
-                    variant="success"
-                    className="font-bold text-[10px] uppercase tracking-wider px-2 py-0.5"
-                  >
-                    {formatSeasonBadgeText(activeDetail?.newSeasonReleaseDate || activeItem.newSeasonReleaseDate)}
-                  </Badge>
-                )}
+            <div className="flex flex-wrap items-center gap-2">
+              {isStreamable && (
+                <Badge
+                  size="sm"
+                  variant="default"
+                  className="font-bold text-[10px] uppercase tracking-wider px-2.5 py-0.5 bg-primary/20 text-primary flex items-center gap-1 shadow-md backdrop-blur-md border border-white/[0.06]"
+                >
+                  <Play className="h-2.5 w-2.5 fill-current" />
+                  Ready to Stream{providerLabel ? ` · ${providerLabel}` : ''}
+                </Badge>
+              )}
 
-                {/* For Games: Platform compatibility icons only */}
-                {isGame && activeDetail?.platforms && activeDetail.platforms.length > 0 && (
-                  <div className="flex items-center gap-1.5" aria-label="Supported Platforms">
-                    {activeDetail.platforms
-                      .filter((p) => Boolean(p?.platform))
-                      .slice(0, 4)
-                      .map((p) => {
-                        const Icon = resolvePlatformIcon(p.platform.slug, p.platform.name)
-                        return (
-                          <span
-                            key={p.id}
-                            title={p.platform.name}
-                            aria-label={p.platform.name}
-                            className="inline-flex items-center justify-center h-6 w-6 rounded-lg bg-[var(--dk-surface-ghost)] text-muted-foreground border border-[var(--dk-separator)]"
-                          >
-                            {Icon ? (
-                              <Icon className="h-3.5 w-3.5 fill-current" />
-                            ) : (
-                              <Gamepad2 className="h-3.5 w-3.5" />
-                            )}
-                          </span>
-                        )
-                      })}
-                  </div>
-                )}
-              </div>
-            )}
+              {isShow && (activeDetail?.newSeasonReleased || activeItem.newSeasonReleased) && (
+                <Badge
+                  size="sm"
+                  variant="success"
+                  className="font-bold text-[10px] uppercase tracking-wider px-2 py-0.5"
+                >
+                  {formatSeasonBadgeText(activeDetail?.newSeasonReleaseDate || activeItem.newSeasonReleaseDate)}
+                </Badge>
+              )}
+
+              {/* For Games: Platform compatibility icons only */}
+              {isGame && activeDetail?.platforms && activeDetail.platforms.length > 0 && (
+                <div className="flex items-center gap-1.5" aria-label="Supported Platforms">
+                  {activeDetail.platforms
+                    .filter((p) => Boolean(p?.platform))
+                    .slice(0, 4)
+                    .map((p) => {
+                      const Icon = resolvePlatformIcon(p.platform.slug, p.platform.name)
+                      return (
+                        <span
+                          key={p.id}
+                          title={p.platform.name}
+                          aria-label={p.platform.name}
+                          className="inline-flex items-center justify-center h-6 w-6 rounded-lg bg-[var(--dk-surface-ghost)] text-muted-foreground border border-[var(--dk-separator)]"
+                        >
+                          {Icon ? (
+                            <Icon className="h-3.5 w-3.5 fill-current" />
+                          ) : (
+                            <Gamepad2 className="h-3.5 w-3.5" />
+                          )}
+                        </span>
+                      )
+                    })}
+                </div>
+              )}
+            </div>
 
             {/* Title / Logo */}
             <div className="min-h-[48px] sm:min-h-[64px] flex items-center">
@@ -316,10 +334,38 @@ export const DiscoverHero = ({ className }: DiscoverHeroProps) => {
 
             {/* Action Buttons & Quick Meta */}
             <div className="flex flex-wrap items-center gap-3 pt-2">
+              {isStreamable && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    quickStream({
+                      mediaId: activeItem.id,
+                      tmdbId: activeItem.tmdbId,
+                      mediaType: activeItem.mediaType,
+                      title: activeItem.title,
+                    })
+                  }}
+                  disabled={isStartingStream}
+                  className="flex items-center gap-2 px-5 sm:px-6 py-2.5 sm:py-3 rounded-2xl font-bold text-xs sm:text-sm md:text-base bg-primary text-primary-foreground shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer disabled:opacity-75"
+                >
+                  {isStartingStream ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Play className="h-4 w-4 fill-current" />
+                  )}
+                  Stream Now
+                </button>
+              )}
+
               <Link
                 to="/media/$mediaType/$mediaId"
                 params={{ mediaType: activeItem.mediaType, mediaId: activeItem.id }}
-                className="flex items-center gap-2 px-5 sm:px-6 py-2.5 sm:py-3 rounded-2xl font-bold text-xs sm:text-sm md:text-base bg-primary text-primary-foreground shadow-lg hover:opacity-95 transition-all cursor-pointer"
+                className={cn(
+                  'flex items-center gap-2 px-5 sm:px-6 py-2.5 sm:py-3 rounded-2xl font-bold text-xs sm:text-sm md:text-base transition-all cursor-pointer',
+                  isStreamable
+                    ? 'bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-glass-hover)] text-foreground border border-[var(--dk-separator)]'
+                    : 'bg-primary text-primary-foreground shadow-lg hover:opacity-95',
+                )}
               >
                 View Details
                 <ChevronRight className="h-4 w-4" />

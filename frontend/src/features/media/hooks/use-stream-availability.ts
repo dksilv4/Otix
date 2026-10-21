@@ -1,0 +1,140 @@
+import { useEffect, useMemo, useState } from 'react'
+import { useAuth } from '@auth/hooks/use-auth'
+import { useLibraryTab } from '@/features/library/library-queries'
+import { getPluginAPI } from '@/features/plugins/api'
+import type { MediaItemSummary } from '@/features/media/queries/media-queries'
+
+const SLOT_LOCATION = 'media/card/badges'
+
+export interface StreamAvailabilityResult {
+  isStreamable: boolean
+  providerLabel?: string
+  tone?: 'primary' | 'amber' | 'emerald' | 'default'
+  isLoading: boolean
+}
+
+interface UseStreamAvailabilityParams {
+  mediaId: string
+  tmdbId?: string | number | null
+  mediaType: string
+}
+
+export const useStreamableCatalog = () => {
+  const { user } = useAuth()
+  const isPlexConnected = Boolean(user?.plexId)
+
+  // Query user's plex library when connected
+  const { data, isLoading, isError } = useLibraryTab('plex', undefined)
+
+  const items = useMemo<MediaItemSummary[]>(() => {
+    if (!isPlexConnected || !data?.pages) return []
+    return (data.pages as Array<{ items?: unknown[] }>).flatMap((page) =>
+      Array.isArray(page?.items) ? (page.items as unknown as MediaItemSummary[]) : [],
+    )
+  }, [isPlexConnected, data])
+
+  const streamableIds = useMemo<Set<string>>(() => {
+    const set = new Set<string>()
+    for (const item of items) {
+      if (item?.id) set.add(String(item.id))
+      if (item?.slug) set.add(String(item.slug))
+      if (item?.tmdbId) set.add(String(item.tmdbId))
+    }
+    return set
+  }, [items])
+
+  return {
+    isPlexConnected,
+    items,
+    streamableIds,
+    isLoading: isPlexConnected && isLoading,
+    isError,
+  }
+}
+
+export const useStreamAvailability = ({
+  mediaId,
+  tmdbId,
+  mediaType,
+}: UseStreamAvailabilityParams): StreamAvailabilityResult => {
+  const { streamableIds, isPlexConnected, isLoading: catalogLoading } = useStreamableCatalog()
+  const [pluginStreamable, setPluginStreamable] = useState<boolean | null>(null)
+  const [pluginLabel, setPluginLabel] = useState<string | undefined>(undefined)
+  const [pluginLoading, setPluginLoading] = useState(false)
+
+  // Check desktop plugin slot data
+  useEffect(() => {
+    if (mediaType === 'game') return
+    const api = getPluginAPI()
+    if (!api?.getSlotData) return
+
+    let cancelled = false
+    setPluginLoading(true)
+
+    api
+      .getSlotData(SLOT_LOCATION, {
+        mediaId,
+        mediaType,
+        tmdbId: tmdbId ? String(tmdbId) : null,
+      })
+      .then((data: unknown) => {
+        if (cancelled) return
+        let matched = false
+        let label = 'Stream'
+
+        for (const entry of (data as Array<{
+          pluginId: string
+          data?: { widgets?: Array<{ type: string; props?: Record<string, unknown> }> }
+        }>) || []) {
+          for (const widget of entry.data?.widgets || []) {
+            if (widget.type === 'badge' && widget.props?.text) {
+              const text = String(widget.props.text)
+              if (
+                text.toLowerCase().includes('plex') ||
+                text.toLowerCase().includes('jellyfin') ||
+                text.toLowerCase().includes('stream') ||
+                widget.props.tone === 'success'
+              ) {
+                matched = true
+                label = text
+                break
+              }
+            }
+          }
+          if (matched) break
+        }
+
+        setPluginStreamable(matched)
+        if (matched) setPluginLabel(label)
+      })
+      .catch(() => {
+        if (!cancelled) setPluginStreamable(false)
+      })
+      .finally(() => {
+        if (!cancelled) setPluginLoading(false)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [mediaId, tmdbId, mediaType])
+
+  // Media is streamable if desktop plugin matched OR backend catalog matched
+  const isCatalogMatch = useMemo(() => {
+    if (!isPlexConnected) return false
+    if (streamableIds.has(String(mediaId))) return true
+    if (tmdbId && streamableIds.has(String(tmdbId))) return true
+    return false
+  }, [isPlexConnected, streamableIds, mediaId, tmdbId])
+
+  const isStreamable = Boolean(pluginStreamable || isCatalogMatch)
+  const providerLabel = pluginLabel || (isCatalogMatch ? 'Plex' : 'Stream')
+  const tone = providerLabel.toLowerCase().includes('plex') ? 'amber' : 'primary'
+
+  return {
+    isStreamable,
+    providerLabel,
+    tone,
+    isLoading: pluginLoading || (isPlexConnected && catalogLoading),
+  }
+}

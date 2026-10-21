@@ -19,6 +19,10 @@ export const PeopleCard = ({
 
   return (
     <div
+      data-context-type="person"
+      data-person-id={id}
+      data-person-name={name}
+      data-person-image={imageUrl || undefined}
       className={cn(
         'group relative h-48 w-28 shrink-0 overflow-hidden rounded-lg bg-muted',
         'shadow-[0_4px_16px_rgba(0,0,0,0.2)] transition-[transform,box-shadow] duration-300 ease-out',

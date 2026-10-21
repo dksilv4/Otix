@@ -11,6 +11,9 @@ export { GameServersFeatureTags } from './components/game-servers-feature-tags'
 export { GameServerPresetSelect } from './components/game-server-preset-select'
 export { OtixGameLinker } from './components/otix-game-linker'
 export { EditGameServerModal } from './components/edit-game-server-modal'
+export { JoinGameServerPage } from './pages/join-game-server-page'
+export { createGameServersRoutes } from './router'
+export * from './utils/connection'
 
 
 

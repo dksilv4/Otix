@@ -28,6 +28,7 @@ class DedicatedGameServerSerializer(serializers.ModelSerializer):
     media_item_poster = serializers.SerializerMethodField()
     connection_address = serializers.ReadOnlyField()
     is_owner = serializers.SerializerMethodField()
+    is_member = serializers.SerializerMethodField()
     user_permission = serializers.SerializerMethodField()
     active_invite_code = serializers.SerializerMethodField()
     owner_username = serializers.CharField(source="owner.username", read_only=True)
@@ -59,6 +60,7 @@ class DedicatedGameServerSerializer(serializers.ModelSerializer):
             "connection_address",
             "owner_username",
             "is_owner",
+            "is_member",
             "user_permission",
             "active_invite_code",
             "created_at",
@@ -86,6 +88,14 @@ class DedicatedGameServerSerializer(serializers.ModelSerializer):
         if not request or not request.user.is_authenticated:
             return False
         return obj.owner_id == request.user.id
+
+    def get_is_member(self, obj: DedicatedGameServer) -> bool:
+        request = self.context.get("request")
+        if not request or not request.user.is_authenticated:
+            return False
+        if obj.owner_id == request.user.id:
+            return True
+        return obj.shares.filter(user_id=request.user.id).exists()
 
     def get_user_permission(self, obj: DedicatedGameServer) -> str:
         request = self.context.get("request")

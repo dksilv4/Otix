@@ -8,6 +8,7 @@ import {
   saveAutoDownloadPreference,
   readAllowPrereleasePreference,
   saveAllowPrereleasePreference,
+  fetchLatestReleaseNotes,
 } from '../utils/updater-utils'
 
 const FALLBACK_VERSION = '0.1.23'
@@ -36,6 +37,7 @@ export const useAppUpdater = (): AppUpdaterState => {
   const [githubToken, setGithubTokenState] = useState<string>('')
 
   const apiRef = useRef(getDesktopAPI()?.updater)
+  const hasCheckedOnLaunchRef = useRef(false)
 
   useEffect(() => {
     const handler = (open: boolean) => setIsModalOpen(open)
@@ -82,15 +84,21 @@ export const useAppUpdater = (): AppUpdaterState => {
       })
       .catch(() => {})
 
-    // 2. Fetch current updater state
+    // 2. Fetch current updater state and check for updates on app launch
     updaterApi.getStatus()
       .then((initialState: UpdateStatePayload) => {
-        if (!initialState) return
-        setStatus(initialState.status)
-        if (initialState.version) setAvailableVersion(initialState.version)
-        if (initialState.releaseNotes) setReleaseNotes(initialState.releaseNotes)
-        if (initialState.progress) setProgress(initialState.progress)
-        if (initialState.error) setError(initialState.error)
+        if (initialState) {
+          setStatus(initialState.status)
+          if (initialState.version) setAvailableVersion(initialState.version)
+          if (initialState.releaseNotes) setReleaseNotes(initialState.releaseNotes)
+          if (initialState.progress) setProgress(initialState.progress)
+          if (initialState.error) setError(initialState.error)
+        }
+
+        if (!hasCheckedOnLaunchRef.current && (initialState?.status === 'idle' || !initialState)) {
+          hasCheckedOnLaunchRef.current = true
+          updaterApi.checkForUpdates().catch(() => {})
+        }
       })
       .catch(() => {})
 
@@ -167,7 +175,20 @@ export const useAppUpdater = (): AppUpdaterState => {
   const openUpdateModal = useCallback(() => {
     globalIsModalOpen = true
     modalSubscribers.forEach((fn) => fn(true))
-  }, [])
+
+    if (!releaseNotes) {
+      fetchLatestReleaseNotes()
+        .then((latest) => {
+          if (latest?.notes) {
+            setReleaseNotes(latest.notes)
+            if (!availableVersion && latest.version) {
+              setAvailableVersion(latest.version)
+            }
+          }
+        })
+        .catch(() => {})
+    }
+  }, [releaseNotes, availableVersion])
 
   const closeUpdateModal = useCallback(() => {
     globalIsModalOpen = false

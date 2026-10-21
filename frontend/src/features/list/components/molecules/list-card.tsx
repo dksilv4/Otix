@@ -34,6 +34,9 @@ export const ListCard = ({ list, selectable = false, selected = false, onSelect 
       to="/library/$listId"
       params={{ listId: list.id }}
       onClick={handleClick}
+      data-context-type="list"
+      data-list-id={list.id}
+      data-list-name={list.name}
       className={cn(
         "dk-list-card relative group transition-all duration-200",
         selectable && "cursor-pointer select-none",

@@ -11,8 +11,6 @@ import {
   Trash2,
   Mail,
   FileText,
-  DollarSign,
-  Layers,
   ChevronRight,
   CheckCircle2,
   XCircle,
@@ -24,23 +22,14 @@ import {
   Radio,
   ArrowUpRight,
   ShieldOff,
+  Layers,
 } from 'lucide-react'
 import { DkButton } from '@ui/atoms/button'
 import { DkBadge } from '@ui/atoms/badge'
 import { useToast } from '@ui/molecules/toast'
-
-const SECTIONS = [
-  { id: 'controller', label: '1. Data Controller' },
-  { id: 'data-collected', label: '2. Data Collected' },
-  { id: 'byos-streaming', label: '3. BYOS Streaming' },
-  { id: 'third-party-apis', label: '4. External APIs' },
-  { id: 'cookies', label: '5. Cookies & Storage' },
-  { id: 'children', label: '6. Children’s Privacy' },
-  { id: 'data-deletion', label: '7. Data Erasure' },
-  { id: 'refunds', label: '8. Cancellation & Refunds' },
-  { id: 'communications', label: '9. Communications' },
-  { id: 'licensing', label: '10. Licensing' },
-]
+import { LegalNav } from '@/components/legal-nav'
+import { PRIVACY_SECTIONS, scrollToLegalSection } from '@/lib/utils/legal'
+import { COOKIE_CONSENT_KEY, getCookieConsent } from '@/lib/utils/cookies'
 
 export const PrivacyPage = () => {
   const { toast } = useToast()
@@ -48,12 +37,7 @@ export const PrivacyPage = () => {
   const [cookieConsent, setCookieConsent] = useState<string | null>(null)
 
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem('otix_cookie_consent')
-      setCookieConsent(stored)
-    } catch {
-      setCookieConsent(null)
-    }
+    setCookieConsent(getCookieConsent())
   }, [])
 
   const handleCopyEmail = (email: string) => {
@@ -70,7 +54,7 @@ export const PrivacyPage = () => {
 
   const handleResetCookieChoice = () => {
     try {
-      localStorage.removeItem('otix_cookie_consent')
+      localStorage.removeItem(COOKIE_CONSENT_KEY)
       setCookieConsent(null)
       toast({
         title: 'Cookie Preferences Reset',
@@ -86,13 +70,6 @@ export const PrivacyPage = () => {
     }
   }
 
-  const scrollToSection = (id: string) => {
-    const el = document.getElementById(id)
-    if (el) {
-      el.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    }
-  }
-
   return (
     <div id="privacy-page" className="w-full max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10 space-y-10">
       <Helmet>
@@ -103,27 +80,17 @@ export const PrivacyPage = () => {
         />
       </Helmet>
 
-      {/* Breadcrumb Navigation */}
-      <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-xs text-muted-foreground">
-        <Link to="/" className="hover:text-foreground transition-colors">
-          Home
-        </Link>
-        <ChevronRight className="h-3 w-3 opacity-40" />
-        <Link to="/settings" className="hover:text-foreground transition-colors">
-          Settings
-        </Link>
-        <ChevronRight className="h-3 w-3 opacity-40" />
-        <span className="text-foreground font-medium">Privacy Policy</span>
-      </nav>
+      {/* Shared Legal Navigation Tabs */}
+      <LegalNav activeTab="privacy" />
 
       {/* Hero Header */}
       <header className="space-y-4">
         <div className="flex flex-wrap items-center gap-2.5">
-          <DkBadge variant="success" size="sm" className="gap-1.5 px-3 py-1">
+          <DkBadge variant="default" size="sm" className="gap-1.5 px-3 py-1">
             <ShieldCheck className="h-3.5 w-3.5" />
             <span>GDPR, CCPA &amp; Privacy Standards</span>
           </DkBadge>
-          <DkBadge variant="default" size="sm" className="gap-1.5 px-3 py-1">
+          <DkBadge variant="secondary" size="sm" className="gap-1.5 px-3 py-1">
             <Radio className="h-3.5 w-3.5" />
             <span>Direct BYOS Streaming</span>
           </DkBadge>
@@ -143,7 +110,7 @@ export const PrivacyPage = () => {
           <span className="opacity-40">·</span>
           <span>Effective Immediately</span>
           <span className="opacity-40">·</span>
-          <span className="text-emerald-500 font-medium flex items-center gap-1">
+          <span className="text-primary font-medium flex items-center gap-1">
             <CheckCircle2 className="h-3.5 w-3.5" /> Zero Data Selling Guarantee
           </span>
         </div>
@@ -153,7 +120,7 @@ export const PrivacyPage = () => {
           <DkButton
             variant="secondary"
             size="sm"
-            onClick={() => scrollToSection('cookies')}
+            onClick={() => scrollToLegalSection('cookies')}
             leftIcon={Cookie}
           >
             Manage Cookies
@@ -178,7 +145,7 @@ export const PrivacyPage = () => {
             className="text-foreground/80 hover:text-foreground"
           >
             {copiedEmail ? (
-              <Check className="h-3.5 w-3.5 mr-1.5 text-emerald-500" />
+              <Check className="h-3.5 w-3.5 mr-1.5 text-primary" />
             ) : (
               <Copy className="h-3.5 w-3.5 mr-1.5" />
             )}
@@ -188,8 +155,8 @@ export const PrivacyPage = () => {
       </header>
 
       {/* Data Minimization Pledge Highlight Card */}
-      <div className="rounded-2xl sm:rounded-3xl p-6 sm:p-7 backdrop-blur-xl bg-emerald-500/[0.04] dark:bg-emerald-500/[0.08] border border-emerald-500/20 shadow-[var(--dk-shadow-sm)] space-y-3">
-        <div className="flex items-center gap-2.5 text-emerald-600 dark:text-emerald-400 font-bold text-sm sm:text-base">
+      <div className="rounded-2xl sm:rounded-3xl p-6 sm:p-7 backdrop-blur-xl bg-primary/[0.04] dark:bg-primary/[0.08] border border-primary/20 shadow-[var(--dk-shadow-sm)] space-y-3">
+        <div className="flex items-center gap-2.5 text-primary font-bold text-sm sm:text-base">
           <EyeOff className="h-5 w-5 shrink-0" />
           <span>Zero Unnecessary Data Collection Pledge</span>
         </div>
@@ -205,7 +172,7 @@ export const PrivacyPage = () => {
         </h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="rounded-2xl p-5 bg-[var(--dk-surface-base)] backdrop-blur-xl border border-[var(--dk-separator)] shadow-[var(--dk-shadow-xs)] hover:shadow-[var(--dk-shadow-sm)] transition-all space-y-2.5">
-            <div className="h-8 w-8 rounded-xl bg-rose-500/10 text-rose-500 flex items-center justify-center">
+            <div className="h-8 w-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
               <ShieldOff className="h-4 w-4" />
             </div>
             <h3 className="font-bold text-sm text-foreground">Zero Tracking Pixels</h3>
@@ -225,17 +192,17 @@ export const PrivacyPage = () => {
           </div>
 
           <div className="rounded-2xl p-5 bg-[var(--dk-surface-base)] backdrop-blur-xl border border-[var(--dk-separator)] shadow-[var(--dk-shadow-xs)] hover:shadow-[var(--dk-shadow-sm)] transition-all space-y-2.5">
-            <div className="h-8 w-8 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center">
+            <div className="h-8 w-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
               <Lock className="h-4 w-4" />
             </div>
-            <h3 className="font-bold text-sm text-foreground">Encrypted &amp; Minimal Storage</h3>
+            <h3 className="font-bold text-sm text-foreground">Encrypted Storage</h3>
             <p className="text-xs text-muted-foreground leading-relaxed">
-              Integration tokens encrypted at rest; passwords hashed with argon2/bcrypt. Profile avatars stored securely; library media files never uploaded.
+              Integration tokens encrypted at rest; passwords hashed with argon2/bcrypt. Media files never uploaded.
             </p>
           </div>
 
           <div className="rounded-2xl p-5 bg-[var(--dk-surface-base)] backdrop-blur-xl border border-[var(--dk-separator)] shadow-[var(--dk-shadow-xs)] hover:shadow-[var(--dk-shadow-sm)] transition-all space-y-2.5">
-            <div className="h-8 w-8 rounded-xl bg-sky-500/10 text-sky-500 flex items-center justify-center">
+            <div className="h-8 w-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
               <Trash2 className="h-4 w-4" />
             </div>
             <h3 className="font-bold text-sm text-foreground">Complete Erasure</h3>
@@ -252,11 +219,11 @@ export const PrivacyPage = () => {
           <span className="text-xs font-semibold text-muted-foreground shrink-0 flex items-center gap-1 pl-1 pr-2">
             <Sparkles className="h-3 w-3 text-primary" /> Jump to:
           </span>
-          {SECTIONS.map((sec) => (
+          {PRIVACY_SECTIONS.map((sec) => (
             <button
               key={sec.id}
               type="button"
-              onClick={() => scrollToSection(sec.id)}
+              onClick={() => scrollToLegalSection(sec.id)}
               className="shrink-0 text-xs px-2.5 py-1 rounded-lg bg-[var(--dk-surface-base)] text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-raised)] transition-all cursor-pointer font-medium"
             >
               {sec.label}
@@ -311,7 +278,7 @@ export const PrivacyPage = () => {
                   title="Copy email address"
                   aria-label="Copy privacy email"
                 >
-                  {copiedEmail ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
+                  {copiedEmail ? <Check className="h-3.5 w-3.5 text-primary" /> : <Copy className="h-3.5 w-3.5" />}
                 </button>
               </div>
             </div>
@@ -330,7 +297,7 @@ export const PrivacyPage = () => {
 
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2 border-t border-[var(--dk-separator)]">
               <span className="font-mono text-muted-foreground">Statutory Response SLA:</span>
-              <span className="font-mono text-emerald-500 font-semibold">Within 30 calendar days (GDPR Art. 12)</span>
+              <span className="font-mono text-primary font-semibold">Within 30 calendar days (GDPR Art. 12)</span>
             </div>
           </div>
         </section>
@@ -338,7 +305,7 @@ export const PrivacyPage = () => {
         {/* Section 2: Data We Collect vs Data We Do Not Collect */}
         <section id="data-collected" className="rounded-2xl sm:rounded-3xl p-6 sm:p-8 bg-[var(--dk-surface-base)] backdrop-blur-xl border border-[var(--dk-separator)] shadow-[var(--dk-shadow-sm)] space-y-5 scroll-mt-28">
           <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center shrink-0">
+            <div className="h-9 w-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
               <Lock className="h-4.5 w-4.5" />
             </div>
             <div>
@@ -353,77 +320,53 @@ export const PrivacyPage = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             {/* Collect */}
-            <div className="rounded-2xl bg-emerald-500/[0.03] border border-emerald-500/15 p-5 sm:p-6 space-y-3.5">
+            <div className="rounded-2xl bg-[var(--dk-surface-ghost)] border border-[var(--dk-separator)] p-5 sm:p-6 space-y-3.5">
               <div className="flex items-center justify-between">
-                <h3 className="font-bold text-xs uppercase tracking-wider text-emerald-500 flex items-center gap-1.5">
+                <h3 className="font-bold text-xs uppercase tracking-wider text-primary flex items-center gap-1.5">
                   <CheckCircle2 className="h-4 w-4" /> Data We Collect
                 </h3>
-                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500">
+                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-primary/10 text-primary">
                   Minimal Scope
                 </span>
               </div>
-              <ul className="space-y-3 text-xs leading-relaxed text-foreground/80">
-                <li className="flex items-start gap-2">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 mt-1.5 shrink-0" />
-                  <div>
-                    <strong className="text-foreground">Account Credentials:</strong> Username, email address, password hash (hashed via argon2 or bcrypt), and date of birth for age verification.
-                  </div>
+              <ul className="space-y-3 text-xs leading-relaxed text-foreground/80 list-disc pl-4">
+                <li>
+                  <strong className="text-foreground">Account Credentials:</strong> Username, email address, password hash (hashed via argon2 or bcrypt), and date of birth for age verification.
                 </li>
-                <li className="flex items-start gap-2">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 mt-1.5 shrink-0" />
-                  <div>
-                    <strong className="text-foreground">User Preferences:</strong> Theme settings, custom lists, ratings, reviews, and watch progress bookmarks.
-                  </div>
+                <li>
+                  <strong className="text-foreground">User Preferences:</strong> Theme settings, custom lists, ratings, reviews, and watch progress bookmarks.
                 </li>
-                <li className="flex items-start gap-2">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 mt-1.5 shrink-0" />
-                  <div>
-                    <strong className="text-foreground">Profile Imagery &amp; Avatars (Optional):</strong> Avatar photos and profile background banners that you choose to upload to customize your account. Images are strictly validated (PNG, JPEG, WebP, GIF), size-capped, stored with randomized UUID filenames, and served exclusively to render your public/friends profile within Otix.
-                  </div>
+                <li>
+                  <strong className="text-foreground">Profile Imagery &amp; Avatars (Optional):</strong> Avatar photos and profile background banners that you choose to upload to customize your account. Images are strictly validated (PNG, JPEG, WebP, GIF), size-capped, stored with randomized UUID filenames, and served exclusively to render your public/friends profile within Otix.
                 </li>
-                <li className="flex items-start gap-2">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 mt-1.5 shrink-0" />
-                  <div>
-                    <strong className="text-foreground">Integration Tokens:</strong> Scoped OAuth tokens (Plex, Steam, Epic) stored encrypted at rest to query your servers on your behalf.
-                  </div>
+                <li>
+                  <strong className="text-foreground">Integration Tokens:</strong> Scoped OAuth tokens (Plex, Steam, Epic) stored encrypted at rest to query your servers on your behalf.
                 </li>
               </ul>
             </div>
 
             {/* Never Collect */}
-            <div className="rounded-2xl bg-rose-500/[0.03] border border-rose-500/15 p-5 sm:p-6 space-y-3.5">
+            <div className="rounded-2xl bg-[var(--dk-surface-ghost)] border border-[var(--dk-separator)] p-5 sm:p-6 space-y-3.5">
               <div className="flex items-center justify-between">
-                <h3 className="font-bold text-xs uppercase tracking-wider text-rose-500 flex items-center gap-1.5">
+                <h3 className="font-bold text-xs uppercase tracking-wider text-destructive flex items-center gap-1.5">
                   <XCircle className="h-4 w-4" /> Data We Never Collect
                 </h3>
-                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-500">
+                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-destructive/10 text-destructive">
                   Strictly Excluded
                 </span>
               </div>
-              <ul className="space-y-3 text-xs leading-relaxed text-foreground/80">
-                <li className="flex items-start gap-2">
-                  <span className="h-1.5 w-1.5 rounded-full bg-rose-500 mt-1.5 shrink-0" />
-                  <div>
-                    <strong className="text-foreground">No Streaming Media Files:</strong> We never host, ingest, store, or receive your personal movie, video, or music library media files (these stay 100% on your private BYOS server).
-                  </div>
+              <ul className="space-y-3 text-xs leading-relaxed text-foreground/80 list-disc pl-4">
+                <li>
+                  <strong className="text-foreground">No Streaming Media Files:</strong> We never host, ingest, store, or receive your personal movie, video, or music library media files (these stay 100% on your private BYOS server).
                 </li>
-                <li className="flex items-start gap-2">
-                  <span className="h-1.5 w-1.5 rounded-full bg-rose-500 mt-1.5 shrink-0" />
-                  <div>
-                    <strong className="text-foreground">No Biometric or Facial Recognition:</strong> Profile images and avatars you upload are never scanned, analyzed, or processed for biometric identification, facial recognition, or machine learning model training.
-                  </div>
+                <li>
+                  <strong className="text-foreground">No Biometric or Facial Recognition:</strong> Profile images and avatars you upload are never scanned, analyzed, or processed for biometric identification, facial recognition, or machine learning model training.
                 </li>
-                <li className="flex items-start gap-2">
-                  <span className="h-1.5 w-1.5 rounded-full bg-rose-500 mt-1.5 shrink-0" />
-                  <div>
-                    <strong className="text-foreground">No Cross-Site Tracking:</strong> Zero tracking pixels (Meta Pixel, Google AdSense, TikTok) or behavioral advertising brokers.
-                  </div>
+                <li>
+                  <strong className="text-foreground">No Cross-Site Tracking:</strong> Zero tracking pixels (Meta Pixel, Google AdSense, TikTok) or behavioral advertising brokers.
                 </li>
-                <li className="flex items-start gap-2">
-                  <span className="h-1.5 w-1.5 rounded-full bg-rose-500 mt-1.5 shrink-0" />
-                  <div>
-                    <strong className="text-foreground">No Sensitive Identifiers:</strong> No GPS geolocation feeds, health records, or microphone/camera recording.
-                  </div>
+                <li>
+                  <strong className="text-foreground">No Sensitive Identifiers:</strong> No GPS geolocation feeds, health records, or microphone/camera recording.
                 </li>
               </ul>
             </div>
@@ -433,7 +376,7 @@ export const PrivacyPage = () => {
         {/* Section 3: Direct Streaming Privacy (BYOS) */}
         <section id="byos-streaming" className="rounded-2xl sm:rounded-3xl p-6 sm:p-8 bg-[var(--dk-surface-base)] backdrop-blur-xl border border-[var(--dk-separator)] shadow-[var(--dk-shadow-sm)] space-y-5 scroll-mt-28">
           <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center shrink-0">
+            <div className="h-9 w-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
               <Server className="h-4.5 w-4.5" />
             </div>
             <div>
@@ -463,21 +406,21 @@ export const PrivacyPage = () => {
               </div>
 
               <div className="flex flex-col items-center justify-center py-2 text-muted-foreground">
-                <span className="text-xs font-semibold text-emerald-500 flex items-center gap-1">
+                <span className="text-xs font-semibold text-primary flex items-center gap-1">
                   <CheckCircle2 className="h-3.5 w-3.5" /> Direct Playback Stream
                 </span>
                 <span className="text-[10px] text-muted-foreground mt-0.5">Peer-to-peer / LAN or direct WAN</span>
-                <div className="w-full h-0.5 bg-emerald-500/30 my-2 hidden md:block" />
+                <div className="w-full h-0.5 bg-primary/30 my-2 hidden md:block" />
               </div>
 
               <div className="rounded-xl bg-[var(--dk-surface-overlay)] p-3.5 space-y-1.5 border border-[var(--dk-separator)]">
-                <Server className="h-5 w-5 mx-auto text-amber-500" />
+                <Server className="h-5 w-5 mx-auto text-primary" />
                 <div className="font-semibold text-xs text-foreground">Your Private Server</div>
                 <div className="text-[11px] text-muted-foreground">Plex / Jellyfin endpoint you own</div>
               </div>
             </div>
 
-            <div className="p-3 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-xs flex items-center gap-2">
+            <div className="p-3 rounded-lg bg-primary/10 text-primary text-xs flex items-center gap-2">
               <ShieldCheck className="h-4 w-4 shrink-0" />
               <span>
                 <strong>Zero Intermediary:</strong> Otix central servers never proxy, record, or route your video or audio stream.
@@ -495,7 +438,7 @@ export const PrivacyPage = () => {
         {/* Section 4: Third-Party SDKs & APIs Audit */}
         <section id="third-party-apis" className="rounded-2xl sm:rounded-3xl p-6 sm:p-8 bg-[var(--dk-surface-base)] backdrop-blur-xl border border-[var(--dk-separator)] shadow-[var(--dk-shadow-sm)] space-y-4 scroll-mt-28">
           <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-xl bg-sky-500/10 text-sky-500 flex items-center justify-center shrink-0">
+            <div className="h-9 w-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
               <Layers className="h-4.5 w-4.5" />
             </div>
             <div>
@@ -558,7 +501,7 @@ export const PrivacyPage = () => {
         {/* Section 5: Cookie & Local Storage Policy */}
         <section id="cookies" className="rounded-2xl sm:rounded-3xl p-6 sm:p-8 bg-[var(--dk-surface-base)] backdrop-blur-xl border border-[var(--dk-separator)] shadow-[var(--dk-shadow-sm)] space-y-4 scroll-mt-28">
           <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center shrink-0">
+            <div className="h-9 w-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
               <Cookie className="h-4.5 w-4.5" />
             </div>
             <div>
@@ -578,12 +521,12 @@ export const PrivacyPage = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
             <div className="p-4 rounded-xl bg-[var(--dk-surface-raised)] border border-[var(--dk-separator)] space-y-2">
               <div className="font-bold text-foreground flex items-center gap-1.5">
-                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+                <CheckCircle2 className="h-3.5 w-3.5 text-primary" />
                 <span>Strictly Necessary (Required)</span>
               </div>
               <ul className="space-y-1.5 text-muted-foreground leading-relaxed">
                 <li><strong className="text-foreground">Session Authentication:</strong> JWT token stored to authenticate API requests to your Otix backend.</li>
-                <li><strong className="text-foreground">Cookie Consent:</strong> <code className="text-primary font-mono">otix_cookie_consent</code> records your choice to accept or decline optional cookies.</li>
+                <li><strong className="text-foreground">Cookie Consent:</strong> <code className="text-primary font-mono">{COOKIE_CONSENT_KEY}</code> records your choice to accept or decline optional cookies.</li>
               </ul>
             </div>
 
@@ -631,7 +574,7 @@ export const PrivacyPage = () => {
         {/* Section 6: Children's Privacy (COPPA & GDPR-K) */}
         <section id="children" className="rounded-2xl sm:rounded-3xl p-6 sm:p-8 bg-[var(--dk-surface-base)] backdrop-blur-xl border border-[var(--dk-separator)] shadow-[var(--dk-shadow-sm)] space-y-4 scroll-mt-28">
           <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center shrink-0">
+            <div className="h-9 w-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
               <UserCheck className="h-4.5 w-4.5" />
             </div>
             <div>
@@ -655,7 +598,7 @@ export const PrivacyPage = () => {
         {/* Section 7: Data Deletion & Right to Erasure */}
         <section id="data-deletion" className="rounded-2xl sm:rounded-3xl p-6 sm:p-8 bg-[var(--dk-surface-base)] backdrop-blur-xl border border-[var(--dk-separator)] shadow-[var(--dk-shadow-sm)] space-y-4 scroll-mt-28">
           <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-xl bg-rose-500/10 text-rose-500 flex items-center justify-center shrink-0">
+            <div className="h-9 w-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
               <Trash2 className="h-4.5 w-4.5" />
             </div>
             <div>
@@ -707,42 +650,15 @@ export const PrivacyPage = () => {
           </div>
         </section>
 
-        {/* Section 8: Refund & Cancellation Policy */}
-        <section id="refunds" className="rounded-2xl sm:rounded-3xl p-6 sm:p-8 bg-[var(--dk-surface-base)] backdrop-blur-xl border border-[var(--dk-separator)] shadow-[var(--dk-shadow-sm)] space-y-4 scroll-mt-28">
-          <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center shrink-0">
-              <DollarSign className="h-4.5 w-4.5" />
-            </div>
-            <div>
-              <h2 className="text-lg sm:text-xl font-bold tracking-tight text-foreground">
-                8. Refund &amp; Subscription Cancellation Policy
-              </h2>
-              <p className="text-xs text-muted-foreground">
-                Fair, transparent consumer terms with zero dark patterns or cancellation hurdles.
-              </p>
-            </div>
-          </div>
-
-          <p>
-            Otix believes in transparent, consumer-friendly policies without hidden traps or artificial barriers:
-          </p>
-
-          <ul className="list-disc pl-5 space-y-2 text-xs sm:text-sm text-foreground/80">
-            <li><strong className="text-foreground">Self-Service Cancellation:</strong> If any paid tier or subscription is enabled, cancellation can be performed with one click from account settings without retention surveys or artificial barriers.</li>
-            <li><strong className="text-foreground">14-Day Statutory Refund Window:</strong> Users residing in the EU, UK, and other qualifying jurisdictions are entitled to a full refund within 14 days of initial purchase.</li>
-            <li><strong className="text-foreground">Fair Usage &amp; Support:</strong> To request a refund or invoice clarification, contact <code className="text-primary font-mono">support@otix.app</code> with your account email.</li>
-          </ul>
-        </section>
-
-        {/* Section 9: Communications & Unsubscribe */}
+        {/* Section 8: Communications & Unsubscribe */}
         <section id="communications" className="rounded-2xl sm:rounded-3xl p-6 sm:p-8 bg-[var(--dk-surface-base)] backdrop-blur-xl border border-[var(--dk-separator)] shadow-[var(--dk-shadow-sm)] space-y-4 scroll-mt-28">
           <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-xl bg-sky-500/10 text-sky-500 flex items-center justify-center shrink-0">
+            <div className="h-9 w-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
               <Mail className="h-4.5 w-4.5" />
             </div>
             <div>
               <h2 className="text-lg sm:text-xl font-bold tracking-tight text-foreground">
-                9. Email Communications &amp; Unsubscribe Rights
+                8. Email Communications &amp; Unsubscribe Rights
               </h2>
               <p className="text-xs text-muted-foreground">
                 Anti-spam guarantees and straightforward communication controls.
@@ -755,27 +671,6 @@ export const PrivacyPage = () => {
             <Link to="/settings/notifications" className="text-primary font-medium hover:underline">
               Settings &rarr; Notifications
             </Link>.
-          </p>
-        </section>
-
-        {/* Section 10: Font & Asset Licensing */}
-        <section id="licensing" className="rounded-2xl sm:rounded-3xl p-6 sm:p-8 bg-[var(--dk-surface-base)] backdrop-blur-xl border border-[var(--dk-separator)] shadow-[var(--dk-shadow-sm)] space-y-4 scroll-mt-28">
-          <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-xl bg-purple-500/10 text-purple-500 flex items-center justify-center shrink-0">
-              <Layers className="h-4.5 w-4.5" />
-            </div>
-            <div>
-              <h2 className="text-lg sm:text-xl font-bold tracking-tight text-foreground">
-                10. Font, Asset &amp; Intellectual Property Licenses
-              </h2>
-              <p className="text-xs text-muted-foreground">
-                Attribution and open-source licenses governing Otix interface assets.
-              </p>
-            </div>
-          </div>
-
-          <p>
-            All software fonts (including Inter and system typography) are utilized under permissive open-source licenses (SIL Open Font License). Movie, TV, and gaming artwork is utilized under promotional fair use and community API attribution agreements.
           </p>
         </section>
       </div>

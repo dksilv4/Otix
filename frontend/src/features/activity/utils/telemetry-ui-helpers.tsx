@@ -81,23 +81,88 @@ import { resolveCs2OfficialSvg } from './cs2-official-svg-icons'
  * e.g. "★ Butterfly Knife | Fade" -> "Knife"
  */
 export const getCs2BaseWeaponName = (weaponOrSkin?: string): string => {
-  if (!weaponOrSkin) return ''
+  if (!weaponOrSkin || weaponOrSkin === 'none' || weaponOrSkin === '—') return ''
   // Strip skin portion if formatted as "Weapon | Skin"
   let base = weaponOrSkin.split('|')[0].trim()
   // Strip special prefixes like ★
   base = base.replace(/^[★\s]+/, '').trim()
   // Strip weapon_ prefix if raw GSI name
   base = base.replace(/^weapon_/i, '').trim()
-  // Normalize known weapon identifiers
-  const lower = base.toLowerCase()
-  if (lower === 'm4a1' || lower === 'm4a1-s' || lower === 'm4a1_silencer' || lower === 'm4a1s') return 'M4A1-S'
-  if (lower === 'm4a4') return 'M4A4'
-  if (lower === 'ak47' || lower === 'ak-47') return 'AK-47'
-  if (lower === 'usp' || lower === 'usp-s' || lower === 'usp_silencer' || lower === 'usps') return 'USP-S'
-  if (lower === 'glock' || lower === 'glock-18') return 'Glock-18'
-  if (lower === 'mag7' || lower === 'mag-7') return 'MAG-7'
+
+  const lower = base.toLowerCase().replace(/[\s_-]+/g, '')
+
+  // Rifles
+  if (lower === 'm4a1silencer' || lower === 'm4a1s') return 'M4A1-S'
+  if (lower === 'm4a1' || lower === 'm4a4' || lower === 'm4') return 'M4A4'
+  if (lower === 'ak47' || lower === 'ak') return 'AK-47'
+  if (lower === 'famas') return 'FAMAS'
+  if (lower === 'galilar' || lower === 'galil') return 'Galil AR'
+  if (lower === 'aug') return 'AUG'
+  if (lower === 'sg556' || lower === 'sg553') return 'SG 553'
+
+  // Snipers
   if (lower === 'awp') return 'AWP'
-  if (lower.includes('knife') || lower.includes('bayonet') || lower.includes('karambit') || lower.includes('daggers')) return 'Knife'
+  if (lower === 'ssg08' || lower === 'scout') return 'SSG 08'
+  if (lower === 'g3sg1') return 'G3SG1'
+  if (lower === 'scar20') return 'SCAR-20'
+
+  // SMGs
+  if (lower === 'mp9') return 'MP9'
+  if (lower === 'mac10') return 'MAC-10'
+  if (lower === 'mp7') return 'MP7'
+  if (lower === 'mp5sd' || lower === 'mp5') return 'MP5-SD'
+  if (lower === 'ump45' || lower === 'ump') return 'UMP-45'
+  if (lower === 'p90') return 'P90'
+  if (lower === 'bizon' || lower === 'ppbizon') return 'PP-Bizon'
+
+  // Shotguns
+  if (lower === 'mag7') return 'MAG-7'
+  if (lower === 'nova') return 'Nova'
+  if (lower === 'xm1014') return 'XM1014'
+  if (lower === 'sawedoff') return 'Sawed-Off'
+
+  // Machine Guns
+  if (lower === 'negev') return 'Negev'
+  if (lower === 'm249') return 'M249'
+
+  // Pistols
+  if (lower === 'uspsilencer' || lower === 'usps' || lower === 'usp') return 'USP-S'
+  if (lower === 'hkp2000' || lower === 'p2000') return 'P2000'
+  if (lower === 'glock18' || lower === 'glock') return 'Glock-18'
+  if (lower === 'p250') return 'P250'
+  if (lower === 'fiveseven') return 'Five-SeveN'
+  if (lower === 'cz75a' || lower === 'cz75auto' || lower === 'cz75') return 'CZ75-Auto'
+  if (lower === 'tec9') return 'Tec-9'
+  if (lower === 'revolver' || lower === 'r8revolver' || lower === 'r8') return 'R8 Revolver'
+  if (lower === 'deagle' || lower === 'deserteagle') return 'Desert Eagle'
+  if (lower === 'elite' || lower === 'dualberettas' || lower === 'elites') return 'Dual Berettas'
+
+  // Equipment
+  if (lower === 'taser' || lower === 'zeus' || lower === 'zeusx27') return 'Zeus x27'
+  if (lower === 'c4' || lower === 'bomb') return 'C4'
+
+  // Knives
+  if (lower === 'knifebutterfly' || lower === 'butterfly') return 'Butterfly Knife'
+  if (lower === 'knifekarambit' || lower === 'karambit') return 'Karambit'
+  if (lower === 'knifem9bayonet' || lower === 'm9bayonet' || lower === 'm9') return 'M9 Bayonet'
+  if (lower === 'bayonet') return 'Bayonet'
+  if (lower === 'knifetactical' || lower === 'huntsman') return 'Huntsman Knife'
+  if (lower === 'knifefalchion' || lower === 'falchion') return 'Falchion Knife'
+  if (lower === 'knifesurvivalbowie' || lower === 'bowie') return 'Bowie Knife'
+  if (lower === 'knifeflip' || lower === 'flip') return 'Flip Knife'
+  if (lower === 'knifegut' || lower === 'gut') return 'Gut Knife'
+  if (lower === 'knifepush' || lower === 'shadowdaggers' || lower === 'daggers') return 'Shadow Daggers'
+  if (lower === 'knifestiletto' || lower === 'stiletto') return 'Stiletto Knife'
+  if (lower === 'knifewidowmaker' || lower === 'talon') return 'Talon Knife'
+  if (lower === 'knifeursus' || lower === 'ursus') return 'Ursus Knife'
+  if (lower === 'knifeskeleton' || lower === 'skeleton') return 'Skeleton Knife'
+  if (lower === 'knifecord' || lower === 'paracord') return 'Paracord Knife'
+  if (lower === 'knifeoutdoor' || lower === 'nomad') return 'Nomad Knife'
+  if (lower === 'knifecanis' || lower === 'survival') return 'Survival Knife'
+  if (lower === 'knifecss' || lower === 'classic') return 'Classic Knife'
+  if (lower === 'knifegg') return 'Golden Knife'
+  if (lower.includes('knife')) return 'Knife'
+
   return base
 }
 
@@ -122,6 +187,7 @@ export const Cs2OfficialWeaponIcon = ({
   faceLeft?: boolean
 }) => {
   const baseName = getCs2BaseWeaponName(weapon)
+  if (!baseName) return null
   const svgDef = resolveCs2OfficialSvg(baseName)
   const isC4 = baseName.toLowerCase().includes('c4')
   const flipClass = faceLeft && !isC4 && !className.includes('scale-x-') ? 'scale-x-[-1]' : ''

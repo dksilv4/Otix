@@ -32,7 +32,9 @@ export const ContextMenuItem = forwardRef((
       role="menuitem"
       aria-disabled={disabled || undefined}
       disabled={disabled}
-      onClick={() => { if (!disabled) onClick?.() }}
+      onClick={() => {
+        if (!disabled) onClick?.()
+      }}
       onPointerEnter={onPointerEnter}
       onPointerLeave={onPointerLeave}
       className={cn(
@@ -40,13 +42,13 @@ export const ContextMenuItem = forwardRef((
         disabled
           ? 'cursor-not-allowed opacity-40'
           : destructive
-            ? 'text-red-400 hover:bg-red-500/10 hover:text-red-300'
+            ? 'text-destructive hover:bg-destructive/10'
             : 'text-muted-foreground hover:bg-[var(--dk-surface-ghost-hover)] hover:text-foreground',
         className,
       )}
     >
       {Icon && <Icon className="h-4 w-4 shrink-0" />}
-      <span className="flex-1 text-left truncate">{label}</span>
+      <span className="flex-1 text-left truncate">{label ?? ''}</span>
       {shortcut && (
         <span className="shrink-0 text-[11px] text-muted-foreground/50">{shortcut}</span>
       )}

@@ -1,5 +1,5 @@
 import { Link } from '@tanstack/react-router'
-import { ChevronRight, Menu, ExternalLink } from 'lucide-react'
+import { ChevronRight, Menu, ExternalLink, Download } from 'lucide-react'
 import type { DocArticle, DocCategory } from '../../types'
 
 interface DocsHeaderProps {
@@ -44,8 +44,15 @@ export const DocsHeader = ({
         </nav>
       </div>
 
-      {/* External Repository Links */}
-      <div className="flex items-center gap-3 text-xs shrink-0">
+      {/* Downloads & External Repository Links */}
+      <div className="flex items-center gap-2.5 text-xs shrink-0">
+        <Link
+          to="/downloads"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-medium text-foreground bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)] transition-colors"
+        >
+          <Download className="h-3.5 w-3.5 text-primary" />
+          <span>Downloads</span>
+        </Link>
         <a
           href="https://github.com/dksilv4/Otix"
           target="_blank"
@@ -53,15 +60,6 @@ export const DocsHeader = ({
           className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-medium text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-ghost)] transition-colors"
         >
           <span>GitHub</span>
-          <ExternalLink className="h-3 w-3 opacity-60" />
-        </a>
-        <a
-          href="https://github.com/dksilv4/Otix/releases"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-medium text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-ghost)] transition-colors"
-        >
-          <span>Releases</span>
           <ExternalLink className="h-3 w-3 opacity-60" />
         </a>
       </div>

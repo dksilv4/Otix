@@ -4,7 +4,7 @@ import { DkDialog } from '@ui/molecules/dialog'
 import { DkButton } from '@ui/atoms/button'
 import { useToast } from '@ui/molecules/toast'
 import { openExternal } from '@/lib/utils/open-external'
-import { findPresetById, findPresetByGameTitle } from '../utils/presets'
+import { getSteamConnectionInfo } from '../utils/connection'
 import type { DedicatedGameServer } from '../types'
 
 interface JoinGameServerModalProps {
@@ -22,36 +22,7 @@ export const JoinGameServerModal = ({ server, isOpen, onClose }: JoinGameServerM
   const isOnline = server.status === 'online'
   const isSteam = server.serverType === 'steam_source'
 
-  const matchedPreset =
-    (server.mediaItemId ? findPresetById(server.mediaItemId) : undefined) ??
-    (server.gameTitle ? findPresetByGameTitle(server.gameTitle) : undefined)
-
-  const steamAppId = matchedPreset?.steamAppId
-
-  const steamPort =
-    server.queryPort ??
-    (matchedPreset?.queryPortOffset != null
-      ? server.port + matchedPreset.queryPortOffset
-      : (matchedPreset?.defaultQueryPort ?? server.port))
-
-  const steamConnectAddress = `${server.host}:${steamPort}`
-
-  // Steam's steam://connect/ protocol triggers Steam's internal server browser dialog, which throws
-  // "Invalid App ID" on dedicated servers (like Valheim, Palworld, Enshrouded) because the dedicated
-  // server tool App ID differs from the game client App ID.
-  // Using steam://run/<appId>//+connect <host>:<port> tells Steam to launch the actual game client
-  // directly with the +connect parameter, bypassing the server browser App ID validation entirely.
-  const steamRunUrl = steamAppId
-    ? `steam://run/${steamAppId}//+connect%20${server.host}:${server.port}${
-        server.password ? `%20+password%20${encodeURIComponent(server.password)}` : ''
-      }`
-    : null
-
-  const steamBrowserUrl = `steam://connect/${steamConnectAddress}${
-    server.password ? `/${encodeURIComponent(server.password)}` : ''
-  }`
-
-  const steamJoinUrl = steamRunUrl ?? steamBrowserUrl
+  const { steamAppId, steamConnectAddress, steamJoinUrl } = getSteamConnectionInfo(server)
 
   const handleCopyAddress = () => {
     void navigator.clipboard.writeText(server.connectionAddress)

@@ -75,6 +75,47 @@ export const getUpdateModalDescription = (
   return 'Manage client software updates and release notes.'
 }
 
+export interface LatestReleaseNotesResult {
+  version: string
+  notes: string
+  publishedAt?: string
+}
+
+let cachedReleaseNotes: LatestReleaseNotesResult | null = null
+
+/**
+ * Fetch the latest release details and notes directly from GitHub releases API.
+ */
+export const fetchLatestReleaseNotes = async (): Promise<LatestReleaseNotesResult | null> => {
+  if (cachedReleaseNotes) {
+    return cachedReleaseNotes
+  }
+  try {
+    const res = await fetch('https://api.github.com/repos/dksilv4/Otix/releases/latest', {
+      headers: {
+        Accept: 'application/vnd.github.v3+json',
+      },
+    })
+    if (!res.ok) return null
+    const data = (await res.json()) as {
+      tag_name?: string
+      name?: string
+      body?: string
+      published_at?: string
+    }
+    const version = data.tag_name ? data.tag_name.replace(/^v/, '') : data.name || ''
+    const notes = data.body || ''
+    cachedReleaseNotes = {
+      version,
+      notes,
+      publishedAt: data.published_at,
+    }
+    return cachedReleaseNotes
+  } catch {
+    return null
+  }
+}
+
 /**
  * Animation variant for UpdateNotificationToast
  */

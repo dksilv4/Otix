@@ -21,62 +21,65 @@ export const ContextMenuContent = ({ items, isSubmenu, onRequestClose }: Context
 
   const handleClose = onRequestClose ?? close
 
-  const flatItems = useMemo(() =>
-    items.filter((i): i is ContextMenuItemDef & { subItems?: ContextMenuItemDef[] } => 'separator' in i ? false : true),
+  const flatItems = useMemo(
+    () => items.filter((i): i is ContextMenuItemDef & { subItems?: ContextMenuItemDef[] } => !i.separator),
     [items],
   )
 
-  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    const enabled = flatItems.filter(i => !i.disabled)
-    if (!enabled.length) return
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      const enabled = flatItems.filter((i) => !i.disabled)
+      if (!enabled.length) return
 
-    switch (e.key) {
-      case 'ArrowDown': {
-        e.preventDefault()
-        const curIdx = enabled.indexOf(flatItems[focusedIdx])
-        const next = (curIdx + 1) % enabled.length
-        setFocusedIdx(flatItems.indexOf(enabled[next]))
-        setOpenSubIdx(null)
-        break
-      }
-      case 'ArrowUp': {
-        e.preventDefault()
-        const curIdx = enabled.indexOf(flatItems[focusedIdx])
-        const prev = (curIdx - 1 + enabled.length) % enabled.length
-        setFocusedIdx(flatItems.indexOf(enabled[prev]))
-        setOpenSubIdx(null)
-        break
-      }
-      case 'ArrowRight': {
-        e.preventDefault()
-        const item = flatItems[focusedIdx]
-        if (item?.subItems?.length) {
-          setOpenSubIdx(focusedIdx)
+      switch (e.key) {
+        case 'ArrowDown': {
+          e.preventDefault()
+          const curIdx = enabled.indexOf(flatItems[focusedIdx])
+          const next = (curIdx + 1) % enabled.length
+          setFocusedIdx(flatItems.indexOf(enabled[next]))
+          setOpenSubIdx(null)
+          break
         }
-        break
-      }
-      case 'ArrowLeft': {
-        e.preventDefault()
-        if (isSubmenu) handleClose()
-        break
-      }
-      case 'Enter':
-      case ' ': {
-        e.preventDefault()
-        const item = flatItems[focusedIdx]
-        if (item && !item.disabled) {
+        case 'ArrowUp': {
+          e.preventDefault()
+          const curIdx = enabled.indexOf(flatItems[focusedIdx])
+          const prev = (curIdx - 1 + enabled.length) % enabled.length
+          setFocusedIdx(flatItems.indexOf(enabled[prev]))
+          setOpenSubIdx(null)
+          break
+        }
+        case 'ArrowRight': {
+          e.preventDefault()
+          const item = flatItems[focusedIdx]
+          if (item?.subItems?.length) {
+            setOpenSubIdx(focusedIdx)
+          }
+          break
+        }
+        case 'ArrowLeft': {
+          e.preventDefault()
+          if (isSubmenu) handleClose()
+          break
+        }
+        case 'Enter':
+        case ' ': {
+          e.preventDefault()
+          const item = flatItems[focusedIdx]
+          if (item && !item.disabled) {
+            handleClose()
+            item.onClick?.()
+          }
+          break
+        }
+        case 'Escape': {
+          e.preventDefault()
           handleClose()
-          item.onClick?.()
+          break
         }
-        break
       }
-      case 'Escape': {
-        e.preventDefault()
-        handleClose()
-        break
-      }
-    }
-  }, [flatItems, focusedIdx, isSubmenu, handleClose])
+    },
+    [flatItems, focusedIdx, isSubmenu, handleClose],
+  )
 
   // Focus panel on mount
   useEffect(() => {
@@ -93,7 +96,10 @@ export const ContextMenuContent = ({ items, isSubmenu, onRequestClose }: Context
     }
     // Delay adding listener so same-click doesn't close immediately
     const raf = requestAnimationFrame(() => document.addEventListener('mousedown', handler))
-    return () => { cancelAnimationFrame(raf); document.removeEventListener('mousedown', handler) }
+    return () => {
+      cancelAnimationFrame(raf)
+      document.removeEventListener('mousedown', handler)
+    }
   }, [isSubmenu, handleClose])
 
   return (
@@ -115,7 +121,7 @@ export const ContextMenuContent = ({ items, isSubmenu, onRequestClose }: Context
       }}
     >
       {items.map((item, idx) => {
-        if ('separator' in item && item.separator) {
+        if (item.separator) {
           return <ContextMenuSeparator key={`sep-${idx}`} />
         }
         if (item.subItems?.length) {
@@ -138,7 +144,10 @@ export const ContextMenuContent = ({ items, isSubmenu, onRequestClose }: Context
             shortcut={item.shortcut}
             disabled={item.disabled}
             destructive={item.destructive}
-            onClick={() => { handleClose(); item.onClick?.() }}
+            onClick={() => {
+              handleClose()
+              item.onClick?.()
+            }}
             hasSubMenu={false}
             onPointerEnter={() => setFocusedIdx(idx)}
           />
