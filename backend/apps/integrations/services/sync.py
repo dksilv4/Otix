@@ -133,10 +133,12 @@ def execute_sync_job(job_pk: int) -> dict[str, Any]:
     channel); the stored result adds ``task_id`` so a replay is self-describing.
     """
     from django.conf import settings
-    from django.db import close_old_connections
+    from django.db import connections
 
     if not getattr(settings, "CELERY_TASK_ALWAYS_EAGER", False):
-        close_old_connections()
+        for conn in connections.all(initialized_only=True):
+            if not conn.in_atomic_block:
+                conn.close_if_unusable_or_obsolete()
     job = claim_job(job_pk)
     if job is None:
         return {"status": "skipped", "task_id": str(job_pk)}

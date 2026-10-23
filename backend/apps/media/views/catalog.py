@@ -190,6 +190,7 @@ def _enqueue_detail_rehydrate(item: MediaItem) -> bool:
     from apps.integrations.services.fetch_proxy import server_can_fetch
     from apps.integrations.services.sync import execute_sync_job
     from apps.media.services.catalog_lifecycle import canonical_external_id
+    from apps.media.services.completeness import is_complete
     from apps.media.services.identity import CANONICAL_PROVIDER
     from apps.media.services.tmdb_ingest import show_needs_episodes
 
@@ -198,10 +199,11 @@ def _enqueue_detail_rehydrate(item: MediaItem) -> bool:
     if not provider or not ext:
         return False
 
+    item_complete = is_complete(item)
     recently_synced = bool(
         item.synced_at and item.synced_at > timezone.now() - timedelta(minutes=15)
     )
-    if recently_synced:
+    if item_complete and recently_synced:
         return False
 
     needs_episodes = item.media_type == "show" and show_needs_episodes(item.pk)
@@ -217,7 +219,8 @@ def _enqueue_detail_rehydrate(item: MediaItem) -> bool:
             except Exception:
                 logger.exception("Synchronous episode sync failed for %s:%s", provider, ext)
     else:
-        ensure_catalog_job(provider, item.media_type, ext, priority=4, dispatch=False)
+        priority = 4 if item_complete else 0
+        ensure_catalog_job(provider, item.media_type, ext, priority=priority, dispatch=False)
     return False
 
 

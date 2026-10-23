@@ -11,7 +11,7 @@ import os
 
 from celery import Celery
 from celery.signals import task_postrun, task_prerun
-from django.db import close_old_connections
+from django.db import connections
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings.prod")
 
@@ -25,7 +25,9 @@ def on_task_prerun(*args, **kwargs):
     from django.conf import settings
 
     if not getattr(settings, "CELERY_TASK_ALWAYS_EAGER", False):
-        close_old_connections()
+        for conn in connections.all(initialized_only=True):
+            if not conn.in_atomic_block:
+                conn.close_if_unusable_or_obsolete()
 
 
 @task_postrun.connect
@@ -33,5 +35,7 @@ def on_task_postrun(*args, **kwargs):
     from django.conf import settings
 
     if not getattr(settings, "CELERY_TASK_ALWAYS_EAGER", False):
-        close_old_connections()
+        for conn in connections.all(initialized_only=True):
+            if not conn.in_atomic_block:
+                conn.close_if_unusable_or_obsolete()
 
