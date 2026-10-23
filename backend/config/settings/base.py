@@ -199,6 +199,7 @@ INSTALLED_APPS = [
     "apps.discover.apps.DiscoverConfig",
     "apps.gameservers.apps.GameserversConfig",
     "apps.freegames.apps.FreegamesConfig",
+    "apps.chat.apps.ChatConfig",
     # Plugin framework host (no legacy-parity counterpart; see plugins/README.md)
     "plugin_framework.apps.PluginsConfig",
 ]

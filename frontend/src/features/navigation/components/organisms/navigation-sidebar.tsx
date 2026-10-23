@@ -1,11 +1,12 @@
 import { useEffect, useRef, useCallback } from "react"
 import { useLocation } from "@tanstack/react-router"
 import { motion, AnimatePresence } from "framer-motion"
-import { Calendar, Compass, Search, Gamepad2, Settings, List, Sparkles, Users, BookOpen, Download, ScrollText } from "lucide-react"
+import { Calendar, Compass, Search, Gamepad2, Settings, List, Sparkles, Users, BookOpen, Download, ScrollText, MessageSquare } from "lucide-react"
 import { useNavigation } from "@navigation/hooks/use-navigation"
 import { NavLink } from "@navigation/components/atoms/navigation-link"
 import { useDesktopPlatform } from "@/lib/desktop/platform"
 import { useWelcomePreferences } from "@/features/welcome"
+import { useChatUnreadCountQuery } from "@/features/chat"
 
 /** Animated floating dropdown menu for app navigation, positioned based on screen and route. */
 export const MenuDropdown = () => {
@@ -14,6 +15,8 @@ export const MenuDropdown = () => {
   const location = useLocation()
   const ref = useRef<HTMLDivElement>(null)
   const { isDesktop } = useDesktopPlatform()
+  const { data: chatUnreadData } = useChatUnreadCountQuery()
+  const chatUnreadCount = chatUnreadData?.count ?? 0
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
@@ -60,6 +63,7 @@ export const MenuDropdown = () => {
           <NavLink to="/launcher" icon={<Gamepad2 className="h-4 w-4" />} label="Launcher" />
           <NavLink to="/library" icon={<List className="h-4 w-4" />} label="Library" />
           <NavLink to="/friends" icon={<Users className="h-4 w-4" />} label="Friends" />
+          <NavLink to="/messages" icon={<MessageSquare className="h-4 w-4" />} label="Messages" badge={chatUnreadCount} />
           <NavLink to="/settings" icon={<Settings className="h-4 w-4" />} label="Settings" />
           {isWelcomeNavVisible && (
             <NavLink to="/welcome" icon={<Sparkles className="h-4 w-4" />} label="Welcome Guide" />

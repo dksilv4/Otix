@@ -8,6 +8,7 @@ import { UserMenu, UserMenuContent } from "@auth"
 import { ActivityModuleButton } from "@activity/components/atoms/activity-nav-button"
 import { ActivityPanelContent } from "@activity/components/organisms/activity-panel"
 import { usePanelContext } from "@activity/providers/panel-context"
+import { ChatNavButton, ChatNavPanelContent } from "@/features/chat"
 import { NavSearch } from "./navigation-search"
 
 interface NavPillRightProps {
@@ -20,7 +21,7 @@ interface NavPillRightProps {
 /**
  * Right-side floating navigation island.
  * Seamlessly morphs between compact navigation pill and expanded dropdowns
- * (user profile/friends and activity panel) with shared layout animations,
+ * (user profile/friends, chat messages, and activity panel) with shared layout animations,
  * FLIP avatar transitions, and unified collapse mechanics.
  */
 export const NavPillRight = ({
@@ -32,10 +33,10 @@ export const NavPillRight = ({
   const { isDesktop } = useDesktopPlatform()
   const titleBarOffset = isDesktop ? "top-12" : "top-4"
   const { modals, closeAll } = useModal()
-  const { isUserMenuOpen, setUserMenuOpen } = usePanelContext()
+  const { isUserMenuOpen, setUserMenuOpen, isChatOpen, setChatOpen } = usePanelContext()
   const containerRef = useRef<HTMLDivElement>(null)
 
-  const isExpanded = isUserMenuOpen || isSidebarOpen
+  const isExpanded = isUserMenuOpen || isSidebarOpen || isChatOpen
 
   // Delay the close control so the opening click / gesture cannot land on it
   // the instant a modal mounts (nav sits above --dk-z-modal).
@@ -51,6 +52,7 @@ export const NavPillRight = ({
 
   const handleCollapse = useCallback(() => {
     if (isUserMenuOpen) setUserMenuOpen(false)
+    if (isChatOpen) setChatOpen(false)
     if (isSidebarOpen) {
       if (onCloseSidebar) {
         onCloseSidebar()
@@ -58,7 +60,7 @@ export const NavPillRight = ({
         onToggleSidebar()
       }
     }
-  }, [isUserMenuOpen, setUserMenuOpen, isSidebarOpen, onCloseSidebar, onToggleSidebar])
+  }, [isUserMenuOpen, setUserMenuOpen, isChatOpen, setChatOpen, isSidebarOpen, onCloseSidebar, onToggleSidebar])
 
   // Click outside to collapse the unified right nav when expanded
   const handleClickOutside = useCallback(
@@ -103,7 +105,7 @@ export const NavPillRight = ({
         data-nav-pill="right"
         className={`fixed z-[9999] right-4 ${titleBarOffset} shadow-[var(--dk-shadow-glass)] backdrop-blur-[16px] overflow-hidden flex flex-col ${
           isExpanded
-            ? "w-[360px] p-3 rounded-3xl gap-2"
+            ? "w-[380px] p-3 rounded-3xl gap-2"
             : "w-auto px-2 py-1.5 rounded-[2rem] gap-0"
         }`}
         style={{
@@ -161,6 +163,24 @@ export const NavPillRight = ({
               <NavSearch />
             </motion.div>
 
+            {/* Chat Messages Button */}
+            <motion.div
+              layout
+              transition={{ duration: 0.22, ease: "linear" }}
+              className="flex items-center"
+            >
+              <ChatNavButton
+                onToggleChat={() => {
+                  if (isUserMenuOpen) setUserMenuOpen(false)
+                  if (isSidebarOpen) {
+                    if (onCloseSidebar) onCloseSidebar()
+                    else onToggleSidebar()
+                  }
+                  setChatOpen(!isChatOpen)
+                }}
+              />
+            </motion.div>
+
             {/* In closed or activity state: Profile avatar trigger is here.
                 When user menu is opened: It glides down into the profile card below via shared layoutId! */}
             {!isUserMenuOpen && (
@@ -168,9 +188,12 @@ export const NavPillRight = ({
                 bare
                 triggerOnly
                 onToggle={(next) => {
-                  if (next && isSidebarOpen) {
-                    if (onCloseSidebar) onCloseSidebar()
-                    else onToggleSidebar()
+                  if (next) {
+                    if (isChatOpen) setChatOpen(false)
+                    if (isSidebarOpen) {
+                      if (onCloseSidebar) onCloseSidebar()
+                      else onToggleSidebar()
+                    }
                   }
                 }}
               />
@@ -187,9 +210,8 @@ export const NavPillRight = ({
                 isPinned={isPinned}
                 isSidebarOpen={isSidebarOpen}
                 onToggleSidebar={() => {
-                  if (isUserMenuOpen) {
-                    setUserMenuOpen(false)
-                  }
+                  if (isUserMenuOpen) setUserMenuOpen(false)
+                  if (isChatOpen) setChatOpen(false)
                   onToggleSidebar()
                 }}
               />
@@ -199,6 +221,19 @@ export const NavPillRight = ({
 
         {/* Dropdown Content appears simultaneously in a clean transition */}
         <AnimatePresence mode="popLayout">
+          {isChatOpen && (
+            <motion.div
+              key="chat-dropdown-content"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, transition: { duration: 0.12, ease: "linear" } }}
+              transition={{ duration: 0.2, ease: "linear" }}
+              className="w-full flex flex-col pt-1.5"
+            >
+              <ChatNavPanelContent onClose={handleCollapse} />
+            </motion.div>
+          )}
+
           {isUserMenuOpen && (
             <motion.div
               key="user-menu-dropdown-content"
@@ -206,7 +241,7 @@ export const NavPillRight = ({
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, transition: { duration: 0.12, ease: "linear" } }}
               transition={{ duration: 0.2, ease: "linear" }}
-              className="w-full max-h-[calc(100vh-6rem)] overflow-y-auto scrollbar-none flex flex-col space-y-2 pt-2 border-t border-[var(--dk-separator)]"
+              className="w-full max-h-[calc(100vh-6rem)] overflow-y-auto scrollbar-none flex flex-col space-y-2 pt-1.5"
             >
               <UserMenuContent onClose={handleCollapse} />
             </motion.div>
@@ -219,7 +254,7 @@ export const NavPillRight = ({
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, transition: { duration: 0.12, ease: "linear" } }}
               transition={{ duration: 0.2, ease: "linear" }}
-              className="w-full max-h-[calc(100vh-6rem)] overflow-y-auto scrollbar-none flex flex-col space-y-2 pt-2 border-t border-[var(--dk-separator)]"
+              className="w-full max-h-[calc(100vh-6rem)] overflow-y-auto scrollbar-none flex flex-col space-y-2 pt-1.5"
             >
               <ActivityPanelContent onClose={handleCollapse} />
             </motion.div>

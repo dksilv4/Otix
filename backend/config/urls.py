@@ -93,6 +93,7 @@ urlpatterns = [
     path("api/v1/exercises/", include("apps.workout.exercises_urls")),
     path("api/v1/friends", FriendListView.as_view(), name="friends-root"),
     path("api/v1/friends/", include("apps.social.friends_urls")),
+    path("api/v1/chat/", include("apps.chat.urls")),
     path("api/v1/notifications", NotificationListView.as_view(), name="notifications-root"),
     path("api/v1/notifications/", include("apps.social.notifications_urls")),
     path("api/v1/reviews/", include("apps.social.reviews_urls")),

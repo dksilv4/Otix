@@ -4,7 +4,19 @@ import { useNavigation } from "@navigation/hooks/use-navigation"
 const iconBg = "flex items-center justify-center w-9 h-9 rounded-full shrink-0 bg-[var(--dk-surface-ghost-active)]"
 
 /** Atom navigation link with icon and label for the sidebar. */
-export const NavLink = ({ to, icon, label, params }: { to: string; icon: React.ReactNode; label: string; params?: Record<string, string> }) => {
+export const NavLink = ({
+  to,
+  icon,
+  label,
+  params,
+  badge,
+}: {
+  to: string
+  icon: React.ReactNode
+  label: string
+  params?: Record<string, string>
+  badge?: number | string
+}) => {
   const location = useLocation()
   const { close } = useNavigation()
 
@@ -20,7 +32,12 @@ export const NavLink = ({ to, icon, label, params }: { to: string; icon: React.R
       <span className={iconBg + (isActive ? " bg-primary/15 text-primary" : '')}>
         {icon}
       </span>
-      {label}
+      <span className="flex-1">{label}</span>
+      {Boolean(badge) && (
+        <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-bold text-primary-foreground shadow-sm">
+          {typeof badge === 'number' && badge > 99 ? '99+' : badge}
+        </span>
+      )}
     </Link>
   )
 };

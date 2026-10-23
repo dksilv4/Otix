@@ -8,6 +8,7 @@ import { GlobalContextMenuListener } from "@/features/_config/context-menu"
 import { PanelProvider } from "@activity/providers/panel-context"
 import { NotificationsProvider } from "@/features/notifications/providers/notifications-provider"
 import { CatalogStreamProvider } from "@/features/media/providers/catalog-stream-provider"
+import { ChatProvider } from "@/features/chat"
 import { usePluginPermissions } from "@/features/plugins/hooks/use-plugin-permissions"
 import { useModal, ModalRoot } from "@/lib/modals"
 import { DecideWatchHost } from "@/features/discover/components/organisms/decide-watch-host"
@@ -88,7 +89,8 @@ export const RootLayout = () => {
     location.pathname.startsWith('/game') ||
     location.pathname.startsWith('/settings') ||
     location.pathname.startsWith('/auth') ||
-    location.pathname.startsWith('/calendar/timeline')
+    location.pathname.startsWith('/calendar/timeline') ||
+    location.pathname.startsWith('/messages')
 
   return (
     <div className="min-h-screen w-full max-w-[100vw] bg-[var(--background)]">
@@ -97,21 +99,23 @@ export const RootLayout = () => {
       <PanelProvider>
         <NotificationsProvider>
           <CatalogStreamProvider>
-          <NavShell
-            isPinned={isPinned}
-            isSidebarOpen={isSidebarOpen}
-            onToggleSidebar={handleToggleSidebar}
-            onCloseSidebar={handleCloseSidebar}
-          >
-            <main className={isFullScreenPage ? "" : "pt-16 md:pt-20 flex flex-col min-h-screen"}>
-              <div className="flex-1">
-                <Outlet />
-              </div>
-              {!isFullScreenPage && <AppMicroFooter />}
-            </main>
-          </NavShell>
+            <ChatProvider>
+              <NavShell
+                isPinned={isPinned}
+                isSidebarOpen={isSidebarOpen}
+                onToggleSidebar={handleToggleSidebar}
+                onCloseSidebar={handleCloseSidebar}
+              >
+                <main className={isFullScreenPage ? "" : "pt-16 md:pt-20 flex flex-col min-h-screen"}>
+                  <div className="flex-1">
+                    <Outlet />
+                  </div>
+                  {!isFullScreenPage && <AppMicroFooter />}
+                </main>
+              </NavShell>
 
-          <XPToastContainer />
+              <XPToastContainer />
+            </ChatProvider>
           </CatalogStreamProvider>
         </NotificationsProvider>
       </PanelProvider>
