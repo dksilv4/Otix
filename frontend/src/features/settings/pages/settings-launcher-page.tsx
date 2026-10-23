@@ -19,7 +19,6 @@ import { LauncherThemePreview } from '../components/molecules/launcher-theme-pre
 import { DkSwitch } from '@ui/atoms/switch'
 import { DkButton } from '@ui/atoms/button'
 import { DkDropdown } from '@ui/atoms/dropdown'
-import { FeatureStatusTag, FeatureStatusTags } from '@ui/atoms/feature-status-tag'
 import { useLauncherSettings } from '@/features/launcher/hooks/use-launcher-settings'
 import { LAUNCHER_THEMES, type LauncherThemeId } from '@/features/launcher/themes/theme-context'
 import { useToast } from '@ui/molecules/toast'
@@ -122,7 +121,6 @@ export const SettingsLauncherPage = () => {
         variant="page"
         icon={Gamepad2}
         title="Launcher"
-        badges={<FeatureStatusTags kinds={['beta']} />}
         description="Theme layouts, animations, transitions, and console experience."
         action={
           <DkButton type="button" onClick={() => navigate({ to: '/launcher' })}>
@@ -157,7 +155,6 @@ export const SettingsLauncherPage = () => {
                 <span className="text-xs font-mono font-bold px-2 py-0.5 rounded bg-[var(--dk-surface-field)] text-foreground">
                   {selectedThemeMeta.version}
                 </span>
-                {selectedThemeMeta.isBeta && <FeatureStatusTag kind="beta" />}
                 <span className="text-xs text-muted-foreground font-medium">
                   {selectedThemeMeta.subtitle}
                 </span>
@@ -196,7 +193,6 @@ export const SettingsLauncherPage = () => {
                 <h3 className="font-bold text-foreground tracking-tight text-sm sm:text-base">
                   Themes & Layout Editions
                 </h3>
-                <FeatureStatusTag kind="beta" />
               </div>
               <p className="text-muted-foreground mt-0.5 leading-relaxed text-xs">
                 Select your default launcher interface. All 10 themes read the same game library,
@@ -274,7 +270,6 @@ export const SettingsLauncherPage = () => {
                       <h4 className="text-sm font-bold text-foreground group-hover:text-primary transition-colors truncate">
                         {theme.name}
                       </h4>
-                      {theme.isBeta && <FeatureStatusTag kind="beta" className="px-1.5" />}
                     </div>
 
                     {isSelected ? (

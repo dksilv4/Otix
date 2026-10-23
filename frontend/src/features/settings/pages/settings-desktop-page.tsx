@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import {
   AlertTriangle,
   ShieldAlert,
@@ -22,7 +22,6 @@ import type { PendingNode } from '@/features/downloads/pending-nodes'
 import { DownloadNodeModal } from '@/features/downloads/molecules/download-node-modal'
 import { NodeSettingsModal } from '../components/organisms/node-settings-modal'
 import { useSettingsNode } from '../context/settings-node-context'
-import { isDesktop } from '@/lib/desktop/api'
 import { useSettingsHashScroll } from '../hooks/use-settings-hash-scroll'
 import {
   useUserHomes,
@@ -41,7 +40,14 @@ import { CreateSambaShareModal } from '../components/organisms/create-samba-shar
 import { EditSambaShareModal } from '../components/organisms/edit-samba-share-modal'
 import { AddNodeModal } from '../components/organisms/add-node-modal'
 import { NodesTopologyCanvas } from '../components/organisms/nodes-topology-canvas'
-import { NodesCentralHubNode } from '../components/organisms/nodes-central-hub-node'
+import { GameServersDrawer } from '../components/organisms/game-servers-drawer'
+import {
+  useGameServers,
+  useQueryGameServer,
+  CreateGameServerModal,
+  EditGameServerModal,
+  type DedicatedGameServer,
+} from '@/features/gameservers'
 import type { UserHome, UserServerMachine } from '../types/server-machines'
 import type { SambaShareConfig } from '../types/node-map'
 import {
@@ -69,6 +75,14 @@ export const SettingsNodesPage = () => {
   const detectDrivesMutation = useDetectServerDrives()
   const deleteHomeMutation = useDeleteHome()
 
+  const { data: dedicatedGameServers = [] } = useGameServers()
+  const queryGameServerMutation = useQueryGameServer()
+  const [gameServersDrawerOpen, setGameServersDrawerOpen] = useState(false)
+  const [focusedGameServerId, setFocusedGameServerId] = useState<number | null>(null)
+  const [createGameServerOpen, setCreateGameServerOpen] = useState(false)
+  const [createGameServerMachineId, setCreateGameServerMachineId] = useState<number | null>(null)
+  const [editingGameServer, setEditingGameServer] = useState<DedicatedGameServer | null>(null)
+
   const [createWorkerNodeOpen, setCreateWorkerNodeOpen] = useState(false)
   const [editingWorkerNode, setEditingWorkerNode] = useState<GameServer | null>(null)
   const [createServerMachineOpen, setCreateServerMachineOpen] = useState(false)
@@ -89,7 +103,7 @@ export const SettingsNodesPage = () => {
   const [isSavingRename, setIsSavingRename] = useState(false)
   const [selectedNodeForModal, setSelectedNodeForModal] = useState<GameServer | null>(null)
 
-  const handleSelectNodeType = (type: 'worker' | 'server' | 'home' | 'samba') => {
+  const handleSelectNodeType = (type: 'worker' | 'server' | 'home' | 'samba' | 'game_server') => {
     if (type === 'worker') {
       openConnectModal()
     } else if (type === 'server') {
@@ -100,13 +114,11 @@ export const SettingsNodesPage = () => {
     } else if (type === 'samba') {
       setCreateSambaPreset(null)
       setCreateSambaOpen(true)
+    } else if (type === 'game_server') {
+      setCreateGameServerMachineId(null)
+      setCreateGameServerOpen(true)
     }
   }
-
-  const desktop = isDesktop()
-  const sectionContainerRef = useRef<HTMLDivElement>(null)
-  const headerRef = useRef<HTMLDivElement>(null)
-  const [anchorPos, setAnchorPos] = useState<{ x: number; y: number } | undefined>(undefined)
 
   const defaultAutoName = `Node ID:${(gameServers?.length || 0) + 1}`
 
@@ -118,42 +130,34 @@ export const SettingsNodesPage = () => {
   )
 
   const stats = useMemo(
-    () => computeTopologyStats(gameServers, serverMachines, homes, pendingNodes),
-    [gameServers, serverMachines, homes, pendingNodes],
+    () =>
+      computeTopologyStats(
+        gameServers,
+        serverMachines,
+        homes,
+        pendingNodes,
+        customSambaShares,
+        dedicatedGameServers,
+      ),
+    [gameServers, serverMachines, homes, pendingNodes, customSambaShares, dedicatedGameServers],
   )
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const hash = (window.location.hash || '').replace(/^#/, '').toLowerCase()
+      const search = window.location.search.toLowerCase()
       if (hash === 'servers' || hash === 'server-machines') {
         setCreateServerMachineOpen(true)
       } else if (hash === 'homes') {
         setCreateHomeOpen(true)
       } else if (hash === 'samba') {
         setCreateSambaOpen(true)
+      } else if (hash === 'game-servers' || search.includes('panel=game-servers')) {
+        setGameServersDrawerOpen(true)
       }
     }
   }, [])
 
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    const updateAnchor = () => {
-      if (sectionContainerRef.current) {
-        const rect = sectionContainerRef.current.getBoundingClientRect()
-        const headerRect = headerRef.current?.getBoundingClientRect()
-        if (rect.left > 0) {
-          const topY = headerRect ? headerRect.bottom + 24 : rect.top + 160
-          setAnchorPos({
-            x: Math.round(rect.left),
-            y: Math.round(topY),
-          })
-        }
-      }
-    }
-    updateAnchor()
-    window.addEventListener('resize', updateAnchor)
-    return () => window.removeEventListener('resize', updateAnchor)
-  }, [desktop, unclaimedNodes.length])
 
   const openDownloadNodeModal = () => {
     const close = openModal(<DownloadNodeModal onClose={() => close()} />)
@@ -353,6 +357,16 @@ export const SettingsNodesPage = () => {
     }
   }
 
+  const handleCopyGameServerAddress = (server: DedicatedGameServer, e: React.MouseEvent) => {
+    e.stopPropagation()
+    void navigator.clipboard.writeText(server.connectionAddress)
+    toast({
+      title: 'Address Copied',
+      description: `${server.connectionAddress} copied to clipboard.`,
+      variant: 'success',
+    })
+  }
+
   if (!isAuthenticated) {
     return (
       <SettingsLockedState
@@ -371,10 +385,36 @@ export const SettingsNodesPage = () => {
         homes={homes}
         serverMachines={serverMachines}
         nodes={gameServers}
+        gameServers={dedicatedGameServers}
         pendingNodes={[]}
         customSambaShares={customSambaShares}
-        anchor={anchorPos}
+        hubStats={stats}
+        unclaimedNodes={unclaimedNodes}
+        onOpenConnectModal={(url) => openConnectModal(url)}
         onOpenDownloadModal={openDownloadNodeModal}
+        onOpenGameServersDrawer={() => setGameServersDrawerOpen(true)}
+        onSelectGameServer={(server) => {
+          setFocusedGameServerId(server.id)
+          setGameServersDrawerOpen(true)
+        }}
+        onEditGameServer={(server) => setEditingGameServer(server)}
+        onPingGameServer={async (server) => {
+          try {
+            await queryGameServerMutation.mutateAsync(server.id)
+            toast({
+              title: 'Server Queried',
+              description: `Updated status for ${server.name}.`,
+              variant: 'success',
+            })
+          } catch {
+            toast({
+              title: 'Query Failed',
+              description: `Could not reach ${server.name}.`,
+              variant: 'error',
+            })
+          }
+        }}
+        onCopyGameServerAddress={handleCopyGameServerAddress}
         onClaimPendingNode={handleClaimQuickNode}
         onAddHome={() => setCreateHomeOpen(true)}
         onAddServer={(homeId) => {
@@ -400,22 +440,6 @@ export const SettingsNodesPage = () => {
         onRenameNode={(node) => openRenameModal(node)}
         onPingNode={handlePingServerInstance}
       />
-
-      {/* Central Fixed Node in the middle of the page replacing the title bar */}
-      <div className="absolute inset-0 z-10 pointer-events-none flex items-center justify-center p-4">
-        <div ref={sectionContainerRef} className="contents">
-          <div ref={headerRef} className="pointer-events-auto">
-            <NodesCentralHubNode
-              stats={stats}
-              unclaimedNodes={unclaimedNodes}
-              onAddNode={() => setAddNodeModalOpen(true)}
-              onClaimPendingNode={handleClaimQuickNode}
-              onOpenConnectModal={(url) => openConnectModal(url)}
-              onOpenDownloadModal={openDownloadNodeModal}
-            />
-          </div>
-        </div>
-      </div>
 
       {nodeToDelete && (
         <DkDialog
@@ -608,6 +632,30 @@ export const SettingsNodesPage = () => {
         onSelectType={handleSelectNodeType}
         onClaimNode={handleClaimQuickNode}
       />
+
+      <GameServersDrawer
+        open={gameServersDrawerOpen}
+        onClose={() => setGameServersDrawerOpen(false)}
+        focusedServerId={focusedGameServerId}
+        onOpenCreateServer={() => {
+          setCreateGameServerMachineId(null)
+          setCreateGameServerOpen(true)
+        }}
+      />
+
+      <CreateGameServerModal
+        isOpen={createGameServerOpen}
+        onClose={() => setCreateGameServerOpen(false)}
+        initialServerMachineId={createGameServerMachineId}
+      />
+
+      {editingGameServer && (
+        <EditGameServerModal
+          server={editingGameServer}
+          isOpen={Boolean(editingGameServer)}
+          onClose={() => setEditingGameServer(null)}
+        />
+      )}
     </div>
   )
 }

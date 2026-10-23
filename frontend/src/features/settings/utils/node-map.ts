@@ -6,6 +6,7 @@ import type { UserHome, UserServerMachine } from '../types/server-machines'
 import type {
   NodeMapEdge,
   NodeMapItem,
+  NodeMapItemType,
   NodeMapPosition,
   NodeMapViewport,
   SambaShareConfig,
@@ -15,9 +16,24 @@ const STORAGE_KEY = 'otix_node_map_positions_v1'
 
 export const NODE_CARD_WIDTH = 240
 export const NODE_CARD_HEIGHT = 48
+export const GAME_SERVER_CARD_WIDTH = 270
+export const GAME_SERVER_CARD_HEIGHT = 78
 export const HUB_NODE_ID = 'central-hub-node'
 export const HUB_NODE_WIDTH = 540
 export const HUB_NODE_HEIGHT = 180
+
+export const getNodeCardWidth = (type?: NodeMapItemType): number => {
+  return type === 'game_server' ? GAME_SERVER_CARD_WIDTH : NODE_CARD_WIDTH
+}
+
+export const getNodeCardHeight = (type?: NodeMapItemType): number => {
+  return type === 'game_server' ? GAME_SERVER_CARD_HEIGHT : NODE_CARD_HEIGHT
+}
+
+export const getNodeCardDimensions = (type?: NodeMapItemType): { width: number; height: number } => ({
+  width: getNodeCardWidth(type),
+  height: getNodeCardHeight(type),
+})
 
 export const buildNodeMapGraph = (
   homes: UserHome[],
@@ -366,8 +382,9 @@ export const calculateAutoLayout = (
 
   if (gameServers.length > 0) {
     const colX = startX + currentColumn * columnWidth
+    const gameServerRowHeight = 94
     gameServers.forEach((gs, index) => {
-      positions[gs.id] = { x: colX, y: nodesStartY + index * rowHeight }
+      positions[gs.id] = { x: colX, y: nodesStartY + index * gameServerRowHeight }
     })
     currentColumn++
   }
@@ -392,10 +409,12 @@ export const calculateFitViewport = (
   for (const item of items) {
     const pos = positions[item.id]
     if (!pos) continue
+    const cardWidth = getNodeCardWidth(item.type)
+    const cardHeight = getNodeCardHeight(item.type)
     minX = Math.min(minX, pos.x)
     minY = Math.min(minY, pos.y)
-    maxX = Math.max(maxX, pos.x + NODE_CARD_WIDTH)
-    maxY = Math.max(maxY, pos.y + NODE_CARD_HEIGHT)
+    maxX = Math.max(maxX, pos.x + cardWidth)
+    maxY = Math.max(maxY, pos.y + cardHeight)
   }
 
   const hubPos = positions[HUB_NODE_ID]
@@ -539,12 +558,14 @@ export const getNodeCardBorderAnchor = (
   targetIsCard = true,
   width = NODE_CARD_WIDTH,
   height = NODE_CARD_HEIGHT,
+  targetWidth = width,
+  targetHeight = height,
 ): BorderAnchorResult => {
   const hw = width / 2
   const hh = height / 2
   const c1 = { x: pos.x + hw, y: pos.y + hh }
   const c2 = targetIsCard
-    ? { x: targetPosOrPoint.x + hw, y: targetPosOrPoint.y + hh }
+    ? { x: targetPosOrPoint.x + targetWidth / 2, y: targetPosOrPoint.y + targetHeight / 2 }
     : targetPosOrPoint
 
   const dx = c2.x - c1.x

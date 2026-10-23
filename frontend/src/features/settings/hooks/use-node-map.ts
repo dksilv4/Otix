@@ -12,6 +12,8 @@ import {
   calculateWheelZoomDelta,
   loadStoredPositions,
   saveStoredPositions,
+  getNodeCardWidth,
+  getNodeCardHeight,
   NODE_CARD_WIDTH,
   NODE_CARD_HEIGHT,
   HUB_NODE_ID,
@@ -159,7 +161,9 @@ export const useNodeMap = ({ items, anchor, onCardDropConnect }: UseNodeMapProps
             if (!tPos) continue
             const dx = Math.abs(roundX - tPos.x)
             const dy = Math.abs(roundY - tPos.y)
-            if (dx < NODE_CARD_WIDTH * 0.75 && dy < NODE_CARD_HEIGHT * 0.9) {
+            const targetWidth = getNodeCardWidth(item.type)
+            const targetHeight = getNodeCardHeight(item.type)
+            if (dx < targetWidth * 0.75 && dy < targetHeight * 0.9) {
               targetId = item.id
               break
             }
@@ -230,10 +234,12 @@ export const useNodeMap = ({ items, anchor, onCardDropConnect }: UseNodeMapProps
   const handleStartConnecting = useCallback((e: React.MouseEvent | React.PointerEvent, item: NodeMapItem) => {
     e.stopPropagation()
     const pos = positionsRef.current[item.id] || { x: 100, y: 100 }
+    const itemWidth = getNodeCardWidth(item.type)
+    const itemHeight = getNodeCardHeight(item.type)
     setConnectingFrom(item)
     setConnectingMousePos({
-      x: pos.x + NODE_CARD_WIDTH,
-      y: pos.y + NODE_CARD_HEIGHT / 2,
+      x: pos.x + itemWidth,
+      y: pos.y + itemHeight / 2,
     })
   }, [])
 

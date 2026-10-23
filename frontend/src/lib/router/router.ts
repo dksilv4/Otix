@@ -43,6 +43,7 @@ import { createNotificationRoutes } from '@/features/notifications/router'
 import { createGenreRoutes } from '@genre/router'
 import { createWelcomeRoutes } from '@/features/welcome/router'
 import { createFriendsRoutes } from '@/features/friends/router'
+import { createChatRoutes } from '@/features/chat'
 import { createDocsRoutes } from '@/features/docs/router'
 import { createDownloadRoutes } from '@/features/download-page/router'
 import { createGameServersRoutes } from '@/features/gameservers/router'
@@ -121,6 +122,7 @@ const routeTree = rootRoute.addChildren([
   ...createCompanyRoutes(rootRoute),
   ...createNotificationRoutes(rootRoute),
   ...createFriendsRoutes(rootRoute),
+  ...createChatRoutes(rootRoute),
   ...createWelcomeRoutes(rootRoute),
   ...createDocsRoutes(rootRoute),
   ...createDownloadRoutes(rootRoute),

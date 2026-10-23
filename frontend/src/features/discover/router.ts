@@ -8,7 +8,8 @@ import { safeLazy, safePrefetchChunk } from '@/lib/utils/chunk-reload'
 const DiscoverPage = safeLazy(() => import('@discover/pages/discover-page').then(m => ({ default: m.DiscoverPage })))
 const DiscoverRailPage = safeLazy(() => import('@discover/pages/discover-rail-page').then(m => ({ default: m.DiscoverRailPage })))
 
-function prefetchHeroSlideDetails(queryClient: QueryClient) {
+function prefetchHeroSlideDetails(queryClient?: QueryClient) {
+  if (!queryClient) return
   void queryClient.prefetchInfiniteQuery(discoverQueries.hero()).then(() => {
     const data = queryClient.getQueryData<InfiniteData<DiscoverListResponse>>(
       discoverQueries.hero().queryKey,
@@ -29,6 +30,7 @@ export function createDiscoverRoutes(rootRoute: AnyRoute) {
     component: DiscoverPage,
     loader: ({ context }) => {
       safePrefetchChunk(() => import('@discover/pages/discover-page'))
+      if (!context?.queryClient) return
       prefetchHeroSlideDetails(context.queryClient)
       void context.queryClient.prefetchInfiniteQuery(discoverQueries.list('movie', 'trending'))
       void context.queryClient.prefetchInfiniteQuery(discoverQueries.list('show', 'trending'))
@@ -42,6 +44,7 @@ export function createDiscoverRoutes(rootRoute: AnyRoute) {
     component: DiscoverRailPage,
     loader: ({ params, context }) => {
       safePrefetchChunk(() => import('@discover/pages/discover-rail-page'))
+      if (!context?.queryClient) return
       if (params.mediaType === 'season' && params.listType === 'trending') {
         void context.queryClient.prefetchInfiniteQuery(discoverQueries.trendingSeasons())
       } else {

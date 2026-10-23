@@ -499,6 +499,25 @@ export interface DesktopAPI {
   uninstallerOnProgress?: (callback: (progress: { percent: number; status: string }) => void) => () => void
   closeWindow?: () => Promise<void>
   minimizeWindow?: () => Promise<void>
+  queryGameServer?: (params: {
+    host: string
+    port: number
+    queryPort?: number | null
+    serverType?: string
+    timeout?: number
+  }) => Promise<{
+    status: 'online' | 'offline'
+    pingMs: number | null
+    currentPlayers?: number
+    maxPlayers?: number
+    playerList?: string[]
+    currentMap?: string
+    version?: string
+    name?: string
+    suggestedQueryPort?: number
+    queryWarning?: string
+    error?: string
+  }>
 }
 
 // ── Accessor ─────────────────────────────────────────────────────────

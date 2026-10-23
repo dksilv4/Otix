@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import { Link } from '@tanstack/react-router'
-import { User, UserMinus, AlertTriangle } from 'lucide-react'
+import { User, UserMinus, AlertTriangle, MessageSquare, Loader2 } from 'lucide-react'
 import { DkDialog } from '@ui/molecules/dialog'
 import { FriendAvatar } from '../atoms/friend-avatar'
 import { formatFriendsSince } from '../../utils'
 import { useRemoveFriend } from '../../queries'
+import { useChatDock, useCreateConversationMutation } from '@/features/chat'
 import type { Friend } from '../../types'
 
 interface ManageFriendModalProps {
@@ -20,6 +21,8 @@ export const ManageFriendModal = ({
 }: ManageFriendModalProps) => {
   const [confirmingRemove, setConfirmingRemove] = useState(false)
   const removeMutation = useRemoveFriend()
+  const { openConversation } = useChatDock()
+  const createConvMutation = useCreateConversationMutation()
 
   if (!friend) return null
 
@@ -28,6 +31,17 @@ export const ManageFriendModal = ({
       setConfirmingRemove(false)
     }
     onOpenChange(nextOpen)
+  }
+
+  const handleMessage = async () => {
+    if (!friend) return
+    try {
+      const conv = await createConvMutation.mutateAsync(friend.id)
+      handleClose(false)
+      openConversation(conv.id)
+    } catch {
+      // Failed to open conversation
+    }
   }
 
   const handleRemove = () => {
@@ -70,6 +84,21 @@ export const ManageFriendModal = ({
             {friend.bio}
           </div>
         )}
+
+        {/* Action: Send message */}
+        <button
+          type="button"
+          onClick={handleMessage}
+          disabled={createConvMutation.isPending}
+          className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-2.5 text-xs font-semibold text-primary-foreground shadow-sm transition hover:opacity-90 cursor-pointer disabled:opacity-50"
+        >
+          {createConvMutation.isPending ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <MessageSquare className="h-4 w-4" />
+          )}
+          <span>Send Message</span>
+        </button>
 
         {/* Action: View full profile */}
         <Link

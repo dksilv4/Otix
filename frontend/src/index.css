@@ -51,6 +51,13 @@
 
     --color-cs2-ct: var(--cs2-ct);
     --color-cs2-t: var(--cs2-t);
+
+    --color-status-online: var(--status-online);
+    --color-status-online-foreground: var(--status-online-foreground);
+    --color-status-warning: var(--status-warning);
+    --color-status-warning-foreground: var(--status-warning-foreground);
+    --color-status-offline: var(--status-offline);
+    --color-status-offline-foreground: var(--status-offline-foreground);
 }
 
 :root,
@@ -90,6 +97,13 @@
 
     --cs2-ct: #5d79ae;
     --cs2-t: #de9b35;
+
+    --status-online: oklch(0.627 0.194 149.214);
+    --status-online-foreground: oklch(0.985 0 0);
+    --status-warning: oklch(0.768 0.175 70.08);
+    --status-warning-foreground: oklch(0.2 0.05 70.08);
+    --status-offline: oklch(0.577 0.245 27.325);
+    --status-offline-foreground: oklch(0.985 0 0);
 
     --sidebar: var(--dk-surface-raised);
     --sidebar-foreground: oklch(0.141 0.005 285.823);
@@ -138,6 +152,13 @@
 
     --cs2-ct: #87a2d4;
     --cs2-t: #de9b35;
+
+    --status-online: oklch(0.72 0.19 149.214);
+    --status-online-foreground: oklch(0.14 0 0);
+    --status-warning: oklch(0.79 0.17 75);
+    --status-warning-foreground: oklch(0.18 0.05 75);
+    --status-offline: oklch(0.65 0.24 25.7);
+    --status-offline-foreground: oklch(0.985 0 0);
 
     --sidebar: var(--dk-surface-raised);
     --sidebar-foreground: oklch(0.985 0 0);

@@ -21,7 +21,6 @@ export interface LauncherThemeMeta {
   badgeColor: string
   accentColor: string
   icon: "layout-grid" | "sparkles" | "gamepad" | "tv" | "box" | "disc" | "terminal" | "feather" | "flame" | "layers"
-  isBeta?: boolean
 }
 
 export const LAUNCHER_THEMES: LauncherThemeMeta[] = [
@@ -34,7 +33,6 @@ export const LAUNCHER_THEMES: LauncherThemeMeta[] = [
     badgeColor: "bg-[var(--dk-surface-ghost)] text-foreground border-[var(--dk-separator)]",
     accentColor: "#3b82f6",
     icon: "layout-grid",
-    isBeta: true,
   },
   {
     id: "modern",
@@ -45,7 +43,6 @@ export const LAUNCHER_THEMES: LauncherThemeMeta[] = [
     badgeColor: "bg-primary/20 text-primary border-primary/30",
     accentColor: "oklch(0.705 0.213 47.604)",
     icon: "sparkles",
-    isBeta: true,
   },
   {
     id: "steam",
@@ -56,7 +53,6 @@ export const LAUNCHER_THEMES: LauncherThemeMeta[] = [
     badgeColor: "bg-[#66c0f4]/20 text-[#66c0f4] border-[#66c0f4]/40",
     accentColor: "#66c0f4",
     icon: "gamepad",
-    isBeta: true,
   },
   {
     id: "playstation",
@@ -67,7 +63,6 @@ export const LAUNCHER_THEMES: LauncherThemeMeta[] = [
     badgeColor: "bg-blue-600/20 text-blue-400 border-blue-500/40",
     accentColor: "#2563eb",
     icon: "tv",
-    isBeta: true,
   },
   {
     id: "xbox",
@@ -78,7 +73,6 @@ export const LAUNCHER_THEMES: LauncherThemeMeta[] = [
     badgeColor: "bg-emerald-600/20 text-emerald-400 border-emerald-500/40",
     accentColor: "#107c10",
     icon: "box",
-    isBeta: true,
   },
   {
     id: "switch",
@@ -89,7 +83,6 @@ export const LAUNCHER_THEMES: LauncherThemeMeta[] = [
     badgeColor: "bg-rose-600/20 text-rose-400 border-rose-500/40",
     accentColor: "#e60012",
     icon: "disc",
-    isBeta: true,
   },
   {
     id: "retro",
@@ -100,7 +93,6 @@ export const LAUNCHER_THEMES: LauncherThemeMeta[] = [
     badgeColor: "bg-amber-500/20 text-amber-400 border-amber-500/40",
     accentColor: "#f59e0b",
     icon: "terminal",
-    isBeta: true,
   },
   {
     id: "minimal",
@@ -111,7 +103,6 @@ export const LAUNCHER_THEMES: LauncherThemeMeta[] = [
     badgeColor: "bg-neutral-800 text-neutral-300 border-neutral-700",
     accentColor: "#ffffff",
     icon: "feather",
-    isBeta: true,
   },
   {
     id: "forge",
@@ -122,7 +113,6 @@ export const LAUNCHER_THEMES: LauncherThemeMeta[] = [
     badgeColor: "bg-cyan-500/20 text-cyan-400 border-cyan-500/40",
     accentColor: "#06b6d4",
     icon: "flame",
-    isBeta: true,
   },
   {
     id: "glass",
@@ -133,7 +123,6 @@ export const LAUNCHER_THEMES: LauncherThemeMeta[] = [
     badgeColor: "bg-purple-500/20 text-purple-300 border-purple-400/40",
     accentColor: "#a855f7",
     icon: "layers",
-    isBeta: true,
   },
 ]
 

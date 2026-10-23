@@ -33,6 +33,10 @@ export const GenreCard = memo(({
   return (
     <Link
       to="/genre/$genreId"
+      data-context-type="genre"
+      data-genre-id={genre.slug}
+      data-genre-name={genre.name}
+      data-genre-media-type={mediaType}
       params={{ genreId: genre.slug }}
       search={mediaType ? { type: mediaType } : undefined}
       style={{

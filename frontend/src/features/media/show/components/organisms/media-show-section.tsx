@@ -228,6 +228,12 @@ export const ShowSection = ({
  return (
  <button
  key={season.id}
+  data-context-type="season"
+  data-season-number={season.seasonNumber}
+  data-season-name={season.name || (season.seasonNumber === 0 ? "Specials" : `Season ${season.seasonNumber}`)}
+  data-show-id={data?.id ? String(data.id) : mediaId}
+  data-show-title={data?.title}
+  data-season-poster={season.posterUrl || undefined}
  onClick={() => {
    setSelectedSeasonNum(season.seasonNumber)
    if (episodesRef.current) episodesRef.current.scrollLeft = 0
@@ -400,6 +406,15 @@ export const ShowSection = ({
          return (
            <button
              key={episode.id}
+              data-context-type="episode"
+              data-episode-id={episode.id}
+              data-episode-number={episode.episodeNumber}
+              data-season-number={currentSeason.seasonNumber}
+              data-episode-title={episode.name || `Episode ${episode.episodeNumber}`}
+              data-show-id={data?.id ? String(data.id) : mediaId}
+              data-show-title={data?.title}
+              data-episode-still={thumb || undefined}
+              data-episode-watched={isWatched ? "true" : "false"}
              onClick={(e) => {
                // Don't open modal if clicking the watch toggle or stream button
                if ((e.target as HTMLElement).closest("[data-watch-toggle]") || (e.target as HTMLElement).closest("[data-stream-btn]")) return

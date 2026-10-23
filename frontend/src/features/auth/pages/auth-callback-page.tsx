@@ -9,6 +9,7 @@ import { extractErrorMessage } from '@auth/utils'
 
 import { ACCESS_TOKEN_KEY } from '@/lib/config'
 import { PENDING_LOGIN_SYNC_KEY } from '@/features/interaction/offline-watchlist'
+import { triggerPlexSyncPrompt } from '@/features/integrations/plex-sync/utils/plex-sync'
 import { SERVICES, handleCallback } from '../utils/callback'
 
 export const CallbackPage = () => {
@@ -42,6 +43,12 @@ export const CallbackPage = () => {
         // OAuth login flows reload or redirect the app, flag for the sync prompt
         if (isLoginFlow) {
           try { localStorage.setItem(PENDING_LOGIN_SYNC_KEY, '1') } catch { /* ignore */ }
+        }
+
+        if (service === 'plex-login') {
+          triggerPlexSyncPrompt('login')
+        } else if (service === 'plex') {
+          triggerPlexSyncPrompt('link')
         }
 
         const source = (data?.source as string) || params.get('source')

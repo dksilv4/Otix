@@ -83,6 +83,10 @@ export const GameCard = ({ game, index, onAcceptSuggestion, onRejectSuggestion }
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       className="group relative aspect-[2/1] overflow-hidden rounded-xl bg-[var(--dk-surface-base)] shadow-[var(--dk-shadow-sm)] transition-all duration-300 hover:scale-[1.02] hover:shadow-[var(--dk-shadow-lg)] cursor-pointer"
+      data-context-type="game"
+      data-game-id={game.id}
+      data-media-title={game.title}
+      data-media-poster={backgroundUrl || undefined}
     >
       {/* Background — real game artwork */}
       {hasBackground ? (

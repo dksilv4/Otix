@@ -10,6 +10,7 @@ import { useDeviceSync } from '@/features/settings/hooks/use-device-sync'
 import { xpGainListeners } from '@ui/atoms/xp-toast'
 
 import { ACCESS_TOKEN_KEY } from '@/lib/config'
+import { triggerPlexSyncPrompt } from '@/features/integrations/plex-sync/utils/plex-sync'
 import {
   getCachedUser,
   setCachedUser,
@@ -94,6 +95,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       (data) => {
         if (data.params?.accessToken) {
           completeLogin(data.params.accessToken).then(() => {
+            if (data.action?.includes('plex')) {
+              triggerPlexSyncPrompt('login')
+            }
             import('@/lib/router').then(({ router }) => {
               const currentPath = router.state.location.pathname
               if (currentPath.startsWith('/auth/')) {
@@ -107,6 +111,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           queryClient.invalidateQueries({ queryKey: ['integrations'] })
           queryClient.invalidateQueries({ queryKey: ['user'] })
           window.dispatchEvent(new CustomEvent('otix:integrations:refresh'))
+          if (data.action.includes('plex')) {
+            triggerPlexSyncPrompt('link')
+          }
         }
       },
       [completeLogin],

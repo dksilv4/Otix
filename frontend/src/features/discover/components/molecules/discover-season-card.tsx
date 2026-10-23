@@ -29,6 +29,12 @@ export const DiscoverSeasonCard = memo(({
   return (
     <Link
       to="/media/$mediaType/$mediaId"
+      data-context-type="season"
+      data-season-number={season.seasonNumber}
+      data-season-name={season.name || (season.seasonNumber === 0 ? 'Specials' : `Season ${season.seasonNumber}`)}
+      data-show-id={String(season.showId)}
+      data-show-title={season.showTitle}
+      data-season-poster={season.posterUrl ?? undefined}
       params={{ mediaType: 'show', mediaId: String(season.showId) }}
       search={{ season: season.seasonNumber }}
       className={cn('group relative block aspect-[2/3] overflow-hidden rounded-lg', className)}

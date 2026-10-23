@@ -13,6 +13,7 @@ import { AuthProvider } from '@/features/auth/providers/auth-provider'
 import { AuthRouterBridge } from '@/features/auth/components/auth-router-bridge'
 import { AuthGate } from '@/features/auth/components/auth-gate'
 import { WatchlistSyncPrompt } from '@/features/auth/components/watchlist-sync-prompt'
+import { PlexSyncPromptModal } from '@/features/integrations/plex-sync/components/plex-sync-prompt-modal'
 import { FeatureProvider } from '@/features/_config'
 import { PageMetaProvider } from '@/lib/providers/page-context'
 import { PlexAudioProvider } from '@/lib/player/plex-audio-provider'
@@ -101,6 +102,7 @@ createRoot(document.getElementById('root')!).render(
                   <AuthRouterBridge />
                   <AuthGate>
                     <WatchlistSyncPrompt />
+                    <PlexSyncPromptModal />
                     <DkToastProvider>
                       <PlexAudioProvider>
                         <JellyfinAudioProvider>

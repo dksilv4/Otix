@@ -70,6 +70,22 @@ export const NotificationsProvider = ({ children }: NotificationsProviderProps) 
 
       if (!n.id || !n.type) return
 
+      if (n.type.startsWith('chat.')) {
+        window.dispatchEvent(
+          new CustomEvent('otix:chat_event', {
+            detail: {
+              id: n.id,
+              type: n.type,
+              title: n.title,
+              body: n.body,
+              metadata: n.metadata,
+              createdAt: n.createdAt,
+            },
+          }),
+        )
+        return
+      }
+
       const outcome = appendNotificationToFeed(queryClient, n)
       if (outcome !== 'duplicate' && !n.isRead) {
         bumpUnreadCount(queryClient)

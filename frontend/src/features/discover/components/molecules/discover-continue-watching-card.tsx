@@ -32,6 +32,18 @@ export const DiscoverContinueWatchingCard = memo(
     const cardContent = (
       <div
         data-testid="discover-continue-watching-card"
+        data-context-type={item.mediaType === 'show' && item.episodeNumber != null ? 'episode' : 'media'}
+        data-episode-id={String(item.mediaItemId)}
+        data-episode-number={item.episodeNumber ?? undefined}
+        data-season-number={item.seasonNumber ?? undefined}
+        data-episode-title={item.title}
+        data-show-id={String(item.mediaItemId)}
+        data-show-title={item.title}
+        data-episode-still={artwork || undefined}
+        data-media-id={String(item.mediaItemId)}
+        data-media-type={item.mediaType}
+        data-media-title={item.title}
+        data-media-poster={artwork || undefined}
         className="group relative flex flex-col w-full text-left select-none cursor-pointer"
       >
         {/* 16:9 Thumbnail Pod with Soft Glassmorphic Tonal Surface */}

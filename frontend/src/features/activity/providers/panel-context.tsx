@@ -3,15 +3,32 @@ import { createContext, useContext, useState, type ReactNode } from 'react'
 interface PanelContextValue {
   isUserMenuOpen: boolean
   setUserMenuOpen: (open: boolean) => void
+  isChatOpen: boolean
+  setChatOpen: (open: boolean) => void
 }
 
-const PanelContext = createContext<PanelContextValue | null>(null)
+export const PanelContext = createContext<PanelContextValue | null>(null)
+
+const defaultPanelContext: PanelContextValue = {
+  isUserMenuOpen: false,
+  setUserMenuOpen: () => {},
+  isChatOpen: false,
+  setChatOpen: () => {},
+}
 
 export const PanelProvider = ({ children }: { children: ReactNode }) => {
   const [isUserMenuOpen, setUserMenuOpen] = useState(false)
+  const [isChatOpen, setChatOpen] = useState(false)
 
   return (
-    <PanelContext.Provider value={{ isUserMenuOpen, setUserMenuOpen }}>
+    <PanelContext.Provider
+      value={{
+        isUserMenuOpen,
+        setUserMenuOpen,
+        isChatOpen,
+        setChatOpen,
+      }}
+    >
       {children}
     </PanelContext.Provider>
   )
@@ -19,6 +36,5 @@ export const PanelProvider = ({ children }: { children: ReactNode }) => {
 
 export const usePanelContext = (): PanelContextValue => {
   const ctx = useContext(PanelContext)
-  if (!ctx) throw new Error('usePanelContext must be used within PanelProvider')
-  return ctx
+  return ctx ?? defaultPanelContext
 }

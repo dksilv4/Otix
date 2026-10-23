@@ -38,6 +38,14 @@
   --dk-muted-foreground: oklch(0.48 0.015 285.938);
   --dk-blur-sm: 4px;
   --dk-blur-2xl: 40px;
+
+  /* Semantic Status Tokens (Unambiguous Traffic Light) */
+  --status-online: oklch(0.627 0.194 149.214);
+  --status-online-foreground: oklch(0.985 0 0);
+  --status-warning: oklch(0.768 0.175 70.08);
+  --status-warning-foreground: oklch(0.2 0.05 70.08);
+  --status-offline: oklch(0.577 0.245 27.325);
+  --status-offline-foreground: oklch(0.985 0 0);
 }
 
 [data-theme='dark'] {
@@ -56,6 +64,14 @@
   --dk-border: oklch(1 0 0 / 0.1);
   --dk-border-accent: oklch(0.705 0.213 47.604 / 0.3);
   --dk-muted-foreground: oklch(0.705 0.015 286.067);
+
+  /* Semantic Status Tokens (Unambiguous Traffic Light) */
+  --status-online: oklch(0.72 0.19 149.214);
+  --status-online-foreground: oklch(0.14 0 0);
+  --status-warning: oklch(0.79 0.17 75);
+  --status-warning-foreground: oklch(0.18 0.05 75);
+  --status-offline: oklch(0.65 0.24 25.7);
+  --status-offline-foreground: oklch(0.985 0 0);
 }
 
 /* ═══════════════════════════════════════════════

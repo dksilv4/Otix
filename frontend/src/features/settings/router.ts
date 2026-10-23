@@ -229,9 +229,9 @@ export function createSettingsRoutes(rootRoute: AnyRoute, pluginTabs?: PluginSet
   const settingsGameServersRoute = createRoute({
     getParentRoute: () => settingsRoute,
     path: '/game-servers',
-    component: SettingsGameServersPage,
-    pendingComponent: SettingsSectionPending,
-    loader: preload(() => import('./pages/settings-game-servers-page')),
+    beforeLoad: () => {
+      throw redirect({ to: '/settings/nodes', hash: 'game-servers' })
+    },
   })
 
   const settingsPluginsRoute = createRoute({
