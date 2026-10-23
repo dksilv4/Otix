@@ -114,6 +114,7 @@ const EXTENSION_PLATFORMS = {
   '.gb': 'GB',
   '.md': 'Genesis',
   '.gen': 'Genesis',
+  '.pkg': 'PS3',
 };
 
 // Realistic built-in sample releases for demonstration & testing
@@ -531,20 +532,30 @@ function capitalize(str) {
 
 function cleanGameTitle(filename) {
   let name = filename;
+
+  // Strip leading update/part sequence prefix like "1 - ", "2 - ", "01. "
+  name = name.replace(/^\d+\s*[-_.]\s*/, '');
+
   // Strip full build date expressions like (build 13.06.2024)
   name = name.replace(/\(build\s*[^)]+\)/gi, '');
   name = name.replace(/\bbuild\s*[\d.]+\b/gi, '');
 
-  // Strip version patterns preceded by 'v' or 'update' (e.g. "update 2.12 - 2.13", "v1.12.3", "v2.12")
-  name = name.replace(/(^|[^a-zA-Z0-9])(?:update\s*\d+(?:\.\d+)*(?:\s*-\s*\d+(?:\.\d+)*)?)/gi, '$1');
+  // Strip date patterns (e.g. 20.02.2026, 13.03.2026 - 05.05.2026, 27.05.2025)
+  name = name.replace(/\b\d{2}[._-]\d{2}[._-](?:19|20)\d{2}\b/gi, '');
+
+  // Strip update followed by version numbers (dots, spaces, hyphens) e.g.
+  // "update 4 1 1 5009956 4 1 1 5849914", "update 5849914 6758295", "update 2.12 - 2.13", "update 1.0.7 - 1.0.16"
+  name = name.replace(/(^|[^a-zA-Z0-9])(?:update\s*[\d\s._-]+(?=[a-zA-Z]|$))/gi, '$1');
+
+  // Strip version patterns preceded by 'v' or 'update'
   name = name.replace(/(^|[^a-zA-Z0-9])v\d+(?:\.\d+)+(?:[a-zA-Z]\d*)?(?![a-zA-Z0-9])/gi, '$1');
   name = name.replace(/(^|[\s._-])(?:v\d+|build\s*\d+)(?=[\s._-]|$)/gi, ' ');
-  name = name.replace(/\.(iso|exe|zip|rar|7z|bin|cue|nsp|xci|3ds|nds|rvz|chd|gba|z64|sfc)$/i, '');
+  name = name.replace(/\.(iso|exe|zip|rar|7z|bin|cue|nsp|xci|3ds|nds|rvz|chd|gba|z64|sfc|pkg)$/i, '');
+  name = name.replace(/\.part\d+$/i, '');
 
-  // Strip Title IDs like [0100F2C0115B6000] or [BCUS98174]
+  // Strip Title IDs like [0100F2C0115B6000] or [BCUS98174] or CUSA00411 or PPSA15552
   name = name.replace(/\[[0-9A-Fa-f]{16}\]/g, '');
-  name = name.replace(/\[[A-Z]{4}\d{5}\]/g, '');
-  name = name.replace(/\bbuild\s*[\d.]+\b/gi, '');
+  name = name.replace(/\[?[A-Z]{4}\d{5}\]?/g, '');
 
   // Strip ROM update/DLC flags
   name = name.replace(/\[(?:UPD|DLC|v\d+)\]/gi, '');
@@ -556,12 +567,16 @@ function cleanGameTitle(filename) {
     /\[repack\]/gi, /\brepack\b/gi, /\belamigos\b/gi, /\bfitgirl\b/gi, /\bdodi\b/gi,
     /\bcodex\b/gi, /\bflt\b/gi, /\bplaza\b/gi, /\bskidrow\b/gi, /\brune\b/gi, /\btenoke\b/gi,
     /\bgoldberg\b/gi, /\brazor1911\b/gi, /\bfairlight\b/gi, /\bhoodlum\b/gi, /\bempress\b/gi, /\bcpy\b/gi,
-    /\bduplex\b/gi, /\bvenom\b/gi, /\bi\s*know\b/gi, /\bvoices\d*\b/gi,
-    /\bmulti\d+\b/gi, /\bv\d+(\.\d+)*\b/gi, /\bupdate\s*\d*\b/gi,
+    /\bduplex\b/gi, /\bvenom\b/gi, /\bi\s*know\b/gi, /\bvoices\d*\b/gi, /\bprophet\b/gi, /\bdelusion\b/gi,
+    /\bmulti\d+\b/gi, /\bv\d+(\.\d+)*\b/gi, /\bupdate\s*\d*\b/gi, /\bpart\s*\d+\b/gi,
     /\bunleashed\b/gi, /\bdlc\b/gi, /\bincl\b/gi, /\bgog\b/gi,
     /\bcrack\s*fix(?:\s*v\d+)?\b/gi, /\bcrackfix(?:\s*v\d+)?\b/gi,
     /\bcrack\s*only\b/gi, /\bcrack\b/gi, /\bproper\b/gi, /\bearlyaccess\b/gi,
-    /\bunlocker\b/gi, /\b(?:ps[1-5]|nsw)\b/gi,
+    /\bunlocker\b/gi, /\bsmall\b/gi,
+    /\bwin(?:dows)?\s*(?:10|11|7|8|xp)?\b/gi,
+    /\b(?:2[1-5]h[12]|x64|x86|64bit|32bit)\b/gi,
+    /\b(?:ps[1-5]|nsw)\b/gi,
+    /\+\s*\d+\s*(?:dlcs?|bonuses|bonus|extras?|addons?)\b/gi,
   ];
   for (const tag of tags) {
     name = name.replace(tag, '');
@@ -572,7 +587,8 @@ function cleanGameTitle(filename) {
   name = name.replace(/\(\s*\)/g, '');
   name = name.replace(/\{\s*\}/g, '');
   name = name.replace(/\s+(exe|iso)\s*$/gi, '');
-  name = name.replace(/[\s\-\+\:\,]+$/, '');
+  name = name.replace(/[\s\-\+\:\,\&]+$/, '');
+  name = name.replace(/^[\s\-\+\:\,\&]+/, '');
   return name.replace(/\s+/g, ' ').trim();
 }
 
@@ -586,6 +602,7 @@ function extractGroup(rawName) {
   const groups = [
     'elamigos', 'fitgirl', 'dodi', 'rune', 'flt', 'codex', 'skidrow',
     'tenoke', 'razor1911', 'goldberg', 'fairlight', 'hoodlum', 'empress', 'cpy',
+    'prophet', 'unleashed', 'voices38', 'delusion', 'gog',
   ];
   for (const g of groups) {
     if (new RegExp(`\\b${g}\\b`, 'i').test(rawName)) return capitalize(g);
@@ -601,7 +618,7 @@ function extractRegion(rawName) {
 function extractTitleId(rawName) {
   const switchMatch = rawName.match(/\[([0-9A-Fa-f]{16})\]/);
   if (switchMatch) return switchMatch[1];
-  const psMatch = rawName.match(/\[([A-Z]{4}\d{5})\]/);
+  const psMatch = rawName.match(/\[?([A-Z]{4}\d{5})\]?/);
   if (psMatch) return psMatch[1];
   return '';
 }
@@ -620,16 +637,26 @@ function parseReleaseName(rawName, extHint = null) {
   if (ext && baseName.toLowerCase().endsWith(ext)) {
     baseName = baseName.slice(0, -ext.length);
   }
+  let processed = baseName
+    .replace(/\(build\s*[^)]+\)/gi, '')
+    .replace(/\bbuild\s*[\d.]+\b/gi, '')
+    .replace(/\b\d{2}[._-]\d{2}[._-](?:19|20)\d{2}\b/gi, '')
+    .replace(/^\d+\s*[-_.]\s*/, '')
+    .replace(/\b[vV](\d+(?: \d+)+)/g, (m) => m.replace(/ /g, '.'))
+    .replace(/\b(?:update) (\d+(?: \d+)*)/gi, (m) => m.replace(/ /g, '.'))
+    .replace(/\s+incl\s+dlc\b.*?(?=-)/gi, '')
+    .replace(/\s+password=.*$/i, '');
+
   const cleanTitle = cleanGameTitle(baseName);
 
   // Year detection: only in brackets or as last word before extension. Range 1980..2026.
   // Avoid matching 2077 in Cyberpunk or 1942 in Battlefield.
   let year = '';
-  const yearBracket = baseName.match(/[\[\(](?<year>(?:19[8-9]\d|20[0-2]\d))[\]\)]/);
+  const yearBracket = processed.match(/[\[\(](?<year>(?:19[8-9]\d|20[0-2]\d))[\]\)]/);
   if (yearBracket?.groups?.year) {
     year = yearBracket.groups.year;
   } else {
-    const yearEnd = baseName.match(/(?:\s|\.)(?<year>(?:19[8-9]\d|20[0-2]\d))(?:\s*\.\w+)?$/);
+    const yearEnd = processed.match(/(?:\s|\.)(?<year>(?:19[8-9]\d|20[0-2]\d))(?:\s*\.\w+)?$/);
     if (yearEnd?.groups?.year && !cleanTitle.endsWith(yearEnd.groups.year)) {
       year = yearEnd.groups.year;
     }
@@ -664,6 +691,15 @@ function parseReleaseName(rawName, extHint = null) {
   // Region and TitleID detection
   const region = extractRegion(baseName);
   const titleId = extractTitleId(baseName);
+
+  if (titleId) {
+    if (/^(?:BCUS|BLES|BLUS)/i.test(titleId)) platform = 'PS3';
+    else if (/^CUSA/i.test(titleId)) platform = 'PS4';
+  } else if (/\[(?:BCUS|BLES|BLUS)\d{5}\]/i.test(baseName)) {
+    platform = 'PS3';
+  } else if (/\[?CUSA\d{5}\]?/i.test(baseName)) {
+    platform = 'PS4';
+  }
 
   return {
     rawName: baseName,
@@ -853,6 +889,18 @@ function analyzeRepackArchiveIntegrity(childFiles = [], folderName = '', release
   };
 }
 
+function isPatchOrUpdate(str) {
+  return /\b(?:update|patch|hotfix)\b/i.test(str.replace(/[\._\-]/g, ' '));
+}
+
+function isDlcOrAddon(str) {
+  return /\b(?:dlc|unlocker|addon)\b/i.test(str.replace(/[\._\-]/g, ' '));
+}
+
+function isCrackfix(str) {
+  return /\b(?:crackfix|crack\s*fix|crack\s*only)\b/i.test(str.replace(/[\._\-]/g, ' '));
+}
+
 function classifyArtifact(filename, fullPath, isDir = false, childFiles = []) {
   const ext = isDir ? '' : path.extname(filename).toLowerCase();
   const lower = filename.toLowerCase();
@@ -865,41 +913,86 @@ function classifyArtifact(filename, fullPath, isDir = false, childFiles = []) {
   if (isDir) {
     const lowerChildren = childFiles.map((f) => f.toLowerCase());
     const hasSetup = lowerChildren.some((f) =>
-      f === 'setup.exe' || f === 'installer.exe' || f.endsWith('setup.exe') || f.includes('crack.exe')
+      f === 'setup.exe' || f === 'installer.exe' || (f.startsWith('setup') && f.endsWith('.exe')) || f.endsWith('setup.exe') || f.includes('crack.exe')
     );
     // Broad bin candidate recognition (including malformed bin names, Windows duplicates, or incomplete parts)
     const hasBin = lowerChildren.some((f) =>
       f.endsWith('.bin') || f.endsWith('.cab') || f.endsWith('.doi') ||
       /\.bin(?:\.part|\.tmp|\.crdownload|\.downloading|\.bak|\.orig|\s*\(\d+\))$/i.test(f) ||
-      /\b(?:setup|elamigos|data|game|archive)[-_0-9]+.*(?:\.bin|\.cab|\.doi)/i.test(f)
+      /\b(?:setup|elamigos|data|game|archive|fg)[-_0-9]+.*(?:\.bin|\.cab|\.doi)/i.test(f)
     );
     const hasCrackFiles = lowerChildren.some((f) =>
-      f === 'steam_api64.dll' || f === 'steam_api.dll' || f === 'steam_emu.ini' || f === 'rld.dll' || f === 'emp.dll'
+      f === 'steam_api64.dll' || f === 'steam_api.dll' || f === 'steam_emu.ini' || f === 'rld.dll' || f === 'emp.dll' || f === 'rune.ini' || f === 'onlinefix.ini'
     );
-    const hasGameExe = lowerChildren.some((f) => f.endsWith('.exe') && !f.includes('crash') && !f.includes('unins'));
+    const hasGameExe = lowerChildren.some((f) => f.endsWith('.exe') && !NOISE_EXECUTABLE_PATTERNS.some((p) => f.includes(p)));
 
     // Standalone crack or crackfix directory
     const isCrackNamed = lower.includes('crackfix') || lower.includes('crack.fix') || lower.includes('crack-fix') || lower.includes('crack only');
-    if (isCrackNamed || (hasCrackFiles && (lower.includes('crack') || lower.includes('codex') || lower.includes('rune') || lower.includes('elamigos') || lower.includes('empress')))) {
+    if (isCrackNamed || (hasCrackFiles && (lower.includes('crack') || lower.includes('codex') || lower.includes('rune') || lower.includes('elamigos') || lower.includes('empress') || lower.includes('goldberg')))) {
       return { category: 'folder_crack', isPrimary: false, isDir: true, isPackage: true, isCrack: true };
+    }
+
+    // Console Disc Game Packages (PS3 / PS4 / PS5)
+    const isPs5 = (lowerChildren.some((f) => f.startsWith('ppsa') || f.includes('ps5')) || lower.includes('ps5') || lower.includes('ppsa')) && !hasGameExe;
+    const isPs3 = lowerChildren.some((f) => f === 'ps3_game' || f === 'ps3_disc.sfb' || f === 'param.sfo' || f === 'eboot.bin') && (lower.includes('bcus') || lower.includes('bles') || lower.includes('blus') || lower.includes('ps3') || lowerChildren.includes('ps3_game'));
+    const isPs4 = (lowerChildren.some((f) => f === 'sce_sys') || lower.includes('cusa') || lower.includes('ps4')) && !hasGameExe && !isPs5;
+    if (isPs5) {
+      return { category: 'folder_console', platform: 'PS5', isPrimary: true, isDir: true, isPackage: true };
+    }
+    if (isPs3) {
+      return { category: 'folder_console', platform: 'PS3', isPrimary: true, isDir: true, isPackage: true };
+    }
+    if (isPs4) {
+      return { category: 'folder_console', platform: 'PS4', isPrimary: true, isDir: true, isPackage: true };
     }
 
     if (hasSetup && hasBin) {
       return { category: 'folder_repack', isPrimary: true, isDir: true, isPackage: true };
     }
 
-    // Secondary Update or DLC folder packages
-    if ((lower.includes('update') || lower.includes('patch')) && !hasSetup) {
+    // Generic grouping subfolders (Updates, DLC, Crack, etc.)
+    const isGenericSubfolder = /^(?:updates?|patches?|dlcs?|cracks?|extras?|bonus)$/i.test(lower);
+    if (isGenericSubfolder) {
+      return { category: 'folder_generic', isPrimary: false, isDir: true, isPackage: false };
+    }
+
+    // Specific update or DLC package folders (e.g. Cyberpunk.2077.Update.v2.12-ElAmigos)
+    if (isPatchOrUpdate(lower) && !hasSetup) {
       return { category: 'update', isPrimary: false, isDir: true, isPackage: true };
     }
-    if ((lower.includes('dlc') || lower.includes('unlocker')) && !hasSetup) {
+    if (isDlcOrAddon(lower) && !hasSetup) {
       return { category: 'dlc', isPrimary: false, isDir: true, isPackage: true };
     }
 
-    if (hasGameExe) {
+    // Store Manifests & Specific Game Indicators
+    const hasStoreManifest = lowerChildren.some((f) =>
+      /^goggame-\d+\.info$/i.test(f) || f === '.egstore' || f === 'uplay_install.manifest' ||
+      f === 'uplay_install.state' || f === 'appxmanifest.xml' || f === 'gamelaunchhelper.exe' ||
+      f === 'steam_emu.ini' || f === 'rune.ini' || f === 'hlboot.dat' || f.endsWith('_data')
+    );
+
+    // Check nested subfolders for game executable (bin/, Binaries/Win64/, etc.)
+    let hasNestedExe = false;
+    if (!hasGameExe && fullPath && fs.existsSync(fullPath)) {
+      const checkSubdirs = ['bin', 'bin/x64', 'binaries/win64', 'game/bin', 'content'];
+      for (const sub of checkSubdirs) {
+        const p = path.join(fullPath, sub);
+        try {
+          if (fs.existsSync(p)) {
+            const subEntries = fs.readdirSync(p);
+            if (subEntries.some((f) => f.toLowerCase().endsWith('.exe') && !NOISE_EXECUTABLE_PATTERNS.some((np) => f.toLowerCase().includes(np)))) {
+              hasNestedExe = true;
+              break;
+            }
+          }
+        } catch (e) {}
+      }
+    }
+
+    if (hasGameExe || hasNestedExe || hasStoreManifest) {
       return { category: 'folder_game', isPrimary: true, isDir: true, isPackage: true };
     }
-    return { category: 'folder_generic', isPrimary: true, isDir: true, isPackage: true };
+    return { category: 'folder_generic', isPrimary: false, isDir: true, isPackage: false };
   }
 
   // Preserved Metadata & Extras
@@ -909,6 +1002,9 @@ function classifyArtifact(filename, fullPath, isDir = false, childFiles = []) {
 
   // Disc Images & ISOs
   if (['.iso', '.img', '.bin', '.cue', '.mdf', '.mds', '.nrg'].includes(ext)) {
+    if (isPatchOrUpdate(lower)) {
+      return { category: 'update', isPrimary: false };
+    }
     return { category: 'iso', isPrimary: true };
   }
 
@@ -924,24 +1020,48 @@ function classifyArtifact(filename, fullPath, isDir = false, childFiles = []) {
     return { category: 'rom', isPrimary: true, isRom: true };
   }
 
-  // Executables & Patches (PC Games, Installers, Updates, DLCs, Crackfixes)
-  if (ext === '.exe' || ['.zip', '.rar', '.7z'].includes(ext)) {
-    if (lower.includes('crackfix') || lower.includes('crack.fix') || lower.includes('crack-fix') || lower.includes('crack only')) {
+  // Executables (PC Games, Installers, Updates, DLCs, Crackfixes)
+  if (ext === '.exe') {
+    if (isCrackfix(lower)) {
       return { category: 'crack', isPrimary: false, isCrack: true };
     }
-    if (ext === '.exe') {
-      if (lower.includes('update') || lower.includes('patch') || lower.includes('hotfix')) {
-        return { category: 'update', isPrimary: false };
-      }
-      if (lower.includes('dlc')) {
-        return { category: 'dlc', isPrimary: false };
-      }
-      const stem = path.basename(filename, ext).toLowerCase();
-      if (GENERIC_INSTALLER_STEMS.has(stem) || lower.includes('setup') || lower.includes('install')) {
-        return { category: 'installer', isPrimary: true };
-      }
-      return { category: 'game_exe', isPrimary: true };
+    if (isPatchOrUpdate(lower)) {
+      return { category: 'update', isPrimary: false };
     }
+    if (isDlcOrAddon(lower)) {
+      return { category: 'dlc', isPrimary: false };
+    }
+    const stem = path.basename(filename, ext).toLowerCase();
+    if (GENERIC_INSTALLER_STEMS.has(stem) || lower.includes('setup') || lower.includes('install')) {
+      return { category: 'installer', isPrimary: true };
+    }
+    return { category: 'game_exe', isPrimary: true };
+  }
+
+  // Archives (.zip, .rar, .7z)
+  if (['.zip', '.rar', '.7z'].includes(ext)) {
+    if (isCrackfix(lower)) {
+      return { category: 'crack', isPrimary: false, isCrack: true };
+    }
+    if (isPatchOrUpdate(lower)) {
+      return { category: 'update', isPrimary: false };
+    }
+    if (isDlcOrAddon(lower)) {
+      return { category: 'dlc', isPrimary: false };
+    }
+    // Multi-part secondary archives (.part02.rar, .part2.rar, .r00, .r01, .7z.002, etc.)
+    const partMatch = lower.match(/\.part(\d+)\.rar$/i);
+    if (partMatch) {
+      const partNum = parseInt(partMatch[1], 10);
+      if (partNum > 1) {
+        return { category: 'archive_part', isPrimary: false };
+      }
+      return { category: 'archive', isPrimary: true };
+    }
+    if (/\.r\d{2}$/i.test(lower) || /\.7z\.\d{3}$/i.test(lower)) {
+      return { category: 'archive_part', isPrimary: false };
+    }
+    return { category: 'archive', isPrimary: true };
   }
 
   return { category: 'other', skip: true };
@@ -1108,6 +1228,25 @@ function runSimulation(rootDir, options = {}) {
     let targetRel = '';
     let status = 'RENAME_AND_MOVE';
 
+    if (classification.platform) {
+      release.platform = classification.platform;
+    }
+
+    // If release title is empty or generic, infer parent game from parent directory path
+    if (!release.cleanTitle || !release.title || /^v?\d+[\d.]*$/.test(release.title) || CORE_SKIP_WORDS.has(release.title.toLowerCase())) {
+      const parentDir = path.dirname(item.fullPath);
+      let parentBase = path.basename(parentDir);
+      // If parent is "Updates", "DLC", "Crack", etc., look up one more level
+      if (/^(?:updates?|patches?|dlcs?|cracks?|extras?|bonus)$/i.test(parentBase)) {
+        parentBase = path.basename(path.dirname(parentDir));
+      }
+      const inferred = cleanGameTitle(parentBase);
+      if (inferred) {
+        release.title = inferred;
+        release.cleanTitle = inferred;
+      }
+    }
+
     if (classification.category === 'update') {
       const yearPart = release.year ? ` (${release.year})` : '';
       const parentDir = `${release.title}${yearPart} [${release.platform}]/Updates`;
@@ -1123,6 +1262,11 @@ function runSimulation(rootDir, options = {}) {
       const parentDir = `${release.title}${yearPart} [${release.platform}]/Crack`;
       targetRel = path.join(parentDir, item.filename).replace(/\\/g, '/');
       status = 'SECONDARY_CRACK';
+    } else if (classification.category === 'archive_part') {
+      const yearPart = release.year ? ` (${release.year})` : '';
+      const parentDir = `${release.title}${yearPart} [${release.platform}]`;
+      targetRel = path.join(parentDir, item.filename).replace(/\\/g, '/');
+      status = 'SECONDARY_ARCHIVE_PART';
     } else if (classification.isPackage) {
       // Reorganize container folder package as a whole unit
       const folderTemplate = template.split(/[\\/]/).slice(0, -1).join('/') || '{Title} ({Year}) [{Platform}]';

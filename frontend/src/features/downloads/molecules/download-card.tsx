@@ -39,7 +39,15 @@ export const DownloadCard = ({ download, onCancel, onDelete, onOpenFolder }: Dow
   const hasMediaLink = !!download.mediaItemId;
 
   return (
-    <div className="dk-download-card">
+    <div className="dk-download-card"
+      data-context-type="download"
+      data-download-id={download.id}
+      data-download-title={gameTitle}
+      data-download-filename={download.nzbName || undefined}
+      data-download-status={download.status}
+      data-media-item-id={download.mediaItemId || undefined}
+      data-media-type="game"
+    >
       {/* Icon */}
       <div className={cn('dk-download-card__icon', `dk-download-card__icon--${download.status}`)}>
         <StatusIcon className={cn('h-5 w-5', download.status === 'downloading' && 'animate-spin')} />

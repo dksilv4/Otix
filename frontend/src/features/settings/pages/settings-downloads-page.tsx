@@ -40,6 +40,7 @@ import { Link } from '@tanstack/react-router'
 import { ManageDownloadersModal } from '@/features/downloads/molecules/manage-downloaders-modal'
 import { useSettingsNode } from '../context/settings-node-context'
 import { isLocalDesktopNode } from '../local-desktop-node'
+import { isProbeReachable, formatProbeLatency } from '../utils/node-probe'
 import { nodeSettingsNavigateOptions } from '../node-settings'
 import { SectionHeader } from '../components/molecules/settings-section-header'
 import { SettingsCard } from '../components/molecules/settings-card'
@@ -787,7 +788,7 @@ export const SettingsDownloadsPage = ({
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-sm font-semibold text-foreground">{server.name}</span>
                         {local && (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-500">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-status-online/10 text-status-online">
                             Otix app
                           </span>
                         )}
@@ -801,14 +802,14 @@ export const SettingsDownloadsPage = ({
                           className={cn(
                             'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider',
                             server.isOnline
-                              ? 'bg-emerald-500/10 text-emerald-500'
-                              : 'bg-rose-500/10 text-rose-500',
+                              ? 'bg-status-online/10 text-status-online'
+                              : 'bg-status-offline/10 text-status-offline',
                           )}
                         >
                           <span
                             className={cn(
                               'w-1.5 h-1.5 rounded-full',
-                              server.isOnline ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500',
+                              server.isOnline ? 'bg-status-online animate-pulse' : 'bg-status-offline',
                             )}
                           />
                           {server.isOnline ? 'Online' : 'Offline'}
@@ -820,7 +821,7 @@ export const SettingsDownloadsPage = ({
                             ? 'Otix app on this computer'
                             : server.primaryUrl}
                           {(probeResults[server.id]?.remote_accessible || probeResults[server.id]?.remoteAccessible || probeResults[server.id]?.reachable) && (
-                            <span className="inline-flex items-center text-emerald-500" title="Accessible from the Internet">
+                            <span className="inline-flex items-center text-status-online" title="Accessible from the Internet">
                               <Globe size={11} />
                             </span>
                           )}
@@ -862,9 +863,9 @@ export const SettingsDownloadsPage = ({
                       className={cn(
                         'pointer-events-auto flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-colors cursor-pointer',
                         probeResults[server.id]?.remote_accessible || probeResults[server.id]?.remoteAccessible || probeResults[server.id]?.reachable
-                          ? 'bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20'
+                          ? 'bg-status-online/10 text-status-online hover:bg-status-online/20'
                           : probeResults[server.id] && !(probeResults[server.id]?.remote_accessible || probeResults[server.id]?.remoteAccessible || probeResults[server.id]?.reachable)
-                            ? 'bg-amber-500/10 text-amber-500 hover:bg-amber-500/20'
+                            ? 'bg-status-warning/10 text-status-warning hover:bg-status-warning/20'
                             : 'bg-[var(--dk-surface-field)] hover:bg-[var(--dk-surface-ghost-hover)] text-muted-foreground hover:text-foreground',
                       )}
                       title="Test Remote Access (Internet Reachability)"

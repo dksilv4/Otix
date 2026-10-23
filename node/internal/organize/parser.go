@@ -27,7 +27,7 @@ var (
 	versionRegex = regexp.MustCompile(`(?i)\bv?(\d+(?:\.\d+)+)\b`)
 	regionRegex  = regexp.MustCompile(`(?i)\((USA|Europe|Japan|World|En,Ja|En,Fr,De|Asia|Australia|Germany|France)\)`)
 	switchIdRegex = regexp.MustCompile(`\[([0-9A-Fa-f]{16})\]`)
-	psIdRegex     = regexp.MustCompile(`\[([A-Z]{4}\d{5})\]`)
+	psIdRegex     = regexp.MustCompile(`\[?([A-Z]{4}\d{5})\]?`)
 
 	sceneRegex = regexp.MustCompile(`(?i)^([A-Za-z0-9._+\-]+?)(?:\.(?:v?(\d+(?:\.\d+)*)))?[._-]?(REPACK|PROPER|UPDATE|MULTI\d*|GOTY|DEF|ENHANCED)?[._-]([A-Za-z0-9]{2,12})$`)
 
@@ -54,6 +54,8 @@ var (
 		regexp.MustCompile(`(?i)\bbuild\s*\d+\b`),
 		regexp.MustCompile(`(?i)\bupdate\s*\d*\b`),
 		regexp.MustCompile(`(?i)\bunleashed\b`),
+		regexp.MustCompile(`(?i)\bprophet\b`),
+		regexp.MustCompile(`(?i)\bpart\s*\d+\b`),
 		regexp.MustCompile(`(?i)\bdlc\b`),
 		regexp.MustCompile(`(?i)\bincl\b`),
 		regexp.MustCompile(`(?i)\bgog\b`),
@@ -66,6 +68,12 @@ var (
 		regexp.MustCompile(`(?i)\bcrack\s*only\b`),
 		regexp.MustCompile(`(?i)\bcrack\b`),
 		regexp.MustCompile(`(?i)\bproper\b`),
+		regexp.MustCompile(`(?i)\b(?:ps[1-5]|nsw)\b`),
+		regexp.MustCompile(`(?i)\bwin(?:dows)?\s*(?:10|11|7|8|xp)?\b`),
+		regexp.MustCompile(`(?i)\b(?:2[1-5]h[12]|x64|x86|64bit|32bit)\b`),
+		regexp.MustCompile(`(?i)\bunlocker\b`),
+		regexp.MustCompile(`(?i)\bsmall\b`),
+		regexp.MustCompile(`(?i)\+\s*\d+\s*(?:dlcs?|bonuses|bonus|extras?|addons?)\b`),
 	}
 
 	coreSkipWords = map[string]bool{
@@ -89,6 +97,20 @@ func IsDocBasename(lower string) bool {
 
 func CleanGameTitle(filename string) string {
 	name := filename
+
+	// Strip leading update/part sequence prefix like "1 - ", "2 - ", "01. "
+	name = regexp.MustCompile(`^\d+\s*[-_.]\s*`).ReplaceAllString(name, "")
+
+	// Strip full build date expressions like (build 13.06.2024)
+	name = regexp.MustCompile(`(?i)\(build\s*[^)]+\)`).ReplaceAllString(name, "")
+	name = regexp.MustCompile(`(?i)\bbuild\s*[\d.]+\b`).ReplaceAllString(name, "")
+
+	// Strip date patterns (e.g. 20.02.2026, 13.03.2026 - 05.05.2026, 27.05.2025)
+	name = regexp.MustCompile(`(?i)\b\d{2}[._-]\d{2}[._-](?:19|20)\d{2}\b`).ReplaceAllString(name, "")
+
+	// Strip update followed by version numbers / ranges
+	name = regexp.MustCompile(`(?i)(?:^|[^a-zA-Z0-9])(?:update\s*[\d\s._-]+(?=[a-zA-Z]|$))`).ReplaceAllString(name, " ")
+
 	// Strip file extensions if recognized
 	ext := strings.ToLower(filepath.Ext(name))
 	switch ext {
@@ -97,8 +119,9 @@ func CleanGameTitle(filename string) string {
 		".rvz", ".chd", ".gba", ".sfc", ".smc", ".nes", ".pkg":
 		name = strings.TrimSuffix(name, filepath.Ext(name))
 	}
+	name = regexp.MustCompile(`(?i)\.part\d+$`).ReplaceAllString(name, "")
 
-	// Strip Title IDs like [0100F2C0115B6000] or [BCUS98174]
+	// Strip Title IDs like [0100F2C0115B6000] or [BCUS98174] or PPSA15552
 	name = switchIdRegex.ReplaceAllString(name, "")
 	name = psIdRegex.ReplaceAllString(name, "")
 
@@ -123,6 +146,10 @@ func CleanGameTitle(filename string) string {
 	// Clean brackets
 	bracketRegex := regexp.MustCompile(`\[\s*\]|\(\s*\)|\{\s*\}`)
 	name = bracketRegex.ReplaceAllString(name, "")
+
+	// Clean trailing and leading punctuation
+	name = regexp.MustCompile(`[\s\-+:,&]+$`).ReplaceAllString(name, "")
+	name = regexp.MustCompile(`^[\s\-+:,&]+`).ReplaceAllString(name, "")
 
 	// Clean whitespace
 	spaceRegex := regexp.MustCompile(`\s+`)
@@ -164,8 +191,13 @@ func ParseReleaseName(rawName string) ParsedRelease {
 		Platform:   "PC",
 	}
 
-	// Check year
-	if yMatch := yearRegex.FindStringSubmatch(rawName); len(yMatch) > 1 {
+	processed := regexp.MustCompile(`(?i)\(build\s*[^)]+\)`).ReplaceAllString(baseName, "")
+	processed = regexp.MustCompile(`(?i)\bbuild\s*[\d.]+\b`).ReplaceAllString(processed, "")
+	processed = regexp.MustCompile(`(?i)\b\d{2}[._-]\d{2}[._-](?:19|20)\d{2}\b`).ReplaceAllString(processed, "")
+	processed = regexp.MustCompile(`^\d+\s*[-_.]\s*`).ReplaceAllString(processed, "")
+
+	// Check year (from processed string to avoid build dates / patch dates)
+	if yMatch := yearRegex.FindStringSubmatch(processed); len(yMatch) > 1 {
 		res.Year = yMatch[1]
 	}
 
@@ -237,6 +269,23 @@ func ParseReleaseName(rawName string) ParsedRelease {
 		res.TitleId = sMatch[1]
 	} else if pMatch := psIdRegex.FindStringSubmatch(baseName); len(pMatch) > 1 {
 		res.TitleId = pMatch[1]
+	}
+
+	if res.TitleId != "" {
+		upperId := strings.ToUpper(res.TitleId)
+		if strings.HasPrefix(upperId, "PPSA") {
+			res.Platform = "PS5"
+		} else if strings.HasPrefix(upperId, "BCUS") || strings.HasPrefix(upperId, "BLES") || strings.HasPrefix(upperId, "BLUS") {
+			res.Platform = "PS3"
+		} else if strings.HasPrefix(upperId, "CUSA") {
+			res.Platform = "PS4"
+		}
+	} else if regexp.MustCompile(`(?i)\[?PPSA\d{5}\]?`).MatchString(baseName) {
+		res.Platform = "PS5"
+	} else if regexp.MustCompile(`(?i)\[(?:BCUS|BLES|BLUS)\d{5}\]`).MatchString(baseName) {
+		res.Platform = "PS3"
+	} else if regexp.MustCompile(`(?i)\[?CUSA\d{5}\]?`).MatchString(baseName) {
+		res.Platform = "PS4"
 	}
 
 	// Strategy 1: Scene format match

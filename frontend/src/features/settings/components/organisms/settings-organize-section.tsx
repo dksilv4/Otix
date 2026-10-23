@@ -481,7 +481,7 @@ export const SettingsOrganizeSection = ({ nodeId: nodeIdProp }: { nodeId?: numbe
                     <p className="text-[10px] text-muted-foreground font-mono truncate">
                       Release: {sample.originalName}.{sample.ext}
                     </p>
-                    <p className="text-xs font-mono font-semibold text-emerald-500 dark:text-emerald-400 break-all">
+                    <p className="text-xs font-mono font-semibold text-primary break-all">
                       &rarr; {formatted}
                     </p>
                   </div>

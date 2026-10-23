@@ -37,6 +37,16 @@ describe('simulate-game-management', () => {
       expect(cleanGameTitle('Hogwarts.Legacy.Crackfix.PROPER-EMPRESS')).toBe('Hogwarts Legacy');
       expect(cleanGameTitle('Red.Dead.Redemption.2.Crackfix.v2-EMPRESS')).toBe('Red Dead Redemption 2');
     });
+
+    it('cleans sequence prefixes, space-separated update versions, and OS/arch flags', () => {
+      expect(cleanGameTitle('1 - High On Life 2 update 20.02.2026')).toBe('High On Life 2');
+      expect(cleanGameTitle('2 - High On Life 2 update 04.03.2026')).toBe('High On Life 2');
+      expect(cleanGameTitle('3 - High On Life 2 update 13.03.2026 - 05.05.2026')).toBe('High On Life 2');
+      expect(cleanGameTitle('Baldurs Gate 3 update 4 1 1 5009956 4 1 1 5849914 ElAmigos.bin')).toBe('Baldurs Gate 3');
+      expect(cleanGameTitle('Baldurs Gate 3 update 5849914 6758295 ElAmigos.bin')).toBe('Baldurs Gate 3');
+      expect(cleanGameTitle('1 - Tainted Grail The Fall of Avalon update 27.05.2025.exe')).toBe('Tainted Grail The Fall of Avalon');
+      expect(cleanGameTitle('Hogwarts_Legacy_-_small_DLC_unlocker_+_CrackFix_Win11_24H2')).toBe('Hogwarts Legacy');
+    });
   });
 
   describe('extractGroup', () => {
@@ -59,6 +69,18 @@ describe('simulate-game-management', () => {
     it('extracts editions', () => {
       const parsed = parseReleaseName('The.Witcher.3.Wild.Hunt.GOTY-GOG.iso', '.iso');
       expect(parsed.edition).toBe('GOTY');
+    });
+
+    it('does not confuse update dates or sequence prefixes with release years', () => {
+      const parsed = parseReleaseName('2 - High On Life 2 update 04.03.2026');
+      expect(parsed.cleanTitle).toBe('High On Life 2');
+      expect(parsed.year).toBeFalsy();
+    });
+
+    it('identifies PS5 platform from title IDs or name tags', () => {
+      const parsed = parseReleaseName('Dead.Cells.PS5-DUPLEX');
+      expect(parsed.platform).toBe('PS5');
+      expect(parsed.cleanTitle).toBe('Dead Cells');
     });
   });
 
@@ -110,6 +132,61 @@ describe('simulate-game-management', () => {
       const zipPatch = classifyArtifact('Elden.Ring.Crackfix.v2.rar', '/Downloads/Crackfix.rar');
       expect(zipPatch.category).toBe('crack');
       expect(zipPatch.isCrack).toBe(true);
+    });
+
+    it('identifies game archives and distinguishes primary from secondary multi-part archives', () => {
+      const singleRar = classifyArtifact('Celeste.v1.4.0.0.rar', '/Downloads/Celeste.v1.4.0.0.rar');
+      expect(singleRar.category).toBe('archive');
+      expect(singleRar.isPrimary).toBe(true);
+
+      const single7z = classifyArtifact('IndieGame.Collection.2024-PROPHET.7z', '/Downloads/IndieGame.Collection.2024-PROPHET.7z');
+      expect(single7z.category).toBe('archive');
+      expect(single7z.isPrimary).toBe(true);
+
+      const part1 = classifyArtifact('Call.Of.Duty.Black.Ops.2-SKIDROW.part01.rar', '/Downloads/Call.Of.Duty.Black.Ops.2-SKIDROW.part01.rar');
+      expect(part1.category).toBe('archive');
+      expect(part1.isPrimary).toBe(true);
+
+      const part2 = classifyArtifact('Call.Of.Duty.Black.Ops.2-SKIDROW.part02.rar', '/Downloads/Call.Of.Duty.Black.Ops.2-SKIDROW.part02.rar');
+      expect(part2.category).toBe('archive_part');
+      expect(part2.isPrimary).toBe(false);
+    });
+
+    it('identifies console disc packages for PS3, PS4, and PS5', () => {
+      const ps3Package = classifyArtifact('The Last of Us [BCUS98174]', '/ROMs/PS3/The Last of Us', true, [
+        'PS3_GAME',
+        'PS3_DISC.SFB',
+      ]);
+      expect(ps3Package.isPackage).toBe(true);
+      expect(ps3Package.category).toBe('folder_console');
+      expect(ps3Package.platform).toBe('PS3');
+
+      const ps4Package = classifyArtifact('CUSA00411 - Bloodborne', '/ROMs/PS4/Bloodborne', true, [
+        'eboot.bin',
+        'sce_sys',
+      ]);
+      expect(ps4Package.isPackage).toBe(true);
+      expect(ps4Package.category).toBe('folder_console');
+      expect(ps4Package.platform).toBe('PS4');
+
+      const ps5Package = classifyArtifact('Dead.Cells.PS5-DUPLEX', '/TODO/Dead.Cells.PS5-DUPLEX', true, [
+        'duplex-dead.cells.ps5.sfv',
+        'duplex.nfo',
+        'PPSA15552-app0',
+      ]);
+      expect(ps5Package.isPackage).toBe(true);
+      expect(ps5Package.category).toBe('folder_console');
+      expect(ps5Package.platform).toBe('PS5');
+    });
+
+    it('identifies GOG multi-bin offline installers as folder packages', () => {
+      const gogPackage = classifyArtifact('Cyberpunk 2077', '/GOG/Cyberpunk 2077', true, [
+        'setup_cyberpunk_2077_2.12_(64bit)_(71844).exe',
+        'setup_cyberpunk_2077_2.12_(64bit)_(71844)-1.bin',
+        'setup_cyberpunk_2077_2.12_(64bit)_(71844)-2.bin',
+      ]);
+      expect(gogPackage.isPackage).toBe(true);
+      expect(gogPackage.category).toBe('folder_repack');
     });
   });
 

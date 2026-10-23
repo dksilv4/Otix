@@ -147,3 +147,22 @@ export interface ServerGamesResponse {
 }
 
 export * from './usenet-types'
+
+export interface ServerProbeResult {
+  remoteAccessible?: boolean
+  remote_accessible?: boolean
+  localAccessible?: boolean
+  local_accessible?: boolean
+  reachable?: boolean
+  status: 'online' | 'unreachable' | 'offline'
+  testedUrl?: string
+  tested_url?: string
+  latencyMs?: number
+  latency_ms?: number
+  message?: string
+  error?: string
+  suggestion?: string
+}
+
+export type NodeProbeResult = ServerProbeResult
+

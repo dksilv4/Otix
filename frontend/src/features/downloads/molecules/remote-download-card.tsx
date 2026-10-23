@@ -24,7 +24,15 @@ export const RemoteDownloadCard = ({
   const isError = transfer.status === 'error'
 
   return (
-    <div className="dk-download-card border border-[var(--dk-separator)] bg-[var(--dk-surface-base)] hover:border-primary/40 transition-colors">
+    <div className="dk-download-card border border-[var(--dk-separator)] bg-[var(--dk-surface-base)] hover:border-primary/40 transition-colors"
+      data-context-type="download"
+      data-download-id={transfer.id}
+      data-download-title={transfer.gameTitle || transfer.filename}
+      data-download-filename={transfer.filename}
+      data-download-status={transfer.status}
+      data-media-item-id={transfer.mediaItemId || undefined}
+      data-media-type="game"
+    >
       {/* Icon */}
       <div
         className={cn(

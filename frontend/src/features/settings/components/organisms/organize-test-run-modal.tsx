@@ -117,7 +117,9 @@ export const OrganizeTestRunModal = ({
         i.status === 'container_package' ||
         i.status === 'secondary_update' ||
         i.status === 'secondary_dlc' ||
-        i.status === 'secondary_crack',
+        i.status === 'secondary_crack' ||
+        i.status === 'secondary_archive_part' ||
+        i.status === 'secondary_archive',
     )
   }, [activeList])
 

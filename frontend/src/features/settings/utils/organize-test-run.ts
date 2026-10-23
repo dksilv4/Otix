@@ -16,6 +16,8 @@ export interface PreviewItem {
     | 'secondary_update'
     | 'secondary_dlc'
     | 'secondary_crack'
+    | 'secondary_archive_part'
+    | 'secondary_archive'
     | 'container_package'
   anomalies?: string[]
   suggestedRenames?: Record<string, string>
@@ -128,6 +130,9 @@ export const getStatusBadgeInfo = (status: PreviewItem['status']) => {
       return { label: 'DLC', className: 'text-foreground/90 bg-[var(--dk-surface-field)] border border-[var(--dk-separator)]' }
     case 'secondary_crack':
       return { label: 'Crack Supplement', className: 'text-primary bg-primary/15 border-primary/25' }
+    case 'secondary_archive_part':
+    case 'secondary_archive':
+      return { label: 'Archive Part', className: 'text-foreground/90 bg-[var(--dk-surface-field)] border border-[var(--dk-separator)]' }
     case 'already_organized':
       return { label: 'Organized', className: 'text-muted-foreground bg-[var(--dk-surface-ghost)] border border-[var(--dk-separator)]' }
     case 'conflict':

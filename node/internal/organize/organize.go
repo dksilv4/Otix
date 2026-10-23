@@ -153,9 +153,9 @@ func PreviewOrganization(dir string, template string, sample bool) ([]PreviewIte
 				return filepath.SkipDir
 			}
 
-			// If direct child directory of cleanDir, check if it's a container folder package
+			// If directory within cleanDir, check if it's a container folder package
 			rel, _ := filepath.Rel(cleanDir, path)
-			if rel != "." && !strings.Contains(rel, string(filepath.Separator)) {
+			if rel != "." && strings.Count(rel, string(filepath.Separator)) <= 4 {
 				// Read immediate children of this subfolder
 				children, rErr := os.ReadDir(path)
 				if rErr == nil && len(children) > 0 {
@@ -163,6 +163,8 @@ func PreviewOrganization(dir string, template string, sample bool) ([]PreviewIte
 					hasBin := false
 					hasGameExe := false
 					hasCrackDll := false
+					isConsolePackage := false
+					consolePlatform := ""
 					var anomalies []string
 
 					folderLower := strings.ToLower(d.Name())
@@ -173,17 +175,25 @@ func PreviewOrganization(dir string, template string, sample bool) ([]PreviewIte
 
 					for _, c := range children {
 						cName := strings.ToLower(c.Name())
-						if cName == "setup.exe" || cName == "installer.exe" || strings.HasSuffix(cName, "setup.exe") {
+						if cName == "setup.exe" || cName == "installer.exe" || (strings.HasPrefix(cName, "setup") && strings.HasSuffix(cName, ".exe")) || strings.HasSuffix(cName, "setup.exe") {
 							hasSetup = true
 						}
-						if strings.HasSuffix(cName, ".bin") || strings.HasSuffix(cName, ".cab") || strings.Contains(cName, ".bin.") || strings.Contains(cName, ".bin(") {
+						if strings.HasSuffix(cName, ".bin") || strings.HasSuffix(cName, ".cab") || strings.HasSuffix(cName, ".doi") || strings.Contains(cName, ".bin.") || strings.Contains(cName, ".bin(") {
 							hasBin = true
 						}
 						if strings.HasSuffix(cName, ".exe") && !isNoise(cName, "") {
 							hasGameExe = true
 						}
-						if cName == "steam_api64.dll" || cName == "steam_api.dll" || cName == "steam_emu.ini" {
+						if cName == "steam_api64.dll" || cName == "steam_api.dll" || cName == "steam_emu.ini" || cName == "rune.ini" || cName == "onlinefix.ini" {
 							hasCrackDll = true
+						}
+						if cName == "ps3_game" || cName == "ps3_disc.sfb" {
+							isConsolePackage = true
+							consolePlatform = "PS3"
+						}
+						if cName == "sce_sys" {
+							isConsolePackage = true
+							consolePlatform = "PS4"
 						}
 
 						if isElAmigos {
@@ -222,8 +232,11 @@ func PreviewOrganization(dir string, template string, sample bool) ([]PreviewIte
 					isCrackFolder := (hasCrackDll && (strings.Contains(folderLower, "crack") || strings.Contains(folderLower, "codex") || strings.Contains(folderLower, "rune") || isElAmigos)) ||
 						strings.Contains(folderLower, "crackfix") || strings.Contains(folderLower, "crack.fix") || strings.Contains(folderLower, "crack-fix") || strings.Contains(folderLower, "crack only")
 
-					if isCrackFolder || (hasSetup && hasBin) || hasGameExe {
+					if isCrackFolder || (hasSetup && hasBin) || hasGameExe || isConsolePackage {
 						release := ParseReleaseName(d.Name())
+						if consolePlatform != "" {
+							release.Platform = consolePlatform
+						}
 						folderTemplate := template
 						if idx := strings.LastIndex(folderTemplate, "/"); idx != -1 {
 							folderTemplate = folderTemplate[:idx]
@@ -303,6 +316,16 @@ func PreviewOrganization(dir string, template string, sample bool) ([]PreviewIte
 				} else {
 					itemType = "game_exe"
 				}
+			} else if ext == ".zip" || ext == ".rar" || ext == ".7z" {
+				if strings.Contains(lowerName, "update") || strings.Contains(lowerName, "patch") || strings.Contains(lowerName, "hotfix") {
+					itemType = "update"
+				} else if strings.Contains(lowerName, "dlc") || strings.Contains(lowerName, "addon") {
+					itemType = "dlc"
+				} else if strings.Contains(lowerName, ".part") && !strings.Contains(lowerName, ".part01.") && !strings.Contains(lowerName, ".part1.") {
+					itemType = "archive_part"
+				} else {
+					itemType = "archive"
+				}
 			} else {
 				return nil
 			}
@@ -338,6 +361,14 @@ func PreviewOrganization(dir string, template string, sample bool) ([]PreviewIte
 				yearPart = fmt.Sprintf(" (%s)", release.Year)
 			}
 			parentRel := fmt.Sprintf("%s%s [%s]/DLC/%s", release.Title, yearPart, release.Platform, filename)
+			target = filepath.Join(cleanDir, filepath.FromSlash(parentRel))
+		} else if itemType == "archive_part" {
+			status = "secondary_archive_part"
+			yearPart := ""
+			if release.Year != "" {
+				yearPart = fmt.Sprintf(" (%s)", release.Year)
+			}
+			parentRel := fmt.Sprintf("%s%s [%s]/%s", release.Title, yearPart, release.Platform, filename)
 			target = filepath.Join(cleanDir, filepath.FromSlash(parentRel))
 		} else {
 			status = "rename_and_move"

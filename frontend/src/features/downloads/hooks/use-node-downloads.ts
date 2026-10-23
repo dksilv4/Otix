@@ -375,8 +375,10 @@ export const usePingGameServer = usePingNode
 export interface ServerProbeResult {
   remoteAccessible?: boolean
   remote_accessible?: boolean
+  localAccessible?: boolean
+  local_accessible?: boolean
   reachable?: boolean
-  status: 'online' | 'unreachable'
+  status: 'online' | 'unreachable' | 'offline'
   testedUrl?: string
   tested_url?: string
   latencyMs?: number

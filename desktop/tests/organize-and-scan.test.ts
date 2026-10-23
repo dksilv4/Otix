@@ -44,7 +44,7 @@ vi.mock('../db', () => ({
   }),
 }));
 
-import { findDownloadedContent } from '../downloads/organizer';
+import { findDownloadedContent, smartOrganizePreview } from '../downloads/organizer';
 import { updateGamePathInDb } from '../downloads';
 
 describe('Production Game Organization & Scanning', () => {
@@ -110,5 +110,104 @@ describe('Production Game Organization & Scanning', () => {
     expect(row).toBeDefined();
     expect(row.install_dir.replace(/\\/g, '/')).toBe(newDir);
     expect(row.exe_path.replace(/\\/g, '/')).toBe(expectedNewExe);
+  });
+
+  it('correctly discovers single and multi-part archives and auxiliary archives', async () => {
+    const downloadsDir = path.join(tempDir, 'Downloads');
+    await fs.mkdir(downloadsDir, { recursive: true });
+
+    await fs.writeFile(path.join(downloadsDir, 'Elden.Ring.part01.rar'), 'part 1');
+    await fs.writeFile(path.join(downloadsDir, 'Elden.Ring.part02.rar'), 'part 2');
+    await fs.writeFile(path.join(downloadsDir, 'Elden.Ring.part03.rar'), 'part 3');
+    await fs.writeFile(path.join(downloadsDir, 'Elden.Ring.Update.v1.10.zip'), 'update zip');
+    await fs.writeFile(path.join(downloadsDir, 'Elden.Ring.DLC.Pack.7z'), 'dlc 7z');
+    await fs.writeFile(path.join(downloadsDir, 'Single.Game.Release.zip'), 'single zip');
+
+    const content = await findDownloadedContent(downloadsDir, 2);
+    expect(content.length).toBe(6);
+
+    const part1 = content.find((c) => c.name === 'Elden.Ring.part01.rar');
+    expect(part1?.type).toBe('iso');
+
+    const part2 = content.find((c) => c.name === 'Elden.Ring.part02.rar');
+    expect(part2?.type).toBe('archive_part');
+
+    const part3 = content.find((c) => c.name === 'Elden.Ring.part03.rar');
+    expect(part3?.type).toBe('archive_part');
+
+    const update = content.find((c) => c.name === 'Elden.Ring.Update.v1.10.zip');
+    expect(update?.type).toBe('update');
+
+    const dlc = content.find((c) => c.name === 'Elden.Ring.DLC.Pack.7z');
+    expect(dlc?.type).toBe('dlc');
+
+    const single = content.find((c) => c.name === 'Single.Game.Release.zip');
+    expect(single?.type).toBe('iso');
+  });
+
+  it('discovers PS3 and PS4 console disc packages and preserves folder packages', async () => {
+    const ps3Dir = path.join(tempDir, 'God of War Collection [BCUS98229]');
+    await fs.mkdir(path.join(ps3Dir, 'PS3_GAME'), { recursive: true });
+    await fs.writeFile(path.join(ps3Dir, 'PS3_DISC.SFB'), 'sfb');
+    await fs.writeFile(path.join(ps3Dir, 'PS3_GAME', 'PARAM.SFO'), 'sfo');
+
+    const ps4Dir = path.join(tempDir, 'Bloodborne [CUSA03173]');
+    await fs.mkdir(path.join(ps4Dir, 'sce_sys'), { recursive: true });
+    await fs.writeFile(path.join(ps4Dir, 'sce_sys', 'param.sfo'), 'sfo');
+
+    const content = await findDownloadedContent(tempDir, 2);
+    const ps3 = content.find((c) => c.name.includes('God of War Collection'));
+    expect(ps3).toBeDefined();
+    expect(ps3?.type).toBe('pc_game');
+    expect(ps3?.platform).toBe('PS3');
+
+    const ps4 = content.find((c) => c.name.includes('Bloodborne'));
+    expect(ps4).toBeDefined();
+    expect(ps4?.type).toBe('pc_game');
+    expect(ps4?.platform).toBe('PS4');
+
+    const ps5Dir = path.join(tempDir, 'Dead.Cells.PS5-DUPLEX');
+    await fs.mkdir(path.join(ps5Dir, 'PPSA15552-app0'), { recursive: true });
+    await fs.writeFile(path.join(ps5Dir, 'duplex.nfo'), 'nfo');
+
+    const contentWithPs5 = await findDownloadedContent(tempDir, 2);
+    const ps5 = contentWithPs5.find((c) => c.name.includes('Dead.Cells.PS5'));
+    expect(ps5).toBeDefined();
+    expect(ps5?.type).toBe('pc_game');
+    expect(ps5?.platform).toBe('PS5');
+  });
+
+  it('generates coherent preview with multi-part archives and console packages', async () => {
+    const libraryDir = path.join(tempDir, 'Library');
+    const downloadsDir = path.join(tempDir, 'Downloads');
+    await fs.mkdir(downloadsDir, { recursive: true });
+
+    await fs.writeFile(path.join(downloadsDir, 'Cyberpunk.2077.part01.rar'), 'part 1');
+    await fs.writeFile(path.join(downloadsDir, 'Cyberpunk.2077.part02.rar'), 'part 2');
+
+    const preview = await smartOrganizePreview(downloadsDir, '{Title} ({Year}) [{Platform}]/{Title} ({Year}) [{Platform}]');
+    expect(preview.length).toBe(2);
+
+    const p1 = preview.find((p) => p.sourceFilename === 'Cyberpunk.2077.part01.rar');
+    expect(p1?.status).toBe('rename_and_move');
+    expect(p1?.targetPath.replace(/\\/g, '/')).toContain('Cyberpunk 2077 [PC]');
+
+    const p2 = preview.find((p) => p.sourceFilename === 'Cyberpunk.2077.part02.rar');
+    expect(p2?.status).toBe('secondary_archive_part');
+    expect(p2?.targetPath.replace(/\\/g, '/')).toContain('Cyberpunk 2077 [PC]/Cyberpunk.2077.part02.rar');
+  });
+
+  it('cleans update filenames with sequence prefixes in smartOrganizePreview', async () => {
+    const downloadsDir = path.join(tempDir, 'UpdatesTesting');
+    await fs.mkdir(downloadsDir, { recursive: true });
+
+    await fs.writeFile(path.join(downloadsDir, '1 - High On Life 2 update 20.02.2026.exe'), 'update binary');
+
+    const preview = await smartOrganizePreview(downloadsDir, '{Title} ({Year}) [{Platform}]/{OriginalName}.{ext}');
+    expect(preview.length).toBe(1);
+    expect(preview[0].status).toBe('secondary_update');
+    expect(preview[0].targetPath.replace(/\\/g, '/')).toBe(
+      path.join(downloadsDir, 'High On Life 2 [PC]/Updates/1 - High On Life 2 update 20.02.2026.exe').replace(/\\/g, '/')
+    );
   });
 });
