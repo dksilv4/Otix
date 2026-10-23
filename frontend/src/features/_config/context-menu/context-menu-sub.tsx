@@ -77,6 +77,7 @@ export const ContextMenuSub = ({ item, isOpen, onToggle, parentRef }: ContextMen
                   shortcut={sub.shortcut}
                   disabled={sub.disabled}
                   destructive={sub.destructive}
+                  checked={sub.checked}
                   onClick={() => {
                     close()
                     sub.onClick?.()
@@ -89,4 +90,4 @@ export const ContextMenuSub = ({ item, isOpen, onToggle, parentRef }: ContextMen
       </AnimatePresence>
     </div>
   )
-};
+}

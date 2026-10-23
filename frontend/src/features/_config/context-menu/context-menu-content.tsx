@@ -116,7 +116,7 @@ export const ContextMenuContent = ({ items, isSubmenu, onRequestClose }: Context
       style={{
         backgroundColor: 'var(--dk-surface-overlay)',
         boxShadow: 'var(--dk-shadow-glass), 0 0 0 1px rgba(255,255,255,0.06)',
-        maxHeight: 'min(400px, 80vh)',
+        maxHeight: 'min(480px, 85vh)',
         overflowY: 'auto',
       }}
     >
@@ -144,6 +144,7 @@ export const ContextMenuContent = ({ items, isSubmenu, onRequestClose }: Context
             shortcut={item.shortcut}
             disabled={item.disabled}
             destructive={item.destructive}
+            checked={item.checked}
             onClick={() => {
               handleClose()
               item.onClick?.()
@@ -155,4 +156,4 @@ export const ContextMenuContent = ({ items, isSubmenu, onRequestClose }: Context
       })}
     </motion.div>
   )
-};
+}

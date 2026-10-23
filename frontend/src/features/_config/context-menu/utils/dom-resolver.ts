@@ -14,6 +14,64 @@ export interface ResolvedGameTarget {
   type: 'game'
   gameId: string
   title: string
+  posterUrl?: string
+  year?: string
+}
+
+export interface ResolvedEpisodeTarget {
+  type: 'episode'
+  episodeId: string
+  showId: string
+  showTitle?: string
+  seasonNumber: number
+  episodeNumber: number
+  title: string
+  stillUrl?: string
+  isWatched?: boolean
+}
+
+export interface ResolvedSeasonTarget {
+  type: 'season'
+  showId: string
+  showTitle?: string
+  seasonNumber: number
+  name: string
+  posterUrl?: string
+  isWatched?: boolean
+}
+
+export interface ResolvedGenreTarget {
+  type: 'genre'
+  genreId: string
+  name: string
+  mediaType?: 'movie' | 'show' | 'game' | 'music'
+}
+
+export interface ResolvedDownloadTarget {
+  type: 'download'
+  downloadId: string
+  title: string
+  filename?: string
+  status: string
+  mediaItemId?: string
+  mediaType?: string
+}
+
+export interface ResolvedUserTarget {
+  type: 'user'
+  userId?: string
+  username: string
+  avatarUrl?: string
+}
+
+export interface ResolvedVideoTarget {
+  type: 'video'
+  element: HTMLVideoElement
+  src?: string
+  currentTime?: number
+  duration?: number
+  paused?: boolean
+  muted?: boolean
 }
 
 export interface ResolvedPersonTarget {
@@ -68,6 +126,12 @@ export interface ResolvedPageTarget {
 export type ContextMenuResolvedTarget =
   | ResolvedMediaTarget
   | ResolvedGameTarget
+  | ResolvedEpisodeTarget
+  | ResolvedSeasonTarget
+  | ResolvedGenreTarget
+  | ResolvedDownloadTarget
+  | ResolvedUserTarget
+  | ResolvedVideoTarget
   | ResolvedPersonTarget
   | ResolvedListTarget
   | ResolvedTrackTarget
@@ -104,7 +168,21 @@ export const resolveContextMenuTarget = (
     return { type: 'input', element: inputEl }
   }
 
-  // 3. Check for annotated semantic data-context-type
+  // 3. Check for HTML video
+  const videoEl = target.closest<HTMLVideoElement>('video')
+  if (videoEl) {
+    return {
+      type: 'video',
+      element: videoEl,
+      src: videoEl.currentSrc || videoEl.src,
+      currentTime: videoEl.currentTime,
+      duration: videoEl.duration,
+      paused: videoEl.paused,
+      muted: videoEl.muted,
+    }
+  }
+
+  // 4. Check for annotated semantic data-context-type
   const contextEl = target.closest<HTMLElement>('[data-context-type]')
   if (contextEl && contextEl.dataset) {
     const rawType = contextEl.dataset.contextType as ContextMenuTargetType
@@ -125,7 +203,65 @@ export const resolveContextMenuTarget = (
       return {
         type: 'game',
         gameId: contextEl.dataset.gameId || '',
-        title: contextEl.dataset.mediaTitle || '',
+        title: contextEl.dataset.mediaTitle || contextEl.dataset.gameTitle || '',
+        posterUrl: contextEl.dataset.mediaPoster,
+        year: contextEl.dataset.mediaYear,
+      }
+    }
+
+    if (rawType === 'episode') {
+      return {
+        type: 'episode',
+        episodeId: contextEl.dataset.episodeId || '',
+        showId: contextEl.dataset.showId || '',
+        showTitle: contextEl.dataset.showTitle,
+        seasonNumber: Number(contextEl.dataset.seasonNumber) || 1,
+        episodeNumber: Number(contextEl.dataset.episodeNumber) || 1,
+        title: contextEl.dataset.episodeTitle || `Episode ${contextEl.dataset.episodeNumber || ''}`,
+        stillUrl: contextEl.dataset.episodeStill,
+        isWatched: contextEl.dataset.episodeWatched === 'true',
+      }
+    }
+
+    if (rawType === 'season') {
+      return {
+        type: 'season',
+        showId: contextEl.dataset.showId || '',
+        showTitle: contextEl.dataset.showTitle,
+        seasonNumber: Number(contextEl.dataset.seasonNumber) || 0,
+        name: contextEl.dataset.seasonName || `Season ${contextEl.dataset.seasonNumber || ''}`,
+        posterUrl: contextEl.dataset.seasonPoster,
+        isWatched: contextEl.dataset.seasonWatched === 'true',
+      }
+    }
+
+    if (rawType === 'genre') {
+      return {
+        type: 'genre',
+        genreId: contextEl.dataset.genreId || '',
+        name: contextEl.dataset.genreName || '',
+        mediaType: contextEl.dataset.genreMediaType as any,
+      }
+    }
+
+    if (rawType === 'download') {
+      return {
+        type: 'download',
+        downloadId: contextEl.dataset.downloadId || '',
+        title: contextEl.dataset.downloadTitle || '',
+        filename: contextEl.dataset.downloadFilename,
+        status: contextEl.dataset.downloadStatus || 'downloading',
+        mediaItemId: contextEl.dataset.mediaItemId,
+        mediaType: contextEl.dataset.mediaType,
+      }
+    }
+
+    if (rawType === 'user') {
+      return {
+        type: 'user',
+        userId: contextEl.dataset.userId,
+        username: contextEl.dataset.userUsername || '',
+        avatarUrl: contextEl.dataset.userAvatar,
       }
     }
 
@@ -157,7 +293,7 @@ export const resolveContextMenuTarget = (
     }
   }
 
-  // 4. Check for anchor link (outside a media card)
+  // 5. Check for anchor link (outside a media card)
   const anchorEl = target.closest<HTMLAnchorElement>('a[href]')
   if (anchorEl && anchorEl.href) {
     return {
@@ -167,7 +303,7 @@ export const resolveContextMenuTarget = (
     }
   }
 
-  // 5. Check for standalone image
+  // 6. Check for standalone image
   const imgEl = target.closest<HTMLImageElement>('img[src]')
   if (imgEl && imgEl.src) {
     return {
@@ -177,7 +313,7 @@ export const resolveContextMenuTarget = (
     }
   }
 
-  // 6. Generic page fallback
+  // 7. Generic page fallback
   return {
     type: 'page',
     url: typeof window !== 'undefined' ? window.location.href : '',

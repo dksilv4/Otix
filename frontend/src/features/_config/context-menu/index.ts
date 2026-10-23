@@ -10,6 +10,12 @@ export { resolveContextMenuTarget } from './utils/dom-resolver'
 export {
   buildMediaMenuItems,
   buildGameMenuItems,
+  buildEpisodeMenuItems,
+  buildSeasonMenuItems,
+  buildGenreMenuItems,
+  buildDownloadMenuItems,
+  buildUserMenuItems,
+  buildVideoMenuItems,
   buildPersonMenuItems,
   buildListMenuItems,
   buildTrackMenuItems,
@@ -27,5 +33,23 @@ export type {
   ContextMenuState,
   ContextMenuActions,
 } from './types'
-export type { ContextMenuResolvedTarget } from './utils/dom-resolver'
+export type {
+  ContextMenuResolvedTarget,
+  ResolvedMediaTarget,
+  ResolvedGameTarget,
+  ResolvedEpisodeTarget,
+  ResolvedSeasonTarget,
+  ResolvedGenreTarget,
+  ResolvedDownloadTarget,
+  ResolvedUserTarget,
+  ResolvedVideoTarget,
+  ResolvedPersonTarget,
+  ResolvedListTarget,
+  ResolvedTrackTarget,
+  ResolvedLinkTarget,
+  ResolvedImageTarget,
+  ResolvedTextTarget,
+  ResolvedInputTarget,
+  ResolvedPageTarget,
+} from './utils/dom-resolver'
 export type { MenuBuilderContext } from './utils/menu-builders'

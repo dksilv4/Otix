@@ -6,6 +6,12 @@ import { resolveContextMenuTarget } from './utils/dom-resolver'
 import {
   buildMediaMenuItems,
   buildGameMenuItems,
+  buildEpisodeMenuItems,
+  buildSeasonMenuItems,
+  buildGenreMenuItems,
+  buildDownloadMenuItems,
+  buildUserMenuItems,
+  buildVideoMenuItems,
   buildPersonMenuItems,
   buildListMenuItems,
   buildTrackMenuItems,
@@ -45,6 +51,24 @@ export const GlobalContextMenuListener = () => {
         case 'game':
           items = buildGameMenuItems(target, context)
           break
+        case 'episode':
+          items = buildEpisodeMenuItems(target, context)
+          break
+        case 'season':
+          items = buildSeasonMenuItems(target, context)
+          break
+        case 'genre':
+          items = buildGenreMenuItems(target, context)
+          break
+        case 'download':
+          items = buildDownloadMenuItems(target, context)
+          break
+        case 'user':
+          items = buildUserMenuItems(target, context)
+          break
+        case 'video':
+          items = buildVideoMenuItems(target)
+          break
         case 'person':
           items = buildPersonMenuItems(target, context)
           break
@@ -52,7 +76,7 @@ export const GlobalContextMenuListener = () => {
           items = buildListMenuItems(target, context)
           break
         case 'track':
-          items = buildTrackMenuItems(target)
+          items = buildTrackMenuItems(target, context)
           break
         case 'link':
           items = buildLinkMenuItems(target, context)
@@ -90,4 +114,4 @@ export const GlobalContextMenuListener = () => {
   }, [handleContextMenu])
 
   return null
-};
+}

@@ -21,6 +21,12 @@ describe('ContextMenuItem', () => {
     expect(screen.getByText('⌘C')).toBeInTheDocument()
   })
 
+  it('renders checked checkmark icon when checked is true', () => {
+    render(<ContextMenuItem label="1x" checked />)
+    const check = document.querySelector('.lucide-check')
+    expect(check).toBeInTheDocument()
+  })
+
   it('applies disabled attributes', () => {
     render(<ContextMenuItem label="Delete" disabled />)
     const btn = screen.getByRole('menuitem')

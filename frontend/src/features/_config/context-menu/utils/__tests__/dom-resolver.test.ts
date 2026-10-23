@@ -35,6 +35,19 @@ describe('resolveContextMenuTarget', () => {
     expect(resolved.type).toBe('input')
   })
 
+  it('resolves video elements when clicking a video', () => {
+    const video = document.createElement('video')
+    video.src = 'https://example.com/stream.mp4'
+    document.body.appendChild(video)
+
+    const resolved = resolveContextMenuTarget(video, null)
+    expect(resolved.type).toBe('video')
+    if (resolved.type === 'video') {
+      expect(resolved.element).toBe(video)
+      expect(resolved.src).toBe('https://example.com/stream.mp4')
+    }
+  })
+
   it('resolves media elements with data-context-type="media"', () => {
     const card = document.createElement('div')
     card.setAttribute('data-context-type', 'media')
@@ -73,6 +86,114 @@ describe('resolveContextMenuTarget', () => {
       type: 'game',
       gameId: 'game-456',
       title: 'Cyberpunk 2077',
+      posterUrl: undefined,
+      year: undefined,
+    })
+  })
+
+  it('resolves episode elements with data-context-type="episode"', () => {
+    const epEl = document.createElement('div')
+    epEl.setAttribute('data-context-type', 'episode')
+    epEl.setAttribute('data-episode-id', 'ep-1')
+    epEl.setAttribute('data-show-id', 'show-10')
+    epEl.setAttribute('data-show-title', 'Severance')
+    epEl.setAttribute('data-season-number', '1')
+    epEl.setAttribute('data-episode-number', '9')
+    epEl.setAttribute('data-episode-title', 'The We We Are')
+    epEl.setAttribute('data-episode-still', 'https://example.com/ep9.jpg')
+    epEl.setAttribute('data-episode-watched', 'true')
+    document.body.appendChild(epEl)
+
+    const resolved = resolveContextMenuTarget(epEl, null)
+    expect(resolved).toEqual({
+      type: 'episode',
+      episodeId: 'ep-1',
+      showId: 'show-10',
+      showTitle: 'Severance',
+      seasonNumber: 1,
+      episodeNumber: 9,
+      title: 'The We We Are',
+      stillUrl: 'https://example.com/ep9.jpg',
+      isWatched: true,
+    })
+  })
+
+  it('resolves season elements with data-context-type="season"', () => {
+    const seasonEl = document.createElement('div')
+    seasonEl.setAttribute('data-context-type', 'season')
+    seasonEl.setAttribute('data-show-id', 'show-10')
+    seasonEl.setAttribute('data-show-title', 'Severance')
+    seasonEl.setAttribute('data-season-number', '1')
+    seasonEl.setAttribute('data-season-name', 'Season 1')
+    seasonEl.setAttribute('data-season-poster', 'https://example.com/s1.jpg')
+    document.body.appendChild(seasonEl)
+
+    const resolved = resolveContextMenuTarget(seasonEl, null)
+    expect(resolved).toEqual({
+      type: 'season',
+      showId: 'show-10',
+      showTitle: 'Severance',
+      seasonNumber: 1,
+      name: 'Season 1',
+      posterUrl: 'https://example.com/s1.jpg',
+      isWatched: false,
+    })
+  })
+
+  it('resolves genre elements with data-context-type="genre"', () => {
+    const genreEl = document.createElement('div')
+    genreEl.setAttribute('data-context-type', 'genre')
+    genreEl.setAttribute('data-genre-id', 'sci-fi')
+    genreEl.setAttribute('data-genre-name', 'Sci-Fi')
+    genreEl.setAttribute('data-genre-media-type', 'movie')
+    document.body.appendChild(genreEl)
+
+    const resolved = resolveContextMenuTarget(genreEl, null)
+    expect(resolved).toEqual({
+      type: 'genre',
+      genreId: 'sci-fi',
+      name: 'Sci-Fi',
+      mediaType: 'movie',
+    })
+  })
+
+  it('resolves download elements with data-context-type="download"', () => {
+    const dlEl = document.createElement('div')
+    dlEl.setAttribute('data-context-type', 'download')
+    dlEl.setAttribute('data-download-id', 'dl-123')
+    dlEl.setAttribute('data-download-title', 'Half-Life 2')
+    dlEl.setAttribute('data-download-filename', 'hl2.zip')
+    dlEl.setAttribute('data-download-status', 'downloading')
+    dlEl.setAttribute('data-media-item-id', 'game-hl2')
+    dlEl.setAttribute('data-media-type', 'game')
+    document.body.appendChild(dlEl)
+
+    const resolved = resolveContextMenuTarget(dlEl, null)
+    expect(resolved).toEqual({
+      type: 'download',
+      downloadId: 'dl-123',
+      title: 'Half-Life 2',
+      filename: 'hl2.zip',
+      status: 'downloading',
+      mediaItemId: 'game-hl2',
+      mediaType: 'game',
+    })
+  })
+
+  it('resolves user elements with data-context-type="user"', () => {
+    const userEl = document.createElement('div')
+    userEl.setAttribute('data-context-type', 'user')
+    userEl.setAttribute('data-user-id', 'u-99')
+    userEl.setAttribute('data-user-username', 'diogo')
+    userEl.setAttribute('data-user-avatar', 'https://example.com/avatar.jpg')
+    document.body.appendChild(userEl)
+
+    const resolved = resolveContextMenuTarget(userEl, null)
+    expect(resolved).toEqual({
+      type: 'user',
+      userId: 'u-99',
+      username: 'diogo',
+      avatarUrl: 'https://example.com/avatar.jpg',
     })
   })
 

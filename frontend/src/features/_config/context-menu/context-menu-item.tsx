@@ -1,5 +1,5 @@
 import { forwardRef, type ForwardedRef } from 'react'
-import { ChevronRight } from 'lucide-react'
+import { ChevronRight, Check } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { ContextMenuItemDef } from './types'
 
@@ -17,6 +17,7 @@ export const ContextMenuItem = forwardRef((
     shortcut,
     disabled,
     destructive,
+    checked,
     onClick,
     hasSubMenu,
     onPointerEnter,
@@ -49,6 +50,7 @@ export const ContextMenuItem = forwardRef((
     >
       {Icon && <Icon className="h-4 w-4 shrink-0" />}
       <span className="flex-1 text-left truncate">{label ?? ''}</span>
+      {checked && <Check className="h-3.5 w-3.5 text-primary shrink-0" />}
       {shortcut && (
         <span className="shrink-0 text-[11px] text-muted-foreground/50">{shortcut}</span>
       )}

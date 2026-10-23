@@ -8,6 +8,7 @@ export interface ContextMenuItemDef {
   disabled?: boolean
   destructive?: boolean
   separator?: boolean
+  checked?: boolean
   onClick?: () => void
   subItems?: ContextMenuItemDef[]
 }
@@ -27,6 +28,10 @@ export type ContextMenuTargetType =
   | 'music'
   | 'episode'
   | 'season'
+  | 'genre'
+  | 'download'
+  | 'user'
+  | 'video'
   | 'person'
   | 'list'
   | 'track'
