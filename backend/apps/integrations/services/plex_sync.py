@@ -237,7 +237,11 @@ def _upsert_item(user, server, library, item, media_type, media_item_id, guids) 
             "title": str(item.get("title") or "Untitled"),
             "year": item.get("year"),
             "thumb_url": item.get("thumb"),
-            "viewed": int(item.get("viewCount") or 0) > 0,
+            "viewed": int(item.get("viewCount") or 0) > 0 or (
+                media_type == "show"
+                and int(item.get("leafCount") or 0) > 0
+                and int(item.get("viewedLeafCount") or 0) == int(item.get("leafCount") or 0)
+            ),
             "view_count": int(item.get("viewCount") or 0),
             "view_offset": item.get("viewOffset"),
             "duration": item.get("duration"),
@@ -251,14 +255,24 @@ def _upsert_item(user, server, library, item, media_type, media_item_id, guids) 
 def _apply_interactions(user, item, media_type, media_item_id) -> None:
     """Write the user interactions a library item implies (plex ``source``)."""
     view_count = int(item.get("viewCount") or 0)
+    leaf_count = int(item.get("leafCount") or 0)
+    viewed_leaf_count = int(item.get("viewedLeafCount") or 0)
     view_offset = item.get("viewOffset")
 
-    if media_type == "movie" and view_count > 0:
-        set_interaction(
-            user, media_item_id, "watched", {"source": "plex", "view_count": view_count}
-        )
+    is_show_watched = media_type == "show" and (
+        view_count > 0 or (leaf_count > 0 and viewed_leaf_count == leaf_count)
+    )
 
-    if view_offset:
+    if (media_type == "movie" and view_count > 0) or is_show_watched:
+        set_interaction(
+            user, media_item_id, "watched", {"source": "plex", "view_count": max(1, view_count)}
+        )
+        if media_type == "show":
+            from apps.media.services.episodes import set_show_watched
+
+            set_show_watched(user, media_item_id)
+
+    if view_offset or (media_type == "show" and not is_show_watched and viewed_leaf_count > 0):
         set_interaction(
             user,
             media_item_id,

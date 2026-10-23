@@ -27,6 +27,7 @@ from apps.integrations.views import (
     PlexSyncStreamView,
     PlexSyncView,
     PlexTimelineView,
+    PlexWatchedSyncView,
     PlexWatchlistSyncView,
     PlexWebhookView,
     SteamLibraryScanView,
@@ -71,6 +72,11 @@ urlpatterns = [
         "plex/watchlist/sync",
         PlexWatchlistSyncView.as_view(),
         name="plex-watchlist-sync",
+    ),
+    path(
+        "plex/watched/sync",
+        PlexWatchedSyncView.as_view(),
+        name="plex-watched-sync",
     ),
     # Inbound provider webhook (AllowAny; HMAC-verified).
     path("plex/webhook", PlexWebhookView.as_view(), name="plex-webhook"),

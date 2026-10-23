@@ -172,6 +172,23 @@ class PlexWatchlistSyncView(APIView):
         return Response(result)
 
 
+class PlexWatchedSyncView(APIView):
+    """POST /integrations/plex/watched/sync — sync watched movies, shows, and episodes from Plex."""
+
+    def post(self, request):
+        if not request.user.plex_id:
+            return Response({"detail": "No Plex account linked"}, status=400)
+        try:
+            result = integrations_services.sync_plex_watched(request.user)
+        except Exception:
+            logger.exception("plex watched sync failed unexpectedly")
+            return Response(
+                {"detail": "Failed to sync Plex watched media. Please try again."},
+                status=500,
+            )
+        return Response(result)
+
+
 def _server_row(server) -> dict:
     return {
         "id": server.id,

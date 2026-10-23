@@ -23,6 +23,7 @@ from apps.integrations.views.plex import (
     PlexSessionsView,
     PlexStreamView,
     PlexTimelineView,
+    PlexWatchedSyncView,
     PlexWatchlistSyncView,
 )
 from apps.integrations.views.plex_storage import (
@@ -63,6 +64,7 @@ __all__ = [
     "PlexTimelineView",
     "PlexSyncStreamView",
     "PlexSyncView",
+    "PlexWatchedSyncView",
     "PlexWatchlistSyncView",
     "PlexWebhookView",
     "EpicLibraryScanView",

@@ -35,6 +35,7 @@ import {
 import { EpicCodeModal } from '../components/organisms/epic-code-modal'
 import { GOGCodeModal } from '../components/organisms/gog-code-modal'
 import { PlexStorageOptimizerModal } from '@/features/integrations/plex-storage'
+import { syncPlexWatched } from '@/features/integrations/plex-sync/utils/plex-sync'
 import { SectionHeader } from '../components/molecules/settings-section-header'
 import { SettingsCard } from '../components/molecules/settings-card'
 import { SettingsLockedState } from '../components/molecules/settings-locked-state'
@@ -217,6 +218,13 @@ export const SettingsIntegrationsPage = () => {
     total: number
     matched: number
     seeded: number
+  } | null>(null)
+  const [plexWatchedSyncing, setPlexWatchedSyncing] = useState(false)
+  const [plexWatchedSyncResult, setPlexWatchedSyncResult] = useState<{
+    total: number
+    matched: number
+    seeded: number
+    episodes: number
   } | null>(null)
   const [steamConnected, setSteamConnected] = useState(Boolean(user?.steamId))
   const [steamId, setSteamId] = useState<string | null>(user?.steamId ?? null)
@@ -698,6 +706,7 @@ export const SettingsIntegrationsPage = () => {
       setPlexLibraryErrors({})
       setPlexSyncResult(null)
       setPlexWatchlistSyncResult(null)
+      setPlexWatchedSyncResult(null)
       setPlexMessage('Plex account unlinked.')
     } catch (err) {
       setPlexError(extractIntegrationMessage(err))
@@ -1072,6 +1081,25 @@ export const SettingsIntegrationsPage = () => {
       setPlexError(extractIntegrationMessage(err))
     } finally {
       setPlexWatchlistSyncing(false)
+    }
+  }
+
+  const handlePlexWatchedSync = async () => {
+    if (plexWatchedSyncing || plexWatchlistSyncing || plexSyncing || syncingLibraryIds.size > 0 || discoveringPlex) return
+    setPlexWatchedSyncing(true)
+    setPlexError('')
+    setPlexMessage('')
+    setPlexWatchedSyncResult(null)
+    try {
+      const data = await syncPlexWatched()
+      setPlexWatchedSyncResult(data)
+      const epText = data.episodes > 0 ? ` and ${data.episodes} episodes` : ''
+      setPlexMessage(`Matched ${data.matched} watched items${epText} out of ${data.total} total items. Seeded ${data.seeded} items.`)
+      void queryClient.invalidateQueries({ queryKey: libraryKeys.all() })
+    } catch (err) {
+      setPlexError(extractIntegrationMessage(err))
+    } finally {
+      setPlexWatchedSyncing(false)
     }
   }
 
@@ -1755,6 +1783,18 @@ export const SettingsIntegrationsPage = () => {
             onPress={handlePlexWatchlistSync}
             loading={plexWatchlistSyncing}
             disabled={plexWatchlistSyncing || plexSyncing || syncingLibraryIds.size > 0 || discoveringPlex}
+            muted
+          />
+
+          <IntegrationAction
+            label="Watched Media Sync"
+            description="Sync watched movies, shows, and episodes from Plex"
+            result={plexWatchedSyncResult ? `${plexWatchedSyncResult.matched} matches, ${plexWatchedSyncResult.episodes ?? 0} episodes` : null}
+            buttonLabel={plexWatchedSyncing ? 'Syncing...' : plexWatchedSyncResult ? 'Re-sync' : 'Sync Watched'}
+            buttonIcon={RefreshCw}
+            onPress={handlePlexWatchedSync}
+            loading={plexWatchedSyncing}
+            disabled={plexWatchedSyncing || plexWatchlistSyncing || plexSyncing || syncingLibraryIds.size > 0 || discoveringPlex}
             muted
           />
 

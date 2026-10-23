@@ -24,6 +24,7 @@ from apps.integrations.services.plex import (
     report_plex_timeline,
     resolve_stream_url_for_server_with_base,
 )
+from apps.integrations.services.plex_watched import sync_plex_watched
 from apps.integrations.services.plex_watchlist import sync_plex_watchlist
 from apps.integrations.services.steam import scan_steam_library, scan_steam_wishlist
 from apps.integrations.services.steam_igdb import resolve_unmatched_steam_games
@@ -66,6 +67,7 @@ __all__ = [
     "scan_gog_library",
     "scan_steam_library",
     "scan_steam_wishlist",
+    "sync_plex_watched",
     "sync_plex_watchlist",
     "sync_tmdb_ratings",
 ]
