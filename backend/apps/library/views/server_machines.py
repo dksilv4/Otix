@@ -200,19 +200,21 @@ class UserServerMachineDetectDrivesView(APIView):
             )
 
         try:
-            node = UserNode.objects.get(id=node_id, user=user)
+            if str(node_id) == "-1":
+                node = UserNode.objects.filter(user=user, is_local_desktop=True).first()
+                if not node:
+                    node = UserNode(user=user, name="This PC", local_url="http://127.0.0.1:8090", is_local=True)
+            else:
+                node = UserNode.objects.get(id=node_id, user=user)
         except UserNode.DoesNotExist:
             return Response(
                 {"error": "Node not found or does not belong to user."},
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        target_url = node.primary_url.rstrip("/")
-        if not target_url:
-            return Response(
-                {"error": "Node does not have a reachable URL configured."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+        target_url = (node.primary_url or node.local_url or "").rstrip("/")
+        if not target_url or target_url.startswith("otix://"):
+            target_url = "http://127.0.0.1:8090"
 
         headers: dict[str, str] = {}
         if node.auth_token:

@@ -98,6 +98,40 @@ class ServerMachinesTestCase(APITestCase):
         self.assertEqual(patch_res.data["name"], "Tower NAS (Primary)")
         self.assertEqual(patch_res.data["os_version"], "6.12.10")
 
+    def test_child_node_inherits_home_from_parent_server_machine(self):
+        orphan_node = UserNode.objects.create(
+            user=self.user,
+            name="Orphan Node",
+            local_url="http://192.168.1.199:8090",
+            auth_token="token-orphan",
+            home=None,
+        )
+        self.assertIsNone(orphan_node.home_id)
+        self.assertIsNone(orphan_node.effective_home)
+
+        # Create server machine with home and attach orphan_node as hosted_node
+        res = self.client.post(
+            "/api/v1/library/server-machines",
+            {
+                "name": "Rack Server",
+                "home_id": self.home.id,
+                "hosted_node_id": orphan_node.id,
+            },
+            format="json",
+        )
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+        orphan_node.refresh_from_db()
+        # Direct foreign key remains None (not directly linked to home node)
+        self.assertIsNone(orphan_node.home_id)
+        # But inherits home dynamically from parent server machine
+        self.assertEqual(orphan_node.effective_home, self.home)
+
+        # Verify serializer output returns inherited home
+        node_res = self.client.get("/api/v1/library/servers")
+        matching = next(n for n in node_res.data if n["id"] == orphan_node.id)
+        self.assertEqual(matching["home_id"], self.home.id)
+        self.assertEqual(matching["home_name"], self.home.name)
+
     @mock.patch("apps.library.views.server_machines.httpx.Client")
     def test_detect_drives_from_node(self, mock_client_cls):
         mock_client = mock.MagicMock()

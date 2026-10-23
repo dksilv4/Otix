@@ -5,6 +5,7 @@ import type {
   FriendUser,
   GameServerInvite,
   GameServerShare,
+  GameServerQueryResult,
   UpdateGameServerPayload,
   VerifyServerPayload,
   VerifyServerResult,
@@ -46,10 +47,12 @@ export const gameServersApi = {
   },
 
   query: async (
-    serverId: number
+    serverId: number,
+    clientResult?: Partial<GameServerQueryResult> | null
   ): Promise<{ queryResult: Record<string, unknown> | null; server: DedicatedGameServer }> => {
     const { data } = await apiClient.post<{ queryResult: Record<string, unknown> | null; server: DedicatedGameServer }>(
-      `/game-servers/${serverId}/query/`
+      `/game-servers/${serverId}/query/`,
+      clientResult ? { clientResult } : undefined
     )
     return data
   },

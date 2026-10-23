@@ -32,7 +32,7 @@ def contact_urls(stored_url: str) -> list[str]:
     probes the published node.
     """
     base = (stored_url or "").rstrip("/")
-    if not base:
+    if not base or base.startswith("otix://"):
         return []
     parsed = urlparse(base)
     host = (parsed.hostname or "").lower()
@@ -584,55 +584,105 @@ def unclaim_node(token: str = "", urls: list[str] | None = None, user=None) -> i
 
 
 def probe_node_reachability(server: UserGameServer) -> dict:
-    """Plex-style remote connectivity probe: test if the node is accessible from WAN."""
-
-    probe_target = (server.remote_url or "").strip().rstrip("/")
-    if not probe_target:
+    """Test remote and local network connectivity to an Otix node."""
+    if getattr(server, "is_local_desktop", False):
+        cutoff = timezone.now() - timedelta(seconds=90)
+        is_online = bool(server.is_online and server.last_seen_at and server.last_seen_at >= cutoff)
+        if server.is_online != is_online:
+            server.is_online = is_online
+            server.save(update_fields=["is_online", "updated_at"])
         return {
-            "reachable": False,
+            "reachable": is_online,
             "remote_accessible": False,
-            "status": "unreachable",
-            "latency_ms": None,
-            "error": "No remote WAN URL configured",
-            "message": "Node is running locally. To access it away from home, set up Port Forwarding (8090 TCP) or enter a Remote URL.",
-            "suggestion": "Set up Port Forwarding on your router for Port 8090 TCP, or use a Cloudflare Tunnel / Tailscale.",
+            "local_accessible": is_online,
+            "status": "online" if is_online else "offline",
+            "latency_ms": 1 if is_online else None,
+            "tested_url": server.local_url or "otix://desktop",
+            "message": "Local desktop node is active." if is_online else "Local desktop node is inactive.",
         }
-
-    start_t = time.perf_counter()
     headers = _auth_headers(server)
-    try:
-        with httpx.Client(timeout=4.0) as client:
-            resp = client.get(f"{probe_target}/api/v1/ping", headers=headers)
-            latency_ms = int((time.perf_counter() - start_t) * 1000)
-            if resp.status_code == 200:
-                return {
-                    "reachable": True,
-                    "remote_accessible": True,
-                    "status": "online",
-                    "latency_ms": latency_ms,
-                    "remote_url": probe_target,
-                    "tested_url": probe_target,
-                    "message": f"Accessible from the internet ({latency_ms}ms)",
-                }
-            return {
-                "reachable": False,
-                "remote_accessible": False,
-                "status": "unreachable",
-                "latency_ms": latency_ms,
-                "error": f"HTTP {resp.status_code}",
-                "message": f"Remote port returned HTTP {resp.status_code}. Ensure port 8090 is forwarding to your node.",
-                "suggestion": "Remote port returned an error. Ensure port 8090 is forwarding to your node.",
-            }
-    except Exception as exc:
-        return {
-            "reachable": False,
-            "remote_accessible": False,
-            "status": "unreachable",
-            "latency_ms": None,
-            "error": str(exc),
-            "message": "Could not reach node via WAN IP. Check router port forwarding (8090).",
-            "suggestion": "Cannot reach node from outside the network. Ensure port 8090 TCP is forwarded on your router to your node's LAN IP.",
-        }
+
+    # 1. Test remote WAN URL first if configured
+    probe_target = (server.remote_url or "").strip().rstrip("/")
+    if probe_target:
+        start_t = time.perf_counter()
+        try:
+            with httpx.Client(timeout=4.0) as client:
+                resp = client.get(f"{probe_target}/api/v1/ping", headers=headers)
+                latency_ms = int((time.perf_counter() - start_t) * 1000)
+                if resp.status_code == 200:
+                    server.is_online = True
+                    server.last_seen_at = timezone.now()
+                    server.save(update_fields=["is_online", "last_seen_at", "updated_at"])
+                    return {
+                        "reachable": True,
+                        "remote_accessible": True,
+                        "local_accessible": True,
+                        "status": "online",
+                        "latency_ms": latency_ms,
+                        "remote_url": probe_target,
+                        "tested_url": probe_target,
+                        "message": f"Accessible from the internet ({latency_ms}ms)",
+                    }
+        except Exception:
+            pass
+
+    # 2. Test primary_url and local_url if remote access was unreachable or not configured
+    local_targets: list[str] = []
+    if server.primary_url and server.primary_url != probe_target:
+        local_targets.extend(contact_urls(server.primary_url))
+    if server.local_url and server.local_url != probe_target:
+        local_targets.extend(contact_urls(server.local_url))
+
+    seen: set[str] = set()
+    deduped_local: list[str] = []
+    for t in local_targets:
+        if t not in seen:
+            seen.add(t)
+            deduped_local.append(t)
+
+    for target in deduped_local:
+        start_t = time.perf_counter()
+        try:
+            with httpx.Client(timeout=3.0) as client:
+                resp = client.get(f"{target.rstrip('/')}/api/v1/ping", headers=headers)
+                if resp.status_code != 200:
+                    resp = client.get(f"{target.rstrip('/')}/api/v1/status", headers=headers)
+                latency_ms = int((time.perf_counter() - start_t) * 1000)
+                if resp.status_code == 200:
+                    server.is_online = True
+                    server.last_seen_at = timezone.now()
+                    server.save(update_fields=["is_online", "last_seen_at", "updated_at"])
+                    return {
+                        "reachable": True,
+                        "remote_accessible": False,
+                        "local_accessible": True,
+                        "status": "online",
+                        "latency_ms": latency_ms,
+                        "tested_url": target,
+                        "message": f"Accessible locally on LAN ({latency_ms}ms)",
+                        "suggestion": (
+                            "Node is reachable on your local network. Configure a Remote URL or port forwarding (8090) if you wish to access it away from home."
+                            if not probe_target
+                            else "Node is reachable locally, but unreachable via WAN IP. Check router port forwarding (8090)."
+                        ),
+                    }
+        except Exception:
+            continue
+
+    # 3. Not reachable through any target
+    server.is_online = False
+    server.save(update_fields=["is_online", "updated_at"])
+    return {
+        "reachable": False,
+        "remote_accessible": False,
+        "local_accessible": False,
+        "status": "unreachable",
+        "latency_ms": None,
+        "error": "Node unreachable",
+        "message": "Node is offline or unreachable. Check that the Otix Node daemon is running and network is connected.",
+        "suggestion": "Check that the Otix daemon is started on your server and port 8090 is accessible.",
+    }
 
 
 def _normalized_url_keys(local_url: str | None, remote_url: str | None) -> set[str]:
@@ -1383,12 +1433,24 @@ def desktop_get_settings(
     server: UserGameServer, params: dict | None = None
 ) -> tuple[int, dict | list]:
     cached = get_cached_node_config(server.id, "desktop_settings")
-    if not server.is_online or server.is_local_desktop or not server.primary_url:
+    target_url = server.primary_url or server.local_url or ""
+    if not server.is_online or not target_url or target_url.startswith("otix://"):
         return 200, cached if cached is not None else {}
     status_code, data = usenet_proxy_request(server, "GET", "/api/v1/desktop/settings", params=params, timeout=10.0)
-    if status_code < 400:
+    if status_code < 400 and isinstance(data, dict):
+        if not data.get("hardware"):
+            hw_code, hw_data = usenet_proxy_request(server, "GET", "/api/v1/hardware", timeout=6.0)
+            if hw_code < 400 and isinstance(hw_data, dict):
+                data["hardware"] = hw_data
         set_cached_node_config(server.id, "desktop_settings", data)
         return status_code, data
+    # Fallback to direct hardware probe if desktop/settings failed
+    hw_code, hw_data = usenet_proxy_request(server, "GET", "/api/v1/hardware", timeout=6.0)
+    if hw_code < 400 and isinstance(hw_data, dict):
+        fallback_data = dict(cached) if isinstance(cached, dict) else {}
+        fallback_data["hardware"] = hw_data
+        set_cached_node_config(server.id, "desktop_settings", fallback_data)
+        return 200, fallback_data
     if cached is not None:
         return 200, cached
     return 200, {}
@@ -1396,7 +1458,8 @@ def desktop_get_settings(
 
 def node_list_libraries(server: UserGameServer) -> tuple[int, dict | list]:
     cached = get_cached_node_config(server.id, "libraries")
-    if not server.is_online or server.is_local_desktop or not server.primary_url:
+    target_url = server.primary_url or server.local_url or ""
+    if not server.is_online or not target_url or target_url.startswith("otix://"):
         return 200, cached if cached is not None else []
     status_code, data = usenet_proxy_request(server, "GET", "/api/v1/libraries", timeout=8.0)
     if status_code < 400:
@@ -1409,7 +1472,8 @@ def node_list_libraries(server: UserGameServer) -> tuple[int, dict | list]:
 
 def node_replace_libraries(server: UserGameServer, payload: dict) -> tuple[int, dict | list]:
     set_cached_node_config(server.id, "libraries", payload)
-    if not server.is_online or server.is_local_desktop or not server.primary_url:
+    target_url = server.primary_url or server.local_url or ""
+    if not server.is_online or not target_url or target_url.startswith("otix://"):
         queue_node_update(server.id, "libraries", payload)
         return 200, {"status": "queued", "message": "Libraries saved and queued for sync", "queued": True}
     status_code, data = usenet_proxy_request(server, "PUT", "/api/v1/libraries", json=payload, timeout=20.0)
@@ -1421,7 +1485,8 @@ def node_replace_libraries(server: UserGameServer, payload: dict) -> tuple[int, 
 
 def node_get_organize(server: UserGameServer) -> tuple[int, dict | list]:
     cached = get_cached_node_config(server.id, "organize")
-    if not server.is_online or server.is_local_desktop or not server.primary_url:
+    target_url = server.primary_url or server.local_url or ""
+    if not server.is_online or not target_url or target_url.startswith("otix://"):
         return 200, cached if cached is not None else {"enabled": False, "rules": []}
     status_code, data = usenet_proxy_request(server, "GET", "/api/v1/organize", timeout=6.0)
     if status_code < 400:
@@ -1434,7 +1499,8 @@ def node_get_organize(server: UserGameServer) -> tuple[int, dict | list]:
 
 def node_save_organize(server: UserGameServer, payload: dict) -> tuple[int, dict | list]:
     set_cached_node_config(server.id, "organize", payload)
-    if not server.is_online or server.is_local_desktop or not server.primary_url:
+    target_url = server.primary_url or server.local_url or ""
+    if not server.is_online or not target_url or target_url.startswith("otix://"):
         queue_node_update(server.id, "organize", payload)
         return 200, {"status": "queued", "message": "Organize settings saved and queued for sync", "queued": True}
     status_code, data = usenet_proxy_request(server, "POST", "/api/v1/organize", json=payload, timeout=10.0)
@@ -1445,16 +1511,21 @@ def node_save_organize(server: UserGameServer, payload: dict) -> tuple[int, dict
 
 
 def node_preview_organize(server: UserGameServer, payload: dict) -> tuple[int, dict | list]:
+    if getattr(server, "is_local_desktop", False) or not server.primary_url or server.primary_url.startswith("otix://"):
+        return 400, {"error": "Local desktop client node does not support server-side organization preview."}
     return usenet_proxy_request(server, "POST", "/api/v1/organize/preview", json=payload, timeout=15.0)
 
 
 def node_execute_organize(server: UserGameServer, payload: dict) -> tuple[int, dict | list]:
+    if getattr(server, "is_local_desktop", False) or not server.primary_url or server.primary_url.startswith("otix://"):
+        return 400, {"error": "Local desktop client node does not support server-side organization execution."}
     return usenet_proxy_request(server, "POST", "/api/v1/organize/execute", json=payload, timeout=30.0)
 
 
 def desktop_save_settings(server: UserGameServer, payload: dict) -> tuple[int, dict | list]:
     set_cached_node_config(server.id, "desktop_settings", payload)
-    if not server.is_online or server.is_local_desktop or not server.primary_url:
+    target_url = server.primary_url or server.local_url or ""
+    if not server.is_online or not target_url or target_url.startswith("otix://"):
         queue_node_update(server.id, "desktop_settings", payload)
         return 200, {"status": "queued", "message": "Desktop settings saved and queued for sync", "queued": True}
     status_code, data = usenet_proxy_request(

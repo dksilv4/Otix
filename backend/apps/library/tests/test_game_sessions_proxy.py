@@ -458,6 +458,36 @@ class GameSessionsProxyApiTests(TestCase):
         self.assertEqual(get_data[0]["game_id"], "steam_730")
         self.assertTrue(get_data[0]["is_private"])
 
+    def test_post_saves_game_session_with_numeric_millisecond_timestamps(self):
+        self.client.force_authenticate(user=self.user)
+        # Millisecond timestamp like JavaScript Date.now() / Electron
+        start_ms = 1792638267983
+        end_ms = 1792641939535
+        payload = {
+            "sessions": [
+                {
+                    "game_id": "epic_fn_0b41f0192f7f4f2691684581aedc0778",
+                    "game_title": "Fortnite",
+                    "process_name": "Fortnite",
+                    "start_time": start_ms,
+                    "end_time": end_ms,
+                    "duration_seconds": 3671,
+                }
+            ]
+        }
+        res = self.client.post("/api/v1/library/game-sessions", payload, format="json")
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertEqual(len(data), 1)
+        self.assertEqual(data[0]["game_title"], "Fortnite")
+
+        db_session = UserGameSession.objects.get(
+            user=self.user, game_id="epic_fn_0b41f0192f7f4f2691684581aedc0778"
+        )
+        self.assertEqual(db_session.duration_seconds, 3671)
+        self.assertIsNotNone(db_session.start_time)
+        self.assertIsNotNone(db_session.end_time)
+
     def test_opt_out_game_sessions_in_settings_does_not_save_to_db(self):
         self.client.force_authenticate(user=self.user)
         # Opt out via PATCH /auth/me

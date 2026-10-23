@@ -51,6 +51,14 @@ class UserNode(TimestampedModel):
             return self.local_url or self.remote_url or ""
         return self.remote_url or self.local_url or ""
 
+    @property
+    def effective_home(self):
+        """Return the directly assigned home or inherit from parent hosting server machine."""
+        if self.home_id:
+            return self.home
+        parent = self.hosted_server_machines.filter(home__isnull=False).select_related("home").first()
+        return parent.home if parent else None
+
 
 # Backward compatibility alias
 UserGameServer = UserNode

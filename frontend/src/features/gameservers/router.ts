@@ -21,7 +21,8 @@ export function createGameServersRoutes(rootRoute: AnyRoute) {
     path: '/servers/join',
     beforeLoad: () => {
       throw redirect({
-        to: '/settings/game-servers',
+        to: '/settings/nodes',
+        hash: 'game-servers',
       })
     },
   })
@@ -31,7 +32,8 @@ export function createGameServersRoutes(rootRoute: AnyRoute) {
     path: '/servers',
     beforeLoad: () => {
       throw redirect({
-        to: '/settings/game-servers',
+        to: '/settings/nodes',
+        hash: 'game-servers',
       })
     },
   })

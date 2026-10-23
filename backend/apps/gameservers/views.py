@@ -79,7 +79,7 @@ class GameServerListCreateView(APIView):
         if server_type:
             qs = qs.filter(server_type=server_type)
 
-        qs = qs.select_related("owner", "media_item").prefetch_related("shares", "invites")
+        qs = qs.select_related("owner", "media_item", "server_machine").prefetch_related("shares", "invites")
         serializer = DedicatedGameServerSerializer(qs, many=True, context={"request": request})
         return Response(serializer.data)
 
@@ -171,7 +171,54 @@ class GameServerQueryView(APIView):
 
     def post(self, request: Request, server_id: int) -> Response:
         server = _get_accessible_server(server_id, request.user)
-        result = query_game_server(server)
+        client_result = request.data.get("client_result") if isinstance(request.data, dict) else None
+        if client_result and isinstance(client_result, dict):
+            server.status = client_result.get("status", "offline")
+            if server.status == "online":
+                if "current_players" in client_result and client_result["current_players"] is not None:
+                    try:
+                        server.current_players = int(client_result["current_players"])
+                    except (ValueError, TypeError):
+                        pass
+                if "max_players" in client_result and client_result["max_players"] is not None:
+                    try:
+                        server.max_players = int(client_result["max_players"])
+                    except (ValueError, TypeError):
+                        pass
+                if "player_list" in client_result and isinstance(client_result["player_list"], list):
+                    server.player_list = [str(p) for p in client_result["player_list"] if p]
+                if "current_map" in client_result and client_result["current_map"]:
+                    server.current_map = str(client_result["current_map"])[:100]
+                if "version" in client_result and client_result["version"]:
+                    server.version = str(client_result["version"])[:50]
+                if "ping_ms" in client_result and client_result["ping_ms"] is not None:
+                    try:
+                        server.ping_ms = int(client_result["ping_ms"])
+                    except (ValueError, TypeError):
+                        pass
+            else:
+                server.ping_ms = None
+
+            from django.utils import timezone
+
+            server.last_queried_at = timezone.now()
+            server.save(
+                update_fields=[
+                    "status",
+                    "current_players",
+                    "max_players",
+                    "player_list",
+                    "current_map",
+                    "version",
+                    "ping_ms",
+                    "last_queried_at",
+                    "updated_at",
+                ]
+            )
+            result = client_result
+        else:
+            result = query_game_server(server)
+
         out = DedicatedGameServerSerializer(server, context={"request": request})
         return Response(
             {

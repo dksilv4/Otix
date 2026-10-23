@@ -77,6 +77,40 @@ class DedicatedGameServerTests(TestCase):
         self.assertEqual(list_resp.status_code, status.HTTP_200_OK)
         self.assertEqual(len(list_resp.data), 2)
 
+    def test_create_and_update_with_server_machine(self):
+        from apps.library.models.user_server_machine import UserServerMachine
+
+        machine = UserServerMachine.objects.create(
+            user=self.alice,
+            name="Homelab TrueNAS",
+            host="192.168.1.50",
+            os="truenas",
+        )
+        resp = self.client.post(
+            "/api/v1/game-servers",
+            {
+                "name": "Minecraft Paper",
+                "game_title": "Minecraft",
+                "server_type": "minecraft",
+                "host": "192.168.1.50",
+                "port": 25565,
+                "server_machine_id": machine.id,
+            },
+            format="json",
+        )
+        self.assertEqual(resp.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(resp.data["server_machine_id"], machine.id)
+        self.assertEqual(resp.data["server_machine_name"], "Homelab TrueNAS")
+
+        server_id = resp.data["id"]
+        patch_resp = self.client.patch(
+            f"/api/v1/game-servers/{server_id}",
+            {"server_machine_id": None},
+            format="json",
+        )
+        self.assertEqual(patch_resp.status_code, status.HTTP_200_OK)
+        self.assertIsNone(patch_resp.data["server_machine_id"])
+
     def test_by_game_lookup(self):
         server = DedicatedGameServer.objects.create(
             owner=self.alice,
@@ -203,6 +237,42 @@ class DedicatedGameServerTests(TestCase):
         server.refresh_from_db()
         self.assertEqual(server.status, "online")
         self.assertEqual(server.current_players, 5)
+
+    def test_live_query_with_client_result(self):
+        server = DedicatedGameServer.objects.create(
+            owner=self.alice,
+            name="Alice Local Palworld",
+            server_type="steam_source",
+            host="192.168.1.100",
+            port=8211,
+            status="offline",
+        )
+
+        resp = self.client.post(
+            f"/api/v1/game-servers/{server.id}/query",
+            {
+                "client_result": {
+                    "status": "online",
+                    "ping_ms": 12,
+                    "current_players": 4,
+                    "max_players": 32,
+                    "player_list": ["Player1"],
+                    "current_map": "Palworld Island",
+                    "version": "v0.2.1",
+                }
+            },
+            format="json",
+        )
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.assertEqual(resp.data["server"]["status"], "online")
+        self.assertEqual(resp.data["server"]["ping_ms"], 12)
+        self.assertEqual(resp.data["server"]["current_players"], 4)
+        self.assertEqual(resp.data["server"]["current_map"], "Palworld Island")
+
+        server.refresh_from_db()
+        self.assertEqual(server.status, "online")
+        self.assertEqual(server.ping_ms, 12)
+        self.assertEqual(server.current_players, 4)
 
     @mock.patch("apps.gameservers.services.query.query_minecraft")
     def test_verify_connection(self, mock_query):

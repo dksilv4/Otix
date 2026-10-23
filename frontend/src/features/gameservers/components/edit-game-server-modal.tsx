@@ -16,6 +16,7 @@ import {
   AlertTriangle,
   Eye,
   EyeOff,
+  HardDrive,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { DkDialog } from '@ui/molecules/dialog'
@@ -24,6 +25,7 @@ import { DkInput } from '@ui/atoms/input'
 import { useToast } from '@ui/molecules/toast'
 import { gameServersApi } from '../api/gameservers-api'
 import { useUpdateGameServer, useDeleteGameServer } from '../queries/gameservers-queries'
+import { useServerMachines } from '@/features/settings/hooks/use-server-machines'
 import { GameServersFeatureTags } from './game-servers-feature-tags'
 import { OtixGameLinker } from './otix-game-linker'
 import {
@@ -47,6 +49,9 @@ export const EditGameServerModal = ({
   const { toast } = useToast()
   const updateMutation = useUpdateGameServer()
   const deleteMutation = useDeleteGameServer()
+  const { data: serverMachines = [] } = useServerMachines()
+
+  const [serverMachineId, setServerMachineId] = useState<number | null>(server.serverMachineId ?? null)
 
   // Form state initialized from existing server
   const [mediaItemId, setMediaItemId] = useState<string | null>(server.mediaItemId ?? null)
@@ -205,6 +210,7 @@ export const EditGameServerModal = ({
           name: finalName,
           gameTitle: gameTitle.trim() || undefined,
           mediaItemId: mediaItemId || null,
+          serverMachineId: serverMachineId ?? null,
           serverType,
           host: host.trim(),
           port: Number(port),
@@ -397,6 +403,45 @@ export const EditGameServerModal = ({
             />
           </div>
         </div>
+
+        {/* Optional Host Machine Selection */}
+        {serverMachines.length > 0 && (
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                <HardDrive size={13} className="text-primary" /> Host Machine (Optional)
+              </label>
+              <span className="text-[11px] text-muted-foreground">Homelab topology</span>
+            </div>
+            <select
+              value={serverMachineId ?? ''}
+              onChange={(e) => {
+                const val = e.target.value ? Number(e.target.value) : null
+                setServerMachineId(val)
+                if (val) {
+                  const m = serverMachines.find((sm) => sm.id === val)
+                  if (m && (!host.trim() || host === 'localhost' || host === '127.0.0.1')) {
+                    const candidateIp = m.ipAddress || m.host || ''
+                    if (candidateIp) {
+                      setHost(candidateIp)
+                      resetVerification()
+                    }
+                  }
+                }
+              }}
+              className="w-full h-10 px-3 rounded-xl bg-[var(--dk-surface-ghost)] border border-white/[0.04] text-xs text-foreground focus:outline-none focus:border-primary cursor-pointer"
+            >
+              <option value="" className="bg-[var(--dk-surface-overlay)] text-foreground">
+                Standalone / External (No specific machine)
+              </option>
+              {serverMachines.map((m) => (
+                <option key={m.id} value={m.id} className="bg-[var(--dk-surface-overlay)] text-foreground">
+                  {m.name} {m.ipAddress || m.host ? `(${m.ipAddress || m.host})` : ''}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
 
         {/* Host & Port */}
         <div className="grid grid-cols-3 gap-3">

@@ -14,6 +14,7 @@ import {
   RotateCcw,
   Eye,
   EyeOff,
+  HardDrive,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { DkDialog } from '@ui/molecules/dialog'
@@ -22,6 +23,7 @@ import { DkInput } from '@ui/atoms/input'
 import { useToast } from '@ui/molecules/toast'
 import { gameServersApi } from '../api/gameservers-api'
 import { useCreateGameServer } from '../queries/gameservers-queries'
+import { useServerMachines } from '@/features/settings/hooks/use-server-machines'
 import { GameServersFeatureTags } from './game-servers-feature-tags'
 import { OtixGameLinker } from './otix-game-linker'
 import {
@@ -36,6 +38,7 @@ interface CreateGameServerModalProps {
   onClose: () => void
   initialMediaId?: string | null
   initialGameTitle?: string
+  initialServerMachineId?: number | null
 }
 
 export const CreateGameServerModal = ({
@@ -43,9 +46,13 @@ export const CreateGameServerModal = ({
   onClose,
   initialMediaId,
   initialGameTitle = '',
+  initialServerMachineId = null,
 }: CreateGameServerModalProps) => {
   const { toast } = useToast()
   const createMutation = useCreateGameServer()
+  const { data: serverMachines = [] } = useServerMachines()
+
+  const [serverMachineId, setServerMachineId] = useState<number | null>(initialServerMachineId ?? null)
 
   // Track whether linked to an Otix game
   const [mediaItemId, setMediaItemId] = useState<string | null>(initialMediaId ?? null)
@@ -64,7 +71,13 @@ export const CreateGameServerModal = ({
       : 'Dedicated Game Server'
 
   const [serverType, setServerType] = useState<GameServerType>(defaultPreset?.serverType ?? 'steam_source')
-  const [host, setHost] = useState('')
+
+  const initialHostFromMachine = initialServerMachineId
+    ? serverMachines.find((m) => m.id === initialServerMachineId)?.ipAddress ||
+      serverMachines.find((m) => m.id === initialServerMachineId)?.host ||
+      ''
+    : ''
+  const [host, setHost] = useState(initialHostFromMachine)
   const [port, setPort] = useState<number>(defaultPreset?.defaultPort ?? 27015)
   const [queryPort, setQueryPort] = useState<string>(
     defaultPreset?.defaultQueryPort != null ? String(defaultPreset.defaultQueryPort) : '',
@@ -212,6 +225,7 @@ export const CreateGameServerModal = ({
         name: finalName,
         gameTitle: gameTitle.trim() || initialGameTitle,
         mediaItemId: mediaItemId || null,
+        serverMachineId: serverMachineId ?? undefined,
         serverType,
         host: host.trim(),
         port: Number(port),
@@ -386,6 +400,45 @@ export const CreateGameServerModal = ({
             />
           </div>
         </div>
+
+        {/* Optional Host Machine Selection */}
+        {serverMachines.length > 0 && (
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                <HardDrive size={13} className="text-primary" /> Host Machine (Optional)
+              </label>
+              <span className="text-[11px] text-muted-foreground">Homelab topology</span>
+            </div>
+            <select
+              value={serverMachineId ?? ''}
+              onChange={(e) => {
+                const val = e.target.value ? Number(e.target.value) : null
+                setServerMachineId(val)
+                if (val) {
+                  const m = serverMachines.find((sm) => sm.id === val)
+                  if (m && (!host.trim() || host === 'localhost' || host === '127.0.0.1')) {
+                    const candidateIp = m.ipAddress || m.host || ''
+                    if (candidateIp) {
+                      setHost(candidateIp)
+                      resetVerification()
+                    }
+                  }
+                }
+              }}
+              className="w-full h-10 px-3 rounded-xl bg-[var(--dk-surface-ghost)] border border-white/[0.04] text-xs text-foreground focus:outline-none focus:border-primary cursor-pointer"
+            >
+              <option value="" className="bg-[var(--dk-surface-overlay)] text-foreground">
+                Standalone / External (No specific machine)
+              </option>
+              {serverMachines.map((m) => (
+                <option key={m.id} value={m.id} className="bg-[var(--dk-surface-overlay)] text-foreground">
+                  {m.name} {m.ipAddress || m.host ? `(${m.ipAddress || m.host})` : ''}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
 
         {/* Host & Port */}
         <div className="grid grid-cols-3 gap-3">

@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { Server, Plus, RefreshCw, Share2, Users, Wifi, Play, Globe, Pencil } from 'lucide-react'
 import { DkButton } from '@ui/atoms/button'
-import { useGameServersByGame, useQueryGameServer } from '../queries/gameservers-queries'
+import { useGameServersByGame } from '../queries/gameservers-queries'
+import { useGameServersRefresh } from '../hooks/use-game-servers-refresh'
 import { CreateGameServerModal } from './create-game-server-modal'
 import { EditGameServerModal } from './edit-game-server-modal'
 import { ShareGameServerModal } from './share-game-server-modal'
@@ -21,7 +22,7 @@ export const MediaGameServersSection = ({
   className = '',
 }: MediaGameServersSectionProps) => {
   const { data: servers = [] } = useGameServersByGame(mediaId)
-  const queryMutation = useQueryGameServer()
+  const { refreshingServerIds, refreshServer } = useGameServersRefresh(servers)
 
   const [createModalOpen, setCreateModalOpen] = useState(false)
   const [selectedShareServer, setSelectedShareServer] = useState<DedicatedGameServer | null>(null)
@@ -30,7 +31,7 @@ export const MediaGameServersSection = ({
 
   const handleRefresh = (serverId: number, e: React.MouseEvent) => {
     e.stopPropagation()
-    void queryMutation.mutateAsync(serverId)
+    void refreshServer(serverId)
   }
 
   // Hide section completely if no servers exist for this game/user
@@ -89,14 +90,14 @@ export const MediaGameServersSection = ({
                       <button
                         type="button"
                         onClick={(e) => handleRefresh(server.id, e)}
-                        title="Query live server status"
-                        disabled={queryMutation.isPending}
+                        title="Query live server status from your PC"
+                        disabled={refreshingServerIds.has(server.id)}
                         className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-hover)] transition-colors cursor-pointer"
                       >
                         <RefreshCw
                           size={13}
                           className={
-                            queryMutation.isPending && queryMutation.variables === server.id
+                            refreshingServerIds.has(server.id)
                               ? 'animate-spin text-primary'
                               : ''
                           }

@@ -492,7 +492,8 @@ export const JoinGameServerPage = () => {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <Link
-                  to="/settings/game-servers"
+                  to="/settings/nodes"
+                  hash="game-servers"
                   className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-hover)] text-xs font-medium text-foreground transition-colors border border-white/[0.04]"
                 >
                   <Server size={14} className="text-primary" />

@@ -2,7 +2,7 @@
 
 import logging
 import mimetypes
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -182,6 +182,17 @@ class GameServerListCreateView(APIView):
         if not user:
             return Response([])
         collapse_duplicate_game_servers(user)
+        # Browser sessions should never be nodes: prune any that were previously registered
+        UserGameServer.objects.filter(
+            user=user,
+            is_local_desktop=True,
+        ).filter(
+            Q(name__istartswith="Chrome on")
+            | Q(name__istartswith="Firefox on")
+            | Q(name__istartswith="Edge on")
+            | Q(name__istartswith="Safari on")
+            | Q(name__istartswith="Browser on")
+        ).delete()
         servers = list(UserGameServer.objects.filter(user=user))
         now = timezone.now()
         for server in servers:
@@ -231,14 +242,15 @@ class GameServerListCreateView(APIView):
         result = ping_server_sync(server)
         target_endpoint = server.primary_url or server.local_url or ""
         if not result.get("online"):
-            if created:
-                server.delete()
-            return Response(
-                {
-                    "detail": f"Could not connect to node at {target_endpoint} ({result.get('error') or 'unreachable'}). Ensure the node is online and reachable."
-                },
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            if not (server.is_local or getattr(server, "is_local_desktop", False)):
+                if created:
+                    server.delete()
+                return Response(
+                    {
+                        "detail": f"Could not connect to node at {target_endpoint} ({result.get('error') or 'unreachable'}). Ensure the node is online and reachable."
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
         server.refresh_from_db()
         payload = UserNodeSerializer(server).data
         payload["connect_error"] = None
@@ -286,6 +298,16 @@ class DesktopNodeHeartbeatView(APIView):
         total_files = data.get("total_files")
         storage_free_bytes = data.get("storage_free_bytes")
         storage_total_bytes = data.get("storage_total_bytes")
+
+        client_type = (data.get("client_type") or "").strip().lower()
+        if client_type == "browser" or any(
+            name.lower().startswith(prefix)
+            for prefix in ("chrome on", "firefox on", "edge on", "safari on", "browser on")
+        ):
+            return Response(
+                {"error": "Browser sessions cannot register as worker nodes."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         if not name:
             name = "This PC"
@@ -468,6 +490,13 @@ class GameServerScanCompleteView(APIView):
         if not servers:
             return Response({"status": "ignored", "reason": "server not registered"}, status=200)
 
+        files = payload.get("files")
+        if files and isinstance(files, list):
+            for server in servers:
+                node_service.set_cached_node_config(server.id, "files", files)
+                server.total_files = len(files)
+                server.save(update_fields=["total_files", "updated_at"])
+
         results = []
         for server in servers:
             status_code, sync_data = sync_otix_sidecars(
@@ -610,6 +639,18 @@ class GameServerProbeView(APIView):
     permission_classes = (permissions.IsAuthenticated,)
 
     def post(self, request: Request, server_id: int) -> Response:
+        if server_id == -1:
+            return Response(
+                {
+                    "reachable": True,
+                    "remote_accessible": False,
+                    "local_accessible": True,
+                    "status": "online",
+                    "latency_ms": 1,
+                    "tested_url": "otix://desktop",
+                    "message": "Local Desktop client node is active.",
+                }
+            )
         server = _get_server_or_404(request, server_id)
         result = probe_node_reachability(server)
         return Response(result)
@@ -755,6 +796,19 @@ class GameServerPingView(APIView):
     permission_classes = (permissions.IsAuthenticated,)
 
     def post(self, request: Request, server_id: int) -> Response:
+        if server_id == -1:
+            return Response(
+                {
+                    "online": True,
+                    "latency_ms": 1,
+                    "server": {
+                        "id": -1,
+                        "name": "Local Desktop Node",
+                        "is_online": True,
+                        "total_files": 0,
+                    },
+                }
+            )
         server = _get_server_or_404(request, server_id)
         result = ping_server_sync(server)
         server.refresh_from_db()
@@ -832,6 +886,7 @@ class GameServerFilesView(APIView):
                         resp = client.get(f"{target_url}/api/v1/files", headers=headers)
                     if resp.status_code == 200:
                         raw_files = resp.json()
+                        node_service.set_cached_node_config(s.id, "files", raw_files)
                         for f in raw_files:
                             library_name = f.get("library_name", "Default")
                             if share and not share.allow_all_libraries:
@@ -884,7 +939,54 @@ class GameServerFilesView(APIView):
                 except Exception as err:
                     last_error = str(err)
             if not fetched:
-                errors.append({"server_id": s.id, "error": last_error or "Unreachable"})
+                cached_files = node_service.get_cached_node_config(s.id, "files")
+                if cached_files and isinstance(cached_files, list):
+                    for f in cached_files:
+                        library_name = f.get("library_name", "Default")
+                        if share and not share.allow_all_libraries:
+                            if library_name not in (share.allowed_libraries or []):
+                                continue
+                        file_id = f.get("id")
+                        relative_path = f.get("relative_path") or ""
+                        filepath = f.get("filepath") or ""
+                        if not relative_path and filepath:
+                            parts = [
+                                part for part in Path(filepath).parts if part not in ("/", "\\")
+                            ]
+                            relative_path = (
+                                "/".join(parts[-2:]) if len(parts) >= 2 else Path(filepath).name
+                            )
+                        files_out.append(
+                            {
+                                "server_id": s.id,
+                                "server_name": s.name,
+                                "server_url": public_url,
+                                "file_id": file_id,
+                                "id": file_id,
+                                "filename": f.get("filename"),
+                                "filesize": f.get("filesize", 0),
+                                "extension": f.get("extension", ""),
+                                "format_category": f.get("format_category", "installer"),
+                                "game_title": f.get("game_title", ""),
+                                "relative_path": relative_path,
+                                "filepath": filepath,
+                                "library_name": library_name,
+                                "modified_at": f.get("modified_at"),
+                                "download_url": f"{public_url}/api/v1/files/{file_id}/download",
+                                "is_shared": is_shared,
+                                "shared_by": shared_by,
+                                "otix_media_id": f.get("otix_media_id"),
+                                "otix_title": f.get("otix_title"),
+                                "otix_slug": f.get("otix_slug"),
+                                "otix_confidence": f.get("otix_confidence"),
+                                "otix_images": f.get("otix_images"),
+                                "otix_path": f.get("otix_path"),
+                                "otix_overview": f.get("otix_overview"),
+                            }
+                        )
+                    fetched = True
+                else:
+                    errors.append({"server_id": s.id, "error": last_error or "Unreachable"})
 
         # Enrich files with catalog matches (updates resolve to the parent game)
         match_files_to_catalog(files_out)
@@ -1720,7 +1822,13 @@ class GameServerDesktopView(APIView):
     permission_classes = (permissions.IsAuthenticated,)
 
     def get(self, request: Request, server_id: int) -> Response:
-        server = _get_server_or_404(request, server_id)
+        if server_id == -1:
+            user = _resolve_user(request)
+            server = UserGameServer.objects.filter(user=user, is_local_desktop=True).first() if user else None
+            if not server:
+                return Response({})
+        else:
+            server = _get_server_or_404(request, server_id)
         params = {}
         if request.query_params.get("refresh"):
             params["refresh"] = request.query_params.get("refresh")
@@ -1728,7 +1836,13 @@ class GameServerDesktopView(APIView):
         return Response(data, status=status_code)
 
     def post(self, request: Request, server_id: int) -> Response:
-        server = _get_server_or_404(request, server_id)
+        if server_id == -1:
+            user = _resolve_user(request)
+            server = UserGameServer.objects.filter(user=user, is_local_desktop=True).first() if user else None
+            if not server:
+                return Response({"status": "ignored"}, status=status.HTTP_200_OK)
+        else:
+            server = _get_server_or_404(request, server_id)
         status_code, data = desktop_save_settings(server, request.data)
         return Response(data, status=status_code)
 
@@ -2265,21 +2379,21 @@ def _parse_session_timestamp(val: Any) -> datetime | None:
         return None
     if isinstance(val, datetime):
         if timezone.is_naive(val):
-            return timezone.make_aware(val, timezone.utc)
+            return timezone.make_aware(val, UTC)
         return val
     if isinstance(val, (int, float)):
         secs = val / 1000.0 if val > 1e11 else float(val)
-        return datetime.fromtimestamp(secs, tz=timezone.utc)
+        return datetime.fromtimestamp(secs, tz=UTC)
     if isinstance(val, str):
         val = val.strip()
         if val.isdigit() or (val.replace(".", "", 1).isdigit() and len(val) > 8):
             num = float(val)
             secs = num / 1000.0 if num > 1e11 else num
-            return datetime.fromtimestamp(secs, tz=timezone.utc)
+            return datetime.fromtimestamp(secs, tz=UTC)
         try:
             dt = datetime.fromisoformat(val.replace("Z", "+00:00"))
             if timezone.is_naive(dt):
-                return timezone.make_aware(dt, timezone.utc)
+                return timezone.make_aware(dt, UTC)
             return dt
         except Exception:
             return None

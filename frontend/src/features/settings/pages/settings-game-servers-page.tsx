@@ -25,8 +25,8 @@ import { SettingsLockedState } from '../components/molecules/settings-locked-sta
 import { useSettingsHashScroll } from '../hooks/use-settings-hash-scroll'
 import {
   useGameServers,
+  useGameServersRefresh,
   useDeleteGameServer,
-  useQueryGameServer,
   CreateGameServerModal,
   EditGameServerModal,
   ShareGameServerModal,
@@ -41,8 +41,8 @@ export const SettingsGameServersPage = () => {
   const { toast } = useToast()
 
   const { data: servers = [], isLoading } = useGameServers()
-  const queryMutation = useQueryGameServer()
   const deleteMutation = useDeleteGameServer()
+  const { isRefreshing, refreshingServerIds, refreshServer, refreshAll } = useGameServersRefresh(servers)
 
   const [search, setSearch] = useState('')
   const [createModalOpen, setCreateModalOpen] = useState(false)
@@ -66,7 +66,7 @@ export const SettingsGameServersPage = () => {
 
   const handleRefresh = (serverId: number, e: React.MouseEvent) => {
     e.stopPropagation()
-    void queryMutation.mutateAsync(serverId)
+    void refreshServer(serverId)
   }
 
   const handleDeleteConfirm = async () => {
@@ -119,16 +119,30 @@ export const SettingsGameServersPage = () => {
         description="Manage, monitor, and share dedicated multiplayer game servers for you and your friends."
         action={
           servers.length > 0 ? (
-            <DkButton
-              type="button"
-              variant="primary"
-              size="sm"
-              onClick={() => setCreateModalOpen(true)}
-              className="gap-1.5"
-            >
-              <Plus size={14} />
-              <span>Add Server</span>
-            </DkButton>
+            <div className="flex items-center gap-2">
+              <DkButton
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() => void refreshAll()}
+                disabled={isRefreshing}
+                className="gap-1.5"
+                title="Refresh all server statuses and ping from your PC"
+              >
+                <RefreshCw size={13} className={isRefreshing ? 'animate-spin text-primary' : ''} />
+                <span className="hidden sm:inline">Refresh</span>
+              </DkButton>
+              <DkButton
+                type="button"
+                variant="primary"
+                size="sm"
+                onClick={() => setCreateModalOpen(true)}
+                className="gap-1.5"
+              >
+                <Plus size={14} />
+                <span>Add Server</span>
+              </DkButton>
+            </div>
           ) : undefined
         }
       />
@@ -208,7 +222,7 @@ export const SettingsGameServersPage = () => {
                       <span
                         className={`w-2.5 h-2.5 rounded-full shrink-0 ${
                           isOnline
-                            ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]'
+                            ? 'bg-primary shadow-[0_0_8px_var(--primary)]'
                             : 'bg-destructive/80'
                         }`}
                         title={isOnline ? 'Online' : 'Offline'}
@@ -232,14 +246,14 @@ export const SettingsGameServersPage = () => {
                       <button
                         type="button"
                         onClick={(e) => handleRefresh(server.id, e)}
-                        title="Query live server status"
-                        disabled={queryMutation.isPending}
+                        title="Query live server status from your PC"
+                        disabled={refreshingServerIds.has(server.id)}
                         className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-hover)] transition-colors cursor-pointer"
                       >
                         <RefreshCw
                           size={13}
                           className={
-                            queryMutation.isPending && queryMutation.variables === server.id
+                            refreshingServerIds.has(server.id)
                               ? 'animate-spin text-primary'
                               : ''
                           }

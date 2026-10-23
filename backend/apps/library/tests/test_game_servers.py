@@ -955,4 +955,33 @@ class NonExistentNodeApiTests(TestCase):
         self.assertEqual(ping_res.status_code, 200)
         self.assertFalse(ping_res.json()["online"])  # offline
 
+    def test_browser_sessions_cannot_register_as_nodes_and_are_pruned(self):
+        # 1. Heartbeat with browser name or client_type=browser is rejected
+        res = self.client.post(
+            "/api/v1/library/nodes/desktop-heartbeat",
+            {"name": "Chrome on Windows", "device_id": "browser-tab-1"},
+            format="json",
+        )
+        self.assertEqual(res.status_code, 400)
+
+        res2 = self.client.post(
+            "/api/v1/library/nodes/desktop-heartbeat",
+            {"name": "My Device", "device_id": "browser-tab-2", "client_type": "browser"},
+            format="json",
+        )
+        self.assertEqual(res2.status_code, 400)
+
+        # 2. Existing browser session rows are pruned on list
+        UserGameServer.objects.create(
+            user=self.user,
+            name="Firefox on macOS",
+            local_url="otix://desktop/browser-tab-3",
+            is_local_desktop=True,
+            is_online=True,
+        )
+        list_res = self.client.get("/api/v1/library/servers")
+        self.assertEqual(list_res.status_code, 200)
+        names = [s["name"] for s in list_res.json()]
+        self.assertNotIn("Firefox on macOS", names)
+        self.assertFalse(UserGameServer.objects.filter(user=self.user, name="Firefox on macOS").exists())
 

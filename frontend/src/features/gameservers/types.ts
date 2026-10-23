@@ -9,6 +9,8 @@ export interface DedicatedGameServer {
   mediaItemId?: string | null
   mediaItemTitle?: string | null
   mediaItemPoster?: string | null
+  serverMachineId?: number | null
+  serverMachineName?: string | null
   serverType: GameServerType
   host: string
   port: number
@@ -63,6 +65,7 @@ export interface CreateGameServerPayload {
   name?: string
   gameTitle?: string
   mediaItemId?: string | null
+  serverMachineId?: number | null
   serverType: GameServerType
   host: string
   port: number
@@ -103,6 +106,10 @@ export interface VerifyServerResult {
   queryWarning?: string | null
 }
 
+export interface GameServerQueryResult extends VerifyServerResult {
+  playerList?: string[]
+}
+
 export interface GameServerPreset {
   id: string
   name: string
@@ -118,6 +125,3 @@ export interface GameServerPreset {
   forwardRange: string
   notes?: string
 }
-
-
-
