@@ -27,6 +27,8 @@ import type {
 import {
   buildNodeMapGraph,
   getNodeCardBorderAnchor,
+  getNodeCardWidth,
+  getNodeCardHeight,
   generateSmartNodeConnectionPath,
   SIDE_NORMALS,
   isCompatibleConnection,
@@ -479,8 +481,13 @@ export const NodesTopologyCanvas = ({
               const targetPos = positions[edge.targetId]
               if (!sourcePos || !targetPos) return null
 
-              const anchor1 = getNodeCardBorderAnchor(sourcePos, targetPos, true)
-              const anchor2 = getNodeCardBorderAnchor(targetPos, sourcePos, true)
+              const sourceWidth = getNodeCardWidth(edge.sourceType)
+              const sourceHeight = getNodeCardHeight(edge.sourceType)
+              const targetWidth = getNodeCardWidth(edge.targetType)
+              const targetHeight = getNodeCardHeight(edge.targetType)
+
+              const anchor1 = getNodeCardBorderAnchor(sourcePos, targetPos, true, sourceWidth, sourceHeight, targetWidth, targetHeight)
+              const anchor2 = getNodeCardBorderAnchor(targetPos, sourcePos, true, targetWidth, targetHeight, sourceWidth, sourceHeight)
 
               const { path: pathData, mid, p1, p2 } = generateSmartNodeConnectionPath(
                 anchor1.point,
@@ -508,13 +515,13 @@ export const NodesTopologyCanvas = ({
                     d={pathData}
                     fill="none"
                     stroke={
-                      edge.relation === 'hosted_link'
+                      edge.relation === 'hosted_link' || edge.relation === 'game_server_link'
                         ? 'var(--primary)'
                         : edge.relation === 'smb_link'
                           ? 'var(--primary)'
                           : 'rgba(255, 255, 255, 0.3)'
                     }
-                    strokeWidth={edge.relation === 'hosted_link' ? 2.5 : isHovered ? 2.5 : 1.5}
+                    strokeWidth={edge.relation === 'hosted_link' || edge.relation === 'game_server_link' ? 2.5 : isHovered ? 2.5 : 1.5}
                     strokeDasharray={edge.relation === 'smb_link' ? '6 4' : undefined}
                     opacity={isHovered ? 1 : 0.65}
                   />
@@ -525,7 +532,7 @@ export const NodesTopologyCanvas = ({
                     cy={p1.y}
                     r={2.5}
                     fill={
-                      edge.relation === 'hosted_link' || edge.relation === 'smb_link'
+                      edge.relation === 'hosted_link' || edge.relation === 'smb_link' || edge.relation === 'game_server_link'
                         ? 'var(--primary)'
                         : 'rgba(255, 255, 255, 0.5)'
                     }
@@ -535,7 +542,7 @@ export const NodesTopologyCanvas = ({
                     cy={p2.y}
                     r={2.5}
                     fill={
-                      edge.relation === 'hosted_link' || edge.relation === 'smb_link'
+                      edge.relation === 'hosted_link' || edge.relation === 'smb_link' || edge.relation === 'game_server_link'
                         ? 'var(--primary)'
                         : 'rgba(255, 255, 255, 0.5)'
                     }
@@ -588,7 +595,9 @@ export const NodesTopologyCanvas = ({
             {/* Dynamic line while user is dragging connection */}
             {connectingFrom && connectingMousePos && (() => {
               const sourcePos = positions[connectingFrom.id] || { x: 0, y: 0 }
-              const anchor1 = getNodeCardBorderAnchor(sourcePos, connectingMousePos, false)
+              const sourceWidth = getNodeCardWidth(connectingFrom.type)
+              const sourceHeight = getNodeCardHeight(connectingFrom.type)
+              const anchor1 = getNodeCardBorderAnchor(sourcePos, connectingMousePos, false, sourceWidth, sourceHeight)
               const dist = Math.hypot(connectingMousePos.x - anchor1.point.x, connectingMousePos.y - anchor1.point.y)
               const d = Math.min(Math.max(dist * 0.45, 30), 120)
               const n1 = SIDE_NORMALS[anchor1.side]
