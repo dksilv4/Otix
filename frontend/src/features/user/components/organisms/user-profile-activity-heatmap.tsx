@@ -13,6 +13,8 @@ interface UserProfileActivityHeatmapProps {
   onToggleVisibility?: () => void | Promise<void>
   onChangeVisibility?: (visibility: SectionVisibility) => void | Promise<void>
   isUpdatingVisibility?: boolean
+  onRemove?: () => void | Promise<void>
+  isRemoving?: boolean
 }
 
 export const UserProfileActivityHeatmap = ({
@@ -22,6 +24,8 @@ export const UserProfileActivityHeatmap = ({
   onToggleVisibility,
   onChangeVisibility,
   isUpdatingVisibility = false,
+  onRemove,
+  isRemoving = false,
 }: UserProfileActivityHeatmapProps) => {
   const query = useQuery(userQueries.userActivityHeatmap(username, 52))
   const data = query.data
@@ -60,6 +64,8 @@ export const UserProfileActivityHeatmap = ({
         onToggleVisibility={onToggleVisibility}
         onChangeVisibility={onChangeVisibility}
         isUpdatingVisibility={isUpdatingVisibility}
+        onRemove={onRemove}
+        isRemoving={isRemoving}
       />
 
       <div className="px-4 sm:px-6 lg:px-8">

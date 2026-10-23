@@ -29,6 +29,7 @@ import { UserSocialCounts } from '../components/molecules/user-social-counts'
 import { UserProfileSectionItem } from '../components/molecules/user-profile-section-item'
 import { AddSectionButton } from '../components/molecules/user-add-section-button'
 import { DEFAULT_SECTION_IDS } from '../utils/profile-sections'
+import { useProfileSections } from '../hooks/use-profile-sections'
 
 import { computeGamification, getLevelTier, pickGradient, formatMemberSince } from '@user/utils'
 import { XPProgressRing } from '@user/components/atoms/user-xp-progress-ring'
@@ -59,11 +60,16 @@ export const UserProfilePage = () => {
 
   const isOwner = currentUser?.username === profile?.username
   const activeSections = useMemo(() => {
-    if (Array.isArray(profile?.profileSections) && profile.profileSections.length > 0) {
+    if (Array.isArray(profile?.profileSections)) {
       return profile.profileSections
     }
     return isOwner ? DEFAULT_SECTION_IDS : []
   }, [profile?.profileSections, isOwner])
+
+  const { removeSection, addSection, removingSectionId } = useProfileSections({
+    username,
+    currentSections: activeSections,
+  })
 
   useEffect(() => {
     if (profile) {
@@ -490,10 +496,24 @@ export const UserProfilePage = () => {
               username={username}
               isOwner={isOwner}
               visibilityMap={profile.sectionVisibility}
+              onRemove={isOwner ? () => removeSection(sectionId) : undefined}
+              isRemoving={removingSectionId === sectionId}
             />
           ))}
         </div>
-      ) : !isOwner ? (
+      ) : isOwner ? (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-12 w-full">
+          <div className="py-12 flex flex-col items-center justify-center text-center rounded-2xl border border-[var(--dk-separator)] bg-[var(--dk-surface-base)]">
+            <Sparkles className="h-6 w-6 text-primary/70 mb-2" />
+            <p className="text-sm font-semibold text-foreground">
+              No sections on your profile yet
+            </p>
+            <p className="text-xs text-muted-foreground/60 max-w-sm mt-1">
+              Add sections below to showcase your favorites, gaming activity, stats, and more.
+            </p>
+          </div>
+        </div>
+      ) : (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-12 w-full">
           <div className="py-12 flex flex-col items-center justify-center text-center rounded-2xl border border-[var(--dk-separator)] bg-[var(--dk-surface-base)]">
             <Lock className="h-6 w-6 text-muted-foreground/40 mb-2" />
@@ -505,13 +525,15 @@ export const UserProfilePage = () => {
             </p>
           </div>
         </div>
-      ) : null}
+      )}
 
       {/* Add Section Button (Owner only) */}
       {isOwner && (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-12 w-full">
           <AddSectionButton
             currentSections={activeSections}
+            onRemoveSection={removeSection}
+            onAddSection={addSection}
             username={username}
           />
         </div>

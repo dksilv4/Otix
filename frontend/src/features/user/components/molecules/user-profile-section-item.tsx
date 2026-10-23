@@ -17,6 +17,8 @@ interface UserProfileSectionItemProps {
   username: string
   isOwner?: boolean
   visibilityMap?: Record<string, SectionVisibility> | null
+  onRemove?: () => void | Promise<void>
+  isRemoving?: boolean
 }
 
 export const UserProfileSectionItem = ({
@@ -24,6 +26,8 @@ export const UserProfileSectionItem = ({
   username,
   isOwner = false,
   visibilityMap,
+  onRemove,
+  isRemoving = false,
 }: UserProfileSectionItemProps) => {
   const { visibility, setVisibility, toggleVisibility, isUpdating } = useProfileSectionVisibility({
     sectionId,
@@ -41,6 +45,8 @@ export const UserProfileSectionItem = ({
           onToggleVisibility={toggleVisibility}
           onChangeVisibility={setVisibility}
           isUpdatingVisibility={isUpdating}
+          onRemove={onRemove}
+          isRemoving={isRemoving}
         />
       )
     case 'activity_heatmap':
@@ -52,6 +58,8 @@ export const UserProfileSectionItem = ({
           onToggleVisibility={toggleVisibility}
           onChangeVisibility={setVisibility}
           isUpdatingVisibility={isUpdating}
+          onRemove={onRemove}
+          isRemoving={isRemoving}
         />
       )
     case 'hardware_rig':
@@ -63,6 +71,8 @@ export const UserProfileSectionItem = ({
           onToggleVisibility={toggleVisibility}
           onChangeVisibility={setVisibility}
           isUpdatingVisibility={isUpdating}
+          onRemove={onRemove}
+          isRemoving={isRemoving}
         />
       )
     case 'game_sessions':
@@ -74,6 +84,8 @@ export const UserProfileSectionItem = ({
           onToggleVisibility={toggleVisibility}
           onChangeVisibility={setVisibility}
           isUpdatingVisibility={isUpdating}
+          onRemove={onRemove}
+          isRemoving={isRemoving}
         />
       )
     case 'reviews':
@@ -85,6 +97,8 @@ export const UserProfileSectionItem = ({
           onToggleVisibility={toggleVisibility}
           onChangeVisibility={setVisibility}
           isUpdatingVisibility={isUpdating}
+          onRemove={onRemove}
+          isRemoving={isRemoving}
         />
       )
     case 'top_rated':
@@ -96,6 +110,8 @@ export const UserProfileSectionItem = ({
           onToggleVisibility={toggleVisibility}
           onChangeVisibility={setVisibility}
           isUpdatingVisibility={isUpdating}
+          onRemove={onRemove}
+          isRemoving={isRemoving}
         />
       )
     case 'stats':
@@ -107,6 +123,8 @@ export const UserProfileSectionItem = ({
           onToggleVisibility={toggleVisibility}
           onChangeVisibility={setVisibility}
           isUpdatingVisibility={isUpdating}
+          onRemove={onRemove}
+          isRemoving={isRemoving}
         />
       )
     case 'achievements':
@@ -118,6 +136,8 @@ export const UserProfileSectionItem = ({
           onToggleVisibility={toggleVisibility}
           onChangeVisibility={setVisibility}
           isUpdatingVisibility={isUpdating}
+          onRemove={onRemove}
+          isRemoving={isRemoving}
         />
       )
     case 'recent_activity':
@@ -129,6 +149,8 @@ export const UserProfileSectionItem = ({
           onToggleVisibility={toggleVisibility}
           onChangeVisibility={setVisibility}
           isUpdatingVisibility={isUpdating}
+          onRemove={onRemove}
+          isRemoving={isRemoving}
         />
       )
     case 'library_breakdown':
@@ -140,6 +162,8 @@ export const UserProfileSectionItem = ({
           onToggleVisibility={toggleVisibility}
           onChangeVisibility={setVisibility}
           isUpdatingVisibility={isUpdating}
+          onRemove={onRemove}
+          isRemoving={isRemoving}
         />
       )
     case 'rating_distribution':
@@ -151,6 +175,8 @@ export const UserProfileSectionItem = ({
           onToggleVisibility={toggleVisibility}
           onChangeVisibility={setVisibility}
           isUpdatingVisibility={isUpdating}
+          onRemove={onRemove}
+          isRemoving={isRemoving}
         />
       )
     default:

@@ -12,6 +12,8 @@ interface UserProfileReviewsProps {
   onToggleVisibility?: () => void | Promise<void>
   onChangeVisibility?: (visibility: SectionVisibility) => void | Promise<void>
   isUpdatingVisibility?: boolean
+  onRemove?: () => void | Promise<void>
+  isRemoving?: boolean
 }
 
 export const UserProfileReviews = ({
@@ -21,6 +23,8 @@ export const UserProfileReviews = ({
   onToggleVisibility,
   onChangeVisibility,
   isUpdatingVisibility = false,
+  onRemove,
+  isRemoving = false,
 }: UserProfileReviewsProps) => {
   const reviewsQuery = useQuery(userQueries.reviews(username))
   const reviews: ReviewWithUser[] = useMemo(
@@ -43,6 +47,8 @@ export const UserProfileReviews = ({
         onToggleVisibility={onToggleVisibility}
         onChangeVisibility={onChangeVisibility}
         isUpdatingVisibility={isUpdatingVisibility}
+        onRemove={onRemove}
+        isRemoving={isRemoving}
       />
 
       <div className="px-4 sm:px-6 lg:px-8">

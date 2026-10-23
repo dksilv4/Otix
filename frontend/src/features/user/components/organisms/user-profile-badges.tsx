@@ -12,6 +12,8 @@ interface UserProfileBadgesProps {
   onToggleVisibility?: () => void | Promise<void>
   onChangeVisibility?: (visibility: SectionVisibility) => void | Promise<void>
   isUpdatingVisibility?: boolean
+  onRemove?: () => void | Promise<void>
+  isRemoving?: boolean
 }
 
 export const UserProfileBadges = ({
@@ -21,6 +23,8 @@ export const UserProfileBadges = ({
   onToggleVisibility,
   onChangeVisibility,
   isUpdatingVisibility = false,
+  onRemove,
+  isRemoving = false,
 }: UserProfileBadgesProps) => {
   const query = useQuery(userQueries.badges(username))
   const badges: BadgeDef[] = useMemo(
@@ -42,6 +46,8 @@ export const UserProfileBadges = ({
         onToggleVisibility={onToggleVisibility}
         onChangeVisibility={onChangeVisibility}
         isUpdatingVisibility={isUpdatingVisibility}
+        onRemove={onRemove}
+        isRemoving={isRemoving}
       />
 
       <div className="px-4 sm:px-6 lg:px-8">

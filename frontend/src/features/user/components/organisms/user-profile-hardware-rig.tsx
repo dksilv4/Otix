@@ -20,6 +20,8 @@ interface UserProfileHardwareRigProps {
   onToggleVisibility?: () => void | Promise<void>
   onChangeVisibility?: (visibility: SectionVisibility) => void | Promise<void>
   isUpdatingVisibility?: boolean
+  onRemove?: () => void | Promise<void>
+  isRemoving?: boolean
 }
 
 export const UserProfileHardwareRig = ({
@@ -29,6 +31,8 @@ export const UserProfileHardwareRig = ({
   onToggleVisibility,
   onChangeVisibility,
   isUpdatingVisibility = false,
+  onRemove,
+  isRemoving = false,
 }: UserProfileHardwareRigProps) => {
   const query = useQuery(userQueries.hardware(username))
   const data = query.data
@@ -77,6 +81,8 @@ export const UserProfileHardwareRig = ({
         onToggleVisibility={onToggleVisibility}
         onChangeVisibility={onChangeVisibility}
         isUpdatingVisibility={isUpdatingVisibility}
+        onRemove={onRemove}
+        isRemoving={isRemoving}
       />
 
       <div className="px-4 sm:px-6 lg:px-8">

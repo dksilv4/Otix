@@ -13,6 +13,8 @@ interface UserProfileTop5Props {
   onToggleVisibility?: () => void | Promise<void>
   onChangeVisibility?: (visibility: SectionVisibility) => void | Promise<void>
   isUpdatingVisibility?: boolean
+  onRemove?: () => void | Promise<void>
+  isRemoving?: boolean
 }
 
 export const UserProfileTop5 = ({
@@ -22,6 +24,8 @@ export const UserProfileTop5 = ({
   onToggleVisibility,
   onChangeVisibility,
   isUpdatingVisibility = false,
+  onRemove,
+  isRemoving = false,
 }: UserProfileTop5Props) => {
   const [isEditOpen, setIsEditOpen] = useState(false)
   const query = useQuery(userQueries.top5(username))
@@ -43,6 +47,8 @@ export const UserProfileTop5 = ({
         onToggleVisibility={onToggleVisibility}
         onChangeVisibility={onChangeVisibility}
         isUpdatingVisibility={isUpdatingVisibility}
+        onRemove={onRemove}
+        isRemoving={isRemoving}
         actions={
           isOwner ? (
             <button

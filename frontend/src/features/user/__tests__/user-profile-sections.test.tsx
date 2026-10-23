@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, fireEvent } from '@testing-library/react'
 import React from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { UserProfileSectionItem } from '../components/molecules/user-profile-section-item'
@@ -63,9 +63,9 @@ describe('UserProfileSectionItem', () => {
     )
 
     expect(screen.getByText('Reviews & Ratings')).toBeInTheDocument()
-    expect(screen.getByRole('group', { name: /section privacy/i })).toBeInTheDocument()
-    const publicBtn = screen.getByRole('button', { name: /set section privacy to public/i })
-    expect(publicBtn).toHaveAttribute('aria-pressed', 'true')
+    const publicBtn = screen.getByRole('button', { name: /section privacy: public/i })
+    expect(publicBtn).toBeInTheDocument()
+    expect(screen.getByText('Public')).toBeInTheDocument()
   })
 
   it('renders game_sessions section with private privacy switch active for owner', () => {
@@ -80,9 +80,9 @@ describe('UserProfileSectionItem', () => {
     )
 
     expect(screen.getByText('Game Sessions')).toBeInTheDocument()
-    expect(screen.getByRole('group', { name: /section privacy/i })).toBeInTheDocument()
-    const privateBtn = screen.getByRole('button', { name: /set section privacy to private/i })
-    expect(privateBtn).toHaveAttribute('aria-pressed', 'true')
+    const privateBtn = screen.getByRole('button', { name: /section privacy: private/i })
+    expect(privateBtn).toBeInTheDocument()
+    expect(screen.getByText('Private')).toBeInTheDocument()
   })
 
   it('renders reviews section with friends privacy switch active for owner', () => {
@@ -97,9 +97,9 @@ describe('UserProfileSectionItem', () => {
     )
 
     expect(screen.getByText('Reviews & Ratings')).toBeInTheDocument()
-    expect(screen.getByRole('group', { name: /section privacy/i })).toBeInTheDocument()
-    const friendsBtn = screen.getByRole('button', { name: /set section privacy to friends/i })
-    expect(friendsBtn).toHaveAttribute('aria-pressed', 'true')
+    const friendsBtn = screen.getByRole('button', { name: /section privacy: friends/i })
+    expect(friendsBtn).toBeInTheDocument()
+    expect(screen.getByText('Friends')).toBeInTheDocument()
   })
 
   it('renders stats overview section without privacy switch for visitor', () => {
@@ -114,7 +114,7 @@ describe('UserProfileSectionItem', () => {
     )
 
     expect(screen.getByText('Overview Stats')).toBeInTheDocument()
-    expect(screen.queryByRole('group', { name: /section privacy/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /section privacy/i })).not.toBeInTheDocument()
   })
 
   it('renders achievements section', () => {
@@ -168,7 +168,7 @@ describe('UserProfileSectionItem', () => {
     )
 
     expect(screen.getByText('Top 5 Favorites')).toBeInTheDocument()
-    expect(screen.getByRole('group', { name: /section privacy/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /section privacy: public/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /edit/i })).toBeInTheDocument()
   })
 
@@ -197,8 +197,39 @@ describe('UserProfileSectionItem', () => {
     )
 
     expect(screen.getByText('Hardware & Rig')).toBeInTheDocument()
-    expect(screen.getByRole('group', { name: /section privacy/i })).toBeInTheDocument()
-    const privateBtn = screen.getByRole('button', { name: /set section privacy to private/i })
-    expect(privateBtn).toHaveAttribute('aria-pressed', 'true')
+    const privateBtn = screen.getByRole('button', { name: /section privacy: private/i })
+    expect(privateBtn).toBeInTheDocument()
+    expect(screen.getByText('Private')).toBeInTheDocument()
+  })
+
+  it('renders remove button for owner and calls onRemove when clicked', () => {
+    const handleRemove = vi.fn()
+    render(
+      <UserProfileSectionItem
+        sectionId="reviews"
+        username="alice"
+        isOwner={true}
+        onRemove={handleRemove}
+      />,
+      { wrapper: createWrapper() }
+    )
+
+    const removeBtn = screen.getByRole('button', { name: /remove reviews & ratings section/i })
+    expect(removeBtn).toBeInTheDocument()
+    fireEvent.click(removeBtn)
+    expect(handleRemove).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not render remove button for visitor', () => {
+    render(
+      <UserProfileSectionItem
+        sectionId="reviews"
+        username="alice"
+        isOwner={false}
+      />,
+      { wrapper: createWrapper() }
+    )
+
+    expect(screen.queryByRole('button', { name: /remove reviews & ratings section/i })).not.toBeInTheDocument()
   })
 })

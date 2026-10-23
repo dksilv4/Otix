@@ -12,6 +12,8 @@ interface UserProfileActivityProps {
   onToggleVisibility?: () => void | Promise<void>
   onChangeVisibility?: (visibility: SectionVisibility) => void | Promise<void>
   isUpdatingVisibility?: boolean
+  onRemove?: () => void | Promise<void>
+  isRemoving?: boolean
 }
 
 export const UserProfileActivity = ({
@@ -21,6 +23,8 @@ export const UserProfileActivity = ({
   onToggleVisibility,
   onChangeVisibility,
   isUpdatingVisibility = false,
+  onRemove,
+  isRemoving = false,
 }: UserProfileActivityProps) => {
   const query = useQuery(userQueries.activity(username))
   const events: ActivityEvent[] = useMemo(
@@ -41,6 +45,8 @@ export const UserProfileActivity = ({
         onToggleVisibility={onToggleVisibility}
         onChangeVisibility={onChangeVisibility}
         isUpdatingVisibility={isUpdatingVisibility}
+        onRemove={onRemove}
+        isRemoving={isRemoving}
       />
 
       <div className="px-4 sm:px-6 lg:px-8">

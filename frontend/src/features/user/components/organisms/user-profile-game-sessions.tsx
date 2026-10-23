@@ -19,6 +19,8 @@ interface UserProfileGameSessionsProps {
   onToggleVisibility?: () => void | Promise<void>
   onChangeVisibility?: (visibility: SectionVisibility) => void | Promise<void>
   isUpdatingVisibility?: boolean
+  onRemove?: () => void | Promise<void>
+  isRemoving?: boolean
 }
 
 export const UserProfileGameSessions = ({
@@ -28,6 +30,8 @@ export const UserProfileGameSessions = ({
   onToggleVisibility,
   onChangeVisibility,
   isUpdatingVisibility = false,
+  onRemove,
+  isRemoving = false,
 }: UserProfileGameSessionsProps) => {
   const { data, isLoading } = useUserGameSessions({ username })
   const [selectedSession, setSelectedSession] = useState<NormalizedPlaySession | null>(null)
@@ -74,6 +78,8 @@ export const UserProfileGameSessions = ({
         onToggleVisibility={onToggleVisibility}
         onChangeVisibility={onChangeVisibility}
         isUpdatingVisibility={isUpdatingVisibility}
+        onRemove={onRemove}
+        isRemoving={isRemoving}
         actions={
           <Link
             to="/u/$username/activity"

@@ -12,6 +12,8 @@ interface UserProfileTopRatedProps {
   onToggleVisibility?: () => void | Promise<void>
   onChangeVisibility?: (visibility: SectionVisibility) => void | Promise<void>
   isUpdatingVisibility?: boolean
+  onRemove?: () => void | Promise<void>
+  isRemoving?: boolean
 }
 
 export const UserProfileTopRated = ({
@@ -21,6 +23,8 @@ export const UserProfileTopRated = ({
   onToggleVisibility,
   onChangeVisibility,
   isUpdatingVisibility = false,
+  onRemove,
+  isRemoving = false,
 }: UserProfileTopRatedProps) => {
   const query = useQuery(userQueries.topRated(username))
   const items: TopRatedItem[] = useMemo(
@@ -41,6 +45,8 @@ export const UserProfileTopRated = ({
         onToggleVisibility={onToggleVisibility}
         onChangeVisibility={onChangeVisibility}
         isUpdatingVisibility={isUpdatingVisibility}
+        onRemove={onRemove}
+        isRemoving={isRemoving}
       />
 
       <div className="px-4 sm:px-6 lg:px-8">

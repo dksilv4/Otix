@@ -317,6 +317,19 @@ export const useUserGameSessions = (options?: { enabled?: boolean; username?: st
         } catch {
           // Fall back gracefully to local session data if offline or network error
         }
+
+        // Fetch persisted server sessions to merge past history and other nodes
+        try {
+          const endpoint = options?.username
+            ? `/library/game-sessions?username=${encodeURIComponent(options.username)}`
+            : '/library/game-sessions'
+          const { data } = await apiClient.get<Record<string, unknown>[]>(endpoint)
+          if (Array.isArray(data)) {
+            rawSessions.push(...data)
+          }
+        } catch {
+          // ignore
+        }
       }
 
       // Deduplicate and normalize

@@ -11,6 +11,8 @@ interface UserProfileLibraryBreakdownProps {
   onToggleVisibility?: () => void | Promise<void>
   onChangeVisibility?: (visibility: SectionVisibility) => void | Promise<void>
   isUpdatingVisibility?: boolean
+  onRemove?: () => void | Promise<void>
+  isRemoving?: boolean
 }
 
 export const UserProfileLibraryBreakdown = ({
@@ -20,6 +22,8 @@ export const UserProfileLibraryBreakdown = ({
   onToggleVisibility,
   onChangeVisibility,
   isUpdatingVisibility = false,
+  onRemove,
+  isRemoving = false,
 }: UserProfileLibraryBreakdownProps) => {
   const query = useQuery(userQueries.libraryStats(username))
   const stats = query.data
@@ -45,6 +49,8 @@ export const UserProfileLibraryBreakdown = ({
         onToggleVisibility={onToggleVisibility}
         onChangeVisibility={onChangeVisibility}
         isUpdatingVisibility={isUpdatingVisibility}
+        onRemove={onRemove}
+        isRemoving={isRemoving}
       />
 
       <div className="px-4 sm:px-6 lg:px-8">

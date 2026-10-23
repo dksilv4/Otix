@@ -20,6 +20,7 @@ export { UserProfileLibraryBreakdown } from './components/organisms/user-profile
 export { UserProfileRatingDistribution } from './components/organisms/user-profile-rating-distribution'
 
 export { useProfileSectionVisibility } from './hooks/use-profile-section-visibility'
+export { useProfileSections } from './hooks/use-profile-sections'
 export {
   ALL_PROFILE_SECTIONS,
   DEFAULT_SECTION_IDS,

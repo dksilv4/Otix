@@ -1,10 +1,10 @@
 import type { ReactNode } from 'react'
 import type { LucideIcon } from 'lucide-react'
-import { Lock, Users } from 'lucide-react'
+import { Lock, Users, X, Loader2 } from 'lucide-react'
 import { SectionPrivacyToggle } from './section-privacy-toggle'
 import type { SectionVisibility } from '../../types'
 
-interface SectionHeaderProps {
+export interface SectionHeaderProps {
   icon: LucideIcon
   title: string
   summary?: string
@@ -13,6 +13,8 @@ interface SectionHeaderProps {
   onToggleVisibility?: () => void | Promise<void>
   onChangeVisibility?: (visibility: SectionVisibility) => void | Promise<void>
   isUpdatingVisibility?: boolean
+  onRemove?: () => void | Promise<void>
+  isRemoving?: boolean
   actions?: ReactNode
   className?: string
 }
@@ -26,6 +28,8 @@ export const SectionHeader = ({
   onToggleVisibility,
   onChangeVisibility,
   isUpdatingVisibility = false,
+  onRemove,
+  isRemoving = false,
   actions,
   className = '',
 }: SectionHeaderProps) => {
@@ -46,7 +50,7 @@ export const SectionHeader = ({
         )}
       </div>
 
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2 sm:gap-2.5">
         {isOwner && (onToggleVisibility || onChangeVisibility) ? (
           <SectionPrivacyToggle
             visibility={visibility}
@@ -66,8 +70,25 @@ export const SectionHeader = ({
           </span>
         ) : null}
         {actions}
+        {isOwner && onRemove && (
+          <button
+            type="button"
+            disabled={isRemoving}
+            onClick={() => {
+              if (!isRemoving) void onRemove()
+            }}
+            title={`Remove ${title} section`}
+            aria-label={`Remove ${title} section`}
+            className="inline-flex items-center justify-center h-6 w-6 rounded-full text-muted-foreground/60 hover:text-destructive hover:bg-[var(--dk-surface-ghost-hover)] transition-all duration-200 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            {isRemoving ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
+            ) : (
+              <X className="h-3.5 w-3.5" />
+            )}
+          </button>
+        )}
       </div>
     </div>
   )
 }
-

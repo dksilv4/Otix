@@ -12,6 +12,8 @@ interface UserProfileRatingDistributionProps {
   onToggleVisibility?: () => void | Promise<void>
   onChangeVisibility?: (visibility: SectionVisibility) => void | Promise<void>
   isUpdatingVisibility?: boolean
+  onRemove?: () => void | Promise<void>
+  isRemoving?: boolean
 }
 
 export const UserProfileRatingDistribution = ({
@@ -21,6 +23,8 @@ export const UserProfileRatingDistribution = ({
   onToggleVisibility,
   onChangeVisibility,
   isUpdatingVisibility = false,
+  onRemove,
+  isRemoving = false,
 }: UserProfileRatingDistributionProps) => {
   const query = useQuery(userQueries.ratingDistribution(username))
   const data = query.data
@@ -47,6 +51,8 @@ export const UserProfileRatingDistribution = ({
         onToggleVisibility={onToggleVisibility}
         onChangeVisibility={onChangeVisibility}
         isUpdatingVisibility={isUpdatingVisibility}
+        onRemove={onRemove}
+        isRemoving={isRemoving}
       />
 
       <div className="px-4 sm:px-6 lg:px-8">
