@@ -13,6 +13,13 @@ import {
   computeTopologyStats,
   getNodeCardBorderAnchor,
   generateSmartNodeConnectionPath,
+  getNodeCardWidth,
+  getNodeCardHeight,
+  getNodeCardDimensions,
+  GAME_SERVER_CARD_WIDTH,
+  GAME_SERVER_CARD_HEIGHT,
+  NODE_CARD_WIDTH,
+  NODE_CARD_HEIGHT,
   HUB_NODE_ID,
 } from '../utils/node-map'
 
@@ -555,6 +562,27 @@ describe('generateSmartNodeConnectionPath', () => {
     expect(res.path).toContain('M 220 148 C')
     expect(res.mid.x).toBeCloseTo(220, 0)
     expect(res.mid.y).toBeCloseTo(224, 0)
+  })
+})
+
+describe('getNodeCardDimensions', () => {
+  it('returns standard dimensions for non-game-server node types', () => {
+    expect(getNodeCardWidth('home')).toBe(NODE_CARD_WIDTH)
+    expect(getNodeCardHeight('home')).toBe(NODE_CARD_HEIGHT)
+    expect(getNodeCardDimensions('server')).toEqual({ width: NODE_CARD_WIDTH, height: NODE_CARD_HEIGHT })
+    expect(getNodeCardDimensions('node')).toEqual({ width: NODE_CARD_WIDTH, height: NODE_CARD_HEIGHT })
+    expect(getNodeCardDimensions('samba')).toEqual({ width: NODE_CARD_WIDTH, height: NODE_CARD_HEIGHT })
+    expect(getNodeCardDimensions('unclaimed_node')).toEqual({ width: NODE_CARD_WIDTH, height: NODE_CARD_HEIGHT })
+    expect(getNodeCardDimensions(undefined)).toEqual({ width: NODE_CARD_WIDTH, height: NODE_CARD_HEIGHT })
+  })
+
+  it('returns dedicated dimensions for game_server node type', () => {
+    expect(getNodeCardWidth('game_server')).toBe(GAME_SERVER_CARD_WIDTH)
+    expect(getNodeCardHeight('game_server')).toBe(GAME_SERVER_CARD_HEIGHT)
+    expect(getNodeCardDimensions('game_server')).toEqual({
+      width: GAME_SERVER_CARD_WIDTH,
+      height: GAME_SERVER_CARD_HEIGHT,
+    })
   })
 })
 

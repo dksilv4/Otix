@@ -126,7 +126,7 @@ describe('GameServersDrawer', () => {
     const handleClose = vi.fn()
     renderComponent({ open: true, onClose: handleClose })
 
-    const closeBtn = screen.getByRole('button', { name: /close game servers drawer/i })
+    const closeBtn = screen.getByRole('button', { name: /close/i })
     fireEvent.click(closeBtn)
 
     expect(handleClose).toHaveBeenCalledTimes(1)
@@ -144,5 +144,21 @@ describe('GameServersDrawer', () => {
     fireEvent.click(copyBtn)
 
     expect(writeTextSpy).toHaveBeenCalledWith('192.168.1.100:8211')
+  })
+
+  it('renders within standard modal framework dialog', () => {
+    renderComponent({ open: true })
+
+    const dialog = screen.getByRole('dialog', { name: /dedicated game servers/i })
+    expect(dialog.className).toContain('rounded-3xl')
+    expect(dialog.className).toContain('backdrop-blur-3xl')
+  })
+
+  it('triggers onClose when Escape key is pressed', () => {
+    const handleClose = vi.fn()
+    renderComponent({ open: true, onClose: handleClose })
+
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(handleClose).toHaveBeenCalledTimes(1)
   })
 })

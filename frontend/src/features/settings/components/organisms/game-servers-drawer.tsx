@@ -14,7 +14,6 @@ import {
   Check,
   AlertTriangle,
   Pencil,
-  X,
   HardDrive,
 } from 'lucide-react'
 import { DkButton } from '@ui/atoms/button'
@@ -60,6 +59,17 @@ export const GameServersDrawer = ({
   const [refreshingServerIds, setRefreshingServerIds] = useState<Set<number>>(new Set())
 
   const itemRefs = useRef<Map<number, HTMLDivElement>>(new Map())
+
+  useEffect(() => {
+    if (!open) return
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose()
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [open, onClose])
 
   useEffect(() => {
     if (focusedServerId && open) {
@@ -140,71 +150,21 @@ export const GameServersDrawer = ({
 
   return (
     <>
-      {/* Mobile Backdrop */}
-      <div
-        className="fixed inset-0 bg-black/40 backdrop-blur-xs z-40 sm:hidden"
-        onClick={onClose}
-        aria-hidden="true"
-      />
-
-      {/* Slide-over Right Panel */}
-      <aside
-        role="dialog"
-        aria-label="Dedicated Game Servers"
-        className={cn(
-          'fixed inset-y-0 right-0 w-full sm:w-[480px] z-50 flex flex-col',
-          'bg-[var(--dk-surface-base)]/95 backdrop-blur-2xl border-l border-white/[0.05] shadow-2xl',
-          'animate-in slide-in-from-right duration-200 ease-out select-none',
-        )}
+      <DkDialog
+        open={open}
+        onOpenChange={(next) => {
+          if (!next) onClose()
+        }}
+        title="Dedicated Game Servers"
+        description="Monitor live multiplayer dedicated servers, latency, and active players."
+        className="max-w-2xl sm:max-w-3xl max-h-[85vh] flex flex-col p-6 sm:p-7"
       >
-        {/* Header */}
-        <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-white/[0.05]">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div className="h-9 w-9 rounded-2xl bg-primary/15 text-primary flex items-center justify-center shrink-0">
-              <Gamepad2 size={18} />
-            </div>
-            <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <h3 className="text-sm font-bold text-foreground truncate">Game Servers</h3>
-                <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-primary/15 text-primary shrink-0">
-                  {servers.length}
-                </span>
-              </div>
-              <p className="text-[11px] text-muted-foreground truncate">
-                Multiplayer dedicated server manager
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-1.5 shrink-0">
-            <DkButton
-              type="button"
-              variant="primary"
-              size="sm"
-              onClick={handleOpenAdd}
-              className="gap-1.5 h-8 px-3 text-xs font-semibold"
-            >
-              <Plus size={13} />
-              <span>Add Server</span>
-            </DkButton>
-
-            <button
-              type="button"
-              onClick={onClose}
-              aria-label="Close game servers drawer"
-              className="h-8 w-8 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-            >
-              <X size={15} />
-            </button>
-          </div>
-        </div>
-
-        {/* Search bar */}
-        {servers.length > 0 && (
-          <div className="px-5 py-3 border-b border-white/[0.04]">
-            <div className="relative">
+        <div className="flex flex-col min-h-0 flex-1 space-y-4 pt-1">
+          {/* Top Controls: Search Bar + Add Server Button */}
+          <div className="flex items-center gap-3 shrink-0">
+            <div className="relative flex-1">
               <Search
-                size={13}
+                size={14}
                 className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
               />
               <input
@@ -212,227 +172,239 @@ export const GameServersDrawer = ({
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search by server name, game, address, host machine..."
-                className="w-full h-8 pl-8 pr-3 rounded-xl bg-[var(--dk-surface-ghost)] text-xs text-foreground placeholder:text-muted-foreground focus:outline-none transition-colors border border-white/[0.04]"
+                className="w-full h-9 pl-9 pr-3 rounded-xl bg-[var(--dk-surface-ghost)] text-xs text-foreground placeholder:text-muted-foreground focus:outline-none transition-colors border border-white/[0.04]"
               />
             </div>
+
+            <DkButton
+              type="button"
+              variant="primary"
+              size="sm"
+              onClick={handleOpenAdd}
+              className="gap-1.5 h-9 px-3.5 text-xs font-semibold shrink-0"
+            >
+              <Plus size={14} />
+              <span>Add Server</span>
+            </DkButton>
           </div>
-        )}
 
-        {/* Server List */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-0">
-          {isLoading ? (
-            <div className="p-8 text-center text-xs text-muted-foreground">
-              Loading dedicated game servers...
-            </div>
-          ) : servers.length === 0 ? (
-            <div className="p-8 text-center flex flex-col items-center justify-center gap-3">
-              <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary">
-                <Gamepad2 size={24} />
+          {/* Server List */}
+          <div className="flex-1 overflow-y-auto space-y-3 min-h-0 pr-1">
+            {isLoading ? (
+              <div className="p-8 text-center text-xs text-muted-foreground">
+                Loading dedicated game servers...
               </div>
-              <div className="space-y-1 max-w-xs">
-                <h4 className="text-sm font-bold text-foreground">No game servers registered</h4>
-                <p className="text-[11px] text-muted-foreground leading-relaxed">
-                  Add Minecraft, Steam/Source, Palworld, Valheim, or CS2 dedicated servers to monitor live status and invite friends.
-                </p>
-              </div>
-              <DkButton
-                type="button"
-                variant="primary"
-                size="sm"
-                onClick={handleOpenAdd}
-                className="gap-1.5 mt-1"
-              >
-                <Plus size={13} />
-                <span>Add First Server</span>
-              </DkButton>
-            </div>
-          ) : filteredServers.length === 0 ? (
-            <div className="p-6 text-center text-xs text-muted-foreground">
-              No game servers matched &quot;{search}&quot;.
-            </div>
-          ) : (
-            filteredServers.map((server) => {
-              const isOnline = server.status === 'online'
-              const isCopied = copiedId === server.id
-              const isFocused = focusedServerId === server.id
-              const isRefreshing = refreshingServerIds.has(server.id)
-              const protocolLabel =
-                server.serverType === 'minecraft'
-                  ? 'Minecraft'
-                  : server.serverType === 'steam_source'
-                    ? 'Steam / Source'
-                    : 'Generic TCP'
-
-              return (
-                <div
-                  key={server.id}
-                  ref={(el) => {
-                    if (el) itemRefs.current.set(server.id, el)
-                    else itemRefs.current.delete(server.id)
-                  }}
-                  className={cn(
-                    'p-4 rounded-2xl bg-[var(--dk-surface-field)] border border-white/[0.04]',
-                    'hover:bg-[var(--dk-surface-field)]/80 transition-all space-y-3',
-                    isFocused && 'ring-2 ring-primary/60 bg-primary/[0.04] shadow-md shadow-primary/10',
-                  )}
+            ) : servers.length === 0 ? (
+              <div className="p-8 text-center flex flex-col items-center justify-center gap-3">
+                <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary">
+                  <Gamepad2 size={24} />
+                </div>
+                <div className="space-y-1 max-w-xs">
+                  <h4 className="text-sm font-bold text-foreground">No game servers registered</h4>
+                  <p className="text-[11px] text-muted-foreground leading-relaxed">
+                    Add Minecraft, Steam/Source, Palworld, Valheim, or CS2 dedicated servers
+                    to monitor live status and invite friends.
+                  </p>
+                </div>
+                <DkButton
+                  type="button"
+                  variant="primary"
+                  size="sm"
+                  onClick={handleOpenAdd}
+                  className="gap-1.5 mt-1"
                 >
-                  {/* Top Bar: Status, Name, Protocol, Actions */}
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <span
-                        className={cn(
-                          'w-2.5 h-2.5 rounded-full shrink-0',
-                          isOnline
-                            ? 'bg-primary shadow-[0_0_8px_var(--primary)]'
-                            : 'bg-destructive/80',
-                        )}
-                        title={isOnline ? 'Online' : 'Offline'}
-                      />
-                      <div className="min-w-0">
-                        <h4 className="text-xs font-bold text-foreground truncate" title={server.name}>
-                          {server.name}
-                        </h4>
-                        <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                          <span className="text-[11px] font-semibold text-primary truncate">
-                            {server.gameTitle || server.mediaItemTitle || 'Multiplayer Game'}
-                          </span>
-                          <span className="text-[10px] px-1.5 py-0.2 rounded-md bg-[var(--dk-surface-ghost)] text-muted-foreground">
-                            {protocolLabel}
-                          </span>
-                          {server.serverMachineName && (
-                            <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.2 rounded-md bg-primary/10 text-primary">
-                              <HardDrive size={9} />
-                              <span className="truncate max-w-[120px]">{server.serverMachineName}</span>
-                            </span>
+                  <Plus size={13} />
+                  <span>Add First Server</span>
+                </DkButton>
+              </div>
+            ) : filteredServers.length === 0 ? (
+              <div className="p-6 text-center text-xs text-muted-foreground">
+                No game servers matched &quot;{search}&quot;.
+              </div>
+            ) : (
+              filteredServers.map((server) => {
+                const isOnline = server.status === 'online'
+                const isCopied = copiedId === server.id
+                const isFocused = focusedServerId === server.id
+                const isRefreshing = refreshingServerIds.has(server.id)
+                const protocolLabel =
+                  server.serverType === 'minecraft'
+                    ? 'Minecraft'
+                    : server.serverType === 'steam_source'
+                      ? 'Steam / Source'
+                      : 'Generic TCP'
+
+                return (
+                  <div
+                    key={server.id}
+                    ref={(el) => {
+                      if (el) itemRefs.current.set(server.id, el)
+                      else itemRefs.current.delete(server.id)
+                    }}
+                    className={cn(
+                      'p-4 rounded-2xl bg-[var(--dk-surface-field)] border border-white/[0.04]',
+                      'hover:bg-[var(--dk-surface-field)]/80 transition-all space-y-3',
+                      isFocused && 'ring-2 ring-primary/60 bg-primary/[0.04] shadow-md shadow-primary/10',
+                    )}
+                  >
+                    {/* Top Bar: Status, Name, Protocol, Actions */}
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <span
+                          className={cn(
+                            'w-2.5 h-2.5 rounded-full shrink-0',
+                            isOnline
+                              ? 'bg-primary shadow-[0_0_8px_var(--primary)]'
+                              : 'bg-destructive/80',
                           )}
+                          title={isOnline ? 'Online' : 'Offline'}
+                        />
+                        <div className="min-w-0">
+                          <h4 className="text-xs font-bold text-foreground truncate" title={server.name}>
+                            {server.name}
+                          </h4>
+                          <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                            <span className="text-[11px] font-semibold text-primary truncate">
+                              {server.gameTitle || server.mediaItemTitle || 'Multiplayer Game'}
+                            </span>
+                            <span className="text-[10px] px-1.5 py-0.2 rounded-md bg-[var(--dk-surface-ghost)] text-muted-foreground">
+                              {protocolLabel}
+                            </span>
+                            {server.serverMachineName && (
+                              <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.2 rounded-md bg-primary/10 text-primary">
+                                <HardDrive size={9} />
+                                <span className="truncate max-w-[120px]">{server.serverMachineName}</span>
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
-                    </div>
 
-                    <div className="flex items-center gap-0.5 shrink-0">
-                      <button
-                        type="button"
-                        onClick={(e) => handleRefresh(server.id, e)}
-                        title="Query live server status"
-                        disabled={isRefreshing}
-                        className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-hover)] transition-colors cursor-pointer"
-                      >
-                        <RefreshCw
-                          size={12}
-                          className={isRefreshing ? 'animate-spin text-primary' : ''}
-                        />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setSelectedShareServer(server)}
-                        title="Share with friends or get invite link"
-                        className="p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-[var(--dk-surface-hover)] transition-colors cursor-pointer"
-                      >
-                        <Share2 size={12} />
-                      </button>
-                      {(server.isOwner || server.userPermission === 'admin') && (
+                      <div className="flex items-center gap-0.5 shrink-0">
                         <button
                           type="button"
-                          onClick={() => setSelectedEditServer(server)}
-                          title="Edit server settings"
+                          onClick={(e) => handleRefresh(server.id, e)}
+                          title="Query live server status"
+                          disabled={isRefreshing}
+                          className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-hover)] transition-colors cursor-pointer"
+                        >
+                          <RefreshCw
+                            size={12}
+                            className={isRefreshing ? 'animate-spin text-primary' : ''}
+                          />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedShareServer(server)}
+                          title="Share with friends or get invite link"
                           className="p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-[var(--dk-surface-hover)] transition-colors cursor-pointer"
                         >
-                          <Pencil size={12} />
+                          <Share2 size={12} />
                         </button>
+                        {(server.isOwner || server.userPermission === 'admin') && (
+                          <button
+                            type="button"
+                            onClick={() => setSelectedEditServer(server)}
+                            title="Edit server settings"
+                            className="p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-[var(--dk-surface-hover)] transition-colors cursor-pointer"
+                          >
+                            <Pencil size={12} />
+                          </button>
+                        )}
+                        {server.isOwner && (
+                          <button
+                            type="button"
+                            onClick={() => setServerToDelete(server)}
+                            title="Delete server"
+                            className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-[var(--dk-surface-hover)] transition-colors cursor-pointer"
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Address, Ping, and Players */}
+                    <div className="flex flex-wrap items-center gap-2.5 text-xs text-muted-foreground">
+                      <button
+                        type="button"
+                        onClick={(e) => handleCopyAddress(server, e)}
+                        title="Click to copy connection address"
+                        className="flex items-center gap-1 font-mono text-[10px] px-2 py-0.5 rounded-md bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-hover)] text-foreground transition-colors cursor-pointer border border-white/[0.04]"
+                      >
+                        <Globe size={10} className="text-primary" />
+                        <span>{server.connectionAddress}</span>
+                        {isCopied ? (
+                          <Check size={10} className="text-primary ml-1" />
+                        ) : (
+                          <Copy size={10} className="text-muted-foreground ml-1" />
+                        )}
+                      </button>
+
+                      {server.pingMs != null && (
+                        <div className="flex items-center gap-1 text-[11px]">
+                          <Wifi size={11} className="text-primary" />
+                          <span>{server.pingMs}ms</span>
+                        </div>
                       )}
-                      {server.isOwner && (
-                        <button
-                          type="button"
-                          onClick={() => setServerToDelete(server)}
-                          title="Delete server"
-                          className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-[var(--dk-surface-hover)] transition-colors cursor-pointer"
-                        >
-                          <Trash2 size={12} />
-                        </button>
+
+                      <div className="flex items-center gap-1 text-[11px] font-semibold text-foreground">
+                        <Users size={11} className="text-primary" />
+                        <span>
+                          {server.currentPlayers} / {server.maxPlayers || '—'}
+                        </span>
+                      </div>
+
+                      {server.currentMap && (
+                        <span className="text-[10px] text-muted-foreground truncate max-w-[110px]" title={server.currentMap}>
+                          Map: {server.currentMap}
+                        </span>
                       )}
                     </div>
-                  </div>
 
-                  {/* Address, Ping, and Players */}
-                  <div className="flex flex-wrap items-center gap-2.5 text-xs text-muted-foreground">
-                    <button
-                      type="button"
-                      onClick={(e) => handleCopyAddress(server, e)}
-                      title="Click to copy connection address"
-                      className="flex items-center gap-1 font-mono text-[10px] px-2 py-0.5 rounded-md bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-hover)] text-foreground transition-colors cursor-pointer border border-white/[0.04]"
-                    >
-                      <Globe size={10} className="text-primary" />
-                      <span>{server.connectionAddress}</span>
-                      {isCopied ? (
-                        <Check size={10} className="text-primary ml-1" />
-                      ) : (
-                        <Copy size={10} className="text-muted-foreground ml-1" />
-                      )}
-                    </button>
-
-                    {server.pingMs != null && (
-                      <div className="flex items-center gap-1 text-[11px]">
-                        <Wifi size={11} className="text-primary" />
-                        <span>{server.pingMs}ms</span>
+                    {/* Player list tags if active */}
+                    {server.playerList && server.playerList.length > 0 && (
+                      <div className="flex items-center gap-1 flex-wrap pt-0.5">
+                        {server.playerList.slice(0, 5).map((player, idx) => (
+                          <span
+                            key={idx}
+                            className="px-1.5 py-0.2 rounded text-[10px] font-medium bg-[var(--dk-surface-raised)] text-foreground/80 border border-white/[0.04]"
+                          >
+                            {player}
+                          </span>
+                        ))}
+                        {server.playerList.length > 5 && (
+                          <span className="text-[10px] text-muted-foreground font-medium">
+                            +{server.playerList.length - 5} more
+                          </span>
+                        )}
                       </div>
                     )}
 
-                    <div className="flex items-center gap-1 text-[11px] font-semibold text-foreground">
-                      <Users size={11} className="text-primary" />
-                      <span>
-                        {server.currentPlayers} / {server.maxPlayers || '—'}
+                    {/* Bottom Footer: Host info and Join button */}
+                    <div className="flex items-center justify-between pt-1 border-t border-white/[0.04]">
+                      <span className="text-[10px] text-muted-foreground">
+                        {server.isOwner ? 'Hosted by you' : `@${server.ownerUsername}`}
                       </span>
+
+                      <DkButton
+                        type="button"
+                        variant="primary"
+                        size="sm"
+                        onClick={() => setSelectedJoinServer(server)}
+                        className="gap-1 h-7 px-2.5 text-[11px] font-bold"
+                      >
+                        <Play size={11} fill="currentColor" />
+                        <span>Join</span>
+                      </DkButton>
                     </div>
-
-                    {server.currentMap && (
-                      <span className="text-[10px] text-muted-foreground truncate max-w-[110px]" title={server.currentMap}>
-                        Map: {server.currentMap}
-                      </span>
-                    )}
                   </div>
-
-                  {/* Player list tags if active */}
-                  {server.playerList && server.playerList.length > 0 && (
-                    <div className="flex items-center gap-1 flex-wrap pt-0.5">
-                      {server.playerList.slice(0, 5).map((player, idx) => (
-                        <span
-                          key={idx}
-                          className="px-1.5 py-0.2 rounded text-[10px] font-medium bg-[var(--dk-surface-raised)] text-foreground/80 border border-white/[0.04]"
-                        >
-                          {player}
-                        </span>
-                      ))}
-                      {server.playerList.length > 5 && (
-                        <span className="text-[10px] text-muted-foreground font-medium">
-                          +{server.playerList.length - 5} more
-                        </span>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Bottom Footer: Host info and Join button */}
-                  <div className="flex items-center justify-between pt-1 border-t border-white/[0.04]">
-                    <span className="text-[10px] text-muted-foreground">
-                      {server.isOwner ? 'Hosted by you' : `@${server.ownerUsername}`}
-                    </span>
-
-                    <DkButton
-                      type="button"
-                      variant="primary"
-                      size="sm"
-                      onClick={() => setSelectedJoinServer(server)}
-                      className="gap-1 h-7 px-2.5 text-[11px] font-bold"
-                    >
-                      <Play size={11} fill="currentColor" />
-                      <span>Join</span>
-                    </DkButton>
-                  </div>
-                </div>
-              )
-            })
-          )}
+                )
+              })
+            )}
+          </div>
         </div>
-      </aside>
+      </DkDialog>
 
       {/* Delete Confirmation Modal */}
       {serverToDelete && (
@@ -513,3 +485,6 @@ export const GameServersDrawer = ({
     </>
   )
 }
+
+export const GameServersModal = GameServersDrawer
+export type GameServersModalProps = GameServersDrawerProps
