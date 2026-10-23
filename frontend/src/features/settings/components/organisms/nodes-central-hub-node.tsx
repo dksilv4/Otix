@@ -7,6 +7,7 @@ import {
   AlertTriangle,
   Plus,
   Sparkles,
+  Gamepad2,
   KeyRound,
   DownloadCloud,
   ChevronDown,
@@ -16,6 +17,7 @@ import { DkButton } from '@ui/atoms/button'
 import { NodesFeatureTags } from '../nodes-feature-tags'
 import type { PendingNode } from '@/features/downloads/pending-nodes'
 import { cn } from '@/lib/utils'
+import { isDesktop } from '@/lib/desktop/api'
 
 export interface NodesCentralHubStats {
   totalNodes: number
@@ -24,6 +26,8 @@ export interface NodesCentralHubStats {
   serverCount: number
   homeCount: number
   sambaCount: number
+  gameServerCount?: number
+  gameServerPlayerCount?: number
 }
 
 export interface NodesCentralHubNodeProps {
@@ -33,7 +37,12 @@ export interface NodesCentralHubNodeProps {
   onClaimPendingNode?: (pending: PendingNode) => void
   onOpenConnectModal?: (url?: string) => void
   onOpenDownloadModal?: () => void
+  onOpenGameServersDrawer?: () => void
   className?: string
+  isSelected?: boolean
+  isDragging?: boolean
+  onDragStart?: (e: React.PointerEvent) => void
+  onSelect?: () => void
 }
 
 export const NodesCentralHubNode = ({
@@ -43,7 +52,12 @@ export const NodesCentralHubNode = ({
   onClaimPendingNode,
   onOpenConnectModal,
   onOpenDownloadModal,
+  onOpenGameServersDrawer,
   className,
+  isSelected = false,
+  isDragging = false,
+  onDragStart,
+  onSelect,
 }: NodesCentralHubNodeProps) => {
   const [isCollapsed, setIsCollapsed] = useState(false)
   const isHealthy = stats.offlineNodes === 0
@@ -52,9 +66,36 @@ export const NodesCentralHubNode = ({
     <div
       role="region"
       aria-label="Central Nodes Hub"
+      onPointerDown={(e) => {
+        if ((e.target as HTMLElement).closest('button, a, input, select, [role="button"]')) return
+        try {
+          e.currentTarget.setPointerCapture(e.pointerId)
+        } catch {
+          // ignore
+        }
+        onDragStart?.(e)
+      }}
+      onPointerUp={(e) => {
+        try {
+          if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+            e.currentTarget.releasePointerCapture(e.pointerId)
+          }
+        } catch {
+          // ignore
+        }
+      }}
+      onClick={(e) => {
+        e.stopPropagation()
+        onSelect?.()
+      }}
+      title={onDragStart ? 'Drag to reposition hub' : undefined}
       className={cn(
-        'pointer-events-auto rounded-3xl p-5 transition-all duration-300 shadow-2xl',
+        'pointer-events-auto rounded-3xl p-5 shadow-2xl transition-[background-color,box-shadow,opacity] duration-150',
         'backdrop-blur-2xl bg-[var(--dk-surface-base)]/90 border border-white/[0.05]',
+        'hover:bg-[var(--dk-surface-base)] select-none',
+        onDragStart && 'cursor-grab active:cursor-grabbing',
+        isSelected && 'ring-2 ring-primary/50 shadow-primary/20',
+        isDragging && 'opacity-90 shadow-2xl scale-[1.01]',
         'max-w-xl w-full min-w-[280px]',
         className,
       )}
@@ -68,7 +109,7 @@ export const NodesCentralHubNode = ({
             <span
               className={cn(
                 'absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full ring-2 ring-[var(--dk-surface-base)]',
-                isHealthy ? 'bg-primary animate-pulse' : 'bg-amber-400',
+                isHealthy ? 'bg-status-online animate-pulse' : 'bg-status-warning',
               )}
               title={isHealthy ? 'All nodes active' : `${stats.offlineNodes} offline`}
             />
@@ -87,6 +128,25 @@ export const NodesCentralHubNode = ({
         </div>
 
         <div className="flex items-center gap-1.5 shrink-0">
+          {onOpenGameServersDrawer && (
+            <DkButton
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={onOpenGameServersDrawer}
+              className="gap-1.5 font-semibold h-8 px-2.5 text-xs text-foreground/90 hover:text-foreground"
+              aria-label="Open Game Servers drawer"
+            >
+              <Gamepad2 size={13} className="text-primary" />
+              <span>Game Servers</span>
+              {stats.gameServerCount != null && stats.gameServerCount > 0 && (
+                <span className="ml-0.5 px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-primary/15 text-primary">
+                  {stats.gameServerCount}
+                </span>
+              )}
+            </DkButton>
+          )}
+
           <DkButton
             type="button"
             variant="primary"
@@ -120,7 +180,7 @@ export const NodesCentralHubNode = ({
           {/* Homelab Topology Metrics Chips */}
           <div className="flex items-center gap-1.5 flex-wrap">
             {stats.offlineNodes > 0 && (
-              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500/15 text-amber-500 dark:text-amber-400">
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-status-offline/15 text-status-offline">
                 <AlertTriangle size={10} />
                 <span>{stats.offlineNodes} offline</span>
               </span>
@@ -156,6 +216,21 @@ export const NodesCentralHubNode = ({
                 </span>
               </span>
             )}
+
+            {stats.gameServerCount != null && stats.gameServerCount > 0 && (
+              <button
+                type="button"
+                onClick={onOpenGameServersDrawer}
+                className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-medium bg-[var(--dk-surface-field)] hover:bg-[var(--dk-surface-hover)] text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
+                title="Open Game Servers drawer"
+              >
+                <Gamepad2 size={10} className="text-primary" />
+                <span>
+                  {stats.gameServerCount} {stats.gameServerCount === 1 ? 'game server' : 'game servers'}
+                  {stats.gameServerPlayerCount != null && stats.gameServerPlayerCount > 0 && ` (${stats.gameServerPlayerCount} players)`}
+                </span>
+              </button>
+            )}
           </div>
 
           <p className="text-xs text-muted-foreground leading-relaxed">
@@ -163,7 +238,7 @@ export const NodesCentralHubNode = ({
           </p>
 
           {/* Quick secondary actions */}
-          {onOpenDownloadModal && (
+          {onOpenDownloadModal && !isDesktop() && (
             <div className="flex items-center gap-2 pt-0.5">
               <DkButton
                 type="button"

@@ -41,26 +41,14 @@ export function getClientDeviceName(): string {
     if (platform === 'win32') return 'This PC'
     return 'This Computer'
   }
-
-  // Browser client
-  const ua = navigator.userAgent
-  let browser = 'Browser'
-  if (ua.includes('Firefox')) browser = 'Firefox'
-  else if (ua.includes('Edg/')) browser = 'Edge'
-  else if (ua.includes('Chrome')) browser = 'Chrome'
-  else if (ua.includes('Safari')) browser = 'Safari'
-
-  let os = 'Device'
-  if (ua.includes('Win')) os = 'Windows'
-  else if (ua.includes('Mac')) os = 'macOS'
-  else if (ua.includes('Linux')) os = 'Linux'
-  else if (ua.includes('Android')) os = 'Android'
-  else if (ua.includes('iPhone') || ua.includes('iPad')) os = 'iOS'
-
-  return `${browser} on ${os}`
+  return 'Otix Web'
 }
 
 export async function registerDeviceSession(isOnline = true): Promise<DeviceHeartbeatResponse | null> {
+  // Browser sessions should not be nodes. Only desktop applications register as nodes.
+  if (!isDesktop()) {
+    return null
+  }
   try {
     const deviceId = getOrCreateDeviceId()
     const name = getClientDeviceName()
@@ -68,6 +56,8 @@ export async function registerDeviceSession(isOnline = true): Promise<DeviceHear
       device_id: deviceId,
       name,
       is_online: isOnline,
+      is_desktop: true,
+      client_type: 'desktop',
     })
     return data
   } catch {

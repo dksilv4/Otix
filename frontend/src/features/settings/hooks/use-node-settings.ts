@@ -1,6 +1,7 @@
 import { apiClient } from '@/lib/api/client'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { serverKeys } from '@/features/downloads/use-server-downloads'
+import { getDesktopAPI } from '@/lib/desktop/api'
 import { isLocalDesktopNodeId } from '../local-desktop-node'
 
 export type NodeScanPath = { path: string; type: 'game' | 'iso' }
@@ -54,8 +55,27 @@ export function mapLibrariesToScanPaths(rows: unknown): NodeScanPath[] {
 export function useNodeLibraries(serverId: number | null | undefined) {
   return useQuery({
     queryKey: serverId ? nodeSettingsKeys(serverId).libraries : ['game-servers', 'libraries', 'idle'],
-    enabled: Boolean(serverId) && !isLocalDesktopNodeId(serverId),
+    enabled: Boolean(serverId),
     queryFn: async () => {
+      if (isLocalDesktopNodeId(serverId)) {
+        const api = getDesktopAPI()
+        if (api?.getScanPaths) {
+          try {
+            const raw = await api.getScanPaths()
+            if (Array.isArray(raw)) {
+              return raw
+                .map((item: any) => ({
+                  path: String(item.path || ''),
+                  type: item.type === 'iso' ? ('iso' as const) : ('game' as const),
+                }))
+                .filter((i) => i.path)
+            }
+          } catch {
+            // ignore
+          }
+        }
+        return []
+      }
       const { data } = await apiClient.get(`/library/servers/${serverId}/libraries`)
       return mapLibrariesToScanPaths(data)
     },
@@ -66,7 +86,14 @@ export function useReplaceNodeLibraries(serverId: number | null | undefined) {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async (paths: NodeScanPath[]) => {
-      if (!serverId || isLocalDesktopNodeId(serverId)) throw new Error('No Otix node selected')
+      if (!serverId) throw new Error('No Otix node selected')
+      if (isLocalDesktopNodeId(serverId)) {
+        const api = getDesktopAPI()
+        if (api?.saveScanPaths) {
+          await api.saveScanPaths(paths)
+        }
+        return paths
+      }
       const { data } = await apiClient.put(`/library/servers/${serverId}/libraries`, {
         libraries: paths.map((item) => ({
           name: item.path.split(/[\\/]/).filter(Boolean).pop() || item.type,
@@ -85,7 +112,17 @@ export function useReplaceNodeLibraries(serverId: number | null | undefined) {
 export function useScanNodeLibraries(serverId: number | null | undefined) {
   return useMutation({
     mutationFn: async () => {
-      if (!serverId || isLocalDesktopNodeId(serverId)) throw new Error('No Otix node selected')
+      if (!serverId) throw new Error('No Otix node selected')
+      if (isLocalDesktopNodeId(serverId)) {
+        const api = getDesktopAPI()
+        if (api?.scanPaths && api?.getScanPaths) {
+          const raw = (await api.getScanPaths()) || []
+          const gameDirs = raw.filter((p: any) => p.type !== 'iso').map((p: any) => p.path)
+          const isoDirs = raw.filter((p: any) => p.type === 'iso').map((p: any) => p.path)
+          await api.scanPaths(gameDirs, isoDirs)
+        }
+        return { status: 'ok', message: 'Local scan completed' }
+      }
       const { data } = await apiClient.post(`/library/servers/${serverId}/scan`)
       return data
     },
@@ -95,8 +132,22 @@ export function useScanNodeLibraries(serverId: number | null | undefined) {
 export function useNodeOrganize(serverId: number | null | undefined) {
   return useQuery({
     queryKey: serverId ? nodeSettingsKeys(serverId).organize : ['game-servers', 'organize', 'idle'],
-    enabled: Boolean(serverId) && !isLocalDesktopNodeId(serverId),
+    enabled: Boolean(serverId),
     queryFn: async () => {
+      if (isLocalDesktopNodeId(serverId)) {
+        return {
+          postProcessEnabled: true,
+          autoSearchWishlist: false,
+          wishlistIntervalHours: 12,
+          preferredRepackers: '',
+          allowHypervisor: false,
+          autoOrganizeEnabled: false,
+          namingTemplate: '{Title} ({Year}) [{Platform}]/{OriginalName}.{ext}',
+          isoDownloadPath: '',
+          scanOnLaunch: true,
+          gamesDownloadPath: '',
+        }
+      }
       const { data } = await apiClient.get<NodeOrganizeSettings>(`/library/servers/${serverId}/organize`)
       return data
     },
@@ -107,7 +158,10 @@ export function useSaveNodeOrganize(serverId: number | null | undefined) {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async (payload: Partial<NodeOrganizeSettings>) => {
-      if (!serverId || isLocalDesktopNodeId(serverId)) throw new Error('No Otix node selected')
+      if (!serverId) throw new Error('No Otix node selected')
+      if (isLocalDesktopNodeId(serverId)) {
+        return payload as NodeOrganizeSettings
+      }
       const { data } = await apiClient.post<NodeOrganizeSettings>(
         `/library/servers/${serverId}/organize`,
         payload,

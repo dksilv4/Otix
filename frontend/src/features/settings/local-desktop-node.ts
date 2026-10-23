@@ -50,15 +50,28 @@ export function getLocalDesktopNode(): GameServer | null {
   return getLocalDesktopNodeFallback()
 }
 
+export function isBrowserSessionNode(server: { name?: string | null } | null | undefined): boolean {
+  const name = (server?.name || '').toLowerCase()
+  return (
+    name.startsWith('chrome on') ||
+    name.startsWith('firefox on') ||
+    name.startsWith('edge on') ||
+    name.startsWith('safari on') ||
+    name.startsWith('browser on')
+  )
+}
+
 export function mergeLocalDesktopNode(servers: GameServer[]): GameServer[] {
+  // Prune any lingering browser sessions — browser sessions are never nodes
+  const validServers = servers.filter((s) => !isBrowserSessionNode(s))
   // If servers already contains a registered desktop node (from backend DB), keep it
-  if (servers.some((server) => isLocalDesktopNode(server))) {
-    return servers
+  if (validServers.some((server) => isLocalDesktopNode(server))) {
+    return validServers
   }
   // Otherwise, if in desktop app environment, prepend local desktop fallback
   const local = getLocalDesktopNode()
-  if (!local) return servers
-  return [local, ...servers]
+  if (!local) return validServers
+  return [local, ...validServers]
 }
 
 export function syncServersWithPendingNodes(servers: GameServer[], pendingNodes: PendingNode[]): GameServer[] {

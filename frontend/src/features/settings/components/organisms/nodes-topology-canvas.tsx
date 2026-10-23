@@ -15,6 +15,8 @@ import { DkButton } from '@ui/atoms/button'
 import { useToast } from '@ui/molecules/toast'
 import type { GameServer } from '@/features/downloads/types'
 import type { PendingNode } from '@/features/downloads/pending-nodes'
+import type { DedicatedGameServer } from '@/features/gameservers/types'
+import { useUpdateGameServer } from '@/features/gameservers/queries/gameservers-queries'
 import type { UserHome, UserServerMachine } from '../../types/server-machines'
 import type {
   NodeMapConnectPrompt,
@@ -28,7 +30,10 @@ import {
   generateSmartNodeConnectionPath,
   SIDE_NORMALS,
   isCompatibleConnection,
+  HUB_NODE_ID,
+  HUB_NODE_WIDTH,
 } from '../../utils/node-map'
+import { NodesCentralHubNode, type NodesCentralHubStats } from './nodes-central-hub-node'
 import { useNodeMap } from '../../hooks/use-node-map'
 import { NodeMapCardItem } from '../molecules/node-map-card-item'
 import { NodeMapConnectDialog } from './node-map-connect-dialog'
@@ -42,13 +47,22 @@ interface NodesTopologyCanvasProps {
   homes: UserHome[]
   serverMachines: UserServerMachine[]
   nodes: GameServer[]
+  gameServers?: DedicatedGameServer[]
   pendingNodes?: PendingNode[]
   customSambaShares?: SambaShareConfig[]
+  hubStats?: NodesCentralHubStats
+  unclaimedNodes?: PendingNode[]
   anchor?: { x: number; y: number }
   viewMode?: 'map' | 'cards'
   onViewModeChange?: (mode: 'map' | 'cards') => void
   onOpenDownloadModal?: () => void
+  onOpenGameServersDrawer?: () => void
+  onSelectGameServer?: (gameServer: DedicatedGameServer) => void
+  onEditGameServer?: (gameServer: DedicatedGameServer) => void
+  onPingGameServer?: (gameServer: DedicatedGameServer) => void
+  onCopyGameServerAddress?: (gameServer: DedicatedGameServer, e: React.MouseEvent) => void
   onClaimPendingNode?: (pending: PendingNode) => void
+  onOpenConnectModal?: (url?: string) => void
   onAddHome: () => void
   onAddServer: (homeId?: number) => void
   onAddNode: () => void
@@ -72,13 +86,22 @@ export const NodesTopologyCanvas = ({
   homes,
   serverMachines,
   nodes,
+  gameServers = [],
   pendingNodes = [],
   customSambaShares = [],
+  hubStats,
+  unclaimedNodes = [],
   anchor,
   viewMode: _viewMode = 'map',
   onViewModeChange: _onViewModeChange,
-  onOpenDownloadModal: _onOpenDownloadModal,
+  onOpenDownloadModal,
+  onOpenGameServersDrawer,
+  onSelectGameServer,
+  onEditGameServer,
+  onPingGameServer,
+  onCopyGameServerAddress,
   onClaimPendingNode,
+  onOpenConnectModal,
   onAddHome,
   onAddServer,
   onAddNode,
@@ -100,6 +123,7 @@ export const NodesTopologyCanvas = ({
   const { toast } = useToast()
   const assignHomeMutation = useAssignNodeHome()
   const updateServerMutation = useUpdateServerMachine()
+  const updateGameServerMutation = useUpdateGameServer()
 
   const [connectPickerItem, setConnectPickerItem] = useState<NodeMapItem | null>(null)
   const [connectPrompt, setConnectPrompt] = useState<NodeMapConnectPrompt | null>(null)
@@ -107,8 +131,8 @@ export const NodesTopologyCanvas = ({
   const [hoveredEdgeId, setHoveredEdgeId] = useState<string | null>(null)
 
   const { items, edges } = useMemo(
-    () => buildNodeMapGraph(homes, serverMachines, nodes, pendingNodes, customSambaShares),
-    [homes, serverMachines, nodes, pendingNodes, customSambaShares],
+    () => buildNodeMapGraph(homes, serverMachines, nodes, pendingNodes, customSambaShares, gameServers),
+    [homes, serverMachines, nodes, pendingNodes, customSambaShares, gameServers],
   )
 
   // Execute connection between two nodes
@@ -159,16 +183,49 @@ export const NodesTopologyCanvas = ({
           }
         }
       } else if (type === 'host') {
-        const serverItem = source.type === 'server' ? source : target
-        const nodeItem = source.type === 'node' ? source : target
-        await updateServerMutation.mutateAsync({
-          id: Number(serverItem.entityId),
-          hostedNodeId: Number(nodeItem.entityId),
-        })
-        toast({
-          title: 'Hosted Node Configured',
-          description: `Node "${nodeItem.name}" is now marked as running on "${serverItem.name}".`,
-        })
+        const gameServerItem =
+          source.type === 'game_server' ? source : target.type === 'game_server' ? target : null
+        const serverItem =
+          source.type === 'server' ? source : target.type === 'server' ? target : null
+        const nodeItem =
+          source.type === 'node' ? source : target.type === 'node' ? target : null
+
+        if (gameServerItem && serverItem) {
+          const gsId = Number(gameServerItem.entityId)
+          const machineId = Number(serverItem.entityId)
+          const machine = serverMachines.find((m) => m.id === machineId)
+          const machineHost = machine?.ipAddress || machine?.host
+          const existingGs = gameServers.find((s) => s.id === gsId)
+          const shouldUpdateHost =
+            machineHost &&
+            (!existingGs?.host ||
+              existingGs.host === 'localhost' ||
+              existingGs.host === '127.0.0.1')
+
+          await updateGameServerMutation.mutateAsync({
+            id: gsId,
+            payload: {
+              serverMachineId: machineId,
+              ...(shouldUpdateHost ? { host: machineHost } : {}),
+            },
+          })
+          toast({
+            title: 'Dedicated Game Server Hosted',
+            description: `Game server "${gameServerItem.name}" is now hosted on "${serverItem.name}".`,
+          })
+        } else if (serverItem && nodeItem) {
+          const serverId = Number(serverItem.entityId)
+          const nodeId = Number(nodeItem.entityId)
+          await updateServerMutation.mutateAsync({
+            id: serverId,
+            hostedNodeId: nodeId,
+          })
+          const parentServer = serverMachines.find((m) => m.id === serverId)
+          toast({
+            title: 'Hosted Node Configured',
+            description: `Node "${nodeItem.name}" is now marked as running on "${serverItem.name}"${parentServer?.homeId ? ' and inherits its Home Environment.' : '.'}`,
+          })
+        }
       } else if (type === 'smb') {
         const sambaItem = source.type === 'samba' ? source : target.type === 'samba' ? target : null
         const serverItem = source.type === 'server' ? source : target.type === 'server' ? target : null
@@ -269,6 +326,7 @@ export const NodesTopologyCanvas = ({
     selectedItem,
     setSelectedItem,
     searchQuery,
+    draggingItemId,
     hoveredDropTargetId,
     connectingFrom,
     connectingMousePos,
@@ -285,6 +343,8 @@ export const NodesTopologyCanvas = ({
     handleCancelConnecting,
     handleWheel,
   } = useNodeMap({ items, edges, anchor, onCardDropConnect: handleCardDropConnect })
+
+  const hubPos = positions[HUB_NODE_ID] || { x: anchor?.x ?? 300, y: anchor?.y ?? 100 }
 
   // Filter items matching search
   const filteredItemIds = useMemo(() => {
@@ -565,6 +625,40 @@ export const NodesTopologyCanvas = ({
           }}
           className="absolute inset-0 pointer-events-none"
         >
+          {/* Central Hub Node (Title Bar Node) acting as an interactive canvas node */}
+          {hubStats && (
+            <div
+              style={{
+                transform: `translate3d(${hubPos.x}px, ${hubPos.y}px, 0)`,
+                width: `${HUB_NODE_WIDTH}px`,
+              }}
+              className="absolute pointer-events-auto select-none"
+            >
+              <NodesCentralHubNode
+                stats={hubStats}
+                unclaimedNodes={unclaimedNodes}
+                onAddNode={onAddNode}
+                onClaimPendingNode={onClaimPendingNode}
+                onOpenConnectModal={onOpenConnectModal}
+                onOpenDownloadModal={onOpenDownloadModal}
+                onOpenGameServersDrawer={onOpenGameServersDrawer}
+                isSelected={selectedItem?.id === HUB_NODE_ID}
+                isDragging={draggingItemId === HUB_NODE_ID}
+                onSelect={() =>
+                  setSelectedItem({
+                    id: HUB_NODE_ID,
+                    type: 'node',
+                    name: 'Nodes Hub',
+                    entityId: 'hub',
+                    data: { type: 'node' },
+                  })
+                }
+                onDragStart={(e) => handleNodeDragStart(e, HUB_NODE_ID)}
+              />
+            </div>
+          )}
+
+          {/* Cards for homes, servers, nodes, samba */}
           {items.map((item) => {
             const pos = positions[item.id] || { x: 80, y: 80 }
             const isMatch = filteredItemIds ? filteredItemIds.has(item.id) : true
@@ -614,14 +708,36 @@ export const NodesTopologyCanvas = ({
                   onClaimPendingNode={onClaimPendingNode}
                   onOpenSambaSettings={onOpenSambaSettings}
                   onEditSamba={onEditSamba}
+                  onOpenGameServerDrawer={onSelectGameServer || onOpenGameServersDrawer}
+                  onEditGameServer={onEditGameServer}
+                  onPingGameServer={onPingGameServer}
+                  onCopyGameServerAddress={onCopyGameServerAddress}
                 />
               </div>
             )
           })}
+
+          {/* Subtle empty state helper beneath hub when no nodes exist */}
+          {items.length === 0 && hubStats && (
+            <div
+              style={{
+                transform: `translate3d(${hubPos.x}px, ${hubPos.y + 200}px, 0)`,
+                width: `${HUB_NODE_WIDTH}px`,
+              }}
+              className="absolute pointer-events-none flex flex-col items-center text-center p-4 space-y-1 text-muted-foreground/70"
+            >
+              <p className="text-xs font-medium text-muted-foreground">
+                No worker nodes, machines, or homes connected yet
+              </p>
+              <p className="text-[11px]">
+                Drag this hub or click Add Node above to start building your network topology
+              </p>
+            </div>
+          )}
         </div>
 
-        {/* Empty State when no nodes exist */}
-        {items.length === 0 && (
+        {/* Empty State when no nodes exist and hubStats is not provided */}
+        {items.length === 0 && !hubStats && (
           <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center space-y-3 pointer-events-none pl-20 sm:pl-72 lg:pl-80">
             <div className="h-14 w-14 rounded-2xl bg-[var(--dk-surface-field)] border border-[var(--dk-separator)] flex items-center justify-center text-muted-foreground">
               <Server size={28} />
@@ -700,7 +816,7 @@ export const NodesTopologyCanvas = ({
           type="button"
           size="sm"
           variant="ghost"
-          onClick={zoomOut}
+          onClick={() => zoomOut()}
           title="Zoom out"
           className="h-7 px-2 text-muted-foreground hover:text-foreground"
         >
@@ -720,7 +836,7 @@ export const NodesTopologyCanvas = ({
           type="button"
           size="sm"
           variant="ghost"
-          onClick={zoomIn}
+          onClick={() => zoomIn()}
           title="Zoom in"
           className="h-7 px-2 text-muted-foreground hover:text-foreground"
         >

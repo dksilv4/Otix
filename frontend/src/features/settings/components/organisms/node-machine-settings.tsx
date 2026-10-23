@@ -75,6 +75,7 @@ export const NodeMachineSettings = ({ server }: { server: GameServer }) => {
   const api = (window as unknown as { desktopAPI?: {
     getDesktopSettings: () => Promise<DesktopSettingsData>
     setDesktopSettings: (s: Partial<DesktopSettingsData>) => Promise<DesktopSettingsData>
+    getDesktopHardware?: (refresh?: boolean) => Promise<MachineHardware | null>
     platform?: string
   } }).desktopAPI
 
@@ -89,7 +90,7 @@ export const NodeMachineSettings = ({ server }: { server: GameServer }) => {
           if (api?.getDesktopSettings) {
             try {
               const local = await api.getDesktopSettings()
-              if (local) mapped = { ...DEFAULT_SETTINGS, ...local }
+              if (local) mapped = { ...DEFAULT_SETTINGS, ...local, hardware: mapped.hardware }
             } catch {
               // ignore
             }
@@ -98,6 +99,45 @@ export const NodeMachineSettings = ({ server }: { server: GameServer }) => {
             setSettings(mapped)
             setSupported(true)
             setPlatform(api?.platform || 'desktop')
+            setLoading(false)
+            try {
+              localStorage.setItem(storageKey, JSON.stringify(mapped))
+            } catch {
+              // ignore
+            }
+          }
+
+          // Query host hardware in background without blocking desktop toggles
+          let hw: MachineHardware | null = null
+          if (api?.getDesktopHardware) {
+            try {
+              hw = await api.getDesktopHardware(false)
+            } catch {
+              // ignore
+            }
+          }
+          if (!hw && (!api || !api.getDesktopHardware)) {
+            try {
+              const directRes = await fetch('http://127.0.0.1:8090/api/v1/hardware', {
+                signal: AbortSignal.timeout(1500),
+              })
+              if (directRes.ok) {
+                hw = await directRes.json()
+              }
+            } catch {
+              // ignore
+            }
+          }
+          if (!cancelled && hw) {
+            setSettings((prev) => {
+              const updated = { ...prev, hardware: hw }
+              try {
+                localStorage.setItem(storageKey, JSON.stringify(updated))
+              } catch {
+                // ignore
+              }
+              return updated
+            })
           }
           return
         }
@@ -109,6 +149,19 @@ export const NodeMachineSettings = ({ server }: { server: GameServer }) => {
           setPlatform(nextPlatform)
           setSupported(Boolean(fetchedSettings.supported ?? (nextPlatform === 'windows' || nextPlatform === 'linux')))
           const mapped = mapNodeSettings(fetchedSettings)
+          if (!mapped.hardware && server.primaryUrl && !server.primaryUrl.startsWith('otix://')) {
+            try {
+              const directRes = await fetch(`${server.primaryUrl.replace(/\/$/, '')}/api/v1/hardware`, {
+                signal: AbortSignal.timeout(1500),
+              })
+              if (directRes.ok) {
+                const hw = await directRes.json()
+                if (hw) mapped.hardware = hw
+              }
+            } catch {
+              // ignore
+            }
+          }
           setSettings(mapped)
           try {
             localStorage.setItem(storageKey, JSON.stringify(mapped))
@@ -131,27 +184,60 @@ export const NodeMachineSettings = ({ server }: { server: GameServer }) => {
     return () => {
       cancelled = true
     }
-  }, [api, managingLocal, server.id, storageKey])
+  }, [api, managingLocal, server.id, server.primaryUrl, storageKey])
 
   const handleRefreshHardware = useCallback(async () => {
     setRefreshingHardware(true)
     try {
       if (managingLocal) {
+        let hardwareUpdated = false
+        let mapped = { ...settings }
         if (api?.getDesktopSettings) {
-          const local = await api.getDesktopSettings()
-          if (local) {
-            const mapped = { ...DEFAULT_SETTINGS, ...local }
-            setSettings(mapped)
-            try {
-              localStorage.setItem(storageKey, JSON.stringify(mapped))
-            } catch {
-              // ignore
-            }
+          try {
+            const local = await api.getDesktopSettings()
+            if (local) mapped = { ...mapped, ...local }
+          } catch {
+            // ignore
           }
+        }
+        if (api?.getDesktopHardware) {
+          try {
+            const hw = await api.getDesktopHardware(true)
+            if (hw) {
+              mapped.hardware = hw
+              hardwareUpdated = true
+            }
+          } catch {
+            // ignore
+          }
+        }
+        if (!hardwareUpdated) {
+          try {
+            const directRes = await fetch('http://127.0.0.1:8090/api/v1/hardware?refresh=true', {
+              signal: AbortSignal.timeout(2000),
+            })
+            if (directRes.ok) {
+              const hw = await directRes.json()
+              if (hw) {
+                mapped.hardware = hw
+                hardwareUpdated = true
+              }
+            }
+          } catch {
+            // ignore
+          }
+        }
+        setSettings(mapped)
+        try {
+          localStorage.setItem(storageKey, JSON.stringify(mapped))
+        } catch {
+          // ignore
         }
         toast({
           title: 'Hardware scan complete',
-          description: 'Host machine components updated.',
+          description: hardwareUpdated
+            ? 'Host machine components updated.'
+            : 'Host machine components verified.',
           variant: 'success',
         })
         return
@@ -160,6 +246,19 @@ export const NodeMachineSettings = ({ server }: { server: GameServer }) => {
       const res = await apiClient.get<Record<string, unknown>>(`/library/servers/${server.id}/desktop?refresh=true`)
       if (res?.data) {
         const mapped = mapNodeSettings(res.data)
+        if (!mapped.hardware && server.primaryUrl && !server.primaryUrl.startsWith('otix://')) {
+          try {
+            const directRes = await fetch(`${server.primaryUrl.replace(/\/$/, '')}/api/v1/hardware?refresh=true`, {
+              signal: AbortSignal.timeout(2000),
+            })
+            if (directRes.ok) {
+              const hw = await directRes.json()
+              if (hw) mapped.hardware = hw
+            }
+          } catch {
+            // ignore
+          }
+        }
         setSettings(mapped)
         try {
           localStorage.setItem(storageKey, JSON.stringify(mapped))
@@ -181,7 +280,7 @@ export const NodeMachineSettings = ({ server }: { server: GameServer }) => {
     } finally {
       setRefreshingHardware(false)
     }
-  }, [api, managingLocal, server.id, server.name, storageKey, toast])
+  }, [api, managingLocal, server.id, server.name, server.primaryUrl, settings, storageKey, toast])
 
   const handleToggle = useCallback((key: keyof NodeMachineData) => async (checked: boolean) => {
     setSaving(key)

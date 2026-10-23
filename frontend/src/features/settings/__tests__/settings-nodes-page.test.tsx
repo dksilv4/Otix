@@ -103,11 +103,11 @@ describe('SettingsNodesPage', () => {
     expect(screen.queryByRole('heading', { name: 'Nodes' })).not.toBeInTheDocument()
   })
 
-  it('renders page header with beta and under development tags', () => {
+  it('renders page header without beta or under development tags', () => {
     renderPage()
     expect(screen.getByRole('heading', { name: 'Nodes' })).toBeInTheDocument()
-    expect(screen.getByText('Beta')).toBeInTheDocument()
-    expect(screen.getByText('Under development')).toBeInTheDocument()
+    expect(screen.queryByText('Beta')).not.toBeInTheDocument()
+    expect(screen.queryByText('Under development')).not.toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Home Server' })).toBeInTheDocument()
   })
 

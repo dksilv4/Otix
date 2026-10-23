@@ -139,6 +139,7 @@ describe('NodeMachineSettings', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     localStorage.clear()
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('fetch blocked in unit test')))
   })
 
   it('renders hardware specs and components when node data is loaded', async () => {

@@ -195,7 +195,7 @@ export const EditSambaShareModal = ({
             <span
               className={cn(
                 'h-2.5 w-2.5 rounded-full shrink-0',
-                activeSamba.isOnline !== false ? 'bg-primary animate-pulse' : 'bg-amber-400',
+                activeSamba.isOnline !== false ? 'bg-status-online animate-pulse' : 'bg-status-offline',
               )}
             />
             <p className="text-xs font-semibold text-foreground truncate">

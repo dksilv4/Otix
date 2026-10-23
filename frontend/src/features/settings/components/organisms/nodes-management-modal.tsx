@@ -34,6 +34,7 @@ import { EditHomeModal } from './edit-home-modal'
 import type { UserHome, UserServerMachine } from '../../types/server-machines'
 import { getOSLabel } from '../../utils/server-machines'
 import { isLocalDesktopNode } from '../../local-desktop-node'
+import { isProbeReachable, formatProbeLatency } from '../../utils/node-probe'
 import {
   useUserHomes,
   useServerMachines,
@@ -95,12 +96,15 @@ export const NodesManagementModal = ({
     try {
       const res = await probeServerMutation.mutateAsync(server.id)
       setProbeResults((prev) => ({ ...prev, [server.id]: res }))
+      const reachable = isProbeReachable(res)
       toast({
-        title: res.remote_accessible ? 'Node Reachable' : 'Probe Complete',
-        description: res.remote_accessible
-          ? `Connected in ${res.latency_ms ?? 0}ms.`
-          : 'Node is offline or unreachable.',
-        variant: res.remote_accessible ? 'success' : 'error',
+        title: reachable ? 'Node Reachable' : 'Node Unreachable',
+        description:
+          res.message ||
+          (reachable
+            ? `Connected in ${formatProbeLatency(res)}.`
+            : 'Node is offline or unreachable.'),
+        variant: reachable ? 'success' : 'error',
       })
     } catch {
       toast({
@@ -489,11 +493,11 @@ export const NodesManagementModal = ({
                             <span
                               className={cn(
                                 'ml-auto text-[10px] font-medium tabular-nums',
-                                probeResult.remote_accessible ? 'text-emerald-400' : 'text-rose-400',
+                                isProbeReachable(probeResult) ? 'text-status-online' : 'text-status-offline',
                               )}
                             >
-                              {probeResult.remote_accessible
-                                ? `${probeResult.latency_ms ?? 0}ms`
+                              {isProbeReachable(probeResult)
+                                ? formatProbeLatency(probeResult)
                                 : 'Probe unreachable'}
                             </span>
                           )}

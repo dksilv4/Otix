@@ -34,6 +34,7 @@ import {
   useUpdateServerMachine,
   useDetectServerDrives,
   useDeleteServerMachine,
+  useAssignNodeHome,
 } from '../../hooks/use-server-machines'
 
 export interface EditServerMachineModalProps {
@@ -59,6 +60,7 @@ export const EditServerMachineModal = ({
   const updateMutation = useUpdateServerMachine()
   const detectMutation = useDetectServerDrives()
   const deleteMutation = useDeleteServerMachine()
+  const assignHomeMutation = useAssignNodeHome()
 
   const [formData, setFormData] = useState<ServerMachineInput>(() =>
     server ? serverMachineToInput(server) : createDefaultServerInput(null),
@@ -179,6 +181,16 @@ export const EditServerMachineModal = ({
 
     try {
       await updateMutation.mutateAsync({ id: server.id, ...formData })
+      if (formData.hostedNodeId && formData.homeId) {
+        try {
+          await assignHomeMutation.mutateAsync({
+            nodeId: formData.hostedNodeId,
+            homeId: formData.homeId,
+          })
+        } catch {
+          // backend update will also have persisted this
+        }
+      }
       toast({
         title: 'Server Updated',
         description: `Saved changes to ${formData.name}.`,
@@ -239,7 +251,7 @@ export const EditServerMachineModal = ({
               <span
                 className={cn(
                   'h-2.5 w-2.5 rounded-full shrink-0',
-                  server.isOnline ? 'bg-primary animate-pulse' : 'bg-amber-400',
+                  server.isOnline ? 'bg-status-online animate-pulse' : 'bg-status-offline',
                 )}
               />
               <p className="text-xs font-semibold text-foreground truncate">

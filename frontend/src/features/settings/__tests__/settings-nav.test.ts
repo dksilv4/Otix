@@ -24,7 +24,7 @@ describe('settings navigation IA', () => {
     expect(NAV_ITEMS.find((i) => i.id === 'library')?.desktop).toBe(false)
     expect(NAV_ITEMS.find((i) => i.id === 'connections')?.label).toBe('Connections')
     expect(NAV_ITEMS.find((i) => i.id === 'nodes')?.label).toBe('Nodes')
-    expect(NAV_ITEMS.some((i) => i.id === 'overview' || i.id === 'integrations' || i.id === 'downloads' || i.id === 'desktop')).toBe(false)
+    expect(NAV_ITEMS.some((i) => i.id === 'overview' || i.id === 'integrations' || i.id === 'downloads' || i.id === 'desktop' || i.id === 'game-servers')).toBe(false)
   })
 
   it('matches sidebar search against labels and keywords', () => {
@@ -36,6 +36,8 @@ describe('settings navigation IA', () => {
     expect(matchNavItem(nodes, 'otix nodes')).toBe(true)
     expect(matchNavItem(nodes, 'homelab')).toBe(true)
     expect(matchNavItem(nodes, 'servers')).toBe(true)
+    expect(matchNavItem(nodes, 'game servers')).toBe(true)
+    expect(matchNavItem(nodes, 'valheim')).toBe(true)
     expect(matchNavItem(nodes, 'xyzzy')).toBe(false)
     const library = NAV_ITEMS.find((i) => i.id === 'library')!
     expect(matchNavItem(library, 'matching')).toBe(true)

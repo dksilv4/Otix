@@ -169,7 +169,7 @@ export const NodeSettingsModal = ({
             <span
               className={cn(
                 'h-2.5 w-2.5 rounded-full shrink-0',
-                server.isOnline ? 'bg-primary animate-pulse' : 'bg-amber-400',
+                server.isOnline ? 'bg-status-online animate-pulse' : 'bg-status-offline',
               )}
             />
             <div className="min-w-0">
@@ -187,7 +187,7 @@ export const NodeSettingsModal = ({
             </div>
           </div>
           {!server.isOnline && (
-            <span className="text-[11px] font-medium text-amber-500 bg-amber-500/10 px-2.5 py-0.5 rounded-full">
+            <span className="text-[11px] font-medium text-status-warning bg-status-warning/10 px-2.5 py-0.5 rounded-full">
               Offline Setup Active — Changes sync when online
             </span>
           )}

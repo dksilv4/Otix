@@ -26,6 +26,7 @@ import {
   useUpdateServerMachine,
 } from '../../hooks/use-server-machines'
 import { isLocalDesktopNode } from '../../local-desktop-node'
+import { isProbeReachable, formatProbeLatency } from '../../utils/node-probe'
 
 export interface EditWorkerNodeModalProps {
   open: boolean
@@ -71,8 +72,14 @@ export const EditWorkerNodeModal = ({
   useEffect(() => {
     if (activeServer) {
       setName(activeServer.name)
-      setSelectedHomeId(activeServer.homeId != null ? String(activeServer.homeId) : 'none')
       const hostedMachine = serverMachines.find((m) => m.hostedNodeId === activeServer.id)
+      const effectiveHomeId =
+        activeServer.homeId != null
+          ? String(activeServer.homeId)
+          : hostedMachine?.homeId != null
+            ? String(hostedMachine.homeId)
+            : 'none'
+      setSelectedHomeId(effectiveHomeId)
       setSelectedMachineId(hostedMachine ? String(hostedMachine.id) : 'none')
       setLocalUrl(activeServer.localUrl || '')
       setRemoteUrl(activeServer.remoteUrl || '')
@@ -89,12 +96,15 @@ export const EditWorkerNodeModal = ({
     try {
       const res = await probeServerMutation.mutateAsync(activeServer.id)
       setProbeResult(res)
+      const reachable = isProbeReachable(res)
       toast({
-        title: res.remote_accessible ? 'Node Reachable' : 'Probe Complete',
-        description: res.remote_accessible
-          ? `Connected in ${res.latency_ms ?? 0}ms.`
-          : 'Node is offline or unreachable.',
-        variant: res.remote_accessible ? 'default' : 'destructive',
+        title: reachable ? 'Node Reachable' : 'Node Unreachable',
+        description:
+          res.message ||
+          (reachable
+            ? `Connected in ${formatProbeLatency(res)}.`
+            : 'Node is offline or unreachable.'),
+        variant: reachable ? 'default' : 'destructive',
       })
     } catch {
       toast({
@@ -128,12 +138,19 @@ export const EditWorkerNodeModal = ({
         remote_url: remoteUrl.trim() || undefined,
       })
 
-      // 2. Update home assignment if changed
-      const currentHomeId = activeServer.homeId != null ? String(activeServer.homeId) : 'none'
-      if (selectedHomeId !== currentHomeId) {
+      // 2. Update home assignment if changed (inheriting from parent machine if none explicitly selected)
+      const parentMachine = serverMachines.find((m) => String(m.id) === selectedMachineId)
+      const targetHomeId =
+        selectedHomeId !== 'none'
+          ? Number(selectedHomeId)
+          : parentMachine?.homeId != null
+            ? parentMachine.homeId
+            : null
+      const currentHomeId = activeServer.homeId != null ? activeServer.homeId : null
+      if (targetHomeId !== currentHomeId) {
         await assignHomeMutation.mutateAsync({
           nodeId: activeServer.id,
-          homeId: selectedHomeId === 'none' ? null : Number(selectedHomeId),
+          homeId: targetHomeId,
         })
       }
 
@@ -219,27 +236,32 @@ export const EditWorkerNodeModal = ({
         <div className="space-y-4 pt-3">
           {/* Status & Probe Bar with Status Light */}
           <div className="p-3 rounded-xl bg-white/[0.03] border border-white/[0.04] flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2 min-w-0">
-              <span
-                className={cn(
-                  'h-2.5 w-2.5 rounded-full shrink-0',
-                  activeServer.isOnline ? 'bg-primary animate-pulse' : 'bg-amber-400',
-                )}
-              />
-              <div className="min-w-0">
-                <p className="text-xs font-semibold text-foreground truncate">
-                  {activeServer.isOnline ? 'Node Online' : 'Node Offline'}
-                  {isLocal && (
-                    <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-primary/15 text-primary font-medium">
-                      Local Desktop
-                    </span>
-                  )}
-                </p>
-                <p className="text-[10px] text-muted-foreground truncate">
-                  {probeResult ? `${probeResult.latency_ms ?? 0}ms response` : activeServer.primaryUrl || 'No URL'}
-                </p>
-              </div>
-            </div>
+            {(() => {
+              const reachable = probeResult ? isProbeReachable(probeResult) : activeServer.isOnline
+              return (
+                <div className="flex items-center gap-2 min-w-0">
+                  <span
+                    className={cn(
+                      'h-2.5 w-2.5 rounded-full shrink-0',
+                      reachable ? 'bg-status-online animate-pulse' : 'bg-status-offline',
+                    )}
+                  />
+                  <div className="min-w-0">
+                    <p className="text-xs font-semibold text-foreground truncate">
+                      {reachable ? 'Node Online' : 'Node Offline'}
+                      {isLocal && (
+                        <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-primary/15 text-primary font-medium">
+                          Local Desktop
+                        </span>
+                      )}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground truncate">
+                      {probeResult ? `${formatProbeLatency(probeResult)} response` : activeServer.primaryUrl || 'No URL'}
+                    </p>
+                  </div>
+                </div>
+              )
+            })()}
 
             <DkButton
               type="button"
@@ -255,7 +277,7 @@ export const EditWorkerNodeModal = ({
           </div>
 
           {!activeServer.isOnline && (
-            <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-500 text-[11px] leading-relaxed">
+            <div className="p-2.5 rounded-xl bg-status-offline/10 border border-status-offline/20 text-status-offline text-[11px] leading-relaxed">
               Node is currently offline. You can configure and save all node settings now — updates are queued and will automatically sync once this node connects.
             </div>
           )}
@@ -291,7 +313,15 @@ export const EditWorkerNodeModal = ({
               </label>
               <DkSelect
                 value={selectedMachineId}
-                onValueChange={setSelectedMachineId}
+                onValueChange={(val) => {
+                  setSelectedMachineId(val)
+                  if (val !== 'none') {
+                    const parent = serverMachines.find((m) => String(m.id) === val)
+                    if (parent?.homeId != null) {
+                      setSelectedHomeId(String(parent.homeId))
+                    }
+                  }
+                }}
                 options={machineOptions}
               />
             </div>

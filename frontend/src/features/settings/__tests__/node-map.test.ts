@@ -1,15 +1,19 @@
 import { describe, it, expect } from 'vitest'
 import type { GameServer } from '@/features/downloads/types'
 import type { PendingNode } from '@/features/downloads/pending-nodes'
+import type { DedicatedGameServer } from '@/features/gameservers/types'
 import type { UserHome, UserServerMachine } from '../types/server-machines'
 import {
   buildNodeMapGraph,
   calculateAutoLayout,
   calculateFitViewport,
+  calculateZoomAtPoint,
+  calculateWheelZoomDelta,
   isCompatibleConnection,
   computeTopologyStats,
   getNodeCardBorderAnchor,
   generateSmartNodeConnectionPath,
+  HUB_NODE_ID,
 } from '../utils/node-map'
 
 describe('buildNodeMapGraph', () => {
@@ -99,6 +103,86 @@ describe('buildNodeMapGraph', () => {
     const { items } = buildNodeMapGraph(mockHomes, mockMachines, mockNodes, pendingNodes)
     expect(items.filter((i) => i.type === 'unclaimed_node')).toHaveLength(0)
   })
+
+  it('inherits home environment from parent server machine when node has no direct homeId', () => {
+    const unassignedNode: GameServer = {
+      id: 200,
+      name: 'Hosted Child Node',
+      primaryUrl: 'http://192.168.1.60:8090',
+      localUrl: 'http://192.168.1.60:8090',
+      isOnline: true,
+      isActive: true,
+      totalFiles: 0,
+      storageFreeBytes: 0,
+      storageTotalBytes: 0,
+      createdAt: '',
+      updatedAt: '',
+      homeId: undefined,
+    }
+
+    const parentMachine: UserServerMachine = {
+      id: 20,
+      name: 'Parent Server',
+      homeId: 1,
+      os: 'linux',
+      hostedNodeId: 200,
+      smbEnabled: false,
+      createdAt: '',
+      updatedAt: '',
+    }
+
+    const { items, edges } = buildNodeMapGraph(mockHomes, [parentMachine], [unassignedNode])
+    const nodeItem = items.find((i) => i.id === 'node-200')
+    expect(nodeItem?.homeId).toBe(1)
+    expect(nodeItem?.homeName).toBe('Homelab')
+    // Inherited child node inherits home metadata, but is NOT directly linked to home with an edge
+    expect(edges.some((e) => e.relation === 'home_link' && e.targetId === 'node-200')).toBe(false)
+    // Instead it is linked to its parent server machine via hosted_link
+    expect(edges.some((e) => e.relation === 'hosted_link' && e.targetId === 'node-200')).toBe(true)
+  })
+
+  it('includes dedicated game servers and links to host server machine', () => {
+    const mockGameServer: DedicatedGameServer = {
+      id: 50,
+      name: 'Minecraft SMP',
+      gameTitle: 'Minecraft',
+      serverType: 'minecraft',
+      host: '192.168.1.50',
+      port: 25565,
+      serverMachineId: 10,
+      isPublicLink: false,
+      status: 'online',
+      currentPlayers: 4,
+      maxPlayers: 20,
+      playerList: ['Alice', 'Bob'],
+      connectionAddress: '192.168.1.50:25565',
+      ownerUsername: 'alice',
+      isOwner: true,
+      userPermission: 'admin',
+      createdAt: '',
+      updatedAt: '',
+    }
+
+    const { items, edges } = buildNodeMapGraph(
+      mockHomes,
+      mockMachines,
+      mockNodes,
+      [],
+      [],
+      [mockGameServer],
+    )
+
+    const gsItem = items.find((i) => i.id === 'game-server-50')
+    expect(gsItem).toBeDefined()
+    expect(gsItem?.type).toBe('game_server')
+    expect(gsItem?.name).toBe('Minecraft SMP')
+
+    const hostEdge = edges.find(
+      (e) => e.sourceId === 'server-10' && e.targetId === 'game-server-50',
+    )
+    expect(hostEdge).toBeDefined()
+    expect(hostEdge?.relation).toBe('game_server_link')
+  })
 })
 
 describe('calculateAutoLayout', () => {
@@ -125,6 +209,50 @@ describe('calculateAutoLayout', () => {
     expect(positions['unclaimed-node-0']).toBeDefined()
     expect(positions['node-1'].x).toBe(100)
     expect(positions['unclaimed-node-0'].x).toBe(420) // 2nd column in nodes grid (100 + 320)
+    expect(positions[HUB_NODE_ID]).toBeDefined()
+    expect(positions[HUB_NODE_ID].y).toBe(100)
+  })
+
+  it('calculates auto layout position for HUB_NODE_ID when items are empty', () => {
+    const positions = calculateAutoLayout([], { x: 150, y: 80 })
+    expect(positions[HUB_NODE_ID]).toBeDefined()
+    expect(positions[HUB_NODE_ID].x).toBeDefined()
+    expect(positions[HUB_NODE_ID].y).toBe(80)
+  })
+})
+
+describe('calculateZoomAtPoint', () => {
+  it('zooms into target point keeping coordinate under cursor stationary', () => {
+    const vp = { x: 0, y: 0, zoom: 1 }
+    // Mouse at (400, 300), zoom from 1.0 to 2.0
+    const nextVp = calculateZoomAtPoint(vp, 2.0, 400, 300)
+    expect(nextVp.zoom).toBe(2)
+    // Canvas coordinate before: (400 - 0)/1 = 400, (300 - 0)/1 = 300
+    // Canvas coordinate after: (400 - nextVp.x)/nextVp.zoom should equal 400
+    const canvasXAfter = (400 - nextVp.x) / nextVp.zoom
+    const canvasYAfter = (300 - nextVp.y) / nextVp.zoom
+    expect(canvasXAfter).toBeCloseTo(400)
+    expect(canvasYAfter).toBeCloseTo(300)
+  })
+
+  it('clamps zoom within bounds', () => {
+    const vp = { x: 0, y: 0, zoom: 1 }
+    const zoomedIn = calculateZoomAtPoint(vp, 5.0, 100, 100, 0.35, 2.5)
+    expect(zoomedIn.zoom).toBe(2.5)
+    const zoomedOut = calculateZoomAtPoint(vp, 0.1, 100, 100, 0.35, 2.5)
+    expect(zoomedOut.zoom).toBe(0.35)
+  })
+})
+
+describe('calculateWheelZoomDelta', () => {
+  it('returns discrete wheel steps for mouse wheel', () => {
+    expect(calculateWheelZoomDelta(-100, false, 0)).toBe(0.12)
+    expect(calculateWheelZoomDelta(100, false, 0)).toBe(-0.12)
+  })
+
+  it('returns smooth continuous steps for pinch or trackpad', () => {
+    expect(calculateWheelZoomDelta(-10, true, 0)).toBe(0.1)
+    expect(calculateWheelZoomDelta(10, false, 0)).toBeCloseTo(-0.03)
   })
 })
 
@@ -149,6 +277,37 @@ describe('isCompatibleConnection', () => {
     expect(check.compatible).toBe(false)
     expect(check.reason).toContain('Claim this Otix Node first')
   })
+
+  it('allows connecting Dedicated Game Server to Server Machine, but not to Home or another Game Server', () => {
+    const gsItem = {
+      id: 'game-server-1',
+      type: 'game_server' as const,
+      entityId: 1,
+      name: 'Palworld Server',
+      data: { type: 'game_server' as const, gameServer: {} as DedicatedGameServer },
+    }
+    const serverItem = {
+      id: 'server-10',
+      type: 'server' as const,
+      entityId: 10,
+      name: 'Server Machine',
+      data: { type: 'server' as const, machine: {} as UserServerMachine },
+    }
+    const homeItem = {
+      id: 'home-1',
+      type: 'home' as const,
+      entityId: 1,
+      name: 'Home Environment',
+      data: { type: 'home' as const, home: {} as UserHome },
+    }
+
+    const gsToServer = isCompatibleConnection(gsItem, serverItem)
+    expect(gsToServer.compatible).toBe(true)
+    expect(gsToServer.connectionTypes).toContain('host')
+
+    const gsToHome = isCompatibleConnection(gsItem, homeItem)
+    expect(gsToHome.compatible).toBe(false)
+  })
 })
 
 describe('computeTopologyStats', () => {
@@ -166,6 +325,14 @@ describe('computeTopologyStats', () => {
     expect(stats.onlineNodes).toBe(1)
     expect(stats.offlineNodes).toBe(1)
     expect(stats.unclaimedNodes).toBe(1)
+
+    const gameServers: DedicatedGameServer[] = [
+      { id: 1, name: 'Palworld', currentPlayers: 3 } as DedicatedGameServer,
+      { id: 2, name: 'Valheim', currentPlayers: 5 } as DedicatedGameServer,
+    ]
+    const statsWithGs = computeTopologyStats(nodes, [], [], pendingNodes, [], gameServers)
+    expect(statsWithGs.gameServerCount).toBe(2)
+    expect(statsWithGs.gameServerPlayerCount).toBe(8)
   })
 })
 

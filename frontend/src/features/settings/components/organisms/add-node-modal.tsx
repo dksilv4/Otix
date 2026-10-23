@@ -1,4 +1,4 @@
-import { Cpu, Server, Home as HomeIcon, FolderTree, Sparkles, KeyRound, ArrowRight } from 'lucide-react'
+import { Cpu, Server, Home as HomeIcon, FolderTree, Sparkles, KeyRound, ArrowRight, Gamepad2 } from 'lucide-react'
 import { DkDialog } from '@ui/molecules/dialog'
 import { DkButton } from '@ui/atoms/button'
 import type { PendingNode } from '@/features/downloads/pending-nodes'
@@ -7,7 +7,7 @@ export interface AddNodeModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   unclaimedNodes?: PendingNode[]
-  onSelectType: (type: 'worker' | 'server' | 'home' | 'samba') => void
+  onSelectType: (type: 'worker' | 'server' | 'home' | 'samba' | 'game_server') => void
   onClaimNode?: (node: PendingNode) => void
 }
 
@@ -18,7 +18,7 @@ export const AddNodeModal = ({
   onSelectType,
   onClaimNode,
 }: AddNodeModalProps) => {
-  const handleSelect = (type: 'worker' | 'server' | 'home' | 'samba') => {
+  const handleSelect = (type: 'worker' | 'server' | 'home' | 'samba' | 'game_server') => {
     onOpenChange(false)
     onSelectType(type)
   }
@@ -184,6 +184,28 @@ export const AddNodeModal = ({
                 <p className="text-xs font-bold text-foreground">Samba Share (SMB)</p>
                 <p className="text-[11px] text-muted-foreground leading-snug mt-0.5">
                   Network storage for game installs, ROMs, and ISO folders.
+                </p>
+              </div>
+            </div>
+
+            {/* 5. Dedicated Game Server */}
+            <div
+              role="button"
+              tabIndex={0}
+              onClick={() => handleSelect('game_server')}
+              onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && handleSelect('game_server')}
+              className="group p-3.5 rounded-2xl bg-[var(--dk-surface-field)] hover:bg-[var(--dk-surface-hover)] border border-[var(--dk-separator)] hover:border-primary/40 cursor-pointer transition-all duration-150 space-y-2 text-left sm:col-span-2"
+            >
+              <div className="flex items-center justify-between">
+                <div className="h-9 w-9 rounded-xl bg-primary/15 text-primary flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                  <Gamepad2 size={18} />
+                </div>
+                <ArrowRight size={13} className="text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-foreground">Dedicated Game Server</p>
+                <p className="text-[11px] text-muted-foreground leading-snug mt-0.5">
+                  Multiplayer game server (Minecraft, Palworld, Valheim, CS2, etc.) to monitor and share.
                 </p>
               </div>
             </div>

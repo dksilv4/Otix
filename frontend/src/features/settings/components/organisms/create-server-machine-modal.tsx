@@ -31,6 +31,7 @@ import {
 import {
   useCreateServerMachine,
   useDetectServerDrives,
+  useAssignNodeHome,
 } from '../../hooks/use-server-machines'
 
 export interface CreateServerMachineModalProps {
@@ -53,6 +54,7 @@ export const CreateServerMachineModal = ({
   const { toast } = useToast()
   const createMutation = useCreateServerMachine()
   const detectMutation = useDetectServerDrives()
+  const assignHomeMutation = useAssignNodeHome()
 
   const [formData, setFormData] = useState<ServerMachineInput>(() =>
     createDefaultServerInput(defaultHomeId),
@@ -170,6 +172,16 @@ export const CreateServerMachineModal = ({
 
     try {
       const created = await createMutation.mutateAsync(formData)
+      if (formData.hostedNodeId && formData.homeId) {
+        try {
+          await assignHomeMutation.mutateAsync({
+            nodeId: formData.hostedNodeId,
+            homeId: formData.homeId,
+          })
+        } catch {
+          // backend create will also have persisted this
+        }
+      }
       toast({
         title: 'Server Machine Added',
         description: `Added ${formData.name} to your homelab.`,

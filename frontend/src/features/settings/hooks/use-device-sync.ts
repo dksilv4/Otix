@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { useOptionalAuth } from '@auth/hooks/use-auth'
 import type { User } from '@auth/types'
+import { isDesktop } from '@/lib/desktop/api'
 import {
   registerDeviceSession,
   fetchDevicePendingUpdates,
@@ -15,7 +16,8 @@ export const useDeviceSync = (userOverride?: User | null, isAuthenticatedOverrid
   const registeredNodeIdRef = useRef<number | null>(null)
 
   useEffect(() => {
-    if (!isAuthenticated || !user) return
+    // Browser sessions should not be nodes. Only desktop client sessions should sync.
+    if (!isDesktop() || !isAuthenticated || !user) return
 
     let cancelled = false
 

@@ -8,10 +8,14 @@ import type {
 import {
   calculateAutoLayout,
   calculateFitViewport,
+  calculateZoomAtPoint,
+  calculateWheelZoomDelta,
   loadStoredPositions,
   saveStoredPositions,
   NODE_CARD_WIDTH,
   NODE_CARD_HEIGHT,
+  HUB_NODE_ID,
+  HUB_NODE_WIDTH,
 } from '../utils/node-map'
 
 interface UseNodeMapProps {
@@ -41,8 +45,6 @@ export const useNodeMap = ({ items, anchor, onCardDropConnect }: UseNodeMapProps
 
   // Initial layout calculation / restore
   useEffect(() => {
-    if (items.length === 0) return
-
     const stored = loadStoredPositions()
     const auto = calculateAutoLayout(items, anchor)
     const merged: Record<string, NodeMapPosition> = {}
@@ -54,6 +56,18 @@ export const useNodeMap = ({ items, anchor, onCardDropConnect }: UseNodeMapProps
         merged[item.id] = auto[item.id]
       } else {
         merged[item.id] = { x: anchor?.x ?? 340, y: anchor?.y ?? 240 }
+      }
+    }
+
+    if (stored[HUB_NODE_ID]) {
+      merged[HUB_NODE_ID] = stored[HUB_NODE_ID]
+    } else if (auto[HUB_NODE_ID]) {
+      merged[HUB_NODE_ID] = auto[HUB_NODE_ID]
+    } else {
+      const windowW = typeof window !== 'undefined' ? window.innerWidth : 1200
+      merged[HUB_NODE_ID] = {
+        x: Math.round((windowW - HUB_NODE_WIDTH) / 2),
+        y: anchor?.y ?? 100,
       }
     }
 
@@ -71,13 +85,17 @@ export const useNodeMap = ({ items, anchor, onCardDropConnect }: UseNodeMapProps
     setViewport({ x: 0, y: 0, zoom: 1 })
   }, [items, anchor])
 
-  // Zoom helpers
-  const zoomIn = useCallback(() => {
-    setViewport((prev) => ({ ...prev, zoom: Math.min(prev.zoom + 0.15, 2) }))
+  // Zoom helpers with zoom-at-center
+  const zoomIn = useCallback((centerX?: number, centerY?: number) => {
+    const cx = centerX ?? (typeof window !== 'undefined' ? window.innerWidth / 2 : 600)
+    const cy = centerY ?? (typeof window !== 'undefined' ? window.innerHeight / 2 : 400)
+    setViewport((prev) => calculateZoomAtPoint(prev, prev.zoom + 0.15, cx, cy))
   }, [])
 
-  const zoomOut = useCallback(() => {
-    setViewport((prev) => ({ ...prev, zoom: Math.max(prev.zoom - 0.15, 0.4) }))
+  const zoomOut = useCallback((centerX?: number, centerY?: number) => {
+    const cx = centerX ?? (typeof window !== 'undefined' ? window.innerWidth / 2 : 600)
+    const cy = centerY ?? (typeof window !== 'undefined' ? window.innerHeight / 2 : 400)
+    setViewport((prev) => calculateZoomAtPoint(prev, prev.zoom - 0.15, cx, cy))
   }, [])
 
   const resetView = useCallback(() => {
@@ -134,15 +152,17 @@ export const useNodeMap = ({ items, anchor, onCardDropConnect }: UseNodeMapProps
 
         // Check if dragged card is overlapping any other node
         let targetId: string | null = null
-        for (const item of items) {
-          if (item.id === itemId) continue
-          const tPos = positionsRef.current[item.id]
-          if (!tPos) continue
-          const dx = Math.abs(roundX - tPos.x)
-          const dy = Math.abs(roundY - tPos.y)
-          if (dx < NODE_CARD_WIDTH * 0.75 && dy < NODE_CARD_HEIGHT * 0.9) {
-            targetId = item.id
-            break
+        if (itemId !== HUB_NODE_ID) {
+          for (const item of items) {
+            if (item.id === itemId) continue
+            const tPos = positionsRef.current[item.id]
+            if (!tPos) continue
+            const dx = Math.abs(roundX - tPos.x)
+            const dy = Math.abs(roundY - tPos.y)
+            if (dx < NODE_CARD_WIDTH * 0.75 && dy < NODE_CARD_HEIGHT * 0.9) {
+              targetId = item.id
+              break
+            }
           }
         }
         setHoveredDropTargetId(targetId)
@@ -246,16 +266,35 @@ export const useNodeMap = ({ items, anchor, onCardDropConnect }: UseNodeMapProps
     }
   }, [connectingFrom, handleCancelConnecting])
 
-  // Wheel zoom
+  // Wheel zoom (zoom-at-cursor for discrete wheel & pinch, plus shift/horizontal pan)
   const handleWheel = useCallback((e: React.WheelEvent) => {
-    if (e.ctrlKey || e.metaKey) {
-      e.preventDefault()
-      const delta = e.deltaY < 0 ? 0.08 : -0.08
+    e.preventDefault()
+
+    // Handle horizontal scroll panning (trackpad swipe or Shift+wheel)
+    if (e.shiftKey) {
       setViewport((prev) => ({
         ...prev,
-        zoom: Math.min(Math.max(prev.zoom + delta, 0.4), 2),
+        x: Math.round(prev.x - e.deltaY),
       }))
+      return
     }
+
+    if (!e.ctrlKey && Math.abs(e.deltaX) > Math.abs(e.deltaY) && Math.abs(e.deltaX) > 2) {
+      setViewport((prev) => ({
+        ...prev,
+        x: Math.round(prev.x - e.deltaX),
+      }))
+      return
+    }
+
+    const container = e.currentTarget.getBoundingClientRect()
+    const mouseX = e.clientX - container.left
+    const mouseY = e.clientY - container.top
+
+    const isPinchOrCtrl = Boolean(e.ctrlKey || e.metaKey)
+    const delta = calculateWheelZoomDelta(e.deltaY, isPinchOrCtrl, e.deltaMode)
+
+    setViewport((prev) => calculateZoomAtPoint(prev, prev.zoom + delta, mouseX, mouseY))
   }, [])
 
   return {

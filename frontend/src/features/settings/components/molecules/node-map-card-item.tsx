@@ -4,6 +4,8 @@ import {
   Cpu,
   Sparkles,
   FolderTree,
+  Gamepad2,
+  Copy,
   Link as LinkIcon,
   ExternalLink,
   Pencil,
@@ -19,6 +21,7 @@ import type { NodeMapItem, SambaShareConfig } from '../../types/node-map'
 import type { GameServer } from '@/features/downloads/types'
 import type { UserHome, UserServerMachine } from '../../types/server-machines'
 import type { PendingNode } from '@/features/downloads/pending-nodes'
+import type { DedicatedGameServer } from '@/features/gameservers/types'
 import { Link } from '@tanstack/react-router'
 import { getOSLabel } from '../../utils/server-machines'
 import { NODE_CARD_WIDTH, NODE_CARD_HEIGHT } from '../../utils/node-map'
@@ -50,6 +53,10 @@ interface NodeMapCardItemProps {
   onClaimPendingNode?: (pending: PendingNode) => void
   onOpenSambaSettings?: (samba: SambaShareConfig) => void
   onEditSamba?: (samba: SambaShareConfig) => void
+  onOpenGameServerDrawer?: (gameServer: DedicatedGameServer) => void
+  onPingGameServer?: (gameServer: DedicatedGameServer) => void
+  onEditGameServer?: (gameServer: DedicatedGameServer) => void
+  onCopyGameServerAddress?: (gameServer: DedicatedGameServer, e: React.MouseEvent) => void
 }
 
 export const NodeMapCardItem = ({
@@ -77,6 +84,10 @@ export const NodeMapCardItem = ({
   onClaimPendingNode,
   onOpenSambaSettings,
   onEditSamba,
+  onOpenGameServerDrawer,
+  onPingGameServer,
+  onEditGameServer,
+  onCopyGameServerAddress,
 }: NodeMapCardItemProps) => {
   const { type, name } = item
   const data = item.data as any
@@ -102,6 +113,8 @@ export const NodeMapCardItem = ({
     } else if (data.type === 'samba') {
       if (onEditSamba) onEditSamba(data.samba)
       else onOpenSambaSettings?.(data.samba)
+    } else if (data.type === 'game_server') {
+      onOpenGameServerDrawer?.(data.gameServer)
     }
   }
 
@@ -167,14 +180,26 @@ export const NodeMapCardItem = ({
             {type === 'server' && <Server size={14} />}
             {type === 'node' && <Cpu size={14} />}
             {type === 'samba' && <FolderTree size={14} />}
+            {type === 'game_server' && <Gamepad2 size={14} />}
             {type === 'unclaimed_node' && <Sparkles size={14} />}
           </div>
           {/* Status Indicator Dot for all nodes */}
+          {type === 'game_server' && (
+            <span
+              className={cn(
+                'absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full ring-2 ring-[var(--dk-surface-base)]',
+                data.type === 'game_server' && data.gameServer.status === 'online'
+                  ? 'bg-status-online'
+                  : 'bg-status-offline',
+              )}
+              title={data.type === 'game_server' && data.gameServer.status === 'online' ? 'Online' : 'Offline'}
+            />
+          )}
           {type === 'node' && (
             <span
               className={cn(
                 'absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full ring-2 ring-[var(--dk-surface-base)]',
-                data.type === 'node' && data.server.isOnline ? 'bg-primary' : 'bg-amber-400',
+                data.type === 'node' && data.server.isOnline ? 'bg-status-online' : 'bg-status-offline',
               )}
               title={data.type === 'node' && data.server.isOnline ? 'Online' : 'Offline'}
             />
@@ -183,7 +208,7 @@ export const NodeMapCardItem = ({
             <span
               className={cn(
                 'absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full ring-2 ring-[var(--dk-surface-base)]',
-                data.type === 'server' && data.machine.isOnline ? 'bg-primary' : 'bg-amber-400',
+                data.type === 'server' && data.machine.isOnline ? 'bg-status-online' : 'bg-status-offline',
               )}
               title={data.type === 'server' && data.machine.isOnline ? 'Online' : 'Offline'}
             />
@@ -192,20 +217,20 @@ export const NodeMapCardItem = ({
             <span
               className={cn(
                 'absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full ring-2 ring-[var(--dk-surface-base)]',
-                data.type === 'samba' && data.samba.isOnline !== false ? 'bg-primary' : 'bg-amber-400',
+                data.type === 'samba' && data.samba.isOnline !== false ? 'bg-status-online' : 'bg-status-offline',
               )}
               title={data.type === 'samba' && data.samba.isOnline !== false ? 'SMB Share Available' : 'SMB Share Offline'}
             />
           )}
           {type === 'home' && (
             <span
-              className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full ring-2 ring-[var(--dk-surface-base)] bg-primary"
+              className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full ring-2 ring-[var(--dk-surface-base)] bg-status-online"
               title="Home Environment Active"
             />
           )}
           {type === 'unclaimed_node' && (
             <span
-              className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full ring-2 ring-[var(--dk-surface-base)] bg-primary animate-pulse"
+              className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full ring-2 ring-[var(--dk-surface-base)] bg-status-warning animate-pulse"
               title="Discovered Beaconing Node"
             />
           )}
@@ -233,6 +258,12 @@ export const NodeMapCardItem = ({
             {type === 'server' && (data.machine.ipAddress || data.machine.host || getOSLabel(data.machine.os))}
             {type === 'node' && (isLocalDesktopNode(data.server) ? 'Companion Daemon' : data.server.primaryUrl || 'Local Node')}
             {type === 'samba' && (data.samba.serverName ? `/${data.samba.shareName} • ${data.samba.serverName}` : `/${data.samba.shareName} • Port ${data.samba.port}`)}
+            {type === 'game_server' &&
+              `${data.gameServer.gameTitle || 'Game Server'} • ${
+                data.gameServer.status === 'online'
+                  ? `${data.gameServer.currentPlayers}/${data.gameServer.maxPlayers || 0} players`
+                  : data.gameServer.connectionAddress
+              }`}
             {type === 'unclaimed_node' && (data.pending.claimCode ? `PIN: ${data.pending.claimCode}` : 'Discovered Node')}
           </p>
           {type === 'node' && (
@@ -430,6 +461,67 @@ export const NodeMapCardItem = ({
               <Pencil size={11} />
               <span>{onEditSamba ? 'Edit' : 'Settings'}</span>
             </DkButton>
+          )}
+
+          {/* Game Server Actions */}
+          {type === 'game_server' && (
+            <>
+              {onOpenGameServerDrawer && (
+                <DkButton
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  aria-label={`Open ${data.gameServer.name}`}
+                  onClick={() => onOpenGameServerDrawer(data.gameServer)}
+                  className="h-6 px-2 text-[11px] font-medium gap-1 text-foreground hover:bg-[var(--dk-surface-hover)] rounded-lg"
+                >
+                  <ExternalLink size={11} />
+                  <span>Open</span>
+                </DkButton>
+              )}
+
+              {onCopyGameServerAddress && (
+                <DkButton
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  aria-label="Copy server address"
+                  onClick={(e) => onCopyGameServerAddress(data.gameServer, e)}
+                  className="h-6 px-2 text-[11px] font-medium gap-1 text-foreground hover:bg-[var(--dk-surface-hover)] rounded-lg"
+                >
+                  <Copy size={11} />
+                  <span>Copy</span>
+                </DkButton>
+              )}
+
+              {onEditGameServer && (
+                <DkButton
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  aria-label={`Edit ${data.gameServer.name}`}
+                  onClick={() => onEditGameServer(data.gameServer)}
+                  className="h-6 px-2 text-[11px] font-medium gap-1 text-foreground hover:bg-[var(--dk-surface-hover)] rounded-lg"
+                >
+                  <Pencil size={11} />
+                  <span>Edit</span>
+                </DkButton>
+              )}
+
+              {onPingGameServer && (
+                <DkButton
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  aria-label="Test connection"
+                  onClick={() => onPingGameServer(data.gameServer)}
+                  className="h-6 px-2 text-[11px] font-medium gap-1 text-amber-400 hover:text-amber-300 hover:bg-[var(--dk-surface-hover)] rounded-lg"
+                >
+                  <Radio size={11} />
+                  <span>Ping</span>
+                </DkButton>
+              )}
+            </>
           )}
 
           {/* Unclaimed Actions */}

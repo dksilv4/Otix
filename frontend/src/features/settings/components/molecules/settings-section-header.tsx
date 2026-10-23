@@ -8,7 +8,7 @@ interface SectionHeaderProps {
   className?: string
   /** Optional leading icon displayed as a tinted badge */
   icon?: ComponentType<{ className?: string }>
-  /** Chips rendered beside the title (e.g. Beta) */
+  /** Chips rendered beside the title (e.g. WIP) */
   badges?: ReactNode
   /** 'section' (default) for card-level headers, 'page' for top-of-page titles */
   variant?: 'section' | 'page'

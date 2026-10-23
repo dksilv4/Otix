@@ -1,11 +1,13 @@
 import type { GameServer } from '@/features/downloads/types'
 import type { PendingNode } from '@/features/downloads/pending-nodes'
 import { nodeUrlKey } from '@/features/downloads/pending-nodes'
+import type { DedicatedGameServer } from '@/features/gameservers/types'
 import type { UserHome, UserServerMachine } from '../types/server-machines'
 import type {
   NodeMapEdge,
   NodeMapItem,
   NodeMapPosition,
+  NodeMapViewport,
   SambaShareConfig,
 } from '../types/node-map'
 
@@ -13,6 +15,9 @@ const STORAGE_KEY = 'otix_node_map_positions_v1'
 
 export const NODE_CARD_WIDTH = 240
 export const NODE_CARD_HEIGHT = 48
+export const HUB_NODE_ID = 'central-hub-node'
+export const HUB_NODE_WIDTH = 540
+export const HUB_NODE_HEIGHT = 180
 
 export const buildNodeMapGraph = (
   homes: UserHome[],
@@ -20,6 +25,7 @@ export const buildNodeMapGraph = (
   nodes: GameServer[],
   pendingNodes: PendingNode[] = [],
   customSambaShares: SambaShareConfig[] = [],
+  gameServers: DedicatedGameServer[] = [],
 ): { items: NodeMapItem[]; edges: NodeMapEdge[] } => {
   const items: NodeMapItem[] = []
   const edges: NodeMapEdge[] = []
@@ -145,21 +151,28 @@ export const buildNodeMapGraph = (
   }
 
   for (const node of nodes) {
-    const homeName = node.homeName || (node.homeId ? homesMap.get(node.homeId)?.name : null)
+    const parentMachine = serverMachines.find((m) => m.hostedNodeId === node.id)
+    const effectiveHomeId = node.homeId ?? parentMachine?.homeId ?? null
+    const effectiveHome = effectiveHomeId ? homesMap.get(effectiveHomeId) : null
+    const homeName = node.homeName || effectiveHome?.name || null
+    const isInherited = Boolean(!node.homeId && parentMachine?.homeId)
+
     items.push({
       id: `node-${node.id}`,
       type: 'node',
       entityId: node.id,
       name: node.name,
-      homeId: node.homeId,
+      homeId: effectiveHomeId,
       homeName,
-      data: { type: 'node', server: node },
+      data: { type: 'node', server: { ...node, homeId: effectiveHomeId, homeName } },
     })
 
-    if (node.homeId && homesMap.has(node.homeId)) {
+    // If the node inherits its home from a parent server machine, it is linked via the parent server
+    // (Home -> Server -> Node) and should not be directly linked to the home node.
+    if (effectiveHomeId && homesMap.has(effectiveHomeId) && !parentMachine) {
       edges.push({
-        id: `edge-home-${node.homeId}-node-${node.id}`,
-        sourceId: `home-${node.homeId}`,
+        id: `edge-home-${effectiveHomeId}-node-${node.id}`,
+        sourceId: `home-${effectiveHomeId}`,
         sourceType: 'home',
         targetId: `node-${node.id}`,
         targetType: 'node',
@@ -232,6 +245,30 @@ export const buildNodeMapGraph = (
     })
   }
 
+  // Include dedicated game servers in topology
+  for (const gs of gameServers) {
+    items.push({
+      id: `game-server-${gs.id}`,
+      type: 'game_server',
+      entityId: gs.id,
+      name: gs.name,
+      data: { type: 'game_server', gameServer: gs },
+    })
+
+    if (gs.serverMachineId && serverMachines.some((m) => m.id === gs.serverMachineId)) {
+      edges.push({
+        id: `edge-server-${gs.serverMachineId}-game-server-${gs.id}`,
+        sourceId: `server-${gs.serverMachineId}`,
+        sourceType: 'server',
+        targetId: `game-server-${gs.id}`,
+        targetType: 'game_server',
+        relation: 'game_server_link',
+        label: 'Dedicated Server',
+        detail: gs.gameTitle || 'Game Server',
+      })
+    }
+  }
+
   return { items, edges }
 }
 
@@ -246,19 +283,42 @@ export const calculateAutoLayout = (
   const sambas = items.filter((i) => i.type === 'samba')
   const nodes = items.filter((i) => i.type === 'node')
   const unclaimed = items.filter((i) => i.type === 'unclaimed_node')
+  const gameServers = items.filter((i) => i.type === 'game_server')
   const allNodes = [...nodes, ...unclaimed]
 
-  const startX = anchor?.x ?? 300
-  const startY = anchor?.y ?? 200
   const columnWidth = 320
   const rowHeight = 64
+
+  // Determine active columns
+  let columnCount = 0
+  if (homes.length > 0) columnCount++
+  if (servers.length > 0) columnCount++
+  if (sambas.length > 0) columnCount++
+  if (allNodes.length > 0) {
+    columnCount += columnCount === 0 ? 2 : 1
+  }
+  if (gameServers.length > 0) columnCount++
+
+  const effectiveColumns = Math.max(columnCount, 1)
+  const totalColumnsWidth = effectiveColumns * columnWidth
+
+  const windowW = typeof window !== 'undefined' ? window.innerWidth : 1200
+  const startX = anchor?.x ?? Math.max(80, Math.round((windowW - Math.max(totalColumnsWidth, HUB_NODE_WIDTH)) / 2))
+  const startY = anchor?.y ?? 100
+
+  // Position central hub node centered horizontally above the columns
+  const hubX = Math.max(40, startX + Math.round((totalColumnsWidth - HUB_NODE_WIDTH) / 2))
+  const hubY = startY
+  positions[HUB_NODE_ID] = { x: hubX, y: hubY }
+
+  const nodesStartY = hubY + HUB_NODE_HEIGHT + 36
 
   let currentColumn = 0
 
   if (homes.length > 0) {
     const colX = startX + currentColumn * columnWidth
     homes.forEach((home, index) => {
-      positions[home.id] = { x: colX, y: startY + index * rowHeight }
+      positions[home.id] = { x: colX, y: nodesStartY + index * rowHeight }
     })
     currentColumn++
   }
@@ -271,7 +331,7 @@ export const calculateAutoLayout = (
       return homeA - homeB
     })
     sortedServers.forEach((server, index) => {
-      positions[server.id] = { x: colX, y: startY + index * rowHeight }
+      positions[server.id] = { x: colX, y: nodesStartY + index * rowHeight }
     })
     currentColumn++
   }
@@ -279,7 +339,7 @@ export const calculateAutoLayout = (
   if (sambas.length > 0) {
     const colX = startX + currentColumn * columnWidth
     sambas.forEach((samba, index) => {
-      positions[samba.id] = { x: colX, y: startY + index * rowHeight }
+      positions[samba.id] = { x: colX, y: nodesStartY + index * rowHeight }
     })
     currentColumn++
   }
@@ -292,15 +352,24 @@ export const calculateAutoLayout = (
         const row = Math.floor(index / 2)
         positions[node.id] = {
           x: startX + col * columnWidth,
-          y: startY + row * rowHeight,
+          y: nodesStartY + row * rowHeight,
         }
       })
     } else {
       const colX = startX + currentColumn * columnWidth
       allNodes.forEach((node, index) => {
-        positions[node.id] = { x: colX, y: startY + index * rowHeight }
+        positions[node.id] = { x: colX, y: nodesStartY + index * rowHeight }
       })
     }
+    currentColumn++
+  }
+
+  if (gameServers.length > 0) {
+    const colX = startX + currentColumn * columnWidth
+    gameServers.forEach((gs, index) => {
+      positions[gs.id] = { x: colX, y: nodesStartY + index * rowHeight }
+    })
+    currentColumn++
   }
 
   return positions
@@ -313,7 +382,7 @@ export const calculateFitViewport = (
   containerHeight = 800,
   padding = 80,
 ): { x: number; y: number; zoom: number } => {
-  if (items.length === 0) return { x: 0, y: 0, zoom: 1 }
+  if (items.length === 0 && !positions[HUB_NODE_ID]) return { x: 0, y: 0, zoom: 1 }
 
   let minX = Infinity
   let minY = Infinity
@@ -327,6 +396,14 @@ export const calculateFitViewport = (
     minY = Math.min(minY, pos.y)
     maxX = Math.max(maxX, pos.x + NODE_CARD_WIDTH)
     maxY = Math.max(maxY, pos.y + NODE_CARD_HEIGHT)
+  }
+
+  const hubPos = positions[HUB_NODE_ID]
+  if (hubPos) {
+    minX = Math.min(minX, hubPos.x)
+    minY = Math.min(minY, hubPos.y)
+    maxX = Math.max(maxX, hubPos.x + HUB_NODE_WIDTH)
+    maxY = Math.max(maxY, hubPos.y + HUB_NODE_HEIGHT)
   }
 
   if (!Number.isFinite(minX) || !Number.isFinite(minY)) {
@@ -348,6 +425,40 @@ export const calculateFitViewport = (
   const y = Math.round((containerHeight - contentHeight * zoom) / 2 - minY * zoom)
 
   return { x, y, zoom: Math.round(zoom * 100) / 100 }
+}
+
+export const calculateZoomAtPoint = (
+  viewport: NodeMapViewport,
+  targetZoom: number,
+  pointX: number,
+  pointY: number,
+  minZoom = 0.35,
+  maxZoom = 2.5,
+): NodeMapViewport => {
+  const nextZoom = Math.min(Math.max(targetZoom, minZoom), maxZoom)
+  if (Math.abs(nextZoom - viewport.zoom) < 0.0001) return viewport
+  const ratio = nextZoom / viewport.zoom
+  const nextX = pointX - (pointX - viewport.x) * ratio
+  const nextY = pointY - (pointY - viewport.y) * ratio
+  return {
+    x: Math.round(nextX),
+    y: Math.round(nextY),
+    zoom: Math.round(nextZoom * 1000) / 1000,
+  }
+}
+
+export const calculateWheelZoomDelta = (
+  deltaY: number,
+  isPinchOrCtrl: boolean,
+  deltaMode = 0,
+): number => {
+  if (isPinchOrCtrl) {
+    return -deltaY * 0.01
+  }
+  if (Math.abs(deltaY) >= 50 || deltaMode !== 0) {
+    return deltaY < 0 ? 0.12 : -0.12
+  }
+  return -deltaY * 0.003
 }
 
 export const loadStoredPositions = (): Record<string, NodeMapPosition> => {
@@ -619,6 +730,14 @@ export const isCompatibleConnection = (
     return { compatible: true, connectionTypes: ['host', 'smb'] }
   }
 
+  // Dedicated Game Server to Server Machine
+  if (
+    (source.type === 'game_server' && target.type === 'server') ||
+    (source.type === 'server' && target.type === 'game_server')
+  ) {
+    return { compatible: true, connectionTypes: ['host'] }
+  }
+
   // Node to Node or Server to Server (Group under same Home environment)
   if (source.type === 'node' && target.type === 'node') {
     return { compatible: true, connectionTypes: ['home'] }
@@ -662,7 +781,11 @@ export const findCompatibleTargets = (
       if (check.connectionTypes.includes('home')) {
         label = item.type === 'home' ? 'Assign to Home' : 'Link via Home'
       } else if (check.connectionTypes.includes('host')) {
-        label = item.type === 'server' ? 'Run on this Server' : 'Host this Node'
+        if (source.type === 'game_server' || item.type === 'game_server') {
+          label = item.type === 'server' ? 'Run on this Machine' : 'Host Dedicated Game Server'
+        } else {
+          label = item.type === 'server' ? 'Run on this Server' : 'Host this Node'
+        }
       } else if (check.connectionTypes.includes('smb')) {
         label = item.type === 'samba' ? 'Mount Samba Share' : 'Link SMB Storage'
       }
@@ -686,6 +809,8 @@ export interface TopologyStats {
   serverCount: number
   homeCount: number
   sambaCount: number
+  gameServerCount: number
+  gameServerPlayerCount: number
 }
 
 export const computeTopologyStats = (
@@ -694,6 +819,7 @@ export const computeTopologyStats = (
   homes: UserHome[],
   pendingNodes: PendingNode[] = [],
   customSambaShares: SambaShareConfig[] = [],
+  gameServers: DedicatedGameServer[] = [],
 ): TopologyStats => {
   const unclaimed = pendingNodes.filter(
     (p) =>
@@ -706,6 +832,8 @@ export const computeTopologyStats = (
   const offlineNodes = totalNodes - onlineNodes
   const smbServerCount = serverMachines.filter((m) => m.smbEnabled).length
   const sambaCount = smbServerCount + customSambaShares.length
+  const gameServerCount = gameServers.length
+  const gameServerPlayerCount = gameServers.reduce((sum, s) => sum + (s.currentPlayers || 0), 0)
 
   return {
     totalNodes,
@@ -715,6 +843,8 @@ export const computeTopologyStats = (
     serverCount: serverMachines.length,
     homeCount: homes.length,
     sambaCount,
+    gameServerCount,
+    gameServerPlayerCount,
   }
 }
 
@@ -733,7 +863,7 @@ export const findOrphanedNodeMatch = (
 }
 
 export interface CompatibleCreationOption {
-  type: 'server' | 'node' | 'home' | 'samba'
+  type: 'server' | 'node' | 'home' | 'samba' | 'game_server'
   title: string
   description: string
   actionLabel: string
@@ -746,6 +876,12 @@ export const getCompatibleCreationOptions = (
   switch (sourceType) {
     case 'server':
       return [
+        {
+          type: 'game_server',
+          title: 'Dedicated Game Server',
+          description: `Host a multiplayer dedicated game server on "${sourceName}".`,
+          actionLabel: 'Add Game Server',
+        },
         {
           type: 'samba',
           title: 'Samba Share (SMB)',

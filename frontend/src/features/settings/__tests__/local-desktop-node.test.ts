@@ -6,6 +6,7 @@ import {
   getLocalDesktopNode,
   isLocalDesktopNode,
   isLocalDesktopNodeId,
+  isBrowserSessionNode,
   mergeLocalDesktopNode,
   pickSettingsNode,
   syncServersWithPendingNodes,
@@ -109,5 +110,29 @@ describe('local desktop node', () => {
     expect(merged[0].isLocalDesktop).toBe(true)
     expect(merged[0].name).toBe('Gaming PC (DESKTOP-ABC)')
   })
+
+  it('filters out browser session nodes so browser tabs do not appear as nodes', () => {
+    const chromeNode = remote(99, {
+      name: 'Chrome on Windows',
+      isLocalDesktop: true,
+      localUrl: 'otix://desktop/dev-random-123',
+    })
+    const edgeNode = remote(100, {
+      name: 'Edge on Windows',
+      isLocalDesktop: true,
+      localUrl: 'otix://desktop/dev-random-456',
+    })
+    const realWorker = remote(2, { name: 'TrueNAS Worker' })
+
+    expect(isBrowserSessionNode(chromeNode)).toBe(true)
+    expect(isBrowserSessionNode(edgeNode)).toBe(true)
+    expect(isBrowserSessionNode(realWorker)).toBe(false)
+
+    const result = mergeLocalDesktopNode([chromeNode, edgeNode, realWorker])
+    expect(result).toHaveLength(1)
+    expect(result[0].id).toBe(2)
+    expect(result[0].name).toBe('TrueNAS Worker')
+  })
 })
+
 
