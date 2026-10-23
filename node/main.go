@@ -47,6 +47,7 @@ func main() {
 	versionFlag := flag.Bool("version", false, "Print version and exit")
 	openBrowserFlag := flag.Bool("open", true, "Open setup WebUI in default browser on launch")
 	headlessFlag := flag.Bool("headless", false, "Run in headless daemon mode (do not open browser)")
+	noTrayFlag := flag.Bool("no-tray", false, "Disable taskbar tray notification icon")
 	flag.Parse()
 
 	if *versionFlag {
@@ -54,7 +55,17 @@ func main() {
 		os.Exit(0)
 	}
 
+	if *headlessFlag {
+		_ = os.Setenv("OTIX_HEADLESS", "1")
+	}
+	if *noTrayFlag {
+		_ = os.Setenv("OTIX_NO_TRAY", "1")
+	}
+
 	cfg := config.LoadConfig(*configPathFlag)
+	if *noTrayFlag || os.Getenv("OTIX_NO_TRAY") == "1" {
+		cfg.Server.DisableTray = true
+	}
 
 	// Check environment variable for port
 	if envPort := os.Getenv("PORT"); envPort != "" {

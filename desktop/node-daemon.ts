@@ -2,7 +2,10 @@ import { ChildProcess, spawn, execSync } from 'child_process';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as http from 'http';
-import type { WebContents } from 'electron';
+import * as os from 'os';
+import * as crypto from 'crypto';
+import { net, type WebContents } from 'electron';
+import { getApiBaseUrl } from './config';
 
 export interface NodeDaemonStatus {
   running: boolean;
@@ -17,6 +20,7 @@ export interface NodeDaemonStatus {
 export interface NodeDaemonOptions {
   port?: number;
   configPath?: string;
+  authToken?: string;
 }
 
 export class NodeDaemonManager {
@@ -26,6 +30,7 @@ export class NodeDaemonManager {
   private webContents: WebContents | null = null;
   private lastError: string | null = null;
   private cachedVersion: string | null = null;
+  private currentAuthToken = '';
 
   constructor(
     private readonly userDataPath: string,
@@ -35,6 +40,14 @@ export class NodeDaemonManager {
   /** Set webContents to forward status updates to renderer */
   public setWebContents(wc: WebContents | null): void {
     this.webContents = wc;
+  }
+
+  /** Set user auth token to auto-claim companion node on launch */
+  public setAuthToken(token: string): void {
+    this.currentAuthToken = token;
+    if (token && (this.childProcess || this.isEmbeddedProcess)) {
+      void this.ensureClaimed(token);
+    }
   }
 
   /** Resolve the absolute path to the otix-node binary */
@@ -118,6 +131,11 @@ export class NodeDaemonManager {
     const port = options?.port || this.currentPort;
     this.currentPort = port;
     this.lastError = null;
+    if (options?.authToken) {
+      this.currentAuthToken = options.authToken;
+    }
+
+    const registryUrl = `${getApiBaseUrl().replace(/\/$/, '')}/api`;
 
     // Check if a node is already active at this port
     const isAlreadyRunning = await this.probeNode(port);
@@ -125,6 +143,9 @@ export class NodeDaemonManager {
       console.log(`[node-daemon] Detected active Otix Node on port ${port}`);
       this.isEmbeddedProcess = Boolean(this.childProcess);
       this.notifyStatus();
+      if (this.currentAuthToken) {
+        void this.ensureClaimed(this.currentAuthToken);
+      }
       return this.getStatus();
     }
 
@@ -141,19 +162,22 @@ export class NodeDaemonManager {
     const configPath = options?.configPath || path.join(this.userDataPath, 'node-config.yaml');
     this.ensureConfigFile(configPath, port);
 
-    console.log(`[node-daemon] Launching embedded Otix Node: ${binary} (port: ${port})`);
+    console.log(`[node-daemon] Launching embedded Otix Node: ${binary} (port: ${port}, registry: ${registryUrl})`);
 
     try {
       const proc = spawn(
         binary,
-        ['-headless', '-config', configPath, '-port', String(port), '-open=false'],
+        ['-headless', '-no-tray', '-config', configPath, '-port', String(port), '-open=false'],
         {
           detached: false,
+          windowsHide: true,
           stdio: ['ignore', 'pipe', 'pipe'],
           env: {
             ...process.env,
             OTIX_HEADLESS: '1',
+            OTIX_NO_TRAY: '1',
             PORT: String(port),
+            OTIX_REGISTRY_URL: registryUrl,
           },
         },
       );
@@ -207,6 +231,9 @@ export class NodeDaemonManager {
 
       if (ready) {
         console.log(`[node-daemon] Embedded Otix Node is live on http://127.0.0.1:${port}`);
+        if (this.currentAuthToken) {
+          void this.ensureClaimed(this.currentAuthToken);
+        }
       } else if (!this.lastError) {
         this.lastError = 'Node started but did not respond within timeout';
       }
@@ -277,6 +304,124 @@ export class NodeDaemonManager {
     return await this.start(options);
   }
 
+  /** Ensure the local companion node is claimed and linked to the authenticated user */
+  public async ensureClaimed(authToken?: string): Promise<boolean> {
+    const token = authToken || this.currentAuthToken;
+    if (!token) return false;
+
+    const port = this.currentPort;
+    const statusRes = await new Promise<{ claimed?: boolean; claim_code?: string; username?: string } | null>((resolve) => {
+      const req = http.get(`http://127.0.0.1:${port}/api/v1/claim/status`, { timeout: 1500 }, (res) => {
+        if (res.statusCode !== 200) {
+          resolve(null);
+          return;
+        }
+        let data = '';
+        res.on('data', (c) => { data += c; });
+        res.on('end', () => {
+          try {
+            resolve(JSON.parse(data));
+          } catch {
+            resolve(null);
+          }
+        });
+      });
+      req.on('error', () => resolve(null));
+      req.on('timeout', () => {
+        req.destroy();
+        resolve(null);
+      });
+    });
+
+    if (!statusRes) return false;
+    if (statusRes.claimed) {
+      return true;
+    }
+
+    const claimCode = statusRes.claim_code;
+    if (!claimCode) return false;
+
+    const platformLabel = process.platform === 'darwin' ? 'This Mac' : process.platform === 'win32' ? 'This PC' : 'This computer';
+    const serverName = `${platformLabel} Node (${os.hostname()})`;
+    const nodeAuthToken = crypto.randomBytes(24).toString('hex');
+    const apiBase = getApiBaseUrl().replace(/\/$/, '');
+
+    try {
+      // 1. Outbound claim with Otix backend (registers node directly in user's account)
+      const backendClaimUrl = `${apiBase}/api/v1/library/servers/claim-direct`;
+      const backendResp = await net.fetch(backendClaimUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          server_name: serverName,
+          auth_token: nodeAuthToken,
+          port,
+          local_endpoints: [`http://127.0.0.1:${port}`],
+          claim_code: claimCode,
+          is_local: true,
+        }),
+      });
+
+      if (!backendResp.ok) {
+        const errText = await backendResp.text().catch(() => '');
+        console.warn(`[node-daemon] Backend claim-direct returned HTTP ${backendResp.status}:`, errText);
+        return false;
+      }
+
+      // 2. Confirm claim locally on the Go daemon
+      const confirmUrl = `http://127.0.0.1:${port}/api/v1/claim/confirm`;
+      const confirmResp = await net.fetch(confirmUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          claim_code: claimCode,
+          auth_token: nodeAuthToken,
+          server_name: serverName,
+          username: 'me',
+          registry_url: `${apiBase}/api`,
+        }),
+      });
+
+      if (!confirmResp.ok) {
+        const confirmErr = await confirmResp.text().catch(() => '');
+        console.warn(`[node-daemon] Local daemon claim confirm returned HTTP ${confirmResp.status}:`, confirmErr);
+        return false;
+      }
+
+      console.log(`[node-daemon] Successfully claimed embedded Otix Node for user account (${serverName})`);
+      this.notifyStatus();
+      return true;
+    } catch (err) {
+      console.warn('[node-daemon] Failed to auto-claim embedded node:', err);
+      return false;
+    }
+  }
+
+  /** Synchronize local library paths to the running embedded node */
+  public async syncLibraries(paths: { path: string; type: 'game' | 'iso' }[]): Promise<boolean> {
+    const isLive = await this.probeNode(this.currentPort, 400);
+    if (!isLive) return false;
+    try {
+      const resp = await net.fetch(`http://127.0.0.1:${this.currentPort}/api/v1/libraries`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          libraries: paths.map((item) => ({
+            name: path.basename(item.path) || item.type,
+            path: item.path,
+            kind: item.type,
+          })),
+        }),
+      });
+      return resp.ok;
+    } catch {
+      return false;
+    }
+  }
+
   /** Return current daemon status */
   public getStatus(): NodeDaemonStatus {
     const isRunning = Boolean(this.childProcess);
@@ -303,7 +448,42 @@ export class NodeDaemonManager {
   }
 
   private ensureConfigFile(configPath: string, port: number): void {
-    if (fs.existsSync(configPath)) return;
+    const apiRegistry = `${getApiBaseUrl().replace(/\/$/, '')}/api`;
+
+    if (fs.existsSync(configPath)) {
+      try {
+        let content = fs.readFileSync(configPath, 'utf-8');
+        let modified = false;
+
+        const indentMatch = /server:\s*\r?\n(\s+)/.exec(content);
+        const indent = indentMatch ? indentMatch[1] : '  ';
+
+        const hasRegistry = /registry_url:\s*["']?([^"'\r\n]+)["']?/.test(content);
+        if (!hasRegistry) {
+          content = content.replace(/(server:\s*\r?\n)/i, `$1${indent}registry_url: "${apiRegistry}"\n`);
+          modified = true;
+          console.log(`[node-daemon] Added missing registry_url to ${configPath}`);
+        } else if (apiRegistry !== 'http://127.0.0.1:8000/api' && content.includes('http://127.0.0.1:8000/api')) {
+          content = content.replace(/registry_url:\s*["']?http:\/\/127\.0\.0\.1:8000\/api["']?/g, `registry_url: "${apiRegistry}"`);
+          modified = true;
+          console.log(`[node-daemon] Migrated registry_url to ${apiRegistry} in ${configPath}`);
+        }
+
+        const hasDisableTray = /disable_tray:\s*(true|false)/i.test(content);
+        if (!hasDisableTray) {
+          content = content.replace(/(server:\s*\r?\n)/i, `$1${indent}disable_tray: true\n`);
+          modified = true;
+          console.log(`[node-daemon] Added disable_tray: true to ${configPath}`);
+        }
+
+        if (modified) {
+          fs.writeFileSync(configPath, content, 'utf-8');
+        }
+      } catch (err) {
+        console.warn('[node-daemon] Failed to inspect/update existing config file:', err);
+      }
+      return;
+    }
 
     try {
       const parentDir = path.dirname(configPath);
@@ -315,6 +495,8 @@ export class NodeDaemonManager {
   name: "Local Otix Node"
   port: ${port}
   host: "127.0.0.1"
+  registry_url: "${apiRegistry}"
+  disable_tray: true
   enable_upnp: false
   enable_heartbeat: true
 `;

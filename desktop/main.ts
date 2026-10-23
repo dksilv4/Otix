@@ -5,6 +5,27 @@ import * as os from 'os';
 import { execSync } from 'child_process';
 import { pathToFileURL } from 'url';
 
+const logFile = path.join(os.homedir(), 'otix-desktop.log');
+function fileLog(...args: any[]) {
+  try {
+    const line = `[${new Date().toISOString()}] ${args.map((a) => (typeof a === 'object' ? JSON.stringify(a) : String(a))).join(' ')}\n`;
+    fs.appendFileSync(logFile, line);
+  } catch {}
+}
+const origLog = console.log;
+const origErr = console.error;
+const origWarn = console.warn;
+console.log = (...args: any[]) => { fileLog('[LOG]', ...args); origLog(...args); };
+console.error = (...args: any[]) => { fileLog('[ERR]', ...args); origErr(...args); };
+console.warn = (...args: any[]) => { fileLog('[WARN]', ...args); origWarn(...args); };
+
+process.on('uncaughtException', (err) => {
+  console.error('[main:FATAL uncaughtException]', err);
+});
+process.on('unhandledRejection', (reason) => {
+  console.error('[main:FATAL unhandledRejection]', reason);
+});
+
 protocol.registerSchemesAsPrivileged([
   {
     scheme: 'app',
@@ -39,7 +60,7 @@ import { registerGameDetectorIPC } from './ipc/game-detector';
 import { Cs2GsiManager } from './game/cs2-gsi';
 import { registerWindowIPC, notifyMaximizedChange } from './ipc/window';
 import { registerDesktopSettingsIPC } from './ipc/settings';
-import { loadDesktopSettings, applyDesktopSettings, getSettings } from './desktop-settings';
+import { loadDesktopSettings, applyDesktopSettings, getSettings, saveDesktopSettings } from './desktop-settings';
 import { createTray, destroyTray, setTrayVisible, isTrayActive } from './tray';
 import { initDatabase, closeDb, PluginsRepository } from './db';
 import { setNotifyTarget, getAllGames } from './game/storage';
@@ -65,6 +86,7 @@ import {
 import { NodeDaemonManager } from './node-daemon';
 import { registerNodeDaemonIPC } from './ipc/node-daemon';
 import { registerAppInstallerIPC } from './ipc/app-installer';
+import { registerGameServersIPC } from './ipc/game-servers';
 import { setDefaultAutoSelectFamily } from 'node:net';
 
 // Node 24's happy-eyeballs (autoSelectFamily) intermittently ETIMEDOUTs
@@ -480,14 +502,18 @@ try {
 // of a second instance rather than an open-url event.
 if (!isInstallerMode && !isUninstallerMode) {
   const gotSingleLock = app.requestSingleInstanceLock();
+  console.log('[main] requestSingleInstanceLock:', gotSingleLock);
   if (!gotSingleLock) {
+    console.warn('[main] Another instance is already running; quitting');
     app.quit();
   } else {
     app.on('second-instance', (_event, argv) => {
       const dl = argv.find((a) => a.startsWith(`${PROTOCOL}://`));
       if (dl) handleDeepLink(dl);
       if (mainWindow) {
+        if (!mainWindow.isVisible()) mainWindow.show();
         if (mainWindow.isMinimized()) mainWindow.restore();
+        mainWindow.show();
         mainWindow.focus();
       }
     });
@@ -824,9 +850,24 @@ app.on('ready', async () => {
             updateIds.push(upd.id);
             if (upd.type === 'desktop_settings' && upd.data) {
               try {
-                settingsStore.saveSettings(upd.data);
+                saveDesktopSettings({ ...getSettings(), ...upd.data });
               } catch (e) {
                 console.debug('[main] Failed to apply offline desktop settings:', e);
+              }
+            } else if (upd.type === 'libraries' && upd.data) {
+              try {
+                const libs = Array.isArray(upd.data.libraries) ? upd.data.libraries : [];
+                const scanPaths = libs.map((l: any) => ({
+                  path: String(l.path || ''),
+                  type: l.kind === 'iso' ? ('iso' as const) : ('game' as const),
+                })).filter((p: any) => p.path);
+                const { saveScanPaths } = require('./game/storage');
+                saveScanPaths(scanPaths);
+                if (nodeDaemon) {
+                  void nodeDaemon.syncLibraries(scanPaths);
+                }
+              } catch (e) {
+                console.debug('[main] Failed to apply offline libraries:', e);
               }
             }
           }
@@ -1061,10 +1102,11 @@ app.on('ready', async () => {
 
   // Register modular IPC handlers (safe — registration doesn't touch DB)
   registerDownloadsIPC();
-  registerScannerIPC(gameDetector);
-  registerInstallerIPC();
+  registerGameServersIPC();
   nodeDaemon = new NodeDaemonManager(app.getPath('userData'), process.resourcesPath);
   registerNodeDaemonIPC(nodeDaemon);
+  registerScannerIPC(gameDetector, nodeDaemon);
+  registerInstallerIPC();
   // game-detector IPC registered after pluginManager init (needs plugin ref for session queries)
 
   // Seed detector with previously-scanned games so it can detect
@@ -1154,6 +1196,7 @@ app.on('ready', async () => {
       orchestrator.setAuthToken(token);
       fetchBridge?.setCredentials(getApiBaseUrl(), token);
       if (token) {
+        nodeDaemon?.setAuthToken(token);
         void syncDesktopNodeToBackend(true);
         if (!desktopNodeHeartbeatTimer) {
           desktopNodeHeartbeatTimer = setInterval(() => {

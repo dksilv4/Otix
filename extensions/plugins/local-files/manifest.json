@@ -6,7 +6,7 @@
   "author": "Otix",
   "repository": "builtin",
   "system": true,
-  "min_app_version": "0.3.0",
+  "min_app_version": "0.1.0",
   "permissions": [
     "worker:filesystem",
     "storage:local"

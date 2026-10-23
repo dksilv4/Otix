@@ -21,7 +21,7 @@ export function setPluginManager(pm: PluginManager): void {
   _pluginManager = pm;
 }
 
-export function registerScannerIPC(gameDetector: GameDetector | null): void {
+export function registerScannerIPC(gameDetector: GameDetector | null, nodeDaemon?: import('../node-daemon').NodeDaemonManager | null): void {
   // Scan game in paths
   ipcMain.handle('scanner:scan-paths', async (event, paths: string[], isoPaths: string[]) => {
     // ── Save paths to local-files plugin config ──
@@ -102,6 +102,9 @@ export function registerScannerIPC(gameDetector: GameDetector | null): void {
   });
   ipcMain.handle('scanner:save-scan-paths', (_event, paths: { path: string; type: 'game' | 'iso' }[]) => {
     gameService.saveScanPaths(paths);
+    if (nodeDaemon) {
+      void nodeDaemon.syncLibraries(paths);
+    }
   });
   ipcMain.handle('scanner:update-game-path', (_event, id: string, exePath: string, installDir?: string) => {
     gameService.updateGamePath(id, exePath, installDir);

@@ -31,7 +31,7 @@ let cachedMatch: HostNodeMatch | null = null;
 let lastProbedAt = 0;
 const CACHE_TTL_MS = 60000; // 1 minute
 
-function httpGetJson<T = any>(urlStr: string, timeoutMs = 800): Promise<T | null> {
+export function httpGetJson<T = any>(urlStr: string, timeoutMs = 800): Promise<T | null> {
   return new Promise((resolve) => {
     try {
       const parsed = new URL(urlStr);

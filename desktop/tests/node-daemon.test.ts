@@ -1,6 +1,18 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import * as path from 'path';
 import * as fs from 'fs';
+import { EventEmitter } from 'events';
+
+const mockSpawn = vi.fn();
+
+vi.mock('child_process', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('child_process')>();
+  return {
+    ...actual,
+    spawn: (...args: any[]) => mockSpawn(...args),
+  };
+});
+
 import { NodeDaemonManager } from '../node-daemon';
 
 describe('NodeDaemonManager', () => {
@@ -90,5 +102,65 @@ describe('NodeDaemonManager', () => {
 
     await daemon.dispose();
     expect(stopSpy).toHaveBeenCalled();
+  });
+
+  it('generates initial config with disable_tray: true', async () => {
+    const daemon = new NodeDaemonManager(tempUserData);
+    const configPath = path.join(tempUserData, 'test-config.yaml');
+    (daemon as any).ensureConfigFile(configPath, 8090);
+
+    expect(fs.existsSync(configPath)).toBe(true);
+    const content = fs.readFileSync(configPath, 'utf-8');
+    expect(content).toContain('disable_tray: true');
+    expect(content).toContain('registry_url:');
+  });
+
+  it('updates existing config with disable_tray: true if missing', async () => {
+    const daemon = new NodeDaemonManager(tempUserData);
+    const configPath = path.join(tempUserData, 'existing-config.yaml');
+    const existingContent = `server:
+  name: "Existing Node"
+  port: 8090
+  host: "127.0.0.1"
+  registry_url: "http://127.0.0.1:8000/api"
+`;
+    fs.writeFileSync(configPath, existingContent, 'utf-8');
+
+    (daemon as any).ensureConfigFile(configPath, 8090);
+
+    const updated = fs.readFileSync(configPath, 'utf-8');
+    expect(updated).toContain('disable_tray: true');
+  });
+
+  it('spawns binary with -headless, -no-tray, windowsHide: true, and OTIX_NO_TRAY: 1', async () => {
+    const daemon = new NodeDaemonManager(tempUserData);
+    vi.spyOn(daemon, 'probeNode').mockResolvedValue(false);
+    vi.spyOn(daemon, 'resolveBinaryPath').mockReturnValue('C:\\mock\\otix-node.exe');
+
+    const mockProc = new EventEmitter() as any;
+    mockProc.pid = 12345;
+    mockProc.stdout = new EventEmitter();
+    mockProc.stderr = new EventEmitter();
+
+    let capturedArgs: string[] = [];
+    let capturedOptions: any = null;
+
+    mockSpawn.mockImplementation((_cmd, args, options) => {
+      capturedArgs = args as string[];
+      capturedOptions = options;
+      return mockProc;
+    });
+
+    const startPromise = daemon.start({ port: 8095 });
+    // Simulate process exiting so start doesn't hang in loop
+    mockProc.emit('exit', 0, null);
+    await startPromise;
+
+    expect(mockSpawn).toHaveBeenCalled();
+    expect(capturedArgs).toContain('-headless');
+    expect(capturedArgs).toContain('-no-tray');
+    expect(capturedOptions?.windowsHide).toBe(true);
+    expect(capturedOptions?.env?.OTIX_HEADLESS).toBe('1');
+    expect(capturedOptions?.env?.OTIX_NO_TRAY).toBe('1');
   });
 });

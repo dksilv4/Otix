@@ -19,6 +19,7 @@ contextBridge.exposeInMainWorld('desktopAPI', {
 
   // ── Desktop settings ──
   getDesktopSettings: () => ipcRenderer.invoke('desktop-settings:get'),
+  getDesktopHardware: (refresh?: boolean) => ipcRenderer.invoke('desktop-hardware:get', refresh),
   setDesktopSettings: (settings: any) =>
     ipcRenderer.invoke('desktop-settings:set', settings),
 
@@ -41,6 +42,13 @@ contextBridge.exposeInMainWorld('desktopAPI', {
   // ── General ──
   openPath: (filePath: string) => ipcRenderer.invoke('shell:open-path', filePath),
   ping: () => ipcRenderer.invoke('ping'),
+  queryGameServer: (params: {
+    host: string;
+    port: number;
+    queryPort?: number | null;
+    serverType?: string;
+    timeout?: number;
+  }) => ipcRenderer.invoke('gameserver:query', params),
   openExternal: (url: string) => ipcRenderer.invoke('open-external', url),
   openSessionWindow: (url: string) => ipcRenderer.invoke('shell:open-session-window', url),
   selectDirectory: () => ipcRenderer.invoke('dialog:select-directory'),

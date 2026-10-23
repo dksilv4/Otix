@@ -485,6 +485,7 @@ export interface IDesktopAPI {
 
   // ── Desktop settings ──
   getDesktopSettings: () => Promise<DesktopSettings>;
+  getDesktopHardware: (refresh?: boolean) => Promise<any>;
   setDesktopSettings: (settings: Partial<DesktopSettings>) => Promise<DesktopSettings>;
 
   // ── Window controls ──
@@ -503,6 +504,25 @@ export interface IDesktopAPI {
   // ── General ──
   openPath: (filePath: string) => Promise<string>;
   ping: () => Promise<string>;
+  queryGameServer: (params: {
+    host: string;
+    port: number;
+    queryPort?: number | null;
+    serverType?: string;
+    timeout?: number;
+  }) => Promise<{
+    status: 'online' | 'offline';
+    pingMs: number | null;
+    currentPlayers?: number;
+    maxPlayers?: number;
+    playerList?: string[];
+    currentMap?: string;
+    version?: string;
+    name?: string;
+    suggestedQueryPort?: number;
+    queryWarning?: string;
+    error?: string;
+  }>;
   openExternal: (url: string) => Promise<void>;
   openSessionWindow: (url: string) => Promise<void>;
   selectDirectory: () => Promise<string | null>;

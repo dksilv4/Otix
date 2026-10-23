@@ -34,6 +34,7 @@ type ServerSettings struct {
 	Host               string `yaml:"host" json:"host"`
 	AuthToken          string `yaml:"auth_token" json:"auth_token"`
 	RegistryURL        string `yaml:"registry_url" json:"registry_url"`
+	DisableTray        bool   `yaml:"disable_tray" json:"disable_tray"`
 	EnableUPnP         bool   `yaml:"enable_upnp" json:"enable_upnp"`
 	EnableHeartbeat    bool   `yaml:"enable_heartbeat" json:"enable_heartbeat"`
 	DownloadsPath      string `yaml:"downloads_path" json:"downloads_path"`

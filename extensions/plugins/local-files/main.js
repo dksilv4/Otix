@@ -442,8 +442,10 @@ module.exports = {
   },
 
   test: async (ctx, configDraft) => {
-    const dirs = configDraft?.scanDirectories || ctx.config.get('scanDirectories') || [];
-    const isoDirs = configDraft?.isoDirectories || ctx.config.get('isoDirectories') || [];
+    const rawDirs = configDraft?.scanDirectories ?? ctx.config.get('scanDirectories') ?? [];
+    const dirs = Array.isArray(rawDirs) ? rawDirs : [];
+    const rawIso = configDraft?.isoDirectories ?? ctx.config.get('isoDirectories') ?? [];
+    const isoDirs = Array.isArray(rawIso) ? rawIso : [];
     const errors = [];
     for (const d of [...dirs, ...isoDirs]) {
       if (!(await ctx.filesystem.access(d))) errors.push(`Path not found: ${d}`);

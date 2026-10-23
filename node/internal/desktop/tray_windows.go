@@ -201,6 +201,12 @@ func NewTrayManager(
 
 // Start spawns the taskbar tray message loop on a dedicated OS thread.
 func (tm *TrayManager) Start() {
+	if tm.cfg != nil && tm.cfg.Server.DisableTray {
+		return
+	}
+	if os.Getenv("OTIX_HEADLESS") == "1" || os.Getenv("OTIX_NO_TRAY") == "1" {
+		return
+	}
 	tm.mu.Lock()
 	if tm.running {
 		tm.mu.Unlock()

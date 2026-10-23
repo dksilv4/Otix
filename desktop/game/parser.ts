@@ -41,20 +41,49 @@ const EDITION_RE = /(?<edition>goty|game\s*of\s*the\s*year|definitive|enhanced|r
 
 export function cleanGameTitle(filename: string): string {
   let name = filename;
+
+  // Strip leading update/part sequence prefix like "1 - ", "2 - ", "01. "
+  name = name.replace(/^\d+\s*[-_.]\s*/, '');
+
+  // Strip full build date expressions like (build 13.06.2024)
+  name = name.replace(/\(build\s*[^)]+\)/gi, '');
+  name = name.replace(/\bbuild\s*[\d.]+\b/gi, '');
+
+  // Strip date patterns (e.g. 20.02.2026, 13.03.2026 - 05.05.2026, 27.05.2025)
+  name = name.replace(/\b\d{2}[._-]\d{2}[._-](?:19|20)\d{2}\b/gi, '');
+
+  // Strip update followed by version numbers / ranges:
+  // "update 4 1 1 5009956 4 1 1 5849914", "update 5849914 6758295", "update 2.12 - 2.13", "update 1.0.7 - 1.0.16"
+  name = name.replace(/(^|[^a-zA-Z0-9])(?:update\s*[\d\s._-]+(?=[a-zA-Z]|$))/gi, '$1');
+
   // Strip version patterns BEFORE converting dots (_ is \w in JS, breaks \b)
   name = name.replace(/(^|[^a-zA-Z0-9])v\d+(?:\.\d+)+(?:[a-zA-Z]\d*)?(?![a-zA-Z0-9])/gi, '$1');
-  name = name.replace(/(^|[^a-zA-Z0-9])update\s*\d+(?:\.\d+)*(?![a-zA-Z0-9])/gi, '$1');
-  name = name.replace(/\.iso$/i, '').replace(/\.exe$/i, '');
+  name = name.replace(/(^|[\s._-])(?:v\d+|build\s*\d+)(?=[\s._-]|$)/gi, ' ');
+  name = name.replace(/\.(iso|exe|zip|rar|7z|bin|cue|nsp|xci|3ds|nds|rvz|chd|gba|z64|sfc|pkg)$/i, '');
+  name = name.replace(/\.part\d+$/i, '');
+
+  // Strip Title IDs like [0100F2C0115B6000] or [BCUS98174] or CUSA00411 or PPSA15552
+  name = name.replace(/\[[0-9A-Fa-f]{16}\]/g, '');
+  name = name.replace(/\[?[A-Z]{4}\d{5}\]?/g, '');
+
+  // Strip ROM update/DLC flags
+  name = name.replace(/\[(?:UPD|DLC|v\d+)\]/gi, '');
+
   name = name.replace(/[\._\-]/g, ' ');
   const tags = [
     /\[repack\]/gi, /\brepack\b/gi, /\belamigos\b/gi, /\bfitgirl\b/gi, /\bdodi\b/gi,
     /\bcodex\b/gi, /\bflt\b/gi, /\bplaza\b/gi, /\bskidrow\b/gi, /\brune\b/gi, /\btenoke\b/gi,
     /\bgoldberg\b/gi, /\brazor1911\b/gi, /\bfairlight\b/gi, /\bhoodlum\b/gi,
     /\bmulti\d+\b/gi, /\bvoices\d*\b/gi, /\bv\d+(\.\d+)*\b/gi, /\bbuild\s*\d+\b/gi, /\bupdate\s*\d*\b/gi,
+    /\bpart\s*\d+\b/gi, /\bprophet\b/gi, /\bdelusion\b/gi, /\bunleashed\b/gi,
     /\bcrack\s*fix(?:\s*v\d+)?\b/gi, /\bcrackfix(?:\s*v\d+)?\b/gi,
     /\bcrack\s*only\b/gi, /\bcrack\b/gi, /\bproper\b/gi, /\bearlyaccess\b/gi,
     /\bempress\b/gi, /\bcpy\b/gi, /\brune\b/gi, /\bflt\b/gi, /\bplaza\b/gi,
-    /\bexe\b/gi,
+    /\bexe\b/gi, /\bunlocker\b/gi, /\bsmall\b/gi,
+    /\bwin(?:dows)?\s*(?:10|11|7|8|xp)?\b/gi,
+    /\b(?:2[1-5]h[12]|x64|x86|64bit|32bit)\b/gi,
+    /\b(?:ps[1-5]|nsw)\b/gi,
+    /\+\s*\d+\s*(?:dlcs?|bonuses|bonus|extras?|addons?)\b/gi,
   ];
   for (const tag of tags) {
     name = name.replace(tag, '');
@@ -63,7 +92,8 @@ export function cleanGameTitle(filename: string): string {
   name = name.replace(/\(\s*\)/g, '');
   name = name.replace(/\{\s*\}/g, '');
   name = name.replace(/\s+(exe|iso)\s*$/gi, '');
-  name = name.replace(/[\s\-\+\:\,]+$/, '');
+  name = name.replace(/[\s\-\+\:\,\&]+$/, '');
+  name = name.replace(/^[\s\-\+\:\,\&]+/, '');
   return name.replace(/\s+/g, ' ').trim();
 }
 
@@ -100,19 +130,57 @@ export function parseVersion(title: string): number | null {
 
 // ── parseReleaseName ────────────────────────────────────────────────────────
 
-export function parseReleaseName(rawName: string): ParsedRelease {
+export function parseReleaseName(rawName: string, extHint?: string, parentDirHint?: string): ParsedRelease {
+  let baseName = rawName.split(/[/\\]/).pop() || rawName;
+  let ext = '';
+  if (extHint !== null && extHint !== undefined) {
+    ext = extHint.toLowerCase();
+  } else {
+    const extMatch = baseName.match(/(\.[a-zA-Z0-9]+)$/);
+    const candidate = extMatch ? extMatch[1].toLowerCase() : '';
+    if (candidate && candidate.length <= 6 && !candidate.includes('-')) {
+      ext = candidate;
+    }
+  }
+  if (ext && baseName.toLowerCase().endsWith(ext)) {
+    baseName = baseName.slice(0, -ext.length);
+  }
+  // Strip multi-part archive suffixes from baseName (.part01, .part1, .r00, etc.)
+  baseName = baseName.replace(/\.(?:part\d+|r\d{2})$/i, '');
+
   const origRawName = rawName;
-  // Pre-process: normalize ElAmigos-style spaced versions + strip descriptors
-  rawName = rawName
+  // Pre-process: normalize ElAmigos-style spaced versions + strip descriptors + dates & sequence prefixes
+  let processed = baseName
+    .replace(/\(build\s*[^)]+\)/gi, '')
+    .replace(/\bbuild\s*[\d.]+\b/gi, '')
+    .replace(/\b\d{2}[._-]\d{2}[._-](?:19|20)\d{2}\b/gi, '')
+    .replace(/^\d+\s*[-_.]\s*/, '')
     .replace(/\b[vV](\d+(?: \d+)+)/g, (m) => m.replace(/ /g, '.'))
     .replace(/\b(?:update) (\d+(?: \d+)*)/gi, (m) => m.replace(/ /g, '.'))
     .replace(/\s+incl\s+dlc\b.*?(?=-)/gi, '') // strip "Incl DLC..." before trailing group
     .replace(/\s+password=.*$/i, ''); // strip trailing Password=...
+
+  // Platform detection across formats
+  let detectedPlatform: string | undefined;
+  const platMatch = processed.match(/\[(?<platform>Multi|PC|PS[1-5]|Switch|NSW|Xbox|Steam|GOG|Android|iOS)\]/i)
+    || processed.match(/(?:^|[\s._-])(?<platform>PC|Switch|NSW|PS[1-5]|Xbox|Steam|GOG)(?:[\s._-]|$)/i);
+  if (platMatch?.groups?.platform) {
+    let p = platMatch.groups.platform.toUpperCase();
+    if (p === 'NSW') p = 'Switch';
+    detectedPlatform = p;
+  }
+  const ps5Match = origRawName.match(/PPSA\d{5}/i);
+  const ps4Match = origRawName.match(/CUSA\d{5}/i);
+  const ps3Match = origRawName.match(/(?:BCUS|BLES|BLUS)\d{5}/i);
+  if (ps5Match) detectedPlatform = 'PS5';
+  else if (ps4Match) detectedPlatform = 'PS4';
+  else if (ps3Match) detectedPlatform = 'PS3';
+
   let m: RegExpMatchArray | null;
 
   // Strategy 1: Scene format
-  m = rawName.match(
-    /^(?<title>[A-Za-z0-9._+\-]+?)(?:\.(?:v?(?<version>\d+(?:\.\d+)*)))?[._-]?(?<extra>REPACK|PROPER|UPDATE|MULTI\d*|GOTY|DEF|ENHANCED)?[._-](?<group>(?!exe$|iso$|rar$|zip$|7z$)[A-Za-z0-9]{2,10})$/,
+  m = processed.match(
+    /^(?<title>[A-Za-z0-9._+\-]+?)(?:\.(?:v?(?<version>\d+(?:\.\d+)*)))?[._-]?(?<extra>REPACK|PROPER|UPDATE|MULTI\d*|GOTY|DEF|ENHANCED)?[._-](?<group>(?!exe$|iso$|rar$|zip$|7z$)(?!\d+$)[A-Za-z0-9]{2,10})$/,
   );
   if (m?.groups) {
     const g = m.groups;
@@ -125,9 +193,12 @@ export function parseReleaseName(rawName: string): ParsedRelease {
       const edition = edMatch ? edMatch[0].trim() : undefined;
       if (edition) title = title.replace(edition, '').trim();
       const yearMatch = title.match(/\b(?<year>(?:19|20)\d{2})\b/);
+      let clean = cleanGameTitle(rawName);
+      if (!clean && parentDirHint) clean = cleanGameTitle(parentDirHint);
       return {
-        title: title.replace(/\s+/g, ' ').trim(), cleanTitle: cleanGameTitle(rawName),
+        title: title.replace(/\s+/g, ' ').trim() || clean, cleanTitle: clean,
         year: yearMatch?.groups?.year, edition, group: g.group || undefined,
+        platform: detectedPlatform,
         version: g.version || undefined, rawName, isScene: true,
       };
     }
@@ -135,65 +206,67 @@ export function parseReleaseName(rawName: string): ParsedRelease {
 
   // Strategy 2: Elamigos format (handles V61339, V1.0.4, Update X.Y.Z, spaced versions)
   // Group can follow after whitespace OR dash (for "1.0.1-ElAmigos" style)
-  m = rawName.match(/^(?<title>.+?)\s+(?:(?:update|v)\s+)?(?:v?\s*)?(?<version>(?:\d+(?:\.\d+)+)|\d{3,})(?:\s*-\s*(?:\d+(?:\.\d+)+|\d{3,}))?[\s-]+(?<group>[A-Za-z0-9]+?)(?:\s+password=.*)?$/i);
+  m = processed.match(/^(?<title>.+?)\s+(?:(?:update|v)\s+)?(?:v?\s*)?(?<version>(?:\d+(?:\.\d+)+)|\d{3,})(?:\s*-\s*(?:\d+(?:\.\d+)+|\d{3,}))?[\s-]+(?<group>[A-Za-z0-9]+?)(?:\s+password=.*)?$/i);
   if (m?.groups) {
     let title = m.groups.title.trim();
     const edMatch = title.match(EDITION_RE);
     const edition = edMatch ? edMatch[0].trim() : undefined;
     if (edition) title = title.replace(edition, '').trim();
     const yearMatch = title.match(/\b(?<year>(?:19|20)\d{2})\b/);
+    let clean = cleanGameTitle(rawName);
+    if (!clean && parentDirHint) clean = cleanGameTitle(parentDirHint);
     return {
-      title: title.replace(/\s+/g, ' ').trim(), cleanTitle: cleanGameTitle(rawName),
+      title: title.replace(/\s+/g, ' ').trim() || clean, cleanTitle: clean,
       year: yearMatch?.groups?.year, edition, group: m.groups.group || undefined,
+      platform: detectedPlatform,
       version: m.groups.version || undefined, rawName, isScene: false,
     };
   }
 
   // Strategy 3: Generic with year/edition in brackets
-  m = rawName.match(/^(?<title>.+?)\s*[\[\(](?<year>(?:19|20)\d{2})[\]\)]/);
+  m = processed.match(/^(?<title>.+?)\s*[\[\(](?<year>(?:19|20)\d{2})[\]\)]/);
   if (m?.groups) {
     let title = m.groups.title.replace(/[._]/g, ' ').trim();
     const edMatch = title.match(EDITION_RE);
     const edition = edMatch ? edMatch[0].trim() : undefined;
     if (edition) title = title.replace(edition, '').trim();
-    const platMatch = rawName.match(/\[(?<platform>Multi|PC|PS\d|Xbox|Switch|Steam|GOG|Android|iOS)\]/i);
+    let clean = cleanGameTitle(rawName);
+    if (!clean && parentDirHint) clean = cleanGameTitle(parentDirHint);
     return {
-      title: title.replace(/\s+/g, ' ').trim(), cleanTitle: cleanGameTitle(rawName),
-      year: m.groups.year, edition, platform: platMatch?.groups?.platform,
-      group: extractGroup(rawName) ?? undefined, version: parseVersion(rawName)?.toString(),
+      title: title.replace(/\s+/g, ' ').trim() || clean, cleanTitle: clean,
+      year: m.groups.year, edition, platform: detectedPlatform || platMatch?.groups?.platform,
+      group: extractGroup(processed) ?? undefined, version: parseVersion(processed)?.toString(),
       rawName, isScene: false,
     };
   }
 
   // Strategy 4: Fallback
   let title = cleanGameTitle(rawName);
+  if (!title && parentDirHint) title = cleanGameTitle(parentDirHint);
   const edMatch = title.match(EDITION_RE);
   const edition = edMatch ? edMatch[0].trim() : undefined;
   if (edition) title = title.replace(new RegExp(edition.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'), '').trim();
 
   // Year: only in brackets or as last word before extension. Range 1980..2026
-  const yearBracket = rawName.match(/[\[\(](?<year>(?:19[8-9]\d|20[0-2]\d))[\]\)]/);
-  const yearEnd = rawName.match(/(?:\s|\.)(?<year>(?:19[8-9]\d|20[0-2]\d))(?:\s*\.\w+)?$/);
-  const year = yearBracket?.groups?.year || yearEnd?.groups?.year;
-  const platMatch = rawName.match(/\[(?<platform>Multi|PC|PS\d|Xbox|Switch|Steam|GOG|Android|iOS)\]/i);
+  // Avoid matching 2077 in Cyberpunk or 1942 in Battlefield.
+  const yearBracket = processed.match(/[\[\(](?<year>(?:19[8-9]\d|20[0-2]\d))[\]\)]/);
+  const yearEnd = processed.match(/(?:\s|\.)(?<year>(?:19[8-9]\d|20[0-2]\d))(?:\s*\.\w+)?$/);
+  const year = yearBracket?.groups?.year || (yearEnd?.groups?.year && !title.endsWith(yearEnd.groups.year) ? yearEnd.groups.year : undefined);
 
-  // Extract version from raw name (handles v1.0.4, update 1.0.1, V61339 formats)
   // Extract version from raw name
   let versionStr: string | undefined;
-  // Dotted version preceded by v/update or standalone (4.1.1.4763283)
-  const dottedMatch = rawName.match(/(?:(?:update|v)\s*)?(\d+(?:\.\d+){2,})/i);
+  const dottedMatch = processed.match(/(?:(?:update|v)\s*)?(\d+(?:\.\d+){2,})/i);
   if (dottedMatch) {
     versionStr = dottedMatch[1];
   } else {
-    // Fallback to ElAmigos-style numeric version
-    const v = parseVersion(rawName);
+    const v = parseVersion(processed);
     if (v !== null) versionStr = v.toString();
   }
 
   return {
     title: title.replace(/\s+/g, ' ').trim(), cleanTitle: title, year,
-    edition, platform: platMatch?.groups?.platform,
-    group: extractGroup(rawName) ?? undefined,
+    edition, platform: detectedPlatform || platMatch?.groups?.platform,
+    group: extractGroup(processed) ?? undefined,
     version: versionStr,
     rawName, isScene: false,
   };
