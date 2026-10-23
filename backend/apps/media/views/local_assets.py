@@ -15,7 +15,7 @@ from pathlib import Path
 
 from django.conf import settings
 from django.db.models import Count, Sum
-from django.http import FileResponse, Http404
+from django.http import FileResponse, Http404, HttpResponseRedirect
 from rest_framework import permissions, status
 from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
 from rest_framework.permissions import IsAuthenticated
@@ -33,12 +33,27 @@ class AssetFileView(APIView):
 
     permission_classes = (permissions.AllowAny,)
 
-    def get(self, request, name: str) -> FileResponse:
+    def get(self, request, name: str) -> FileResponse | HttpResponseRedirect:
         filename = Path(name).name
         if filename != name:
             raise Http404  # reject path separators / traversal
         path = Path(settings.MEDIA_DIR) / "assets" / filename
         if not path.is_file():
+            asset = MediaAsset.objects.filter(local_name=filename).first()
+            if asset and asset.url:
+                if assets_service.mirroring_enabled() and assets_service.disk_safe():
+                    written = assets_service.download_asset(asset)
+                    target_filename = asset.local_name or filename
+                    target_path = Path(settings.MEDIA_DIR) / "assets" / target_filename
+                    if written and target_path.is_file():
+                        assets_service.record_asset_use(target_filename)
+                        content_type = (
+                            mimetypes.guess_type(target_filename)[0] or "application/octet-stream"
+                        )
+                        response = FileResponse(target_path.open("rb"), content_type=content_type)
+                        response["Cache-Control"] = "public, max-age=31536000, immutable"
+                        return response
+                return HttpResponseRedirect(asset.url)
             raise Http404
         assets_service.record_asset_use(filename)
         content_type = mimetypes.guess_type(filename)[0] or "application/octet-stream"
@@ -84,11 +99,7 @@ class ArtworkSelectionView(APIView):
     permission_classes = (IsAuthenticated, IsAdminUser)
 
     def _resolve(self, media_id: str | int, asset_id: int) -> MediaAsset:
-        asset = (
-            MediaAsset.objects.select_related("media_item")
-            .filter(pk=asset_id)
-            .first()
-        )
+        asset = MediaAsset.objects.select_related("media_item").filter(pk=asset_id).first()
         if asset is None:
             raise NotFound("Asset not found for this media item")
         resolved_pk = resolve_media_pk(asset.media_item.media_type, media_id)
@@ -138,11 +149,7 @@ class TextlessPickView(APIView):
     permission_classes = (IsAuthenticated, IsAdminUser)
 
     def _resolve(self, media_id: str | int, asset_id: int) -> MediaAsset:
-        asset = (
-            MediaAsset.objects.select_related("media_item")
-            .filter(pk=asset_id)
-            .first()
-        )
+        asset = MediaAsset.objects.select_related("media_item").filter(pk=asset_id).first()
         if asset is None:
             raise NotFound("Asset not found for this media item")
         resolved_pk = resolve_media_pk(asset.media_item.media_type, media_id)
@@ -177,11 +184,7 @@ class AssetMirrorView(APIView):
     permission_classes = (IsAuthenticated, IsAdminUser)
 
     def _resolve(self, media_id: str | int, asset_id: int) -> MediaAsset:
-        asset = (
-            MediaAsset.objects.select_related("media_item")
-            .filter(pk=asset_id)
-            .first()
-        )
+        asset = MediaAsset.objects.select_related("media_item").filter(pk=asset_id).first()
         if asset is None:
             raise NotFound("Asset not found for this media item")
         resolved_pk = resolve_media_pk(asset.media_item.media_type, media_id)

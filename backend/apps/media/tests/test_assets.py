@@ -45,6 +45,7 @@ from apps.media.services.assets import (
     mirror_media_artwork,
     mirrored_usage,
     mirroring_enabled,
+    reconcile_missing_assets,
     record_sweep_run,
     select_asset,
     set_asset_types,
@@ -248,6 +249,42 @@ class AssetFileViewTests(AssetTestCase):
         response = self.client.get("/api/v1/assets/does-not-exist.png")
         self.assertEqual(response.status_code, 404)
 
+    def test_missing_file_self_heals_on_demand(self) -> None:
+        MediaAsset.objects.create(
+            media_item=self.item,
+            asset_type="poster",
+            url="http://img.example/healed.png",
+            score=50,
+            local_name="healed.png",
+            local_size=len(PNG),
+            downloaded_at=timezone.now(),
+        )
+        # Ensure file is missing from disk
+        self.assertFalse((asset_dir() / "healed.png").exists())
+
+        with _patch_http(_FakeResponse(PNG)):
+            response = self.client.get("/api/v1/assets/healed.png")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["Content-Type"], "image/png")
+        self.assertEqual(b"".join(response.streaming_content), PNG)
+        self.assertTrue((asset_dir() / "healed.png").is_file())
+
+    def test_missing_file_redirects_when_mirroring_disabled(self) -> None:
+        set_mirroring_enabled(False)
+        MediaAsset.objects.create(
+            media_item=self.item,
+            asset_type="poster",
+            url="http://img.example/remote-only.png",
+            score=50,
+            local_name="remote-only.png",
+        )
+        self.assertFalse((asset_dir() / "remote-only.png").exists())
+
+        response = self.client.get("/api/v1/assets/remote-only.png")
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response["Location"], "http://img.example/remote-only.png")
+
     def test_path_traversal_rejected(self) -> None:
         self._write("secret.png")
         for name in ("..", "..%2Fsecret.png", "%2e%2e"):
@@ -379,7 +416,9 @@ class AdminAssetEndpointTests(AssetTestCase):
 
     def test_artwork_textless_and_mirror_endpoints_with_slug(self) -> None:
         asset = self.add_asset(asset_type="poster", url="http://img.example/textless.png")
-        textless_url = f"/api/v1/media/admin/media-items/{self.item.slug}/assets/{asset.pk}/textless"
+        textless_url = (
+            f"/api/v1/media/admin/media-items/{self.item.slug}/assets/{asset.pk}/textless"
+        )
         with _patch_http(_FakeResponse(PNG)):
             res = self.staff_client.put(textless_url)
         self.assertEqual(res.status_code, 200)
@@ -483,6 +522,31 @@ class PurgeAssetsTests(AssetTestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["deleted"], 0)
         self.assertEqual(response.data["bytes_freed"], 0)
+
+    def test_reconcile_missing_assets_clears_only_absent_files(self) -> None:
+        present = self._create_local("present.png")
+        absent = MediaAsset.objects.create(
+            media_item=self.item,
+            asset_type="backdrop",
+            url="http://remote.example/absent.png",
+            local_name="absent.png",
+            local_size=1234,
+            downloaded_at=timezone.now(),
+        )
+        self.assertTrue((asset_dir() / "present.png").is_file())
+        self.assertFalse((asset_dir() / "absent.png").exists())
+
+        cleared = reconcile_missing_assets()
+        self.assertEqual(cleared, 1)
+
+        present.refresh_from_db()
+        self.assertEqual(present.local_name, "present.png")
+        self.assertIsNotNone(present.local_size)
+
+        absent.refresh_from_db()
+        self.assertIsNone(absent.local_name)
+        self.assertIsNone(absent.local_size)
+        self.assertIsNone(absent.downloaded_at)
 
 
 class PrimaryReconcileTests(AssetTestCase):

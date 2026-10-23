@@ -12,6 +12,7 @@ remote URL keeps being used.
 from __future__ import annotations
 
 import logging
+import os
 import shutil
 import uuid
 from datetime import datetime
@@ -115,6 +116,11 @@ def download_asset(asset: MediaAsset) -> int | None:
             response = client.get(asset.url)
         if response.status_code != 200 or not response.content:
             logger.warning("asset download failed: %s HTTP %s", asset.url, response.status_code)
+            if response.status_code in (404, 410) and asset.local_name:
+                asset.local_name = None
+                asset.local_size = None
+                asset.downloaded_at = None
+                asset.save(update_fields=["local_name", "local_size", "downloaded_at"])
             return None
         if not _make_room(len(response.content)):
             logger.warning(
@@ -122,8 +128,16 @@ def download_asset(asset: MediaAsset) -> int | None:
             )
             return None
         ext = _extension_for(asset.url, response.headers.get("content-type"))
-        filename = f"{uuid.uuid4().hex}{ext}"
-        (asset_dir() / filename).write_bytes(response.content)
+        if asset.local_name and (
+            asset.local_name.endswith(ext) or Path(asset.local_name).suffix in _URL_EXTS
+        ):
+            filename = asset.local_name
+        else:
+            filename = f"{uuid.uuid4().hex}{ext}"
+        target_path = asset_dir() / filename
+        tmp_path = asset_dir() / f"{filename}.tmp.{uuid.uuid4().hex}"
+        tmp_path.write_bytes(response.content)
+        tmp_path.replace(target_path)
         asset.local_name = filename
         asset.local_size = len(response.content)
         asset.downloaded_at = timezone.now()
@@ -412,12 +426,49 @@ def purge_downloaded_assets() -> dict:
     """
     freed = 0
     deleted = 0
-    for asset in MediaAsset.objects.filter(local_name__isnull=False).iterator():
-        asset_freed = _discard_local_copy(asset)
-        freed += asset_freed
-        if asset_freed > 0:
-            deleted += 1
+    directory = asset_dir()
+    if directory.is_dir():
+        for path in directory.iterdir():
+            if path.is_file():
+                try:
+                    freed += path.stat().st_size
+                    path.unlink()
+                    deleted += 1
+                except OSError:
+                    pass
+    MediaAsset.objects.filter(local_name__isnull=False).update(
+        local_name=None, local_size=None, downloaded_at=None
+    )
     return {"deleted": deleted, "bytes_freed": freed}
+
+
+def reconcile_missing_assets() -> int:
+    """Clear local_name/local_size/downloaded_at for MediaAssets whose mirrored file is absent from disk."""
+    directory = asset_dir()
+    existing_files = set(os.listdir(directory)) if directory.is_dir() else set()
+    if not existing_files:
+        return MediaAsset.objects.filter(local_name__isnull=False).update(
+            local_name=None, local_size=None, downloaded_at=None
+        )
+    stale_ids: list[int] = []
+    total_cleared = 0
+    for asset_id, local_name in (
+        MediaAsset.objects.filter(local_name__isnull=False)
+        .values_list("id", "local_name")
+        .iterator(chunk_size=2000)
+    ):
+        if local_name not in existing_files:
+            stale_ids.append(asset_id)
+            if len(stale_ids) >= 1000:
+                total_cleared += MediaAsset.objects.filter(id__in=stale_ids).update(
+                    local_name=None, local_size=None, downloaded_at=None
+                )
+                stale_ids = []
+    if stale_ids:
+        total_cleared += MediaAsset.objects.filter(id__in=stale_ids).update(
+            local_name=None, local_size=None, downloaded_at=None
+        )
+    return total_cleared
 
 
 def _wanted_for_type(media_item: MediaItem, asset_type: str) -> list[MediaAsset]:
@@ -698,6 +749,8 @@ def sweep_unmirrored_media(limit: int | None = None) -> dict:
     if not mirroring_enabled() or not discover_enabled():
         return {"scanned": 0, "mirrored": 0, "bytes": 0}
     bound = limit if limit is not None else sweep_limit()
+    directory = asset_dir()
+    existing_files = set(os.listdir(directory)) if directory.is_dir() else set()
     rows = MediaAsset.objects.filter(
         asset_type__in=enabled_asset_types(),
     ).values_list("media_item_id", "asset_type", "local_name", "url")
@@ -708,7 +761,7 @@ def sweep_unmirrored_media(limit: int | None = None) -> dict:
         covered.setdefault(media_item_id, set())
         if url:
             present[media_item_id].add(asset_type)
-        if local_name:
+        if local_name and local_name in existing_files:
             covered[media_item_id].add(asset_type)
     candidate_ids = [
         item_id for item_id, types in present.items() if types.difference(covered[item_id])
