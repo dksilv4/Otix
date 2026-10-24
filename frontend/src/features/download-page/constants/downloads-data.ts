@@ -5,17 +5,17 @@ export const GITHUB_REPO_NAME = 'Otix'
 export const GITHUB_API_LATEST = `https://api.github.com/repos/${GITHUB_REPO_OWNER}/${GITHUB_REPO_NAME}/releases/latest`
 export const GITHUB_RELEASE_DOWNLOAD_BASE = `https://github.com/${GITHUB_REPO_OWNER}/${GITHUB_REPO_NAME}/releases/download`
 
-export const DEFAULT_RELEASE_VERSION = '0.1.24'
-export const DEFAULT_TAG_NAME = 'v0.1.24'
-export const DEFAULT_PUBLISHED_AT = '2026-10-21T02:41:14Z'
+export const DEFAULT_RELEASE_VERSION = '0.1.25'
+export const DEFAULT_TAG_NAME = 'v0.1.25'
+export const DEFAULT_PUBLISHED_AT = '2026-10-24T20:30:00Z'
 
 export const DEFAULT_RELEASE_INFO: LatestReleaseInfo = {
   version: DEFAULT_RELEASE_VERSION,
   tagName: DEFAULT_TAG_NAME,
-  name: 'Otix v0.1.24',
+  name: 'Otix v0.1.25',
   publishedAt: DEFAULT_PUBLISHED_AT,
   releaseNotes:
-    'Otix 0.1.24 brings public updater feeds, enhanced server discovery, seamless direct bitstream streaming, and game library scanning performance improvements.',
+    'Otix 0.1.25 introduces real-time chat with direct messaging and floating dock, dedicated game server orchestration with live status queries, node topology canvas auto-centering with secondary navigation, and user profile section privacy customizers.',
   assets: [
     {
       name: `Otix-Setup-${DEFAULT_RELEASE_VERSION}.exe`,
