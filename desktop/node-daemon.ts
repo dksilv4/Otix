@@ -335,6 +335,37 @@ export class NodeDaemonManager {
 
     if (!statusRes) return false;
     if (statusRes.claimed) {
+      // Node is already claimed locally. Ensure the backend database also has the current auth_token.
+      try {
+        const configPath = path.join(this.userDataPath, 'node-config.yaml');
+        if (fs.existsSync(configPath)) {
+          const content = fs.readFileSync(configPath, 'utf-8');
+          const tokenMatch = /auth_token:\s*["']?([a-zA-Z0-9_-]+)["']?/.exec(content);
+          const existingToken = tokenMatch ? tokenMatch[1] : '';
+          if (existingToken) {
+            const platformLabel = process.platform === 'darwin' ? 'This Mac' : process.platform === 'win32' ? 'This PC' : 'This computer';
+            const serverName = `${platformLabel} Node (${os.hostname()})`;
+            const apiBase = getApiBaseUrl().replace(/\/$/, '');
+            const backendClaimUrl = `${apiBase}/api/v1/library/servers/claim-direct`;
+            await net.fetch(backendClaimUrl, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`,
+              },
+              body: JSON.stringify({
+                server_name: serverName,
+                auth_token: existingToken,
+                port,
+                local_endpoints: [`http://127.0.0.1:${port}`],
+                is_local: true,
+              }),
+            });
+          }
+        }
+      } catch (err) {
+        console.warn('[node-daemon] Failed to sync existing node claim with backend:', err);
+      }
       return true;
     }
 

@@ -91,14 +91,14 @@ describe('SettingsOrganizeSection', () => {
     )
   }
 
-  it('renders the Folder Structure & ISO Library card with presets and color-coded token chips', async () => {
+  it('renders the Folder Structure & Naming Rules card with presets and color-coded token chips', async () => {
     renderSection()
 
     expect(
-      screen.getByRole('heading', { name: 'Folder Structure & ISO Library' }),
+      screen.getByRole('heading', { name: 'Folder Structure & Naming Rules' }),
     ).toBeInTheDocument()
-    expect(screen.getByText('ISO File Directory')).toBeInTheDocument()
-    expect(screen.getByText('Standard (arr-style)')).toBeInTheDocument()
+    expect(screen.queryByText('ISO File Directory')).not.toBeInTheDocument()
+    expect(screen.getByText('Standard')).toBeInTheDocument()
     expect(screen.getByText('Clean Game Folder')).toBeInTheDocument()
     expect(screen.getByText('Scene Release Format')).toBeInTheDocument()
 
@@ -110,6 +110,9 @@ describe('SettingsOrganizeSection', () => {
 
     // Live preview
     expect(screen.getByText('Live Sample Previews')).toBeInTheDocument()
+
+    // Release & Search Filters removed
+    expect(screen.queryByText(/Release & Search Filters/i)).not.toBeInTheDocument()
   })
 
   it('updates the template and live preview when clicking a preset card', async () => {
@@ -167,7 +170,7 @@ describe('SettingsOrganizeSection', () => {
     })
   })
 
-  it('allows toggling between real files and sample scene releases in test run modal', async () => {
+  it('allows scanning and selecting target folder in test run modal', async () => {
     const user = userEvent.setup()
     renderSection()
 
@@ -178,10 +181,10 @@ describe('SettingsOrganizeSection', () => {
       expect(screen.getByRole('heading', { name: 'Organize Test Run' })).toBeInTheDocument()
     })
 
-    const sampleToggleButton = screen.getByRole('button', { name: /sample/i })
-    expect(sampleToggleButton).toBeInTheDocument()
+    const scanButton = screen.getByRole('button', { name: /scan/i })
+    expect(scanButton).toBeInTheDocument()
+    await user.click(scanButton)
 
-    // Cyberpunk 2077 sample is present in sample releases
-    expect(screen.getByText(/Cyberpunk 2077/i)).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Organize Test Run' })).toBeInTheDocument()
   })
 })

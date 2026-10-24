@@ -103,7 +103,7 @@ vi.mock('../components/organisms/settings-free-games-section', () => ({
 }))
 
 describe('resolveLibrarySettingsTab', () => {
-  it('defaults empty and legacy hashes to catalog; maps #proposals onto proposals', () => {
+  it('maps active tabs and defaults retired/unknown hashes', () => {
     expect(resolveLibrarySettingsTab('')).toBe('catalog')
     expect(resolveLibrarySettingsTab(undefined)).toBe('catalog')
     expect(resolveLibrarySettingsTab('overview')).toBe('catalog')
@@ -114,9 +114,11 @@ describe('resolveLibrarySettingsTab', () => {
     expect(resolveLibrarySettingsTab('#catalog')).toBe('catalog')
     expect(resolveLibrarySettingsTab('proposals')).toBe('proposals')
     expect(resolveLibrarySettingsTab('#proposals')).toBe('proposals')
-    expect(resolveLibrarySettingsTab('paths')).toBe('catalog')
-    expect(resolveLibrarySettingsTab('downloads')).toBe('catalog')
     expect(resolveLibrarySettingsTab('organize')).toBe('catalog')
+    expect(resolveLibrarySettingsTab('#organize')).toBe('catalog')
+    expect(resolveLibrarySettingsTab('paths')).toBe('catalog')
+    expect(resolveLibrarySettingsTab('#paths')).toBe('catalog')
+    expect(resolveLibrarySettingsTab('downloads')).toBe('catalog')
   })
 })
 
@@ -151,10 +153,10 @@ describe('SettingsLibraryPage tabs', () => {
     expect(screen.getByRole('tablist')).toBeInTheDocument()
     expect(screen.getByRole('tab', { name: 'Catalog' })).toHaveAttribute('aria-selected', 'true')
     expect(screen.getByRole('tab', { name: 'Match Proposals' })).toBeInTheDocument()
-    expect(screen.queryByRole('tab', { name: 'Overview' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('tab', { name: 'Paths' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('tab', { name: 'Downloads' })).not.toBeInTheDocument()
     expect(screen.queryByRole('tab', { name: 'Organize' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('tab', { name: 'Paths' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('tab', { name: 'Overview' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('tab', { name: 'Downloads' })).not.toBeInTheDocument()
 
     await waitFor(() => {
       expect(screen.getByRole('heading', { name: 'Catalog' })).toBeInTheDocument()
@@ -178,7 +180,8 @@ describe('SettingsLibraryPage tabs', () => {
     })
   })
 
-  it('does not keep a Paths tab on the library page', async () => {
+  it('redirects retired organize hash to Organize page', async () => {
+    mockHash = '#organize'
     render(
       <SettingsSaveProvider>
         <ModalProvider>
@@ -188,8 +191,25 @@ describe('SettingsLibraryPage tabs', () => {
       </SettingsSaveProvider>,
     )
 
-    expect(screen.queryByRole('tab', { name: 'Paths' })).not.toBeInTheDocument()
-    expect(screen.queryByText('Managing node')).not.toBeInTheDocument()
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith({ to: '/settings/organize', replace: true })
+    })
+  })
+
+  it('redirects retired paths hash to Paths page', async () => {
+    mockHash = '#paths'
+    render(
+      <SettingsSaveProvider>
+        <ModalProvider>
+          <SettingsLibraryPage />
+          <ModalRoot />
+        </ModalProvider>
+      </SettingsSaveProvider>,
+    )
+
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith({ to: '/settings/paths', replace: true })
+    })
   })
 
   it('redirects retired downloads hash to Nodes', async () => {

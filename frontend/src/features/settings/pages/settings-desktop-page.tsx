@@ -7,7 +7,9 @@ import {
 import { DkButton } from '@ui/atoms/button'
 import { DkDialog } from '@ui/molecules/dialog'
 import { useToast } from '@ui/molecules/toast'
+import { cn } from '@/lib/utils'
 import { useModal } from '@/lib/modals'
+import { useNavigate } from '@tanstack/react-router'
 import { useAuth } from '@/lib/providers/auth'
 import { SettingsLockedState } from '../components/molecules/settings-locked-state'
 import {
@@ -20,7 +22,6 @@ import {
 import type { GameServer } from '@/features/downloads/types'
 import type { PendingNode } from '@/features/downloads/pending-nodes'
 import { DownloadNodeModal } from '@/features/downloads/molecules/download-node-modal'
-import { NodeSettingsModal } from '../components/organisms/node-settings-modal'
 import { useSettingsNode } from '../context/settings-node-context'
 import { useSettingsHashScroll } from '../hooks/use-settings-hash-scroll'
 import {
@@ -41,6 +42,14 @@ import { EditSambaShareModal } from '../components/organisms/edit-samba-share-mo
 import { AddNodeModal } from '../components/organisms/add-node-modal'
 import { NodesTopologyCanvas } from '../components/organisms/nodes-topology-canvas'
 import { GameServersDrawer } from '../components/organisms/game-servers-drawer'
+import { NodesGridView } from '../components/organisms/nodes-grid-view'
+import { NodesListView } from '../components/organisms/nodes-list-view'
+import { useNodesView } from '../context/nodes-view-context'
+import {
+  flattenInfrastructureItems,
+  filterInfrastructureItems,
+  getNavPillsTopOffset,
+} from '../utils/node-views'
 import {
   useGameServers,
   useQueryGameServer,
@@ -62,7 +71,13 @@ export const SettingsNodesPage = () => {
   const { toast } = useToast()
   const { openModal } = useModal()
 
-  const { servers: gameServers } = useSettingsNode()
+  const { servers: gameServers, setSelectedNodeId } = useSettingsNode()
+  const navigate = useNavigate()
+
+  const handleOpenNodeSettings = (node: GameServer) => {
+    setSelectedNodeId(node.id)
+    void navigate({ to: '/settings/library', hash: 'organize' })
+  }
   const deleteServerMutation = useDeleteGameServer()
   const pingServerMutation = usePingGameServer()
   const updateServerMutation = useUpdateGameServer()
@@ -101,7 +116,18 @@ export const SettingsNodesPage = () => {
   const [nodeToRename, setNodeToRename] = useState<GameServer | null>(null)
   const [renameInput, setRenameInput] = useState('')
   const [isSavingRename, setIsSavingRename] = useState(false)
-  const [selectedNodeForModal, setSelectedNodeForModal] = useState<GameServer | null>(null)
+
+  const {
+    viewMode,
+    searchQuery,
+    categoryFilter,
+    statusFilter,
+    resetFilters,
+    addModalOpen,
+    setAddModalOpen,
+    setTotalCount,
+    setOnlineCount,
+  } = useNodesView()
 
   const handleSelectNodeType = (type: 'worker' | 'server' | 'home' | 'samba' | 'game_server') => {
     if (type === 'worker') {
@@ -141,6 +167,35 @@ export const SettingsNodesPage = () => {
       ),
     [gameServers, serverMachines, homes, pendingNodes, customSambaShares, dedicatedGameServers],
   )
+
+  const allInfrastructureItems = useMemo(
+    () =>
+      flattenInfrastructureItems({
+        nodes: gameServers,
+        serverMachines,
+        homes,
+        customSambaShares,
+        gameServers: dedicatedGameServers,
+        unclaimedNodes,
+      }),
+    [gameServers, serverMachines, homes, customSambaShares, dedicatedGameServers, unclaimedNodes],
+  )
+
+  const filteredInfrastructureItems = useMemo(
+    () => filterInfrastructureItems(allInfrastructureItems, searchQuery, categoryFilter, statusFilter),
+    [allInfrastructureItems, searchQuery, categoryFilter, statusFilter],
+  )
+
+  const totalInfrastructureCount = allInfrastructureItems.length
+  const onlineInfrastructureCount = useMemo(
+    () => allInfrastructureItems.filter((i) => i.isOnline).length,
+    [allInfrastructureItems],
+  )
+
+  useEffect(() => {
+    setTotalCount(totalInfrastructureCount)
+    setOnlineCount(onlineInfrastructureCount)
+  }, [totalInfrastructureCount, onlineInfrastructureCount, setTotalCount, setOnlineCount])
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -367,6 +422,23 @@ export const SettingsNodesPage = () => {
     })
   }
 
+  const handlePingDedicatedGameServer = async (server: DedicatedGameServer) => {
+    try {
+      await queryGameServerMutation.mutateAsync(server.id)
+      toast({
+        title: 'Server Queried',
+        description: `Updated status for ${server.name}.`,
+        variant: 'success',
+      })
+    } catch {
+      toast({
+        title: 'Query Failed',
+        description: `Could not reach ${server.name}.`,
+        variant: 'error',
+      })
+    }
+  }
+
   if (!isAuthenticated) {
     return (
       <SettingsLockedState
@@ -379,67 +451,146 @@ export const SettingsNodesPage = () => {
   }
 
   return (
-    <div id="settings-nodes-section" className="relative w-full h-full overflow-hidden">
-      {/* Edge-to-Edge Canvas Background across the entire page behind sidebar & header */}
-      <NodesTopologyCanvas
-        homes={homes}
-        serverMachines={serverMachines}
-        nodes={gameServers}
-        gameServers={dedicatedGameServers}
-        pendingNodes={[]}
-        customSambaShares={customSambaShares}
-        hubStats={stats}
-        unclaimedNodes={unclaimedNodes}
-        onOpenConnectModal={(url) => openConnectModal(url)}
-        onOpenDownloadModal={openDownloadNodeModal}
-        onOpenGameServersDrawer={() => setGameServersDrawerOpen(true)}
-        onSelectGameServer={(server) => {
-          setFocusedGameServerId(server.id)
-          setGameServersDrawerOpen(true)
-        }}
-        onEditGameServer={(server) => setEditingGameServer(server)}
-        onPingGameServer={async (server) => {
-          try {
-            await queryGameServerMutation.mutateAsync(server.id)
-            toast({
-              title: 'Server Queried',
-              description: `Updated status for ${server.name}.`,
-              variant: 'success',
-            })
-          } catch {
-            toast({
-              title: 'Query Failed',
-              description: `Could not reach ${server.name}.`,
-              variant: 'error',
-            })
-          }
-        }}
-        onCopyGameServerAddress={handleCopyGameServerAddress}
-        onClaimPendingNode={handleClaimQuickNode}
-        onAddHome={() => setCreateHomeOpen(true)}
-        onAddServer={(homeId) => {
-          setCreateServerHomeId(homeId ?? null)
-          setCreateServerMachineOpen(true)
-        }}
-        onAddNode={() => setAddNodeModalOpen(true)}
-        onAddSamba={(preset) => {
-          setCreateSambaPreset(preset ?? null)
-          setCreateSambaOpen(true)
-        }}
-        onOpenSambaSettings={(samba) => setEditingSamba(samba)}
-        onEditSamba={(samba) => setEditingSamba(samba)}
-        onSaveCustomSamba={handleSaveCustomSamba}
-        onDeleteSamba={handleDeleteCustomSamba}
-        onEditHome={(home) => setEditingHome(home)}
-        onDeleteHome={handleDeleteHome}
-        onEditServer={(server) => setEditingServerMachine(server)}
-        onDeleteServer={handleDeleteMachine}
-        onDetectDrives={handleDetectDrivesForMachine}
-        onOpenNodeSettings={(node) => setSelectedNodeForModal(node)}
-        onEditNode={(node) => setEditingWorkerNode(node)}
-        onRenameNode={(node) => openRenameModal(node)}
-        onPingNode={handlePingServerInstance}
-      />
+    <div
+      id="settings-nodes-section"
+      className={
+        viewMode === 'map'
+          ? 'relative w-full h-full overflow-hidden'
+          : cn(
+              'relative w-full h-full overflow-y-auto px-4 sm:px-6 lg:px-8 pb-28',
+              getNavPillsTopOffset(false),
+            )
+      }
+    >
+      {viewMode === 'map' && (
+        <NodesTopologyCanvas
+          homes={homes}
+          serverMachines={serverMachines}
+          nodes={gameServers}
+          gameServers={dedicatedGameServers}
+          pendingNodes={[]}
+          customSambaShares={customSambaShares}
+          hubStats={stats}
+          unclaimedNodes={unclaimedNodes}
+          searchQuery={searchQuery}
+          categoryFilter={categoryFilter}
+          statusFilter={statusFilter}
+          onOpenConnectModal={(url) => openConnectModal(url)}
+          onOpenDownloadModal={openDownloadNodeModal}
+          onOpenGameServersDrawer={() => setGameServersDrawerOpen(true)}
+          onSelectGameServer={(server) => {
+            setFocusedGameServerId(server.id)
+            setGameServersDrawerOpen(true)
+          }}
+          onEditGameServer={(server) => setEditingGameServer(server)}
+          onPingGameServer={handlePingDedicatedGameServer}
+          onCopyGameServerAddress={handleCopyGameServerAddress}
+          onClaimPendingNode={handleClaimQuickNode}
+          onAddHome={() => setCreateHomeOpen(true)}
+          onAddServer={(homeId) => {
+            setCreateServerHomeId(homeId ?? null)
+            setCreateServerMachineOpen(true)
+          }}
+          onAddNode={() => setAddNodeModalOpen(true)}
+          onAddSamba={(preset) => {
+            setCreateSambaPreset(preset ?? null)
+            setCreateSambaOpen(true)
+          }}
+          onOpenSambaSettings={(samba) => setEditingSamba(samba)}
+          onEditSamba={(samba) => setEditingSamba(samba)}
+          onSaveCustomSamba={handleSaveCustomSamba}
+          onDeleteSamba={handleDeleteCustomSamba}
+          onEditHome={(home) => setEditingHome(home)}
+          onDeleteHome={handleDeleteHome}
+          onEditServer={(server) => setEditingServerMachine(server)}
+          onDeleteServer={handleDeleteMachine}
+          onDetectDrives={handleDetectDrivesForMachine}
+          onOpenNodeSettings={handleOpenNodeSettings}
+          onEditNode={(node) => setEditingWorkerNode(node)}
+          onRenameNode={(node) => openRenameModal(node)}
+          onPingNode={handlePingServerInstance}
+        />
+      )}
+
+      {viewMode !== 'map' && (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6 pb-4 border-b border-white/[0.04]">
+          <div>
+            <div className="flex items-center gap-2.5">
+              <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">
+                Nodes &amp; Infrastructure
+              </h1>
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-mono font-semibold bg-primary/10 text-primary border border-primary/20">
+                <span className="w-1.5 h-1.5 rounded-full bg-status-online" />
+                <span>{onlineInfrastructureCount}/{totalInfrastructureCount} online</span>
+              </span>
+            </div>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Worker companions, server machines, Samba network storage, and dedicated game servers.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {viewMode === 'grid' && (
+        <div className="space-y-4">
+          <NodesGridView
+            items={filteredInfrastructureItems}
+            categoryFilter={categoryFilter}
+            onOpenNodeSettings={handleOpenNodeSettings}
+            onEditNode={(node) => setEditingWorkerNode(node)}
+            onRenameNode={(node) => openRenameModal(node)}
+            onPingNode={handlePingServerInstance}
+            onDisconnectNode={(node) => setNodeToDelete(node)}
+            onEditServer={(server) => setEditingServerMachine(server)}
+            onDeleteServer={handleDeleteMachine}
+            onDetectDrives={handleDetectDrivesForMachine}
+            onEditHome={(home) => setEditingHome(home)}
+            onDeleteHome={handleDeleteHome}
+            onEditSamba={(samba) => setEditingSamba(samba)}
+            onDeleteSamba={handleDeleteCustomSamba}
+            onOpenGameServerDrawer={(server) => {
+              setFocusedGameServerId(server.id)
+              setGameServersDrawerOpen(true)
+            }}
+            onPingGameServer={handlePingDedicatedGameServer}
+            onEditGameServer={(server) => setEditingGameServer(server)}
+            onCopyGameServerAddress={handleCopyGameServerAddress}
+            onClaimPendingNode={handleClaimQuickNode}
+            onAddNode={() => setAddNodeModalOpen(true)}
+            onResetFilters={resetFilters}
+          />
+        </div>
+      )}
+
+      {viewMode === 'list' && (
+        <div className="space-y-4">
+          <NodesListView
+            items={filteredInfrastructureItems}
+            onOpenNodeSettings={handleOpenNodeSettings}
+            onEditNode={(node) => setEditingWorkerNode(node)}
+            onRenameNode={(node) => openRenameModal(node)}
+            onPingNode={handlePingServerInstance}
+            onDisconnectNode={(node) => setNodeToDelete(node)}
+            onEditServer={(server) => setEditingServerMachine(server)}
+            onDeleteServer={handleDeleteMachine}
+            onDetectDrives={handleDetectDrivesForMachine}
+            onEditHome={(home) => setEditingHome(home)}
+            onDeleteHome={handleDeleteHome}
+            onEditSamba={(samba) => setEditingSamba(samba)}
+            onDeleteSamba={handleDeleteCustomSamba}
+            onOpenGameServerDrawer={(server) => {
+              setFocusedGameServerId(server.id)
+              setGameServersDrawerOpen(true)
+            }}
+            onPingGameServer={handlePingDedicatedGameServer}
+            onEditGameServer={(server) => setEditingGameServer(server)}
+            onCopyGameServerAddress={handleCopyGameServerAddress}
+            onClaimPendingNode={handleClaimQuickNode}
+            onAddNode={() => setAddNodeModalOpen(true)}
+            onResetFilters={resetFilters}
+          />
+        </div>
+      )}
 
       {nodeToDelete && (
         <DkDialog
@@ -563,17 +714,9 @@ export const SettingsNodesPage = () => {
           node={editingWorkerNode}
           homes={homes}
           serverMachines={serverMachines}
-          onOpenFullSettings={(node) => setSelectedNodeForModal(node)}
+          onOpenFullSettings={handleOpenNodeSettings}
         />
       )}
-
-      <NodeSettingsModal
-        server={selectedNodeForModal}
-        open={Boolean(selectedNodeForModal)}
-        onOpenChange={(open) => {
-          if (!open) setSelectedNodeForModal(null)
-        }}
-      />
 
       <CreateServerMachineModal
         open={createServerMachineOpen}
@@ -626,8 +769,11 @@ export const SettingsNodesPage = () => {
       />
 
       <AddNodeModal
-        open={addNodeModalOpen}
-        onOpenChange={setAddNodeModalOpen}
+        open={addNodeModalOpen || addModalOpen}
+        onOpenChange={(open) => {
+          setAddNodeModalOpen(open)
+          setAddModalOpen(open)
+        }}
         unclaimedNodes={unclaimedNodes}
         onSelectType={handleSelectNodeType}
         onClaimNode={handleClaimQuickNode}

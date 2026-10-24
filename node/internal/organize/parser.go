@@ -109,7 +109,7 @@ func CleanGameTitle(filename string) string {
 	name = regexp.MustCompile(`(?i)\b\d{2}[._-]\d{2}[._-](?:19|20)\d{2}\b`).ReplaceAllString(name, "")
 
 	// Strip update followed by version numbers / ranges
-	name = regexp.MustCompile(`(?i)(?:^|[^a-zA-Z0-9])(?:update\s*[\d\s._-]+(?=[a-zA-Z]|$))`).ReplaceAllString(name, " ")
+	name = regexp.MustCompile(`(?i)(?:^|[^a-zA-Z0-9])update\s*[\d\s._-]+`).ReplaceAllString(name, " ")
 
 	// Strip file extensions if recognized
 	ext := strings.ToLower(filepath.Ext(name))

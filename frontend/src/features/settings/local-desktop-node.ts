@@ -105,6 +105,7 @@ export function syncServersWithPendingNodes(servers: GameServer[], pendingNodes:
 }
 
 export function pickSettingsNode(servers: GameServer[], preferredId: number | null): GameServer | null {
+  if (preferredId === 0) return null
   if (!servers.length) return null
   const workers = servers.filter((server) => !isLocalDesktopNode(server))
   return (
@@ -116,4 +117,3 @@ export function pickSettingsNode(servers: GameServer[], preferredId: number | nu
     servers[0]
   )
 }
-

@@ -13,6 +13,7 @@ export * from './server-explorer-types';
 export * from './server-explorer-utils';
 
 export * from './types';
+export type { NodeProbeResult, ServerProbeResult } from './types';
 export * from './utils';
 export * from './node-availability';
 export * from './server-availability';

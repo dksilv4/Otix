@@ -1001,6 +1001,13 @@ app.on('ready', async () => {
     }
   }, 'main');
 
+  // Forward plugin scan progress to renderer
+  eventBus.on('scan:progress', (payload: any) => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('scanner:progress', payload);
+    }
+  }, 'main');
+
   // ── FPS permission fix (delegates to fps-capture plugin) ──
   ipcMain.handle('fps:fix-permissions', async () => {
     if (!pluginManager) return { success: false, error: 'Plugin system not ready' };

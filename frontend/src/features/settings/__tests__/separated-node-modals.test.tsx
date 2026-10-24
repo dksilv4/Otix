@@ -165,12 +165,16 @@ describe('Separated Node Modals', () => {
       await user.clear(nameInput)
       await user.type(nameInput, 'Renamed Node')
 
+      const tokenInput = screen.getByPlaceholderText(/paste token from node's config.yaml/i)
+      await user.type(tokenInput, 'new-secret-token')
+
       await user.click(screen.getByRole('button', { name: /save changes/i }))
 
       expect(mockUpdateGameServer).toHaveBeenCalledWith(
         expect.objectContaining({
           id: sampleNode.id,
           name: 'Renamed Node',
+          auth_token: 'new-secret-token',
         }),
       )
     })

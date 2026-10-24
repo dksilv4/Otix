@@ -73,9 +73,7 @@ export const CreateGameServerModal = ({
   const [serverType, setServerType] = useState<GameServerType>(defaultPreset?.serverType ?? 'steam_source')
 
   const initialHostFromMachine = initialServerMachineId
-    ? serverMachines.find((m) => m.id === initialServerMachineId)?.ipAddress ||
-      serverMachines.find((m) => m.id === initialServerMachineId)?.host ||
-      ''
+    ? serverMachines.find((m) => m.id === initialServerMachineId)?.host || ''
     : ''
   const [host, setHost] = useState(initialHostFromMachine)
   const [port, setPort] = useState<number>(defaultPreset?.defaultPort ?? 27015)
@@ -418,7 +416,7 @@ export const CreateGameServerModal = ({
                 if (val) {
                   const m = serverMachines.find((sm) => sm.id === val)
                   if (m && (!host.trim() || host === 'localhost' || host === '127.0.0.1')) {
-                    const candidateIp = m.ipAddress || m.host || ''
+                    const candidateIp = m.host || ''
                     if (candidateIp) {
                       setHost(candidateIp)
                       resetVerification()
@@ -433,7 +431,7 @@ export const CreateGameServerModal = ({
               </option>
               {serverMachines.map((m) => (
                 <option key={m.id} value={m.id} className="bg-[var(--dk-surface-overlay)] text-foreground">
-                  {m.name} {m.ipAddress || m.host ? `(${m.ipAddress || m.host})` : ''}
+                  {m.name} {m.host ? `(${m.host})` : ''}
                 </option>
               ))}
             </select>

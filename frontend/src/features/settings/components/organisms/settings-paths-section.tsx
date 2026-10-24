@@ -1,14 +1,11 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import {
-  FolderOpen,
   RefreshCw,
   Trash2,
-  Gamepad2,
-  Disc,
-  HardDrive,
-  Check,
+  LayoutGrid,
+  List,
+  Search,
 } from 'lucide-react'
-import { PathInput } from '@/components/path-picker'
 import { DkButton } from '@ui/atoms/button'
 import { DkSwitch } from '@ui/atoms/switch'
 import { useToast } from '@ui/molecules/toast'
@@ -21,21 +18,45 @@ import { isLocalDesktopNodeId } from '../../local-desktop-node'
 import { SettingsCard } from '../molecules/settings-card'
 import { SettingsRow } from '../molecules/settings-row'
 import { SectionHeader } from '../molecules/settings-section-header'
+import { PathFolderCard } from '../molecules/path-folder-card'
+import { PathFolderRow } from '../molecules/path-folder-row'
+import { useScanProgress } from '../../hooks/use-scan-progress'
+import { AddPathFolderCard } from '../molecules/add-path-folder-card'
+import { ScannedFilesSummary } from '../molecules/scanned-files-summary'
+import {
+  type ScannedFilesSummaryData,
+  fetchDesktopScannedSummary,
+  fetchNodeScannedSummary,
+  loadStoredScannedSummary,
+  saveStoredScannedSummary,
+} from '../../utils/scanned-summary'
+import {
+  type PathType,
+  type ScanPathItem,
+  type PathsViewMode,
+  type PathsFilterTab,
+  normalizePath,
+  buildConfiguredFolderList,
+  filterFolderItems,
+  loadStoredPathsViewMode,
+  saveStoredPathsViewMode,
+} from '../../utils/paths'
 import { cn } from '@/lib/utils'
-
-export interface ScanPathItem {
-  path: string
-  type: 'game' | 'iso'
-}
 
 export interface SettingsPathsSectionProps {
   onScanComplete?: () => void
+  onNavigateToOrganize?: () => void
   className?: string
   /** When set, load and save paths on this Otix node instead of the page-level selection. */
   nodeId?: number | null
 }
 
-export const SettingsPathsSection = ({ onScanComplete, className, nodeId: nodeIdProp }: SettingsPathsSectionProps) => {
+export const SettingsPathsSection = ({
+  onScanComplete,
+  onNavigateToOrganize: onNavigateToOrganizeProp,
+  className,
+  nodeId: nodeIdProp,
+}: SettingsPathsSectionProps) => {
   const { toast } = useToast()
   let user: any = null
   try {
@@ -49,7 +70,8 @@ export const SettingsPathsSection = ({ onScanComplete, className, nodeId: nodeId
   const { selectedNode } = useSettingsNode()
   const nodeId = nodeIdProp !== undefined ? nodeIdProp : (selectedNode?.id ?? null)
   const isLocalNode = isLocalDesktopNodeId(nodeId)
-  const remoteNodeId = isLocalNode ? null : nodeId
+  const isGlobalProfile = nodeId === 0
+  const remoteNodeId = isLocalNode || isGlobalProfile ? null : nodeId
   const desktop = isDesktop()
   const folderTarget = remoteNodeId ? 'server' : desktop ? 'local' : 'server'
 
@@ -109,14 +131,89 @@ export const SettingsPathsSection = ({ onScanComplete, className, nodeId: nodeId
     }
   })
 
+  // View & Filter State
+  const [viewMode, setViewMode] = useState<PathsViewMode>(() => loadStoredPathsViewMode())
+  const [filterTab, setFilterTab] = useState<PathsFilterTab>('all')
+  const [searchQuery, setSearchQuery] = useState('')
+
+  // Add folder form state
+  const [isAddingFolder, setIsAddingFolder] = useState(false)
+  const [draftPath, setDraftPath] = useState('')
+  const [draftRoles, setDraftRoles] = useState<{
+    installation: boolean
+    download: boolean
+    iso: boolean
+  }>({
+    installation: false,
+    download: false,
+    iso: false,
+  })
+
+  // Loading & Scanning State
   const [isScanning, setIsScanning] = useState(false)
+  const scanProgress = useScanProgress()
   const [isClearingScan, setIsClearingScan] = useState(false)
   const [isSyncingOtix, setIsSyncingOtix] = useState(false)
   const [writeOtixAfterScan, setWriteOtixAfterScan] = useState(true)
   const [downloadOtixImages, setDownloadOtixImages] = useState(false)
-  const [draftScanPath, setDraftScanPath] = useState('')
-  const [draftScanType, setDraftScanType] = useState<'game' | 'iso'>('game')
-  const [justAddedPath, setJustAddedPath] = useState<string | null>(null)
+
+  // Scanned files quick summary state
+  const [summary, setSummary] = useState<ScannedFilesSummaryData | null>(() => {
+    return loadStoredScannedSummary(remoteNodeId)
+  })
+  const [isSummaryLoading, setIsSummaryLoading] = useState(false)
+
+  const loadSummary = useCallback(async () => {
+    setIsSummaryLoading(true)
+    try {
+      if (remoteNodeId) {
+        const data = await fetchNodeScannedSummary(remoteNodeId, serverDownloadPath, gamesInstallPath)
+        if (data) {
+          setSummary(data)
+          saveStoredScannedSummary(data, remoteNodeId)
+        }
+      } else {
+        const data = await fetchDesktopScannedSummary(gamesInstallPath, serverDownloadPath)
+        setSummary(data)
+        saveStoredScannedSummary(data, null)
+      }
+    } catch {
+      // ignore
+    } finally {
+      setIsSummaryLoading(false)
+    }
+  }, [remoteNodeId, serverDownloadPath, gamesInstallPath])
+
+  useEffect(() => {
+    void loadSummary()
+  }, [loadSummary])
+
+  useEffect(() => {
+    const handleUpdated = () => void loadSummary()
+    window.addEventListener('scanned-games-updated', handleUpdated)
+    const api = getDesktopAPI() ?? (typeof window !== 'undefined' ? (window as any).desktopAPI : null)
+    const unsub = api?.onGamesUpdated?.(() => void loadSummary())
+    return () => {
+      window.removeEventListener('scanned-games-updated', handleUpdated)
+      unsub?.()
+    }
+  }, [loadSummary])
+
+  const handleNavigateToOrganize = () => {
+    if (onNavigateToOrganizeProp) {
+      onNavigateToOrganizeProp()
+      return
+    }
+    if (typeof window !== 'undefined') {
+      window.location.href = '/settings/organize'
+    }
+  }
+
+  // Synchronize view mode with localStorage
+  const handleSetViewMode = (mode: PathsViewMode) => {
+    setViewMode(mode)
+    saveStoredPathsViewMode(mode)
+  }
 
   // Synchronize state from storage when remoteNodeId changes
   useEffect(() => {
@@ -155,7 +252,7 @@ export const SettingsPathsSection = ({ onScanComplete, className, nodeId: nodeId
     }
   }, [remoteNodeId])
 
-  // ── 1. Load scan paths from the selected node, desktop API, or localStorage ──
+  // ── Load scan paths from node, desktop API, or localStorage ──
   const loadScanPaths = useCallback(async () => {
     if (remoteNodeId) {
       try {
@@ -171,8 +268,8 @@ export const SettingsPathsSection = ({ onScanComplete, className, nodeId: nodeId
         try {
           localStorage.setItem(`otix:scan-paths:node:${remoteNodeId}`, JSON.stringify(items))
         } catch {
-      // ignore
-    }
+          // ignore
+        }
         return
       } catch (err) {
         console.warn('Failed to get scan paths from Otix node:', err)
@@ -194,8 +291,8 @@ export const SettingsPathsSection = ({ onScanComplete, className, nodeId: nodeId
             localStorage.setItem('otix:scan-paths', JSON.stringify(items.filter((p) => p.type === 'game').map((p) => p.path)))
             localStorage.setItem('otix:iso-scan-paths', JSON.stringify(items.filter((p) => p.type === 'iso').map((p) => p.path)))
           } catch {
-      // ignore
-    }
+            // ignore
+          }
           return
         }
       } catch (err) {
@@ -226,6 +323,7 @@ export const SettingsPathsSection = ({ onScanComplete, className, nodeId: nodeId
     loadScanPaths()
   }, [loadScanPaths])
 
+  // ── Load node otix settings ──
   useEffect(() => {
     let cancelled = false
     const loadOtixSettings = async () => {
@@ -247,7 +345,7 @@ export const SettingsPathsSection = ({ onScanComplete, className, nodeId: nodeId
           setDownloadOtixImages(data.downloadOtixImages)
         }
       } catch {
-        // Node may be offline or on an older build.
+        // Node may be offline or on an older build
       }
     }
     void loadOtixSettings()
@@ -273,7 +371,7 @@ export const SettingsPathsSection = ({ onScanComplete, className, nodeId: nodeId
     }
   }
 
-  // ── 2. Load destination folders from the node or this device ──
+  // ── Load destination folders ──
   useEffect(() => {
     let cancelled = false
     const loadDestinations = async () => {
@@ -294,16 +392,16 @@ export const SettingsPathsSection = ({ onScanComplete, className, nodeId: nodeId
               try {
                 localStorage.setItem(`otix:games-download-dir:node:${remoteNodeId}`, gamesPath)
               } catch {
-      // ignore
-    }
+                // ignore
+              }
             }
             if (installPath) {
               setGamesInstallPath(installPath)
               try {
                 localStorage.setItem(`otix:games-install-dir:node:${remoteNodeId}`, installPath)
               } catch {
-      // ignore
-    }
+                // ignore
+              }
             }
           }
 
@@ -316,8 +414,8 @@ export const SettingsPathsSection = ({ onScanComplete, className, nodeId: nodeId
               try {
                 localStorage.setItem(`otix:iso-download-dir:node:${remoteNodeId}`, isoPath)
               } catch {
-      // ignore
-    }
+                // ignore
+              }
             }
             if (installPath) {
               setGamesInstallPath((prev) => {
@@ -325,15 +423,14 @@ export const SettingsPathsSection = ({ onScanComplete, className, nodeId: nodeId
                 try {
                   localStorage.setItem(`otix:games-install-dir:node:${remoteNodeId}`, next)
                 } catch {
-      // ignore
-    }
+                  // ignore
+                }
                 return next
               })
             }
           }
           return
         } catch {
-          // ignore
           return
         }
       }
@@ -348,24 +445,24 @@ export const SettingsPathsSection = ({ onScanComplete, className, nodeId: nodeId
               try {
                 localStorage.setItem('otix:games-download-dir', ds.gamesDownloadPath)
               } catch {
-      // ignore
-    }
+                // ignore
+              }
             }
             if (ds.gamesInstallPath) {
               setGamesInstallPath(ds.gamesInstallPath)
               try {
                 localStorage.setItem('otix:games-install-dir', ds.gamesInstallPath)
               } catch {
-      // ignore
-    }
+                // ignore
+              }
             }
             if (ds.isoDownloadPath) {
               setServerDownloadPath(ds.isoDownloadPath)
               try {
                 localStorage.setItem('otix:iso-download-dir', ds.isoDownloadPath)
               } catch {
-      // ignore
-    }
+                // ignore
+              }
             }
           }
         } catch {
@@ -379,7 +476,7 @@ export const SettingsPathsSection = ({ onScanComplete, className, nodeId: nodeId
     }
   }, [remoteNodeId])
 
-  // Keep ISO destination in sync with download config for local desktop if not already set
+  // Keep ISO destination in sync with download config for local desktop
   useEffect(() => {
     if (!remoteNodeId && dlConfig?.downloadPath) {
       setServerDownloadPath((prev) => {
@@ -387,8 +484,8 @@ export const SettingsPathsSection = ({ onScanComplete, className, nodeId: nodeId
         try {
           localStorage.setItem('otix:iso-download-dir', dlConfig.downloadPath!)
         } catch {
-      // ignore
-    }
+          // ignore
+        }
         return dlConfig.downloadPath!
       })
     }
@@ -401,8 +498,8 @@ export const SettingsPathsSection = ({ onScanComplete, className, nodeId: nodeId
       try {
         localStorage.setItem(`otix:scan-paths:node:${remoteNodeId}`, JSON.stringify(updated))
       } catch {
-      // ignore
-    }
+        // ignore
+      }
       try {
         await apiClient.put(`/library/servers/${remoteNodeId}/libraries`, {
           libraries: updated.map((item) => ({
@@ -432,7 +529,7 @@ export const SettingsPathsSection = ({ onScanComplete, className, nodeId: nodeId
     }
   }
 
-  // ── 3. Game Installation Directory Handler ──
+  // ── Save Installation Directory Handler ──
   const handleSaveGamesInstallPath = async (path: string) => {
     const trimmed = path.trim()
     const isClearing = !trimmed
@@ -486,7 +583,7 @@ export const SettingsPathsSection = ({ onScanComplete, className, nodeId: nodeId
           title: 'Installation Directory Cleared',
           description: remoteFailed
             ? 'Cleared locally (node is disconnected/offline).'
-            : 'Installation directory has been reset.',
+            : 'Installation directory has been unassigned.',
           variant: 'default',
         })
       } else {
@@ -494,7 +591,7 @@ export const SettingsPathsSection = ({ onScanComplete, className, nodeId: nodeId
           title: 'Installation Directory Updated',
           description: remoteFailed
             ? `Saved locally: ${trimmed} (node is offline; will sync when reconnected)`
-            : `Saved: ${trimmed}`,
+            : `Assigned as Installation folder: ${trimmed}`,
           variant: remoteFailed ? 'default' : 'success',
         })
       }
@@ -507,7 +604,7 @@ export const SettingsPathsSection = ({ onScanComplete, className, nodeId: nodeId
     }
   }
 
-  // ── 4. Games Download Directory Handler ──
+  // ── Save Games Download Directory Handler (Limited to 1) ──
   const handleSaveGamesPath = async (path: string) => {
     const trimmed = path.trim()
     const isClearing = !trimmed
@@ -561,7 +658,7 @@ export const SettingsPathsSection = ({ onScanComplete, className, nodeId: nodeId
           title: 'Download Directory Cleared',
           description: remoteFailed
             ? 'Cleared locally (node is disconnected/offline).'
-            : 'Download directory has been reset.',
+            : 'Download directory has been unassigned.',
           variant: 'default',
         })
       } else {
@@ -569,7 +666,7 @@ export const SettingsPathsSection = ({ onScanComplete, className, nodeId: nodeId
           title: 'Games Directory Updated',
           description: remoteFailed
             ? `Saved locally: ${trimmed} (node is offline; will sync when reconnected)`
-            : `Saved: ${trimmed}`,
+            : `Assigned as Games Download folder (1 max): ${trimmed}`,
           variant: remoteFailed ? 'default' : 'success',
         })
       }
@@ -582,7 +679,7 @@ export const SettingsPathsSection = ({ onScanComplete, className, nodeId: nodeId
     }
   }
 
-  // ── 5. ISOs Directory Handler ──
+  // ── Save ISOs Directory Handler ──
   const handleSaveServerIsoPath = async (path: string) => {
     const trimmed = path.trim()
     const isClearing = !trimmed
@@ -670,72 +767,167 @@ export const SettingsPathsSection = ({ onScanComplete, className, nodeId: nodeId
     }
   }
 
-  // ── 5. Add Scan Path (each on its own separate line) ──
-  const handleAddScanPath = async (pathToAdd: string, typeToAdd: 'game' | 'iso') => {
+  // ── Unified Configured Folder Items ──
+  const configuredFolders = useMemo(() => {
+    return buildConfiguredFolderList(scanPaths, gamesInstallPath, gamesDownloadPath, serverDownloadPath)
+  }, [scanPaths, gamesInstallPath, gamesDownloadPath, serverDownloadPath])
+
+  const filteredFolders = useMemo(() => {
+    return filterFolderItems(configuredFolders, searchQuery, filterTab)
+  }, [configuredFolders, searchQuery, filterTab])
+
+  // Counts for filter pills
+  const counts = useMemo(() => {
+    return {
+      all: configuredFolders.length,
+      installation: configuredFolders.filter((f) => f.isInstallation).length,
+      download: configuredFolders.filter((f) => f.isGamesDownload).length,
+      iso: configuredFolders.filter((f) => f.isIso).length,
+    }
+  }, [configuredFolders])
+
+  // ── Role Toggles / Assignments on Individual Items ──
+  const handleToggleInstallation = (path: string) => {
+    const isCurrently = normalizePath(gamesInstallPath) === normalizePath(path)
+    if (isCurrently) {
+      void handleSaveGamesInstallPath('')
+    } else {
+      void handleSaveGamesInstallPath(path)
+    }
+  }
+
+  // Games Download Folder is STRICTLY LIMITED TO ONE
+  const handleAssignDownload = (path: string) => {
+    const isCurrently = normalizePath(gamesDownloadPath) === normalizePath(path)
+    if (isCurrently) {
+      void handleSaveGamesPath('')
+    } else {
+      void handleSaveGamesPath(path)
+    }
+  }
+
+  const handleToggleIso = async (path: string) => {
+    const norm = normalizePath(path)
+    const existing = scanPaths.find((p) => normalizePath(p.path) === norm)
+    const willBeIso = existing ? existing.type !== 'iso' : true
+
+    let updated: ScanPathItem[]
+    if (existing) {
+      updated = scanPaths.map((p) =>
+        normalizePath(p.path) === norm ? { ...p, type: willBeIso ? ('iso' as const) : ('game' as const) } : p,
+      )
+    } else {
+      updated = [...scanPaths, { path, type: willBeIso ? ('iso' as const) : ('game' as const) }]
+    }
+
+    if (!willBeIso && normalizePath(serverDownloadPath) === norm) {
+      void handleSaveServerIsoPath('')
+    } else if (willBeIso && !serverDownloadPath) {
+      void handleSaveServerIsoPath(path)
+    }
+
+    await persistScanPaths(updated)
+    toast({
+      title: willBeIso ? 'Assigned as ISO Folder' : 'Updated to Game Folder',
+      description: `Configured ${path} as ${willBeIso ? 'an ISO disc library' : 'a game library'}.`,
+      variant: 'success',
+    })
+  }
+
+  // ── Remove Folder Handler ──
+  const handleRemoveFolder = async (pathToRemove: string) => {
+    const norm = normalizePath(pathToRemove)
+    const updated = scanPaths.filter((p) => normalizePath(p.path) !== norm)
+    await persistScanPaths(updated)
+
+    if (normalizePath(gamesInstallPath) === norm) {
+      void handleSaveGamesInstallPath('')
+    }
+    if (normalizePath(gamesDownloadPath) === norm) {
+      void handleSaveGamesPath('')
+    }
+    if (normalizePath(serverDownloadPath) === norm) {
+      void handleSaveServerIsoPath('')
+    }
+
+    toast({
+      title: 'Path Removed',
+      description: `Removed ${pathToRemove}.`,
+      variant: 'default',
+    })
+  }
+
+  // ── Copy Path to Clipboard ──
+  const handleCopyPath = async (pathToCopy: string) => {
+    try {
+      await navigator.clipboard.writeText(pathToCopy)
+      toast({
+        title: 'Path Copied',
+        description: pathToCopy,
+        variant: 'default',
+      })
+    } catch {
+      toast({
+        title: 'Copy Failed',
+        description: pathToCopy,
+        variant: 'error',
+      })
+    }
+  }
+
+  // ── Add New Folder Handler ──
+  const handleAddFolder = async (pathToAdd: string) => {
     const p = pathToAdd.trim()
     if (!p) return
 
-    if (scanPaths.some((item) => item.path === p && item.type === typeToAdd)) {
+    const norm = normalizePath(p)
+    const alreadyExists = scanPaths.some((item) => normalizePath(item.path) === norm)
+
+    if (alreadyExists) {
       toast({
         title: 'Path Already Monitored',
-        description: `This directory is already configured as a ${typeToAdd === 'iso' ? 'disc' : 'game'} scan path.`,
+        description: `This directory is already configured in paths.`,
         variant: 'warning',
       })
       return
     }
 
-    try {
-      const updated = [...scanPaths, { path: p, type: typeToAdd }]
-      await persistScanPaths(updated)
-      setDraftScanPath('')
-      setJustAddedPath(p)
-      setTimeout(() => setJustAddedPath(null), 3000)
-      toast({
-        title: 'Scan Path Added',
-        description: `Added ${p} to monitored scan paths.`,
-        variant: 'success',
-      })
-    } catch (err) {
-      console.error('Failed to add scan path:', err)
-      toast({
-        title: 'Add Failed',
-        description: `Could not add ${p}.`,
-        variant: 'error',
-      })
+    const typeToAdd: PathType = draftRoles.iso ? 'iso' : 'game'
+    const updated = [...scanPaths, { path: p, type: typeToAdd }]
+    await persistScanPaths(updated)
+
+    if (draftRoles.installation) {
+      void handleSaveGamesInstallPath(p)
     }
-  }
-
-  const handleCommitDraftScanPath = async (path: string) => {
-    await handleAddScanPath(path, draftScanType)
-  }
-
-  const handleRemoveScanPath = async (itemToRemove: ScanPathItem) => {
-    try {
-      const updated = scanPaths.filter((item) => !(item.path === itemToRemove.path && item.type === itemToRemove.type))
-      await persistScanPaths(updated)
-      toast({
-        title: 'Path Removed',
-        description: `Removed ${itemToRemove.path}.`,
-        variant: 'default',
-      })
-    } catch (err) {
-      console.error('Failed to remove scan path:', err)
-      toast({
-        title: 'Remove Failed',
-        description: `Could not remove ${itemToRemove.path}.`,
-        variant: 'error',
-      })
+    if (draftRoles.download) {
+      void handleSaveGamesPath(p)
     }
+    if (draftRoles.iso && !serverDownloadPath) {
+      void handleSaveServerIsoPath(p)
+    }
+
+    setDraftPath('')
+    setDraftRoles({ installation: false, download: false, iso: false })
+    setIsAddingFolder(false)
+
+    toast({
+      title: 'Scan Path Added',
+      description: `Added ${p} to monitored scan paths.`,
+      variant: 'success',
+    })
   }
 
-  // ── 6. Trigger Scan ──
+  // ── Trigger Scan Handler ──
   const handleTriggerScan = async () => {
     setIsScanning(true)
+    scanProgress.startScan(remoteNodeId ? 'Connecting to node...' : 'Scanning library paths...')
     try {
       if (remoteNodeId) {
         if (writeOtixAfterScan) {
           setIsSyncingOtix(true)
+          scanProgress.reportProgress(25, 'Connecting to node...', 'scanning')
           try {
+            scanProgress.reportProgress(50, 'Scanning library paths on node...', 'scanning')
             const { data } = await apiClient.post<{
               written?: number
               matched?: number
@@ -745,8 +937,10 @@ export const SettingsPathsSection = ({ onScanComplete, className, nodeId: nodeId
               writeOtix: true,
               downloadImages: downloadOtixImages,
             })
+            scanProgress.reportProgress(85, 'Writing .otix metadata sidecars...', 'matching')
             const written = data?.written ?? 0
             const matched = data?.matched ?? written
+            scanProgress.finishScan(`Matched ${matched} game${matched === 1 ? '' : 's'}, wrote ${written} .otix sidecar${written === 1 ? '' : 's'}.`)
             toast({
               title: 'Library scanned',
               description:
@@ -757,6 +951,9 @@ export const SettingsPathsSection = ({ onScanComplete, className, nodeId: nodeId
             })
           } catch (syncErr: any) {
             console.error('Otix sync failed:', syncErr)
+            scanProgress.errorScan(
+              syncErr?.response?.data?.detail || syncErr?.message || 'Metadata sync failed'
+            )
             toast({
               title: 'Scan / metadata sync failed',
               description:
@@ -769,7 +966,9 @@ export const SettingsPathsSection = ({ onScanComplete, className, nodeId: nodeId
             setIsSyncingOtix(false)
           }
         } else {
+          scanProgress.reportProgress(40, 'Scanning node directories...', 'scanning')
           await apiClient.post(`/library/servers/${remoteNodeId}/scan`)
+          scanProgress.finishScan('Node directory scan complete')
           toast({
             title: 'Library Scanned',
             description: 'Completed scanning configured library and download paths.',
@@ -781,8 +980,10 @@ export const SettingsPathsSection = ({ onScanComplete, className, nodeId: nodeId
         if (api?.scanPaths) {
           const gameDirs = scanPaths.filter((p) => p.type === 'game').map((p) => p.path)
           const isoDirs = scanPaths.filter((p) => p.type === 'iso').map((p) => p.path)
+          scanProgress.reportProgress(15, 'Scanning configured local directories...', 'scanning')
           await api.scanPaths(gameDirs, isoDirs)
         }
+        scanProgress.finishScan('Local library scan complete')
         toast({
           title: 'Library Scanned',
           description: 'Completed scanning configured library and download paths.',
@@ -790,8 +991,10 @@ export const SettingsPathsSection = ({ onScanComplete, className, nodeId: nodeId
         })
       }
       onScanComplete?.()
-    } catch (err) {
+      void loadSummary()
+    } catch (err: any) {
       console.error('Library scan failed:', err)
+      scanProgress.errorScan('Library scan failed')
       toast({
         title: 'Scan Failed',
         description: 'Failed to scan paths.',
@@ -803,12 +1006,36 @@ export const SettingsPathsSection = ({ onScanComplete, className, nodeId: nodeId
     }
   }
 
+  // ── Clear Indexed Scan List ──
   const handleClearScannedList = async () => {
     if (!remoteNodeId) return
     setIsClearingScan(true)
     try {
       await apiClient.post(`/library/servers/${remoteNodeId}/scan/clear`)
       onScanComplete?.()
+      setSummary({
+        totalCount: 0,
+        organizedCount: 0,
+        unorganizedCount: 0,
+        matchedCount: 0,
+        isoCount: 0,
+        installedCount: 0,
+        organizedPercentage: 0,
+        lastScannedAt: new Date().toISOString(),
+      })
+      saveStoredScannedSummary(
+        {
+          totalCount: 0,
+          organizedCount: 0,
+          unorganizedCount: 0,
+          matchedCount: 0,
+          isoCount: 0,
+          installedCount: 0,
+          organizedPercentage: 0,
+          lastScannedAt: new Date().toISOString(),
+        },
+        remoteNodeId,
+      )
       toast({
         title: 'Scan list cleared',
         description: 'Indexed hosted files were cleared. Files on disk were not deleted.',
@@ -816,20 +1043,14 @@ export const SettingsPathsSection = ({ onScanComplete, className, nodeId: nodeId
       })
     } catch (err: any) {
       console.error('Clear scan list failed:', err)
-      const status = err?.response?.status
       const detail =
         err?.response?.data?.detail ||
         err?.response?.data?.error ||
         err?.message ||
         'Could not clear the indexed file list.'
-      const needsUpdate =
-        status === 404 ||
-        (typeof detail === 'string' && /not found|404/i.test(detail))
       toast({
         title: 'Clear failed',
-        description: needsUpdate
-          ? 'This Otix Node build is missing the clear endpoint. Rebuild/restart Otix Node, then try again.'
-          : String(detail),
+        description: String(detail),
         variant: 'error',
       })
     } finally {
@@ -838,305 +1059,300 @@ export const SettingsPathsSection = ({ onScanComplete, className, nodeId: nodeId
   }
 
   return (
-    <div id="paths" className={cn('space-y-6 scroll-mt-28', className)}>
-      <SettingsCard className="space-y-4">
-        <SectionHeader
-          title="Destinations"
-          description="Where Otix saves downloads. Browse or press Enter to save — folders are watched for scanning automatically."
-        />
+    <div id="paths" className={cn('space-y-4 scroll-mt-28', className)}>
+      <h2 className="sr-only">Paths</h2>
 
-        <div className="space-y-3">
-          <div className="space-y-2">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
-                <HardDrive size={16} />
-              </div>
-              <div className="min-w-0">
-                <span className="text-xs font-semibold text-foreground">Game installation folder</span>
-                <p className="text-[11px] text-muted-foreground">Where installed games live. Target directory for game installers.</p>
-              </div>
-            </div>
-            <PathInput
-              value={gamesInstallPath}
-              onChange={setGamesInstallPath}
-              onCommit={handleSaveGamesInstallPath}
-              showConfirmButton
-              confirmLabel="Confirm"
-              placeholder={desktop && !remoteNodeId ? 'e.g. C:\\Games or /Games' : 'e.g. /media/installed-games'}
-              target={folderTarget}
-              serverId={remoteNodeId ?? undefined}
-            />
-          </div>
+      {/* ── Scanned Files Quick Summary with Integrated Real-time Progress ── */}
+      <ScannedFilesSummary
+        summary={summary}
+        isLoading={isSummaryLoading || isScanning || isSyncingOtix}
+        scanProgress={scanProgress.progress}
+        scanCurrentDir={scanProgress.currentDir}
+        scanPhase={scanProgress.phase}
+        onOrganizeClick={handleNavigateToOrganize}
+        onRescanClick={handleTriggerScan}
+      />
 
-          <div className="space-y-2">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-sky-500/10 text-sky-600 dark:text-sky-400 flex items-center justify-center shrink-0">
-                <Gamepad2 size={16} />
-              </div>
-              <div className="min-w-0">
-                <span className="text-xs font-semibold text-foreground">Games download folder</span>
-                <p className="text-[11px] text-muted-foreground">Where game installers are downloaded before installation.</p>
-              </div>
-            </div>
-            <PathInput
-              value={gamesDownloadPath}
-              onChange={setGamesDownloadPath}
-              onCommit={handleSaveGamesPath}
-              showConfirmButton
-              confirmLabel="Confirm"
-              placeholder={desktop && !remoteNodeId ? 'e.g. D:\\Downloads\\Games or ~/Downloads/Games' : 'e.g. /media/downloads/games'}
-              target={folderTarget}
-              serverId={remoteNodeId ?? undefined}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
-                <Disc size={16} />
-              </div>
-              <div className="min-w-0">
-                <span className="text-xs font-semibold text-foreground">ISOs &amp; disc images</span>
-                <p className="text-[11px] text-muted-foreground">Target for completed ISO files and ROMs.</p>
-              </div>
-            </div>
-            <PathInput
-              value={serverDownloadPath}
-              onChange={setServerDownloadPath}
-              onCommit={handleSaveServerIsoPath}
-              showConfirmButton
-              confirmLabel="Confirm"
-              placeholder={desktop && !remoteNodeId ? 'e.g. D:\\ISOs or /Volumes/Storage/ISOs' : 'e.g. /app/storage/installers'}
-              target={folderTarget}
-              serverId={remoteNodeId ?? undefined}
-            />
-          </div>
-        </div>
-      </SettingsCard>
-
-      <SettingsCard className="space-y-4">
-        <SectionHeader
-          title="Scan folders"
-          description="Extra folders to index. Destinations above are linked automatically."
-          action={
-            <div className="flex items-center gap-2">
-              {remoteNodeId ? (
-                <DkButton
-                  size="sm"
-                  variant="ghost"
-                  onClick={handleClearScannedList}
-                  disabled={isScanning || isClearingScan || isSyncingOtix}
-                  loading={isClearingScan}
-                  className="h-8 shrink-0"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                  {isClearingScan ? 'Clearing…' : 'Clear list'}
-                </DkButton>
-              ) : null}
-              <DkButton
-                size="sm"
-                onClick={handleTriggerScan}
-                disabled={isScanning || isClearingScan || isSyncingOtix}
-                loading={isScanning || isSyncingOtix}
-                className="h-8 shrink-0"
-              >
-                <RefreshCw className="h-3.5 w-3.5" />
-                {isSyncingOtix ? 'Matching…' : isScanning ? 'Scanning...' : 'Scan Now'}
-              </DkButton>
-            </div>
-          }
-        />
-
-        {remoteNodeId ? (
-          <div className="space-y-3 pb-2">
-            <SettingsRow
-              label="Write .otix after scan"
-              description="Match and hydrate games, then save an invisible .otix sidecar next to each folder."
-              action={
-                <DkSwitch
-                  checked={writeOtixAfterScan}
-                  onCheckedChange={async (checked) => {
-                    setWriteOtixAfterScan(checked)
-                    if (!checked) setDownloadOtixImages(false)
-                    try {
-                      await persistOtixSettings({
-                        writeOtixAfterScan: checked,
-                        downloadOtixImages: checked ? downloadOtixImages : false,
-                      })
-                    } catch (err) {
-                      console.error('Failed to save otix settings:', err)
-                      toast({
-                        title: 'Could not save setting',
-                        description: 'Otix Node may be offline or needs an update.',
-                        variant: 'error',
-                      })
-                    }
-                  }}
-                />
-              }
-            />
-            <SettingsRow
-              label="Download images locally"
-              description="Save poster/backdrop/logo as .otix-*.jpg next to each game and reference them in the sidecar."
-              action={
-                <DkSwitch
-                  checked={downloadOtixImages}
-                  disabled={!writeOtixAfterScan}
-                  onCheckedChange={async (checked) => {
-                    setDownloadOtixImages(checked)
-                    try {
-                      await persistOtixSettings({ downloadOtixImages: checked })
-                    } catch (err) {
-                      console.error('Failed to save otix settings:', err)
-                      toast({
-                        title: 'Could not save setting',
-                        description: 'Otix Node may be offline or needs an update.',
-                        variant: 'error',
-                      })
-                    }
-                  }}
-                />
-              }
-            />
-          </div>
-        ) : null}
-
-        <div className="space-y-1.5">
-          {scanPaths.map((item, idx) => {
-            const isLinkedDestination =
-              (item.type === 'game' && (item.path === gamesDownloadPath || item.path === gamesInstallPath)) ||
-              (item.type === 'iso' && item.path === serverDownloadPath)
-            const isJustAdded = item.path === justAddedPath
-            return (
-              <div
-                key={`${item.path}-${item.type}-${idx}`}
-                className={cn(
-                  'px-3.5 py-2 rounded-xl text-xs font-mono flex items-center justify-between gap-3 transition-all duration-300',
-                  isJustAdded
-                    ? 'bg-emerald-500/15 text-emerald-800 dark:text-emerald-200 shadow-md shadow-emerald-500/10'
-                    : 'bg-[var(--dk-surface-ghost)] text-foreground',
-                )}
-              >
-                <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                  <div
-                    className={cn(
-                      'flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-sans font-semibold uppercase tracking-wider shrink-0',
-                      item.type === 'iso'
-                        ? 'bg-amber-500/15 text-amber-700 dark:text-amber-300'
-                        : 'bg-sky-500/15 text-sky-700 dark:text-sky-300',
-                    )}
-                  >
-                    {item.type === 'iso' ? <Disc size={11} /> : <Gamepad2 size={11} />}
-                    {item.type === 'iso' ? 'ISO' : 'Game'}
-                  </div>
-                  {isLinkedDestination && (
-                    <span className="text-[10px] font-sans font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-primary/15 text-primary shrink-0">
-                      Destination
-                    </span>
-                  )}
-                  {isJustAdded && (
-                    <span className="flex items-center gap-1 text-[10px] font-sans font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-emerald-500/25 text-emerald-700 dark:text-emerald-300 shrink-0 animate-in fade-in zoom-in-90 duration-200">
-                      <Check size={10} /> Confirmed
-                    </span>
-                  )}
-                  <FolderOpen size={14} className={cn('shrink-0', isJustAdded ? 'text-emerald-500 dark:text-emerald-400' : 'text-primary')} />
-                  <span className="truncate">{item.path}</span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => handleRemoveScanPath(item)}
-                  className="h-6 w-6 flex items-center justify-center rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors shrink-0 cursor-pointer"
-                  title="Remove path"
-                  aria-label="Remove path"
-                >
-                  <Trash2 size={13} />
-                </button>
-              </div>
-            )
-          })}
-
-          <div className="px-3.5 py-2.5 rounded-xl bg-[var(--dk-surface-ghost)] space-y-2.5">
-            <div className="flex items-center gap-2">
-              <div
-                className="inline-flex rounded-lg bg-[var(--dk-surface-raised)] p-0.5 shrink-0"
-                role="group"
-                aria-label="Scan folder type"
-              >
-                <button
-                  type="button"
-                  onClick={() => setDraftScanType('game')}
-                  className={cn(
-                    'flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-semibold uppercase tracking-wider transition-colors cursor-pointer',
-                    draftScanType === 'game'
-                      ? 'bg-sky-500/20 text-sky-700 dark:text-sky-300'
-                      : 'text-muted-foreground hover:text-foreground',
-                  )}
-                  aria-pressed={draftScanType === 'game'}
-                >
-                  <Gamepad2 size={11} />
-                  Game
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setDraftScanType('iso')}
-                  className={cn(
-                    'flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-semibold uppercase tracking-wider transition-colors cursor-pointer',
-                    draftScanType === 'iso'
-                      ? 'bg-amber-500/20 text-amber-700 dark:text-amber-300'
-                      : 'text-muted-foreground hover:text-foreground',
-                  )}
-                  aria-pressed={draftScanType === 'iso'}
-                >
-                  <Disc size={11} />
-                  ISO
-                </button>
-              </div>
-              <span className="text-[11px] text-muted-foreground truncate">
-                {scanPaths.length === 0 ? 'Add a folder to scan' : 'Add another folder'}
-              </span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="flex-1 min-w-0">
-                <PathInput
-                  compact
-                  commitOnBlur={false}
-                  showConfirmButton={false}
-                  value={draftScanPath}
-                  onChange={setDraftScanPath}
-                  onCommit={handleCommitDraftScanPath}
-                  placeholder={
-                    desktop && !remoteNodeId
-                      ? draftScanType === 'iso'
-                        ? 'e.g. D:\\ISOs or /Volumes/Storage/ROMs'
-                        : 'e.g. D:\\Games\\Steam or ~/Games'
-                      : draftScanType === 'iso'
-                        ? 'e.g. /media/isos'
-                        : 'e.g. /media/games'
+      {/* Remote Otix Node Sidecar Options */}
+      {remoteNodeId ? (
+        <SettingsCard className="space-y-3">
+          <SectionHeader
+            title="Otix Node Metadata Sync"
+            description="Match games and save .otix sidecars and artwork directly on the remote server."
+          />
+          <SettingsRow
+            label="Write .otix after scan"
+            description="Match and hydrate games, then save an invisible .otix sidecar next to each folder."
+            action={
+              <DkSwitch
+                checked={writeOtixAfterScan}
+                onCheckedChange={async (checked) => {
+                  setWriteOtixAfterScan(checked)
+                  if (!checked) setDownloadOtixImages(false)
+                  try {
+                    await persistOtixSettings({
+                      writeOtixAfterScan: checked,
+                      downloadOtixImages: checked ? downloadOtixImages : false,
+                    })
+                  } catch (err) {
+                    console.error('Failed to save otix settings:', err)
+                    toast({
+                      title: 'Could not save setting',
+                      description: 'Otix Node may be offline or needs an update.',
+                      variant: 'error',
+                    })
                   }
-                  target={folderTarget}
-                  serverId={remoteNodeId ?? undefined}
-                />
-              </div>
+                }}
+              />
+            }
+          />
+          <SettingsRow
+            label="Download images locally"
+            description="Save poster/backdrop/logo as .otix-*.jpg next to each game and reference them in the sidecar."
+            action={
+              <DkSwitch
+                checked={downloadOtixImages}
+                disabled={!writeOtixAfterScan}
+                onCheckedChange={async (checked) => {
+                  setDownloadOtixImages(checked)
+                  try {
+                    await persistOtixSettings({ downloadOtixImages: checked })
+                  } catch (err) {
+                    console.error('Failed to save otix settings:', err)
+                    toast({
+                      title: 'Could not save setting',
+                      description: 'Otix Node may be offline or needs an update.',
+                      variant: 'error',
+                    })
+                  }
+                }}
+              />
+            }
+          />
+        </SettingsCard>
+      ) : null}
+
+        {/* ── Toolbar: Filter Tabs, Search & View Switcher ── */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pt-2">
+          {/* Filter Tabs */}
+          <div className="flex flex-wrap items-center gap-1">
+            <button
+              type="button"
+              onClick={() => setFilterTab('all')}
+              className={cn(
+                'px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer',
+                filterTab === 'all'
+                  ? 'bg-primary text-primary-foreground shadow-xs'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-ghost)]',
+              )}
+            >
+              All ({counts.all})
+            </button>
+            <button
+              type="button"
+              onClick={() => setFilterTab('installation')}
+              className={cn(
+                'px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer',
+                filterTab === 'installation'
+                  ? 'bg-primary text-primary-foreground shadow-xs'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-ghost)]',
+              )}
+            >
+              Installation ({counts.installation})
+            </button>
+            <button
+              type="button"
+              onClick={() => setFilterTab('download')}
+              className={cn(
+                'px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer',
+                filterTab === 'download'
+                  ? 'bg-primary text-primary-foreground shadow-xs'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-ghost)]',
+              )}
+            >
+              Downloads ({counts.download})
+            </button>
+            <button
+              type="button"
+              onClick={() => setFilterTab('iso')}
+              className={cn(
+                'px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer',
+                filterTab === 'iso'
+                  ? 'bg-primary text-primary-foreground shadow-xs'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-ghost)]',
+              )}
+            >
+              ISOs ({counts.iso})
+            </button>
+          </div>
+
+          {/* Search & View Mode Switcher */}
+          <div className="flex items-center gap-2">
+            <div className="relative w-full sm:w-48">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Filter folders..."
+                className="w-full pl-8 pr-3 py-1 rounded-xl text-xs bg-[var(--dk-surface-ghost)] border border-white/[0.04] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+              />
+            </div>
+
+            {/* Cards vs List Mode Switcher */}
+            <div
+              className="flex items-center rounded-xl bg-[var(--dk-surface-ghost)] p-0.5 border border-white/[0.04] shrink-0"
+              role="group"
+              aria-label="View mode"
+            >
               <button
                 type="button"
-                onClick={() => handleCommitDraftScanPath(draftScanPath)}
-                disabled={!draftScanPath.trim()}
-                title="Confirm and add this folder to scan paths"
-                aria-label="Confirm & Add"
+                onClick={() => handleSetViewMode('cards')}
                 className={cn(
-                  'inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-xs font-semibold transition-all duration-200 cursor-pointer disabled:cursor-not-allowed disabled:opacity-40',
-                  draftScanPath.trim()
-                    ? 'bg-primary text-primary-foreground hover:bg-primary/90 shadow-md active:scale-95'
-                    : 'bg-[var(--dk-surface-raised)] text-muted-foreground',
+                  'flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer',
+                  viewMode === 'cards'
+                    ? 'bg-[var(--dk-surface-base)] text-foreground shadow-xs'
+                    : 'text-muted-foreground hover:text-foreground',
                 )}
+                aria-pressed={viewMode === 'cards'}
+                aria-label="Card View"
+                title="Card View"
               >
-                <Check className="h-4 w-4" />
-                <span className="sr-only">Confirm &amp; Add</span>
+                <LayoutGrid className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Cards</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSetViewMode('list')}
+                className={cn(
+                  'flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer',
+                  viewMode === 'list'
+                    ? 'bg-[var(--dk-surface-base)] text-foreground shadow-xs'
+                    : 'text-muted-foreground hover:text-foreground',
+                )}
+                aria-pressed={viewMode === 'list'}
+                aria-label="List View"
+                title="List View"
+              >
+                <List className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">List</span>
               </button>
             </div>
+
+            {/* Scan Actions */}
+            {remoteNodeId ? (
+              <DkButton
+                size="sm"
+                variant="ghost"
+                onClick={handleClearScannedList}
+                disabled={isScanning || isClearingScan || isSyncingOtix}
+                loading={isClearingScan}
+                className="h-8 shrink-0 cursor-pointer text-xs"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                <span className="hidden md:inline">{isClearingScan ? 'Clearing…' : 'Clear list'}</span>
+              </DkButton>
+            ) : null}
+            <DkButton
+              size="sm"
+              onClick={handleTriggerScan}
+              disabled={isScanning || isClearingScan || isSyncingOtix}
+              loading={isScanning || isSyncingOtix}
+              className="h-8 shrink-0 cursor-pointer text-xs"
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
+              {isSyncingOtix ? 'Matching…' : isScanning ? 'Scanning...' : 'Scan Now'}
+            </DkButton>
           </div>
         </div>
-      </SettingsCard>
+
+        {/* ── Configured Folders Display (Cards or List) ── */}
+        {viewMode === 'cards' ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
+            <AddPathFolderCard
+              isAdding={isAddingFolder}
+              onStartAdding={() => setIsAddingFolder(true)}
+              onCancelAdding={() => {
+                setIsAddingFolder(false)
+                setDraftPath('')
+                setDraftRoles({ installation: false, download: false, iso: false })
+              }}
+              draftPath={draftPath}
+              onDraftPathChange={setDraftPath}
+              draftRoles={draftRoles}
+              onToggleDraftRole={(role) =>
+                setDraftRoles((prev) => ({ ...prev, [role]: !prev[role] }))
+              }
+              onSubmit={handleAddFolder}
+              folderTarget={folderTarget}
+              remoteNodeId={remoteNodeId}
+              desktop={desktop}
+              viewMode="cards"
+            />
+            {filteredFolders.map((item) => (
+              <PathFolderCard
+                key={item.path}
+                item={item}
+                onToggleInstallation={handleToggleInstallation}
+                onAssignDownload={handleAssignDownload}
+                onToggleIso={handleToggleIso}
+                onRemove={handleRemoveFolder}
+                onCopyPath={handleCopyPath}
+              />
+            ))}
+            {filteredFolders.length === 0 && searchQuery && (
+              <div className="col-span-full flex flex-col items-center justify-center p-8 rounded-2xl bg-[var(--dk-surface-ghost)] border border-white/[0.04] text-center">
+                <p className="text-sm font-semibold text-foreground">No matching folders</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  No folders match &quot;{searchQuery}&quot;. Try a different search term or role filter.
+                </p>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="space-y-2">
+            <AddPathFolderCard
+              isAdding={isAddingFolder}
+              onStartAdding={() => setIsAddingFolder(true)}
+              onCancelAdding={() => {
+                setIsAddingFolder(false)
+                setDraftPath('')
+                setDraftRoles({ installation: false, download: false, iso: false })
+              }}
+              draftPath={draftPath}
+              onDraftPathChange={setDraftPath}
+              draftRoles={draftRoles}
+              onToggleDraftRole={(role) =>
+                setDraftRoles((prev) => ({ ...prev, [role]: !prev[role] }))
+              }
+              onSubmit={handleAddFolder}
+              folderTarget={folderTarget}
+              remoteNodeId={remoteNodeId}
+              desktop={desktop}
+              viewMode="list"
+            />
+            {filteredFolders.length === 0 && searchQuery ? (
+              <div className="flex flex-col items-center justify-center p-8 rounded-2xl bg-[var(--dk-surface-ghost)] border border-white/[0.04] text-center">
+                <p className="text-sm font-semibold text-foreground">No matching folders</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  No folders match &quot;{searchQuery}&quot;. Try a different search term or role filter.
+                </p>
+              </div>
+            ) : (
+              filteredFolders.map((item) => (
+                <PathFolderRow
+                  key={item.path}
+                  item={item}
+                  onToggleInstallation={handleToggleInstallation}
+                  onAssignDownload={handleAssignDownload}
+                  onToggleIso={handleToggleIso}
+                  onRemove={handleRemoveFolder}
+                  onCopyPath={handleCopyPath}
+                />
+              ))
+            )}
+          </div>
+        )}
     </div>
   )
-};
+}

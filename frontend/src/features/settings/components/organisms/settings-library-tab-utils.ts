@@ -14,5 +14,5 @@ export function resolveLibrarySettingsTab(hash: string | undefined | null): Libr
 
 export function isRetiredLibraryHash(hash: string | undefined | null): boolean {
   const h = (hash || '').replace(/^#/, '').toLowerCase()
-  return h === 'paths' || h === 'downloads' || h === 'organize'
+  return h === 'downloads' || h === 'organize' || h === 'paths'
 }

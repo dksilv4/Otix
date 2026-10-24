@@ -202,7 +202,9 @@ export const NodeMapCardItem = ({
                 {gameServer.name}
               </h4>
               {Boolean(gameServer.password) && (
-                <Lock size={10} className="text-muted-foreground shrink-0" title="Password protected" />
+                <span title="Password protected" className="shrink-0 flex items-center">
+                  <Lock size={10} className="text-muted-foreground" />
+                </span>
               )}
             </div>
 

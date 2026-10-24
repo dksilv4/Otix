@@ -453,6 +453,9 @@ export interface OrganizationPreviewItem {
   anomalies?: string[];
   suggestedRenames?: Record<string, string>;
   health?: string;
+  sourceSubdirectory?: string;
+  targetSubdirectory?: string;
+  subdirectories?: string[];
 }
 
 const ORG_IGNORED_DIRS = new Set([

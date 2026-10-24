@@ -13,6 +13,7 @@ import {
 } from 'lucide-react'
 import { DkButton } from '@ui/atoms/button'
 import { useToast } from '@ui/molecules/toast'
+import { cn } from '@/lib/utils'
 import type { GameServer } from '@/features/downloads/types'
 import type { PendingNode } from '@/features/downloads/pending-nodes'
 import type { DedicatedGameServer } from '@/features/gameservers/types'
@@ -44,6 +45,11 @@ import {
   useAssignNodeHome,
   useUpdateServerMachine,
 } from '../../hooks/use-server-machines'
+import {
+  isNodeMapItemMatch,
+  type NodesCategoryFilter,
+  type NodesStatusFilter,
+} from '../../utils/node-views'
 
 interface NodesTopologyCanvasProps {
   homes: UserHome[]
@@ -55,6 +61,9 @@ interface NodesTopologyCanvasProps {
   hubStats?: NodesCentralHubStats
   unclaimedNodes?: PendingNode[]
   anchor?: { x: number; y: number }
+  searchQuery?: string
+  categoryFilter?: NodesCategoryFilter
+  statusFilter?: NodesStatusFilter
   viewMode?: 'map' | 'cards'
   onViewModeChange?: (mode: 'map' | 'cards') => void
   onOpenDownloadModal?: () => void
@@ -94,6 +103,9 @@ export const NodesTopologyCanvas = ({
   hubStats,
   unclaimedNodes = [],
   anchor,
+  searchQuery: externalSearchQuery,
+  categoryFilter = 'all',
+  statusFilter = 'all',
   viewMode: _viewMode = 'map',
   onViewModeChange: _onViewModeChange,
   onOpenDownloadModal,
@@ -141,7 +153,7 @@ export const NodesTopologyCanvas = ({
   const executeConnection = async (
     source: NodeMapItem,
     target: NodeMapItem,
-    type: 'home' | 'host' | 'smb',
+    type: 'home' | 'host' | 'smb' | 'game_server',
   ) => {
     setIsConnectingPending(true)
     try {
@@ -196,7 +208,7 @@ export const NodesTopologyCanvas = ({
           const gsId = Number(gameServerItem.entityId)
           const machineId = Number(serverItem.entityId)
           const machine = serverMachines.find((m) => m.id === machineId)
-          const machineHost = machine?.ipAddress || machine?.host
+          const machineHost = machine?.host
           const existingGs = gameServers.find((s) => s.id === gsId)
           const shouldUpdateHost =
             machineHost &&
@@ -348,16 +360,17 @@ export const NodesTopologyCanvas = ({
 
   const hubPos = positions[HUB_NODE_ID] || { x: anchor?.x ?? 300, y: anchor?.y ?? 100 }
 
-  // Filter items matching search
-  const filteredItemIds = useMemo(() => {
-    if (!searchQuery.trim()) return null
-    const q = searchQuery.toLowerCase().trim()
-    return new Set(
-      items
-        .filter((item) => item.name.toLowerCase().includes(q) || item.type.includes(q))
-        .map((i) => i.id),
-    )
-  }, [items, searchQuery])
+  // Filter items matching search, category, and status
+  const matchingItemIds = useMemo(() => {
+    const effectiveQuery = (externalSearchQuery !== undefined ? externalSearchQuery : searchQuery).trim()
+    const matches = new Set<string>()
+    for (const item of items) {
+      if (isNodeMapItemMatch(item, effectiveQuery, categoryFilter, statusFilter)) {
+        matches.add(item.id)
+      }
+    }
+    return matches
+  }, [items, searchQuery, externalSearchQuery, categoryFilter, statusFilter])
 
   // Click on a node when in connection mode
   const handleNodeClickInConnectMode = (targetItem: NodeMapItem) => {
@@ -391,7 +404,7 @@ export const NodesTopologyCanvas = ({
   }
 
   // Execute connection from dialog prompt
-  const handleExecuteConnect = async (type: 'home' | 'host' | 'smb') => {
+  const handleExecuteConnect = async (type: 'home' | 'host' | 'smb' | 'game_server') => {
     if (!connectPrompt) return
     const { source, target } = connectPrompt
     setConnectPrompt(null)
@@ -496,6 +509,9 @@ export const NodesTopologyCanvas = ({
                 anchor2.side,
               )
               const isHovered = hoveredEdgeId === edge.id
+              const isSourceMatch = matchingItemIds.has(edge.sourceId)
+              const isTargetMatch = matchingItemIds.has(edge.targetId)
+              const isEdgeMatch = isSourceMatch && isTargetMatch
 
               return (
                 <g key={edge.id} className="transition-all duration-200">
@@ -523,7 +539,7 @@ export const NodesTopologyCanvas = ({
                     }
                     strokeWidth={edge.relation === 'hosted_link' || edge.relation === 'game_server_link' ? 2.5 : isHovered ? 2.5 : 1.5}
                     strokeDasharray={edge.relation === 'smb_link' ? '6 4' : undefined}
-                    opacity={isHovered ? 1 : 0.65}
+                    opacity={isHovered ? 1 : isEdgeMatch ? 0.65 : 0.12}
                   />
 
                   {/* Connection terminal pins on card borders */}
@@ -536,6 +552,7 @@ export const NodesTopologyCanvas = ({
                         ? 'var(--primary)'
                         : 'rgba(255, 255, 255, 0.5)'
                     }
+                    opacity={isEdgeMatch ? 1 : 0.15}
                   />
                   <circle
                     cx={p2.x}
@@ -546,6 +563,7 @@ export const NodesTopologyCanvas = ({
                         ? 'var(--primary)'
                         : 'rgba(255, 255, 255, 0.5)'
                     }
+                    opacity={isEdgeMatch ? 1 : 0.15}
                   />
 
                   {/* Midpoint Label & Unlink Button */}
@@ -554,7 +572,8 @@ export const NodesTopologyCanvas = ({
                     y={mid.y - 14}
                     width={120}
                     height={28}
-                    className="pointer-events-auto"
+                    className="pointer-events-auto transition-opacity duration-200"
+                    style={{ opacity: isHovered ? 1 : isEdgeMatch ? 1 : 0.2 }}
                     onMouseEnter={() => setHoveredEdgeId(edge.id)}
                     onMouseLeave={() => setHoveredEdgeId(null)}
                   >
@@ -670,7 +689,7 @@ export const NodesTopologyCanvas = ({
           {/* Cards for homes, servers, nodes, samba */}
           {items.map((item) => {
             const pos = positions[item.id] || { x: 80, y: 80 }
-            const isMatch = filteredItemIds ? filteredItemIds.has(item.id) : true
+            const isMatch = matchingItemIds.has(item.id)
             const isDropTarget = hoveredDropTargetId === item.id
             const isCompatible = connectingFrom && connectingFrom.id !== item.id
               ? isCompatibleConnection(connectingFrom, item).compatible
@@ -681,9 +700,10 @@ export const NodesTopologyCanvas = ({
             return (
               <div
                 key={item.id}
-                className={`pointer-events-auto transition-opacity duration-200 ${
-                  isMatch ? 'opacity-100' : 'opacity-25'
-                }`}
+                className={cn(
+                  'pointer-events-auto transition-opacity duration-200',
+                  isMatch ? 'opacity-100' : 'opacity-20 hover:opacity-75',
+                )}
                 onPointerDown={(e) => e.stopPropagation()}
                 onClick={(e) => {
                   e.stopPropagation()
@@ -790,6 +810,23 @@ export const NodesTopologyCanvas = ({
         </div>
       )}
 
+
+      {/* Floating Topology Map Status HUD (Online Status of Nodes) */}
+      <div
+        className="absolute top-4 sm:top-6 right-4 sm:right-6 z-20 pointer-events-auto flex items-center gap-2 px-3 py-1.5 rounded-2xl bg-[var(--dk-surface-overlay)] backdrop-blur-2xl border border-white/[0.06] shadow-xl text-xs select-none"
+        onClick={(e) => e.stopPropagation()}
+        onPointerDown={(e) => e.stopPropagation()}
+      >
+        <span
+          className={cn(
+            'w-2 h-2 rounded-full',
+            hubStats?.offlineNodes === 0 ? 'bg-status-online animate-pulse' : 'bg-status-warning',
+          )}
+        />
+        <span className="font-mono font-semibold text-foreground">
+          {hubStats ? `${hubStats.onlineNodes}/${hubStats.totalNodes}` : '0/0'} online
+        </span>
+      </div>
 
       {/* Floating HUD in bottom-right corner for Canvas Navigation Controls */}
       <div

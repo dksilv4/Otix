@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef, useSyncExternalStore } from '
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiClient } from '@/lib/api/client'
 import { isDesktop, type RemoteDownloadProgress } from '@/lib/desktop/api'
-import type { OtixNode, GameServer, ServerGameFile, ServerGamesResponse } from '../types'
+import type { OtixNode, GameServer, ServerGameFile, ServerGamesResponse, ServerProbeResult, NodeProbeResult } from '../types'
 import {
   nodeUrlKey,
   pendingNodesToClaim,
@@ -12,7 +12,15 @@ import {
   type PendingNode,
 } from '../pending-nodes'
 
-export type { OtixNode, GameServer, ServerGameFile, ServerGamesResponse, RemoteDownloadProgress }
+export type {
+  OtixNode,
+  GameServer,
+  ServerGameFile,
+  ServerGamesResponse,
+  RemoteDownloadProgress,
+  ServerProbeResult,
+  NodeProbeResult,
+}
 
 // ── Query Keys ──
 export const nodeKeys = {
@@ -371,24 +379,6 @@ export function usePingNode() {
 }
 
 export const usePingGameServer = usePingNode
-
-export interface ServerProbeResult {
-  remoteAccessible?: boolean
-  remote_accessible?: boolean
-  localAccessible?: boolean
-  local_accessible?: boolean
-  reachable?: boolean
-  status: 'online' | 'unreachable' | 'offline'
-  testedUrl?: string
-  tested_url?: string
-  latencyMs?: number
-  latency_ms?: number
-  message?: string
-  error?: string
-  suggestion?: string
-}
-
-export type NodeProbeResult = ServerProbeResult
 
 export function useClaimNode() {
   const queryClient = useQueryClient()

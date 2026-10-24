@@ -295,7 +295,9 @@ export function applyNamingTemplate(
     Version: release.version ?? '',
     Region: (release as any).region ?? '',
     TitleId: (release as any).titleId ?? '',
-    OriginalName: release.rawName,
+    OriginalName: fileInfo.ext && release.rawName.toLowerCase().endsWith('.' + fileInfo.ext.toLowerCase())
+      ? release.rawName.slice(0, -(fileInfo.ext.length + 1))
+      : release.rawName,
     MediaType: fileInfo.type === 'iso' ? 'ISO' : fileInfo.type === 'pc_game' ? 'PC' : fileInfo.type === 'rom' ? 'ROM' : 'Update',
     ext: fileInfo.ext,
   };

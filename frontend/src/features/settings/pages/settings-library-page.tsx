@@ -14,7 +14,6 @@ import {
   type LibrarySettingsTab,
 } from '../components/organisms/settings-library-tabs'
 import {
-  isRetiredLibraryHash,
   resolveLibrarySettingsTab,
 } from '../components/organisms/settings-library-tab-utils'
 import { DkDialog } from '@ui/molecules/dialog'
@@ -48,6 +47,7 @@ export const SettingsLibraryPage = () => {
   const [sortKey, setSortKey] = useState<SortKey>('title')
   const [sortDir, setSortDir] = useState<SortDir>('asc')
 
+
   const api = (window as any).desktopAPI
   const { openModal } = useModal()
 
@@ -59,12 +59,21 @@ export const SettingsLibraryPage = () => {
   )
 
   useEffect(() => {
-    const hash = location?.hash || (typeof window !== 'undefined' ? window.location.hash : '')
-    if (isRetiredLibraryHash(hash) && navigate) {
+    const rawHash = location?.hash || (typeof window !== 'undefined' ? window.location.hash : '')
+    const hash = rawHash.replace(/^#/, '').toLowerCase()
+    if (hash === 'organize' && navigate) {
+      navigate({ to: '/settings/organize', replace: true })
+      return
+    }
+    if (hash === 'paths' && navigate) {
+      navigate({ to: '/settings/paths', replace: true })
+      return
+    }
+    if (hash === 'downloads' && navigate) {
       navigate({ to: '/settings/nodes', replace: true })
       return
     }
-    const next = resolveLibrarySettingsTab(hash)
+    const next = resolveLibrarySettingsTab(rawHash)
     setActiveTab(next)
   }, [location?.hash, navigate])
 

@@ -421,7 +421,7 @@ export const EditGameServerModal = ({
                 if (val) {
                   const m = serverMachines.find((sm) => sm.id === val)
                   if (m && (!host.trim() || host === 'localhost' || host === '127.0.0.1')) {
-                    const candidateIp = m.ipAddress || m.host || ''
+                    const candidateIp = m.host || ''
                     if (candidateIp) {
                       setHost(candidateIp)
                       resetVerification()
@@ -436,7 +436,7 @@ export const EditGameServerModal = ({
               </option>
               {serverMachines.map((m) => (
                 <option key={m.id} value={m.id} className="bg-[var(--dk-surface-overlay)] text-foreground">
-                  {m.name} {m.ipAddress || m.host ? `(${m.ipAddress || m.host})` : ''}
+                  {m.name} {m.host ? `(${m.host})` : ''}
                 </option>
               ))}
             </select>

@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect, useMemo, Suspense } from 'react'
-import { Link, Outlet, useLocation } from '@tanstack/react-router'
+import { Link, Outlet, useLocation, useNavigate } from '@tanstack/react-router'
+import { motion } from 'framer-motion'
 import { Helmet } from 'react-helmet-async'
-import { ChevronDown, Shield, X, Lock, PanelLeftClose, PanelLeftOpen, Search } from 'lucide-react'
+import { ChevronDown, ChevronRight, Shield, X, Lock, PanelLeftClose, PanelLeftOpen, Search } from 'lucide-react'
 import { useAuth } from '@/lib/providers/auth'
 import { DkAvatar } from '@ui/atoms/avatar'
 import { cn } from '@/lib/utils'
@@ -18,8 +19,14 @@ import {
 import { FeatureStatusTag, type FeatureStatusKind } from '@ui/atoms/feature-status-tag'
 import { SettingsSaveProvider } from '../context/settings-save-context'
 import { SettingsNodeProvider } from '../context/settings-node-context'
+import { NodesViewProvider } from '../context/nodes-view-context'
+import { NodesSecondarySettingsMenu } from '../components/organisms/nodes-secondary-settings-menu'
+import {
+  rememberPreviousSettingsTab,
+  getPreviousSettingsTab,
+} from '../utils/node-views'
 import { SettingsSaveBar } from '../components/molecules/settings-save-bar'
-import { SettingsSectionPending } from '../components/molecules/settings-section-pending'
+import { OtixLoadingScreen } from '@ui/atoms/otix-loading-screen'
 import { usePluginTabs } from '@/features/_config/slots'
 import { QueryErrorBoundary } from '@/components/query-error-boundary'
 import {
@@ -42,7 +49,7 @@ const SettingsNavGroups = ({
 }) => {
   const navLinkClass = (isActive: boolean) =>
     cn(
-      'flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs sm:text-sm font-medium transition-all duration-200',
+      'flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs sm:text-sm font-medium transition-all duration-200 group',
       isActive ? 'bg-primary/10 text-primary shadow-xs font-semibold' : 'text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-ghost-hover)]',
     )
 
@@ -51,7 +58,9 @@ const SettingsNavGroups = ({
   return (
     <>
       {groups.map((group, idx) => {
-        const groupItems = items.filter((item) => item.group === group.id)
+        const groupItems = items
+          .filter((item) => item.group === group.id)
+          .sort((a, b) => (a.isPage ? 1 : 0) - (b.isPage ? 1 : 0))
         return (
           <div key={group.id}>
             {!collapsed ? (
@@ -77,7 +86,11 @@ const SettingsNavGroups = ({
                   key={item.id}
                   to={`/settings/${item.id}`}
                   data-active={isActive || undefined}
-                  title={collapsed ? `${item.label}${showLock ? ' (Requires Sign In)' : ''}` : undefined}
+                  title={
+                    collapsed
+                      ? `${item.label}${showLock ? ' (Requires Sign In)' : ''}`
+                      : undefined
+                  }
                   onClick={onNavigate}
                   className={cn(
                     navLinkClass(isActive),
@@ -98,6 +111,9 @@ const SettingsNavGroups = ({
                         return <FeatureStatusTag key={badge} kind={kind} short />
                       })}
                       {showLock && <Lock className="h-3 w-3 text-muted-foreground/50 shrink-0" />}
+                      {item.isPage && (
+                        <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/40 group-hover:text-foreground group-hover:translate-x-0.5 transition-all shrink-0 ml-0.5" />
+                      )}
                     </>
                   )}
                   {collapsed && (showLock || (item.badges && item.badges.length > 0)) && (
@@ -124,6 +140,7 @@ const SettingsNavGroups = ({
 
 const SettingsLayoutInner = () => {
   const location = useLocation()
+  const navigate = useNavigate()
   const { user } = useAuth()
   const desktop = isDesktop()
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -136,6 +153,7 @@ const SettingsLayoutInner = () => {
     settingsPath === '/settings'
       ? DEFAULT_SETTINGS_SECTION
       : settingsPath.replace(/^\/settings\//, '').split('/')[0] || DEFAULT_SETTINGS_SECTION
+  const isNodesPage = activeSection === 'nodes'
   const { tabs: pluginTabs } = usePluginTabs()
   const filteredNav = getNavItems(pluginTabs)
     .filter((i) => !DESKTOP_SECTIONS.has(i.id) || desktop)
@@ -147,8 +165,16 @@ const SettingsLayoutInner = () => {
   )
 
   useEffect(() => {
+    if (activeSection !== 'nodes') {
+      rememberPreviousSettingsTab(activeSection)
+    }
     rememberSettingsSection(activeSection)
   }, [activeSection])
+
+  const handleBackToSettings = () => {
+    const prevTab = getPreviousSettingsTab(DEFAULT_SETTINGS_SECTION)
+    navigate({ to: `/settings/${prevTab}` })
+  }
 
   const toggleCollapsed = () => {
     const next = !collapsed
@@ -187,7 +213,9 @@ const SettingsLayoutInner = () => {
           }}
         >
           <div className="flex items-center justify-between px-6 pt-6 pb-2">
-            <h1 className="text-lg font-bold">Settings</h1>
+            <h1 className="text-lg font-bold">
+              {isNodesPage ? 'Nodes & Infrastructure' : 'Settings'}
+            </h1>
             <button
               type="button"
               onClick={() => setMobileOpen(false)}
@@ -197,27 +225,41 @@ const SettingsLayoutInner = () => {
             </button>
           </div>
 
-          <div className="px-4 pb-2">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
-              <input
-                type="search"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search settings..."
-                className="w-full rounded-xl bg-[var(--dk-surface-field)] pl-9 pr-3 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none transition-colors"
+          {isNodesPage ? (
+            <div className="flex-1 px-4 py-4 overflow-y-auto">
+              <NodesSecondarySettingsMenu
+                onBackToSettings={() => {
+                  handleBackToSettings()
+                  setMobileOpen(false)
+                }}
+                onActionComplete={() => setMobileOpen(false)}
               />
             </div>
-          </div>
+          ) : (
+            <>
+              <div className="px-4 pb-2">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+                  <input
+                    type="search"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search settings..."
+                    className="w-full rounded-xl bg-[var(--dk-surface-field)] pl-9 pr-3 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none transition-colors"
+                  />
+                </div>
+              </div>
 
-          <nav className="flex-1 space-y-1 px-4 py-4 overflow-y-auto">
-            <SettingsNavGroups
-              items={searchedNav}
-              activeSection={activeSection}
-              user={user}
-              onNavigate={() => setMobileOpen(false)}
-            />
-          </nav>
+              <nav className="flex-1 space-y-1 px-4 py-4 overflow-y-auto">
+                <SettingsNavGroups
+                  items={searchedNav}
+                  activeSection={activeSection}
+                  user={user}
+                  onNavigate={() => setMobileOpen(false)}
+                />
+              </nav>
+            </>
+          )}
 
           {user && (
             <div className="px-6 py-4">
@@ -237,81 +279,149 @@ const SettingsLayoutInner = () => {
       )}
 
       {(() => {
-        const isNodesPage = activeSection === 'nodes'
         return (
           <div className="flex flex-col sm:flex-row h-full gap-4 sm:gap-6 px-2 sm:px-4 lg:px-6 relative">
             <aside
               id="settings-sidebar"
               className={cn(
-                'hidden sm:flex flex-col shrink-0 h-full pb-6 transition-all duration-300 ease-in-out relative z-20',
+                'hidden sm:block shrink-0 h-full relative z-20 transition-[width] duration-300 ease-in-out',
                 collapsed ? 'w-16 lg:w-20' : 'w-56 lg:w-64',
                 desktop ? 'pt-24 sm:pt-28' : 'pt-16 sm:pt-20',
+                'pb-6',
               )}
             >
-              <div
-                className={cn(
-                  'flex flex-col h-full pt-6 pb-5 transition-all duration-300 rounded-3xl shadow-[var(--dk-shadow-glass)] backdrop-blur-2xl',
-                  collapsed ? 'px-2 items-center' : 'px-5',
-                )}
-                style={{
-                  backgroundColor: isNodesPage
-                    ? 'color-mix(in srgb, var(--dk-surface-base) 75%, transparent)'
-                    : 'var(--dk-surface-base)',
-                }}
-              >
-                <div className={cn('flex items-center mb-5 w-full', collapsed ? 'justify-center' : 'justify-between')}>
-                  {!collapsed && <h1 className="text-lg font-bold">Settings</h1>}
-                  <button
-                    type="button"
-                    onClick={toggleCollapsed}
-                    title={collapsed ? 'Expand settings menu' : 'Collapse settings menu'}
-                    aria-label={collapsed ? 'Expand settings menu' : 'Collapse settings menu'}
-                    className="flex h-8 w-8 items-center justify-center rounded-xl text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-ghost-hover)] transition-colors shrink-0"
-                  >
-                    {collapsed ? <PanelLeftOpen className="h-4.5 w-4.5" /> : <PanelLeftClose className="h-4.5 w-4.5" />}
-                  </button>
-                </div>
+              <div className="relative w-full h-full [perspective:1200px]">
+                {/* Container A: Main Settings Menu Panel */}
+                <motion.div
+                  id="main-settings-panel"
+                  initial={false}
+                  animate={
+                    isNodesPage
+                      ? {
+                          scale: 0.93,
+                          y: 8,
+                          opacity: 0,
+                          pointerEvents: 'none' as const,
+                          zIndex: 10,
+                        }
+                      : {
+                          scale: 1,
+                          y: 0,
+                          opacity: 1,
+                          pointerEvents: 'auto' as const,
+                          zIndex: 20,
+                        }
+                  }
+                  transition={{
+                    duration: 0.28,
+                    ease: [0.16, 1, 0.3, 1],
+                  }}
+                  className={cn(
+                    'absolute inset-0 flex flex-col pt-6 pb-5 rounded-3xl shadow-[var(--dk-shadow-glass)] backdrop-blur-2xl border border-white/[0.04] bg-[var(--dk-surface-base)]',
+                    collapsed ? 'px-2 items-center' : 'px-5',
+                  )}
+                >
+                  <div className={cn('flex items-center mb-5 w-full', collapsed ? 'justify-center' : 'justify-between')}>
+                    {!collapsed && <h1 className="text-lg font-bold">Settings</h1>}
+                    <button
+                      type="button"
+                      onClick={toggleCollapsed}
+                      title={collapsed ? 'Expand settings menu' : 'Collapse settings menu'}
+                      aria-label={collapsed ? 'Expand settings menu' : 'Collapse settings menu'}
+                      className="flex h-8 w-8 items-center justify-center rounded-xl text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-ghost-hover)] transition-colors shrink-0"
+                    >
+                      {collapsed ? <PanelLeftOpen className="h-4.5 w-4.5" /> : <PanelLeftClose className="h-4.5 w-4.5" />}
+                    </button>
+                  </div>
 
-                {!collapsed && (
-                  <div className="relative mb-4 w-full">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
-                    <input
-                      type="search"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      placeholder="Search..."
-                      className="w-full rounded-xl bg-[var(--dk-surface-field)] pl-9 pr-3 py-2 text-xs text-foreground placeholder:text-muted-foreground outline-none transition-colors"
+                  {!collapsed && (
+                    <div className="relative mb-4 w-full">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+                      <input
+                        type="search"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        placeholder="Search..."
+                        className="w-full rounded-xl bg-[var(--dk-surface-field)] pl-9 pr-3 py-2 text-xs text-foreground placeholder:text-muted-foreground outline-none transition-colors"
+                      />
+                    </div>
+                  )}
+
+                  <nav
+                    ref={navRef}
+                    className={cn('flex flex-col gap-1 flex-1 overflow-y-auto pr-1 w-full', collapsed && 'items-center')}
+                  >
+                    <SettingsNavGroups
+                      items={searchedNav}
+                      activeSection={activeSection}
+                      collapsed={collapsed}
+                      user={user}
+                    />
+                  </nav>
+
+                  {user && (
+                    <div className={cn('mt-auto pt-4 w-full', collapsed && 'flex justify-center')}>
+                      {!collapsed ? (
+                        <div className="flex items-center gap-3 px-1 py-2">
+                          <DkAvatar src={user.avatarUrl} name={user.username} size="sm" />
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium truncate">
+                              {user.username}
+                              {user.isAdmin && <Shield className="h-3 w-3 inline-block ml-1 text-amber-400/80" />}
+                            </p>
+                            <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+                          </div>
+                        </div>
+                      ) : (
+                        <div title={`${user.username} (${user.email})`} className="p-1">
+                          <DkAvatar src={user.avatarUrl} name={user.username} size="sm" />
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </motion.div>
+
+                {/* Container B: Node Settings Secondary Menu Panel */}
+                <motion.div
+                  id="node-settings-panel"
+                  initial={false}
+                  animate={
+                    isNodesPage
+                      ? {
+                          scale: 1,
+                          y: 0,
+                          opacity: 1,
+                          pointerEvents: 'auto' as const,
+                          zIndex: 20,
+                        }
+                      : {
+                          scale: 0.93,
+                          y: 8,
+                          opacity: 0,
+                          pointerEvents: 'none' as const,
+                          zIndex: 10,
+                        }
+                  }
+                  transition={{
+                    duration: 0.28,
+                    ease: [0.16, 1, 0.3, 1],
+                  }}
+                  className={cn(
+                    'absolute inset-0 flex flex-col pt-6 pb-5 rounded-3xl shadow-[var(--dk-shadow-glass)] backdrop-blur-2xl border border-white/[0.04]',
+                    collapsed ? 'px-2 items-center' : 'px-5',
+                  )}
+                  style={{
+                    backgroundColor: 'color-mix(in srgb, var(--dk-surface-base) 80%, transparent)',
+                  }}
+                >
+                  <div className="flex flex-col flex-1 min-h-0 overflow-y-auto w-full">
+                    <NodesSecondarySettingsMenu
+                      onBackToSettings={handleBackToSettings}
+                      onToggleCollapse={toggleCollapsed}
+                      collapsed={collapsed}
                     />
                   </div>
-                )}
-
-                <nav
-                  ref={navRef}
-                  className={cn('flex flex-col gap-1 flex-1 overflow-y-auto pr-1 w-full', collapsed && 'items-center')}
-                >
-                  <SettingsNavGroups items={searchedNav} activeSection={activeSection} collapsed={collapsed} user={user} />
-                </nav>
-
-                {user && (
-                  <div className={cn('mt-auto pt-4 w-full', collapsed && 'flex justify-center')}>
-                    {!collapsed ? (
-                      <div className="flex items-center gap-3 px-1 py-2">
-                        <DkAvatar src={user.avatarUrl} name={user.username} size="sm" />
-                        <div className="min-w-0">
-                          <p className="text-sm font-medium truncate">
-                            {user.username}
-                            {user.isAdmin && <Shield className="h-3 w-3 inline-block ml-1 text-amber-400/80" />}
-                          </p>
-                          <p className="text-xs text-muted-foreground truncate">{user.email}</p>
-                        </div>
-                      </div>
-                    ) : (
-                      <div title={`${user.username} (${user.email})`} className="p-1">
-                        <DkAvatar src={user.avatarUrl} name={user.username} size="sm" />
-                      </div>
-                    )}
-                  </div>
-                )}
+                </motion.div>
               </div>
             </aside>
 
@@ -341,7 +451,7 @@ const SettingsLayoutInner = () => {
                     {activeLabel}
                   </button>
                   <QueryErrorBoundary label="settings page">
-                    <Suspense fallback={<SettingsSectionPending />}>
+                    <Suspense fallback={<OtixLoadingScreen className="h-full w-full min-h-[320px] bg-transparent" />}>
                       <Outlet />
                     </Suspense>
                   </QueryErrorBoundary>
@@ -364,12 +474,14 @@ export const SettingsLayout = () => {
     settingsPath === '/settings'
       ? DEFAULT_SETTINGS_SECTION
       : settingsPath.replace(/^\/settings\//, '').split('/')[0] || DEFAULT_SETTINGS_SECTION
-  const isNodeAware = ['nodes', 'library', 'downloads', 'game-servers'].includes(activeSection)
+  const isNodeAware = ['nodes', 'library', 'downloads', 'game-servers', 'organize', 'paths', 'proposals'].includes(activeSection)
 
   return (
     <SettingsSaveProvider>
       <SettingsNodeProvider enabled={isNodeAware}>
-        <SettingsLayoutInner />
+        <NodesViewProvider>
+          <SettingsLayoutInner />
+        </NodesViewProvider>
       </SettingsNodeProvider>
     </SettingsSaveProvider>
   )

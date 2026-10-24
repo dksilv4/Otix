@@ -1,7 +1,8 @@
 import { forwardRef } from 'react'
 import { cn } from '@/lib/utils'
 
-interface DkSwitchProps {
+export interface DkSwitchProps {
+  id?: string
   checked: boolean
   onCheckedChange?: (checked: boolean) => void
   disabled?: boolean
@@ -10,13 +11,14 @@ interface DkSwitchProps {
 }
 
 const DkSwitch = forwardRef<HTMLButtonElement, DkSwitchProps>(
-  ({ checked, onCheckedChange, disabled, label, className }, ref) => {
+  ({ id, checked, onCheckedChange, disabled, label, className }, ref) => {
     const trackTransition = 'all var(--dk-duration-fast) var(--dk-ease-out)'
 
     return (
       <label className={cn('inline-flex items-center gap-3', disabled && 'opacity-40', className)}>
         <button
           ref={ref}
+          id={id}
           type="button"
           role="switch"
           aria-checked={checked}

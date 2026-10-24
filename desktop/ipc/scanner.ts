@@ -24,6 +24,7 @@ export function setPluginManager(pm: PluginManager): void {
 export function registerScannerIPC(gameDetector: GameDetector | null, nodeDaemon?: import('../node-daemon').NodeDaemonManager | null): void {
   // Scan game in paths
   ipcMain.handle('scanner:scan-paths', async (event, paths: string[], isoPaths: string[]) => {
+    event.sender.send('scanner:progress', { currentDir: 'Scanning library folders...', progress: 5 });
     // ── Save paths to local-files plugin config ──
     try {
       if (_pluginManager) {
@@ -53,6 +54,7 @@ export function registerScannerIPC(gameDetector: GameDetector | null, nodeDaemon
       gameService.upsertGames(games);
       gameService.notifyGamesChanged();
     }
+    event.sender.send('scanner:progress', { currentDir: 'Scan complete', progress: 100 });
 
     // Match directory games through the same pipeline as plugin games
     if (_orchestrator && games.length > 0) {

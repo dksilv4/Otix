@@ -13,6 +13,8 @@ import {
   Server,
   SlidersHorizontal,
   Sparkles,
+  FolderOpen,
+  Wand2,
 } from 'lucide-react'
 import type { ComponentType } from 'react'
 import type { PluginSettingsTab } from '@/features/_config/slots'
@@ -46,6 +48,8 @@ export interface NavItem {
   keywords?: string
   /** Small status chips shown beside the nav label (e.g. Beta). */
   badges?: string[]
+  /** True for standalone workspace pages with their own menu (e.g. Nodes) rather than simple settings form sections. */
+  isPage?: boolean
 }
 
 export const NAV_ITEMS: NavItem[] = [
@@ -95,23 +99,31 @@ export const NAV_ITEMS: NavItem[] = [
     keywords: 'sound quiet hours push desktop chime alerts',
   },
   {
-    id: 'library',
-    label: 'Library',
-    icon: HardDrive,
+    id: 'organize',
+    label: 'Organize',
+    icon: Sparkles,
     desktop: false,
     requiresAuth: false,
     group: 'library',
-    keywords: 'overview scan folders matching proposals metadata games catalog',
+    keywords: 'organize folders naming templates presets iso rename structure rules wishlist repackers directory',
   },
   {
-    id: 'nodes',
-    label: 'Nodes',
-    icon: Server,
+    id: 'paths',
+    label: 'Paths',
+    icon: FolderOpen,
     desktop: false,
-    requiresAuth: true,
-    adminOnly: false,
-    group: 'connections',
-    keywords: 'otix nodes desktop tray startup minimize close always on top window node native servers nas share remote worker machine paths folders organize downloaders sabnzbd scan epic games store egs homelab server machines hard drives drives storage homes smb dedicated game servers multiplayer host connect valheim minecraft cs2 rust palworld join share steam',
+    requiresAuth: false,
+    group: 'library',
+    keywords: 'paths folders scan games iso download install directory storage nodes',
+  },
+  {
+    id: 'proposals',
+    label: 'Match Proposals',
+    icon: Wand2,
+    desktop: false,
+    requiresAuth: false,
+    group: 'library',
+    keywords: 'proposals matching candidates metadata steam igdb review titles games',
   },
   {
     id: 'connections',
@@ -130,6 +142,17 @@ export const NAV_ITEMS: NavItem[] = [
     requiresAuth: false,
     group: 'connections',
     keywords: 'extensions marketplace install',
+  },
+  {
+    id: 'nodes',
+    label: 'Nodes',
+    icon: Server,
+    desktop: false,
+    requiresAuth: true,
+    adminOnly: false,
+    group: 'connections',
+    isPage: true,
+    keywords: 'otix nodes desktop tray startup minimize close always on top window node native servers nas share remote worker machine paths folders organize downloaders sabnzbd scan epic games store egs homelab server machines hard drives drives storage homes smb dedicated game servers multiplayer host connect valheim minecraft cs2 rust palworld join share steam',
   },
   {
     id: 'profile',

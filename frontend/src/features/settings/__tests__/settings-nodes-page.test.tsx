@@ -111,14 +111,13 @@ describe('SettingsNodesPage', () => {
     expect(screen.getByRole('heading', { name: 'Home Server' })).toBeInTheDocument()
   })
 
-  it('opens node settings modal via Open button in action dock', async () => {
+  it('navigates to library organize tab via Open button in action dock', async () => {
     const user = userEvent.setup()
     renderPage()
 
     await user.click(screen.getByRole('heading', { name: 'Home Server' }))
     await user.click(screen.getByRole('button', { name: /^open$/i }))
-    expect(screen.getByRole('tab', { name: 'Paths' })).toBeInTheDocument()
-    expect(screen.getByRole('tab', { name: 'Machine' })).toBeInTheDocument()
+    expect(mockNavigate).toHaveBeenCalledWith({ to: '/settings/library', hash: 'organize' })
   })
 
   it('renders claim with PIN tab when opening Connect node modal from Add Node', async () => {
@@ -244,5 +243,17 @@ describe('SettingsNodesPage', () => {
     expect(screen.getByText(/add & connect new node/i)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /add machine/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /add samba share/i })).toBeInTheDocument()
+  })
+
+  it('automatically centers the nodes in the canvas viewport on mount', () => {
+    const { container } = renderPage()
+    const nodesLayer = container.querySelector('div[style*="translate3d"]') as HTMLElement
+    expect(nodesLayer).toBeInTheDocument()
+    expect(nodesLayer.style.transform).toMatch(/translate3d\((-?\d+(\.\d+)?)px,\s*(-?\d+(\.\d+)?)px/)
+    const match = nodesLayer.style.transform.match(/translate3d\((-?\d+(\.\d+)?)px,\s*(-?\d+(\.\d+)?)px/)
+    const x = Number(match?.[1])
+    const y = Number(match?.[3])
+    expect(x).toBeGreaterThan(0)
+    expect(y).toBeGreaterThan(0)
   })
 })

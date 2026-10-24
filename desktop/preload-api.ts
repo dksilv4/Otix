@@ -64,6 +64,9 @@ export interface OrganizationPreviewItem {
   anomalies?: string[];
   suggestedRenames?: Record<string, string>;
   health?: string;
+  sourceSubdirectory?: string;
+  targetSubdirectory?: string;
+  subdirectories?: string[];
 }
 
 export interface ArchiveAnomaly {

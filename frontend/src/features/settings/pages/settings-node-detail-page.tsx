@@ -1,16 +1,10 @@
-import { useCallback, useEffect } from 'react'
+import { useEffect } from 'react'
 import { useLocation, useNavigate, useParams } from '@tanstack/react-router'
 import { ShieldAlert } from 'lucide-react'
 import { useAuth } from '@/lib/providers/auth'
 import { SettingsLockedState } from '../components/molecules/settings-locked-state'
-import { isLocalDesktopNodeId, getLocalDesktopNodeFallback } from '../local-desktop-node'
 import { useSettingsNode } from '../context/settings-node-context'
-import {
-  parseNodeIdParam,
-  resolveNodeSettingsTab,
-  type NodeSettingsTab,
-} from '../node-settings'
-import { NodeSettingsModal } from '../components/organisms/node-settings-modal'
+import { parseNodeIdParam } from '../node-settings'
 
 export const SettingsNodeDetailPage = () => {
   const navigate = useNavigate()
@@ -18,36 +12,20 @@ export const SettingsNodeDetailPage = () => {
   const { isAuthenticated } = useAuth()
   const params = useParams({ strict: false }) as { nodeId?: string }
   const nodeId = parseNodeIdParam(params.nodeId)
-  const { servers, isLoading, setSelectedNodeId } = useSettingsNode()
-  const server =
-    servers.find((item) => item.id === nodeId) ??
-    (isLocalDesktopNodeId(nodeId) ? getLocalDesktopNodeFallback() : null)
+  const { setSelectedNodeId } = useSettingsNode()
 
   useEffect(() => {
-    if (server) setSelectedNodeId(server.id)
-  }, [server, setSelectedNodeId])
-
-  const activeTab = resolveNodeSettingsTab(
-    location?.hash || (typeof window !== 'undefined' ? window.location.hash : ''),
-  )
-
-  const handleTabChange = useCallback(
-    (tab: NodeSettingsTab) => {
-      if (nodeId == null) return
-      const hash = tab === 'paths' ? undefined : tab
-      void navigate({
-        to: '/settings/nodes/$nodeId',
-        params: { nodeId: String(nodeId) },
-        hash,
-        replace: true,
-      })
-    },
-    [navigate, nodeId],
-  )
-
-  const handleClose = useCallback(() => {
-    void navigate({ to: '/settings/nodes' })
-  }, [navigate])
+    if (nodeId != null) {
+      setSelectedNodeId(nodeId)
+    }
+    const currentHash = (location?.hash || (typeof window !== 'undefined' ? window.location.hash : '')).replace(/^#/, '').toLowerCase()
+    const targetHash = currentHash === 'paths' ? 'paths' : 'organize'
+    void navigate({
+      to: '/settings/library',
+      hash: targetHash,
+      replace: true,
+    })
+  }, [nodeId, location?.hash, navigate, setSelectedNodeId])
 
   if (!isAuthenticated) {
     return (
@@ -60,17 +38,5 @@ export const SettingsNodeDetailPage = () => {
     )
   }
 
-  return (
-    <NodeSettingsModal
-      server={server}
-      isLoading={isLoading}
-      open={true}
-      onOpenChange={(open) => {
-        if (!open) handleClose()
-      }}
-      initialTab={activeTab}
-      onTabChange={handleTabChange}
-      onDisconnectSuccess={handleClose}
-    />
-  )
-};
+  return null
+}

@@ -69,7 +69,7 @@ export const ConnectNodePickerModal = ({
     onDisconnect(edge)
   }
 
-  const handleAddNewOption = (type: 'server' | 'node' | 'home' | 'samba') => {
+  const handleAddNewOption = (type: 'server' | 'node' | 'home' | 'samba' | 'game_server') => {
     onOpenChange(false)
     if (type === 'samba') {
       const machine = sourceItem.data.type === 'server' ? sourceItem.data.machine : undefined

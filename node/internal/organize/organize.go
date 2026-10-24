@@ -20,7 +20,10 @@ type PreviewItem struct {
 	Status           string            `json:"status"` // "rename_and_move", "already_organized", "conflict", "sample", "secondary_update", "secondary_dlc", "secondary_crack", "container_package"
 	Anomalies        []string          `json:"anomalies,omitempty"`
 	SuggestedRenames map[string]string `json:"suggestedRenames,omitempty"`
-	Health           string            `json:"health,omitempty"`
+	Health             string            `json:"health,omitempty"`
+	SourceSubdirectory string            `json:"sourceSubdirectory,omitempty"`
+	TargetSubdirectory string            `json:"targetSubdirectory,omitempty"`
+	Subdirectories     []string          `json:"subdirectories,omitempty"`
 }
 
 type ExecuteItem struct {
@@ -253,6 +256,23 @@ func PreviewOrganization(dir string, template string, sample bool) ([]PreviewIte
 						}
 						targetPaths[strings.ToLower(target)] = true
 
+						var subdirs []string
+						for _, c := range children {
+							if c.IsDir() && !noiseDirectoryNames[strings.ToLower(c.Name())] {
+								subdirs = append(subdirs, c.Name())
+							}
+						}
+						relParent, _ := filepath.Rel(cleanDir, filepath.Dir(path))
+						srcSub := ""
+						if relParent != "." && relParent != "" && !strings.HasPrefix(relParent, "..") {
+							srcSub = filepath.ToSlash(relParent)
+						}
+						targetFolders := computeFoldersToCreate(target, cleanDir)
+						targetSub := ""
+						if len(targetFolders) > 0 {
+							targetSub = filepath.ToSlash(targetFolders[0])
+						}
+
 						items = append(items, PreviewItem{
 							SourcePath:     path,
 							SourceFilename: d.Name(),
@@ -266,12 +286,15 @@ func PreviewOrganization(dir string, template string, sample bool) ([]PreviewIte
 								"Edition":      release.Edition,
 								"Version":      release.Version,
 							},
-							TargetPath:       target,
-							FoldersToCreate:  computeFoldersToCreate(target, cleanDir),
-							Status:           status,
-							Anomalies:        anomalies,
-							SuggestedRenames: suggestedRenames,
-							Health:           health,
+							TargetPath:         target,
+							FoldersToCreate:    targetFolders,
+							Status:             status,
+							Anomalies:          anomalies,
+							SuggestedRenames:   suggestedRenames,
+							Health:             health,
+							SourceSubdirectory: srcSub,
+							TargetSubdirectory: targetSub,
+							Subdirectories:     subdirs,
 						})
 
 						return filepath.SkipDir
@@ -327,10 +350,10 @@ func PreviewOrganization(dir string, template string, sample bool) ([]PreviewIte
 					itemType = "archive"
 				}
 			} else {
-				return nil
+				itemType = "file"
 			}
 		} else {
-			return nil
+			itemType = "file"
 		}
 
 		release := ParseReleaseName(filename)
@@ -383,6 +406,15 @@ func PreviewOrganization(dir string, template string, sample bool) ([]PreviewIte
 		targetPaths[strings.ToLower(target)] = true
 
 		folders := computeFoldersToCreate(target, cleanDir)
+		relParent, _ := filepath.Rel(cleanDir, filepath.Dir(path))
+		srcSub := ""
+		if relParent != "." && relParent != "" && !strings.HasPrefix(relParent, "..") {
+			srcSub = filepath.ToSlash(relParent)
+		}
+		targetSub := ""
+		if len(folders) > 0 {
+			targetSub = filepath.ToSlash(folders[0])
+		}
 
 		items = append(items, PreviewItem{
 			SourcePath:     path,
@@ -399,15 +431,17 @@ func PreviewOrganization(dir string, template string, sample bool) ([]PreviewIte
 				"Region":       release.Region,
 				"TitleId":      release.TitleId,
 			},
-			TargetPath:      target,
-			FoldersToCreate: folders,
-			Status:          status,
+			TargetPath:         target,
+			FoldersToCreate:    folders,
+			Status:             status,
+			SourceSubdirectory: srcSub,
+			TargetSubdirectory: targetSub,
 		})
 
 		return nil
 	})
 
-	if len(items) == 0 {
+	if len(items) == 0 && sample {
 		return generateSamplePreviews(cleanDir, template), nil
 	}
 
@@ -462,6 +496,14 @@ func generateSamplePreviews(baseDir string, template string) []PreviewItem {
 		}
 
 		folders := computeFoldersToCreate(target, cleanBase)
+		targetSub := ""
+		if len(folders) > 0 {
+			targetSub = filepath.ToSlash(folders[0])
+		}
+		var sampleSubdirs []string
+		if s.Category == "folder_package" {
+			sampleSubdirs = []string{"Crack", "Support"}
+		}
 
 		items = append(items, PreviewItem{
 			SourcePath:     source,
@@ -478,9 +520,12 @@ func generateSamplePreviews(baseDir string, template string) []PreviewItem {
 				"Region":       release.Region,
 				"TitleId":      release.TitleId,
 			},
-			TargetPath:      target,
-			FoldersToCreate: folders,
-			Status:          status,
+			TargetPath:         target,
+			FoldersToCreate:    folders,
+			Status:             status,
+			SourceSubdirectory: filepath.ToSlash(s.SubDir),
+			TargetSubdirectory: targetSub,
+			Subdirectories:     sampleSubdirs,
 		})
 	}
 	return items

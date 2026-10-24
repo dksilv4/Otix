@@ -11,6 +11,14 @@ vi.mock('@/lib/modals', () => ({
   useModal: () => ({ openModal: vi.fn() }),
 }))
 
+vi.mock('@/lib/providers/auth', () => ({
+  useAuth: () => ({
+    user: { id: 1, email: 'test@example.com' },
+    isAuthenticated: true,
+    isLoading: false,
+  }),
+}))
+
 vi.mock('@/lib/api/client', () => ({
   apiClient: {
     get: vi.fn(() => Promise.resolve({ data: { items: [], hasMore: false } })),
@@ -62,7 +70,6 @@ vi.mock('@/features/downloads/use-server-downloads', () => ({
   usePingGameServer: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useUpdateGameServer: () => ({ mutateAsync: vi.fn(), isPending: false }),
 }))
-
 
 describe('SettingsLibraryPage Sort Feature', () => {
   const mockGames = [

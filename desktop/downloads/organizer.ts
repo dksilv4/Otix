@@ -52,6 +52,8 @@ export interface DownloadedContent {
   size?: number;
   /** Archive integrity analysis for repack packages */
   integrity?: ArchiveDiagnosis;
+  /** Direct child subdirectories if this is a directory package */
+  subdirectories?: string[];
 }
 
 export interface AutoOrganizeResult {
@@ -69,7 +71,7 @@ export interface NamingPreset {
 
 export const NAMING_PRESETS: Record<string, NamingPreset> = {
   standard: {
-    label: 'Standard (arr-style)',
+    label: 'Standard',
     template: '{Title} ({Year}) [{Platform}]/{OriginalName}.{ext}',
   },
   scene: {
@@ -95,7 +97,7 @@ export const NAMING_PRESETS: Record<string, NamingPreset> = {
 const SKIP_DIRS = new Set([
   'node_modules', 'bower_components', '.git', '.github', '.svn', '.hg',
   'system32', 'syswow64', 'windows', 'microsoft.net', 'appdata',
-  'obj', 'bin', '__pycache__', '.venv', 'venv', 'env', 'windowsapps',
+  'obj', '__pycache__', '.venv', 'venv', 'env', 'windowsapps',
 ]);
 
 // ── Release name parsing ─────────────────────────────────────────────────────
@@ -107,7 +109,9 @@ const ROM_EXTENSIONS = new Set([
   '.nsp', '.xci', '.nsz', '.xcz', '.3ds', '.cia', '.cxi', '.nds',
   '.z64', '.n64', '.v64', '.rvz', '.wbfs', '.gcz', '.chd', '.pbp',
   '.vpk', '.sfc', '.smc', '.nes', '.gba', '.gbc', '.gb', '.md',
-  '.gen', '.pkg',
+  '.gen', '.pkg', '.cso', '.wux', '.rpx', '.wia', '.wad', '.gcm',
+  '.d64', '.t64', '.tap', '.adf', '.ipf', '.crt', '.cas', '.tzx',
+  '.cdi', '.gdi', '.ccd', '.sub', '.xex',
 ]);
 
 const DOC_BASENAMES = new Set([
@@ -121,7 +125,7 @@ const ISO_EXTENSIONS = new Set([
 ]);
 
 const ARCHIVE_EXTENSIONS = new Set([
-  '.zip', '.rar', '.7z',
+  '.zip', '.rar', '.7z', '.tar', '.gz', '.xz', '.bz2', '.001',
 ]);
 
 // ── Content discovery ────────────────────────────────────────────────────────
@@ -135,9 +139,22 @@ const ARCHIVE_EXTENSIONS = new Set([
 export async function findDownloadedContent(
   dirPath: string,
   maxDepth = 5,
+  includeAllFiles = false,
 ): Promise<DownloadedContent[]> {
   const results: DownloadedContent[] = [];
   const seen = new Set<string>();
+
+  try {
+    const stat = await fs.stat(dirPath);
+    if (!stat.isDirectory()) {
+      throw new Error(`Target is not a directory: ${dirPath}`);
+    }
+  } catch (err: any) {
+    if (err?.code === 'ENOENT') {
+      throw new Error(`Folder does not exist: ${dirPath}`);
+    }
+    throw err;
+  }
 
   async function traverse(currentDir: string, depth: number) {
     if (depth > maxDepth) return;
@@ -163,7 +180,7 @@ export async function findDownloadedContent(
         /crack(?:fix|\.fix|-fix|\s*only)?/i.test(folderLower) ||
         /^(?:codex|rune|flt|skidrow|empress|goldberg)$/i.test(folderLower);
 
-      if (depth > 1 && (isCrackFolder || (hasSetup && hasBins) || isConsoleFolder)) {
+      if (isCrackFolder || (hasSetup && hasBins) || isConsoleFolder) {
         let integrity: ArchiveDiagnosis | undefined;
         if (hasBins || folderLower.includes('elamigos') || folderLower.includes('fitgirl')) {
           integrity = await diagnoseArchiveIntegrity(currentDir);
@@ -174,6 +191,9 @@ export async function findDownloadedContent(
           type: isCrackFolder ? 'crack' : 'pc_game',
           platform: consolePlatform,
           integrity,
+          subdirectories: entries
+            .filter((e) => e.isDirectory() && !SKIP_DIRS.has(e.name.toLowerCase()))
+            .map((e) => e.name),
         });
         return;
       }
@@ -216,6 +236,9 @@ export async function findDownloadedContent(
                 type: subIsCrack ? 'crack' : 'pc_game',
                 platform: subConsolePlatform,
                 integrity,
+          subdirectories: subEntries
+            .filter((e) => e.isDirectory() && !SKIP_DIRS.has(e.name.toLowerCase()))
+            .map((e) => e.name),
               });
               continue;
             }
@@ -286,13 +309,35 @@ export async function findDownloadedContent(
             !nameLower.includes('redist')
           ) {
             hasExe = true;
+            if (depth === 1 && includeAllFiles) {
+              results.push({ path: fullPath, name: entry.name, type: 'pc_game' });
+            }
+          } else if (includeAllFiles) {
+            const isNoise =
+              nameLower === 'thumbs.db' ||
+              nameLower === 'desktop.ini' ||
+              nameLower === '.ds_store' ||
+              nameLower.startsWith('._') ||
+              nameLower.endsWith('.tmp') ||
+              nameLower.endsWith('.part');
+            if (!isNoise) {
+              results.push({ path: fullPath, name: entry.name, type: 'iso' });
+            }
           }
         }
       }
 
-      // If this directory contains game executables, mark as PC game folder if not already captured
-      if (hasExe && !results.some((r) => r.path === currentDir)) {
-        results.push({ path: currentDir, name: path.basename(currentDir), type: 'pc_game' });
+      // If a subfolder contains game executables, mark as PC game folder if not already captured
+      if (depth > 1 && hasExe && !results.some((r) => r.path === currentDir)) {
+        const currentSubdirs = entries
+          .filter((e) => e.isDirectory() && !SKIP_DIRS.has(e.name.toLowerCase()))
+          .map((e) => e.name);
+        results.push({
+          path: currentDir,
+          name: path.basename(currentDir),
+          type: 'pc_game',
+          subdirectories: currentSubdirs.length > 0 ? currentSubdirs : undefined,
+        });
       }
 
       // Recurse into child dirs
@@ -322,7 +367,7 @@ export async function smartOrganizePreview(
   namingTemplate: string,
   separator?: 'space' | 'dot' | 'underscore' | 'dash',
 ): Promise<OrganizationPreviewItem[]> {
-  const content = await findDownloadedContent(directory, 5);
+  const content = await findDownloadedContent(directory, 5, true);
   const items: OrganizationPreviewItem[] = [];
 
   for (const item of content) {
@@ -406,6 +451,24 @@ export async function smartOrganizePreview(
       foldersToCreate.push(path.relative(directory, targetDir));
     }
 
+    let relSourceDir = '';
+    try {
+      relSourceDir = path.relative(directory, path.dirname(item.path));
+    } catch {}
+    const sourceSubdirectory =
+      relSourceDir && relSourceDir !== '.' && !relSourceDir.startsWith('..')
+        ? relSourceDir.split(path.sep).join('/')
+        : undefined;
+
+    let relTargetDir = '';
+    try {
+      relTargetDir = path.relative(directory, targetDir);
+    } catch {}
+    const targetSubdirectory =
+      relTargetDir && relTargetDir !== '.' && !relTargetDir.startsWith('..')
+        ? relTargetDir.split(path.sep).join('/')
+        : undefined;
+
     items.push({
       sourcePath: item.path,
       sourceFilename: item.name,
@@ -425,6 +488,9 @@ export async function smartOrganizePreview(
       anomalies: item.integrity?.anomalies.map((a) => a.message),
       suggestedRenames: item.integrity?.suggestedRenames,
       health: item.integrity?.health,
+      sourceSubdirectory,
+      targetSubdirectory,
+      subdirectories: item.subdirectories,
     });
   }
 

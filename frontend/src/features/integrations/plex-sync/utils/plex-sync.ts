@@ -103,7 +103,7 @@ export const notifyPlexSyncResult = (result: PlexSyncExecutionResult): void => {
     showToast({
       title: 'Plex sync complete',
       description: 'Sync completed. No new items were found.',
-      variant: 'neutral',
+      variant: 'default',
     })
     return
   }

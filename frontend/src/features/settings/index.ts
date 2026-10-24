@@ -1,15 +1,20 @@
 export { SettingsLayout } from './pages/settings-layout'
-export { SettingsSectionPending } from './components/molecules/settings-section-pending'
 export { SettingsProfilePage } from './pages/settings-profile-page'
 export { SettingsAccountPage } from './pages/settings-account-page'
 export { SettingsAppearancePage } from './pages/settings-appearance-page'
 export { SettingsNotificationsPage } from './pages/settings-notifications-page'
 export { SettingsIntegrationsPage } from './pages/settings-integrations-page'
 export { SettingsLibraryPage } from './pages/settings-library-page'
+export { SettingsOrganizePage } from './pages/settings-organize-page'
+export { SettingsPathsPage } from './pages/settings-paths-page'
 export { SettingsPluginsPage } from '@/features/plugins'
 export { createSettingsRoutes } from './router'
 export {
   useSteamFreePacksSetting,
   STEAM_FREE_PACKS_STORAGE_KEY,
   STEAM_FREE_PACKS_CHANGED_EVENT,
+  useOrganizeSettings,
+  useScanProgress,
+  SCAN_PROGRESS_EVENT,
 } from './hooks'
+export type { ScanProgressState } from './hooks'

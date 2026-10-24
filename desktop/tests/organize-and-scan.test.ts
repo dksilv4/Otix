@@ -210,4 +210,54 @@ describe('Production Game Organization & Scanning', () => {
       path.join(downloadsDir, 'High On Life 2 [PC]/Updates/1 - High On Life 2 update 20.02.2026.exe').replace(/\\/g, '/')
     );
   });
+
+  it('shows all files and folders in folder test run preview', async () => {
+    const testDir = path.join(tempDir, 'AllFilesFolderTest');
+    await fs.mkdir(testDir, { recursive: true });
+
+    // 1. Game folder with internal subdirectory
+    const gameSubDir = path.join(testDir, 'Hades');
+    await fs.mkdir(path.join(gameSubDir, 'Data'), { recursive: true });
+    await fs.writeFile(path.join(gameSubDir, 'Hades.exe'), 'exe');
+
+    // 2. Real ISO file at root (no source subdirectory)
+    await fs.writeFile(path.join(testDir, 'Elden.Ring.2022.iso'), 'iso');
+
+    // 3. Media / auxiliary file in nested source subdirectory
+    const extrasDir = path.join(testDir, 'Extras', 'Audio');
+    await fs.mkdir(extrasDir, { recursive: true });
+    await fs.writeFile(path.join(extrasDir, 'Soundtrack.mp3'), 'audio');
+
+    // 4. Update file in subfolder
+    const updatesDir = path.join(testDir, 'Patches');
+    await fs.mkdir(updatesDir, { recursive: true });
+    await fs.writeFile(path.join(updatesDir, 'Elden.Ring.Patch.1.12.exe'), 'patch');
+
+    const preview = await smartOrganizePreview(testDir, '{Title} ({Year}) [{Platform}]/{OriginalName}.{ext}');
+    expect(preview.length).toBe(4);
+
+    const names = preview.map((p) => p.sourceFilename);
+    expect(names).toContain('Hades');
+    expect(names).toContain('Elden.Ring.2022.iso');
+    expect(names).toContain('Soundtrack.mp3');
+    expect(names).toContain('Elden.Ring.Patch.1.12.exe');
+
+    // Verify before and after target paths
+    const isoItem = preview.find((p) => p.sourceFilename === 'Elden.Ring.2022.iso');
+    expect(isoItem?.sourcePath).toBe(path.join(testDir, 'Elden.Ring.2022.iso'));
+    expect(isoItem?.targetPath.replace(/\\/g, '/')).toContain('Elden Ring 2022 [PC]/Elden.Ring.2022.iso');
+    // Root file should not have a source subdirectory
+    expect(isoItem?.sourceSubdirectory).toBeUndefined();
+
+    const folderItem = preview.find((p) => p.sourceFilename === 'Hades');
+    expect(folderItem?.status).toBe('container_package');
+    expect(folderItem?.subdirectories).toContain('Data');
+
+    const audioItem = preview.find((p) => p.sourceFilename === 'Soundtrack.mp3');
+    expect(audioItem?.sourceSubdirectory).toBe('Extras/Audio');
+
+    const patchItem = preview.find((p) => p.sourceFilename === 'Elden.Ring.Patch.1.12.exe');
+    expect(patchItem?.sourceSubdirectory).toBe('Patches');
+    expect(patchItem?.targetSubdirectory).toContain('Updates');
+  });
 });

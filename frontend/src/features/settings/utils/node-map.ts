@@ -171,7 +171,6 @@ export const buildNodeMapGraph = (
     const effectiveHomeId = node.homeId ?? parentMachine?.homeId ?? null
     const effectiveHome = effectiveHomeId ? homesMap.get(effectiveHomeId) : null
     const homeName = node.homeName || effectiveHome?.name || null
-    const isInherited = Boolean(!node.homeId && parentMachine?.homeId)
 
     items.push({
       id: `node-${node.id}`,
@@ -319,20 +318,22 @@ export const calculateAutoLayout = (
   const totalColumnsWidth = effectiveColumns * columnWidth
 
   const windowW = typeof window !== 'undefined' ? window.innerWidth : 1200
-  const startX = anchor?.x ?? Math.max(80, Math.round((windowW - Math.max(totalColumnsWidth, HUB_NODE_WIDTH)) / 2))
+  const layoutWidth = Math.max(totalColumnsWidth, HUB_NODE_WIDTH)
+  const startX = anchor?.x ?? Math.max(80, Math.round((windowW - layoutWidth) / 2))
   const startY = anchor?.y ?? 100
 
   // Position central hub node centered horizontally above the columns
-  const hubX = Math.max(40, startX + Math.round((totalColumnsWidth - HUB_NODE_WIDTH) / 2))
+  const hubX = startX + Math.round((layoutWidth - HUB_NODE_WIDTH) / 2)
   const hubY = startY
   positions[HUB_NODE_ID] = { x: hubX, y: hubY }
 
   const nodesStartY = hubY + HUB_NODE_HEIGHT + 36
+  const columnsStartX = startX + Math.round((layoutWidth - totalColumnsWidth) / 2)
 
   let currentColumn = 0
 
   if (homes.length > 0) {
-    const colX = startX + currentColumn * columnWidth
+    const colX = columnsStartX + currentColumn * columnWidth
     homes.forEach((home, index) => {
       positions[home.id] = { x: colX, y: nodesStartY + index * rowHeight }
     })
@@ -340,7 +341,7 @@ export const calculateAutoLayout = (
   }
 
   if (servers.length > 0) {
-    const colX = startX + currentColumn * columnWidth
+    const colX = columnsStartX + currentColumn * columnWidth
     const sortedServers = [...servers].sort((a, b) => {
       const homeA = a.homeId ?? 999999
       const homeB = b.homeId ?? 999999
@@ -353,7 +354,7 @@ export const calculateAutoLayout = (
   }
 
   if (sambas.length > 0) {
-    const colX = startX + currentColumn * columnWidth
+    const colX = columnsStartX + currentColumn * columnWidth
     sambas.forEach((samba, index) => {
       positions[samba.id] = { x: colX, y: nodesStartY + index * rowHeight }
     })
@@ -367,12 +368,12 @@ export const calculateAutoLayout = (
         const col = index % 2
         const row = Math.floor(index / 2)
         positions[node.id] = {
-          x: startX + col * columnWidth,
+          x: columnsStartX + col * columnWidth,
           y: nodesStartY + row * rowHeight,
         }
       })
     } else {
-      const colX = startX + currentColumn * columnWidth
+      const colX = columnsStartX + currentColumn * columnWidth
       allNodes.forEach((node, index) => {
         positions[node.id] = { x: colX, y: nodesStartY + index * rowHeight }
       })
@@ -381,15 +382,88 @@ export const calculateAutoLayout = (
   }
 
   if (gameServers.length > 0) {
-    const colX = startX + currentColumn * columnWidth
+    const colX = columnsStartX + currentColumn * columnWidth
     const gameServerRowHeight = 94
     gameServers.forEach((gs, index) => {
       positions[gs.id] = { x: colX, y: nodesStartY + index * gameServerRowHeight }
     })
-    currentColumn++
   }
 
   return positions
+}
+
+export interface NodeMapContainerGeometry {
+  width: number
+  height: number
+  offsetLeft: number
+  offsetTop: number
+}
+
+export const getNodeMapContainerGeometry = (
+  containerElement?: HTMLElement | null,
+): NodeMapContainerGeometry => {
+  if (typeof window === 'undefined') {
+    return { width: 1200, height: 800, offsetLeft: 0, offsetTop: 0 }
+  }
+
+  const target =
+    containerElement ||
+    (typeof document !== 'undefined'
+      ? document.getElementById('settings-nodes-section') ||
+        document.getElementById('settings-content')
+      : null)
+
+  if (target) {
+    const rect = target.getBoundingClientRect()
+    if (rect.width > 0 && rect.height > 0) {
+      return {
+        width: rect.width,
+        height: rect.height,
+        offsetLeft: rect.left,
+        offsetTop: rect.top,
+      }
+    }
+  }
+
+  return {
+    width: window.innerWidth || 1200,
+    height: window.innerHeight || 800,
+    offsetLeft: 0,
+    offsetTop: 0,
+  }
+}
+
+export const resolveNodeMapPositions = (
+  items: NodeMapItem[],
+  anchor?: { x: number; y: number },
+): Record<string, NodeMapPosition> => {
+  const stored = loadStoredPositions()
+  const auto = calculateAutoLayout(items, anchor)
+  const merged: Record<string, NodeMapPosition> = {}
+
+  for (const item of items) {
+    if (stored[item.id]) {
+      merged[item.id] = stored[item.id]
+    } else if (auto[item.id]) {
+      merged[item.id] = auto[item.id]
+    } else {
+      merged[item.id] = { x: anchor?.x ?? 340, y: anchor?.y ?? 240 }
+    }
+  }
+
+  if (stored[HUB_NODE_ID]) {
+    merged[HUB_NODE_ID] = stored[HUB_NODE_ID]
+  } else if (auto[HUB_NODE_ID]) {
+    merged[HUB_NODE_ID] = auto[HUB_NODE_ID]
+  } else {
+    const windowW = typeof window !== 'undefined' ? window.innerWidth : 1200
+    merged[HUB_NODE_ID] = {
+      x: Math.round((windowW - HUB_NODE_WIDTH) / 2),
+      y: anchor?.y ?? 100,
+    }
+  }
+
+  return merged
 }
 
 export const calculateFitViewport = (
@@ -398,6 +472,9 @@ export const calculateFitViewport = (
   containerWidth = 1200,
   containerHeight = 800,
   padding = 80,
+  offsetLeft = 0,
+  offsetTop = 0,
+  maxZoom = 1.0,
 ): { x: number; y: number; zoom: number } => {
   if (items.length === 0 && !positions[HUB_NODE_ID]) return { x: 0, y: 0, zoom: 1 }
 
@@ -437,11 +514,11 @@ export const calculateFitViewport = (
 
   const zoomX = availableWidth / contentWidth
   const zoomY = availableHeight / contentHeight
-  const rawZoom = Math.min(zoomX, zoomY, 1.2)
-  const zoom = Math.max(0.4, Math.min(rawZoom, 1.2))
+  const rawZoom = Math.min(zoomX, zoomY, maxZoom)
+  const zoom = Math.max(0.4, Math.min(rawZoom, maxZoom))
 
-  const x = Math.round((containerWidth - contentWidth * zoom) / 2 - minX * zoom)
-  const y = Math.round((containerHeight - contentHeight * zoom) / 2 - minY * zoom)
+  const x = Math.round(offsetLeft + (containerWidth - contentWidth * zoom) / 2 - minX * zoom)
+  const y = Math.round(offsetTop + (containerHeight - contentHeight * zoom) / 2 - minY * zoom)
 
   return { x, y, zoom: Math.round(zoom * 100) / 100 }
 }

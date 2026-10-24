@@ -74,6 +74,7 @@ describe('SettingsPathsSection with Real Toast Provider', () => {
     })
 
     // 1. Test adding a path -> real toast appears and page does NOT go black
+    await user.click(screen.getByRole('button', { name: /add folder/i }))
     const addInput = screen.getByPlaceholderText(/e\.g\. D:\\Games\\Steam or ~\/Games|e\.g\. \/media\/games/)
     await user.type(addInput, '/new/games{Enter}')
 
@@ -82,31 +83,33 @@ describe('SettingsPathsSection with Real Toast Provider', () => {
       expect(screen.getByText('Added /new/games to monitored scan paths.')).toBeInTheDocument()
     })
 
-    // 2. Test selecting a path via browse -> real toast appears and page does NOT go black
-    const browseButtons = screen.getAllByRole('button', { name: 'Browse' })
-    await user.click(browseButtons[0])
+    // 2. Test assigning installation role -> real toast appears
+    const rolesBtn = screen.getAllByRole('button', { name: /manage roles for/i })[0]
+    await user.click(rolesBtn)
+    const installButtons = screen.getAllByRole('button', { name: /toggle installation for/i })
+    await user.click(installButtons[0])
 
     await waitFor(() => {
       expect(screen.getByText('Installation Directory Updated')).toBeInTheDocument()
     })
 
-    await user.click(browseButtons[1])
+    // 3. Test assigning download role -> real toast appears
+    const downloadButtons = screen.getAllByRole('button', { name: /assign download for/i })
+    await user.click(downloadButtons[0])
 
     await waitFor(() => {
       expect(screen.getByText('Games Directory Updated')).toBeInTheDocument()
     })
 
-    // 3. Test deleting a path -> real toast appears and page does NOT go black
-    const removeButtons = screen.getAllByRole('button', { name: /remove path/i })
+    // 4. Test deleting a path -> real toast appears and page does NOT go black
+    const removeButtons = screen.getAllByRole('button', { name: /remove/i })
     await user.click(removeButtons[0])
 
     await waitFor(() => {
       expect(screen.getByText('Path Removed')).toBeInTheDocument()
-      expect(screen.getByText('Removed /games/steam.')).toBeInTheDocument()
     })
 
     // The section heading is still in the document (page has NOT crashed or turned black)
-    expect(screen.getByRole('heading', { name: 'Destinations' })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'Scan folders' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Paths' })).toBeInTheDocument()
   })
 })

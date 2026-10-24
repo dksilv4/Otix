@@ -7,6 +7,8 @@ import {
   buildNodeMapGraph,
   calculateAutoLayout,
   calculateFitViewport,
+  getNodeMapContainerGeometry,
+  resolveNodeMapPositions,
   calculateZoomAtPoint,
   calculateWheelZoomDelta,
   isCompatibleConnection,
@@ -493,6 +495,86 @@ describe('calculateFitViewport', () => {
   it('returns default viewport when items array is empty', () => {
     const vp = calculateFitViewport([], {}, 1200, 800)
     expect(vp).toEqual({ x: 0, y: 0, zoom: 1 })
+  })
+
+  it('offsets viewport by sidebar offsetLeft and header offsetTop to center within visible area', () => {
+    const items = [
+      { id: 'item-1', type: 'node' as const, entityId: 1, name: '1', data: {} as any },
+    ]
+    const positions = {
+      'item-1': { x: 200, y: 150 },
+    }
+
+    const unshifted = calculateFitViewport(items, positions, 1200, 800, 80, 0, 0)
+    const shifted = calculateFitViewport(items, positions, 1200, 800, 80, 260, 80)
+
+    expect(shifted.x - unshifted.x).toBe(260)
+    expect(shifted.y - unshifted.y).toBe(80)
+    expect(shifted.zoom).toBe(unshifted.zoom)
+  })
+
+  it('centers single node and central hub symmetrically', () => {
+    const items = [
+      { id: 'node-1', type: 'node' as const, entityId: 1, name: 'Node 1', data: {} as any },
+    ]
+    const positions = {
+      [HUB_NODE_ID]: { x: 330, y: 100 },
+      'node-1': { x: 480, y: 316 },
+    }
+    const containerW = 1200
+    const containerH = 800
+    const vp = calculateFitViewport(items, positions, containerW, containerH)
+
+    const hubScreenLeft = vp.x + positions[HUB_NODE_ID].x * vp.zoom
+    const hubScreenRight = hubScreenLeft + 540 * vp.zoom
+    const leftMargin = hubScreenLeft
+    const rightMargin = containerW - hubScreenRight
+    expect(Math.abs(leftMargin - rightMargin)).toBeLessThanOrEqual(2)
+  })
+
+describe('getNodeMapContainerGeometry', () => {
+  it('returns fallback viewport dimensions when element does not exist in DOM', () => {
+    const geo = getNodeMapContainerGeometry(null)
+    expect(geo.width).toBeGreaterThan(0)
+    expect(geo.height).toBeGreaterThan(0)
+    expect(typeof geo.offsetLeft).toBe('number')
+    expect(typeof geo.offsetTop).toBe('number')
+  })
+
+  it('reads bounding client rect from containerElement when provided', () => {
+    const mockElement = {
+      getBoundingClientRect: () => ({
+        left: 280,
+        top: 64,
+        width: 1366,
+        height: 768,
+        right: 1646,
+        bottom: 832,
+        x: 280,
+        y: 64,
+        toJSON: () => {},
+      }),
+    } as unknown as HTMLElement
+
+    const geo = getNodeMapContainerGeometry(mockElement)
+    expect(geo.width).toBe(1366)
+    expect(geo.height).toBe(768)
+    expect(geo.offsetLeft).toBe(280)
+    expect(geo.offsetTop).toBe(64)
+  })
+})
+
+describe('resolveNodeMapPositions', () => {
+  it('merges stored positions with auto layout positions', () => {
+    const items = [
+      { id: 'node-1', type: 'node' as const, entityId: 1, name: 'Node 1', data: {} as any },
+      { id: 'node-2', type: 'node' as const, entityId: 2, name: 'Node 2', data: {} as any },
+    ]
+    const resolved = resolveNodeMapPositions(items, { x: 100, y: 100 })
+    expect(resolved['node-1']).toBeDefined()
+    expect(resolved['node-2']).toBeDefined()
+    expect(resolved[HUB_NODE_ID]).toBeDefined()
+  })
   })
 })
 

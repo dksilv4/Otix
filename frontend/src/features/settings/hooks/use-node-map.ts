@@ -10,14 +10,12 @@ import {
   calculateFitViewport,
   calculateZoomAtPoint,
   calculateWheelZoomDelta,
-  loadStoredPositions,
+  getNodeMapContainerGeometry,
+  resolveNodeMapPositions,
   saveStoredPositions,
   getNodeCardWidth,
   getNodeCardHeight,
-  NODE_CARD_WIDTH,
-  NODE_CARD_HEIGHT,
   HUB_NODE_ID,
-  HUB_NODE_WIDTH,
 } from '../utils/node-map'
 
 interface UseNodeMapProps {
@@ -28,8 +26,24 @@ interface UseNodeMapProps {
 }
 
 export const useNodeMap = ({ items, anchor, onCardDropConnect }: UseNodeMapProps) => {
-  const [positions, setPositions] = useState<Record<string, NodeMapPosition>>({})
-  const [viewport, setViewport] = useState<NodeMapViewport>({ x: 0, y: 0, zoom: 1 })
+  const userInteractedRef = useRef(false)
+
+  const [positions, setPositions] = useState<Record<string, NodeMapPosition>>(() =>
+    resolveNodeMapPositions(items, anchor),
+  )
+  const [viewport, setViewport] = useState<NodeMapViewport>(() => {
+    const initialPositions = resolveNodeMapPositions(items, anchor)
+    const geo = getNodeMapContainerGeometry()
+    return calculateFitViewport(
+      items,
+      initialPositions,
+      geo.width,
+      geo.height,
+      80,
+      geo.offsetLeft,
+      geo.offsetTop,
+    )
+  })
   const [selectedItem, setSelectedItem] = useState<NodeMapItem | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [isPanning, setIsPanning] = useState(false)
@@ -45,36 +59,67 @@ export const useNodeMap = ({ items, anchor, onCardDropConnect }: UseNodeMapProps
     positionsRef.current = positions
   }, [positions])
 
-  // Initial layout calculation / restore
+  // Initial layout calculation / restore and auto-center
   useEffect(() => {
-    const stored = loadStoredPositions()
-    const auto = calculateAutoLayout(items, anchor)
-    const merged: Record<string, NodeMapPosition> = {}
-
-    for (const item of items) {
-      if (stored[item.id]) {
-        merged[item.id] = stored[item.id]
-      } else if (auto[item.id]) {
-        merged[item.id] = auto[item.id]
-      } else {
-        merged[item.id] = { x: anchor?.x ?? 340, y: anchor?.y ?? 240 }
-      }
-    }
-
-    if (stored[HUB_NODE_ID]) {
-      merged[HUB_NODE_ID] = stored[HUB_NODE_ID]
-    } else if (auto[HUB_NODE_ID]) {
-      merged[HUB_NODE_ID] = auto[HUB_NODE_ID]
-    } else {
-      const windowW = typeof window !== 'undefined' ? window.innerWidth : 1200
-      merged[HUB_NODE_ID] = {
-        x: Math.round((windowW - HUB_NODE_WIDTH) / 2),
-        y: anchor?.y ?? 100,
-      }
-    }
-
+    const merged = resolveNodeMapPositions(items, anchor)
     setPositions(merged)
+    positionsRef.current = merged
+
+    if (!userInteractedRef.current) {
+      const geo = getNodeMapContainerGeometry()
+      const nextVp = calculateFitViewport(
+        items,
+        merged,
+        geo.width,
+        geo.height,
+        80,
+        geo.offsetLeft,
+        geo.offsetTop,
+      )
+      setViewport(nextVp)
+    }
   }, [items, anchor])
+
+  // Auto-center on layout measurement or window resize if user has not manually interacted
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    const handleResize = () => {
+      if (!userInteractedRef.current) {
+        const geo = getNodeMapContainerGeometry()
+        const nextVp = calculateFitViewport(
+          items,
+          positionsRef.current,
+          geo.width,
+          geo.height,
+          80,
+          geo.offsetLeft,
+          geo.offsetTop,
+        )
+        setViewport(nextVp)
+      }
+    }
+
+    const timer = setTimeout(handleResize, 50)
+    window.addEventListener('resize', handleResize)
+
+    let resizeObserver: ResizeObserver | null = null
+    const target =
+      document.getElementById('settings-nodes-section') ||
+      document.getElementById('settings-content')
+    if (typeof ResizeObserver !== 'undefined' && target) {
+      resizeObserver = new ResizeObserver(() => {
+        handleResize()
+      })
+      resizeObserver.observe(target)
+    }
+
+    return () => {
+      clearTimeout(timer)
+      window.removeEventListener('resize', handleResize)
+      resizeObserver?.disconnect()
+    }
+  }, [items])
 
   const handleAutoLayout = useCallback(() => {
     try {
@@ -82,34 +127,84 @@ export const useNodeMap = ({ items, anchor, onCardDropConnect }: UseNodeMapProps
     } catch {
       // ignore
     }
+    userInteractedRef.current = false
     const layout = calculateAutoLayout(items, anchor)
     setPositions(layout)
-    setViewport({ x: 0, y: 0, zoom: 1 })
+    positionsRef.current = layout
+    const geo = getNodeMapContainerGeometry()
+    const nextVp = calculateFitViewport(
+      items,
+      layout,
+      geo.width,
+      geo.height,
+      80,
+      geo.offsetLeft,
+      geo.offsetTop,
+    )
+    setViewport(nextVp)
   }, [items, anchor])
 
   // Zoom helpers with zoom-at-center
   const zoomIn = useCallback((centerX?: number, centerY?: number) => {
+    userInteractedRef.current = true
     const cx = centerX ?? (typeof window !== 'undefined' ? window.innerWidth / 2 : 600)
     const cy = centerY ?? (typeof window !== 'undefined' ? window.innerHeight / 2 : 400)
     setViewport((prev) => calculateZoomAtPoint(prev, prev.zoom + 0.15, cx, cy))
   }, [])
 
   const zoomOut = useCallback((centerX?: number, centerY?: number) => {
+    userInteractedRef.current = true
     const cx = centerX ?? (typeof window !== 'undefined' ? window.innerWidth / 2 : 600)
     const cy = centerY ?? (typeof window !== 'undefined' ? window.innerHeight / 2 : 400)
     setViewport((prev) => calculateZoomAtPoint(prev, prev.zoom - 0.15, cx, cy))
   }, [])
 
   const resetView = useCallback(() => {
-    setViewport({ x: 0, y: 0, zoom: 1 })
-  }, [])
-
-  const fitView = useCallback((containerWidth?: number, containerHeight?: number) => {
-    const w = containerWidth ?? (typeof window !== 'undefined' ? window.innerWidth : 1200)
-    const h = containerHeight ?? (typeof window !== 'undefined' ? window.innerHeight : 800)
-    const nextVp = calculateFitViewport(items, positionsRef.current, w, h)
-    setViewport(nextVp)
+    userInteractedRef.current = false
+    const geo = getNodeMapContainerGeometry()
+    const centered = calculateFitViewport(
+      items,
+      positionsRef.current,
+      geo.width,
+      geo.height,
+      80,
+      geo.offsetLeft,
+      geo.offsetTop,
+      1.0,
+    )
+    setViewport({ ...centered, zoom: 1 })
   }, [items])
+
+  const fitView = useCallback(
+    (
+      containerWidth?: number,
+      containerHeight?: number,
+      padding = 80,
+      customOffsetLeft?: number,
+      customOffsetTop?: number,
+      maxZoom = 1.0,
+    ) => {
+      userInteractedRef.current = false
+      const geo = getNodeMapContainerGeometry()
+      const w = containerWidth ?? geo.width
+      const h = containerHeight ?? geo.height
+      const offX = customOffsetLeft ?? (containerWidth !== undefined ? 0 : geo.offsetLeft)
+      const offY = customOffsetTop ?? (containerHeight !== undefined ? 0 : geo.offsetTop)
+      const nextVp = calculateFitViewport(
+        items,
+        positionsRef.current,
+        w,
+        h,
+        padding,
+        offX,
+        offY,
+        maxZoom,
+      )
+      setViewport(nextVp)
+      return nextVp
+    },
+    [items],
+  )
 
   // Canvas Panning handlers
   const handleCanvasPointerDown = useCallback((e: React.PointerEvent) => {
@@ -131,12 +226,14 @@ export const useNodeMap = ({ items, anchor, onCardDropConnect }: UseNodeMapProps
 
   const handleCanvasPointerMove = useCallback((e: React.PointerEvent) => {
     if (isPanning) {
+      userInteractedRef.current = true
       setViewport((prev) => ({
         ...prev,
         x: e.clientX - panStart.x,
         y: e.clientY - panStart.y,
       }))
     } else if (activeDragRef.current) {
+      userInteractedRef.current = true
       const { id: itemId, offsetX, offsetY } = activeDragRef.current
       const currentPos = positionsRef.current[itemId] || { x: 0, y: 0 }
       const newX = Math.max(0, (e.clientX - viewport.x) / viewport.zoom - offsetX)
@@ -216,6 +313,7 @@ export const useNodeMap = ({ items, anchor, onCardDropConnect }: UseNodeMapProps
 
   // Node Dragging handlers
   const handleNodeDragStart = useCallback((e: React.PointerEvent, itemId: string) => {
+    userInteractedRef.current = true
     e.stopPropagation()
     const pos = positionsRef.current[itemId] || { x: 0, y: 0 }
     const canvasMouseX = (e.clientX - viewport.x) / viewport.zoom
@@ -274,6 +372,7 @@ export const useNodeMap = ({ items, anchor, onCardDropConnect }: UseNodeMapProps
 
   // Wheel zoom (zoom-at-cursor for discrete wheel & pinch, plus shift/horizontal pan)
   const handleWheel = useCallback((e: React.WheelEvent) => {
+    userInteractedRef.current = true
     e.preventDefault()
 
     // Handle horizontal scroll panning (trackpad swipe or Shift+wheel)

@@ -1513,7 +1513,15 @@ def node_save_organize(server: UserGameServer, payload: dict) -> tuple[int, dict
 def node_preview_organize(server: UserGameServer, payload: dict) -> tuple[int, dict | list]:
     if getattr(server, "is_local_desktop", False) or not server.primary_url or server.primary_url.startswith("otix://"):
         return 400, {"error": "Local desktop client node does not support server-side organization preview."}
-    return usenet_proxy_request(server, "POST", "/api/v1/organize/preview", json=payload, timeout=15.0)
+    status_code, data = usenet_proxy_request(server, "POST", "/api/v1/organize/preview", json=payload, timeout=15.0)
+    if status_code >= 400:
+        detail = ""
+        if isinstance(data, dict):
+            detail = data.get("error") or data.get("detail") or ""
+        if not detail:
+            detail = f"Otix node '{server.name}' returned status {status_code} while previewing organization rules."
+        return status_code, {"error": detail, "detail": detail}
+    return status_code, data
 
 
 def node_execute_organize(server: UserGameServer, payload: dict) -> tuple[int, dict | list]:

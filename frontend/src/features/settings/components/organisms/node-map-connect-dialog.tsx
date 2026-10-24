@@ -7,7 +7,7 @@ import type { NodeMapConnectPrompt } from '../../types/node-map'
 interface NodeMapConnectDialogProps {
   prompt: NodeMapConnectPrompt | null
   onClose: () => void
-  onConnect: (connectionType: 'home' | 'host' | 'smb') => Promise<void> | void
+  onConnect: (connectionType: 'home' | 'host' | 'smb' | 'game_server') => Promise<void> | void
   isPending?: boolean
 }
 
@@ -17,7 +17,7 @@ export const NodeMapConnectDialog = ({
   onConnect,
   isPending = false,
 }: NodeMapConnectDialogProps) => {
-  const [selectedType, setSelectedType] = useState<'home' | 'host' | 'smb'>(
+  const [selectedType, setSelectedType] = useState<'home' | 'host' | 'smb' | 'game_server'>(
     prompt?.allowedTypes[0] || 'host',
   )
 

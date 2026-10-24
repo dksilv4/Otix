@@ -64,6 +64,7 @@ export const EditWorkerNodeModal = ({
   const [selectedMachineId, setSelectedMachineId] = useState<string>('none')
   const [localUrl, setLocalUrl] = useState('')
   const [remoteUrl, setRemoteUrl] = useState('')
+  const [authToken, setAuthToken] = useState('')
   const [isProbing, setIsProbing] = useState(false)
   const [probeResult, setProbeResult] = useState<ServerProbeResult | null>(null)
   const [confirmDisconnect, setConfirmDisconnect] = useState(false)
@@ -83,6 +84,7 @@ export const EditWorkerNodeModal = ({
       setSelectedMachineId(hostedMachine ? String(hostedMachine.id) : 'none')
       setLocalUrl(activeServer.localUrl || '')
       setRemoteUrl(activeServer.remoteUrl || '')
+      setAuthToken(activeServer.authToken || '')
       setProbeResult(null)
     }
   }, [activeServer, serverMachines, open])
@@ -136,6 +138,7 @@ export const EditWorkerNodeModal = ({
         name: trimmedName,
         local_url: localUrl.trim() || undefined,
         remote_url: remoteUrl.trim() || undefined,
+        auth_token: authToken.trim() || undefined,
       })
 
       // 2. Update home assignment if changed (inheriting from parent machine if none explicitly selected)
@@ -350,6 +353,22 @@ export const EditWorkerNodeModal = ({
                 placeholder="https://node.mydomain.com"
                 className="font-mono text-xs"
               />
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-muted-foreground mb-1">
+                Access Token
+              </label>
+              <DkInput
+                type="password"
+                value={authToken}
+                onChange={(e) => setAuthToken(e.target.value)}
+                placeholder="Paste token from node's config.yaml"
+                className="font-mono text-xs"
+              />
+              <span className="text-[11px] text-muted-foreground mt-1 block">
+                Required for folder scanning, directory browsing, and library indexing.
+              </span>
             </div>
           </div>
 

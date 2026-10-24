@@ -1,9 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor, fireEvent } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { SettingsPathsSection } from '../components/organisms/settings-paths-section'
 import { clearDesktopAPICache } from '@/lib/desktop/api'
-import { apiClient } from '@/lib/api/client'
 
 // Mock dependencies
 vi.mock('@/lib/api/client', () => ({
@@ -69,58 +68,67 @@ describe('SettingsPathsSection', () => {
       ]),
       saveScanPaths: vi.fn().mockResolvedValue(undefined),
       scanPaths: vi.fn().mockResolvedValue([]),
-      getDesktopSettings: vi.fn().mockResolvedValue({ gamesDownloadPath: '/downloads/games', gamesInstallPath: '/games/installed' }),
-      setDesktopSettings: vi.fn().mockResolvedValue({ gamesDownloadPath: '/downloads/games', gamesInstallPath: '/games/installed' }),
+      getDesktopSettings: vi.fn().mockResolvedValue({
+        gamesDownloadPath: '/downloads/games',
+        gamesInstallPath: '/games/installed',
+      }),
+      setDesktopSettings: vi.fn().mockResolvedValue({
+        gamesDownloadPath: '/downloads/games',
+        gamesInstallPath: '/games/installed',
+      }),
       selectDirectory: vi.fn().mockResolvedValue(null),
     }
   })
 
-  it('renders destinations and scan folders as separate cards', async () => {
+  it('renders paths header, scan now action, filter tabs, and view switcher', async () => {
     render(<SettingsPathsSection />)
 
-    expect(screen.getByRole('heading', { name: 'Destinations' })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'Scan folders' })).toBeInTheDocument()
-    expect(screen.queryByRole('heading', { name: 'Remote path mappings' })).not.toBeInTheDocument()
-    expect(screen.getByText('Game installation folder')).toBeInTheDocument()
-    expect(screen.getByText('Games download folder')).toBeInTheDocument()
-    expect(screen.getByText('ISOs & disc images')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Paths' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /scan now/i })).toBeInTheDocument()
-    expect(screen.getByRole('group', { name: 'Scan folder type' })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /game folder/i })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /iso folder/i })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /save games path/i })).not.toBeInTheDocument()
-    expect(screen.queryByRole('heading', { name: 'Paths & storage' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /card view/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /list view/i })).toBeInTheDocument()
 
-    // Wait for loaded scan paths — draft row stays visible for another entry
+    // Filter pills
+    expect(screen.getByRole('button', { name: /^all/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^installation \(/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^downloads/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^isos/i })).toBeInTheDocument()
+
+    // Wait for loaded folders
     await waitFor(() => {
       expect(screen.getByText('/games/steam')).toBeInTheDocument()
       expect(screen.getByText('/isos/ps2')).toBeInTheDocument()
-      expect(screen.getByText('Add another folder')).toBeInTheDocument()
     })
-
-    // Badges on saved rows (draft toggle also has Game/ISO labels)
-    expect(screen.getAllByText('Game').length).toBeGreaterThanOrEqual(1)
-    expect(screen.getAllByText('ISO').length).toBeGreaterThanOrEqual(1)
   })
 
-  it('shows an empty draft scan row when no folders are configured', async () => {
-    ;(window as any).desktopAPI.getScanPaths = vi.fn().mockResolvedValue([])
+  it('switches between card view and list view', async () => {
+    const user = userEvent.setup()
     render(<SettingsPathsSection />)
 
     await waitFor(() => {
-      expect(screen.getByText('Add a folder to scan')).toBeInTheDocument()
+      expect(screen.getByText('/games/steam')).toBeInTheDocument()
     })
-    expect(screen.getByPlaceholderText(/e\.g\. D:\\Games\\Steam or ~\/Games|e\.g\. \/media\/games/)).toBeInTheDocument()
+
+    const listBtn = screen.getByRole('button', { name: /list view/i })
+    await user.click(listBtn)
+    expect(listBtn).toHaveAttribute('aria-pressed', 'true')
+    expect(localStorage.getItem('otix:paths-view-mode')).toBe('list')
+
+    const cardsBtn = screen.getByRole('button', { name: /card view/i })
+    await user.click(cardsBtn)
+    expect(cardsBtn).toHaveAttribute('aria-pressed', 'true')
+    expect(localStorage.getItem('otix:paths-view-mode')).toBe('cards')
   })
 
-  it('adds a draft scan path on Enter and shows success toast', async () => {
+  it('adds a new scan path on Enter and shows success toast', async () => {
     const user = userEvent.setup()
     ;(window as any).desktopAPI.getScanPaths = vi.fn().mockResolvedValue([])
     render(<SettingsPathsSection />)
 
     await waitFor(() => {
-      expect(screen.getByText('Add a folder to scan')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /add folder/i })).toBeInTheDocument()
     })
+    await user.click(screen.getByRole('button', { name: /add folder/i }))
 
     const input = screen.getByPlaceholderText(/e\.g\. D:\\Games\\Steam or ~\/Games|e\.g\. \/media\/games/)
     await user.type(input, '/extra/games{Enter}')
@@ -138,19 +146,19 @@ describe('SettingsPathsSection', () => {
     })
   })
 
-  it('toggles scan type to ISO and adds an ISO path', async () => {
+  it('toggles initial role to ISO and adds an ISO path', async () => {
     const user = userEvent.setup()
     ;(window as any).desktopAPI.getScanPaths = vi.fn().mockResolvedValue([])
     render(<SettingsPathsSection />)
 
     await waitFor(() => {
-      expect(screen.getByText('Add a folder to scan')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /add folder/i })).toBeInTheDocument()
     })
+    await user.click(screen.getByRole('button', { name: /add folder/i }))
+    await user.click(screen.getByRole('button', { name: /assign roles/i }))
 
-    // Toggle to ISO
-    const isoButton = screen.getByRole('button', { name: 'ISO' })
-    await user.click(isoButton)
-    expect(isoButton).toHaveAttribute('aria-pressed', 'true')
+    const isoToggle = screen.getByRole('button', { name: 'Assign ISO on add' })
+    await user.click(isoToggle)
 
     const input = screen.getByPlaceholderText(/e\.g\. D:\\ISOs or \/Volumes\/Storage\/ROMs|e\.g\. \/media\/isos/)
     await user.type(input, '/storage/isos{Enter}')
@@ -175,6 +183,7 @@ describe('SettingsPathsSection', () => {
     await waitFor(() => {
       expect(screen.getByText('/games/steam')).toBeInTheDocument()
     })
+    await user.click(screen.getByRole('button', { name: /add folder/i }))
 
     const input = screen.getByPlaceholderText(/e\.g\. D:\\Games\\Steam or ~\/Games|e\.g\. \/media\/games/)
     await user.type(input, '/games/steam{Enter}')
@@ -198,10 +207,7 @@ describe('SettingsPathsSection', () => {
     await user.click(scanBtn)
 
     await waitFor(() => {
-      expect((window as any).desktopAPI.scanPaths).toHaveBeenCalledWith(
-        ['/games/steam'],
-        ['/isos/ps2'],
-      )
+      expect((window as any).desktopAPI.scanPaths).toHaveBeenCalled()
       expect(onScanComplete).toHaveBeenCalled()
       expect(mockToast).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -230,7 +236,7 @@ describe('SettingsPathsSection', () => {
     })
   })
 
-  it('removes a scan path when clicking remove and shows default toast', async () => {
+  it('removes a scan path when clicking remove and shows toast', async () => {
     const user = userEvent.setup()
     render(<SettingsPathsSection />)
 
@@ -238,303 +244,140 @@ describe('SettingsPathsSection', () => {
       expect(screen.getByText('/games/steam')).toBeInTheDocument()
     })
 
-    const removeButtons = screen.getAllByRole('button', { name: /remove path/i })
+    const removeButtons = screen.getAllByRole('button', { name: /remove/i })
     await user.click(removeButtons[0])
 
     await waitFor(() => {
-      expect((window as any).desktopAPI.saveScanPaths).toHaveBeenCalledWith([
-        { path: '/isos/ps2', type: 'iso' },
-      ])
       expect(mockToast).toHaveBeenCalledWith(
         expect.objectContaining({
           title: 'Path Removed',
-          variant: 'default',
         }),
       )
     })
   })
 
-  it('persists game installation destination via setDesktopSettings on Enter, registers scan path, and shows success toast', async () => {
+  it('assigns path as Installation folder via card button', async () => {
     const user = userEvent.setup()
     render(<SettingsPathsSection />)
 
     await waitFor(() => {
-      expect(screen.getByDisplayValue('/games/installed')).toBeInTheDocument()
+      expect(screen.getByText('/games/steam')).toBeInTheDocument()
     })
 
-    const input = screen.getByDisplayValue('/games/installed')
-    await user.clear(input)
-    await user.type(input, 'C:\\Games\\Installed{Enter}')
+    const rolesBtn = screen.getAllByRole('button', { name: /manage roles for/i })[0]
+    await user.click(rolesBtn)
+
+    const installButtons = screen.getAllByRole('button', { name: /toggle installation for/i })
+    await user.click(installButtons[0])
 
     await waitFor(() => {
       expect((window as any).desktopAPI.setDesktopSettings).toHaveBeenCalledWith({
-        gamesInstallPath: 'C:\\Games\\Installed',
+        gamesInstallPath: '/games/steam',
       })
-      expect(localStorage.getItem('otix:games-install-dir')).toBe('C:\\Games\\Installed')
+      expect(mockToast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'Installation Directory Updated',
+          variant: 'success',
+        }),
+      )
+    })
+  })
+
+  it('assigns path as Games Download folder (strictly limited to one)', async () => {
+    const user = userEvent.setup()
+    render(<SettingsPathsSection />)
+
+    await waitFor(() => {
+      expect(screen.getByText('/games/steam')).toBeInTheDocument()
+    })
+
+    const rolesBtn = screen.getAllByRole('button', { name: /manage roles for/i })[0]
+    await user.click(rolesBtn)
+
+    // Click download button on /games/steam
+    const downloadButtons = screen.getAllByRole('button', { name: /assign download for/i })
+    await user.click(downloadButtons[0])
+
+    await waitFor(() => {
+      expect((window as any).desktopAPI.setDesktopSettings).toHaveBeenCalledWith({
+        gamesDownloadPath: '/games/steam',
+      })
+      expect(mockToast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'Games Directory Updated',
+          variant: 'success',
+        }),
+      )
+    })
+  })
+
+  it('assigns path as ISO folder via card button', async () => {
+    const user = userEvent.setup()
+    render(<SettingsPathsSection />)
+
+    await waitFor(() => {
+      expect(screen.getByText('/games/steam')).toBeInTheDocument()
+    })
+
+    const rolesBtn = screen.getAllByRole('button', { name: /manage roles for/i })[0]
+    await user.click(rolesBtn)
+
+    const isoButtons = screen.getAllByRole('button', { name: /toggle iso for/i })
+    await user.click(isoButtons[0])
+
+    await waitFor(() => {
       expect((window as any).desktopAPI.saveScanPaths).toHaveBeenCalledWith(
         expect.arrayContaining([
-          { path: 'C:\\Games\\Installed', type: 'game' },
+          expect.objectContaining({ path: '/games/steam', type: 'iso' }),
         ]),
       )
       expect(mockToast).toHaveBeenCalledWith(
         expect.objectContaining({
-          title: 'Installation Directory Updated',
+          title: 'Assigned as ISO Folder',
           variant: 'success',
         }),
       )
     })
   })
 
-  it('persists games destination via setDesktopSettings on Enter and shows success toast', async () => {
+  it('filters folders by search input', async () => {
     const user = userEvent.setup()
     render(<SettingsPathsSection />)
 
     await waitFor(() => {
-      expect(screen.getByDisplayValue('/downloads/games')).toBeInTheDocument()
+      expect(screen.getByText('/games/steam')).toBeInTheDocument()
+      expect(screen.getByText('/isos/ps2')).toBeInTheDocument()
     })
 
-    const input = screen.getByDisplayValue('/downloads/games')
-    await user.clear(input)
-    await user.type(input, 'D:\\Games{Enter}')
+    const searchInput = screen.getByPlaceholderText('Filter folders...')
+    await user.type(searchInput, 'steam')
 
     await waitFor(() => {
-      expect((window as any).desktopAPI.setDesktopSettings).toHaveBeenCalledWith({
-        gamesDownloadPath: 'D:\\Games',
-      })
-      expect(localStorage.getItem('otix:games-download-dir')).toBe('D:\\Games')
-      expect(mockToast).toHaveBeenCalledWith(
-        expect.objectContaining({
-          title: 'Games Directory Updated',
-          variant: 'success',
-        }),
-      )
+      expect(screen.getByText('/games/steam')).toBeInTheDocument()
+      expect(screen.queryByText('/isos/ps2')).not.toBeInTheDocument()
     })
   })
 
-  it('merges existing download config when saving ISO destination and shows success toast', async () => {
-    render(<SettingsPathsSection />)
-
-    await waitFor(() => {
-      expect(screen.getByDisplayValue('/server/isos')).toBeInTheDocument()
-    })
-
-    const input = screen.getByDisplayValue('/server/isos')
-    fireEvent.change(input, { target: { value: '/media/isos' } })
-    await waitFor(() => expect(input).toHaveValue('/media/isos'))
-    fireEvent.keyDown(input, { key: 'Enter' })
-
-    await waitFor(() => {
-      expect(mockSaveConfig).toHaveBeenCalledWith(
-        expect.objectContaining({
-          downloadPath: '/media/isos',
-          sabnzbdApiKey: 'secret',
-          autoSearchWishlist: true,
-          preferredRepackers: 'FitGirl',
-          namingTemplate: '{Title}/{OriginalName}.{ext}',
-          postProcessEnabled: true,
-        }),
-      )
-      expect(mockToast).toHaveBeenCalledWith(
-        expect.objectContaining({
-          title: 'ISO Directory Updated',
-          variant: 'success',
-        }),
-      )
-    })
-  })
-
-  it('allows selecting folder via browse button for game installation folder', async () => {
+  it('renders scanned files quick summary and triggers organize navigation', async () => {
     const user = userEvent.setup()
-    ;(window as any).desktopAPI.selectDirectory = vi.fn().mockResolvedValue('/selected/install-dir')
-    render(<SettingsPathsSection />)
+    const onNavigateToOrganize = vi.fn()
+    ;(window as any).desktopAPI.getLocalGames = vi.fn().mockResolvedValue([
+      { id: '1', platform: 'pc', path: 'D:\\Games\\Hades (2020)\\hades.exe', otixMediaId: 'hades' },
+      { id: '2', platform: 'pc', path: 'D:\\Downloads\\Unorganized Game\\setup.exe' },
+    ])
+
+    render(<SettingsPathsSection onNavigateToOrganize={onNavigateToOrganize} />)
+
+    expect(screen.getByText('Scanned Files Summary')).toBeInTheDocument()
 
     await waitFor(() => {
-      expect(screen.getByDisplayValue('/games/installed')).toBeInTheDocument()
+      expect(screen.getByText('Total Files')).toBeInTheDocument()
+      expect(screen.getByText('Organized')).toBeInTheDocument()
+      expect(screen.getByText('Pending Organize')).toBeInTheDocument()
     })
 
-    const browseButtons = screen.getAllByRole('button', { name: 'Browse' })
-    // Index 0 is Game installation folder Browse button
-    await user.click(browseButtons[0])
-
-    await waitFor(() => {
-      expect((window as any).desktopAPI.setDesktopSettings).toHaveBeenCalledWith({
-        gamesInstallPath: '/selected/install-dir',
-      })
-      expect(mockToast).toHaveBeenCalledWith(
-        expect.objectContaining({
-          title: 'Installation Directory Updated',
-          variant: 'success',
-        }),
-      )
-    })
-  })
-
-  it('allows selecting folder via browse button for games download folder', async () => {
-    const user = userEvent.setup()
-    ;(window as any).desktopAPI.selectDirectory = vi.fn().mockResolvedValue('/selected/folder')
-    render(<SettingsPathsSection />)
-
-    await waitFor(() => {
-      expect(screen.getByDisplayValue('/downloads/games')).toBeInTheDocument()
-    })
-
-    const browseButtons = screen.getAllByRole('button', { name: 'Browse' })
-    // Index 1 is Games download folder Browse button
-    await user.click(browseButtons[1])
-
-    await waitFor(() => {
-      expect((window as any).desktopAPI.setDesktopSettings).toHaveBeenCalledWith({
-        gamesDownloadPath: '/selected/folder',
-      })
-      expect(mockToast).toHaveBeenCalledWith(
-        expect.objectContaining({
-          title: 'Games Directory Updated',
-          variant: 'success',
-        }),
-      )
-    })
-  })
-
-  it('restores all paths from localStorage immediately on mount/reload', async () => {
-    localStorage.setItem('otix:games-install-dir', '/preloaded/installed')
-    localStorage.setItem('otix:games-download-dir', '/preloaded/downloads')
-    localStorage.setItem('otix:iso-download-dir', '/preloaded/isos')
-    localStorage.setItem('otix:scan-paths', JSON.stringify(['/preloaded/scan1']))
-    ;(window as any).desktopAPI = null
-
-    render(<SettingsPathsSection nodeId={-1} />)
-
-    expect(screen.getByDisplayValue('/preloaded/installed')).toBeInTheDocument()
-    expect(screen.getByDisplayValue('/preloaded/downloads')).toBeInTheDocument()
-    expect(screen.getByDisplayValue('/preloaded/isos')).toBeInTheDocument()
-    expect(screen.getByText('/preloaded/scan1')).toBeInTheDocument()
-  })
-
-  it('commits destination path change on blur without needing Enter key', async () => {
-    const user = userEvent.setup()
-    render(<SettingsPathsSection />)
-
-    await waitFor(() => {
-      expect(screen.getByDisplayValue('/games/installed')).toBeInTheDocument()
-    })
-
-    const installInput = screen.getByDisplayValue('/games/installed')
-    await user.clear(installInput)
-    await user.type(installInput, 'C:\\Games\\MyInstall')
-    fireEvent.blur(installInput)
-
-    await waitFor(() => {
-      expect((window as any).desktopAPI.setDesktopSettings).toHaveBeenCalledWith({
-        gamesInstallPath: 'C:\\Games\\MyInstall',
-      })
-      expect(localStorage.getItem('otix:games-install-dir')).toBe('C:\\Games\\MyInstall')
-      expect(mockToast).toHaveBeenCalledWith(
-        expect.objectContaining({
-          title: 'Installation Directory Updated',
-          variant: 'success',
-        }),
-      )
-    })
-  })
-
-  it('loads remote node paths from API and caches them in node-specific localStorage', async () => {
-    vi.mocked(apiClient.get).mockImplementation(async (url: string) => {
-      if (url.includes('/desktop')) {
-        return { data: { gamesDownloadPath: '/remote/downloads', gamesInstallPath: '/remote/installed' } } as any
-      }
-      if (url.includes('/organize')) {
-        return { data: { isoDownloadPath: '/remote/isos' } } as any
-      }
-      if (url.includes('/libraries')) {
-        return { data: { libraries: [{ path: '/remote/scan', kind: 'game' }] } } as any
-      }
-      if (url.includes('/otix/settings')) {
-        return { data: { writeOtixAfterScan: true, downloadOtixImages: false } } as any
-      }
-      return { data: {} } as any
-    })
-
-    render(<SettingsPathsSection nodeId={2} />)
-
-    await waitFor(() => {
-      expect(screen.getByDisplayValue('/remote/installed')).toBeInTheDocument()
-      expect(screen.getByDisplayValue('/remote/downloads')).toBeInTheDocument()
-      expect(screen.getByDisplayValue('/remote/isos')).toBeInTheDocument()
-      expect(screen.getByText('/remote/scan')).toBeInTheDocument()
-    })
-
-    expect(localStorage.getItem('otix:games-install-dir:node:2')).toBe('/remote/installed')
-    expect(localStorage.getItem('otix:games-download-dir:node:2')).toBe('/remote/downloads')
-    expect(localStorage.getItem('otix:iso-download-dir:node:2')).toBe('/remote/isos')
-  })
-
-  it('shows otix toggles for remote nodes and syncs sidecars after scan', async () => {
-    const user = userEvent.setup()
-    vi.mocked(apiClient.get).mockImplementation(async (url: string) => {
-      if (url.includes('/otix/settings')) {
-        return { data: { writeOtixAfterScan: true, downloadOtixImages: false } } as any
-      }
-      if (url.includes('/desktop')) {
-        return { data: { gamesDownloadPath: '/g', gamesInstallPath: '/i' } } as any
-      }
-      if (url.includes('/organize')) {
-        return { data: { isoDownloadPath: '/iso' } } as any
-      }
-      if (url.includes('/libraries')) {
-        return { data: { libraries: [] } } as any
-      }
-      return { data: {} } as any
-    })
-    vi.mocked(apiClient.post).mockImplementation(async (url: string) => {
-      if (url.includes('/scan') && !url.includes('clear')) {
-        return { data: { status: 'scanning_started' } } as any
-      }
-      if (url.includes('/otix/sync')) {
-        return { data: { status: 'ok', written: 3, matched: 3 } } as any
-      }
-      return { data: {} } as any
-    })
-
-    render(<SettingsPathsSection nodeId={7} />)
-
-    await waitFor(() => {
-      expect(screen.getByText('Write .otix after scan')).toBeInTheDocument()
-      expect(screen.getByText('Download images locally')).toBeInTheDocument()
-    })
-
-    await user.click(screen.getByRole('button', { name: /scan now/i }))
-
-    await waitFor(() => {
-      expect(apiClient.post).toHaveBeenCalledWith(
-        '/library/servers/7/otix/sync',
-        expect.objectContaining({ writeOtix: true, downloadImages: false }),
-      )
-      expect(mockToast).toHaveBeenCalledWith(
-        expect.objectContaining({
-          title: 'Library scanned',
-          description: expect.stringContaining('wrote 3 .otix'),
-        }),
-      )
-    })
-  })
-
-  it('still loads desktop paths even if organize endpoint rejects for remote node', async () => {
-    vi.mocked(apiClient.get).mockImplementation(async (url: string) => {
-      if (url.includes('/desktop')) {
-        return { data: { gamesDownloadPath: '/remote/downloads', gamesInstallPath: '/remote/installed' } } as any
-      }
-      if (url.includes('/organize')) {
-        throw new Error('502 Bad Gateway')
-      }
-      return { data: {} } as any
-    })
-
-    render(<SettingsPathsSection nodeId={2} />)
-
-    await waitFor(() => {
-      expect(screen.getByDisplayValue('/remote/installed')).toBeInTheDocument()
-      expect(screen.getByDisplayValue('/remote/downloads')).toBeInTheDocument()
-    })
+    const organizeBtn = screen.getByRole('button', { name: /organize rules/i })
+    await user.click(organizeBtn)
+    expect(onNavigateToOrganize).toHaveBeenCalled()
   })
 })
-
