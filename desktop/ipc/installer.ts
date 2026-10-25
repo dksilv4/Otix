@@ -62,8 +62,8 @@ export function registerInstallerIPC(): void {
   });
 
   // Execute ISO Folder Reorganization — also updates scanned game paths in DB
-  ipcMain.handle('installer:execute-organization', async (event, items: { sourcePath: string; targetPath: string }[]) => {
-    const results = await executeOrganization(items);
+  ipcMain.handle('installer:execute-organization', async (event, items: any[], deleteEmptyFolders?: boolean) => {
+    const results = await executeOrganization(items, deleteEmptyFolders ?? true);
     let updated = false;
     for (const r of results) {
       if (r.success) {

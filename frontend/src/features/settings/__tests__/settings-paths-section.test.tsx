@@ -1,3 +1,4 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -56,6 +57,15 @@ vi.mock('@/features/downloads/use-downloads', () => ({
   }),
 }))
 
+
+const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+const renderSection = (props?: React.ComponentProps<typeof SettingsPathsSection>) =>
+  render(
+    <QueryClientProvider client={queryClient}>
+      <SettingsPathsSection {...props} />
+    </QueryClientProvider>,
+  )
+
 describe('SettingsPathsSection', () => {
   beforeEach(() => {
     clearDesktopAPICache()
@@ -81,7 +91,7 @@ describe('SettingsPathsSection', () => {
   })
 
   it('renders paths header, scan now action, filter tabs, and view switcher', async () => {
-    render(<SettingsPathsSection />)
+    renderSection()
 
     expect(screen.getByRole('heading', { name: 'Paths' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /scan now/i })).toBeInTheDocument()
@@ -103,7 +113,7 @@ describe('SettingsPathsSection', () => {
 
   it('switches between card view and list view', async () => {
     const user = userEvent.setup()
-    render(<SettingsPathsSection />)
+    renderSection()
 
     await waitFor(() => {
       expect(screen.getByText('/games/steam')).toBeInTheDocument()
@@ -123,7 +133,7 @@ describe('SettingsPathsSection', () => {
   it('adds a new scan path on Enter and shows success toast', async () => {
     const user = userEvent.setup()
     ;(window as any).desktopAPI.getScanPaths = vi.fn().mockResolvedValue([])
-    render(<SettingsPathsSection />)
+    renderSection()
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /add folder/i })).toBeInTheDocument()
@@ -149,7 +159,7 @@ describe('SettingsPathsSection', () => {
   it('toggles initial role to ISO and adds an ISO path', async () => {
     const user = userEvent.setup()
     ;(window as any).desktopAPI.getScanPaths = vi.fn().mockResolvedValue([])
-    render(<SettingsPathsSection />)
+    renderSection()
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /add folder/i })).toBeInTheDocument()
@@ -178,7 +188,7 @@ describe('SettingsPathsSection', () => {
 
   it('shows a warning toast when adding an already monitored path', async () => {
     const user = userEvent.setup()
-    render(<SettingsPathsSection />)
+    renderSection()
 
     await waitFor(() => {
       expect(screen.getByText('/games/steam')).toBeInTheDocument()
@@ -201,7 +211,7 @@ describe('SettingsPathsSection', () => {
   it('triggers library scan on Scan Now click and shows success toast', async () => {
     const user = userEvent.setup()
     const onScanComplete = vi.fn()
-    render(<SettingsPathsSection onScanComplete={onScanComplete} />)
+    renderSection({ onScanComplete })
 
     const scanBtn = screen.getByRole('button', { name: /scan now/i })
     await user.click(scanBtn)
@@ -221,7 +231,7 @@ describe('SettingsPathsSection', () => {
   it('handles scan failure and shows error toast', async () => {
     const user = userEvent.setup()
     ;(window as any).desktopAPI.scanPaths = vi.fn().mockRejectedValue(new Error('Scan crashed'))
-    render(<SettingsPathsSection />)
+    renderSection()
 
     const scanBtn = screen.getByRole('button', { name: /scan now/i })
     await user.click(scanBtn)
@@ -238,7 +248,7 @@ describe('SettingsPathsSection', () => {
 
   it('removes a scan path when clicking remove and shows toast', async () => {
     const user = userEvent.setup()
-    render(<SettingsPathsSection />)
+    renderSection()
 
     await waitFor(() => {
       expect(screen.getByText('/games/steam')).toBeInTheDocument()
@@ -258,7 +268,7 @@ describe('SettingsPathsSection', () => {
 
   it('assigns path as Installation folder via card button', async () => {
     const user = userEvent.setup()
-    render(<SettingsPathsSection />)
+    renderSection()
 
     await waitFor(() => {
       expect(screen.getByText('/games/steam')).toBeInTheDocument()
@@ -285,7 +295,7 @@ describe('SettingsPathsSection', () => {
 
   it('assigns path as Games Download folder (strictly limited to one)', async () => {
     const user = userEvent.setup()
-    render(<SettingsPathsSection />)
+    renderSection()
 
     await waitFor(() => {
       expect(screen.getByText('/games/steam')).toBeInTheDocument()
@@ -313,7 +323,7 @@ describe('SettingsPathsSection', () => {
 
   it('assigns path as ISO folder via card button', async () => {
     const user = userEvent.setup()
-    render(<SettingsPathsSection />)
+    renderSection()
 
     await waitFor(() => {
       expect(screen.getByText('/games/steam')).toBeInTheDocument()
@@ -342,7 +352,7 @@ describe('SettingsPathsSection', () => {
 
   it('filters folders by search input', async () => {
     const user = userEvent.setup()
-    render(<SettingsPathsSection />)
+    renderSection()
 
     await waitFor(() => {
       expect(screen.getByText('/games/steam')).toBeInTheDocument()
@@ -366,7 +376,7 @@ describe('SettingsPathsSection', () => {
       { id: '2', platform: 'pc', path: 'D:\\Downloads\\Unorganized Game\\setup.exe' },
     ])
 
-    render(<SettingsPathsSection onNavigateToOrganize={onNavigateToOrganize} />)
+    renderSection({ onNavigateToOrganize })
 
     expect(screen.getByText('Scanned Files Summary')).toBeInTheDocument()
 

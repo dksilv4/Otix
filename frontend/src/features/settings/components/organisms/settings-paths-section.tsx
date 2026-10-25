@@ -17,12 +17,14 @@ import { useSettingsNode } from '../../context/settings-node-context'
 import { isLocalDesktopNodeId } from '../../local-desktop-node'
 import { SettingsCard } from '../molecules/settings-card'
 import { SettingsRow } from '../molecules/settings-row'
+import { useQueryClient } from '@tanstack/react-query'
 import { SectionHeader } from '../molecules/settings-section-header'
 import { PathFolderCard } from '../molecules/path-folder-card'
 import { PathFolderRow } from '../molecules/path-folder-row'
 import { useScanProgress } from '../../hooks/use-scan-progress'
 import { AddPathFolderCard } from '../molecules/add-path-folder-card'
 import { ScannedFilesSummary } from '../molecules/scanned-files-summary'
+import { ViewScannedGamesModal } from './view-scanned-games-modal'
 import {
   type ScannedFilesSummaryData,
   fetchDesktopScannedSummary,
@@ -40,6 +42,7 @@ import {
   filterFolderItems,
   loadStoredPathsViewMode,
   saveStoredPathsViewMode,
+  getSuggestedDefaultPaths,
 } from '../../utils/paths'
 import { cn } from '@/lib/utils'
 
@@ -158,6 +161,10 @@ export const SettingsPathsSection = ({
   const [downloadOtixImages, setDownloadOtixImages] = useState(false)
 
   // Scanned files quick summary state
+  const queryClient = useQueryClient()
+  const [viewGamesModalOpen, setViewGamesModalOpen] = useState(false)
+  const suggestedPaths = useMemo(() => getSuggestedDefaultPaths(scanPaths), [scanPaths])
+
   const [summary, setSummary] = useState<ScannedFilesSummaryData | null>(() => {
     return loadStoredScannedSummary(remoteNodeId)
   })
@@ -923,11 +930,16 @@ export const SettingsPathsSection = ({
     scanProgress.startScan(remoteNodeId ? 'Connecting to node...' : 'Scanning library paths...')
     try {
       if (remoteNodeId) {
+        scanProgress.reportProgress(25, 'Scanning library paths on node...', 'scanning')
+        const scanRes = await apiClient.post<{ count?: number; status?: string }>(
+          `/library/servers/${remoteNodeId}/scan?wait=true`,
+        )
+        const scannedCount = scanRes?.data?.count ?? 0
+
         if (writeOtixAfterScan) {
           setIsSyncingOtix(true)
-          scanProgress.reportProgress(25, 'Connecting to node...', 'scanning')
+          scanProgress.reportProgress(65, 'Writing .otix metadata sidecars...', 'matching')
           try {
-            scanProgress.reportProgress(50, 'Scanning library paths on node...', 'scanning')
             const { data } = await apiClient.post<{
               written?: number
               matched?: number
@@ -940,38 +952,37 @@ export const SettingsPathsSection = ({
             scanProgress.reportProgress(85, 'Writing .otix metadata sidecars...', 'matching')
             const written = data?.written ?? 0
             const matched = data?.matched ?? written
-            scanProgress.finishScan(`Matched ${matched} game${matched === 1 ? '' : 's'}, wrote ${written} .otix sidecar${written === 1 ? '' : 's'}.`)
+            scanProgress.finishScan(
+              `Found ${scannedCount} files. Matched ${matched} game${matched === 1 ? '' : 's'}, wrote ${written} .otix sidecar${written === 1 ? '' : 's'}.`,
+            )
             toast({
               title: 'Library scanned',
               description:
                 data?.status === 'skipped'
-                  ? 'Scan finished. Sidecar write is disabled on this node.'
-                  : `Matched ${matched} game${matched === 1 ? '' : 's'}, wrote ${written} .otix sidecar${written === 1 ? '' : 's'}.`,
+                  ? `Scan finished. Found ${scannedCount} files. Sidecar write is disabled on this node.`
+                  : `Indexed ${scannedCount} file${scannedCount === 1 ? '' : 's'}. Matched ${matched} game${matched === 1 ? '' : 's'}, wrote ${written} .otix sidecar${written === 1 ? '' : 's'}.`,
               variant: 'success',
             })
           } catch (syncErr: any) {
             console.error('Otix sync failed:', syncErr)
-            scanProgress.errorScan(
-              syncErr?.response?.data?.detail || syncErr?.message || 'Metadata sync failed'
+            scanProgress.finishScan(
+              `Found ${scannedCount} file${scannedCount === 1 ? '' : 's'} on node.`,
             )
             toast({
-              title: 'Scan / metadata sync failed',
-              description:
-                syncErr?.response?.data?.detail ||
-                syncErr?.message ||
-                'Could not scan and write .otix sidecars.',
-              variant: 'error',
+              title: 'Scan Complete',
+              description: `Indexed ${scannedCount} file${scannedCount === 1 ? '' : 's'} on node. Sidecar sync encountered an issue.`,
+              variant: 'warning',
             })
           } finally {
             setIsSyncingOtix(false)
           }
         } else {
-          scanProgress.reportProgress(40, 'Scanning node directories...', 'scanning')
-          await apiClient.post(`/library/servers/${remoteNodeId}/scan`)
-          scanProgress.finishScan('Node directory scan complete')
+          scanProgress.finishScan(
+            `Found ${scannedCount} file${scannedCount === 1 ? '' : 's'} on node.`,
+          )
           toast({
             title: 'Library Scanned',
-            description: 'Completed scanning configured library and download paths.',
+            description: `Successfully indexed ${scannedCount} file${scannedCount === 1 ? '' : 's'} on node.`,
             variant: 'success',
           })
         }
@@ -990,14 +1001,18 @@ export const SettingsPathsSection = ({
           variant: 'success',
         })
       }
+      queryClient.invalidateQueries({ queryKey: ['local-games'] })
+      queryClient.invalidateQueries({ queryKey: ['server-games'] })
+      queryClient.invalidateQueries({ queryKey: ['node-games'] })
+      window.dispatchEvent(new Event('scanned-games-updated'))
       onScanComplete?.()
-      void loadSummary()
+      await loadSummary()
     } catch (err: any) {
       console.error('Library scan failed:', err)
       scanProgress.errorScan('Library scan failed')
       toast({
         title: 'Scan Failed',
-        description: 'Failed to scan paths.',
+        description: err?.response?.data?.detail || err?.message || 'Failed to scan paths.',
         variant: 'error',
       })
     } finally {
@@ -1071,6 +1086,7 @@ export const SettingsPathsSection = ({
         scanPhase={scanProgress.phase}
         onOrganizeClick={handleNavigateToOrganize}
         onRescanClick={handleTriggerScan}
+        onViewGamesClick={() => setViewGamesModalOpen(true)}
       />
 
       {/* Remote Otix Node Sidecar Options */}
@@ -1284,6 +1300,8 @@ export const SettingsPathsSection = ({
                 setDraftRoles((prev) => ({ ...prev, [role]: !prev[role] }))
               }
               onSubmit={handleAddFolder}
+              suggestions={suggestedPaths}
+              onSelectSuggestion={(p) => handleAddFolder(p)}
               folderTarget={folderTarget}
               remoteNodeId={remoteNodeId}
               desktop={desktop}
@@ -1326,6 +1344,8 @@ export const SettingsPathsSection = ({
                 setDraftRoles((prev) => ({ ...prev, [role]: !prev[role] }))
               }
               onSubmit={handleAddFolder}
+              suggestions={suggestedPaths}
+              onSelectSuggestion={(p) => handleAddFolder(p)}
               folderTarget={folderTarget}
               remoteNodeId={remoteNodeId}
               desktop={desktop}
@@ -1353,6 +1373,15 @@ export const SettingsPathsSection = ({
             )}
           </div>
         )}
+
+      {viewGamesModalOpen && (
+        <ViewScannedGamesModal
+          open={viewGamesModalOpen}
+          onOpenChange={setViewGamesModalOpen}
+          nodeId={remoteNodeId}
+          nodeName={selectedNode?.name || 'Local Desktop'}
+        />
+      )}
     </div>
   )
 }

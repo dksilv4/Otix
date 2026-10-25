@@ -2,6 +2,7 @@ package explorer
 
 import (
 	"os"
+	"strings"
 	"path/filepath"
 	"runtime"
 	"testing"
@@ -170,5 +171,82 @@ func TestRequestFolderPermission(t *testing.T) {
 		if err != nil || res.Granted {
 			t.Errorf("expected non-granted permission for non-existent folder, got %+v, err=%v", res, err)
 		}
+	}
+}
+
+
+func TestSanitizeNetworkSharePath(t *testing.T) {
+	// Test SMB URL parsing
+	res, err := SanitizeAndResolvePath("smb://192.168.1.100/games", "")
+	if err != nil {
+		t.Fatalf("expected smb:// to resolve, got error: %v", err)
+	}
+	if runtime.GOOS == "windows" {
+		expected := `\\192.168.1.100\games`
+		if res != expected {
+			t.Errorf("expected %q, got %q", expected, res)
+		}
+	} else {
+		if !strings.Contains(res, "192.168.1.100") && !strings.Contains(res, "games") {
+			t.Errorf("expected path containing host/share, got %q", res)
+		}
+	}
+
+	// Test UNC path resolution
+	uncRes, err := SanitizeAndResolvePath(`\\nas.local\games\sub`, "")
+	if err != nil {
+		t.Fatalf("expected UNC path to resolve, got error: %v", err)
+	}
+	if runtime.GOOS == "windows" {
+		expected := `\\nas.local\games\sub`
+		if uncRes != expected {
+			t.Errorf("expected %q, got %q", expected, uncRes)
+		}
+	}
+}
+
+func TestConnectShareValidation(t *testing.T) {
+	// Empty URL should return error
+	_, err := ConnectShare(ConnectShareRequest{})
+	if err == nil {
+		t.Errorf("expected error when URL is empty")
+	}
+
+	// Existing directory as share
+	tmpDir := t.TempDir()
+	res, err := ConnectShare(ConnectShareRequest{URL: tmpDir})
+	if err != nil {
+		t.Fatalf("ConnectShare with local tmpDir failed: %v", err)
+	}
+	if res.Status != "connected" {
+		t.Errorf("expected status 'connected', got %q", res.Status)
+	}
+
+	// Verify it was added to connected network shares and appears in GetConnectedNetworkShares
+	shares := GetConnectedNetworkShares()
+	found := false
+	for _, s := range shares {
+		if s.Path == res.Path {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Errorf("expected connected share %q in GetConnectedNetworkShares", res.Path)
+	}
+
+	drives := GetSystemDrives()
+	foundInDrives := false
+	for _, d := range drives {
+		if d.Path == res.Path {
+			foundInDrives = true
+			if !d.IsNetwork {
+				t.Errorf("expected drive to be marked as network drive")
+			}
+			break
+		}
+	}
+	if !foundInDrives {
+		t.Errorf("expected connected share %q to appear in GetSystemDrives", res.Path)
 	}
 }

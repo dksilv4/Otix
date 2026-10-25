@@ -69,6 +69,26 @@ export function cleanGameTitle(filename: string): string {
   // Strip ROM update/DLC flags
   name = name.replace(/\[(?:UPD|DLC|v\d+)\]/gi, '');
 
+  // Strip platform tags like [PC], (PC), [Switch], etc.
+  name = name.replace(/(?:\[|\()\s*(?:PC|Switch|NSW|PS[1-5]|Xbox|Wii|GameCube|3DS|NDS|GBA|Genesis)\s*(?:\]|\))/gi, ' ');
+
+  // Strip 4-digit year tags in brackets or parentheses like [2020] or (2020)
+  name = name.replace(/(?:\[|\()\s*(?:19|20)\d{2}\s*(?:\]|\))/gi, ' ');
+
+  // Strip region tags in brackets or parentheses like (USA), [Europe], (World)
+  name = name.replace(/(?:\[|\()\s*(?:USA|Europe|Japan|World|En,Ja|En,Fr,De|Asia|Australia|Germany|France)\s*(?:\]|\))/gi, ' ');
+
+  // Strip edition tags in brackets or parentheses like [Deluxe Edition], (GOTY)
+  name = name.replace(/(?:\[|\()\s*(?:goty|game\s*of\s*the\s*year|definitive|enhanced|remastered|ultimate|complete|deluxe|collectors|special|legendary|anniversary|director['’]?s\s*cut)\s*(?:edition)?\s*(?:\]|\))/gi, ' ');
+
+  // Strip bracketed version patterns like [v1.0.4] or (v2.1)
+  name = name.replace(/(?:\[|\()\s*v?\d+(?:\.\d+)+\s*(?:\]|\))/gi, ' ');
+
+  // Strip crack flags and keywords from title
+  name = name.replace(/(?:\[|\()\s*(?:crack\s*fix|crackfix|crack\s*only|crack|cracked|online\s*fix|onlinefix|no\s*cd|nocd)\s*(?:\]|\))/gi, ' ');
+  name = name.replace(/\+\s*crack/gi, ' ');
+  name = name.replace(/(?:crackfix|crack\.fix|crack-fix|crack\s*only|onlinefix|online\.fix|online-fix|nocd|no-cd)/gi, ' ');
+
   name = name.replace(/[\._\-]/g, ' ');
   const tags = [
     /\[repack\]/gi, /\brepack\b/gi, /\belamigos\b/gi, /\bfitgirl\b/gi, /\bdodi\b/gi,
@@ -279,6 +299,53 @@ export const VALID_TOKENS = new Set([
   'ReleaseGroup', 'Version', 'Region', 'TitleId', 'OriginalName', 'MediaType', 'ext',
 ]);
 
+function canonicalTagName(raw: string): string {
+  const cleaned = raw.toLowerCase().trim();
+  if (cleaned === 'nsw' || cleaned === 'switch') return 'switch';
+  if (cleaned === 'win' || cleaned === 'windows' || cleaned === 'pc') return 'pc';
+  return cleaned;
+}
+
+export function dedupAllBracketTags(pathStr: string): string {
+  const segments = pathStr.replace(/\\/g, '/').split('/');
+  const tagRe = /\[([^\]]+)\]|\(([^)]+)\)/g;
+
+  const dedupedSegments = segments.map((seg) => {
+    const matches: { full: string; tag: string; start: number; end: number }[] = [];
+    let m: RegExpExecArray | null;
+    const re = new RegExp(tagRe.source, 'g');
+    while ((m = re.exec(seg)) !== null) {
+      matches.push({
+        full: m[0],
+        tag: m[1] ?? m[2] ?? '',
+        start: m.index,
+        end: m.index + m[0].length,
+      });
+    }
+    if (matches.length <= 1) return seg;
+
+    let res = seg;
+    for (let i = matches.length - 1; i >= 0; i--) {
+      const canon = canonicalTagName(matches[i].tag);
+      if (!canon) continue;
+      const isDup = matches.slice(0, i).some((prev) => canonicalTagName(prev.tag) === canon);
+      if (isDup) {
+        let start = matches[i].start;
+        let end = matches[i].end;
+        if (start > 0 && res[start - 1] === ' ') {
+          start--;
+        } else if (end < res.length && res[end] === ' ') {
+          end++;
+        }
+        res = res.slice(0, start) + res.slice(end);
+      }
+    }
+    return res;
+  });
+
+  return dedupedSegments.join('/');
+}
+
 export function applyNamingTemplate(
   release: ParsedRelease,
   template: string,
@@ -304,11 +371,27 @@ export function applyNamingTemplate(
 
   let result = template;
   for (const [key, value] of Object.entries(tokens)) {
-    result = result.replace(new RegExp(`\\{${key}\\}`, 'g'), value || '');
+    result = result.replace(new RegExp(`\\{${key}\\}`, 'gi'), value || '');
   }
 
-  // Clean up empty bracket pairs + slashes + double spaces + trailing dot
+  // Clean unresolved bracketed tokens like [{platform}], ({platform}), etc.
+  result = result.replace(/(?:\{|\[|\()\s*\{[a-zA-Z0-9_]+\}\s*(?:\}|\]|\))/gi, '');
+
+  // Clean up empty bracket pairs
   result = result.replace(/\(\s*\)/g, '').replace(/\[\s*\]/g, '').replace(/\{\s*\}/g, '');
+
+  // Deduplicate platform tag pairs: [PC] [PC], (PC) [PC], [PC] (PC), [Switch] [Switch], etc.
+  const platPairRe = /(?:\{|\[|\()\s*(PC|Switch|NSW|PS[1-5]|Xbox|Wii|GameCube|3DS|NDS|GBA|Genesis)\s*(?:\}|\]|\))[\s_-]*(?:\{|\[|\()\s*(PC|Switch|NSW|PS[1-5]|Xbox|Wii|GameCube|3DS|NDS|GBA|Genesis)\s*(?:\}|\]|\))/gi;
+  while (platPairRe.test(result)) {
+    result = result.replace(platPairRe, '[$1]');
+  }
+
+  // Deduplicate repeated bracket tags: [X] [X] -> [X], (Y) (Y) -> (Y)
+  result = result.replace(/(\[[^\]]+\])(?:[\s_-]*\1)+/gi, '$1');
+  result = result.replace(/(\([^)]+\))(?:[\s_-]*\1)+/gi, '$1');
+
+  // Deduplicate all bracketed / parenthesized tags in each path segment (adjacent and non-adjacent)
+  result = dedupAllBracketTags(result);
   result = result
     .replace(/[\\/]+/g, '/').replace(/\/$/, '')
     .replace(/\s{2,}/g, ' ').replace(/\s+\//g, '/').replace(/\/\s+/g, '/')
@@ -327,13 +410,15 @@ function pathJoin(a: string, b: string): string {
 
 export function validateNamingTemplate(template: string): { valid: boolean; error?: string } {
   const foundTokens = template.match(/\{(\w+)\}/g) || [];
+  const validLower = new Set(Array.from(VALID_TOKENS).map((t) => t.toLowerCase()));
   for (const tok of foundTokens) {
     const name = tok.slice(1, -1);
-    if (!VALID_TOKENS.has(name)) {
+    if (!validLower.has(name.toLowerCase())) {
       return { valid: false, error: `Unknown token: {${name}}` };
     }
   }
-  if (!template.includes('{Title}') && !template.includes('{CleanTitle}')) {
+  const tLower = template.toLowerCase();
+  if (!tLower.includes('{title}') && !tLower.includes('{cleantitle}')) {
     return { valid: false, error: 'Template must include {Title} or {CleanTitle}' };
   }
   return { valid: true };

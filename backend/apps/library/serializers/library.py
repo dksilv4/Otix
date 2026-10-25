@@ -20,6 +20,7 @@ from apps.integrations.models import (
 from apps.library.models import (
     UserGameServer,
     UserGameSession,
+    UserHome,
     UserLocalGame,
     UserNodeShare,
 )
@@ -246,6 +247,27 @@ class UserNodeCreateSerializer(serializers.ModelSerializer):
 
     name = serializers.CharField(required=False, allow_blank=True, default="")
     home_id = serializers.IntegerField(required=False, allow_null=True)
+
+    def validate_home_id(self, value):
+        if value is None:
+            return None
+        user = self.context.get("user")
+        if not user and "request" in self.context:
+            user = getattr(self.context["request"], "user", None)
+
+        if not UserHome.objects.filter(id=value).exists():
+            if user and getattr(user, "is_authenticated", False):
+                user_home = UserHome.objects.filter(user=user).first()
+                if not user_home:
+                    user_home = UserHome.objects.create(
+                        user=user,
+                        name="Home",
+                        description="Default home network & homelab environment",
+                        is_default=True,
+                    )
+                return user_home.id
+            raise serializers.ValidationError("Specified home does not exist.")
+        return value
 
     class Meta:
         model = UserGameServer

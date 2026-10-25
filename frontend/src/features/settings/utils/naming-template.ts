@@ -482,6 +482,53 @@ export const SAMPLE_RELEASES: SampleReleaseData[] = [
   },
 ]
 
+function canonicalTagName(raw: string): string {
+  const cleaned = raw.toLowerCase().trim()
+  if (cleaned === 'nsw' || cleaned === 'switch') return 'switch'
+  if (cleaned === 'win' || cleaned === 'windows' || cleaned === 'pc') return 'pc'
+  return cleaned
+}
+
+export function dedupAllBracketTags(pathStr: string): string {
+  const segments = pathStr.replace(/\\/g, '/').split('/')
+  const tagRe = /\[([^\]]+)\]|\(([^)]+)\)/g
+
+  const dedupedSegments = segments.map((seg) => {
+    const matches: { full: string; tag: string; start: number; end: number }[] = []
+    let m: RegExpExecArray | null
+    const re = new RegExp(tagRe.source, 'g')
+    while ((m = re.exec(seg)) !== null) {
+      matches.push({
+        full: m[0],
+        tag: m[1] ?? m[2] ?? '',
+        start: m.index,
+        end: m.index + m[0].length,
+      })
+    }
+    if (matches.length <= 1) return seg
+
+    let res = seg
+    for (let i = matches.length - 1; i >= 0; i--) {
+      const canon = canonicalTagName(matches[i].tag)
+      if (!canon) continue
+      const isDup = matches.slice(0, i).some((prev) => canonicalTagName(prev.tag) === canon)
+      if (isDup) {
+        let start = matches[i].start
+        let end = matches[i].end
+        if (start > 0 && res[start - 1] === ' ') {
+          start--
+        } else if (end < res.length && res[end] === ' ') {
+          end++
+        }
+        res = res.slice(0, start) + res.slice(end)
+      }
+    }
+    return res
+  })
+
+  return dedupedSegments.join('/')
+}
+
 export function getGameFolderFromTemplate(template: string, sample: SampleReleaseData): string {
   const parts = template.split(/[\\/]/)
   const folderPattern = parts.length > 1 ? parts.slice(0, -1).join('/') : '{Title} ({Year}) [{Platform}]'
@@ -503,8 +550,18 @@ export function getGameFolderFromTemplate(template: string, sample: SampleReleas
 
   let folder = folderPattern
   for (const [key, value] of Object.entries(tokens)) {
-    folder = folder.replace(new RegExp(`\\{${key}\\}`, 'g'), value || '')
+    folder = folder.replace(new RegExp(`\\{${key}\\}`, 'gi'), value || '')
   }
+
+  folder = folder.replace(/(?:\{|\[|\()\s*\{[a-zA-Z0-9_]+\}\s*(?:\}|\]|\))/gi, '')
+
+  const platPairRe = /(?:\{|\[|\()\s*(PC|Switch|NSW|PS[1-5]|Xbox|Wii|GameCube|3DS|NDS|GBA|Genesis)\s*(?:\]|\))[\s_-]*(?:\{|\[|\()\s*(PC|Switch|NSW|PS[1-5]|Xbox|Wii|GameCube|3DS|NDS|GBA|Genesis)\s*(?:\]|\))/gi
+  while (platPairRe.test(folder)) {
+    folder = folder.replace(platPairRe, '[$1]')
+  }
+  folder = folder.replace(/(\[[^\]]+\])(?:[\s_-]*\1)+/gi, '$1')
+  folder = folder.replace(/(\([^)]+\))(?:[\s_-]*\1)+/gi, '$1')
+  folder = dedupAllBracketTags(folder)
 
   return folder
     .replace(/\(\s*\)/g, '')
@@ -564,8 +621,18 @@ export function formatTemplateSample(template: string, sample: SampleReleaseData
 
   let result = template
   for (const [key, value] of Object.entries(tokens)) {
-    result = result.replace(new RegExp(`\\{${key}\\}`, 'g'), value || '')
+    result = result.replace(new RegExp(`\\{${key}\\}`, 'gi'), value || '')
   }
+
+  result = result.replace(/(?:\{|\[|\()\s*\{[a-zA-Z0-9_]+\}\s*(?:\}|\]|\))/gi, '')
+
+  const platPairRe2 = /(?:\{|\[|\()\s*(PC|Switch|NSW|PS[1-5]|Xbox|Wii|GameCube|3DS|NDS|GBA|Genesis)\s*(?:\]|\))[\s_-]*(?:\{|\[|\()\s*(PC|Switch|NSW|PS[1-5]|Xbox|Wii|GameCube|3DS|NDS|GBA|Genesis)\s*(?:\]|\))/gi
+  while (platPairRe2.test(result)) {
+    result = result.replace(platPairRe2, '[$1]')
+  }
+  result = result.replace(/(\[[^\]]+\])(?:[\s_-]*\1)+/gi, '$1')
+  result = result.replace(/(\([^)]+\))(?:[\s_-]*\1)+/gi, '$1')
+  result = dedupAllBracketTags(result)
 
   return result
     .replace(/\(\s*\)/g, '')

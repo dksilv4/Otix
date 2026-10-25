@@ -46,6 +46,7 @@ export const useOrganizeSettings = ({ nodeId: nodeIdProp }: UseOrganizeSettingsO
   const [isoDownloadPath, setIsoDownloadPath] = useState('')
   const [preferredRepackers, setPreferredRepackers] = useState('')
   const [scanOnLaunch, setScanOnLaunch] = useState(readScanOnLaunch)
+  const [deleteEmptyFolders, setDeleteEmptyFolders] = useState(true)
   const [nodeLoaded, setNodeLoaded] = useState(false)
   const [loadedSnap, setLoadedSnap] = useState('')
   const [testRunOpen, setTestRunOpen] = useState(false)
@@ -139,6 +140,11 @@ export const useOrganizeSettings = ({ nodeId: nodeIdProp }: UseOrganizeSettingsO
         if (typeof data.scanOnLaunch === 'boolean') {
           setScanOnLaunch(Boolean(data.scanOnLaunch))
         }
+        if (typeof data.deleteEmptyFolders === 'boolean') {
+          setDeleteEmptyFolders(Boolean(data.deleteEmptyFolders))
+        } else if (typeof (data as any).delete_empty_folders === 'boolean') {
+          setDeleteEmptyFolders(Boolean((data as any).delete_empty_folders))
+        }
         setNodeLoaded(true)
         setLoadedSnap(
           JSON.stringify({
@@ -151,6 +157,7 @@ export const useOrganizeSettings = ({ nodeId: nodeIdProp }: UseOrganizeSettingsO
             isoDownloadPath: data.isoDownloadPath ?? '',
             preferredRepackers: data.preferredRepackers ?? '',
             scanOnLaunch: Boolean(data.scanOnLaunch),
+            deleteEmptyFolders: typeof data.deleteEmptyFolders === 'boolean' ? data.deleteEmptyFolders : typeof (data as any).delete_empty_folders === 'boolean' ? (data as any).delete_empty_folders : true,
             directoryRules: rawRules || {},
           }),
         )
@@ -251,6 +258,8 @@ export const useOrganizeSettings = ({ nodeId: nodeIdProp }: UseOrganizeSettingsO
         preferredRepackers: preferredRepackers.trim(),
         scanOnLaunch,
         directoryRules,
+        deleteEmptyFolders,
+        delete_empty_folders: deleteEmptyFolders,
       })
       saveStoredDirectoryRules(directoryRules, remoteNodeId)
       setLoadedSnap(
@@ -264,6 +273,7 @@ export const useOrganizeSettings = ({ nodeId: nodeIdProp }: UseOrganizeSettingsO
           isoDownloadPath: isoDownloadPath.trim(),
           preferredRepackers,
           scanOnLaunch,
+          deleteEmptyFolders,
           directoryRules,
         }),
       )
@@ -356,6 +366,7 @@ export const useOrganizeSettings = ({ nodeId: nodeIdProp }: UseOrganizeSettingsO
           isoDownloadPath: string
           preferredRepackers: string
           scanOnLaunch: boolean
+          deleteEmptyFolders?: boolean
           directoryRules?: DirectoryRulesMap
         }
         setAutoSearch(snap.autoSearch)
@@ -367,6 +378,9 @@ export const useOrganizeSettings = ({ nodeId: nodeIdProp }: UseOrganizeSettingsO
         setIsoDownloadPath(snap.isoDownloadPath || '')
         setPreferredRepackers(snap.preferredRepackers)
         setScanOnLaunch(snap.scanOnLaunch)
+        if (typeof snap.deleteEmptyFolders === 'boolean') {
+          setDeleteEmptyFolders(snap.deleteEmptyFolders)
+        }
         setDirectoryRules(snap.directoryRules || {})
       } catch {
         // ignore invalid snapshot
@@ -400,6 +414,8 @@ export const useOrganizeSettings = ({ nodeId: nodeIdProp }: UseOrganizeSettingsO
         preferredRepackers,
         scanOnLaunch,
         directoryRules,
+        deleteEmptyFolders,
+        delete_empty_folders: deleteEmptyFolders,
       }) !== loadedSnap
     : Boolean(
         dlConfig &&
@@ -456,6 +472,7 @@ export const useOrganizeSettings = ({ nodeId: nodeIdProp }: UseOrganizeSettingsO
     isoDownloadPath,
     preferredRepackers,
     scanOnLaunch,
+    deleteEmptyFolders,
     testRunOpen,
     selectedDirectory,
     directoryRules,
@@ -471,6 +488,7 @@ export const useOrganizeSettings = ({ nodeId: nodeIdProp }: UseOrganizeSettingsO
     setIsoDownloadPath,
     setPreferredRepackers,
     setScanOnLaunch,
+    setDeleteEmptyFolders,
     setTestRunOpen,
     setSelectedDirectory,
 

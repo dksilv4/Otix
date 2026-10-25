@@ -7,6 +7,7 @@ import {
   RefreshCw,
   Sparkles,
   Loader2,
+  Gamepad2,
 } from 'lucide-react'
 import { DkButton } from '@ui/atoms/button'
 import { cn } from '@/lib/utils'
@@ -20,6 +21,7 @@ export interface ScannedFilesSummaryProps {
   scanPhase?: string
   onOrganizeClick?: () => void
   onRescanClick?: () => void
+  onViewGamesClick?: () => void
   className?: string
 }
 
@@ -31,6 +33,7 @@ export const ScannedFilesSummary = ({
   scanPhase = 'scanning',
   onOrganizeClick,
   onRescanClick,
+  onViewGamesClick,
   className,
 }: ScannedFilesSummaryProps) => {
   const hasFiles = summary && summary.totalCount > 0
@@ -74,6 +77,19 @@ export const ScannedFilesSummary = ({
 
         {/* Action Controls */}
         <div className="flex items-center gap-2 shrink-0 self-start sm:self-center">
+          {onViewGamesClick && hasFiles && (
+            <DkButton
+              size="sm"
+              variant="outline"
+              onClick={onViewGamesClick}
+              className="h-7 px-2.5 text-xs bg-[var(--dk-surface-base)] border border-white/[0.04] hover:bg-[var(--dk-surface-ghost-hover)] cursor-pointer"
+              title="View indexed games"
+            >
+              <Gamepad2 className="h-3 w-3 mr-1 text-primary" />
+              <span>View Games</span>
+            </DkButton>
+          )}
+
           {onRescanClick && (
             <DkButton
               size="sm"

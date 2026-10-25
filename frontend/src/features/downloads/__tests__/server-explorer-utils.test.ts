@@ -5,7 +5,9 @@ import {
   getFormatBadgeColor,
   sortExplorerEntries,
   formatExplorerDate,
+  isPathOnDrive,
   normalizeExplorerBrowse,
+  normalizeShareURLInput,
 } from '../server-explorer-utils';
 import type { ServerExplorerEntry } from '../server-explorer-types';
 
@@ -27,6 +29,15 @@ describe('Server File Explorer Utilities', () => {
         { label: 'C:', fullPath: 'C:\\' },
         { label: 'Games', fullPath: 'C:\\Games' },
         { label: 'OtixDownloads', fullPath: 'C:\\Games\\OtixDownloads' },
+      ]);
+    });
+
+    it('parses UNC network paths into interactive breadcrumbs', () => {
+      const crumbs = parseBreadcrumbs('\\\\192.168.1.50\\games\\SteamLibrary\\common');
+      expect(crumbs).toEqual([
+        { label: '\\\\192.168.1.50\\games', fullPath: '\\\\192.168.1.50\\games' },
+        { label: 'SteamLibrary', fullPath: '\\\\192.168.1.50\\games\\SteamLibrary' },
+        { label: 'common', fullPath: '\\\\192.168.1.50\\games\\SteamLibrary\\common' },
       ]);
     });
 
@@ -199,6 +210,47 @@ describe('Server File Explorer Utilities', () => {
     it('handles null and undefined gracefully', () => {
       expect(formatExplorerDate(null)).toBe('');
       expect(formatExplorerDate(undefined)).toBe('');
+    });
+  });
+
+  describe('isPathOnDrive', () => {
+    it('detects Windows and Unix drive paths accurately', () => {
+      expect(isPathOnDrive('C:\\Games\\Steam', 'C:\\')).toBe(true);
+      expect(isPathOnDrive('c:/games/steam', 'C:\\')).toBe(true);
+      expect(isPathOnDrive('D:\\Games', 'C:\\')).toBe(false);
+      expect(isPathOnDrive('/Volumes/External/Games', '/Volumes/External')).toBe(true);
+      expect(isPathOnDrive('/app/storage', '/')).toBe(true);
+      expect(isPathOnDrive(undefined, 'C:\\')).toBe(false);
+    });
+  });
+
+  describe('normalizeShareURLInput', () => {
+    it('normalizes single leading slash network paths to double backslashes', () => {
+      expect(normalizeShareURLInput('\\SERVER8\\Games')).toBe('\\\\SERVER8\\Games');
+      expect(normalizeShareURLInput('/SERVER8/Games')).toBe('\\\\SERVER8\\Games');
+    });
+
+    it('normalizes bare host/share inputs to double backslashes', () => {
+      expect(normalizeShareURLInput('SERVER8\\Games')).toBe('\\\\SERVER8\\Games');
+      expect(normalizeShareURLInput('SERVER8/Games')).toBe('\\\\SERVER8\\Games');
+      expect(normalizeShareURLInput('192.168.1.100/Games')).toBe('\\\\192.168.1.100\\Games');
+    });
+
+    it('preserves valid Windows UNC and smb:// URLs', () => {
+      expect(normalizeShareURLInput('\\\\SERVER8\\Games')).toBe('\\\\SERVER8\\Games');
+      expect(normalizeShareURLInput('//SERVER8/Games')).toBe('\\\\SERVER8\\Games');
+      expect(normalizeShareURLInput('smb://SERVER8/Games')).toBe('smb://SERVER8/Games');
+      expect(normalizeShareURLInput('cifs://SERVER8/Games')).toBe('cifs://SERVER8/Games');
+    });
+
+    it('preserves standard local drive paths', () => {
+      expect(normalizeShareURLInput('C:\\Games')).toBe('C:\\Games');
+      expect(normalizeShareURLInput('D:/Games')).toBe('D:/Games');
+    });
+
+    it('handles empty input gracefully', () => {
+      expect(normalizeShareURLInput('')).toBe('');
+      expect(normalizeShareURLInput('   ')).toBe('');
     });
   });
 });

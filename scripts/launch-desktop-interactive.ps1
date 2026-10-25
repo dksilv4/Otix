@@ -85,11 +85,14 @@ $packagedExe = Join-Path $root "desktop\release\win-unpacked\Otix.exe"
 
 if ($Packaged -or ((-not $Dev) -and (Test-Path $packagedExe))) {
     Write-Host "Launching packaged Otix on WinSta0\Default ($packagedExe)..."
-    $pidResult = [InteractiveDesktopLauncher]::LaunchOnInteractiveDesktop("`"$packagedExe`"", $root)
-    Write-Host "Launched Otix Desktop PID: $pidResult"
+    schtasks /create /tn "OtixDesktop" /tr "cmd.exe /c start `"`" `"$packagedExe`"" /sc once /st 00:00 /f /it | Out-Null
+    schtasks /run /tn "OtixDesktop" | Out-Null
+    Write-Host "Launched Otix Desktop via Task Scheduler"
 } else {
     Write-Host "Launching dev Otix on WinSta0\Default..."
-    $cmd = "cmd.exe /c npm --prefix desktop run dev"
-    $pidResult = [InteractiveDesktopLauncher]::LaunchOnInteractiveDesktop($cmd, $root)
-    Write-Host "Launched Otix Desktop (Dev) PID: $pidResult"
+    $desktopDir = Join-Path $root "desktop"
+    $scriptCmd = Join-Path $desktopDir "scripts\launch-dev.cmd"
+    schtasks /create /tn "OtixDesktop" /tr "cmd.exe /c `"$scriptCmd`"" /sc once /st 00:00 /f /it | Out-Null
+    schtasks /run /tn "OtixDesktop" | Out-Null
+    Write-Host "Launched Otix Desktop (Dev) via Task Scheduler"
 }

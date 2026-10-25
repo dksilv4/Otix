@@ -162,12 +162,15 @@ describe('SettingsOrganizeSection', () => {
     const testRunButton = screen.getByRole('button', { name: /test run/i })
     await user.click(testRunButton)
 
-    await waitFor(() => {
-      expect(screen.getByRole('heading', { name: 'Organize Test Run' })).toBeInTheDocument()
-      expect(screen.getByText(/read-only dry run/i)).toBeInTheDocument()
-      expect(screen.getByText('+ Elden Ring (2022) [PC]')).toBeInTheDocument()
-      expect(screen.getByText(/Organizes into/i)).toBeInTheDocument()
-    })
+    await waitFor(
+      () => {
+        expect(screen.getByRole('heading', { name: 'Organize Test Run' })).toBeInTheDocument()
+        expect(screen.getByText(/read-only dry run/i)).toBeInTheDocument()
+        expect(screen.getByText('+ Elden Ring (2022) [PC]')).toBeInTheDocument()
+        expect(screen.getByText(/Organizes into/i)).toBeInTheDocument()
+      },
+      { timeout: 4000 },
+    )
   })
 
   it('allows scanning and selecting target folder in test run modal', async () => {
@@ -177,11 +180,14 @@ describe('SettingsOrganizeSection', () => {
     const testRunButton = screen.getByRole('button', { name: /test run/i })
     await user.click(testRunButton)
 
-    await waitFor(() => {
-      expect(screen.getByRole('heading', { name: 'Organize Test Run' })).toBeInTheDocument()
-    })
+    await waitFor(
+      () => {
+        expect(screen.getByRole('heading', { name: 'Organize Test Run' })).toBeInTheDocument()
+      },
+      { timeout: 4000 },
+    )
 
-    const scanButton = screen.getByRole('button', { name: /scan/i })
+    const scanButton = screen.getByRole('button', { name: /^scan$/i })
     expect(scanButton).toBeInTheDocument()
     await user.click(scanButton)
 

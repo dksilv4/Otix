@@ -26,6 +26,7 @@ import {
 import { cn, formatBytes } from '@/lib/utils'
 import { useToast } from '@ui/molecules/toast'
 import { isDesktop } from '@/lib/desktop/api'
+import { ConnectNetworkFolderModal } from '@/components/path-picker/connect-network-folder-modal'
 import { useNodes } from '../use-node-downloads'
 import {
   useCreateNodeFolder,
@@ -37,6 +38,7 @@ import {
   formatExplorerDate,
   getFormatBadgeColor,
   isPathEqual,
+  isPathOnDrive,
   parseBreadcrumbs,
   sortExplorerEntries,
 } from '../node-explorer-utils'
@@ -81,6 +83,7 @@ export const NodeFileExplorer = ({
   const [currentPath, setCurrentPath] = useState<string | undefined>(initialPath)
   const [searchQuery, setSearchQuery] = useState('')
   const [isCreatingFolder, setIsCreatingFolder] = useState(false)
+  const [isConnectShareOpen, setIsConnectShareOpen] = useState(false)
   const [newFolderName, setNewFolderName] = useState('')
 
   const {
@@ -188,7 +191,7 @@ export const NodeFileExplorer = ({
     if (!newFolderName.trim() || !browseData?.current_path) return
 
     try {
-      await createFolderMutation.mutateAsync({
+      const res = await createFolderMutation.mutateAsync({
         parent_path: browseData.current_path,
         folder_name: newFolderName.trim(),
       })
@@ -199,11 +202,18 @@ export const NodeFileExplorer = ({
       })
       setNewFolderName('')
       setIsCreatingFolder(false)
-      refetch()
+      await refetch()
+      if (res?.path) {
+        handleNavigate(res.path)
+      }
     } catch (err: any) {
       toast({
         title: 'Failed to create folder',
-        description: err.message || 'Folder name may be invalid or already exists.',
+        description:
+          err?.response?.data?.detail ||
+          err?.response?.data?.error ||
+          err.message ||
+          'Folder name may be invalid or already exists.',
         variant: 'error',
       })
     }
@@ -377,8 +387,18 @@ export const NodeFileExplorer = ({
             title="Request Mac folder permissions or open settings"
             aria-label="Request Mac folder permissions"
           >
-            <ShieldAlert className="h-3.5 w-3.5 text-amber-500 dark:text-amber-400" />
+            <ShieldAlert className="h-3.5 w-3.5 text-status-warning" />
             <span className="hidden sm:inline">Permissions</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setIsConnectShareOpen(true)}
+            className="inline-flex items-center gap-1 rounded-xl border border-[var(--dk-separator)] bg-[var(--dk-surface-ghost)] px-2.5 py-1.5 text-xs font-medium text-foreground/80 transition-colors hover:bg-[var(--dk-surface-ghost-hover)] hover:text-foreground cursor-pointer"
+            title="Connect to a network share or server folder"
+            aria-label="Connect to network share"
+          >
+            <Network className="h-3.5 w-3.5 text-primary" />
+            <span className="hidden sm:inline">Network share</span>
           </button>
           <button
             type="button"
@@ -455,8 +475,56 @@ export const NodeFileExplorer = ({
         </div>
       </div>
 
+      {/* Drives selector */}
+      {browseData?.drives && browseData.drives.length > 0 && (
+        <div
+          className={cn(
+            'flex shrink-0 items-center gap-1.5 overflow-x-auto no-scrollbar py-1.5',
+            isModal ? 'mx-4 mb-2' : 'border-b border-border/40 bg-muted/10 px-4',
+          )}
+        >
+          <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">
+            Drives:
+          </span>
+          {browseData.drives.map((drive) => {
+            const isActive = isPathOnDrive(currentPath || browseData.current_path, drive.path)
+            return (
+              <button
+                key={drive.path}
+                type="button"
+                onClick={() => handleNavigate(drive.path)}
+                className={cn(
+                  'inline-flex shrink-0 items-center gap-1.5 rounded-xl px-2.5 py-1 text-xs font-medium transition-colors cursor-pointer',
+                  isActive
+                    ? 'bg-primary text-primary-foreground font-semibold shadow-sm'
+                    : 'border border-[var(--dk-separator)] bg-[var(--dk-surface-ghost)] text-muted-foreground hover:bg-[var(--dk-surface-ghost-hover)] hover:text-foreground',
+                )}
+                title={drive.path}
+              >
+                {drive.is_network ? <Network className="h-3.5 w-3.5 shrink-0 text-primary" /> : <HardDrive className="h-3.5 w-3.5 shrink-0" />}
+                <span>{drive.name}</span>
+                {drive.free_bytes != null && (
+                  <span className={cn('text-[10px]', isActive ? 'text-primary-foreground/80' : 'text-muted-foreground/70')}>
+                    ({formatBytes(drive.free_bytes)} free)
+                  </span>
+                )}
+              </button>
+            )
+          })}
+          <button
+            type="button"
+            onClick={() => setIsConnectShareOpen(true)}
+            className="inline-flex shrink-0 items-center gap-1 rounded-xl border border-dashed border-[var(--dk-separator)] px-2.5 py-1 text-xs text-muted-foreground hover:border-primary hover:text-foreground cursor-pointer transition-colors"
+            title="Connect to a network share or server folder"
+          >
+            <Network className="h-3.5 w-3.5" />
+            <span>+ Network</span>
+          </button>
+        </div>
+      )}
+
       {/* Quick shortcuts */}
-      {browseData?.shortcuts && browseData.shortcuts.length > 0 && (
+      {browseData?.shortcuts && browseData.shortcuts.filter((sc) => !browseData.drives?.some((d) => d.path === sc.path) && sc.icon !== 'root').length > 0 && (
         <div
           className={cn(
             'flex shrink-0 items-center gap-1.5 overflow-x-auto no-scrollbar py-1.5',
@@ -466,7 +534,9 @@ export const NodeFileExplorer = ({
           <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">
             Quick access:
           </span>
-          {browseData.shortcuts.map((sc) => {
+          {browseData.shortcuts
+            .filter((sc) => !browseData.drives?.some((d) => d.path === sc.path) && sc.icon !== 'root')
+            .map((sc) => {
             const isActive = isPathEqual(currentPath || browseData.current_path, sc.path)
             return (
               <button
@@ -889,6 +959,17 @@ export const NodeFileExplorer = ({
           </span>
         </div>
       )}
+
+      {/* Network Share Connection Modal */}
+      <ConnectNetworkFolderModal
+        open={isConnectShareOpen}
+        onClose={() => setIsConnectShareOpen(false)}
+        serverId={nodeId}
+        onConnected={(path) => {
+          handleNavigate(path)
+          refetch()
+        }}
+      />
     </div>
   )
 };

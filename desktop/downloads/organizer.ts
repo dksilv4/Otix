@@ -177,7 +177,7 @@ export async function findDownloadedContent(
       const consolePlatform = isPs5 ? 'PS5' : isPs3 ? 'PS3' : isPs4 ? 'PS4' : undefined;
       const isCrackFolder =
         hasCrackDll ||
-        /crack(?:fix|\.fix|-fix|\s*only)?/i.test(folderLower) ||
+        /(?:^|[\s._\-\[(])(?:crack\s*fix|crackfix|crack\s*only|crack|cracked|online\s*fix|onlinefix|no\s*cd|nocd)(?:[\s._\-\])]|$)|\+crack/i.test(folderLower) ||
         /^(?:codex|rune|flt|skidrow|empress|goldberg)$/i.test(folderLower);
 
       if (isCrackFolder || (hasSetup && hasBins) || isConsoleFolder) {
@@ -225,7 +225,20 @@ export async function findDownloadedContent(
               /crack(?:fix|\.fix|-fix|\s*only)?/i.test(nameLower) ||
               /^(?:codex|rune|flt|skidrow|empress|goldberg)$/i.test(nameLower);
 
-            if (subIsConsole || subIsCrack || (subSetup && subBins)) {
+            let hasOtix = subFiles.some((f) => f.toLowerCase() === '.otix');
+            if (!hasOtix) {
+              for (const d of subEntries.filter((e) => e.isDirectory())) {
+                try {
+                  const deepFiles = await fs.readdir(path.join(fullPath, d.name));
+                  if (deepFiles.some((f) => f.toLowerCase() === '.otix')) {
+                    hasOtix = true;
+                    break;
+                  }
+                } catch {}
+              }
+            }
+            const subHasIso = subFiles.some((f) => /\.(iso|img|mdf|bin)$/i.test(f));
+            if (subIsConsole || subIsCrack || (subSetup && subBins) || hasOtix || (depth === 1 && subHasIso)) {
               let integrity: ArchiveDiagnosis | undefined;
               if (subBins || nameLower.includes('elamigos') || nameLower.includes('fitgirl')) {
                 integrity = await diagnoseArchiveIntegrity(fullPath);
@@ -260,7 +273,7 @@ export async function findDownloadedContent(
 
             const isUpdate = /\b(?:update|patch|hotfix)\b/i.test(nameLower.replace(/[\._\-]/g, ' '));
             const isDlc = /\b(?:dlc|addon)\b/i.test(nameLower.replace(/[\._\-]/g, ' '));
-            const isCrack = /\b(?:crackfix|crack\.fix|crack\s*only)\b/i.test(nameLower.replace(/[\._\-]/g, ' '));
+            const isCrack = /(?:^|[\s._\-\[(])(?:crack\s*fix|crackfix|crack\s*only|crack|cracked|online\s*fix|onlinefix|no\s*cd|nocd)(?:[\s._\-\])]|$)|\+crack/i.test(nameLower);
 
             if (isCrack) {
               results.push({ path: fullPath, name: entry.name, type: 'crack' });
@@ -285,7 +298,7 @@ export async function findDownloadedContent(
             } else {
               results.push({ path: fullPath, name: entry.name, type: 'rom' });
             }
-          } else if (/\b(?:crackfix|crack\.fix|crack\s*only)\b/i.test(nameLower.replace(/[\._\-]/g, ' '))) {
+          } else if (/(?:^|[\s._\-\[(])(?:crack\s*fix|crackfix|crack\s*only|crack|cracked|online\s*fix|onlinefix|no\s*cd|nocd)(?:[\s._\-\])]|$)|\+crack/i.test(nameLower)) {
             results.push({ path: fullPath, name: entry.name, type: 'crack' });
           } else if (
             nameLower.endsWith('.exe') &&
@@ -313,7 +326,14 @@ export async function findDownloadedContent(
               results.push({ path: fullPath, name: entry.name, type: 'pc_game' });
             }
           } else if (includeAllFiles) {
+            const isMetadataOrArtwork =
+              nameLower === 'folder.jpg' ||
+              nameLower === 'cover.jpg' ||
+              nameLower === 'icon.ico' ||
+              nameLower === '.otix' ||
+              ['.jpg', '.jpeg', '.png', '.webp', '.ico', '.txt', '.nfo', '.ini', '.xml', '.json', '.db', '.log', '.otix'].includes(ext);
             const isNoise =
+              isMetadataOrArtwork ||
               nameLower === 'thumbs.db' ||
               nameLower === 'desktop.ini' ||
               nameLower === '.ds_store' ||
@@ -321,7 +341,7 @@ export async function findDownloadedContent(
               nameLower.endsWith('.tmp') ||
               nameLower.endsWith('.part');
             if (!isNoise) {
-              results.push({ path: fullPath, name: entry.name, type: 'iso' });
+              results.push({ path: fullPath, name: entry.name, type: 'file' });
             }
           }
         }
@@ -413,8 +433,40 @@ export async function smartOrganizePreview(
       const platformPart = release.platform ? ` [${release.platform}]` : ' [PC]';
       targetRaw = path.join(directory, `${title}${yearPart}${platformPart}`, item.name);
     } else if (item.type === 'pc_game') {
+      try {
+        let otixPath = path.join(item.path, '.otix');
+        try {
+          await fs.access(otixPath);
+        } catch {
+          const children = await fs.readdir(item.path, { withFileTypes: true });
+          for (const c of children) {
+            if (c.isDirectory()) {
+              const deepOtix = path.join(item.path, c.name, '.otix');
+              try {
+                await fs.access(deepOtix);
+                otixPath = deepOtix;
+                break;
+              } catch {}
+            }
+          }
+        }
+        const otixRaw = await fs.readFile(otixPath, 'utf8');
+        const sc = JSON.parse(otixRaw);
+        if (sc.title) {
+          title = cleanGameTitle(sc.title);
+          release.title = title;
+          release.cleanTitle = title;
+        }
+        if (sc.platforms && sc.platforms[0]?.name) {
+          release.platform = sc.platforms[0].name;
+        }
+      } catch {}
       const folderTemplate = namingTemplate.split('/').slice(0, -1).join('/') || namingTemplate;
       targetRaw = applyNamingTemplate({ ...release, title }, folderTemplate, fileInfo, directory);
+    } else if (item.type === 'file') {
+      const yearPart = release.year ? ` (${release.year})` : '';
+      const platformPart = release.platform ? ` [${release.platform}]` : ' [PC]';
+      targetRaw = path.join(directory, `${title}${yearPart}${platformPart}`, item.name);
     } else {
       targetRaw = applyNamingTemplate({ ...release, title }, namingTemplate, fileInfo, directory);
     }

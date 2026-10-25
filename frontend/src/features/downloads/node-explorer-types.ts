@@ -23,6 +23,14 @@ export interface ExplorerShortcut {
   exist?: boolean;
 }
 
+export interface ExplorerDrive {
+  name: string;
+  path: string;
+  free_bytes?: number | null;
+  total_bytes?: number | null;
+  is_network?: boolean;
+}
+
 export interface NodeExplorerBrowseResult {
   current_path: string;
   parent_path?: string | null;
@@ -33,6 +41,7 @@ export interface NodeExplorerBrowseResult {
   disk_free_bytes?: number | null;
   disk_total_bytes?: number | null;
   shortcuts?: ExplorerShortcut[];
+  drives?: ExplorerDrive[];
   permission_denied?: boolean;
   permission_message?: string;
 }
@@ -71,3 +80,21 @@ export interface NodePathBreadcrumb {
 }
 
 export type ServerPathBreadcrumb = NodePathBreadcrumb;
+
+export interface ConnectNodeSharePayload {
+  url: string;
+  share_name?: string;
+  username?: string;
+  password?: string;
+  workgroup?: string;
+}
+
+export type ConnectServerSharePayload = ConnectNodeSharePayload;
+
+export interface ConnectNodeShareResult {
+  status: string;
+  path: string;
+  message?: string;
+}
+
+export type ConnectServerShareResult = ConnectNodeShareResult;

@@ -1,4 +1,5 @@
 import type {
+  ExplorerDrive,
   ExplorerShortcut,
   FormatCategory,
   NodeExplorerBrowseResult,
@@ -21,6 +22,16 @@ function normalizeExplorerShortcut(raw: unknown): ExplorerShortcut {
     path: String(item.path ?? ''),
     icon: String(item.icon ?? 'folder'),
     exist: Boolean(pickValue(item, 'exist', 'exist') ?? true),
+  }
+}
+
+function normalizeExplorerDrive(raw: unknown): ExplorerDrive {
+  const item = asRecord(raw)
+  return {
+    name: String(item.name ?? ''),
+    path: String(item.path ?? ''),
+    free_bytes: (pickValue(item, 'freeBytes', 'free_bytes') as number | null | undefined) ?? null,
+    total_bytes: (pickValue(item, 'totalBytes', 'total_bytes') as number | null | undefined) ?? null,
   }
 }
 
@@ -47,8 +58,26 @@ export function normalizeExplorerBrowse(raw: unknown): NodeExplorerBrowseResult 
   const rawShortcuts = Array.isArray(pickValue(data, 'shortcuts', 'shortcuts'))
     ? (pickValue(data, 'shortcuts', 'shortcuts') as unknown[])
     : []
+  const rawDrives = Array.isArray(pickValue(data, 'drives', 'drives'))
+    ? (pickValue(data, 'drives', 'drives') as unknown[])
+    : []
   const permissionDenied = Boolean(pickValue(data, 'permissionDenied', 'permission_denied'))
   const permissionMessage = pickValue(data, 'permissionMessage', 'permission_message') as string | undefined
+
+  const shortcuts = rawShortcuts.map(normalizeExplorerShortcut)
+  let drives = rawDrives.map(normalizeExplorerDrive)
+
+  // Fallback: If no explicit drives array was sent, extract drives from shortcuts
+  if (drives.length === 0 && shortcuts.length > 0) {
+    for (const sc of shortcuts) {
+      if (sc.icon === 'root' || /^[a-zA-Z]:[\\/]?$/.test(sc.path) || sc.name.toLowerCase().includes('drive')) {
+        drives.push({
+          name: sc.name.replace(/\s+Drive$/i, ''),
+          path: sc.path,
+        })
+      }
+    }
+  }
 
   return {
     current_path: String(pickValue(data, 'currentPath', 'current_path') ?? '/'),
@@ -59,10 +88,20 @@ export function normalizeExplorerBrowse(raw: unknown): NodeExplorerBrowseResult 
     total_items: Number(pickValue(data, 'totalItems', 'total_items') ?? entries.length) || 0,
     disk_free_bytes: (pickValue(data, 'diskFreeBytes', 'disk_free_bytes') as number | null | undefined) ?? null,
     disk_total_bytes: (pickValue(data, 'diskTotalBytes', 'disk_total_bytes') as number | null | undefined) ?? null,
-    shortcuts: rawShortcuts.map(normalizeExplorerShortcut),
+    shortcuts,
+    drives,
     permission_denied: permissionDenied,
     permission_message: permissionMessage,
   }
+}
+
+/** Check if current path resides on a given drive. */
+export function isPathOnDrive(currentPath: string | undefined, drivePath: string): boolean {
+  if (!currentPath || !drivePath) return false
+  const normCurrent = currentPath.replace(/\\/g, '/').toLowerCase()
+  const normDrive = drivePath.replace(/\\/g, '/').toLowerCase()
+  if (normDrive === '/' || normDrive === '') return normCurrent.startsWith('/')
+  return normCurrent.startsWith(normDrive.replace(/\/+$/, ''))
 }
 
 /** Split a path into navigation breadcrumbs supporting Windows and POSIX separators. */
@@ -70,10 +109,28 @@ export function parseBreadcrumbs(fullPath: string): NodePathBreadcrumb[] {
   if (!fullPath) return [];
 
   const isWindows = /^[a-zA-Z]:[\\/]/.test(fullPath);
-  const sep = isWindows && fullPath.includes('\\') ? '\\' : '/';
+  const isUnc = fullPath.startsWith('\\\\') || fullPath.startsWith('//');
+  const sep = (isWindows || isUnc) && fullPath.includes('\\') ? '\\' : '/';
   const parts = fullPath.split(/[\\/]/).filter(Boolean);
 
   const crumbs: NodePathBreadcrumb[] = [];
+
+  if (isUnc) {
+    if (parts.length >= 2) {
+      const shareRoot = `\\\\${parts[0]}\\${parts[1]}`;
+      crumbs.push({ label: shareRoot, fullPath: shareRoot });
+      let accumulated = shareRoot;
+      for (let i = 2; i < parts.length; i++) {
+        accumulated += `\\${parts[i]}`;
+        crumbs.push({ label: parts[i], fullPath: accumulated });
+      }
+      return crumbs;
+    } else if (parts.length === 1) {
+      const host = `\\\\${parts[0]}`;
+      crumbs.push({ label: host, fullPath: host });
+      return crumbs;
+    }
+  }
 
   if (fullPath.startsWith('/') && !isWindows) {
     crumbs.push({ label: 'Root (/)', fullPath: '/' });
@@ -197,4 +254,25 @@ export function formatExplorerDate(isoDate?: string | null): string {
   } catch {
     return '';
   }
+}
+
+/**
+ * Normalize network share path inputs, converting single-slash, forward-slash,
+ * or bare hostname prefixes into standard Windows UNC (`\\server\share`).
+ */
+export function normalizeShareURLInput(rawUrl: string): string {
+  const trimmed = rawUrl.trim();
+  if (!trimmed) return '';
+  if (
+    /^[a-zA-Z]:/i.test(trimmed) ||
+    trimmed.toLowerCase().startsWith('smb://') ||
+    trimmed.toLowerCase().startsWith('cifs://')
+  ) {
+    return trimmed;
+  }
+  const stripped = trimmed.replace(/^[\\/]+/, '');
+  if (stripped.includes('\\') || stripped.includes('/')) {
+    return `\\\\${stripped.replace(/\//g, '\\')}`;
+  }
+  return trimmed;
 }

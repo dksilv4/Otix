@@ -3,6 +3,8 @@ import { apiClient } from '@/lib/api/client';
 import { nodeKeys } from './use-node-downloads';
 import { normalizeExplorerBrowse } from '../node-explorer-utils';
 import type {
+  ConnectNodeSharePayload,
+  ConnectNodeShareResult,
   CreateNodeFolderPayload,
   NodeExplorerBrowseResult,
   RequestNodePermissionPayload,
@@ -101,3 +103,23 @@ export function useRequestNodePermission(nodeId?: number) {
 }
 
 export const useRequestServerPermission = useRequestNodePermission;
+
+/** Hook to connect to a network share or server folder on the node. */
+export function useConnectNodeShare(nodeId?: number) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (payload: ConnectNodeSharePayload) => {
+      if (!nodeId) throw new Error('No node selected');
+      const { data } = await apiClient.post<ConnectNodeShareResult>(
+        `/library/servers/${nodeId}/explorer/connect-share`,
+        payload,
+      );
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: nodeExplorerKeys.all });
+    },
+  });
+}
+
+export const useConnectServerShare = useConnectNodeShare;

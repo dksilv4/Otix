@@ -463,4 +463,92 @@ describe('OrganizeTestRunModal', () => {
       expect(screen.queryByText(/Folder Scan Error/i)).not.toBeInTheDocument()
     })
   })
+
+  it('toggles expand and collapse all directories', async () => {
+    const user = userEvent.setup()
+    ;(window as any).desktopAPI = {
+      smartOrganizePreview: vi.fn().mockResolvedValue([
+        {
+          sourcePath: 'D:\\Games\\AI Limit\\AI Limit.iso',
+          sourceFilename: 'AI Limit.iso',
+          type: 'iso',
+          matched: true,
+          extracted: { Title: 'AI Limit' },
+          targetPath: 'D:\\Games\\AI Limit [PC]\\AI Limit.iso',
+          status: 'rename_and_move',
+        },
+      ]),
+    }
+
+    render(
+      <OrganizeTestRunModal
+        open={true}
+        onOpenChange={onOpenChange}
+        template="{Title} [{Platform}]/{Title}.{ext}"
+        isoDirectory="D:\\Games"
+      />,
+    )
+
+    await waitFor(() => {
+      expect(screen.getByText('AI Limit.iso')).toBeInTheDocument()
+    })
+
+    const collapseBtn = screen.getByRole('button', { name: /collapse all/i })
+    expect(collapseBtn).toBeInTheDocument()
+    await user.click(collapseBtn)
+
+    const expandBtn = screen.getByRole('button', { name: /expand all/i })
+    expect(expandBtn).toBeInTheDocument()
+    await user.click(expandBtn)
+
+    expect(screen.getByText('AI Limit.iso')).toBeInTheDocument()
+  })
+
+  it('groups preview items by parent directory when Group toggle is clicked', async () => {
+    const user = userEvent.setup()
+    ;(window as any).desktopAPI = {
+      smartOrganizePreview: vi.fn().mockResolvedValue([
+        {
+          sourcePath: 'D:\\Games\\AI Limit\\AI Limit.iso',
+          sourceFilename: 'AI Limit.iso',
+          type: 'iso',
+          matched: true,
+          extracted: { Title: 'AI Limit' },
+          targetPath: 'D:\\Games\\AI Limit [PC]\\AI Limit.iso',
+          status: 'rename_and_move',
+        },
+        {
+          sourcePath: 'D:\\Games\\Baldurs Gate\\Baldurs Gate 3.iso',
+          sourceFilename: 'Baldurs Gate 3.iso',
+          type: 'iso',
+          matched: true,
+          extracted: { Title: 'Baldurs Gate 3' },
+          targetPath: 'D:\\Games\\Baldurs Gate 3 [PC]\\Baldurs Gate 3.iso',
+          status: 'rename_and_move',
+        },
+      ]),
+    }
+
+    render(
+      <OrganizeTestRunModal
+        open={true}
+        onOpenChange={onOpenChange}
+        template="{Title} [{Platform}]/{Title}.{ext}"
+        isoDirectory="D:\\Games"
+      />,
+    )
+
+    await waitFor(() => {
+      expect(screen.getByText('AI Limit.iso')).toBeInTheDocument()
+    })
+
+    const groupBtn = screen.getByRole('button', { name: /group/i })
+    await user.click(groupBtn)
+
+    // Check that parent directory group headers appear
+    expect(screen.getAllByText('AI Limit').length).toBeGreaterThanOrEqual(1)
+    expect(screen.getAllByText('AI Limit [PC]').length).toBeGreaterThanOrEqual(1)
+    expect(screen.getAllByText('Baldurs Gate').length).toBeGreaterThanOrEqual(1)
+    expect(screen.getAllByText('Baldurs Gate 3 [PC]').length).toBeGreaterThanOrEqual(1)
+  })
 })

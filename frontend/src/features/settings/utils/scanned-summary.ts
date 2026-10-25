@@ -224,46 +224,53 @@ export async function fetchDesktopScannedSummary(
 export async function fetchNodeScannedSummary(
   nodeId: number,
   isoPath?: string,
-  _installPath?: string,
+  installPath?: string,
 ): Promise<ScannedFilesSummaryData | null> {
+  // First query the indexed server games from the node
   try {
-    // Attempt organize preview first to obtain accurate organization status
-    const previewRes = await apiClient.post<
-      Array<{
-        sourcePath?: string
-        targetPath?: string
-        status?: string
-        matched?: boolean
-        type?: string
-      }>
-    >(`/library/servers/${nodeId}/organize/preview`, {
-      directory: isoPath || '',
-      template: '',
-    })
+    const { data } = await apiClient.get<any>('/library/server-games')
+    const files = Array.isArray(data) ? data : data?.files || []
+    const nodeFiles = files.filter(
+      (f: any) => f.serverId === nodeId || f.server_id === nodeId || !f.serverId,
+    )
 
-    const items = previewRes?.data
-    if (Array.isArray(items) && items.length > 0) {
-      let organizedCount = 0
-      let matchedCount = 0
+    if (nodeFiles.length > 0) {
       let isoCount = 0
+      let matchedCount = 0
+      let organizedCount = 0
 
-      for (const item of items) {
-        if (item.status === 'already_organized') {
-          organizedCount++
+      for (const f of nodeFiles) {
+        const isIso =
+          f.formatCategory === 'iso' ||
+          f.extension?.toLowerCase() === '.iso' ||
+          Boolean(f.isIso || f.is_iso)
+        if (isIso) {
+          isoCount++
         }
-        if (item.matched) {
+        if (f.otixMediaId || f.otixTitle || f.matched || f.otixMetadata) {
           matchedCount++
         }
-        if (item.type === 'iso' || item.type === 'rom') {
-          isoCount++
+        if (
+          isPathOrganized(
+            {
+              path: f.filepath || f.relativePath || f.filename,
+              platform: isIso ? 'iso' : undefined,
+              isOrganized: f.isOrganized,
+            },
+            installPath,
+            isoPath,
+          )
+        ) {
+          organizedCount++
         }
       }
 
-      const totalCount = items.length
+      const totalCount = nodeFiles.length
       const unorganizedCount = Math.max(0, totalCount - organizedCount)
-      const organizedPercentage = totalCount > 0 ? Math.round((organizedCount / totalCount) * 100) : 0
+      const organizedPercentage =
+        totalCount > 0 ? Math.round((organizedCount / totalCount) * 100) : 0
 
-      return {
+      const summary: ScannedFilesSummaryData = {
         totalCount,
         organizedCount,
         unorganizedCount,
@@ -273,9 +280,68 @@ export async function fetchNodeScannedSummary(
         organizedPercentage,
         lastScannedAt: new Date().toISOString(),
       }
+      saveStoredScannedSummary(summary, nodeId)
+      return summary
     }
   } catch {
-    // Node preview endpoint might be empty or unavailable
+    // If fetching server-games failed, try preview or fallback
+  }
+
+  // Fallback to organize preview if isoPath is configured
+  if (isoPath && isoPath.trim()) {
+    try {
+      const previewRes = await apiClient.post<
+        Array<{
+          sourcePath?: string
+          targetPath?: string
+          status?: string
+          matched?: boolean
+          type?: string
+        }>
+      >(`/library/servers/${nodeId}/organize/preview`, {
+        directory: isoPath,
+        template: '',
+      })
+
+      const items = previewRes?.data
+      if (Array.isArray(items) && items.length > 0) {
+        let organizedCount = 0
+        let matchedCount = 0
+        let isoCount = 0
+
+        for (const item of items) {
+          if (item.status === 'already_organized') {
+            organizedCount++
+          }
+          if (item.matched) {
+            matchedCount++
+          }
+          if (item.type === 'iso' || item.type === 'rom') {
+            isoCount++
+          }
+        }
+
+        const totalCount = items.length
+        const unorganizedCount = Math.max(0, totalCount - organizedCount)
+        const organizedPercentage =
+          totalCount > 0 ? Math.round((organizedCount / totalCount) * 100) : 0
+
+        const summary: ScannedFilesSummaryData = {
+          totalCount,
+          organizedCount,
+          unorganizedCount,
+          matchedCount,
+          isoCount,
+          installedCount: Math.max(0, totalCount - isoCount),
+          organizedPercentage,
+          lastScannedAt: new Date().toISOString(),
+        }
+        saveStoredScannedSummary(summary, nodeId)
+        return summary
+      }
+    } catch {
+      // Node preview endpoint might be empty or unavailable
+    }
   }
 
   // Fallback to cached summary or empty
@@ -283,4 +349,149 @@ export async function fetchNodeScannedSummary(
   if (stored) return stored
 
   return null
+}
+
+export interface ScannedGameItem {
+  id: string | number
+  title: string
+  path: string
+  format: string
+  isIso: boolean
+  posterUrl?: string | null
+  sizeBytes?: number
+  matched?: boolean
+  serverName?: string
+}
+
+export function formatBytes(bytes?: number | null): string {
+  if (bytes == null || bytes <= 0) return '0 B'
+  const units = ['B', 'KB', 'MB', 'GB', 'TB']
+  const i = Math.floor(Math.log(bytes) / Math.log(1024))
+  const idx = Math.min(i, units.length - 1)
+  const val = bytes / Math.pow(1024, idx)
+  return `${val.toFixed(idx === 0 ? 0 : 1)} ${units[idx]}`
+}
+
+export async function fetchScannedGamesList(nodeId?: number | null): Promise<ScannedGameItem[]> {
+  const isRemote = nodeId != null && nodeId > 0
+  const items: ScannedGameItem[] = []
+
+  if (isRemote) {
+    try {
+      const { data } = await apiClient.get<any>('/library/server-games')
+      const files = Array.isArray(data) ? data : data?.files || []
+      for (const f of files) {
+        if (f.serverId === nodeId || f.server_id === nodeId || !f.serverId) {
+          const isIso =
+            f.formatCategory === 'iso' ||
+            f.extension?.toLowerCase() === '.iso' ||
+            Boolean(f.isIso || f.is_iso)
+          const format = f.formatCategory
+            ? f.formatCategory.toUpperCase()
+            : isIso
+              ? 'ISO'
+              : 'Installer'
+          const posterUrl =
+            f.otixImages?.poster?.url ||
+            f.otixImages?.posterUrl ||
+            f.otixMetadata?.posterUrl ||
+            f.posterUrl ||
+            null
+          const title =
+            f.gameTitle ||
+            f.otixTitle ||
+            f.title ||
+            f.name ||
+            (f.filename ? f.filename.replace(/\.[^/.]+$/, '') : '') ||
+            (f.relativePath ? f.relativePath.split(/[\\/]/).pop()?.replace(/\.[^/.]+$/, '') : '') ||
+            'Untitled'
+          const path =
+            f.filepath || f.relativePath || f.path || f.installDir || f.downloadUrl || ''
+          const sizeBytes = f.filesize ?? f.sizeBytes ?? f.size_bytes ?? 0
+          const matched = Boolean(f.otixMediaId || f.otixTitle || f.matched || f.otixMetadata)
+
+          items.push({
+            id: f.id || f.fileId || f.file_id || f.path || String(Math.random()),
+            title,
+            path,
+            format,
+            isIso,
+            posterUrl,
+            sizeBytes,
+            matched,
+            serverName: f.serverName || f.server_name,
+          })
+        }
+      }
+      return items
+    } catch {
+      return []
+    }
+  }
+
+  const api = getDesktopAPI() ?? (typeof window !== 'undefined' ? (window as any).desktopAPI : null)
+  if (api?.getLocalGames) {
+    try {
+      const local = (await api.getLocalGames()) || []
+      return local.map((g: any) => ({
+        id: g.id,
+        title: g.title,
+        path: g.exePath || g.installDir || '',
+        format: g.platform === 'iso' ? 'ISO' : 'Installed',
+        isIso: g.platform === 'iso',
+        posterUrl: g.posterUrl || null,
+        sizeBytes: g.sizeBytes || 0,
+        matched: Boolean(g.matched || g.externalIds?.length),
+        serverName: 'Local Desktop',
+      }))
+    } catch {
+      return []
+    }
+  }
+
+  try {
+    const { data } = await apiClient.get<any>('/library/server-games')
+    const files = Array.isArray(data) ? data : data?.files || []
+    return files.map((f: any) => {
+      const isIso =
+        f.formatCategory === 'iso' ||
+        f.extension?.toLowerCase() === '.iso' ||
+        Boolean(f.isIso || f.is_iso)
+      const format = f.formatCategory
+        ? f.formatCategory.toUpperCase()
+        : isIso
+          ? 'ISO'
+          : 'Installer'
+      const posterUrl =
+        f.otixImages?.poster?.url ||
+        f.otixImages?.posterUrl ||
+        f.otixMetadata?.posterUrl ||
+        f.posterUrl ||
+        null
+      const title =
+        f.gameTitle ||
+        f.otixTitle ||
+        f.title ||
+        f.name ||
+        (f.filename ? f.filename.replace(/\.[^/.]+$/, '') : '') ||
+        'Untitled'
+      const path = f.filepath || f.relativePath || f.path || ''
+      const sizeBytes = f.filesize ?? f.sizeBytes ?? 0
+      const matched = Boolean(f.otixMediaId || f.otixTitle || f.matched || f.otixMetadata)
+
+      return {
+        id: f.id || f.fileId || f.file_id || f.path,
+        title,
+        path,
+        format,
+        isIso,
+        posterUrl,
+        sizeBytes,
+        matched,
+        serverName: f.serverName,
+      }
+    })
+  } catch {
+    return []
+  }
 }

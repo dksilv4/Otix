@@ -10,7 +10,7 @@ import httpx
 from django.conf import settings
 from django.core.cache import cache
 from django.db.models import Q
-from django.db.utils import OperationalError, ProgrammingError
+from django.db.utils import IntegrityError, OperationalError, ProgrammingError
 from django.http import FileResponse, Http404
 from django.utils import timezone
 from rest_framework import permissions, status
@@ -60,6 +60,7 @@ from apps.library.services.node import (
     downloads_queue,
     downloads_search,
     explorer_browse,
+    explorer_connect_share,
     explorer_create_folder,
     explorer_request_permission,
     explorer_set_download_path,
@@ -760,10 +761,22 @@ class GameServerDetailView(APIView):
 
     def patch(self, request: Request, server_id: int) -> Response:
         server = self._get_server(request, server_id)
+        user = _resolve_user(request)
         new_name = request.data.get("name") if isinstance(request.data, dict) else None
-        serializer = UserGameServerCreateSerializer(server, data=request.data, partial=True)
+        serializer = UserGameServerCreateSerializer(
+            server,
+            data=request.data,
+            partial=True,
+            context={"request": request, "user": user},
+        )
         serializer.is_valid(raise_exception=True)
-        server = serializer.save()
+        try:
+            server = serializer.save()
+        except IntegrityError:
+            return Response(
+                {"detail": "Could not assign node to home. Please ensure the home exists or create a new one."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         if new_name and isinstance(new_name, str) and new_name.strip() and server.is_online:
             try:
                 desktop_save_settings(server, {"server_name": new_name.strip()})
@@ -777,6 +790,26 @@ class GameServerDetailView(APIView):
         server = self._get_server(request, server_id)
         deleted_urls = {server.local_url, server.remote_url}
         token = server.auth_token
+
+        # If the node daemon is reachable, tell it to cleanly unclaim so it regenerates its PIN
+        target_url = server.primary_url or server.local_url
+        if target_url and not target_url.startswith("otix://"):
+            try:
+                headers = {}
+                if token:
+                    headers["Authorization"] = f"Bearer {token}"
+                with httpx.Client(timeout=3.0) as client:
+                    client.post(
+                        f"{target_url.rstrip('/')}/api/v1/claim/unclaim",
+                        headers=headers,
+                    )
+            except Exception as unclaim_exc:
+                logging.getLogger(__name__).debug(
+                    "Could not contact node daemon at %s for clean unclaim: %s",
+                    target_url,
+                    unclaim_exc,
+                )
+
         remaining = []
         for r in cache.get(PENDING_CACHE_KEY) or []:
             if token and r.get("auth_token") == token:
@@ -785,6 +818,10 @@ class GameServerDetailView(APIView):
                 continue
             remaining.append(r)
         cache.set(PENDING_CACHE_KEY, remaining, PENDING_TTL)
+
+        # Clear any cached node library/organize configurations
+        cache.delete(f"node_config:{server_id}:libraries")
+        cache.delete(f"node_config:{server_id}:organize")
 
         server.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
@@ -1161,6 +1198,24 @@ class GameServerExplorerRequestPermissionView(APIView):
         return Response(data, status=status_code)
 
 
+class GameServerExplorerConnectShareView(APIView):
+    """``POST /api/v1/library/servers/{server_id}/explorer/connect-share`` — connect to a network share / server."""
+
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def post(self, request: Request, server_id: int) -> Response:
+        server = _get_server_or_404(request, server_id)
+        url = request.data.get("url", "")
+        share_name = request.data.get("share_name", "")
+        if not url and not share_name:
+            return Response(
+                {"detail": "url or share_name is required"}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        status_code, data = explorer_connect_share(server, payload=request.data)
+        return Response(data, status=status_code)
+
+
 class GameServerUsenetConfigView(APIView):
     """``GET /api/v1/library/servers/{server_id}/usenet/config`` — get usenet config
     ``POST /api/v1/library/servers/{server_id}/usenet/config`` — save usenet config
@@ -1417,7 +1472,10 @@ class GameServerScanView(APIView):
 
     def post(self, request: Request, server_id: int) -> Response:
         server = _get_server_or_404(request, server_id)
-        status_code, data = scan_game_libraries(server)
+        params = {}
+        if request.query_params.get("wait") in ("1", "true"):
+            params["wait"] = "1"
+        status_code, data = scan_game_libraries(server, params=params)
         return Response(data, status=status_code)
 
 
@@ -1471,6 +1529,7 @@ class GameServerOtixSyncView(APIView):
             server,
             download_images=download_images,
             write_otix=write_otix,
+            ensure_scan=True,
         )
         return Response(data, status=status_code)
 

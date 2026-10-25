@@ -164,3 +164,73 @@ export function saveStoredPathsViewMode(mode: PathsViewMode): void {
     // ignore
   }
 }
+
+export interface SuggestedPathItem {
+  id: string
+  path: string
+  label: string
+  source: 'steam' | 'epic' | 'gog' | 'generic'
+}
+
+export function getSuggestedDefaultPaths(
+  existingPaths: { path: string }[],
+  isWindowsPlatform = true,
+): SuggestedPathItem[] {
+  const normExisting = new Set(existingPaths.map((p) => normalizePath(p.path)))
+
+  const candidates: SuggestedPathItem[] = isWindowsPlatform
+    ? [
+        {
+          id: 'steam-win',
+          path: 'C:\\Program Files (x86)\\Steam\\steamapps\\common',
+          label: 'Steam Library',
+          source: 'steam',
+        },
+        {
+          id: 'epic-win',
+          path: 'C:\\Program Files\\Epic Games',
+          label: 'Epic Games',
+          source: 'epic',
+        },
+        {
+          id: 'gog-win',
+          path: 'C:\\Program Files (x86)\\GOG Galaxy\\Games',
+          label: 'GOG Galaxy Games',
+          source: 'gog',
+        },
+        {
+          id: 'games-c',
+          path: 'C:\\Games',
+          label: 'C:\\Games',
+          source: 'generic',
+        },
+        {
+          id: 'games-d',
+          path: 'D:\\Games',
+          label: 'D:\\Games',
+          source: 'generic',
+        },
+      ]
+    : [
+        {
+          id: 'steam-mac',
+          path: '~/Library/Application Support/Steam/steamapps/common',
+          label: 'Steam Library',
+          source: 'steam',
+        },
+        {
+          id: 'epic-mac',
+          path: '/Users/Shared/Epic Games',
+          label: 'Epic Games',
+          source: 'epic',
+        },
+        {
+          id: 'games-unix',
+          path: '~/Games',
+          label: '~/Games',
+          source: 'generic',
+        },
+      ]
+
+  return candidates.filter((item) => !normExisting.has(normalizePath(item.path)))
+}

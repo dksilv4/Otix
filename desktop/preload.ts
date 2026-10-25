@@ -76,8 +76,8 @@ contextBridge.exposeInMainWorld('desktopAPI', {
   getUpdatesForIso: (isoPath: string) => ipcRenderer.invoke('installer:get-updates', isoPath),
   previewOrganization: (directory: string, regexPattern: string, isoTemplate: string, updateTemplate: string, separator?: string) =>
     ipcRenderer.invoke('installer:preview-organization', directory, regexPattern, isoTemplate, updateTemplate, separator),
-  executeOrganization: (items: { sourcePath: string; targetPath: string }[]) =>
-    ipcRenderer.invoke('installer:execute-organization', items),
+  executeOrganization: (items: { sourcePath: string; targetPath: string }[], deleteEmptyFolders?: boolean) =>
+    ipcRenderer.invoke('installer:execute-organization', items, deleteEmptyFolders),
   launchSetup: (setupPath: string) => ipcRenderer.invoke('installer:launch-setup', setupPath),
   batchOrganize: (directory: string, namingTemplate?: string) => ipcRenderer.invoke('installer:batch-organize', directory, namingTemplate),
   smartOrganizePreview: (directory: string, namingTemplate: string, separator?: string) => ipcRenderer.invoke('installer:smart-preview', directory, namingTemplate, separator),

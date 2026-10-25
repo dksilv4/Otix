@@ -471,3 +471,107 @@ export const buildFolderDropdownOptions = (
 
   return opts
 }
+
+export interface DirectoryGroup {
+  id: string
+  sourceDir: string
+  targetDir: string
+  items: PreviewItem[]
+}
+
+export const groupPreviewItemsByDirectory = (
+  items: PreviewItem[],
+  rootDir?: string,
+): DirectoryGroup[] => {
+  const groupMap = new Map<string, { sourceDir: string; targetDir: string; items: PreviewItem[] }>()
+  const normRoot = rootDir ? normalizePathSeparators(rootDir).toLowerCase() : ''
+
+  items.forEach((item) => {
+    let sourceParent = ''
+    let targetParent = ''
+
+    // 1. Determine source parent folder relative to rootDir
+    const normSource = normalizePathSeparators(item.sourcePath)
+    if (normRoot && normSource.toLowerCase().startsWith(normRoot)) {
+      const rel = normSource.slice(normRoot.length).replace(/^\/+/, '')
+      const segments = rel.split('/').filter(Boolean)
+      if (segments.length > 1) {
+        sourceParent = segments[0]
+      } else if (segments.length === 1) {
+        sourceParent = isItemFolder(item) ? segments[0] : 'Root'
+      }
+    }
+
+    if (!sourceParent && item.sourceSubdirectory) {
+      const segs = item.sourceSubdirectory.replace(/[\\/]+/g, '/').split('/').filter(Boolean)
+      sourceParent = segs[0] || ''
+    }
+
+    if (!sourceParent) {
+      const segs = normSource.split('/').filter(Boolean)
+      if (segs.length > 2) {
+        sourceParent = segs[segs.length - 2]
+      } else {
+        sourceParent = 'Root'
+      }
+    }
+
+    // 2. Determine target parent folder
+    const normTarget = normalizePathSeparators(item.targetPath)
+    if (normRoot && normTarget.toLowerCase().startsWith(normRoot)) {
+      const rel = normTarget.slice(normRoot.length).replace(/^\/+/, '')
+      const segments = rel.split('/').filter(Boolean)
+      if (segments.length > 1) {
+        targetParent = segments[0]
+      } else if (segments.length === 1) {
+        targetParent = isItemFolder(item) ? segments[0] : 'Root'
+      }
+    }
+
+    if (!targetParent && item.foldersToCreate && item.foldersToCreate.length > 0) {
+      const segs = item.foldersToCreate[0].replace(/[\\/]+/g, '/').split('/').filter(Boolean)
+      targetParent = segs[0] || ''
+    }
+
+    if (!targetParent && item.targetSubdirectory) {
+      const segs = item.targetSubdirectory.replace(/[\\/]+/g, '/').split('/').filter(Boolean)
+      targetParent = segs[0] || ''
+    }
+
+    if (!targetParent) {
+      const segs = normTarget.split('/').filter(Boolean)
+      if (segs.length > 2) {
+        targetParent = segs[segs.length - 2]
+      } else {
+        targetParent = sourceParent
+      }
+    }
+
+    const key = sourceParent.toLowerCase()
+    const existing = groupMap.get(key)
+    if (existing) {
+      existing.items.push(item)
+      if (
+        (!existing.targetDir || existing.targetDir.toLowerCase() === existing.sourceDir.toLowerCase()) &&
+        targetParent &&
+        targetParent.toLowerCase() !== sourceParent.toLowerCase()
+      ) {
+        existing.targetDir = targetParent
+      }
+    } else {
+      groupMap.set(key, {
+        sourceDir: sourceParent,
+        targetDir: targetParent || sourceParent,
+        items: [item],
+      })
+    }
+  })
+
+  return Array.from(groupMap.values()).map((g) => ({
+    id: g.sourceDir,
+    sourceDir: g.sourceDir,
+    targetDir: g.targetDir,
+    items: g.items,
+  }))
+}
+

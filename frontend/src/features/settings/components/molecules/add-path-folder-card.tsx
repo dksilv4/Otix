@@ -4,6 +4,8 @@ import { DkButton } from '@ui/atoms/button'
 import { PathInput } from '@/components/path-picker/path-input'
 import { cn } from '@/lib/utils'
 
+import type { SuggestedPathItem } from '../../utils/paths'
+
 export interface AddPathFolderCardProps {
   isAdding: boolean
   onStartAdding: () => void
@@ -17,6 +19,8 @@ export interface AddPathFolderCardProps {
   }
   onToggleDraftRole: (role: 'installation' | 'download' | 'iso') => void
   onSubmit: (path: string) => void | Promise<void>
+  suggestions?: SuggestedPathItem[]
+  onSelectSuggestion?: (path: string) => void
   folderTarget?: 'local' | 'server'
   remoteNodeId?: number | null
   desktop: boolean
@@ -33,6 +37,8 @@ export const AddPathFolderCard = ({
   draftRoles,
   onToggleDraftRole,
   onSubmit,
+  suggestions = [],
+  onSelectSuggestion,
   folderTarget,
   remoteNodeId,
   desktop,
@@ -142,6 +148,30 @@ export const AddPathFolderCard = ({
             </DkButton>
           </div>
         </div>
+
+        {suggestions.length > 0 && (
+          <div className="pt-2">
+            <div className="text-[10px] uppercase font-semibold tracking-wider text-muted-foreground mb-1.5">
+              Quick Suggestions
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {suggestions.map((s) => (
+                <button
+                  key={s.id}
+                  type="button"
+                  onClick={() => {
+                    onDraftPathChange(s.path)
+                    onSelectSuggestion?.(s.path)
+                  }}
+                  className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg text-xs font-medium bg-[var(--dk-surface-base)] text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-ghost-hover)] border border-white/[0.04] transition-all cursor-pointer"
+                >
+                  <Plus className="h-3 w-3 text-primary" />
+                  <span>{s.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Optional Role Assignment Toggle */}
         <div className="pt-1 border-t border-white/[0.04]">
@@ -277,6 +307,30 @@ export const AddPathFolderCard = ({
           target={folderTarget}
           serverId={remoteNodeId ?? undefined}
         />
+
+        {suggestions.length > 0 && (
+          <div className="pt-2">
+            <div className="text-[10px] uppercase font-semibold tracking-wider text-muted-foreground mb-1.5">
+              Quick Suggestions
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {suggestions.map((s) => (
+                <button
+                  key={s.id}
+                  type="button"
+                  onClick={() => {
+                    onDraftPathChange(s.path)
+                    onSelectSuggestion?.(s.path)
+                  }}
+                  className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg text-xs font-medium bg-[var(--dk-surface-base)] text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-ghost-hover)] border border-white/[0.04] transition-all cursor-pointer"
+                >
+                  <Plus className="h-3 w-3 text-primary" />
+                  <span>{s.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Optional Role Assignment Toggle */}
         <div className="pt-0.5">

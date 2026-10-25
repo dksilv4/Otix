@@ -1193,6 +1193,23 @@ func (s *Server) setupRoutes() {
 			jsonResponse(w, http.StatusOK, res)
 		})
 
+		authed.Post("/api/v1/explorer/connect-share", func(w http.ResponseWriter, r *http.Request) {
+			var req explorer.ConnectShareRequest
+			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+				http.Error(w, `{"error":"Invalid request payload"}`, http.StatusBadRequest)
+				return
+			}
+			res, err := explorer.ConnectShare(req)
+			if err != nil {
+				jsonResponse(w, http.StatusBadRequest, map[string]interface{}{
+					"error":  err.Error(),
+					"detail": err.Error(),
+				})
+				return
+			}
+			jsonResponse(w, http.StatusOK, res)
+		})
+
 		authed.Get("/api/v1/explorer/download", func(w http.ResponseWriter, r *http.Request) {
 			targetPath := r.URL.Query().Get("path")
 			resolved, err := explorer.SanitizeAndResolvePath(targetPath, "")
@@ -2154,13 +2171,21 @@ func (s *Server) setupRoutes() {
 
 		authed.Post("/api/v1/organize/execute", func(w http.ResponseWriter, r *http.Request) {
 			var req struct {
-				Items []organize.ExecuteItem `json:"items"`
+				Items              []organize.ExecuteItem `json:"items"`
+				DeleteEmptyFolders *bool                  `json:"delete_empty_folders"`
+				DeleteEmptyCamel   *bool                  `json:"deleteEmptyFolders"`
 			}
 			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 				http.Error(w, `{"error":"Invalid request payload"}`, http.StatusBadRequest)
 				return
 			}
-			results, err := organize.ExecuteOrganization(req.Items)
+			deleteEmpty := s.cfg.Organize.DeleteEmptyFolders
+			if req.DeleteEmptyFolders != nil {
+				deleteEmpty = *req.DeleteEmptyFolders
+			} else if req.DeleteEmptyCamel != nil {
+				deleteEmpty = *req.DeleteEmptyCamel
+			}
+			results, err := organize.ExecuteOrganization(req.Items, deleteEmpty)
 			if err != nil {
 				http.Error(w, fmt.Sprintf(`{"error":%q}`, err.Error()), http.StatusInternalServerError)
 				return

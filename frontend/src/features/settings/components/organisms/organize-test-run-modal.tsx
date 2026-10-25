@@ -3,6 +3,8 @@ import {
   AlertCircle,
   ArrowRight,
   CheckCircle2,
+  ChevronDown,
+  ChevronUp,
   FolderPlus,
   Folder,
   FolderOpen,
@@ -24,8 +26,10 @@ import { cn } from '@/lib/utils'
 import {
   type PreviewItem,
   type TestRunFilterTab,
+  type DirectoryGroup,
   calculatePreviewMetrics,
   filterPreviewItems,
+  groupPreviewItemsByDirectory,
   getStatusBadgeInfo,
   getHealthBadgeInfo,
   isItemFolder,
@@ -38,6 +42,7 @@ import {
   loadStoredCustomPaths,
   saveStoredCustomPaths,
   buildFolderDropdownOptions,
+  normalizePathSeparators,
 } from '../../utils/organize-test-run'
 
 export type { PreviewItem }
@@ -49,15 +54,15 @@ export interface OrganizeTestRunModalProps {
   template: string
   isoDirectory: string
   availableScanPaths?: Array<{ path: string; type?: string }>
+  defaultDeleteEmptyFolders?: boolean
 }
 
-interface BeforeAfterCardProps {
+interface FileRowProps {
   item: PreviewItem
-  index: number
   rootDir?: string
 }
 
-const BeforeAfterCard = ({ item, index, rootDir }: BeforeAfterCardProps) => {
+const FileRow = ({ item, rootDir }: FileRowProps) => {
   const isFolder = isItemFolder(item)
   const badge = getStatusBadgeInfo(item.status)
   const healthBadge = getHealthBadgeInfo(item.health)
@@ -67,75 +72,217 @@ const BeforeAfterCard = ({ item, index, rootDir }: BeforeAfterCardProps) => {
   const targetSubdir = getItemTargetSubdirectory(item, rootDir)
   const childSubdirs = getItemSubdirectories(item)
 
+  const targetFilename = useMemo(() => {
+    if (!item.targetPath) return item.sourceFilename
+    const norm = normalizePathSeparators(item.targetPath)
+    const last = norm.split('/').pop()
+    return last || item.sourceFilename
+  }, [item.targetPath, item.sourceFilename])
+
+  const isRenamed =
+    Boolean(targetFilename) &&
+    targetFilename.toLowerCase() !== item.sourceFilename.toLowerCase()
+
   return (
-    <div
-      key={`${item.sourceFilename}-${index}`}
-      className="p-3.5 sm:p-4 rounded-2xl bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-hover)] border border-white/[0.04] hover:border-white/[0.08] transition-all duration-200 space-y-3"
-    >
-      {/* Header: Icon + Filename + Type Badge + Status Badges */}
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2.5 min-w-0">
-          <div
-            className={cn(
-              'p-2 rounded-xl shrink-0 transition-colors',
-              isFolder ? 'bg-primary/15 text-primary' : 'bg-white/[0.04] text-foreground/80',
-            )}
-          >
-            {isFolder ? <Folder size={14} /> : <File size={14} />}
-          </div>
-          <div className="min-w-0">
-            <span className="text-xs sm:text-sm font-semibold text-foreground truncate block">
-              {item.sourceFilename}
+    <div className="py-3 px-3 hover:bg-white/[0.015] transition-colors space-y-2">
+      {/* Side-by-side comparison columns */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4 items-start">
+        {/* LEFT COLUMN: BEFORE (Current) */}
+        <div className="space-y-1.5 min-w-0">
+          {/* Header & File Type */}
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+              <span>BEFORE (Current)</span>
             </span>
-            <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-mono">
+            <span className="text-[9px] font-mono uppercase text-muted-foreground px-1.5 py-0.2 rounded bg-white/[0.04] shrink-0">
               {typeLabel}
             </span>
           </div>
+
+          {/* Directory location (Breadcrumb) */}
+          {sourceSubdir ? (
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground min-w-0">
+              <Folder size={12} className="text-muted-foreground/70 shrink-0" />
+              <span className="text-[10px] text-muted-foreground/70 shrink-0">Subdir:</span>
+              <span className="font-mono text-[11px] text-foreground/90 font-medium truncate">
+                {sourceSubdir}
+              </span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground/60 min-w-0">
+              <Folder size={12} className="shrink-0" />
+              <span className="font-mono text-[11px] truncate">Root Folder</span>
+            </div>
+          )}
+
+          {/* Current File */}
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="text-muted-foreground shrink-0">
+              {isFolder ? <Folder size={13} className="text-primary" /> : <File size={13} />}
+            </div>
+            <span className="font-semibold text-xs text-foreground font-mono truncate" title={item.sourceFilename}>
+              {item.sourceFilename}
+            </span>
+          </div>
+
+          {/* Full Source Path (Detailed secondary line) */}
+          <div className="pt-0.5">
+            <p className="font-mono text-[10px] text-muted-foreground/70 break-all leading-tight">
+              {item.sourcePath}
+            </p>
+          </div>
         </div>
 
-        <div className="flex items-center gap-1.5 shrink-0">
-          {healthBadge && (
+        {/* RIGHT COLUMN: AFTER (Organized) */}
+        <div className="space-y-1.5 min-w-0 md:border-l md:border-white/[0.04] md:pl-4">
+          {/* Header & Status Badges */}
+          <div className="flex items-center justify-between gap-2">
             <span
               className={cn(
-                'text-[10px] font-mono font-semibold px-2.5 py-0.5 rounded-full border border-white/[0.06]',
-                healthBadge.className,
+                'text-[9px] font-bold uppercase tracking-wider flex items-center gap-1',
+                isOrganized ? 'text-muted-foreground' : 'text-primary',
               )}
             >
-              {healthBadge.label}
+              <ArrowRight size={10} className="shrink-0" />
+              <span>AFTER (Organized)</span>
             </span>
+
+            <div className="flex items-center gap-1 shrink-0">
+              {healthBadge && (
+                <span
+                  className={cn(
+                    'text-[9px] font-mono font-semibold px-2 py-0.5 rounded-full border border-white/[0.06]',
+                    healthBadge.className,
+                  )}
+                >
+                  {healthBadge.label}
+                </span>
+              )}
+              <span
+                className={cn(
+                  'text-[9px] font-mono font-semibold px-2 py-0.5 rounded-full border border-white/[0.06]',
+                  badge.className,
+                )}
+              >
+                {badge.label}
+              </span>
+            </div>
+          </div>
+
+          {/* Target Directory location (Breadcrumb) */}
+          {targetSubdir ? (
+            <div className="flex items-center gap-1.5 text-xs min-w-0">
+              <Folder
+                size={12}
+                className={cn('shrink-0', isOrganized ? 'text-muted-foreground/70' : 'text-primary')}
+              />
+              <span className="text-[10px] text-muted-foreground/70 shrink-0">Target Subdir:</span>
+              <span
+                className={cn(
+                  'font-mono text-[11px] font-semibold truncate',
+                  isOrganized ? 'text-foreground/90' : 'text-primary',
+                )}
+              >
+                {targetSubdir}
+              </span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground/60 min-w-0">
+              <Folder size={12} className="shrink-0" />
+              <span className="font-mono text-[11px] truncate">Root Folder</span>
+            </div>
           )}
-          <span
-            className={cn(
-              'text-[10px] font-mono font-semibold px-2.5 py-0.5 rounded-full border border-white/[0.06]',
-              badge.className,
+
+          {/* Target File (with rename highlighting if changed) */}
+          <div className="flex items-center gap-2 min-w-0">
+            <div className={cn('shrink-0', isOrganized ? 'text-muted-foreground' : 'text-primary')}>
+              {isFolder ? <Folder size={13} /> : <File size={13} />}
+            </div>
+            <span
+              className={cn(
+                'font-semibold text-xs font-mono truncate',
+                isOrganized ? 'text-foreground' : isRenamed ? 'text-primary font-bold' : 'text-foreground',
+              )}
+              title={targetFilename}
+            >
+              {isRenamed ? targetFilename : `→ ${targetFilename}`}
+            </span>
+            {isRenamed && (
+              <span className="text-[9px] font-mono uppercase px-1.5 py-0.2 rounded bg-primary/15 text-primary border border-primary/20 shrink-0">
+                Renamed
+              </span>
             )}
-          >
-            {badge.label}
-          </span>
+          </div>
+
+          {/* Full Target Path & Explanation */}
+          <div className="pt-0.5 space-y-1">
+            <p
+              className={cn(
+                'font-mono text-[10px] break-all leading-tight',
+                isOrganized ? 'text-muted-foreground/70' : 'text-primary/90 font-medium',
+              )}
+            >
+              {item.targetPath}
+            </p>
+            <div className="flex flex-wrap items-center gap-1.5 text-[9px] text-muted-foreground/80">
+              <span>— {isOrganized ? 'Organized into target' : 'Organizes into target location'}</span>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Archive Diagnostic (if anomalies) */}
+      {/* Package Subdirectories & Folders to Create (Clean inline strip) */}
+      {(childSubdirs.length > 0 || (item.foldersToCreate && item.foldersToCreate.length > 0)) && (
+        <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-white/[0.02] text-[9px]">
+          {childSubdirs.length > 0 && (
+            <div className="inline-flex items-center gap-1 text-muted-foreground">
+              <span className="font-bold uppercase tracking-wider">
+                Folder Package Subdirectories ({childSubdirs.length}):
+              </span>
+              {childSubdirs.map((subdir) => (
+                <span
+                  key={subdir}
+                  className="font-mono px-1.5 py-0.2 rounded bg-white/[0.04] text-foreground/80"
+                >
+                  {subdir}/
+                </span>
+              ))}
+            </div>
+          )}
+          {item.foldersToCreate &&
+            item.foldersToCreate.map((folder, fIdx) => (
+              <span
+                key={`f-${fIdx}`}
+                className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded font-mono font-medium bg-primary/10 text-primary"
+              >
+                <FolderPlus size={10} />
+                <span>+ {folder}</span>
+              </span>
+            ))}
+        </div>
+      )}
+
+      {/* Diagnostics / Anomalies (if any) */}
       {item.anomalies && item.anomalies.length > 0 && (
-        <div className="p-3 rounded-xl bg-[var(--dk-surface-raised)]/80 border border-white/[0.04] space-y-1.5">
+        <div className="mt-1 p-2 rounded-lg bg-[var(--dk-surface-raised)] border border-primary/20 space-y-1">
           <div className="flex items-center gap-1.5 text-xs font-semibold text-primary">
-            <Wrench size={13} className="shrink-0" />
+            <Wrench size={12} className="shrink-0" />
             <span>Archive Integrity Diagnostic</span>
           </div>
-          <div className="space-y-1 pl-4">
+          <div className="space-y-0.5 pl-3">
             {item.anomalies.map((msg, aIdx) => (
-              <p key={aIdx} className="text-[11px] font-mono text-muted-foreground leading-relaxed">
+              <p key={aIdx} className="text-[10px] font-mono text-muted-foreground leading-relaxed">
                 • {msg}
               </p>
             ))}
           </div>
           {item.suggestedRenames && Object.keys(item.suggestedRenames).length > 0 && (
-            <div className="flex flex-wrap items-center gap-1.5 pt-1 pl-4">
-              <span className="text-[10px] font-semibold text-muted-foreground">Fixes on move:</span>
+            <div className="flex flex-wrap items-center gap-1.5 pt-0.5 pl-3">
+              <span className="text-[9px] font-semibold text-muted-foreground">Fixes on move:</span>
               {Object.entries(item.suggestedRenames).map(([from, to]) => (
                 <span
                   key={from}
-                  className="px-2 py-0.5 rounded-md text-[10px] font-mono bg-primary/10 text-primary border border-primary/20"
+                  className="px-1.5 py-0.2 rounded text-[9px] font-mono bg-primary/10 text-primary border border-primary/20"
                 >
                   {from} → {to}
                 </span>
@@ -144,122 +291,104 @@ const BeforeAfterCard = ({ item, index, rootDir }: BeforeAfterCardProps) => {
           )}
         </div>
       )}
+    </div>
+  )
+}
 
-      {/* Unified BEFORE on Top & AFTER Under It in the Same Container with Different Colors */}
-      <div className="rounded-xl overflow-hidden border border-white/[0.05] divide-y divide-white/[0.05] text-xs shadow-xs">
-        {/* Top: BEFORE */}
-        <div className="p-3 bg-[var(--dk-surface-field)]/60 space-y-1.5">
-          <div className="flex flex-wrap items-center justify-between gap-1.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-            <div className="flex items-center gap-2 min-w-0">
-              <span className="shrink-0">BEFORE (Current)</span>
-              {sourceSubdir && (
-                <span className="inline-flex items-center gap-1 font-mono text-[9px] px-2 py-0.5 rounded-md bg-white/[0.04] text-foreground/80 font-normal truncate">
-                  <FolderTree size={10} className="text-muted-foreground shrink-0" />
-                  <span className="text-muted-foreground">Subdir:</span>
-                  <span className="font-semibold text-foreground/90">{sourceSubdir}</span>
-                </span>
-              )}
-            </div>
-            <span className="font-mono text-[9px] px-1.5 py-0.5 rounded bg-white/[0.04] text-muted-foreground shrink-0">
-              {isFolder ? 'Folder' : 'File'}
+interface DirectorySectionProps {
+  group: DirectoryGroup
+  rootDir?: string
+  forceExpanded?: boolean | null
+}
+
+const DirectorySection = ({
+  group,
+  rootDir,
+  forceExpanded,
+}: DirectorySectionProps) => {
+  const [expanded, setExpanded] = useState(true)
+
+  useEffect(() => {
+    if (forceExpanded !== null && forceExpanded !== undefined) {
+      setExpanded(forceExpanded)
+    }
+  }, [forceExpanded])
+
+  const isChanged = group.sourceDir.toLowerCase() !== group.targetDir.toLowerCase()
+  const hasActionable = group.items.some(isActionableItem)
+  const isAllOrganized = group.items.every((i) => i.status === 'already_organized')
+
+  return (
+    <div className="rounded-2xl bg-[var(--dk-surface-ghost)] border border-white/[0.04] overflow-hidden transition-all duration-200">
+      {/* Directory Section Header (Clean single bar) */}
+      <button
+        type="button"
+        onClick={() => setExpanded((prev) => !prev)}
+        className="w-full flex items-center justify-between p-3 sm:p-3.5 hover:bg-white/[0.02] cursor-pointer text-left transition-colors select-none"
+      >
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="p-1.5 rounded-lg bg-primary/10 text-primary shrink-0">
+            <Folder size={15} />
+          </div>
+          <div className="flex items-center gap-2 min-w-0 flex-wrap">
+            <span className="text-xs sm:text-sm font-bold text-foreground font-mono truncate">
+              {group.sourceDir}
+            </span>
+            {isChanged && (
+              <span className="inline-flex items-center gap-1.5 text-xs sm:text-sm">
+                <ArrowRight size={12} className="text-primary shrink-0" />
+                <span className="font-bold text-primary font-mono truncate">{group.targetDir}</span>
+              </span>
+            )}
+            <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white/[0.04] text-muted-foreground">
+              {group.items.length} {group.items.length === 1 ? 'file' : 'files'}
             </span>
           </div>
-          <p className="font-mono text-[11px] text-foreground/90 break-all leading-relaxed pl-0.5">
-            {item.sourcePath}
-          </p>
         </div>
 
-        {/* Under: AFTER */}
-        <div
-          className={cn(
-            'p-3 space-y-1.5 transition-colors',
-            isOrganized ? 'bg-white/[0.02]' : 'bg-primary/[0.07]',
-          )}
-        >
-          <div className="flex flex-wrap items-center justify-between gap-1.5 text-[10px] font-bold uppercase tracking-wider">
-            <div className="flex items-center gap-2 min-w-0">
-              <span
-                className={cn(
-                  'flex items-center gap-1.5 shrink-0',
-                  isOrganized ? 'text-muted-foreground' : 'text-primary',
-                )}
-              >
-                <ArrowRight size={11} className="shrink-0" />
-                <span>AFTER (Organized)</span>
-                <span className="font-normal lowercase tracking-normal text-[10px] opacity-75">
-                  — {isOrganized ? 'Organized into target' : 'Organizes into target location'}
-                </span>
-              </span>
-              {targetSubdir && (
-                <span
-                  className={cn(
-                    'inline-flex items-center gap-1 font-mono text-[9px] px-2 py-0.5 rounded-md font-normal border truncate',
-                    isOrganized
-                      ? 'bg-white/[0.04] text-muted-foreground border-white/[0.04]'
-                      : 'bg-primary/15 text-primary border-primary/20',
-                  )}
-                >
-                  <FolderTree size={10} className="shrink-0 opacity-80" />
-                  <span className="opacity-75">Target Subdir:</span>
-                  <span className="font-semibold">{targetSubdir}</span>
-                </span>
-              )}
-            </div>
-            <span
-              className={cn(
-                'font-mono text-[9px] px-1.5 py-0.5 rounded border shrink-0',
-                isOrganized
-                  ? 'bg-white/[0.04] text-muted-foreground border-white/[0.04]'
-                  : 'bg-primary/20 text-primary border-primary/30',
-              )}
-            >
-              {isOrganized ? 'Unchanged' : 'Proposed'}
-            </span>
-          </div>
-          <p
+        <div className="flex items-center gap-2 shrink-0">
+          <span
             className={cn(
-              'font-mono text-[11px] font-semibold break-all leading-relaxed pl-0.5',
-              isOrganized ? 'text-foreground/90' : 'text-primary',
+              'text-[10px] font-mono font-semibold px-2 py-0.5 rounded-full border border-white/[0.06]',
+              isAllOrganized
+                ? 'bg-white/[0.04] text-muted-foreground'
+                : hasActionable
+                  ? 'bg-primary/15 text-primary border-primary/20'
+                  : 'bg-white/[0.04] text-muted-foreground',
             )}
           >
-            {item.targetPath}
-          </p>
+            {isAllOrganized ? 'Already Organized' : hasActionable ? 'Organize Needed' : 'Unchanged'}
+          </span>
+          <span className="text-muted-foreground p-0.5 hover:text-foreground">
+            {expanded ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+          </span>
         </div>
-      </div>
+      </button>
 
-      {/* Internal Subdirectories for Folder Packages */}
-      {childSubdirs.length > 0 && (
-        <div className="p-2.5 rounded-xl bg-white/[0.02] border border-white/[0.04] space-y-1">
-          <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-            <FolderTree size={11} className="text-muted-foreground shrink-0" />
-            <span>Folder Package Subdirectories ({childSubdirs.length})</span>
+      {/* Directory Section Content: Clean divided list of file rows */}
+      {expanded && (
+        <div className="border-t border-white/[0.04]">
+          {/* Side-by-side column indicator */}
+          <div className="hidden md:grid grid-cols-2 gap-4 px-3 py-1.5 text-[9px] font-bold uppercase tracking-wider bg-white/[0.015] border-b border-white/[0.03]">
+            <div className="flex items-center gap-1.5 text-muted-foreground">
+              <Folder size={11} />
+              <span>Current Source Location</span>
+            </div>
+            <div className="flex items-center gap-1.5 text-primary pl-4">
+              <ArrowRight size={11} />
+              <span>Target Organized Location</span>
+            </div>
           </div>
-          <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
-            {childSubdirs.map((subdir) => (
-              <span
-                key={subdir}
-                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-mono bg-white/[0.04] text-foreground/90 border border-white/[0.04]"
-              >
-                <Folder size={10} className="text-muted-foreground" />
-                <span>{subdir}/</span>
-              </span>
+
+          <div className="divide-y divide-white/[0.03]">
+            {group.items.map((item, idx) => (
+              <FileRow
+                key={`${item.sourceFilename}-${idx}`}
+                item={item}
+                rootDir={rootDir}
+              />
             ))}
           </div>
-        </div>
-      )}
-
-      {/* Folders to Create (clean single row, if any) */}
-      {item.foldersToCreate && item.foldersToCreate.length > 0 && (
-        <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
-          {item.foldersToCreate.map((folder, fIdx) => (
-            <span
-              key={`f-${fIdx}`}
-              className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-[10px] font-mono font-semibold bg-primary/15 text-primary border border-white/[0.04]"
-            >
-              <FolderPlus size={11} />
-              <span>+ {folder}</span>
-            </span>
-          ))}
         </div>
       )}
     </div>
@@ -273,10 +402,15 @@ export const OrganizeTestRunModal = ({
   template,
   isoDirectory,
   availableScanPaths = [],
+  defaultDeleteEmptyFolders = true,
 }: OrganizeTestRunModalProps) => {
   const [customPaths, setCustomPaths] = useState<string[]>(loadStoredCustomPaths)
   const [discoveredPaths, setDiscoveredPaths] = useState<Array<{ path: string; type?: string }>>([])
   const [scanError, setScanError] = useState<string | null>(null)
+  const [executionError, setExecutionError] = useState<string | null>(null)
+  const [deleteEmptyFolders, setDeleteEmptyFolders] = useState(defaultDeleteEmptyFolders)
+  const [groupByDir, setGroupByDir] = useState(true)
+  const [allExpanded, setAllExpanded] = useState<boolean | null>(true)
 
   // Dynamically discover configured desktop paths if none were passed
   useEffect(() => {
@@ -487,6 +621,11 @@ export const OrganizeTestRunModal = ({
   )
   const actionableItems = useMemo(() => items.filter(isActionableItem), [items])
 
+  const directoryGroups = useMemo(
+    () => groupPreviewItemsByDirectory(filteredList, selectedFolder),
+    [filteredList, selectedFolder],
+  )
+
   const canExecute =
     actionableItems.length > 0 &&
     (Boolean(nodeId && nodeId > 0) || Boolean(getOrganizerApi()?.executeOrganization))
@@ -494,40 +633,77 @@ export const OrganizeTestRunModal = ({
   const handleExecute = useCallback(async () => {
     if (actionableItems.length === 0) return
     setExecuting(true)
+    setExecutionError(null)
     const desktopApi = getOrganizerApi()
     try {
+      let succeededCount = 0
+      let failedErrors: string[] = []
+
       if (nodeId && nodeId > 0) {
         const payload = {
           items: actionableItems.map((i) => ({
             sourcePath: i.sourcePath,
             targetPath: i.targetPath,
+            source_path: i.sourcePath,
+            target_path: i.targetPath,
           })),
+          deleteEmptyFolders,
+          delete_empty_folders: deleteEmptyFolders,
         }
         try {
-          await apiClient.post(`/library/servers/${nodeId}/organize/execute`, payload)
-          setExecutedCount(actionableItems.length)
-          void fetchRealPreview(selectedFolder, true)
-          return
-        } catch (netErr) {
-          if (!desktopApi?.executeOrganization) throw netErr
+          const res = await apiClient.post<any>(`/library/servers/${nodeId}/organize/execute`, payload)
+          const results = res?.data?.results || res?.data
+          if (Array.isArray(results)) {
+            const successes = results.filter((r: any) => r.success !== false)
+            succeededCount = successes.length
+            const failures = results.filter((r: any) => r.success === false && r.error)
+            if (failures.length > 0) {
+              failedErrors = failures.map((f: any) => f.error)
+            }
+          } else {
+            succeededCount = actionableItems.length
+          }
+        } catch (netErr: any) {
+          if (!desktopApi?.executeOrganization) {
+            const msg = netErr?.response?.data?.error || netErr?.message || 'Failed to execute organization movements.'
+            setExecutionError(msg)
+            return
+          }
         }
       }
 
-      if (desktopApi?.executeOrganization) {
+      if (succeededCount === 0 && desktopApi?.executeOrganization) {
         const payloadItems = actionableItems.map((i) => ({
           sourcePath: i.sourcePath,
           targetPath: i.targetPath,
+          source_path: i.sourcePath,
+          target_path: i.targetPath,
         }))
-        await desktopApi.executeOrganization(payloadItems)
-        setExecutedCount(actionableItems.length)
+        const desktopResults = await desktopApi.executeOrganization(payloadItems, deleteEmptyFolders)
+        if (Array.isArray(desktopResults)) {
+          const successes = desktopResults.filter((r: any) => r.success)
+          succeededCount = successes.length
+          const failures = desktopResults.filter((r: any) => !r.success && r.error)
+          if (failures.length > 0) {
+            failedErrors = failures.map((f: any) => f.error)
+          }
+        } else {
+          succeededCount = actionableItems.length
+        }
+      }
+
+      if (failedErrors.length > 0 && succeededCount === 0) {
+        setExecutionError(failedErrors[0])
+      } else {
+        setExecutedCount(succeededCount)
         void fetchRealPreview(selectedFolder, true)
       }
-    } catch {
-      // Benign fallback
+    } catch (err: any) {
+      setExecutionError(err?.message || 'An unexpected error occurred while executing organization.')
     } finally {
       setExecuting(false)
     }
-  }, [nodeId, actionableItems, selectedFolder, fetchRealPreview])
+  }, [nodeId, actionableItems, selectedFolder, fetchRealPreview, deleteEmptyFolders])
 
   if (!open) return null
 
@@ -539,23 +715,22 @@ export const OrganizeTestRunModal = ({
       description="Live dry-run preview comparing every real file and folder before and after organization rules are applied."
       className="max-w-5xl w-full max-h-[92vh] flex flex-col overflow-hidden"
     >
-      <div className="flex flex-col flex-1 min-h-0 space-y-3.5">
-        {/* 1. Target Folder Dropdown Selector */}
-        <div className="p-3.5 sm:p-4 rounded-2xl bg-[var(--dk-surface-ghost)] border border-white/[0.04] space-y-2.5">
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
+      <div className="flex flex-col flex-1 min-h-0 space-y-3">
+        {/* Unified Top Control Panel */}
+        <div className="p-3 rounded-2xl bg-[var(--dk-surface-ghost)] border border-white/[0.04] space-y-2.5">
+          {/* Row 1: Target Folder Selection + Scan / Browse Actions */}
+          <div className="flex flex-wrap sm:flex-nowrap items-center gap-2">
+            <div className="flex items-center gap-1.5 shrink-0 text-xs font-semibold text-foreground pl-0.5">
               <Folder size={14} className="text-primary shrink-0" />
-              <span className="text-xs font-semibold text-foreground">Target Folder</span>
+              <span>Target Folder</span>
+              {folderOptions.length > 0 && (
+                <span className="text-[10px] text-muted-foreground font-mono hidden md:inline">
+                  ({folderOptions.length})
+                </span>
+              )}
             </div>
-            {folderOptions.length > 0 && (
-              <span className="text-[10px] text-muted-foreground font-mono">
-                {folderOptions.length} available folder{folderOptions.length === 1 ? '' : 's'}
-              </span>
-            )}
-          </div>
 
-          <div className="flex items-center gap-2">
-            <div className="flex-1 min-w-0">
+            <div className="flex-1 min-w-[200px]">
               <DkDropdown
                 options={folderOptions}
                 value={selectedFolder}
@@ -570,10 +745,10 @@ export const OrganizeTestRunModal = ({
                 size="sm"
                 variant="ghost"
                 onClick={handleBrowseFolder}
-                className="text-xs h-9.5 px-3 cursor-pointer border border-white/[0.04] hover:bg-white/[0.04] shrink-0"
+                className="text-xs h-8 px-2.5 cursor-pointer border border-white/[0.04] hover:bg-white/[0.04] shrink-0"
                 title="Browse computer for other folder"
               >
-                <FolderOpen size={13} className="mr-1.5" />
+                <FolderOpen size={12} className="mr-1" />
                 Browse
               </DkButton>
             )}
@@ -583,131 +758,162 @@ export const OrganizeTestRunModal = ({
               variant="primary"
               onClick={() => void fetchRealPreview(selectedFolder)}
               disabled={loading || !selectedFolder.trim()}
-              className="text-xs h-9.5 px-3 cursor-pointer shrink-0"
+              className="text-xs h-8 px-3 cursor-pointer shrink-0"
               title="Scan target folder"
             >
-              <RefreshCw size={12} className={cn('mr-1.5', loading && 'animate-spin')} />
+              <RefreshCw size={11} className={cn('mr-1.5', loading && 'animate-spin')} />
               <span>Scan</span>
             </DkButton>
           </div>
-        </div>
 
-        {/* 2. Simplified Metrics Overview Grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 p-1.5 rounded-2xl bg-[var(--dk-surface-ghost)]/50 border border-white/[0.04]">
-          <div className="p-2.5 rounded-xl bg-white/[0.015] text-center">
-            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
-              Total Scanned
-            </p>
-            <p className="text-base font-bold text-foreground mt-0.5">{metrics.total}</p>
-          </div>
-          <div className="p-2.5 rounded-xl bg-primary/10 text-center border border-white/[0.04]">
-            <p className="text-[10px] font-semibold text-primary uppercase tracking-wider">
-              To Organize
-            </p>
-            <p className="text-base font-bold text-primary mt-0.5">{metrics.actionable}</p>
-          </div>
-          <div className="p-2.5 rounded-xl bg-white/[0.015] text-center">
-            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
-              In Subdirs
-            </p>
-            <p className="text-base font-bold text-foreground mt-0.5">
-              {metrics.subdirectoriesCount}
-            </p>
-          </div>
-          <div className="p-2.5 rounded-xl bg-white/[0.015] text-center">
-            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
-              Already Organized
-            </p>
-            <p className="text-base font-bold text-foreground mt-0.5">
-              {metrics.alreadyOrganized}
-            </p>
-          </div>
-        </div>
-
-        {/* 3. Filter & Real-Time Search Bar */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-0.5">
-          {/* Pill Tabs */}
-          <div className="flex items-center gap-1.5 overflow-x-auto p-1 rounded-xl bg-[var(--dk-surface-ghost)]/60 border border-white/[0.04]">
-            <button
-              type="button"
-              onClick={() => setFilterTab('all')}
-              className={cn(
-                'px-3 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer whitespace-nowrap',
-                filterTab === 'all'
-                  ? 'bg-primary/20 text-primary font-semibold shadow-xs'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-white/[0.04]',
-              )}
-            >
-              All ({metrics.total})
-            </button>
-            <button
-              type="button"
-              onClick={() => setFilterTab('actionable')}
-              className={cn(
-                'px-3 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer whitespace-nowrap',
-                filterTab === 'actionable'
-                  ? 'bg-primary/20 text-primary font-semibold shadow-xs'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-white/[0.04]',
-              )}
-            >
-              To Move ({metrics.actionable})
-            </button>
-            <button
-              type="button"
-              onClick={() => setFilterTab('subdirectories')}
-              className={cn(
-                'px-3 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer whitespace-nowrap',
-                filterTab === 'subdirectories'
-                  ? 'bg-primary/20 text-primary font-semibold shadow-xs'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-white/[0.04]',
-              )}
-            >
-              In Subdirs ({metrics.subdirectoriesCount})
-            </button>
-            <button
-              type="button"
-              onClick={() => setFilterTab('organized')}
-              className={cn(
-                'px-3 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer whitespace-nowrap',
-                filterTab === 'organized'
-                  ? 'bg-primary/20 text-primary font-semibold shadow-xs'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-white/[0.04]',
-              )}
-            >
-              Organized ({metrics.alreadyOrganized})
-            </button>
+          {/* Row 2: Stats Strip (Inline, borderless, clean) */}
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground px-1 pt-0.5 border-t border-white/[0.03]">
+            <div className="flex items-center gap-1.5">
+              <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                Total Scanned
+              </span>
+              <span className="font-mono text-xs font-bold text-foreground">{metrics.total}</span>
+            </div>
+            <span className="text-white/[0.1] hidden sm:inline">•</span>
+            <div className="flex items-center gap-1.5">
+              <span className="text-[10px] font-semibold text-primary uppercase tracking-wider">
+                To Organize
+              </span>
+              <span className="font-mono text-xs font-bold text-primary">{metrics.actionable}</span>
+            </div>
+            <span className="text-white/[0.1] hidden sm:inline">•</span>
+            <div className="flex items-center gap-1.5">
+              <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                In Subdirs
+              </span>
+              <span className="font-mono text-xs font-bold text-foreground">{metrics.subdirectoriesCount}</span>
+            </div>
+            <span className="text-white/[0.1] hidden sm:inline">•</span>
+            <div className="flex items-center gap-1.5">
+              <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                Already Organized
+              </span>
+              <span className="font-mono text-xs font-bold text-foreground">{metrics.alreadyOrganized}</span>
+            </div>
           </div>
 
-          {/* Search Box */}
-          <div className="relative w-full sm:w-64">
-            <Search
-              size={13}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
-            />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search files and folders..."
-              className="w-full pl-8 pr-7 py-1.5 text-xs rounded-xl bg-[var(--dk-surface-field)]/60 border border-white/[0.06] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-            />
-            {searchQuery && (
+          {/* Row 3: Filter Tabs + Search + Toolbar Actions */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-1 border-t border-white/[0.03]">
+            {/* Pill Tabs */}
+            <div className="flex items-center gap-1 overflow-x-auto p-0.5 rounded-xl bg-white/[0.02]">
               <button
                 type="button"
-                onClick={() => setSearchQuery('')}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer"
+                onClick={() => setFilterTab('all')}
+                className={cn(
+                  'px-2.5 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer whitespace-nowrap',
+                  filterTab === 'all'
+                    ? 'bg-primary/20 text-primary font-semibold shadow-xs'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-white/[0.04]',
+                )}
               >
-                <X size={12} />
+                All ({metrics.total})
               </button>
-            )}
+              <button
+                type="button"
+                onClick={() => setFilterTab('actionable')}
+                className={cn(
+                  'px-2.5 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer whitespace-nowrap',
+                  filterTab === 'actionable'
+                    ? 'bg-primary/20 text-primary font-semibold shadow-xs'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-white/[0.04]',
+                )}
+              >
+                To Move ({metrics.actionable})
+              </button>
+              <button
+                type="button"
+                onClick={() => setFilterTab('subdirectories')}
+                className={cn(
+                  'px-2.5 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer whitespace-nowrap',
+                  filterTab === 'subdirectories'
+                    ? 'bg-primary/20 text-primary font-semibold shadow-xs'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-white/[0.04]',
+                )}
+              >
+                In Subdirs ({metrics.subdirectoriesCount})
+              </button>
+              <button
+                type="button"
+                onClick={() => setFilterTab('organized')}
+                className={cn(
+                  'px-2.5 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer whitespace-nowrap',
+                  filterTab === 'organized'
+                    ? 'bg-primary/20 text-primary font-semibold shadow-xs'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-white/[0.04]',
+                )}
+              >
+                Organized ({metrics.alreadyOrganized})
+              </button>
+            </div>
+
+            {/* Right Toolbar: Search + Expand/Collapse + Group Toggle */}
+            <div className="flex items-center gap-1.5 flex-wrap sm:flex-nowrap">
+              {/* Search Box */}
+              <div className="relative w-full sm:w-44">
+                <Search
+                  size={12}
+                  className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
+                />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search files and folders..."
+                  className="w-full pl-7 pr-6 py-1 text-xs rounded-lg bg-[var(--dk-surface-field)]/60 border border-white/[0.06] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer"
+                  >
+                    <X size={11} />
+                  </button>
+                )}
+              </div>
+
+              {/* Expand / Collapse All (Directory Mode) */}
+              {groupByDir && directoryGroups.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setAllExpanded((prev) => (prev === true ? false : true))}
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-medium border border-white/[0.04] bg-white/[0.02] text-muted-foreground hover:text-foreground hover:bg-white/[0.04] transition-all cursor-pointer whitespace-nowrap"
+                  title="Expand or collapse all directories"
+                >
+                  <FolderTree size={12} />
+                  <span className="hidden lg:inline">{allExpanded === false ? 'Expand All' : 'Collapse All'}</span>
+                </button>
+              )}
+
+              {/* Group by Directory Toggle */}
+              <button
+                type="button"
+                onClick={() => setGroupByDir((prev) => !prev)}
+                className={cn(
+                  'flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-medium border transition-all cursor-pointer',
+                  groupByDir
+                    ? 'bg-primary/15 text-primary border-primary/25 font-semibold'
+                    : 'bg-white/[0.02] text-muted-foreground border-white/[0.04] hover:text-foreground hover:bg-white/[0.04]',
+                )}
+                title="Toggle grouping by parent directory"
+              >
+                <FolderTree size={12} />
+                <span className="hidden md:inline">Group</span>
+              </button>
+            </div>
           </div>
         </div>
 
         {/* Success execution banner */}
         {executedCount !== null && (
-          <div className="p-3 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-between gap-2">
+          <div className="p-2.5 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-between gap-2">
             <div className="flex items-center gap-2 text-xs font-semibold text-primary">
-              <CheckCircle2 size={15} className="shrink-0" />
+              <CheckCircle2 size={14} className="shrink-0" />
               <span>
                 Successfully organized {executedCount} game artifacts!
               </span>
@@ -723,8 +929,26 @@ export const OrganizeTestRunModal = ({
           </div>
         )}
 
-        {/* 4. Scrollable Live Preview Stream */}
-        <div className="flex-1 min-h-[280px] max-h-[50vh] overflow-y-auto pr-1 space-y-3">
+        {/* Execution error banner */}
+        {executionError !== null && (
+          <div className="p-2.5 rounded-xl bg-destructive/15 border border-destructive/25 flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 text-xs font-semibold text-destructive">
+              <AlertCircle size={14} className="shrink-0" />
+              <span>{executionError}</span>
+            </div>
+            <DkButton
+              size="sm"
+              variant="ghost"
+              onClick={() => setExecutionError(null)}
+              className="text-xs h-6 px-2 text-destructive hover:bg-destructive/20"
+            >
+              Dismiss
+            </DkButton>
+          </div>
+        )}
+
+        {/* 4. Scrollable Live Preview Stream (Clean directory sections) */}
+        <div className="flex-1 min-h-[300px] overflow-y-auto pr-1 space-y-2.5">
           {loading ? (
             <div className="flex items-center justify-center py-20 text-muted-foreground gap-2">
               <Loader2 size={16} className="animate-spin text-primary" />
@@ -733,23 +957,23 @@ export const OrganizeTestRunModal = ({
               </span>
             </div>
           ) : scanError ? (
-            <div className="p-8 text-center rounded-2xl bg-[var(--dk-surface-ghost)] border border-destructive/20 space-y-3">
-              <AlertCircle size={28} className="mx-auto text-destructive" />
+            <div className="p-6 text-center rounded-2xl bg-[var(--dk-surface-ghost)] border border-destructive/20 space-y-2.5">
+              <AlertCircle size={26} className="mx-auto text-destructive" />
               <p className="text-sm font-semibold text-foreground">
                 Folder Scan Error
               </p>
               <p className="text-xs text-muted-foreground max-w-md mx-auto leading-relaxed">
                 {scanError}
               </p>
-              <div className="pt-2 flex items-center justify-center gap-2">
+              <div className="pt-1 flex items-center justify-center gap-2">
                 {selectedFolder && (
                   <DkButton
                     size="sm"
                     variant="primary"
                     onClick={() => void fetchRealPreview(selectedFolder)}
-                    className="cursor-pointer"
+                    className="cursor-pointer h-8 text-xs"
                   >
-                    <RefreshCw size={12} className="mr-1.5" />
+                    <RefreshCw size={11} className="mr-1.5" />
                     Retry Scan
                   </DkButton>
                 )}
@@ -758,17 +982,17 @@ export const OrganizeTestRunModal = ({
                     size="sm"
                     variant="ghost"
                     onClick={handleBrowseFolder}
-                    className="cursor-pointer border border-white/[0.04]"
+                    className="cursor-pointer h-8 text-xs border border-white/[0.04]"
                   >
-                    <FolderOpen size={13} className="mr-1.5" />
+                    <FolderOpen size={12} className="mr-1.5" />
                     Browse Different Folder
                   </DkButton>
                 )}
               </div>
             </div>
           ) : !selectedFolder ? (
-            <div className="p-8 text-center rounded-2xl bg-[var(--dk-surface-ghost)] border border-white/[0.04] space-y-3">
-              <FolderOpen size={28} className="mx-auto text-primary" />
+            <div className="p-6 text-center rounded-2xl bg-[var(--dk-surface-ghost)] border border-white/[0.04] space-y-2.5">
+              <FolderOpen size={26} className="mx-auto text-primary" />
               <p className="text-sm font-semibold text-foreground">
                 Select or Browse a Folder to Test
               </p>
@@ -776,22 +1000,22 @@ export const OrganizeTestRunModal = ({
                 Pick a library folder from the dropdown above, or browse your computer to select any directory containing games, ROMs, or repacks.
               </p>
               {getOrganizerApi()?.selectDirectory && (
-                <div className="pt-2 flex items-center justify-center">
+                <div className="pt-1 flex items-center justify-center">
                   <DkButton
                     size="sm"
                     variant="primary"
                     onClick={handleBrowseFolder}
-                    className="cursor-pointer"
+                    className="cursor-pointer h-8 text-xs"
                   >
-                    <FolderOpen size={13} className="mr-1.5" />
+                    <FolderOpen size={12} className="mr-1.5" />
                     Browse Folder
                   </DkButton>
                 </div>
               )}
             </div>
           ) : filteredList.length === 0 ? (
-            <div className="p-8 text-center rounded-2xl bg-[var(--dk-surface-ghost)] border border-white/[0.04] space-y-3">
-              <Info size={24} className="mx-auto text-muted-foreground" />
+            <div className="p-6 text-center rounded-2xl bg-[var(--dk-surface-ghost)] border border-white/[0.04] space-y-2.5">
+              <Info size={22} className="mx-auto text-muted-foreground" />
               <p className="text-sm font-semibold text-foreground">
                 {searchQuery
                   ? 'No matching files found for search query'
@@ -802,71 +1026,111 @@ export const OrganizeTestRunModal = ({
                   ? `No items in ${selectedFolder} match "${searchQuery}".`
                   : `No game files, ISOs, ROMs, or packages were discovered in "${selectedFolder}". Select a different folder or browse computer.`}
               </p>
-              <div className="pt-1 text-[11px] text-muted-foreground/80 flex flex-wrap justify-center gap-1.5 max-w-md mx-auto">
+              <div className="pt-0.5 text-[10px] text-muted-foreground/80 flex flex-wrap justify-center gap-1.5 max-w-md mx-auto">
                 <span>Supported:</span>
-                <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-white/[0.04]">ISOs & ROMs</span>
-                <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-white/[0.04]">PC Game EXEs</span>
-                <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-white/[0.04]">Repack Bins & Archives</span>
-                <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-white/[0.04]">Console Packages</span>
+                <span className="font-mono text-[9px] px-1.5 py-0.2 rounded bg-white/[0.04]">ISOs & ROMs</span>
+                <span className="font-mono text-[9px] px-1.5 py-0.2 rounded bg-white/[0.04]">PC Game EXEs</span>
+                <span className="font-mono text-[9px] px-1.5 py-0.2 rounded bg-white/[0.04]">Repack Bins & Archives</span>
+                <span className="font-mono text-[9px] px-1.5 py-0.2 rounded bg-white/[0.04]">Console Packages</span>
               </div>
               {getOrganizerApi()?.selectDirectory && (
-                <div className="pt-2 flex items-center justify-center">
+                <div className="pt-1 flex items-center justify-center">
                   <DkButton
                     size="sm"
                     variant="ghost"
                     onClick={handleBrowseFolder}
-                    className="cursor-pointer border border-white/[0.04]"
+                    className="cursor-pointer h-8 text-xs border border-white/[0.04]"
                   >
-                    <FolderOpen size={13} className="mr-1.5" />
+                    <FolderOpen size={12} className="mr-1.5" />
                     Browse Another Folder
                   </DkButton>
                 </div>
               )}
             </div>
-          ) : (
-            filteredList.map((item, idx) => (
-              <BeforeAfterCard
-                key={`${item.sourceFilename}-${idx}`}
-                item={item}
-                index={idx}
+          ) : groupByDir ? (
+            /* Directory Sections: One single card per directory under target folder */
+            directoryGroups.map((group) => (
+              <DirectorySection
+                key={group.id}
+                group={group}
                 rootDir={selectedFolder}
+                forceExpanded={allExpanded}
               />
             ))
+          ) : (
+            /* Flat view: Single container of file rows */
+            <div className="rounded-2xl bg-[var(--dk-surface-ghost)] border border-white/[0.04] overflow-hidden">
+              <div className="hidden md:grid grid-cols-2 gap-4 px-3 py-1.5 text-[9px] font-bold uppercase tracking-wider bg-white/[0.015] border-b border-white/[0.03]">
+                <div className="flex items-center gap-1.5 text-muted-foreground">
+                  <Folder size={11} />
+                  <span>Current Source Location</span>
+                </div>
+                <div className="flex items-center gap-1.5 text-primary pl-4">
+                  <ArrowRight size={11} />
+                  <span>Target Organized Location</span>
+                </div>
+              </div>
+              <div className="divide-y divide-white/[0.03]">
+                {filteredList.map((item, idx) => (
+                  <FileRow
+                    key={`${item.sourceFilename}-${idx}`}
+                    item={item}
+                    rootDir={selectedFolder}
+                  />
+                ))}
+              </div>
+            </div>
           )}
         </div>
 
         {/* 5. Footer & Action Controls */}
-        <div className="pt-3 border-t border-white/[0.04] flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-          <div className="flex items-center gap-2 text-muted-foreground">
-            <CheckCircle2 size={14} className="text-primary shrink-0" />
-            <span>
+        <div className="pt-2.5 border-t border-white/[0.04] flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs">
+          <div className="flex items-center gap-2 text-muted-foreground min-w-0">
+            <CheckCircle2 size={13} className="text-primary shrink-0" />
+            <span className="truncate">
               {scanError
                 ? 'Check folder path or choose a different folder to preview.'
                 : !selectedFolder
                   ? 'Select or browse a target folder to preview organization rules.'
                   : filteredList.length === 0
                     ? 'No game files discovered in the selected folder.'
-                    : `Read-only dry run on ${filteredList.length} item${filteredList.length === 1 ? '' : 's'}. No files on disk have been altered.`}
+                    : `Read-only dry run on ${filteredList.length} item${filteredList.length === 1 ? '' : 's'} across ${directoryGroups.length} ${directoryGroups.length === 1 ? 'directory' : 'directories'}. No files on disk have been altered.`}
             </span>
           </div>
           <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
+            {canExecute && (
+              <label className="flex items-center gap-1.5 text-xs text-muted-foreground select-none cursor-pointer hover:text-foreground transition-colors mr-1">
+                <input
+                  type="checkbox"
+                  checked={deleteEmptyFolders}
+                  onChange={(e) => setDeleteEmptyFolders(e.target.checked)}
+                  className="rounded border-white/[0.08] text-primary focus:ring-primary h-3.5 w-3.5"
+                />
+                <span>Delete empty folders</span>
+              </label>
+            )}
             {canExecute && (
               <DkButton
                 size="sm"
                 variant="primary"
                 onClick={handleExecute}
                 disabled={executing || loading}
-                className="cursor-pointer"
+                className="cursor-pointer h-8 text-xs"
               >
                 {executing ? (
-                  <Loader2 size={13} className="mr-1.5 animate-spin" />
+                  <Loader2 size={12} className="mr-1.5 animate-spin" />
                 ) : (
-                  <Play size={13} className="mr-1.5" />
+                  <Play size={12} className="mr-1.5" />
                 )}
                 <span>Execute ({actionableItems.length})</span>
               </DkButton>
             )}
-            <DkButton size="sm" variant="ghost" onClick={() => onOpenChange(false)} className="cursor-pointer">
+            <DkButton
+              size="sm"
+              variant="ghost"
+              onClick={() => onOpenChange(false)}
+              className="cursor-pointer h-8 text-xs"
+            >
               Close
             </DkButton>
           </div>

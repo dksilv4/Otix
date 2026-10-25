@@ -8,10 +8,32 @@ import (
 	"runtime"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/dksilv4/otix/node/internal/indexer"
 )
+
+var (
+	networkSharesMu        sync.RWMutex
+	connectedNetworkShares = make(map[string]ExplorerDrive)
+)
+
+func AddConnectedNetworkShare(drive ExplorerDrive) {
+	networkSharesMu.Lock()
+	defer networkSharesMu.Unlock()
+	connectedNetworkShares[drive.Path] = drive
+}
+
+func GetConnectedNetworkShares() []ExplorerDrive {
+	networkSharesMu.RLock()
+	defer networkSharesMu.RUnlock()
+	shares := make([]ExplorerDrive, 0, len(connectedNetworkShares))
+	for _, s := range connectedNetworkShares {
+		shares = append(shares, s)
+	}
+	return shares
+}
 
 type ExplorerEntry struct {
 	Name               string `json:"name"`
@@ -32,6 +54,14 @@ type ExplorerShortcut struct {
 	Exist bool   `json:"exist"`
 }
 
+type ExplorerDrive struct {
+	Name       string  `json:"name"`
+	Path       string  `json:"path"`
+	FreeBytes  *uint64 `json:"free_bytes,omitempty"`
+	TotalBytes *uint64 `json:"total_bytes,omitempty"`
+	IsNetwork  bool    `json:"is_network,omitempty"`
+}
+
 type ExplorerBrowseResponse struct {
 	CurrentPath        string             `json:"current_path"`
 	ParentPath         *string            `json:"parent_path"`
@@ -42,6 +72,7 @@ type ExplorerBrowseResponse struct {
 	DiskFreeBytes      *uint64            `json:"disk_free_bytes"`
 	DiskTotalBytes     *uint64            `json:"disk_total_bytes"`
 	Shortcuts          []ExplorerShortcut `json:"shortcuts,omitempty"`
+	Drives             []ExplorerDrive    `json:"drives,omitempty"`
 	PermissionDenied   bool               `json:"permission_denied,omitempty"`
 	PermissionMessage  string             `json:"permission_message,omitempty"`
 }
@@ -66,6 +97,20 @@ type PermissionResult struct {
 	Granted  bool   `json:"granted"`
 	Prompted bool   `json:"prompted"`
 	Message  string `json:"message"`
+}
+
+type ConnectShareRequest struct {
+	URL       string `json:"url"`
+	ShareName string `json:"share_name,omitempty"`
+	Username  string `json:"username,omitempty"`
+	Password  string `json:"password,omitempty"`
+	Workgroup string `json:"workgroup,omitempty"`
+}
+
+type ConnectShareResult struct {
+	Status  string `json:"status"`
+	Path    string `json:"path"`
+	Message string `json:"message"`
 }
 
 func IsSafeFolderName(name string) bool {
@@ -179,6 +224,100 @@ func GetSystemShortcuts() []ExplorerShortcut {
 	return shortcuts
 }
 
+func GetSystemDrives() []ExplorerDrive {
+	var drives []ExplorerDrive
+	if runtime.GOOS == "windows" {
+		for c := 'A'; c <= 'Z'; c++ {
+			drivePath := string(c) + ":\\"
+			if dirExists(drivePath) {
+				ed := ExplorerDrive{
+					Name: string(c) + ":",
+					Path: drivePath,
+				}
+				if free, total, err := GetDiskUsage(drivePath); err == nil {
+					ed.FreeBytes = &free
+					ed.TotalBytes = &total
+				}
+				drives = append(drives, ed)
+			}
+		}
+	} else if runtime.GOOS == "darwin" {
+		rootDrive := ExplorerDrive{
+			Name: "Macintosh HD",
+			Path: "/",
+		}
+		if free, total, err := GetDiskUsage("/"); err == nil {
+			rootDrive.FreeBytes = &free
+			rootDrive.TotalBytes = &total
+		}
+		drives = append(drives, rootDrive)
+
+		if dirExists("/Volumes") {
+			if entries, err := os.ReadDir("/Volumes"); err == nil {
+				for _, entry := range entries {
+					volPath := filepath.Join("/Volumes", entry.Name())
+					ed := ExplorerDrive{
+						Name: entry.Name(),
+						Path: volPath,
+					}
+					if free, total, err := GetDiskUsage(volPath); err == nil {
+						ed.FreeBytes = &free
+						ed.TotalBytes = &total
+					}
+					drives = append(drives, ed)
+				}
+			}
+		}
+	} else {
+		rootDrive := ExplorerDrive{
+			Name: "Root (/)",
+			Path: "/",
+		}
+		if free, total, err := GetDiskUsage("/"); err == nil {
+			rootDrive.FreeBytes = &free
+			rootDrive.TotalBytes = &total
+		}
+		drives = append(drives, rootDrive)
+
+		if dirExists("/media") {
+			if entries, err := os.ReadDir("/media"); err == nil {
+				for _, entry := range entries {
+					mPath := filepath.Join("/media", entry.Name())
+					ed := ExplorerDrive{
+						Name: entry.Name(),
+						Path: mPath,
+					}
+					if free, total, err := GetDiskUsage(mPath); err == nil {
+						ed.FreeBytes = &free
+						ed.TotalBytes = &total
+					}
+					drives = append(drives, ed)
+				}
+			}
+		}
+	}
+
+	// Include connected network shares
+	for _, ns := range GetConnectedNetworkShares() {
+		exists := false
+		for _, d := range drives {
+			if strings.EqualFold(d.Path, ns.Path) {
+				exists = true
+				break
+			}
+		}
+		if !exists {
+			if free, total, err := GetDiskUsage(ns.Path); err == nil {
+				ns.FreeBytes = &free
+				ns.TotalBytes = &total
+			}
+			drives = append(drives, ns)
+		}
+	}
+
+	return drives
+}
+
 func SanitizeAndResolvePath(rawPath, baseDir string) (string, error) {
 	home, _ := os.UserHomeDir()
 
@@ -204,6 +343,51 @@ func SanitizeAndResolvePath(rawPath, baseDir string) (string, error) {
 		return "/", nil
 	}
 
+	// 1. Support smb:// and cifs:// URLs
+	lower := strings.ToLower(cleaned)
+	if strings.HasPrefix(lower, "smb://") || strings.HasPrefix(lower, "cifs://") {
+		trimmed := cleaned[6:]
+		trimmed = strings.TrimPrefix(trimmed, "/")
+		if runtime.GOOS == "windows" {
+			unc := "\\\\" + strings.ReplaceAll(trimmed, "/", "\\")
+			return filepath.Clean(unc), nil
+		}
+		parts := strings.Split(trimmed, "/")
+		if len(parts) >= 2 {
+			shareName := parts[1]
+			if runtime.GOOS == "darwin" && dirExists(filepath.Join("/Volumes", shareName)) {
+				sub := filepath.Join("/Volumes", shareName)
+				if len(parts) > 2 {
+					sub = filepath.Join(sub, filepath.Join(parts[2:]...))
+				}
+				return sub, nil
+			}
+		}
+		return "/" + trimmed, nil
+	}
+
+	// 2. Support UNC paths (\\server\share, //server/share, or \server\share)
+	if strings.HasPrefix(cleaned, "\\\\") || strings.HasPrefix(cleaned, "//") {
+		if runtime.GOOS == "windows" {
+			unc := strings.ReplaceAll(cleaned, "/", "\\")
+			for strings.HasPrefix(unc, "\\\\\\") {
+				unc = unc[1:]
+			}
+			return filepath.Clean(unc), nil
+		}
+		return filepath.Clean(cleaned), nil
+	}
+
+	if runtime.GOOS == "windows" && (strings.HasPrefix(cleaned, "\\") || strings.HasPrefix(cleaned, "/")) {
+		norm := strings.ReplaceAll(cleaned, "/", "\\")
+		stripped := strings.TrimLeft(norm, "\\")
+		parts := strings.Split(stripped, "\\")
+		if len(parts) >= 2 && parts[0] != "" && !strings.Contains(parts[0], ":") {
+			unc := `\\` + stripped
+			return filepath.Clean(unc), nil
+		}
+	}
+
 	if cleaned == "~" {
 		if home != "" {
 			return filepath.Abs(home)
@@ -214,11 +398,120 @@ func SanitizeAndResolvePath(rawPath, baseDir string) (string, error) {
 		}
 	}
 
+	if runtime.GOOS == "windows" {
+		if len(cleaned) == 2 && cleaned[1] == ':' {
+			cleaned = strings.ToUpper(cleaned) + "\\"
+			return cleaned, nil
+		}
+		if len(cleaned) >= 2 && cleaned[1] == ':' {
+			if len(cleaned) == 3 && (cleaned[2] == '\\' || cleaned[2] == '/') {
+				return strings.ToUpper(cleaned[:2]) + "\\", nil
+			}
+			return filepath.Clean(cleaned), nil
+		}
+	}
+
 	if filepath.IsAbs(cleaned) {
 		return filepath.Clean(cleaned), nil
 	}
 
 	return filepath.Abs(filepath.Join(root, cleaned))
+}
+
+func ConnectShare(req ConnectShareRequest) (*ConnectShareResult, error) {
+	raw := strings.TrimSpace(req.URL)
+	if raw == "" && req.ShareName != "" {
+		raw = req.ShareName
+	}
+	if raw == "" {
+		return nil, fmt.Errorf("network share URL or path is required")
+	}
+
+	// Normalization for network share connection
+	lower := strings.ToLower(raw)
+	if strings.HasPrefix(lower, "smb://") {
+		raw = raw[6:]
+	} else if strings.HasPrefix(lower, "cifs://") {
+		raw = raw[7:]
+	}
+	raw = strings.TrimSpace(raw)
+
+	if runtime.GOOS == "windows" {
+		// If not a local drive path like C:\...
+		if len(raw) < 2 || raw[1] != ':' {
+			norm := strings.ReplaceAll(raw, "/", "\\")
+			stripped := strings.TrimLeft(norm, "\\")
+			raw = `\\` + stripped
+		}
+	}
+
+	targetPath, err := SanitizeAndResolvePath(raw, "")
+	if err != nil {
+		return nil, fmt.Errorf("invalid network share path: %w", err)
+	}
+
+	if runtime.GOOS == "windows" {
+		if req.Username != "" {
+			userArg := req.Username
+			if req.Workgroup != "" && !strings.Contains(req.Username, "\\") && !strings.Contains(req.Username, "@") {
+				userArg = req.Workgroup + "\\" + req.Username
+			}
+			var cmd *exec.Cmd
+			if req.Password != "" {
+				cmd = exec.Command("net", "use", targetPath, req.Password, "/user:"+userArg, "/persistent:no")
+			} else {
+				cmd = exec.Command("net", "use", targetPath, "/user:"+userArg, "/persistent:no")
+			}
+			out, err := cmd.CombinedOutput()
+			if err != nil {
+				if _, statErr := os.Stat(targetPath); statErr != nil {
+					cleanOut := strings.TrimSpace(string(out))
+					if cleanOut != "" {
+						return nil, fmt.Errorf("authentication failed: %s", cleanOut)
+					}
+					return nil, fmt.Errorf("failed to connect to network share: %w", err)
+				}
+			}
+		} else {
+			if _, statErr := os.Stat(targetPath); statErr != nil {
+				cmd := exec.Command("net", "use", targetPath, "/persistent:no")
+				out, _ := cmd.CombinedOutput()
+				if _, statErr2 := os.Stat(targetPath); statErr2 != nil {
+					cleanOut := strings.TrimSpace(string(out))
+					if cleanOut != "" {
+						return nil, fmt.Errorf("could not connect to %s: %s", targetPath, cleanOut)
+					}
+					return nil, fmt.Errorf("could not access network share %s: %w", targetPath, statErr2)
+				}
+			}
+		}
+	}
+
+	// Verify access
+	entries, err := os.ReadDir(targetPath)
+	if err != nil {
+		if _, statErr := os.Stat(targetPath); statErr != nil {
+			return nil, fmt.Errorf("could not access network share %s: %w", targetPath, err)
+		}
+	}
+
+	// Register connected network share so it appears in Drives list
+	ed := ExplorerDrive{
+		Name:      targetPath,
+		Path:      targetPath,
+		IsNetwork: true,
+	}
+	if free, total, err := GetDiskUsage(targetPath); err == nil {
+		ed.FreeBytes = &free
+		ed.TotalBytes = &total
+	}
+	AddConnectedNetworkShare(ed)
+
+	return &ConnectShareResult{
+		Status:  "connected",
+		Path:    targetPath,
+		Message: fmt.Sprintf("Successfully connected to %s (%d items)", targetPath, len(entries)),
+	}, nil
 }
 
 func InspectDirectory(targetPath, activeDownloadPath, serverRoot string) (*ExplorerBrowseResponse, error) {
@@ -244,6 +537,7 @@ func InspectDirectory(targetPath, activeDownloadPath, serverRoot string) (*Explo
 				ActiveDownloadPath: activeDownloadPath,
 				TotalItems:         0,
 				Shortcuts:          GetSystemShortcuts(),
+				Drives:             GetSystemDrives(),
 				PermissionDenied:   true,
 				PermissionMessage:  fmt.Sprintf("Permission denied accessing %s. If prompted on your host machine, grant access to Otix Node, or enable permission in System Settings.", resolvedTarget),
 			}, nil
@@ -272,6 +566,7 @@ func InspectDirectory(targetPath, activeDownloadPath, serverRoot string) (*Explo
 				ActiveDownloadPath: activeDownloadPath,
 				TotalItems:         0,
 				Shortcuts:          GetSystemShortcuts(),
+				Drives:             GetSystemDrives(),
 				PermissionDenied:   true,
 				PermissionMessage:  fmt.Sprintf("Permission denied reading %s. If prompted on your host machine, grant access to Otix Node, or enable permission in System Settings.", resolvedTarget),
 			}, nil
@@ -358,6 +653,7 @@ func InspectDirectory(targetPath, activeDownloadPath, serverRoot string) (*Explo
 		DiskFreeBytes:      freePtr,
 		DiskTotalBytes:     totalPtr,
 		Shortcuts:          GetSystemShortcuts(),
+		Drives:             GetSystemDrives(),
 	}, nil
 }
 

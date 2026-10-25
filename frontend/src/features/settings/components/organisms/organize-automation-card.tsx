@@ -9,10 +9,12 @@ export interface OrganizeAutomationCardProps {
   intervalHours: number
   postProcessEnabled: boolean
   scanOnLaunch: boolean
+  deleteEmptyFolders?: boolean
   onSetAutoSearch: (enabled: boolean) => void
   onSetIntervalHours: (hours: number) => void
   onSetPostProcessEnabled: (enabled: boolean) => void
   onSetScanOnLaunch: (enabled: boolean) => void
+  onSetDeleteEmptyFolders?: (enabled: boolean) => void
 }
 
 export const OrganizeAutomationCard = ({
@@ -20,10 +22,12 @@ export const OrganizeAutomationCard = ({
   intervalHours,
   postProcessEnabled,
   scanOnLaunch,
+  deleteEmptyFolders = true,
   onSetAutoSearch,
   onSetIntervalHours,
   onSetPostProcessEnabled,
   onSetScanOnLaunch,
+  onSetDeleteEmptyFolders,
 }: OrganizeAutomationCardProps) => {
   return (
     <SettingsCard className="space-y-3">
@@ -65,6 +69,13 @@ export const OrganizeAutomationCard = ({
         description="Rescan configured folders when the selected node starts."
         action={<DkSwitch checked={scanOnLaunch} onCheckedChange={onSetScanOnLaunch} />}
       />
+      {onSetDeleteEmptyFolders && (
+        <SettingsRow
+          label="Delete empty folders"
+          description="Automatically remove directories left empty after moving organized games."
+          action={<DkSwitch checked={deleteEmptyFolders} onCheckedChange={onSetDeleteEmptyFolders} />}
+        />
+      )}
     </SettingsCard>
   )
 }

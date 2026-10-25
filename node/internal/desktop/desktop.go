@@ -53,6 +53,7 @@ type OrganizeSettingsResponse struct {
 	ScanOnLaunch          bool   `json:"scanOnLaunch"`
 	GamesDownloadPath     string `json:"gamesDownloadPath"`
 	GamesInstallPath      string `json:"gamesInstallPath"`
+	DeleteEmptyFolders    bool   `json:"deleteEmptyFolders"`
 }
 
 func GetPlatform() string {
@@ -251,6 +252,7 @@ func GetOrganizeSettings(cfg *config.AppConfig) OrganizeSettingsResponse {
 		ScanOnLaunch:          cfg.Desktop.ScanOnLaunch,
 		GamesDownloadPath:     dlPath,
 		GamesInstallPath:      cfg.Desktop.GamesInstallPath,
+		DeleteEmptyFolders:    cfg.Organize.DeleteEmptyFolders,
 	}
 }
 
@@ -318,6 +320,16 @@ func ApplyOrganizeSettings(cfg *config.AppConfig, payload map[string]interface{}
 	if v, ok := payload["namingTemplate"]; ok {
 		if s, okS := v.(string); okS {
 			cfg.Organize.NamingTemplate = strings.TrimSpace(s)
+		}
+	}
+
+	if v, ok := payload["deleteEmptyFolders"]; ok {
+		if b, okB := v.(bool); okB {
+			cfg.Organize.DeleteEmptyFolders = b
+		}
+	} else if v, ok := payload["delete_empty_folders"]; ok {
+		if b, okB := v.(bool); okB {
+			cfg.Organize.DeleteEmptyFolders = b
 		}
 	} else if v, ok := payload["naming_template"]; ok {
 		if s, okS := v.(string); okS {

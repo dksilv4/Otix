@@ -359,6 +359,7 @@ export class NodeDaemonManager {
                 port,
                 local_endpoints: [`http://127.0.0.1:${port}`],
                 is_local: true,
+                is_local_desktop: true,
               }),
             });
           }
@@ -393,6 +394,7 @@ export class NodeDaemonManager {
           local_endpoints: [`http://127.0.0.1:${port}`],
           claim_code: claimCode,
           is_local: true,
+          is_local_desktop: true,
         }),
       });
 
@@ -427,6 +429,28 @@ export class NodeDaemonManager {
       return true;
     } catch (err) {
       console.warn('[node-daemon] Failed to auto-claim embedded node:', err);
+      return false;
+    }
+  }
+
+  /** Unclaim and reset local companion node */
+  public async unclaim(): Promise<boolean> {
+    const isLive = await this.probeNode(this.currentPort, 400);
+    if (!isLive) return false;
+    try {
+      const resp = await net.fetch(`http://127.0.0.1:${this.currentPort}/api/v1/claim/unclaim`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      if (resp.ok) {
+        console.log('[node-daemon] Embedded node daemon cleanly unclaimed and reset.');
+        this.currentAuthToken = '';
+        this.notifyStatus();
+        return true;
+      }
+      return false;
+    } catch (err) {
+      console.warn('[node-daemon] Failed to unclaim embedded node:', err);
       return false;
     }
   }

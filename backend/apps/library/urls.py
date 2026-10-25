@@ -27,6 +27,7 @@ from apps.library.views import (
     GameServerDownloadsQueueView,
     GameServerDownloadsSearchView,
     GameServerExplorerBrowseView,
+    GameServerExplorerConnectShareView,
     GameServerExplorerCreateFolderView,
     GameServerExplorerRequestPermissionView,
     GameServerExplorerSetPathView,
@@ -273,6 +274,11 @@ urlpatterns = [
         "servers/<sint:server_id>/explorer/request-permission",
         GameServerExplorerRequestPermissionView.as_view(),
         name="library-server-explorer-request-permission",
+    ),
+    path(
+        "servers/<sint:server_id>/explorer/connect-share",
+        GameServerExplorerConnectShareView.as_view(),
+        name="library-server-explorer-connect-share",
     ),
     # Modular Providers & Downloads Framework
     path(

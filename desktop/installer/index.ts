@@ -616,44 +616,58 @@ async function cleanEmptyDirs(dir: string, rootDir: string) {
 
 // Execute the movements
 export async function executeOrganization(
-  items: { sourcePath: string; targetPath: string }[]
+  items: { sourcePath?: string; source_path?: string; targetPath?: string; target_path?: string }[],
+  deleteEmptyFolders: boolean = true,
 ): Promise<{ sourcePath: string; targetPath: string; success: boolean; error?: string }[]> {
   const results: { sourcePath: string; targetPath: string; success: boolean; error?: string }[] = [];
 
   for (const item of items) {
-    if (item.sourcePath === item.targetPath) {
+    const src = item.sourcePath || item.source_path || '';
+    const dst = item.targetPath || item.target_path || '';
+
+    if (!src || !dst) {
       results.push({
-        sourcePath: item.sourcePath,
-        targetPath: item.targetPath,
+        sourcePath: src,
+        targetPath: dst,
+        success: false,
+        error: 'Source or target path is empty',
+      });
+      continue;
+    }
+
+    if (src === dst) {
+      results.push({
+        sourcePath: src,
+        targetPath: dst,
         success: true,
       });
       continue;
     }
 
     try {
-      const targetDir = path.dirname(item.targetPath);
+      const targetDir = path.dirname(dst);
       await fs.mkdir(targetDir, { recursive: true });
       try {
-        await fs.rename(item.sourcePath, item.targetPath);
+        await fs.rename(src, dst);
       } catch (renameErr: any) {
         if (renameErr && (renameErr.code === 'EXDEV' || renameErr.code === 'EPERM')) {
           // Cross-device fallback: copy then remove source
-          await fs.cp(item.sourcePath, item.targetPath, { recursive: true });
-          await fs.rm(item.sourcePath, { recursive: true, force: true });
+          await fs.cp(src, dst, { recursive: true });
+          await fs.rm(src, { recursive: true, force: true });
         } else {
           throw renameErr;
         }
       }
       results.push({
-        sourcePath: item.sourcePath,
-        targetPath: item.targetPath,
+        sourcePath: src,
+        targetPath: dst,
         success: true,
       });
     } catch (err: any) {
-      console.error(`Failed to move file from ${item.sourcePath} to ${item.targetPath}`, err);
+      console.error(`Failed to move file from ${src} to ${dst}`, err);
       results.push({
-        sourcePath: item.sourcePath,
-        targetPath: item.targetPath,
+        sourcePath: src,
+        targetPath: dst,
         success: false,
         error: err.message || String(err),
       });
@@ -661,17 +675,26 @@ export async function executeOrganization(
   }
 
   // Clean empty folders recursively inside root parent directories of moved files
-  const roots = new Set<string>();
-  for (const item of items) {
-    const parent = path.dirname(item.sourcePath);
-    roots.add(parent);
-  }
+  if (deleteEmptyFolders) {
+    const roots = new Set<string>();
+    for (const item of items) {
+      const src = item.sourcePath || item.source_path || '';
+      if (src) {
+        const parent = path.dirname(src);
+        roots.add(parent);
+      }
+    }
 
-  for (const root of roots) {
-    try {
-      await cleanEmptyDirs(root, root);
-    } catch (cleanErr) {
-      console.warn(`Failed to clean empty directories under ${root}:`, cleanErr);
+    for (const root of roots) {
+      try {
+        await cleanEmptyDirs(root, root);
+        const remaining = await fs.readdir(root).catch(() => ['non-empty']);
+        if (remaining.length === 0) {
+          await fs.rmdir(root).catch(() => {});
+        }
+      } catch (cleanErr) {
+        console.warn(`Failed to clean empty directories under ${root}:`, cleanErr);
+      }
     }
   }
 

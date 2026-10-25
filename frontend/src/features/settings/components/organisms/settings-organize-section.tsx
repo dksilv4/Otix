@@ -17,6 +17,7 @@ export const SettingsOrganizeSection = ({ nodeId: nodeIdProp }: SettingsOrganize
     postProcessEnabled,
     isoDownloadPath,
     scanOnLaunch,
+    deleteEmptyFolders,
     testRunOpen,
     selectedDirectory,
     customRulesCount,
@@ -29,6 +30,7 @@ export const SettingsOrganizeSection = ({ nodeId: nodeIdProp }: SettingsOrganize
     setPostProcessEnabled,
     setIsoDownloadPath,
     setScanOnLaunch,
+    setDeleteEmptyFolders,
     setTestRunOpen,
     setSelectedDirectory,
 
@@ -86,10 +88,12 @@ export const SettingsOrganizeSection = ({ nodeId: nodeIdProp }: SettingsOrganize
         intervalHours={intervalHours}
         postProcessEnabled={postProcessEnabled}
         scanOnLaunch={scanOnLaunch}
+        deleteEmptyFolders={deleteEmptyFolders}
         onSetAutoSearch={setAutoSearch}
         onSetIntervalHours={setIntervalHours}
         onSetPostProcessEnabled={setPostProcessEnabled}
         onSetScanOnLaunch={setScanOnLaunch}
+        onSetDeleteEmptyFolders={setDeleteEmptyFolders}
       />
 
       {/* 3. Copy & Import Settings from Another Node */}
@@ -114,6 +118,7 @@ export const SettingsOrganizeSection = ({ nodeId: nodeIdProp }: SettingsOrganize
               : isoDownloadPath || availableScanPaths[0]?.path || ''
           }
           availableScanPaths={availableScanPaths}
+          defaultDeleteEmptyFolders={deleteEmptyFolders}
         />
       )}
     </div>

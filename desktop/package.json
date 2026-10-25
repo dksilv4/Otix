@@ -8,10 +8,11 @@
   "scripts": {
     "postinstall": "patch-package",
     "rebuild": "electron-builder install-app-deps",
-    "dev": "concurrently -k -n \"vite,tsc,electron\" -c \"cyan,blue,magenta\" \"cd ../frontend && npx vite --port 5174\" \"tsc --watch\" \"electron-builder install-app-deps && wait-on http://127.0.0.1:5174 dist/ipc/scanner.js && cross-env NODE_ENV=development electron . --remote-debugging-port=9222\"",
+    "dev": "concurrently -k -n \"vite,tsc,electron\" -c \"cyan,blue,magenta\" \"cd ../frontend && npx vite --port 5174\" \"tsc --watch\" \"wait-on http://127.0.0.1:5174 dist/ipc/scanner.js && cross-env NODE_ENV=development electron . --remote-debugging-port=9222\"",
     "installer:dev": "concurrently -k -n \"vite,tsc,electron\" -c \"cyan,blue,magenta\" \"cd ../frontend && npx vite --port 5174\" \"tsc --watch\" \"wait-on http://127.0.0.1:5174 && cross-env NODE_ENV=development OTIX_INSTALLER=1 electron .\"",
     "uninstaller:dev": "concurrently -k -n \"vite,tsc,electron\" -c \"cyan,blue,magenta\" \"cd ../frontend && npx vite --port 5174\" \"tsc --watch\" \"wait-on http://127.0.0.1:5174 && cross-env NODE_ENV=development OTIX_UNINSTALLER=1 electron .\"",
     "build": "tsc",
+    "build:node": "cd ../node && go build -ldflags=\"-s -w\" -o ../desktop/bin/otix-node.exe ./main.go",
     "plugin:create": "npm run build && node dist/scripts/create-plugin.js",
     "plugin:validate": "npm run build && node dist/scripts/plugin-validate.js",
     "pack": "npm run build && electron-builder --dir -c electron-builder.json5",

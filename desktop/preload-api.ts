@@ -539,7 +539,7 @@ export interface IDesktopAPI {
   applyCrack: (crackPath: string, targetDir: string) => Promise<boolean>;
   getUpdatesForIso: (isoPath: string) => Promise<{ name: string; path: string }[]>;
   previewOrganization: (directory: string, regexPattern: string, isoTemplate: string, updateTemplate: string, separator?: string) => Promise<OrganizationPreviewItem[]>;
-  executeOrganization: (items: { sourcePath: string; targetPath: string }[]) => Promise<{ sourcePath: string; targetPath: string; success: boolean; error?: string }[]>;
+  executeOrganization: (items: { sourcePath: string; targetPath: string }[], deleteEmptyFolders?: boolean) => Promise<{ sourcePath: string; targetPath: string; success: boolean; error?: string }[]>;
   launchSetup: (setupPath: string) => Promise<boolean>;
   batchOrganize: (directory: string, namingTemplate?: string) => Promise<AutoOrganizeResult>;
   smartOrganizePreview: (directory: string, namingTemplate: string, separator?: string) => Promise<OrganizationPreviewItem[]>;

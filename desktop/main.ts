@@ -1221,6 +1221,7 @@ app.on('ready', async () => {
 
         }
       } else {
+        nodeDaemon?.unclaim().catch(() => {});
         if (desktopNodeHeartbeatTimer) {
           clearInterval(desktopNodeHeartbeatTimer);
           desktopNodeHeartbeatTimer = null;

@@ -234,6 +234,7 @@ type OrganizeSettings struct {
 	AutoOrganizeEnabled   bool   `yaml:"auto_organize_enabled" json:"auto_organize_enabled"`
 	NamingTemplate        string `yaml:"naming_template" json:"naming_template"`
 	ISODownloadPath       string `yaml:"iso_download_path" json:"iso_download_path"`
+	DeleteEmptyFolders    bool   `yaml:"delete_empty_folders" json:"delete_empty_folders"`
 }
 
 type AppConfig struct {
@@ -406,6 +407,7 @@ func DefaultConfig() *AppConfig {
 			PostProcessEnabled:    true,
 			WishlistIntervalHours: 12,
 			NamingTemplate:        "{Title} ({Year}) [{Platform}]/{OriginalName}.{ext}",
+			DeleteEmptyFolders:    true,
 		},
 	}
 }

@@ -496,12 +496,20 @@ def claim_node_direct(
             or target_h.startswith("172.")
         )
 
+    is_local_desktop = (
+        payload.get("is_local_desktop")
+        if "is_local_desktop" in payload
+        else payload.get("isLocalDesktop")
+    )
+
     server_data = {
         "name": resolved_name,
         "local_url": local_url,
         "auth_token": auth_token,
         "is_local": bool(is_local),
     }
+    if is_local_desktop is not None:
+        server_data["is_local_desktop"] = bool(is_local_desktop)
 
     clean_ip = (remote_ip or "").strip()
     if clean_ip and clean_ip not in _LOOPBACK_HOSTS:
@@ -784,7 +792,7 @@ def link_or_create_node(user, data: dict) -> tuple[UserNode, bool]:
         if not (incoming & existing):
             continue
         fields: list[str] = []
-        for field in ("name", "local_url", "remote_url", "auth_token", "is_active"):
+        for field in ("name", "local_url", "remote_url", "auth_token", "is_active", "is_local", "is_local_desktop"):
             value = data.get(field)
             if value in (None, "") or getattr(server, field) == value:
                 continue
@@ -978,6 +986,16 @@ def explorer_request_permission(
     )
 
 
+def explorer_connect_share(
+    server: UserGameServer,
+    payload: dict,
+) -> tuple[int, dict | list]:
+    """Proxy connect-share request to connected otix-server node."""
+    return server_proxy_request(
+        server, "POST", "/api/v1/explorer/connect-share", json=payload, timeout=15.0
+    )
+
+
 # ── Usenet (SABnzbd & Prowlarr) Operations ──────────────────────────────
 
 
@@ -1127,9 +1145,9 @@ def sabnzbd_resume_queue(server: UserGameServer) -> tuple[int, dict | list]:
     return usenet_proxy_request(server, "POST", "/api/v1/sabnzbd/resume", timeout=5.0)
 
 
-def scan_game_libraries(server: UserGameServer) -> tuple[int, dict | list]:
+def scan_game_libraries(server: UserGameServer, params: dict | None = None) -> tuple[int, dict | list]:
     """Ask the game server to re-index installer files after a download completes."""
-    return usenet_proxy_request(server, "POST", "/api/v1/scan", timeout=30.0)
+    return usenet_proxy_request(server, "POST", "/api/v1/scan", params=params, timeout=120.0)
 
 
 def clear_scanned_game_libraries(server: UserGameServer) -> tuple[int, dict | list]:
@@ -1147,7 +1165,7 @@ def node_get_sessions(
 
 def node_get_running_games(server: UserGameServer) -> tuple[int, dict | list]:
     """Fetch currently running game(s) from the node."""
-    if getattr(server, "is_local_desktop", False):
+    if not server.primary_url or server.primary_url.startswith("otix://"):
         return 200, {"running": False, "game": None, "games": []}
     return usenet_proxy_request(server, "GET", "/api/v1/games/running", timeout=4.0)
 
@@ -1511,7 +1529,7 @@ def node_save_organize(server: UserGameServer, payload: dict) -> tuple[int, dict
 
 
 def node_preview_organize(server: UserGameServer, payload: dict) -> tuple[int, dict | list]:
-    if getattr(server, "is_local_desktop", False) or not server.primary_url or server.primary_url.startswith("otix://"):
+    if not server.primary_url or server.primary_url.startswith("otix://"):
         return 400, {"error": "Local desktop client node does not support server-side organization preview."}
     status_code, data = usenet_proxy_request(server, "POST", "/api/v1/organize/preview", json=payload, timeout=15.0)
     if status_code >= 400:
@@ -1525,7 +1543,7 @@ def node_preview_organize(server: UserGameServer, payload: dict) -> tuple[int, d
 
 
 def node_execute_organize(server: UserGameServer, payload: dict) -> tuple[int, dict | list]:
-    if getattr(server, "is_local_desktop", False) or not server.primary_url or server.primary_url.startswith("otix://"):
+    if not server.primary_url or server.primary_url.startswith("otix://"):
         return 400, {"error": "Local desktop client node does not support server-side organization execution."}
     return usenet_proxy_request(server, "POST", "/api/v1/organize/execute", json=payload, timeout=30.0)
 

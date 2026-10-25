@@ -1,5 +1,7 @@
 export { resolveFolderPickStrategy } from './strategy'
 export type { FolderPickTarget, FolderPickStrategy } from './strategy'
 export { FolderPickerModal } from './folder-picker-modal'
+export { ConnectNetworkFolderModal } from './connect-network-folder-modal'
+export type { ConnectNetworkFolderModalProps } from './connect-network-folder-modal'
 export { PathInput } from './path-input'
 export { usePickFolder } from './hooks/use-pick-folder'
