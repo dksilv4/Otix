@@ -544,10 +544,18 @@ export const OrganizeTestRunModal = ({
           setItems([])
         }
       } catch (err: any) {
-        const errorMsg =
+        const rawMessage =
           err?.response?.data?.error ||
           err?.response?.data?.detail ||
           err?.message ||
+          ''
+        const cleanMessage = rawMessage
+          .replace(/Error invoking remote method '[^']+':\s*/gi, '')
+          .replace(/^Error:\s*/gi, '')
+          .trim()
+
+        const errorMsg =
+          cleanMessage ||
           `Unable to access or scan folder "${folderToScan}". Verify the directory exists and Otix has permissions to read it.`
         setScanError(errorMsg)
         setItems([])

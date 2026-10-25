@@ -387,7 +387,18 @@ export async function smartOrganizePreview(
   namingTemplate: string,
   separator?: 'space' | 'dot' | 'underscore' | 'dash',
 ): Promise<OrganizationPreviewItem[]> {
-  const content = await findDownloadedContent(directory, 5, true);
+  if (!directory || !directory.trim()) {
+    return [];
+  }
+  let content: DownloadedContent[] = [];
+  try {
+    content = await findDownloadedContent(directory, 5, true);
+  } catch (err: any) {
+    if (err?.code === 'ENOENT' || err?.message?.includes('Folder does not exist')) {
+      return [];
+    }
+    throw err;
+  }
   const items: OrganizationPreviewItem[] = [];
 
   for (const item of content) {

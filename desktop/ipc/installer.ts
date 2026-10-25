@@ -87,7 +87,14 @@ export function registerInstallerIPC(): void {
 
   // Smart preview using parseReleaseName + naming template (arr-style)
   ipcMain.handle('installer:smart-preview', async (_, directory: string, namingTemplate: string, separator?: string) => {
-    return await smartOrganizePreview(directory, namingTemplate, separator as 'space' | 'dot' | 'underscore' | 'dash');
+    try {
+      return await smartOrganizePreview(directory, namingTemplate, separator as 'space' | 'dot' | 'underscore' | 'dash');
+    } catch (err: any) {
+      if (err?.code === 'ENOENT' || err?.message?.includes('Folder does not exist')) {
+        return [];
+      }
+      throw err;
+    }
   });
 
   // Diagnose Repack Archive
