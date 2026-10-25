@@ -45,7 +45,7 @@ export interface DownloadedContent {
   /** Base name */
   name: string;
   /** Content type */
-  type: 'iso' | 'pc_game' | 'update' | 'dlc' | 'rom' | 'crack' | 'archive_part' | 'unknown';
+  type: 'iso' | 'pc_game' | 'update' | 'dlc' | 'rom' | 'crack' | 'archive_part' | 'file' | 'unknown';
   /** Detected target platform if explicit from container structure (e.g., PS3, PS4) */
   platform?: string;
   /** Size in bytes (for details) */
@@ -484,7 +484,9 @@ export async function smartOrganizePreview(
                 ? 'rom'
                 : item.type === 'pc_game'
                   ? 'container_package'
-                  : 'iso';
+                  : item.type === 'file'
+                    ? 'file'
+                    : 'iso';
 
     let status = 'rename_and_move';
     if (mappedType === 'container_package') status = 'container_package';
