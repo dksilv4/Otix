@@ -56,10 +56,15 @@ var NoiseDirectoryNames = map[string]bool{
 	"prerequisites": true, "prereq": true, "engine": true, "crashreports": true,
 	"mono": true, "dependencies": true, ".git": true, "__macosx": true,
 	"content": true, "assets": true, "textures": true, "sounds": true, "audio": true,
-	"video": true, "movies": true, "shaders": true, "levels": true, "maps": true,
+	"video": true, "movies": true, "films": true, "shaders": true, "levels": true, "maps": true,
 	"res": true, "resources": true, "localization": true, "languages": true,
 	"locale": true, "save": true, "saves": true, "cache": true,
 	"runtimetools": true, "md5": true, "emulators": true,
+	"anime shows": true, "anime movies": true, "anime": true,
+	"shows": true, "tv shows": true, "tv": true, "television": true, "series": true,
+	"music": true, "songs": true, "audiobooks": true, "podcasts": true,
+	"incomplete": true, "incompleted": true,
+	"torrent": true, "torrents": true,
 }
 
 var InstallerHeaderSignatures = []string{
@@ -226,11 +231,17 @@ func hasInstallerHeader(filePath string) bool {
 	return false
 }
 
+var TVMovieNoiseRegex = regexp.MustCompile(`(?i)(S\d{1,2}E\d{1,2}|2160p|1080p|720p|480p|WEB-?DL|BDRip|BRRip|HDRip|DVDRip|HDTV)`)
+
 // IsNoiseOrUtilityExecutable returns true if an executable is an uninstaller, crash reporter, or redistributable.
 func IsNoiseOrUtilityExecutable(filename, fullPath string) bool {
 	ext := strings.ToLower(filepath.Ext(filename))
 	if ext != ".exe" {
 		return false
+	}
+
+	if TVMovieNoiseRegex.MatchString(filename) {
+		return true
 	}
 
 	stem := strings.ToLower(strings.TrimSuffix(filename, ext))
@@ -625,24 +636,114 @@ type candidateExe struct {
 	score       int
 }
 
+type ScanPhase string
+
+const (
+	ScanPhaseIdle      ScanPhase = "idle"
+	ScanPhaseScanning  ScanPhase = "scanning"
+	ScanPhaseCompleted ScanPhase = "completed"
+	ScanPhaseError     ScanPhase = "error"
+)
+
+type ScanStatus struct {
+	Phase            ScanPhase `json:"phase"`
+	CurrentDirectory string    `json:"current_directory"`
+	FilesScanned     int       `json:"files_scanned"`
+	TotalFiles       int       `json:"total_files"`
+	Percentage       float64   `json:"percentage"`
+	StartedAt        time.Time `json:"started_at,omitempty"`
+	ElapsedMs        int64     `json:"elapsed_ms"`
+	LastCompletedAt  time.Time `json:"last_completed_at,omitempty"`
+	ErrorMessage     string    `json:"error_message,omitempty"`
+}
+
+type ScanProgressEvent struct {
+	Event string     `json:"event"`
+	Data  ScanStatus `json:"data"`
+}
+
 type StorageIndexer struct {
-	mu          sync.RWMutex
-	libraries   []config.LibraryConfig
-	filesByID   map[string]HostedFile
-	lastScanned time.Time
+	mu           sync.RWMutex
+	scanMu       sync.Mutex
+	libraries    []config.LibraryConfig
+	filesByID    map[string]HostedFile
+	filesByPath  map[string]string // filepath -> ID
+	mtimesByPath map[string]int64  // filepath -> mtime unix
+	lastScanned  time.Time
+	store        *Store
+	watcher      *Watcher
+
+	statusMu    sync.RWMutex
+	status      ScanStatus
+	subscribers map[chan ScanProgressEvent]struct{}
+	subMu       sync.Mutex
 }
 
 func NewStorageIndexer(libraries []config.LibraryConfig) *StorageIndexer {
 	return &StorageIndexer{
-		libraries: libraries,
-		filesByID: make(map[string]HostedFile),
+		libraries:    libraries,
+		filesByID:    make(map[string]HostedFile),
+		filesByPath:  make(map[string]string),
+		mtimesByPath: make(map[string]int64),
+		status:       ScanStatus{Phase: ScanPhaseIdle},
+		subscribers:  make(map[chan ScanProgressEvent]struct{}),
 	}
+}
+
+// SetStore attaches a persistent SQLite store and loads cached files on startup.
+func (si *StorageIndexer) SetStore(s *Store) error {
+	si.mu.Lock()
+	si.store = s
+	si.mu.Unlock()
+
+	if s == nil {
+		return nil
+	}
+
+	cachedFiles, cachedMtimes, err := s.LoadAll()
+	if err != nil {
+		return err
+	}
+
+	si.mu.Lock()
+	si.filesByID = cachedFiles
+	si.mtimesByPath = cachedMtimes
+	si.filesByPath = make(map[string]string, len(cachedFiles))
+	for id, f := range cachedFiles {
+		si.filesByPath[f.Filepath] = id
+	}
+	si.mu.Unlock()
+
+	return nil
+}
+
+// AttachWatcher attaches an active directory watcher to the indexer.
+func (si *StorageIndexer) AttachWatcher(w *Watcher) {
+	si.mu.Lock()
+	defer si.mu.Unlock()
+	si.watcher = w
+	si.syncWatcherPathsLocked()
+}
+
+func (si *StorageIndexer) syncWatcherPathsLocked() {
+	if si.watcher == nil {
+		return
+	}
+	var paths []string
+	for _, lib := range si.libraries {
+		if lib.Path != "" {
+			paths = append(paths, lib.Path)
+		}
+	}
+	watcher := si.watcher
+	go watcher.SetPaths(paths)
 }
 
 func (si *StorageIndexer) SetLibraries(libs []config.LibraryConfig) {
 	si.mu.Lock()
 	defer si.mu.Unlock()
 	si.libraries = libs
+	si.syncWatcherPathsLocked()
 }
 
 func (si *StorageIndexer) GetLibraries() []config.LibraryConfig {
@@ -670,23 +771,40 @@ func (si *StorageIndexer) GetFile(id string) (HostedFile, bool) {
 	return f, ok
 }
 
-// UpsertFile replaces or inserts a hosted file in the in-memory index.
+// UpsertFile replaces or inserts a hosted file in the index and store.
 func (si *StorageIndexer) UpsertFile(f HostedFile) {
 	if f.ID == "" {
 		return
 	}
 	si.mu.Lock()
-	defer si.mu.Unlock()
 	si.filesByID[f.ID] = f
+	si.filesByPath[f.Filepath] = f.ID
+	if t, err := time.Parse(time.RFC3339, f.ModifiedAt); err == nil {
+		si.mtimesByPath[f.Filepath] = t.Unix()
+	}
+	store := si.store
+	si.mu.Unlock()
+
+	if store != nil {
+		_ = store.UpsertFiles([]HostedFile{f})
+	}
 }
 
-// Clear drops the in-memory hosted file index without deleting files on disk.
+// Clear drops the hosted file index and cache without deleting files on disk.
 func (si *StorageIndexer) Clear() int {
 	si.mu.Lock()
-	defer si.mu.Unlock()
 	n := len(si.filesByID)
 	si.filesByID = make(map[string]HostedFile)
+	si.filesByPath = make(map[string]string)
+	si.mtimesByPath = make(map[string]int64)
 	si.lastScanned = time.Time{}
+	store := si.store
+	si.mu.Unlock()
+
+	if store != nil {
+		_ = store.Clear()
+	}
+
 	return n
 }
 
@@ -706,20 +824,113 @@ func (si *StorageIndexer) TotalSizeBytes() int64 {
 	return total
 }
 
+func (si *StorageIndexer) GetStatus() ScanStatus {
+	si.statusMu.RLock()
+	defer si.statusMu.RUnlock()
+	return si.status
+}
+
+func (si *StorageIndexer) IsScanning() bool {
+	si.statusMu.RLock()
+	defer si.statusMu.RUnlock()
+	return si.status.Phase == ScanPhaseScanning
+}
+
+func (si *StorageIndexer) SubscribeProgress() chan ScanProgressEvent {
+	si.subMu.Lock()
+	defer si.subMu.Unlock()
+	ch := make(chan ScanProgressEvent, 32)
+	si.subscribers[ch] = struct{}{}
+	return ch
+}
+
+func (si *StorageIndexer) UnsubscribeProgress(ch chan ScanProgressEvent) {
+	si.subMu.Lock()
+	defer si.subMu.Unlock()
+	delete(si.subscribers, ch)
+	close(ch)
+}
+
+func (si *StorageIndexer) broadcastProgress(event ScanProgressEvent) {
+	si.subMu.Lock()
+	defer si.subMu.Unlock()
+	for ch := range si.subscribers {
+		select {
+		case ch <- event:
+		default:
+			// Non-blocking drop if consumer buffer is full
+		}
+	}
+}
+
+func (si *StorageIndexer) updateStatus(mutate func(s *ScanStatus)) {
+	si.statusMu.Lock()
+	mutate(&si.status)
+	current := si.status
+	si.statusMu.Unlock()
+
+	si.broadcastProgress(ScanProgressEvent{
+		Event: "scan_progress",
+		Data:  current,
+	})
+}
+
 func (si *StorageIndexer) ScanAll() []HostedFile {
+	return si.ScanAllWithDeep(false)
+}
+
+func (si *StorageIndexer) ScanAllWithDeep(deep bool) []HostedFile {
+	si.scanMu.Lock()
+	defer si.scanMu.Unlock()
+
 	si.mu.RLock()
 	libs := make([]config.LibraryConfig, len(si.libraries))
 	copy(libs, si.libraries)
+	cachedFiles := make(map[string]HostedFile, len(si.filesByID))
+	for k, v := range si.filesByID {
+		cachedFiles[k] = v
+	}
+	cachedByPath := make(map[string]string, len(si.filesByPath))
+	for k, v := range si.filesByPath {
+		cachedByPath[k] = v
+	}
+	cachedMtimes := make(map[string]int64, len(si.mtimesByPath))
+	for k, v := range si.mtimesByPath {
+		cachedMtimes[k] = v
+	}
+	store := si.store
 	si.mu.RUnlock()
 
+	startTime := time.Now()
+	si.statusMu.Lock()
+	si.status = ScanStatus{
+		Phase:        ScanPhaseScanning,
+		StartedAt:    startTime,
+		FilesScanned: 0,
+		TotalFiles:   len(cachedFiles),
+	}
+	si.statusMu.Unlock()
+	si.broadcastProgress(ScanProgressEvent{
+		Event: "scan_started",
+		Data:  si.GetStatus(),
+	})
+
 	newFiles := make(map[string]HostedFile)
+	newFilesByPath := make(map[string]string)
+	newMtimes := make(map[string]int64)
 	var indexed []HostedFile
+	var filesToPersist []HostedFile
+	activePathsPerLib := make(map[string]map[string]bool)
+
+	totalFilesScanned := 0
+	lastBroadcast := time.Now()
 
 	for _, lib := range libs {
 		libName := lib.Name
 		if libName == "" {
 			libName = "Default"
 		}
+		activePathsPerLib[libName] = make(map[string]bool)
 		libPath := lib.Path
 		if _, err := os.Stat(libPath); os.IsNotExist(err) {
 			continue
@@ -727,7 +938,6 @@ func (si *StorageIndexer) ScanAll() []HostedFile {
 
 		allowedExts := lib.AllowedExtensions
 		if len(allowedExts) == 0 {
-			// Settings PUT often omits allowlists — never treat empty as "index everything".
 			allowedExts = config.DefaultAllowedExtensions(lib.Kind)
 		}
 		allowedMap := make(map[string]bool, len(allowedExts))
@@ -735,7 +945,6 @@ func (si *StorageIndexer) ScanAll() []HostedFile {
 			allowedMap[strings.ToLower(ext)] = true
 		}
 
-		// Group candidates per game root folder
 		dirCandidates := make(map[string][]candidateExe)
 		dirRootNames := make(map[string]string)
 
@@ -752,14 +961,37 @@ func (si *StorageIndexer) ScanAll() []HostedFile {
 				return nil
 			}
 
-			// Handle macOS .app bundle at directory level
+			totalFilesScanned++
+			if time.Since(lastBroadcast) > 120*time.Millisecond {
+				lastBroadcast = time.Now()
+				si.updateStatus(func(s *ScanStatus) {
+					s.CurrentDirectory = filepath.Dir(path)
+					s.FilesScanned = totalFilesScanned
+					s.ElapsedMs = time.Since(startTime).Milliseconds()
+				})
+			}
+
+			// Handle macOS .app bundle
 			if info.IsDir() {
 				if strings.HasSuffix(strings.ToLower(name), ".app") {
-					// Check if valid Mac bundle
 					plist := filepath.Join(path, "Contents", "Info.plist")
 					macosDir := filepath.Join(path, "Contents", "MacOS")
 					if _, errP := os.Stat(plist); errP == nil || func() bool { _, errM := os.Stat(macosDir); return errM == nil }() {
-						// Valid app bundle
+						mtimeUnix := info.ModTime().Unix()
+						activePathsPerLib[libName][path] = true
+						cachedID, hasCached := cachedByPath[path]
+						cachedMt, hasMt := cachedMtimes[path]
+
+						if !deep && hasCached && hasMt && cachedMt == mtimeUnix {
+							if existing, ok := cachedFiles[cachedID]; ok {
+								newFiles[existing.ID] = existing
+								newFilesByPath[path] = existing.ID
+								newMtimes[path] = mtimeUnix
+								indexed = append(indexed, existing)
+								return filepath.SkipDir
+							}
+						}
+
 						modTime := info.ModTime().UTC().Format(time.RFC3339)
 						hasher := md5.New()
 						hasher.Write([]byte(path))
@@ -786,7 +1018,10 @@ func (si *StorageIndexer) ScanAll() []HostedFile {
 						}
 						AttachOtixSidecar(&hf, libPath)
 						newFiles[fileID] = hf
+						newFilesByPath[path] = fileID
+						newMtimes[path] = mtimeUnix
 						indexed = append(indexed, hf)
+						filesToPersist = append(filesToPersist, hf)
 						return filepath.SkipDir
 					}
 				}
@@ -807,34 +1042,41 @@ func (si *StorageIndexer) ScanAll() []HostedFile {
 				return nil
 			}
 
-			// Skip hidden files, sidecars, and system files starting with dot
 			if strings.HasPrefix(name, ".") {
 				return nil
 			}
 
 			ext := strings.ToLower(filepath.Ext(path))
-
-			// Check allowed extensions filter
 			if len(allowedMap) > 0 && !allowedMap[ext] {
 				return nil
 			}
-
-			// Skip installer companion payload chunks
 			if IsInstallerPayloadFile(name) {
 				return nil
 			}
-
-			// Skip standalone .bin if in SkipExtensions
 			if ext == ".bin" && SkipExtensions[ext] {
 				return nil
 			}
-
-			// Skip DLC unlocker pkgs / emulator tooling archives
 			if IsNoiseHostedPackage(name, path) {
 				return nil
 			}
 
+			activePathsPerLib[libName][path] = true
+			mtimeUnix := info.ModTime().Unix()
+
 			indexFile := func(cat, title string) {
+				cachedID, hasCached := cachedByPath[path]
+				cachedMt, hasMt := cachedMtimes[path]
+
+				if !deep && hasCached && hasMt && cachedMt == mtimeUnix {
+					if existing, ok := cachedFiles[cachedID]; ok {
+						newFiles[existing.ID] = existing
+						newFilesByPath[path] = existing.ID
+						newMtimes[path] = mtimeUnix
+						indexed = append(indexed, existing)
+						return
+					}
+				}
+
 				fileSize := info.Size()
 				modTime := info.ModTime().UTC().Format(time.RFC3339)
 				headHash := ComputeHeadHash(path)
@@ -857,16 +1099,17 @@ func (si *StorageIndexer) ScanAll() []HostedFile {
 				}
 				AttachOtixSidecar(&hf, libPath)
 				newFiles[fileID] = hf
+				newFilesByPath[path] = fileID
+				newMtimes[path] = mtimeUnix
 				indexed = append(indexed, hf)
+				filesToPersist = append(filesToPersist, hf)
 			}
 
-			// Updates/patches: index each one, tagged as "update" with parent game title.
 			if IsUpdateOrPatchArtifact(name, path) {
 				indexFile("update", ParentGameTitleForUpdate(name, path, libPath))
 				return nil
 			}
 
-			// If it's an executable, evaluate noise and group by game root
 			if ext == ".exe" {
 				if IsNoiseOrUtilityExecutable(name, path) {
 					return nil
@@ -884,8 +1127,6 @@ func (si *StorageIndexer) ScanAll() []HostedFile {
 				return nil
 			}
 
-			// Disc images, archives, ROMs, or explicit installers (.msi, .pkg, .dmg).
-			// Never index unclassified junk (dll/pdb/jpg/txt/…) even if allowlist is wrong.
 			cat := DetermineFileFormatCategory(path, name)
 			if cat == "file" {
 				return nil
@@ -895,7 +1136,6 @@ func (si *StorageIndexer) ScanAll() []HostedFile {
 			return nil
 		})
 
-		// Process collected executable candidates per game directory
 		for rootDir, candidates := range dirCandidates {
 			if len(candidates) == 0 {
 				continue
@@ -906,7 +1146,6 @@ func (si *StorageIndexer) ScanAll() []HostedFile {
 				rootName = filepath.Base(rootDir)
 			}
 
-			// Check if any candidate is a non-installer (i.e. installed game executable)
 			var gameCandidates []candidateExe
 			var installerCandidates []candidateExe
 
@@ -923,7 +1162,6 @@ func (si *StorageIndexer) ScanAll() []HostedFile {
 			var formatCategory string
 
 			if len(gameCandidates) > 0 {
-				// Elect top scoring game executable
 				best := gameCandidates[0]
 				for _, gc := range gameCandidates[1:] {
 					if gc.score > best.score {
@@ -933,7 +1171,6 @@ func (si *StorageIndexer) ScanAll() []HostedFile {
 				elected = best
 				formatCategory = "game"
 			} else {
-				// All candidates are installers — pick the best installer
 				best := installerCandidates[0]
 				for _, ic := range installerCandidates[1:] {
 					stem := strings.ToLower(strings.TrimSuffix(ic.filename, filepath.Ext(ic.filename)))
@@ -944,6 +1181,20 @@ func (si *StorageIndexer) ScanAll() []HostedFile {
 				}
 				elected = best
 				formatCategory = "installer"
+			}
+
+			mtimeUnix := elected.info.ModTime().Unix()
+			cachedID, hasCached := cachedByPath[elected.path]
+			cachedMt, hasMt := cachedMtimes[elected.path]
+
+			if !deep && hasCached && hasMt && cachedMt == mtimeUnix {
+				if existing, ok := cachedFiles[cachedID]; ok {
+					newFiles[existing.ID] = existing
+					newFilesByPath[elected.path] = existing.ID
+					newMtimes[elected.path] = mtimeUnix
+					indexed = append(indexed, existing)
+					continue
+				}
 			}
 
 			fileSize := elected.info.Size()
@@ -979,14 +1230,49 @@ func (si *StorageIndexer) ScanAll() []HostedFile {
 			AttachOtixSidecar(&hf, libPath)
 
 			newFiles[fileID] = hf
+			newFilesByPath[elected.path] = fileID
+			newMtimes[elected.path] = mtimeUnix
 			indexed = append(indexed, hf)
+			filesToPersist = append(filesToPersist, hf)
+		}
+	}
+
+	// Persist changes to SQLite store
+	if store != nil {
+		if len(filesToPersist) > 0 {
+			_ = store.UpsertFiles(filesToPersist)
+		}
+		for libName, activeMap := range activePathsPerLib {
+			_, _ = store.DeleteMissing(activeMap, libName)
 		}
 	}
 
 	si.mu.Lock()
 	si.filesByID = newFiles
+	si.filesByPath = newFilesByPath
+	si.mtimesByPath = newMtimes
 	si.lastScanned = time.Now()
 	si.mu.Unlock()
+
+	elapsed := time.Since(startTime).Milliseconds()
+	si.statusMu.Lock()
+	si.status = ScanStatus{
+		Phase:           ScanPhaseCompleted,
+		CurrentDirectory: "",
+		FilesScanned:    totalFilesScanned,
+		TotalFiles:      len(newFiles),
+		Percentage:      100.0,
+		StartedAt:       startTime,
+		ElapsedMs:       elapsed,
+		LastCompletedAt: time.Now(),
+	}
+	completedStatus := si.status
+	si.statusMu.Unlock()
+
+	si.broadcastProgress(ScanProgressEvent{
+		Event: "scan_completed",
+		Data:  completedStatus,
+	})
 
 	return indexed
 }

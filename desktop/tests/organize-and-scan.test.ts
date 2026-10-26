@@ -44,7 +44,8 @@ vi.mock('../db', () => ({
   }),
 }));
 
-import { findDownloadedContent, smartOrganizePreview } from '../downloads/organizer';
+import { findDownloadedContent, smartOrganizePreview, applyNamingTemplate } from '../downloads/organizer';
+import { executeOrganization } from '../installer';
 import { updateGamePathInDb } from '../downloads';
 
 describe('Production Game Organization & Scanning', () => {
@@ -259,5 +260,175 @@ describe('Production Game Organization & Scanning', () => {
     const patchItem = preview.find((p) => p.sourceFilename === 'Elden.Ring.Patch.1.12.exe');
     expect(patchItem?.sourceSubdirectory).toBe('Patches');
     expect(patchItem?.targetSubdirectory).toContain('Updates');
+  });
+
+  it('correctly identifies PC game repack and avoids PS3 misidentification', async () => {
+    const testDir = path.join(tempDir, 'RepackPcTest');
+    await fs.mkdir(testDir, { recursive: true });
+
+    const gameDir = path.join(testDir, 'Grand Theft Auto V');
+    await fs.mkdir(gameDir, { recursive: true });
+    await fs.writeFile(path.join(gameDir, 'setup.exe'), 'installer');
+    await fs.writeFile(path.join(gameDir, 'setup-1.bin'), 'data');
+    await fs.writeFile(
+      path.join(gameDir, '.otix'),
+      JSON.stringify({
+        title: 'Grand Theft Auto V',
+        year: 2013,
+        platforms: [
+          { id: 9, name: 'PlayStation 3', slug: 'playstation-3' },
+          { id: 12, name: 'Xbox 360', slug: 'xbox-360' },
+          { id: 6, name: 'PC (Microsoft Windows)', slug: 'windows' },
+        ],
+      })
+    );
+
+    const preview = await smartOrganizePreview(testDir, '{Title} ({Year}) [{Platform}]/{OriginalName}.{ext}');
+    const item = preview.find((p) => p.sourceFilename === 'Grand Theft Auto V');
+    expect(item).toBeDefined();
+    expect(item?.targetPath.replace(/\\/g, '/')).toContain('[PC]');
+    expect(item?.targetPath.replace(/\\/g, '/')).not.toContain('[PS3]');
+  });
+
+  it('does not recurse into internal binary subfolders of an identified game package', async () => {
+    const testDir = path.join(tempDir, 'InternalBinariesTest');
+    await fs.mkdir(testDir, { recursive: true });
+
+    const gameDir = path.join(testDir, 'CyberGame');
+    const binDir = path.join(gameDir, 'bin', 'x64');
+    await fs.mkdir(binDir, { recursive: true });
+    await fs.writeFile(path.join(gameDir, 'CyberGame.exe'), 'exe');
+    await fs.writeFile(path.join(binDir, 'CyberGame-shipping.exe'), 'exe');
+
+    const content = await findDownloadedContent(testDir, 5);
+    // Should discover the game package 'CyberGame', but NOT 'CyberGame/bin/x64' as a separate game
+    const paths = content.map((c) => path.resolve(c.path));
+    expect(paths).toContain(path.resolve(gameDir));
+    expect(paths).not.toContain(path.resolve(binDir));
+    expect(content.filter((c) => c.type === 'pc_game').length).toBe(1);
+  });
+
+  it('parent folder containing multiple games does not swallow sibling games', async () => {
+    const testDir = path.join(tempDir, 'MultipleGamesCollection');
+    await fs.mkdir(testDir, { recursive: true });
+
+    // Game 1 with sidecar
+    const game1Dir = path.join(testDir, 'Game One');
+    await fs.mkdir(game1Dir, { recursive: true });
+    await fs.writeFile(path.join(game1Dir, 'game1.exe'), 'exe');
+    await fs.writeFile(
+      path.join(game1Dir, '.otix'),
+      JSON.stringify({
+        title: 'Game One',
+        platforms: [{ name: 'PC (Microsoft Windows)', slug: 'windows' }],
+      })
+    );
+
+    // Game 2 repack
+    const game2Dir = path.join(testDir, 'Game Two');
+    await fs.mkdir(game2Dir, { recursive: true });
+    await fs.writeFile(path.join(game2Dir, 'setup.exe'), 'installer');
+    await fs.writeFile(path.join(game2Dir, 'setup-1.bin'), 'bin');
+
+    const preview = await smartOrganizePreview(testDir, '{Title} [{Platform}]');
+    // testDir itself must NOT be in preview (which would move the whole collection into Game One [PC])
+    expect(preview.some((p) => path.resolve(p.sourcePath) === path.resolve(testDir))).toBe(false);
+
+    // Both Game One and Game Two must be recognized as distinct items
+    const item1 = preview.find((p) => path.resolve(p.sourcePath) === path.resolve(game1Dir));
+    const item2 = preview.find((p) => path.resolve(p.sourcePath) === path.resolve(game2Dir));
+    expect(item1).toBeDefined();
+    expect(item2).toBeDefined();
+    expect(item1?.targetPath.replace(/\\/g, '/')).toContain('Game One [PC]');
+    expect(item2?.targetPath.replace(/\\/g, '/')).toContain('Game Two [PC]');
+  });
+
+  it('applyNamingTemplate sanitizes slashes in titles to prevent nesting games inside folders', () => {
+    const release = {
+      title: 'Fate/stay night',
+      cleanTitle: 'Fate/stay night',
+      platform: 'PC',
+      rawName: 'Fate/stay night',
+    };
+    const fileInfo = { name: 'Fate/stay night', ext: '', type: 'pc_game' as const };
+    const target = applyNamingTemplate(release, '{Title} [{Platform}]', fileInfo, '/games');
+    const normTarget = target.replace(/\\/g, '/');
+    expect(normTarget).toBe('/games/Fate - stay night [PC]');
+    expect(normTarget).not.toContain('/games/Fate/stay night');
+  });
+
+  it('executeOrganization fails when destination already exists and is not empty', async () => {
+    const testDir = path.join(tempDir, 'ExecCollisionTest');
+    await fs.mkdir(testDir, { recursive: true });
+
+    const srcDir = path.join(testDir, 'Game B');
+    await fs.mkdir(srcDir, { recursive: true });
+    await fs.writeFile(path.join(srcDir, 'fileB.txt'), 'b');
+
+    const dstDir = path.join(testDir, 'Game A');
+    await fs.mkdir(dstDir, { recursive: true });
+    await fs.writeFile(path.join(dstDir, 'fileA.txt'), 'a');
+
+    const results = await executeOrganization([{ sourcePath: srcDir, targetPath: dstDir }]);
+    expect(results.length).toBe(1);
+    expect(results[0].success).toBe(false);
+    expect(results[0].error).toContain('already exists and is not empty');
+
+    // fileB must NOT have been moved into Game A
+    const dstFiles = await fs.readdir(dstDir);
+    expect(dstFiles).toContain('fileA.txt');
+    expect(dstFiles).not.toContain('fileB.txt');
+  });
+
+  it('discovers game with executable in nested bin/x64 at top level as single pc_game package', async () => {
+    const testDir = path.join(tempDir, 'NestedExeTopLevelTest');
+    const gameDir = path.join(testDir, 'Cyberpunk 2077');
+    const binDir = path.join(gameDir, 'bin', 'x64');
+    await fs.mkdir(binDir, { recursive: true });
+    await fs.writeFile(path.join(binDir, 'Cyberpunk2077.exe'), 'exe');
+
+    const preview = await smartOrganizePreview(testDir, '{Platform}/{Title}');
+    expect(preview.length).toBe(1);
+    expect(preview[0].type).toBe('container_package');
+    expect(preview[0].extracted?.Title).toBe('Cyberpunk 2077');
+    const normTarget = preview[0].targetPath.replace(/\\/g, '/');
+    const normExpected = path.join(testDir, 'PC', 'Cyberpunk 2077').replace(/\\/g, '/');
+    expect(normTarget).toBe(normExpected);
+  });
+
+  it('unwraps single-child redundant wrapper folder and follows folder structure', async () => {
+    const testDir = path.join(tempDir, 'WrapperUnwrapTest');
+    const wrapperDir = path.join(testDir, 'Cyberpunk.2077.v2.12.REPACK-ELAMIGOS');
+    const innerDir = path.join(wrapperDir, 'Cyberpunk 2077');
+    const binDir = path.join(innerDir, 'bin', 'x64');
+    await fs.mkdir(binDir, { recursive: true });
+    await fs.writeFile(path.join(binDir, 'Cyberpunk2077.exe'), 'exe');
+    await fs.writeFile(path.join(wrapperDir, 'release.nfo'), 'nfo');
+
+    const preview = await smartOrganizePreview(testDir, '{Platform}/{Title}');
+    expect(preview.length).toBe(1);
+    expect(preview[0].type).toBe('container_package');
+    expect(preview[0].extracted?.Title).toBe('Cyberpunk 2077');
+    const normSource = preview[0].sourcePath.replace(/\\/g, '/');
+    const normInner = innerDir.replace(/\\/g, '/');
+    expect(normSource).toBe(normInner);
+    const normTarget = preview[0].targetPath.replace(/\\/g, '/');
+    const normExpected = path.join(testDir, 'PC', 'Cyberpunk 2077').replace(/\\/g, '/');
+    expect(normTarget).toBe(normExpected);
+  });
+
+  it('routes updates into configured folder structure', async () => {
+    const testDir = path.join(tempDir, 'UpdatesFolderStructureTest');
+    const parentDir = path.join(testDir, 'Elden Ring');
+    const updatesDir = path.join(parentDir, 'Updates');
+    await fs.mkdir(updatesDir, { recursive: true });
+    await fs.writeFile(path.join(updatesDir, 'elden_ring_update_1.13.exe'), 'exe');
+
+    const preview = await smartOrganizePreview(testDir, '{Platform}/{Title}');
+    expect(preview.length).toBe(1);
+    expect(preview[0].type).toBe('update');
+    const normTarget = preview[0].targetPath.replace(/\\/g, '/');
+    const normExpected = path.join(testDir, 'PC', 'Elden Ring', 'Updates', 'elden_ring_update_1.13.exe').replace(/\\/g, '/');
+    expect(normTarget).toBe(normExpected);
   });
 });

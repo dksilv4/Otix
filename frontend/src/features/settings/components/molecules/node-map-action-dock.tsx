@@ -4,6 +4,7 @@ import {
   Cpu,
   FolderTree,
   Sparkles,
+  Copy,
   Link as LinkIcon,
   ExternalLink,
   Pencil,
@@ -27,6 +28,7 @@ interface NodeMapActionDockProps {
   onOpenNodeSettings?: (server: GameServer) => void
   onEditNode?: (server: GameServer) => void
   onRenameNode?: (server: GameServer) => void
+  onDuplicateNode?: (server: GameServer) => void
   onPingNode?: (server: GameServer) => void
   onEditServer?: (server: UserServerMachine) => void
   onDetectDrives?: (server: UserServerMachine) => void
@@ -45,6 +47,7 @@ export const NodeMapActionDock = ({
   onOpenNodeSettings,
   onEditNode,
   onRenameNode,
+  onDuplicateNode,
   onPingNode,
   onEditServer,
   onDetectDrives,
@@ -80,10 +83,10 @@ export const NodeMapActionDock = ({
             {name}
           </p>
           <p className="text-[10px] text-muted-foreground truncate leading-tight">
-            {type === 'node' && (data.server.isOnline ? 'Online' : 'Offline')}
-            {type === 'server' && getOSLabel(data.machine.os)}
-            {type === 'home' && (data.home.isDefault ? 'Default Home' : 'Home Location')}
-            {type === 'samba' && `/${data.samba.shareName}`}
+            {type === 'node' && (data.server?.isOnline ? 'Online' : 'Offline')}
+            {type === 'server' && data.machine?.os && getOSLabel(data.machine.os)}
+            {type === 'home' && (data.home?.isDefault ? 'Default Home' : 'Home Location')}
+            {type === 'samba' && data.samba?.shareName && `/${data.samba.shareName}`}
             {type === 'unclaimed_node' && 'Discovered Node'}
           </p>
         </div>
@@ -109,7 +112,7 @@ export const NodeMapActionDock = ({
         )}
 
         {/* Worker Node Actions */}
-        {type === 'node' && (
+        {type === 'node' && data.server && (
           <>
             <DkButton
               type="button"
@@ -151,6 +154,20 @@ export const NodeMapActionDock = ({
               </DkButton>
             )}
 
+            {onDuplicateNode && (
+              <DkButton
+                type="button"
+                variant="ghost"
+                size="sm"
+                aria-label={`Duplicate ${data.server.name}`}
+                onClick={() => onDuplicateNode(data.server)}
+                className="h-7 px-2 text-xs font-medium gap-1.5 text-foreground hover:bg-[var(--dk-surface-hover)]"
+              >
+                <Copy size={12} />
+                <span className="hidden sm:inline">Duplicate</span>
+              </DkButton>
+            )}
+
             {!data.server.isOnline && onPingNode && (
               <DkButton
                 type="button"
@@ -158,7 +175,7 @@ export const NodeMapActionDock = ({
                 size="sm"
                 aria-label="Test connection"
                 onClick={() => onPingNode(data.server)}
-                className="h-7 px-2 text-xs font-medium gap-1.5 text-amber-400 hover:text-amber-300 hover:bg-[var(--dk-surface-hover)]"
+                className="h-7 px-2 text-xs font-medium gap-1.5 text-status-warning hover:bg-[var(--dk-surface-hover)]"
               >
                 <Radio size={12} />
                 <span>Ping</span>
@@ -168,7 +185,7 @@ export const NodeMapActionDock = ({
         )}
 
         {/* Server Machine Actions */}
-        {type === 'server' && (
+        {type === 'server' && data.machine && (
           <>
             <DkButton
               type="button"
@@ -209,7 +226,7 @@ export const NodeMapActionDock = ({
         )}
 
         {/* Home Environment Actions */}
-        {type === 'home' && (
+        {type === 'home' && data.home && (
           <>
             <DkButton
               type="button"
@@ -240,7 +257,7 @@ export const NodeMapActionDock = ({
         )}
 
         {/* Samba Share Actions */}
-        {type === 'samba' && (
+        {type === 'samba' && data.samba && (
           <DkButton
             type="button"
             variant="ghost"
@@ -255,7 +272,7 @@ export const NodeMapActionDock = ({
         )}
 
         {/* Unclaimed Node Actions */}
-        {type === 'unclaimed_node' && onClaimPendingNode && (
+        {type === 'unclaimed_node' && data.pending && onClaimPendingNode && (
           <DkButton
             type="button"
             variant="primary"

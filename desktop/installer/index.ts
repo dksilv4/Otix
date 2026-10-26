@@ -635,13 +635,65 @@ export async function executeOrganization(
       continue;
     }
 
-    if (src === dst) {
+    const cleanSrc = path.resolve(src);
+    const cleanDst = path.resolve(dst);
+
+    if (cleanSrc.toLowerCase() === cleanDst.toLowerCase()) {
       results.push({
         sourcePath: src,
         targetPath: dst,
         success: true,
       });
       continue;
+    }
+
+    // Protection against copying/moving into own subdirectory
+    if (cleanDst.toLowerCase().startsWith(cleanSrc.toLowerCase() + path.sep.toLowerCase())) {
+      results.push({
+        sourcePath: src,
+        targetPath: dst,
+        success: false,
+        error: `Cannot copy or move '${src}' to a subdirectory of self '${dst}'`,
+      });
+      continue;
+    }
+
+    // Protection against overwriting or merging into existing directories/files
+    try {
+      const dstStat = await fs.stat(cleanDst);
+      if (dstStat.isDirectory()) {
+        const dstEntries = await fs.readdir(cleanDst);
+        if (dstEntries.length > 0) {
+          results.push({
+            sourcePath: src,
+            targetPath: dst,
+            success: false,
+            error: `Target path already exists and is not empty: ${dst}`,
+          });
+          continue;
+        } else {
+          // Empty directory, remove it so atomic rename can succeed
+          await fs.rmdir(cleanDst);
+        }
+      } else {
+        results.push({
+          sourcePath: src,
+          targetPath: dst,
+          success: false,
+          error: `Target path already exists: ${dst}`,
+        });
+        continue;
+      }
+    } catch (statErr: any) {
+      if (statErr && statErr.code !== 'ENOENT') {
+        results.push({
+          sourcePath: src,
+          targetPath: dst,
+          success: false,
+          error: `Failed to inspect target path: ${statErr.message || String(statErr)}`,
+        });
+        continue;
+      }
     }
 
     try {

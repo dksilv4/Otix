@@ -39,6 +39,7 @@ import {
 import { NodesCentralHubNode, type NodesCentralHubStats } from './nodes-central-hub-node'
 import { useNodeMap } from '../../hooks/use-node-map'
 import { NodeMapCardItem } from '../molecules/node-map-card-item'
+import { NodeMapActionDock } from '../molecules/node-map-action-dock'
 import { NodeMapConnectDialog } from './node-map-connect-dialog'
 import { ConnectNodePickerModal } from './connect-node-picker-modal'
 import {
@@ -89,6 +90,7 @@ interface NodesTopologyCanvasProps {
   onOpenNodeSettings: (server: GameServer) => void
   onEditNode?: (server: GameServer) => void
   onRenameNode: (server: GameServer) => void
+  onDuplicateNode?: (server: GameServer) => void
   onPingNode?: (server: GameServer) => void
   onEditSamba?: (samba: SambaShareConfig) => void
 }
@@ -131,6 +133,7 @@ export const NodesTopologyCanvas = ({
   onOpenNodeSettings,
   onEditNode,
   onRenameNode,
+  onDuplicateNode,
   onPingNode,
   onEditSamba,
 }: NodesTopologyCanvasProps) => {
@@ -247,17 +250,58 @@ export const NodesTopologyCanvas = ({
 
         if (sambaItem && serverItem) {
           const sambaConfig = (sambaItem.data as { samba: SambaShareConfig }).samba
+          const serverId = Number(serverItem.entityId)
+          const targetServer = serverMachines.find((m) => m.id === serverId)
+          const existingShares = Array.isArray(targetServer?.smbShares) ? [...targetServer.smbShares] : []
+          if (
+            targetServer?.smbShareName &&
+            !existingShares.some(
+              (s) => s.shareName?.toLowerCase() === targetServer.smbShareName?.toLowerCase(),
+            )
+          ) {
+            existingShares.unshift({
+              id: `samba-server-${targetServer.id}`,
+              serverId: targetServer.id,
+              serverName: targetServer.name,
+              shareName: targetServer.smbShareName,
+              host: targetServer.smbHost || targetServer.host || '',
+              port: targetServer.smbPort || 445,
+              username: targetServer.smbUsername || '',
+              password: targetServer.smbPassword || '',
+              workgroup: targetServer.smbWorkgroup || 'WORKGROUP',
+              mountPath: targetServer.smbMountPath || '',
+              isOnline: targetServer.isOnline,
+              nodeIds: targetServer.smbNodeIds || [],
+            })
+          }
+          const updatedConfig: SambaShareConfig = {
+            ...sambaConfig,
+            serverId,
+            serverName: targetServer?.name || null,
+          }
+          const existingIndex = existingShares.findIndex(
+            (s) =>
+              s.id === updatedConfig.id ||
+              s.shareName?.toLowerCase() === updatedConfig.shareName?.toLowerCase(),
+          )
+          const nextShares =
+            existingIndex >= 0
+              ? existingShares.map((s, idx) => (idx === existingIndex ? updatedConfig : s))
+              : [...existingShares, updatedConfig]
+
           await updateServerMutation.mutateAsync({
-            id: Number(serverItem.entityId),
+            id: serverId,
             smbEnabled: true,
-            smbShareName: sambaConfig.shareName || 'games',
-            smbHost: sambaConfig.host || '',
-            smbPort: sambaConfig.port || 445,
-            smbUsername: sambaConfig.username || '',
-            smbPassword: sambaConfig.password || '',
-            smbWorkgroup: sambaConfig.workgroup || 'WORKGROUP',
-            smbMountPath: sambaConfig.mountPath || '',
+            smbShareName: targetServer?.smbShareName || updatedConfig.shareName || 'games',
+            smbHost: targetServer?.smbHost || updatedConfig.host || '',
+            smbPort: targetServer?.smbPort || updatedConfig.port || 445,
+            smbUsername: targetServer?.smbUsername || updatedConfig.username || '',
+            smbPassword: targetServer?.smbPassword || updatedConfig.password || '',
+            smbWorkgroup: targetServer?.smbWorkgroup || updatedConfig.workgroup || 'WORKGROUP',
+            smbMountPath: targetServer?.smbMountPath || updatedConfig.mountPath || '',
+            smbShares: nextShares,
           })
+          onSaveCustomSamba?.(updatedConfig)
           toast({
             title: 'Samba Share Connected',
             description: `Samba share "${sambaItem.name}" connected to server "${serverItem.name}".`,
@@ -430,7 +474,28 @@ export const NodesTopologyCanvas = ({
         toast({ title: 'Host Node Link Removed' })
       } else if (edge.relation === 'samba_server_link') {
         const serverId = Number(edge.sourceId.replace('server-', ''))
-        await updateServerMutation.mutateAsync({ id: serverId, smbEnabled: false })
+        const targetShareId = edge.targetId
+        const machine = serverMachines.find((m) => m.id === serverId)
+        if (machine) {
+          const updatedShares = (machine.smbShares || []).filter((s) => s.id !== targetShareId)
+          const remainingCount = updatedShares.length
+          const isPrimary =
+            machine.smbShareName &&
+            (targetShareId === `samba-server-${serverId}` ||
+              targetShareId.endsWith(machine.smbShareName))
+          await updateServerMutation.mutateAsync({
+            id: serverId,
+            smbShares: updatedShares,
+            ...(isPrimary
+              ? {
+                  smbShareName: updatedShares[0]?.shareName || '',
+                  smbEnabled: remainingCount > 0,
+                }
+              : {}),
+          })
+        } else {
+          await updateServerMutation.mutateAsync({ id: serverId, smbEnabled: false })
+        }
         toast({ title: 'Samba Share Disconnected' })
       } else if (edge.relation === 'smb_link') {
         const nodeId = Number(edge.targetId.replace('node-', ''))
@@ -733,6 +798,7 @@ export const NodesTopologyCanvas = ({
                   onOpenNodeSettings={onOpenNodeSettings}
                   onEditNode={onEditNode}
                   onRenameNode={onRenameNode}
+                  onDuplicateNode={onDuplicateNode}
                   onPingNode={onPingNode}
                   onClaimPendingNode={onClaimPendingNode}
                   onOpenSambaSettings={onOpenSambaSettings}
@@ -889,6 +955,26 @@ export const NodesTopologyCanvas = ({
           <ZoomIn size={13} />
         </DkButton>
       </div>
+
+      {/* Contextual Action Dock for Selected Node */}
+      <NodeMapActionDock
+        selectedItem={selectedItem}
+        onClose={() => setSelectedItem(null)}
+        onOpenConnectPicker={setConnectPickerItem}
+        onOpenNodeSettings={onOpenNodeSettings}
+        onEditNode={onEditNode}
+        onRenameNode={onRenameNode}
+        onDuplicateNode={onDuplicateNode}
+        onPingNode={onPingNode}
+        onEditServer={onEditServer}
+        onDetectDrives={onDetectDrives}
+        onDeleteServer={onDeleteServer}
+        onEditHome={onEditHome}
+        onDeleteHome={onDeleteHome}
+        onOpenSambaSettings={onOpenSambaSettings}
+        onEditSamba={onEditSamba}
+        onClaimPendingNode={onClaimPendingNode}
+      />
 
       {/* Connection Selection / Confirmation Dialog */}
       <NodeMapConnectDialog

@@ -1,11 +1,13 @@
 import { useState, useRef, useEffect } from 'react'
 import { SlidersHorizontal, ChevronDown } from 'lucide-react'
+import { useNavigate } from '@tanstack/react-router'
 import { DkButton } from '@ui/atoms/button'
 import { cn } from '@/lib/utils'
+import { DEFAULT_SETTINGS_SECTION, rememberSettingsSection } from '../../constants'
 import { NodesSecondarySettingsMenu } from './nodes-secondary-settings-menu'
 
 export interface NodesMenuDropdownButtonProps {
-  onBackToSettings: () => void
+  onBackToSettings?: () => void
   className?: string
 }
 
@@ -15,6 +17,17 @@ export const NodesMenuDropdownButton = ({
 }: NodesMenuDropdownButtonProps) => {
   const [isOpen, setIsOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
+  const navigate = useNavigate()
+
+  const handleBackToSettings = () => {
+    setIsOpen(false)
+    if (onBackToSettings) {
+      onBackToSettings()
+    } else {
+      rememberSettingsSection(DEFAULT_SETTINGS_SECTION)
+      navigate({ to: `/settings/${DEFAULT_SETTINGS_SECTION}` })
+    }
+  }
 
   useEffect(() => {
     if (!isOpen) return
@@ -67,10 +80,7 @@ export const NodesMenuDropdownButton = ({
           )}
         >
           <NodesSecondarySettingsMenu
-            onBackToSettings={() => {
-              setIsOpen(false)
-              onBackToSettings()
-            }}
+            onBackToSettings={handleBackToSettings}
             onActionComplete={() => setIsOpen(false)}
           />
         </div>

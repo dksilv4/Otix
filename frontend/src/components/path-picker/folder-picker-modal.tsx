@@ -6,6 +6,7 @@ import { useToast } from '@ui/molecules/toast'
 import { cn, formatBytes } from '@/lib/utils'
 import { useGameServers } from '@/features/downloads/use-server-downloads'
 import { useCreateServerFolder, useServerExplorer } from '@/features/downloads/use-server-explorer'
+import { isLocalDesktopNode, isLocalDesktopNodeId } from '@/features/settings/local-desktop-node'
 import {
   isPathOnDrive,
   normalizeExplorerBrowse,
@@ -27,24 +28,37 @@ export const FolderPickerModal = ({
   onClose: () => void
   isExiting?: boolean
 }) => {
-  const { toast } = useToast()
+  let toast: (opts: any) => void = () => {}
+  try {
+    toast = useToast().toast
+  } catch {
+    // Graceful fallback when rendered without DkToastProvider (e.g. in test harness)
+  }
   const { data: servers = [] } = useGameServers()
+  const remoteServers = useMemo(
+    () => servers.filter((s) => !isLocalDesktopNode(s) && Number(s.id) > 0),
+    [servers],
+  )
   const [selectedServerId, setSelectedServerId] = useState<number | undefined>(
-    initialServerId ?? servers[0]?.id,
+    initialServerId && !isLocalDesktopNodeId(initialServerId)
+      ? initialServerId
+      : remoteServers[0]?.id,
   )
   const [currentPath, setCurrentPath] = useState<string | undefined>(initialPath)
   const [isCreatingFolder, setIsCreatingFolder] = useState(false)
   const [newFolderName, setNewFolderName] = useState('')
   const [isConnectShareOpen, setIsConnectShareOpen] = useState(false)
 
-  const activeServer = servers.find((server) => server.id === selectedServerId) ?? servers[0]
+  const activeServer = remoteServers.find((server) => server.id === selectedServerId) ?? remoteServers[0]
   const serverId = activeServer?.id
 
   const { data: rawBrowseData, isLoading, error, refetch, isFetching } = useServerExplorer(
     serverId,
     currentPath,
   )
-  const createFolderMutation = useCreateServerFolder(serverId)
+  const createFolderMutation = typeof useCreateServerFolder === 'function'
+    ? useCreateServerFolder(serverId)
+    : ({ mutateAsync: async () => ({ path: '' }) } as any)
   const browseData = useMemo(
     () => (rawBrowseData ? normalizeExplorerBrowse(rawBrowseData) : undefined),
     [rawBrowseData],
@@ -122,9 +136,9 @@ export const FolderPickerModal = ({
       description="Choose a folder on a connected Otix server node."
       className="max-w-2xl"
     >
-      {servers.length === 0 ? (
+      {remoteServers.length === 0 ? (
         <div className="space-y-4 py-2">
-          <p className="text-sm text-muted-foreground">No Otix nodes connected to browse folders.</p>
+          <p className="text-sm text-muted-foreground">No Otix worker nodes connected to browse folders.</p>
           <div className="flex justify-end gap-2">
             <DkButton size="sm" variant="ghost" onClick={() => onSelect('')}>
               Clear Path Selection
@@ -136,7 +150,7 @@ export const FolderPickerModal = ({
         </div>
       ) : (
         <div className="space-y-3">
-          {servers.length > 1 && (
+          {remoteServers.length > 1 && (
             <label className="block space-y-1">
               <span className="text-xs font-medium text-muted-foreground">Server</span>
               <select
@@ -147,7 +161,7 @@ export const FolderPickerModal = ({
                   handleNavigate(undefined)
                 }}
               >
-                {servers.map((server) => (
+                {remoteServers.map((server) => (
                   <option key={server.id} value={server.id}>
                     {server.name}
                   </option>

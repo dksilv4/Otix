@@ -114,6 +114,7 @@ export const AddPathFolderCard = ({
             <PathInput
               compact
               commitOnBlur={false}
+              commitOnBrowse={false}
               showConfirmButton={false}
               value={draftPath}
               onChange={onDraftPathChange}
@@ -299,6 +300,7 @@ export const AddPathFolderCard = ({
         <PathInput
           compact
           commitOnBlur={false}
+          commitOnBrowse={false}
           showConfirmButton={false}
           value={draftPath}
           onChange={onDraftPathChange}

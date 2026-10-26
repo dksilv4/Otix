@@ -14,18 +14,25 @@ import (
 var (
 	GameExtensions = []string{".iso", ".img", ".exe", ".msi", ".dmg", ".pkg", ".app", ".zip", ".7z", ".rar", ".chd", ".rvz", ".nsp", ".xci"}
 	IsoExtensions  = []string{".iso", ".img", ".chd", ".rvz", ".nkit", ".cso", ".cue", ".wbfs", ".gcm"}
+	RomExtensions  = []string{".nsp", ".xci", ".cia", ".3ds", ".nds", ".gba", ".sfc", ".smc", ".nes", ".z64", ".n64", ".v64", ".pbp", ".chd", ".rvz", ".wbfs"}
 )
 
 // DefaultAllowedExtensions returns the default extension allowlist for a library kind.
 func DefaultAllowedExtensions(kind string) []string {
-	if kind == "iso" {
+	switch kind {
+	case "iso":
 		out := make([]string, len(IsoExtensions))
 		copy(out, IsoExtensions)
 		return out
+	case "rom":
+		out := make([]string, len(RomExtensions))
+		copy(out, RomExtensions)
+		return out
+	default:
+		out := make([]string, len(GameExtensions))
+		copy(out, GameExtensions)
+		return out
 	}
-	out := make([]string, len(GameExtensions))
-	copy(out, GameExtensions)
-	return out
 }
 
 type ServerSettings struct {
@@ -47,8 +54,30 @@ type ServerSettings struct {
 type LibraryConfig struct {
 	Name              string   `yaml:"name" json:"name"`
 	Path              string   `yaml:"path" json:"path"`
-	Kind              string   `yaml:"kind" json:"kind"` // "game" | "iso"
+	Kind              string   `yaml:"kind" json:"kind"` // "game" | "iso" | "rom"
+	Roles             []string `yaml:"roles,omitempty" json:"roles,omitempty"`
+	StorageShareID    string   `yaml:"storage_share_id,omitempty" json:"storage_share_id,omitempty"`
 	AllowedExtensions []string `yaml:"allowed_extensions" json:"allowed_extensions"`
+}
+
+func (lc LibraryConfig) HasRole(role string) bool {
+	if len(lc.Roles) > 0 {
+		for _, r := range lc.Roles {
+			if strings.EqualFold(r, role) {
+				return true
+			}
+		}
+		return false
+	}
+	switch role {
+	case "iso":
+		return lc.Kind == "iso"
+	case "rom":
+		return lc.Kind == "rom"
+	case "installed_game", "installer":
+		return lc.Kind != "iso" && lc.Kind != "rom"
+	}
+	return false
 }
 
 type SavesConfig struct {

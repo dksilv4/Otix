@@ -22,6 +22,7 @@ const PLATFORM_BADGES: Record<
   riot: { variant: "default", label: "Riot" },
   xbox: { variant: "success", label: "Xbox" },
   itch: { variant: "muted", label: "Itch" },
+  ambiguous: { variant: "warning", label: "Select System" },
 };
 
 interface GameCardProps {

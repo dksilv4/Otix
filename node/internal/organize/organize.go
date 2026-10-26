@@ -136,6 +136,13 @@ var (
 		"$recycle.bin": true, "system volume information": true,
 	}
 
+	knownGameSubdirs = map[string]bool{
+		"bin": true, "binaries": true, "bin32": true, "bin64": true,
+		"x64": true, "x86": true, "win64": true, "win32": true,
+		"system": true, "shipping": true, "retail": true, "game": true,
+		"release": true, "app": true, "build": true,
+	}
+
 	romExtensions = map[string]string{
 
 		".nsp": "Switch", ".xci": "Switch", ".nsz": "Switch", ".xcz": "Switch",
@@ -255,6 +262,25 @@ func sanitizePathTitle(title string) string {
 	return strings.TrimSpace(cleaned)
 }
 
+func getFolderTemplate(template string) string {
+	if template == "" {
+		return "{Title} [{Platform}]"
+	}
+	parts := strings.Split(template, "/")
+	last := parts[len(parts)-1]
+	lastLower := strings.ToLower(last)
+	if strings.Contains(lastLower, ".{ext}") ||
+		strings.Contains(lastLower, "{originalname}") ||
+		strings.Contains(lastLower, ".iso") ||
+		strings.Contains(lastLower, ".exe") ||
+		(strings.Contains(lastLower, ".") && !strings.Contains(lastLower, "{title}")) {
+		if len(parts) > 1 {
+			return strings.Join(parts[:len(parts)-1], "/")
+		}
+	}
+	return template
+}
+
 func findOtixSidecar(dir string) (*otixmeta.Sidecar, string) {
 	if sc, err := otixmeta.Read(dir); err == nil && sc != nil && (sc.MediaID != "" || sc.Title != "") {
 		return sc, otixmeta.Path(dir)
@@ -263,6 +289,7 @@ func findOtixSidecar(dir string) (*otixmeta.Sidecar, string) {
 	if err != nil {
 		return nil, ""
 	}
+	var nonNoiseSubdirs []os.DirEntry
 	for _, e := range entries {
 		if !e.IsDir() {
 			continue
@@ -271,24 +298,16 @@ func findOtixSidecar(dir string) (*otixmeta.Sidecar, string) {
 		if noiseDirectoryNames[nameLower] || strings.HasPrefix(nameLower, "$") || strings.HasPrefix(nameLower, ".") {
 			continue
 		}
-		subPath := filepath.Join(dir, e.Name())
+		nonNoiseSubdirs = append(nonNoiseSubdirs, e)
+	}
+	// CRITICAL: Only look down into a child directory if there is EXACTLY ONE child directory.
+	// If there are multiple child directories, dir is a parent collection (e.g. containing multiple games).
+	// Adopting one child's sidecar causes the entire collection (and all sibling games) to be renamed
+	// and organized as that single child, putting other games inside it!
+	if len(nonNoiseSubdirs) == 1 {
+		subPath := filepath.Join(dir, nonNoiseSubdirs[0].Name())
 		if sc, err := otixmeta.Read(subPath); err == nil && sc != nil && (sc.MediaID != "" || sc.Title != "") {
 			return sc, otixmeta.Path(subPath)
-		}
-		subEntries, err := os.ReadDir(subPath)
-		if err == nil {
-			for _, se := range subEntries {
-				if se.IsDir() {
-					seLower := strings.ToLower(se.Name())
-					if noiseDirectoryNames[seLower] || strings.HasPrefix(seLower, "$") || strings.HasPrefix(seLower, ".") {
-						continue
-					}
-					deepPath := filepath.Join(subPath, se.Name())
-					if sc, err := otixmeta.Read(deepPath); err == nil && sc != nil && (sc.MediaID != "" || sc.Title != "") {
-						return sc, otixmeta.Path(deepPath)
-					}
-				}
-			}
 		}
 	}
 	return nil, ""
@@ -296,26 +315,60 @@ func findOtixSidecar(dir string) (*otixmeta.Sidecar, string) {
 
 func platformFromSidecar(sc *otixmeta.Sidecar, fallback string) string {
 	if sc != nil && len(sc.Platforms) > 0 {
+		// 1. Prioritize PC if present anywhere in platforms
 		for _, p := range sc.Platforms {
-			if name, ok := p["name"].(string); ok && name != "" {
-				pUpper := strings.ToUpper(name)
-				if strings.Contains(pUpper, "PC") || strings.Contains(pUpper, "WINDOWS") || strings.Contains(pUpper, "LINUX") || strings.Contains(pUpper, "MAC") {
-					return "PC"
-				} else if strings.Contains(pUpper, "SWITCH") {
-					return "Switch"
-				} else if strings.Contains(pUpper, "PS5") || strings.Contains(pUpper, "PLAYSTATION 5") {
-					return "PS5"
-				} else if strings.Contains(pUpper, "PS4") || strings.Contains(pUpper, "PLAYSTATION 4") {
-					return "PS4"
-				} else if strings.Contains(pUpper, "PS3") || strings.Contains(pUpper, "PLAYSTATION 3") {
-					return "PS3"
-				} else if strings.Contains(pUpper, "3DS") {
-					return "3DS"
-				} else if strings.Contains(pUpper, "WII") {
-					return "Wii"
-				} else if strings.Contains(pUpper, "XBOX") {
-					return "Xbox"
-				}
+			name := ""
+			if n, ok := p["name"].(string); ok {
+				name = n
+			}
+			slug := ""
+			if s, ok := p["slug"].(string); ok {
+				slug = s
+			}
+			pUpper := strings.ToUpper(name)
+			slugUpper := strings.ToUpper(slug)
+
+			if strings.Contains(pUpper, "PC") || strings.Contains(pUpper, "WINDOWS") || strings.Contains(pUpper, "LINUX") || strings.Contains(pUpper, "MAC") ||
+				strings.Contains(slugUpper, "WIN") || strings.Contains(slugUpper, "PC") || strings.Contains(slugUpper, "LINUX") || strings.Contains(slugUpper, "MAC") {
+				return "PC"
+			}
+		}
+
+		// 2. If no PC platform, check console platforms in order
+		for _, p := range sc.Platforms {
+			name := ""
+			if n, ok := p["name"].(string); ok {
+				name = n
+			}
+			slug := ""
+			if s, ok := p["slug"].(string); ok {
+				slug = s
+			}
+			pUpper := strings.ToUpper(name)
+			slugUpper := strings.ToUpper(slug)
+			combined := pUpper + " " + slugUpper
+			if strings.Contains(combined, "SWITCH") || strings.Contains(combined, "NSW") {
+				return "Switch"
+			} else if strings.Contains(combined, "PS5") || strings.Contains(combined, "PLAYSTATION 5") || strings.Contains(combined, "PLAYSTATION-5") {
+				return "PS5"
+			} else if strings.Contains(combined, "PS4") || strings.Contains(combined, "PLAYSTATION 4") || strings.Contains(combined, "PLAYSTATION-4") {
+				return "PS4"
+			} else if strings.Contains(combined, "PS3") || strings.Contains(combined, "PLAYSTATION 3") || strings.Contains(combined, "PLAYSTATION-3") {
+				return "PS3"
+			} else if strings.Contains(combined, "3DS") {
+				return "3DS"
+			} else if strings.Contains(combined, "WII U") || strings.Contains(combined, "WIIU") || strings.Contains(combined, "WII-U") {
+				return "WiiU"
+			} else if strings.Contains(combined, "WII") {
+				return "Wii"
+			} else if strings.Contains(combined, "XBOX 360") || strings.Contains(combined, "XBOX-360") || strings.Contains(combined, "XBOX360") {
+				return "Xbox360"
+			} else if strings.Contains(combined, "XBOX ONE") || strings.Contains(combined, "XBOX-ONE") || strings.Contains(combined, "XBOX SERIES") || strings.Contains(combined, "SERIES-X") {
+				return "Xbox"
+			} else if strings.Contains(combined, "XBOX") {
+				return "Xbox"
+			}
+			if name != "" {
 				return name
 			}
 		}
@@ -370,6 +423,84 @@ func isNoise(filename, fullPath string) bool {
 
 	return false
 
+}
+
+func isGameExeName(name, fullPath string) bool {
+	lower := strings.ToLower(name)
+	if !strings.HasSuffix(lower, ".exe") {
+		return false
+	}
+	if isNoise(name, fullPath) {
+		return false
+	}
+	if strings.Contains(lower, "setup") || strings.Contains(lower, "installer") ||
+		strings.Contains(lower, "update") || strings.Contains(lower, "patch") ||
+		strings.Contains(lower, "hotfix") || strings.Contains(lower, "dlc") ||
+		strings.Contains(lower, "addon") || isCrackName(lower) {
+		return false
+	}
+	return true
+}
+
+func scanForGameExe(dirPath string) bool {
+	entries, err := os.ReadDir(dirPath)
+	if err != nil {
+		return false
+	}
+	var nonNoiseSubdirs []os.DirEntry
+	for _, e := range entries {
+		eLower := strings.ToLower(e.Name())
+		if e.IsDir() {
+			if !noiseDirectoryNames[eLower] && !strings.HasPrefix(eLower, "$") && !strings.HasPrefix(eLower, ".") && eLower != "updates" && eLower != "dlc" && eLower != "crack" {
+				nonNoiseSubdirs = append(nonNoiseSubdirs, e)
+			}
+		} else {
+			if isGameExeName(e.Name(), filepath.Join(dirPath, e.Name())) {
+				return true
+			}
+		}
+	}
+	for _, sd := range nonNoiseSubdirs {
+		sdLower := strings.ToLower(sd.Name())
+		if len(nonNoiseSubdirs) > 1 && !knownGameSubdirs[sdLower] {
+			continue
+		}
+		subPath := filepath.Join(dirPath, sd.Name())
+		subEntries, sErr := os.ReadDir(subPath)
+		if sErr != nil {
+			continue
+		}
+		var deeperSubdirs []os.DirEntry
+		for _, se := range subEntries {
+			seLower := strings.ToLower(se.Name())
+			if se.IsDir() {
+				if !noiseDirectoryNames[seLower] && !strings.HasPrefix(seLower, "$") && !strings.HasPrefix(seLower, ".") && seLower != "updates" && seLower != "dlc" && seLower != "crack" {
+					deeperSubdirs = append(deeperSubdirs, se)
+				}
+			} else {
+				if isGameExeName(se.Name(), filepath.Join(subPath, se.Name())) {
+					return true
+				}
+			}
+		}
+		for _, dsd := range deeperSubdirs {
+			dsdLower := strings.ToLower(dsd.Name())
+			if len(deeperSubdirs) > 1 && !knownGameSubdirs[dsdLower] {
+				continue
+			}
+			deeperPath := filepath.Join(subPath, dsd.Name())
+			deeperEntries, dErr := os.ReadDir(deeperPath)
+			if dErr != nil {
+				continue
+			}
+			for _, de := range deeperEntries {
+				if !de.IsDir() && isGameExeName(de.Name(), filepath.Join(deeperPath, de.Name())) {
+					return true
+				}
+			}
+		}
+	}
+	return false
 }
 
 func PreviewOrganization(dir string, template string, sample bool) ([]PreviewItem, error) {
@@ -482,7 +613,7 @@ func PreviewOrganization(dir string, template string, sample bool) ([]PreviewIte
 
 						}
 
-						if strings.HasSuffix(cName, ".exe") && !isNoise(cName, "") {
+						if strings.HasSuffix(cName, ".exe") && !isNoise(cName, "") && !strings.Contains(cName, "setup") && !strings.Contains(cName, "installer") {
 
 							hasGameExe = true
 
@@ -573,7 +704,6 @@ func PreviewOrganization(dir string, template string, sample bool) ([]PreviewIte
 					}
 
 					sc, _ := findOtixSidecar(path)
-					isLinked := sc != nil && (sc.MediaID != "" || sc.Title != "")
 
 					hasIso := false
 					for _, c := range children {
@@ -583,90 +713,181 @@ func PreviewOrganization(dir string, template string, sample bool) ([]PreviewIte
 						}
 					}
 
+					isGenericContainer := folderLower == "crack" || folderLower == "cracks" || folderLower == "updates" || folderLower == "dlc"
+					if isGenericContainer {
+						return nil
+					}
+
 					isCrackFolder := (hasCrackDll && (strings.Contains(folderLower, "crack") || strings.Contains(folderLower, "codex") || strings.Contains(folderLower, "rune") || isElAmigos)) ||
-						isCrackName(folderLower) || folderLower == "crack" || folderLower == "onlinefix" || folderLower == "nocd"
+						isCrackName(folderLower) || folderLower == "onlinefix" || folderLower == "nocd"
 
 					isTopLevel := strings.Count(rel, string(filepath.Separator)) == 0
-					isPackage := isLinked || isCrackFolder || (hasSetup && hasBin) || isConsolePackage || (hasGameExe && (len(children) >= 3 || hasCrackDll)) || (isTopLevel && hasIso)
+
+					var nonNoiseSubdirs []os.DirEntry
+					var nonNoiseFiles []os.DirEntry
+					for _, c := range children {
+						cLower := strings.ToLower(c.Name())
+						if c.IsDir() {
+							if !noiseDirectoryNames[cLower] && !strings.HasPrefix(cLower, "$") && !strings.HasPrefix(cLower, ".") {
+								nonNoiseSubdirs = append(nonNoiseSubdirs, c)
+							}
+						} else {
+							if !strings.HasSuffix(cLower, ".nfo") && !strings.HasSuffix(cLower, ".sfv") && !strings.HasSuffix(cLower, ".txt") && !strings.HasSuffix(cLower, ".url") && cLower != ".otix" {
+								nonNoiseFiles = append(nonNoiseFiles, c)
+							}
+						}
+					}
+
+					actualPath := path
+					actualName := d.Name()
+
+					// Unwrap single-child redundant wrapper folders directly under the main directory
+					if isTopLevel && len(nonNoiseSubdirs) == 1 && len(nonNoiseFiles) == 0 && !hasSetup {
+						singleChild := nonNoiseSubdirs[0]
+						childLower := strings.ToLower(singleChild.Name())
+						genericFolderNames := map[string]bool{
+							"bin": true, "x64": true, "win64": true, "win32": true, "data": true,
+							"content": true, "engine": true, "system": true, "updates": true, "dlc": true, "crack": true,
+						}
+						if !genericFolderNames[childLower] {
+							childPath := filepath.Join(path, singleChild.Name())
+							if scanForGameExe(childPath) {
+								actualPath = childPath
+								actualName = singleChild.Name()
+								hasGameExe = true
+							}
+						}
+					}
+
+					// If top level and no direct game exe, scan subdirectories (bin/, x64/, system/) up to 2 levels deep
+					if isTopLevel && !hasGameExe && !isGenericContainer {
+						hasGameExe = scanForGameExe(actualPath)
+					}
+
+					if actualPath != path {
+						if innerSc, _ := findOtixSidecar(actualPath); innerSc != nil && (innerSc.MediaID != "" || innerSc.Title != "") {
+							sc = innerSc
+						}
+					}
+					isLinked := sc != nil && (sc.MediaID != "" || sc.Title != "")
+
+					isPcPackage := (hasSetup && hasBin) || hasCrackDll || (hasGameExe && !isConsolePackage)
+					isPackage := isLinked || isCrackFolder || (hasSetup && hasBin) || isConsolePackage || (isTopLevel && (hasGameExe || hasIso)) || (hasGameExe && (len(children) >= 3 || hasCrackDll))
 
 					if isPackage {
 						var release ParsedRelease
 						if isLinked {
 							t := sc.Title
 							if t == "" {
-								t = CleanGameTitle(d.Name())
+								t = CleanGameTitle(actualName)
 							}
 							t = sanitizePathTitle(CleanGameTitle(t))
 							plat := platformFromSidecar(sc, consolePlatform)
-							y := yearFromSidecar(sc, d.Name())
+							if isPcPackage && !isConsolePackage {
+								plat = "PC"
+							}
+							y := yearFromSidecar(sc, actualName)
+							if y == "" && actualName != d.Name() {
+								y = yearFromSidecar(sc, d.Name())
+							}
 							release = ParsedRelease{
 								Title:      t,
 								CleanTitle: t,
 								Platform:   plat,
 								Year:       y,
-								RawName:    d.Name(),
+								RawName:    actualName,
 							}
 						} else {
-							release = ParseReleaseName(d.Name())
+							release = ParseReleaseName(actualName)
+							if actualName != d.Name() {
+								parentRel := ParseReleaseName(d.Name())
+								if release.Title == "" {
+									release.Title = parentRel.Title
+									release.CleanTitle = parentRel.CleanTitle
+								}
+								if release.Year == "" && parentRel.Year != "" {
+									release.Year = parentRel.Year
+								}
+								if release.ReleaseGroup == "" && parentRel.ReleaseGroup != "" {
+									release.ReleaseGroup = parentRel.ReleaseGroup
+								}
+							}
 							if consolePlatform != "" {
 								release.Platform = consolePlatform
+							} else if isPcPackage {
+								release.Platform = "PC"
 							}
 						}
 
-						folderTemplate := template
-						if idx := strings.LastIndex(folderTemplate, "/"); idx != -1 {
-							folderTemplate = folderTemplate[:idx]
+						if strings.TrimSpace(release.Title) == "" {
+							return nil
 						}
+
+						folderTemplate := getFolderTemplate(template)
 						target := ApplyNamingTemplate(release, folderTemplate, "", cleanDir)
 
 						status := "container_package"
 						if isCrackFolder {
-							target = filepath.Join(target, "Crack", d.Name())
+							if strings.EqualFold(actualName, "crack") || strings.EqualFold(actualName, "cracks") {
+								target = filepath.Join(target, "Crack")
+							} else {
+								target = filepath.Join(target, "Crack", actualName)
+							}
 							status = "secondary_crack"
-						} else if strings.EqualFold(filepath.Clean(path), filepath.Clean(target)) {
+						} else if strings.EqualFold(filepath.Clean(actualPath), filepath.Clean(target)) {
 							status = "already_organized"
 						} else if targetPaths[strings.ToLower(target)] {
 							status = "conflict"
 						}
+
+						cleanSrc := strings.ToLower(filepath.Clean(actualPath))
+						cleanDst := strings.ToLower(filepath.Clean(target))
+						if cleanSrc == cleanDst {
+							status = "already_organized"
+						} else if strings.HasPrefix(cleanDst, cleanSrc+string(filepath.Separator)) {
+							status = "conflict"
+						} else {
+							if fi, err := os.Stat(target); err == nil {
+								if fi.IsDir() {
+									entries, err := os.ReadDir(target)
+									if err == nil && len(entries) > 0 {
+										status = "conflict"
+									}
+								} else {
+									status = "conflict"
+								}
+							}
+						}
 						targetPaths[strings.ToLower(target)] = true
 
 						var subdirs []string
-
-						for _, c := range children {
-
-							if c.IsDir() && !noiseDirectoryNames[strings.ToLower(c.Name())] {
-
-								subdirs = append(subdirs, c.Name())
-
+						entriesForSubdirs := children
+						if actualPath != path {
+							if ac, acErr := os.ReadDir(actualPath); acErr == nil {
+								entriesForSubdirs = ac
 							}
-
+						}
+						for _, c := range entriesForSubdirs {
+							if c.IsDir() && !noiseDirectoryNames[strings.ToLower(c.Name())] {
+								subdirs = append(subdirs, c.Name())
+							}
 						}
 
-						relParent, _ := safeRel(cleanDir, filepath.Dir(path))
-
+						relParent, _ := safeRel(cleanDir, filepath.Dir(actualPath))
 						srcSub := ""
-
 						if relParent != "." && relParent != "" && !strings.HasPrefix(relParent, "..") {
-
 							srcSub = filepath.ToSlash(relParent)
-
 						}
 
 						targetFolders := computeFoldersToCreate(target, cleanDir)
-
 						targetSub := ""
-
 						if len(targetFolders) > 0 {
-
 							targetSub = filepath.ToSlash(targetFolders[0])
-
 						}
 
 						items = append(items, PreviewItem{
-
-							SourcePath: path,
-
-							SourceFilename: d.Name(),
+							SourcePath: actualPath,
+							SourceFilename: actualName,
 
 							Type: "folder_package",
 
@@ -883,77 +1104,27 @@ func PreviewOrganization(dir string, template string, sample bool) ([]PreviewIte
 
 		}
 
+		folderTemplate := getFolderTemplate(template)
+		gameFolderTarget := ApplyNamingTemplate(release, folderTemplate, "", cleanDir)
+
 		if itemType == "crack" {
 			itemType = "crack"
 			status = "secondary_crack"
-			yearPart := ""
-			if release.Year != "" {
-				yearPart = fmt.Sprintf(" (%s)", release.Year)
-			}
-			folderBase := fmt.Sprintf("%s%s [%s]", release.Title, yearPart, release.Platform)
-			if template != "" {
-				folderBase = ApplyNamingTemplate(release, template, "", "")
-			}
-			parentRel := filepath.Join(folderBase, "Crack", filename)
-			target = filepath.Join(cleanDir, parentRel)
+			target = filepath.Join(gameFolderTarget, "Crack", filename)
 		} else if itemType == "update" || strings.Contains(lowerName, "[upd]") {
-
 			itemType = "update"
-
 			status = "secondary_update"
-
-			yearPart := ""
-
-			if release.Year != "" {
-
-				yearPart = fmt.Sprintf(" (%s)", release.Year)
-
-			}
-
-			parentRel := fmt.Sprintf("%s%s [%s]/Updates/%s", release.Title, yearPart, release.Platform, filename)
-
-			target = filepath.Join(cleanDir, filepath.FromSlash(parentRel))
-
+			target = filepath.Join(gameFolderTarget, "Updates", filename)
 		} else if itemType == "dlc" || strings.Contains(lowerName, "[dlc]") {
-
 			itemType = "dlc"
-
 			status = "secondary_dlc"
-
-			yearPart := ""
-
-			if release.Year != "" {
-
-				yearPart = fmt.Sprintf(" (%s)", release.Year)
-
-			}
-
-			parentRel := fmt.Sprintf("%s%s [%s]/DLC/%s", release.Title, yearPart, release.Platform, filename)
-
-			target = filepath.Join(cleanDir, filepath.FromSlash(parentRel))
-
+			target = filepath.Join(gameFolderTarget, "DLC", filename)
 		} else if itemType == "archive_part" {
-
 			status = "secondary_archive_part"
-
-			yearPart := ""
-
-			if release.Year != "" {
-
-				yearPart = fmt.Sprintf(" (%s)", release.Year)
-
-			}
-
-			parentRel := fmt.Sprintf("%s%s [%s]/%s", release.Title, yearPart, release.Platform, filename)
-
-			target = filepath.Join(cleanDir, filepath.FromSlash(parentRel))
-
+			target = filepath.Join(gameFolderTarget, filename)
 		} else {
-
 			status = "rename_and_move"
-
 			target = ApplyNamingTemplate(release, template, ext, cleanDir)
-
 		}
 
 		if filepath.Clean(path) == filepath.Clean(target) {
@@ -1076,56 +1247,20 @@ func generateSamplePreviews(baseDir string, template string) []PreviewItem {
 
 		var status string = "sample"
 
+		folderTemplate := getFolderTemplate(template)
+		gameFolderTarget := ApplyNamingTemplate(release, folderTemplate, "", cleanBase)
+
 		if s.Category == "folder_package" {
-
-			folderTemplate := template
-
-			if idx := strings.LastIndex(folderTemplate, "/"); idx != -1 {
-
-				folderTemplate = folderTemplate[:idx]
-
-			}
-
-			target = ApplyNamingTemplate(release, folderTemplate, "", cleanBase)
-
+			target = gameFolderTarget
 			status = "container_package"
-
 		} else if s.Category == "update" {
-
 			status = "secondary_update"
-
-			yearPart := ""
-
-			if release.Year != "" {
-
-				yearPart = fmt.Sprintf(" (%s)", release.Year)
-
-			}
-
-			parentRel := fmt.Sprintf("%s%s [%s]/Updates/%s", release.Title, yearPart, release.Platform, filename)
-
-			target = filepath.Join(cleanBase, filepath.FromSlash(parentRel))
-
+			target = filepath.Join(gameFolderTarget, "Updates", filename)
 		} else if s.Category == "dlc" {
-
 			status = "secondary_dlc"
-
-			yearPart := ""
-
-			if release.Year != "" {
-
-				yearPart = fmt.Sprintf(" (%s)", release.Year)
-
-			}
-
-			parentRel := fmt.Sprintf("%s%s [%s]/DLC/%s", release.Title, yearPart, release.Platform, filename)
-
-			target = filepath.Join(cleanBase, filepath.FromSlash(parentRel))
-
+			target = filepath.Join(gameFolderTarget, "DLC", filename)
 		} else {
-
 			target = ApplyNamingTemplate(release, template, s.Ext, cleanBase)
-
 		}
 
 		folders := computeFoldersToCreate(target, cleanBase)
@@ -1246,18 +1381,53 @@ func ExecuteOrganization(items []ExecuteItem, deleteEmptyFolders ...bool) ([]Exe
 		dst := filepath.Clean(item.TargetPath)
 
 		if src == dst {
-
 			results = append(results, ExecuteResult{
-
 				SourcePath: src,
-
 				TargetPath: dst,
-
-				Success: true,
+				Success:    true,
 			})
-
 			continue
+		}
 
+		cleanSrc := strings.ToLower(src)
+		cleanDst := strings.ToLower(dst)
+
+		// Protection against moving into own subdirectory
+		if strings.HasPrefix(cleanDst, cleanSrc+string(filepath.Separator)) {
+			results = append(results, ExecuteResult{
+				SourcePath: src,
+				TargetPath: dst,
+				Success:    false,
+				Error:      fmt.Sprintf("Cannot copy or move '%s' to a subdirectory of self '%s'", src, dst),
+			})
+			continue
+		}
+
+		// Protection against overwriting or merging into existing directories/files
+		if fi, statErr := os.Stat(dst); statErr == nil {
+			if fi.IsDir() {
+				entries, readErr := os.ReadDir(dst)
+				if readErr == nil && len(entries) > 0 {
+					results = append(results, ExecuteResult{
+						SourcePath: src,
+						TargetPath: dst,
+						Success:    false,
+						Error:      fmt.Sprintf("Target path already exists and is not empty: %s", dst),
+					})
+					continue
+				} else {
+					// Remove empty directory so atomic move succeeds cleanly
+					_ = os.Remove(dst)
+				}
+			} else {
+				results = append(results, ExecuteResult{
+					SourcePath: src,
+					TargetPath: dst,
+					Success:    false,
+					Error:      fmt.Sprintf("Target path already exists: %s", dst),
+				})
+				continue
+			}
 		}
 
 		// Ensure target directory exists

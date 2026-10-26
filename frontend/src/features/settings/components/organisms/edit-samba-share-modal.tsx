@@ -102,21 +102,79 @@ export const EditSambaShareModal = ({
         nodeIds: activeSamba.nodeIds || [],
       }
 
-      if (targetServerId) {
+      const oldServerId = activeSamba.serverId
+      if (oldServerId && oldServerId !== targetServerId) {
+        const oldServer = serverMachines.find((m) => m.id === oldServerId)
+        if (oldServer) {
+          const updatedOldShares = (oldServer.smbShares || []).filter(
+            (s) =>
+              s.id !== activeSamba.id &&
+              s.shareName?.toLowerCase() !== activeSamba.shareName?.toLowerCase(),
+          )
+          const hadPrimary =
+            oldServer.smbShareName?.toLowerCase() === activeSamba.shareName?.toLowerCase()
+          await updateServerMutation.mutateAsync({
+            id: oldServerId,
+            smbShares: updatedOldShares,
+            ...(hadPrimary
+              ? {
+                  smbShareName: updatedOldShares[0]?.shareName || '',
+                  smbEnabled: updatedOldShares.length > 0,
+                }
+              : {}),
+          })
+        }
+      }
+
+      if (targetServerId && targetServer) {
+        const existingShares = Array.isArray(targetServer.smbShares) ? [...targetServer.smbShares] : []
+        if (
+          targetServer.smbShareName &&
+          !existingShares.some(
+            (s) => s.shareName?.toLowerCase() === targetServer.smbShareName?.toLowerCase(),
+          )
+        ) {
+          existingShares.unshift({
+            id: `samba-server-${targetServer.id}`,
+            serverId: targetServer.id,
+            serverName: targetServer.name,
+            shareName: targetServer.smbShareName,
+            host: targetServer.smbHost || targetServer.host || '',
+            port: targetServer.smbPort || 445,
+            username: targetServer.smbUsername || '',
+            password: targetServer.smbPassword || '',
+            workgroup: targetServer.smbWorkgroup || 'WORKGROUP',
+            mountPath: targetServer.smbMountPath || '',
+            isOnline: targetServer.isOnline,
+            nodeIds: targetServer.smbNodeIds || [],
+          })
+        }
+        const existingIndex = existingShares.findIndex(
+          (s) =>
+            s.id === activeSamba.id ||
+            s.shareName?.toLowerCase() === activeSamba.shareName?.toLowerCase(),
+        )
+        const nextShares =
+          existingIndex >= 0
+            ? existingShares.map((s, idx) => (idx === existingIndex ? nextConfig : s))
+            : [...existingShares, nextConfig]
+
         await updateServerMutation.mutateAsync({
           id: targetServerId,
           smbEnabled: true,
-          smbShareName: cleanName,
-          smbHost: nextConfig.host,
-          smbPort: nextConfig.port,
-          smbUsername: nextConfig.username,
-          smbPassword: nextConfig.password,
-          smbWorkgroup: nextConfig.workgroup,
-          smbMountPath: nextConfig.mountPath,
+          smbShareName: targetServer.smbShareName || cleanName,
+          smbHost: targetServer.smbHost || nextConfig.host,
+          smbPort: targetServer.smbPort || nextConfig.port,
+          smbUsername: targetServer.smbUsername || nextConfig.username,
+          smbPassword: targetServer.smbPassword || nextConfig.password,
+          smbWorkgroup: targetServer.smbWorkgroup || nextConfig.workgroup,
+          smbMountPath: targetServer.smbMountPath || nextConfig.mountPath,
+          smbShares: nextShares,
         })
+        onSaveCustom?.(nextConfig)
         toast({
           title: 'Samba Share Configured',
-          description: `Share "/${cleanName}" updated on server "${targetServer?.name}".`,
+          description: `Share "/${cleanName}" updated on server "${targetServer.name}".`,
           variant: 'default',
         })
       } else {
@@ -151,20 +209,37 @@ export const EditSambaShareModal = ({
 
     setIsSaving(true)
     try {
-      await updateServerMutation.mutateAsync({
-        id: activeSamba.serverId,
-        smbEnabled: false,
-      })
+      const server = serverMachines.find((m) => m.id === activeSamba.serverId)
+      if (server) {
+        const updatedShares = (server.smbShares || []).filter(
+          (s) =>
+            s.id !== activeSamba.id &&
+            s.shareName?.toLowerCase() !== activeSamba.shareName?.toLowerCase(),
+        )
+        const isClearingPrimary =
+          server.smbShareName?.toLowerCase() === activeSamba.shareName?.toLowerCase()
+        const nextPrimary = updatedShares[0]?.shareName || ''
+        await updateServerMutation.mutateAsync({
+          id: activeSamba.serverId,
+          smbShares: updatedShares,
+          ...(isClearingPrimary
+            ? { smbShareName: nextPrimary, smbEnabled: updatedShares.length > 0 }
+            : {}),
+        })
+      }
+      if (activeSamba.id && onDeleteCustom) {
+        onDeleteCustom(activeSamba.id)
+      }
       toast({
-        title: 'Samba Share Unlinked',
-        description: 'Disabled SMB share on this server machine.',
+        title: 'Samba Share Removed',
+        description: `Removed "/${activeSamba.shareName}" from server machine.`,
         variant: 'default',
       })
       onOpenChange(false)
     } catch {
       toast({
         title: 'Action Failed',
-        description: 'Failed to disconnect Samba share from server.',
+        description: 'Failed to remove Samba share from server.',
         variant: 'destructive',
       })
     } finally {

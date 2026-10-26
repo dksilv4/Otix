@@ -731,8 +731,11 @@ def _merge_game_server_into(keeper: UserGameServer, extra: UserGameServer) -> No
         keeper.auth_token = extra.auth_token
         fields.append("auth_token")
     if extra.name and keeper.name != extra.name:
-        keeper.name = extra.name
-        fields.append("name")
+        is_generic_extra = extra.name in ("This PC", "This Mac", "This computer")
+        has_custom_keeper = keeper.name and keeper.name not in ("This PC", "This Mac", "This computer")
+        if not (is_generic_extra and has_custom_keeper):
+            keeper.name = extra.name
+            fields.append("name")
     if extra.local_url and not keeper.local_url:
         keeper.local_url = extra.local_url
         fields.append("local_url")

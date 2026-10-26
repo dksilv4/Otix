@@ -140,6 +140,30 @@ export function createSettingsRoutes(rootRoute: AnyRoute, pluginTabs?: PluginSet
     loader: preload(() => import('./pages/settings-desktop-page')),
   })
 
+  const settingsNodesPathsRedirect = createRoute({
+    getParentRoute: () => settingsRoute,
+    path: '/nodes/paths',
+    beforeLoad: () => {
+      throw redirect({ to: '/settings/nodes', hash: 'paths' })
+    },
+  })
+
+  const settingsNodesOrganizeRedirect = createRoute({
+    getParentRoute: () => settingsRoute,
+    path: '/nodes/organize',
+    beforeLoad: () => {
+      throw redirect({ to: '/settings/nodes', hash: 'organize' })
+    },
+  })
+
+  const settingsNodesProposalsRedirect = createRoute({
+    getParentRoute: () => settingsRoute,
+    path: '/nodes/proposals',
+    beforeLoad: () => {
+      throw redirect({ to: '/settings/nodes', hash: 'proposals' })
+    },
+  })
+
   const settingsNodeDetailRoute = createRoute({
     getParentRoute: () => settingsRoute,
     path: '/nodes/$nodeId',
@@ -170,7 +194,7 @@ export function createSettingsRoutes(rootRoute: AnyRoute, pluginTabs?: PluginSet
     getParentRoute: () => settingsRoute,
     path: '/admin/proposals',
     beforeLoad: () => {
-      throw redirect({ to: '/settings/library', hash: 'library' })
+      throw redirect({ to: '/settings/nodes', hash: 'proposals' })
     },
   })
 
@@ -214,25 +238,28 @@ export function createSettingsRoutes(rootRoute: AnyRoute, pluginTabs?: PluginSet
     loader: preload(() => import('./pages/settings-integrations-page')),
   })
 
-    const settingsOrganizeRoute = createRoute({
+  const settingsOrganizeRoute = createRoute({
     getParentRoute: () => settingsRoute,
     path: '/organize',
-    component: SettingsOrganizePage,
-    loader: preload(() => import('./pages/settings-organize-page')),
+    beforeLoad: () => {
+      throw redirect({ to: '/settings/nodes', hash: 'organize' })
+    },
   })
 
   const settingsPathsRoute = createRoute({
     getParentRoute: () => settingsRoute,
     path: '/paths',
-    component: SettingsPathsPage,
-    loader: preload(() => import('./pages/settings-paths-page')),
+    beforeLoad: () => {
+      throw redirect({ to: '/settings/nodes', hash: 'paths' })
+    },
   })
 
   const settingsProposalsRoute = createRoute({
     getParentRoute: () => settingsRoute,
     path: '/proposals',
-    component: SettingsProposalsPage,
-    loader: preload(() => import('./pages/settings-proposals-page')),
+    beforeLoad: () => {
+      throw redirect({ to: '/settings/nodes', hash: 'proposals' })
+    },
   })
 
   const settingsLibraryRoute = createRoute({
@@ -240,9 +267,9 @@ export function createSettingsRoutes(rootRoute: AnyRoute, pluginTabs?: PluginSet
     path: '/library',
     beforeLoad: ({ location }) => {
       const hash = location.hash?.replace(/^#/, '').toLowerCase()
-      if (hash === 'paths') throw redirect({ to: '/settings/paths' })
-      if (hash === 'proposals') throw redirect({ to: '/settings/proposals' })
-      throw redirect({ to: '/settings/organize' })
+      if (hash === 'paths') throw redirect({ to: '/settings/nodes', hash: 'paths' })
+      if (hash === 'proposals') throw redirect({ to: '/settings/nodes', hash: 'proposals' })
+      throw redirect({ to: '/settings/nodes', hash: 'organize' })
     },
   })
 
@@ -305,6 +332,9 @@ export function createSettingsRoutes(rootRoute: AnyRoute, pluginTabs?: PluginSet
       settingsRecommendationsRoute,
       settingsDesktopRedirect,
       settingsNodesRoute,
+      settingsNodesPathsRedirect,
+      settingsNodesOrganizeRedirect,
+      settingsNodesProposalsRedirect,
       settingsNodeDetailRoute,
       settingsIntegrationsRedirect,
       settingsAdminProposalsRedirect,

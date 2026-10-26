@@ -18,6 +18,7 @@ export const PathInput = ({
   className,
   inputClassName,
   commitOnBlur = true,
+  commitOnBrowse = true,
   allowClear = true,
   showConfirmButton = true,
   confirmLabel,
@@ -36,6 +37,7 @@ export const PathInput = ({
   className?: string
   inputClassName?: string
   commitOnBlur?: boolean
+  commitOnBrowse?: boolean
   allowClear?: boolean
   showConfirmButton?: boolean
   confirmLabel?: string
@@ -62,7 +64,9 @@ export const PathInput = ({
     const dir = await pick()
     if (!dir) return
     onChange(dir)
-    onCommit?.(dir)
+    if (commitOnBrowse) {
+      onCommit?.(dir)
+    }
     triggerFeedback()
   }
 
@@ -105,7 +109,7 @@ export const PathInput = ({
             onBlur={handleBlur}
             className={cn(
               'h-9 w-full rounded-xl bg-[var(--dk-surface-field)] pl-3 pr-8 text-xs text-foreground outline-none placeholder:text-muted-foreground/50 focus:bg-[var(--dk-surface-ghost-hover)] transition-all duration-200',
-              justConfirmed && 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-200',
+              justConfirmed && 'bg-primary/15 text-primary',
               inputClassName,
             )}
           />
@@ -143,11 +147,11 @@ export const PathInput = ({
             className={cn(
               'inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-xs font-semibold transition-all duration-200 cursor-pointer disabled:cursor-not-allowed disabled:opacity-40',
               justConfirmed
-                ? 'bg-emerald-500/25 text-emerald-600 dark:text-emerald-300 shadow-sm shadow-emerald-500/20'
-                : 'bg-[var(--dk-surface-field)] text-foreground/80 hover:bg-emerald-500/15 hover:text-emerald-600 dark:hover:text-emerald-300 active:scale-95',
+                ? 'bg-primary/25 text-primary shadow-xs'
+                : 'bg-[var(--dk-surface-field)] text-foreground/80 hover:bg-primary/15 hover:text-primary active:scale-95',
             )}
           >
-            <Check className={cn('h-4 w-4 transition-transform duration-200', justConfirmed ? 'text-emerald-600 dark:text-emerald-400 scale-110' : 'text-current')} />
+            <Check className={cn('h-4 w-4 transition-transform duration-200', justConfirmed ? 'text-primary scale-110' : 'text-current')} />
             <span className="sr-only">{justConfirmed ? 'Confirmed!' : (confirmLabel || 'Confirm path')}</span>
           </button>
         )}
@@ -155,4 +159,4 @@ export const PathInput = ({
       {hint && <p className="text-[11px] text-muted-foreground">{hint}</p>}
     </div>
   )
-};
+}

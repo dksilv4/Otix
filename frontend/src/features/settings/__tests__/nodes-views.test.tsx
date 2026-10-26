@@ -2,6 +2,7 @@ import React from 'react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import {
   loadStoredNodesViewMode,
   saveStoredNodesViewMode,
@@ -28,6 +29,15 @@ import { NodesListView } from '../components/organisms/nodes-list-view'
 import type { GameServer } from '@/features/downloads/types'
 import type { UserServerMachine } from '../types/server-machines'
 import type { DedicatedGameServer } from '@/features/gameservers/types'
+
+const mockNavigate = vi.fn()
+vi.mock('@tanstack/react-router', async () => {
+  const actual = await vi.importActual<Record<string, unknown>>('@tanstack/react-router')
+  return {
+    ...actual,
+    useNavigate: () => mockNavigate,
+  }
+})
 
 vi.mock('@ui/molecules/toast', () => ({
   useToast: () => ({ toast: vi.fn() }),
@@ -240,8 +250,15 @@ describe('node-views utilities', () => {
 })
 
 describe('NodesSecondarySettingsMenu & Dropdown', () => {
+  let queryClient: QueryClient
+
   beforeEach(() => {
     localStorage.clear()
+    queryClient = new QueryClient({
+      defaultOptions: {
+        queries: { retry: false },
+      },
+    })
   })
 
   it('renders back button and switches view modes', async () => {
@@ -254,10 +271,12 @@ describe('NodesSecondarySettingsMenu & Dropdown', () => {
     }
 
     render(
-      <NodesViewProvider>
-        <NodesSecondarySettingsMenu onBackToSettings={handleBack} />
-        <Consumer />
-      </NodesViewProvider>,
+      <QueryClientProvider client={queryClient}>
+        <NodesViewProvider>
+          <NodesSecondarySettingsMenu onBackToSettings={handleBack} />
+          <Consumer />
+        </NodesViewProvider>
+      </QueryClientProvider>,
     )
 
     // Check Back button is present
@@ -295,10 +314,12 @@ describe('NodesSecondarySettingsMenu & Dropdown', () => {
     }
 
     render(
-      <NodesViewProvider>
-        <NodesSecondarySettingsMenu onBackToSettings={vi.fn()} />
-        <Consumer />
-      </NodesViewProvider>,
+      <QueryClientProvider client={queryClient}>
+        <NodesViewProvider>
+          <NodesSecondarySettingsMenu onBackToSettings={vi.fn()} />
+          <Consumer />
+        </NodesViewProvider>
+      </QueryClientProvider>,
     )
 
     // Type search
@@ -322,9 +343,11 @@ describe('NodesSecondarySettingsMenu & Dropdown', () => {
     const handleBack = vi.fn()
 
     render(
-      <NodesViewProvider>
-        <NodesMenuDropdownButton onBackToSettings={handleBack} />
-      </NodesViewProvider>,
+      <QueryClientProvider client={queryClient}>
+        <NodesViewProvider>
+          <NodesMenuDropdownButton onBackToSettings={handleBack} />
+        </NodesViewProvider>
+      </QueryClientProvider>,
     )
 
     // Initially dropdown content is closed
@@ -335,8 +358,25 @@ describe('NodesSecondarySettingsMenu & Dropdown', () => {
     await user.click(toggleBtn)
 
     // Now menu is visible
-    expect(screen.getByText(/Nodes & Infrastructure/i)).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /^nodes$/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /back to settings/i })).toBeInTheDocument()
+  })
+
+  it('navigates to general settings by default when back button is clicked without callback', async () => {
+    const user = userEvent.setup()
+    mockNavigate.mockClear()
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <NodesViewProvider>
+          <NodesSecondarySettingsMenu />
+        </NodesViewProvider>
+      </QueryClientProvider>,
+    )
+
+    const backBtn = screen.getByRole('button', { name: /back to settings/i })
+    await user.click(backBtn)
+    expect(mockNavigate).toHaveBeenCalledWith({ to: '/settings/general' })
   })
 })
 

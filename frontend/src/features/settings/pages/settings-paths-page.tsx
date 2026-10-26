@@ -12,7 +12,15 @@ import { DkButton } from '@ui/atoms/button'
 import { DkDialog } from '@ui/molecules/dialog'
 import { useToast } from '@ui/molecules/toast'
 
-export const SettingsPathsPage = () => {
+export interface SettingsPathsPageProps {
+  onNavigateToOrganize?: () => void
+  onNavigateToInfrastructure?: () => void
+}
+
+export const SettingsPathsPage = ({
+  onNavigateToOrganize,
+  onNavigateToInfrastructure,
+}: SettingsPathsPageProps = {}) => {
   const navigate = useNavigate()
   const { toast } = useToast()
   const { user } = useAuth()
@@ -46,6 +54,20 @@ export const SettingsPathsPage = () => {
     }
   }
 
+  const handleGoToOrganize = () => {
+    if (onNavigateToOrganize) {
+      onNavigateToOrganize()
+    } else {
+      void navigate({ to: '/settings/nodes', hash: 'organize' })
+    }
+  }
+
+  const handleGoToInfrastructure = () => {
+    if (onNavigateToInfrastructure) {
+      onNavigateToInfrastructure()
+    }
+  }
+
   return (
     <div className="space-y-4">
       {/* Page Header */}
@@ -74,6 +96,8 @@ export const SettingsPathsPage = () => {
           <div className="flex items-center gap-2 self-start sm:self-center">
             <Link
               to="/settings/nodes"
+              hash="infrastructure"
+              onClick={handleGoToInfrastructure}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)] border border-white/[0.04] text-muted-foreground hover:text-foreground transition-all cursor-pointer shadow-xs"
             >
               <Server className="h-3.5 w-3.5 text-primary" />
@@ -107,7 +131,7 @@ export const SettingsPathsPage = () => {
       {/* Paths Section */}
       <SettingsPathsSection
         nodeId={activeNodeId}
-        onNavigateToOrganize={() => navigate({ to: '/settings/organize' })}
+        onNavigateToOrganize={handleGoToOrganize}
       />
 
       {/* Disconnect Confirmation Dialog */}

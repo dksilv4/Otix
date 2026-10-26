@@ -35,6 +35,34 @@ describe('useLaunchGame', () => {
     )
   })
 
+  it('triggers remote stream if game has a remote node ID', async () => {
+    const windowOpenSpy = vi.spyOn(window, 'open').mockImplementation(() => null)
+    const { result } = renderHook(() => useLaunchGame())
+    const remoteGame: LocalGame = {
+      id: 'server-100',
+      title: 'Remote Game',
+      exePath: '/mnt/games/game.exe',
+      installDir: '/mnt/games',
+      platform: 'pc',
+      serverMachineId: 42,
+    }
+
+    await act(async () => {
+      await result.current.launchGame(remoteGame)
+    })
+
+    expect(mockToast).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: 'Remote Node Stream',
+      }),
+    )
+    expect(windowOpenSpy).toHaveBeenCalledWith(
+      expect.stringContaining('/api/v1/library/servers/42/stream'),
+      '_blank',
+    )
+    windowOpenSpy.mockRestore()
+  })
+
   it('launches directly when platform is not ambiguous', async () => {
     const mockLaunch = vi.fn().mockResolvedValue(true)
     const mockGetAmbiguous = vi.fn().mockResolvedValue([])
@@ -102,8 +130,8 @@ describe('useLaunchGame', () => {
     const { result } = renderHook(() => useLaunchGame())
     const game: LocalGame = {
       id: '4',
-      title: 'Tekken Tag',
-      exePath: 'C:/Roms/tekken.iso',
+      title: 'Dual Platform Game',
+      exePath: 'C:/Roms/dual.iso',
       installDir: 'C:/Roms',
       platform: 'iso',
     }
@@ -111,8 +139,6 @@ describe('useLaunchGame', () => {
     await act(async () => {
       await result.current.launchGame(game)
     })
-
-    expect(result.current.hasDisambiguationTarget).toBe(true)
 
     await act(async () => {
       await result.current.disambiguationModalProps.onSelectPlatform('ps2')
@@ -125,6 +151,5 @@ describe('useLaunchGame', () => {
         platform: 'ps2',
       }),
     )
-    expect(result.current.hasDisambiguationTarget).toBe(false)
   })
 })

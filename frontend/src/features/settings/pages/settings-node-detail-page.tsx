@@ -214,7 +214,8 @@ export const SettingsNodeDetailPage = () => {
       {/* Navigation Shortcuts for Node */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
         <Link
-          to="/settings/paths"
+          to="/settings/nodes"
+          hash="paths"
           onClick={() => setSelectedNodeId(node.id)}
           className="flex items-center justify-between p-4 rounded-2xl bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)] border border-white/[0.04] transition-all cursor-pointer group"
         >
@@ -235,7 +236,8 @@ export const SettingsNodeDetailPage = () => {
         </Link>
 
         <Link
-          to="/settings/organize"
+          to="/settings/nodes"
+          hash="organize"
           onClick={() => setSelectedNodeId(node.id)}
           className="flex items-center justify-between p-4 rounded-2xl bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)] border border-white/[0.04] transition-all cursor-pointer group"
         >

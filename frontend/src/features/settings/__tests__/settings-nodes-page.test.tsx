@@ -116,8 +116,9 @@ describe('SettingsNodesPage', () => {
     renderPage()
 
     await user.click(screen.getByRole('heading', { name: 'Home Server' }))
-    await user.click(screen.getByRole('button', { name: /^open$/i }))
-    expect(mockNavigate).toHaveBeenCalledWith({ to: '/settings/library', hash: 'organize' })
+    const openButtons = screen.getAllByRole('button', { name: /^open$/i })
+    await user.click(openButtons[0])
+    expect(mockNavigate).toHaveBeenCalledWith({ to: '/settings/nodes', hash: 'organize' })
   })
 
   it('renders claim with PIN tab when opening Connect node modal from Add Node', async () => {

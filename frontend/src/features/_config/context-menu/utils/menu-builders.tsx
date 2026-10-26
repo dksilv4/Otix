@@ -42,6 +42,7 @@ import {
   Gauge,
   HelpCircle,
   Trash2,
+  Sparkles,
 } from 'lucide-react'
 import { apiClient } from '@/lib/api/client'
 import { emitOtixEvent } from '@/lib/plugin-events'
@@ -53,6 +54,7 @@ import { AddToListModal } from '@/features/list/components/organisms/add-to-list
 import { MediaScreenshotLightboxModal } from '@/features/media/components/molecules/media-screenshot-lightbox-modal'
 import { ShareModal } from '@/features/list/components/molecules/list-actions'
 import { EpisodeModal } from '@/features/media/show/components/organisms/media-show-episode-modal'
+import { MatchReviewCenterModal } from '@/features/settings/components/organisms/match-review-center-modal'
 import type { ContextMenuItemDef } from '../types'
 import type {
   ResolvedMediaTarget,
@@ -546,6 +548,26 @@ export const buildGameMenuItems = (
       },
     },
     { id: 'sep-library', separator: true },
+    {
+      id: 'fix-match',
+      label: 'Fix Match / Review Candidates',
+      icon: Sparkles,
+      onClick: () => {
+        if (context?.openModal) {
+          let close: () => void = () => {}
+          close = context.openModal(
+            <MatchReviewCenterModal
+              open={true}
+              onOpenChange={(open) => {
+                if (!open) close()
+              }}
+            />,
+          )
+        } else if (typeof window !== 'undefined') {
+          window.location.href = '/settings/paths'
+        }
+      },
+    },
     {
       id: 'library-submenu',
       label: 'Library & Tracking',

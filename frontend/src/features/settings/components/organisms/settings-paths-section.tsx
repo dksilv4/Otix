@@ -5,6 +5,7 @@ import {
   LayoutGrid,
   List,
   Search,
+  Sparkles,
 } from 'lucide-react'
 import { DkButton } from '@ui/atoms/button'
 import { DkSwitch } from '@ui/atoms/switch'
@@ -14,7 +15,7 @@ import { useDownloadConfig } from '@/features/downloads/use-downloads'
 import { getDesktopAPI, isDesktop } from '@/lib/desktop/api'
 import { apiClient } from '@/lib/api/client'
 import { useSettingsNode } from '../../context/settings-node-context'
-import { isLocalDesktopNodeId } from '../../local-desktop-node'
+import { isLocalDesktopNode, isLocalDesktopNodeId } from '../../local-desktop-node'
 import { SettingsCard } from '../molecules/settings-card'
 import { SettingsRow } from '../molecules/settings-row'
 import { useQueryClient } from '@tanstack/react-query'
@@ -25,6 +26,13 @@ import { useScanProgress } from '../../hooks/use-scan-progress'
 import { AddPathFolderCard } from '../molecules/add-path-folder-card'
 import { ScannedFilesSummary } from '../molecules/scanned-files-summary'
 import { ViewScannedGamesModal } from './view-scanned-games-modal'
+import { MatchReviewCenterModal } from './match-review-center-modal'
+import {
+  useNodePaths,
+  useSaveNodePaths,
+  useStorageShares,
+  useGameMatches,
+} from '../../hooks/use-node-paths'
 import {
   type ScannedFilesSummaryData,
   fetchDesktopScannedSummary,
@@ -70,9 +78,10 @@ export const SettingsPathsSection = ({
   }
 
   const { config: dlConfig, saveConfig } = useDownloadConfig(user?.id)
-  const { selectedNode } = useSettingsNode()
+  const { selectedNode, servers } = useSettingsNode()
   const nodeId = nodeIdProp !== undefined ? nodeIdProp : (selectedNode?.id ?? null)
-  const isLocalNode = isLocalDesktopNodeId(nodeId)
+  const activeNode = servers?.find((s) => s.id === nodeId) ?? (selectedNode?.id === nodeId ? selectedNode : null)
+  const isLocalNode = isLocalDesktopNode(activeNode) || isLocalDesktopNodeId(nodeId)
   const isGlobalProfile = nodeId === 0
   const remoteNodeId = isLocalNode || isGlobalProfile ? null : nodeId
   const desktop = isDesktop()
@@ -157,8 +166,15 @@ export const SettingsPathsSection = ({
   const scanProgress = useScanProgress()
   const [isClearingScan, setIsClearingScan] = useState(false)
   const [isSyncingOtix, setIsSyncingOtix] = useState(false)
-  const [writeOtixAfterScan, setWriteOtixAfterScan] = useState(true)
+  const [writeOtixAfterScan, setWriteOtixAfterScan] = useState(false)
   const [downloadOtixImages, setDownloadOtixImages] = useState(false)
+  const [matchCenterOpen, setMatchCenterOpen] = useState(false)
+
+  const { data: gameMatches = [] } = useGameMatches()
+  const pendingMatchesCount = useMemo(
+    () => (Array.isArray(gameMatches) ? gameMatches.filter((m) => m?.matchStatus === 'needs_review' || m?.matchStatus === 'unmatched').length : 0),
+    [gameMatches],
+  )
 
   // Scanned files quick summary state
   const queryClient = useQueryClient()
@@ -335,7 +351,7 @@ export const SettingsPathsSection = ({
     let cancelled = false
     const loadOtixSettings = async () => {
       if (!remoteNodeId) {
-        setWriteOtixAfterScan(true)
+        setWriteOtixAfterScan(false)
         setDownloadOtixImages(false)
         return
       }
@@ -1004,6 +1020,7 @@ export const SettingsPathsSection = ({
       queryClient.invalidateQueries({ queryKey: ['local-games'] })
       queryClient.invalidateQueries({ queryKey: ['server-games'] })
       queryClient.invalidateQueries({ queryKey: ['node-games'] })
+      queryClient.invalidateQueries({ queryKey: ['library', 'matches'] })
       window.dispatchEvent(new Event('scanned-games-updated'))
       onScanComplete?.()
       await loadSummary()
@@ -1088,6 +1105,36 @@ export const SettingsPathsSection = ({
         onRescanClick={handleTriggerScan}
         onViewGamesClick={() => setViewGamesModalOpen(true)}
       />
+
+      {/* ── Match Review Center Banner ── */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-4 rounded-2xl bg-[var(--dk-surface-ghost)] border border-white/[0.04]">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+            <Sparkles className="h-5 w-5" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h3 className="text-sm font-semibold text-foreground">Game Match Review Center</h3>
+              {pendingMatchesCount > 0 && (
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500/10 text-amber-400">
+                  {pendingMatchesCount} need review
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Pure database matching. Verify catalog links or correct candidate matches.
+            </p>
+          </div>
+        </div>
+        <DkButton
+          size="sm"
+          variant="outline"
+          onClick={() => setMatchCenterOpen(true)}
+          className="shrink-0 text-xs font-semibold rounded-xl cursor-pointer"
+        >
+          Open Match Center
+        </DkButton>
+      </div>
 
       {/* Remote Otix Node Sidecar Options */}
       {remoteNodeId ? (
@@ -1380,6 +1427,13 @@ export const SettingsPathsSection = ({
           onOpenChange={setViewGamesModalOpen}
           nodeId={remoteNodeId}
           nodeName={selectedNode?.name || 'Local Desktop'}
+        />
+      )}
+
+      {matchCenterOpen && (
+        <MatchReviewCenterModal
+          open={matchCenterOpen}
+          onOpenChange={setMatchCenterOpen}
         />
       )}
     </div>

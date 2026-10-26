@@ -40,6 +40,12 @@ vi.mock('@/features/downloads/use-server-explorer', () => ({
     isFetching: false,
     refetch: vi.fn(),
   }),
+  useCreateServerFolder: () => ({
+    mutateAsync: vi.fn(),
+  }),
+  useConnectServerShare: () => ({
+    mutateAsync: vi.fn(),
+  }),
 }))
 
 const Harness = ({

@@ -550,6 +550,8 @@ export interface IDesktopAPI {
   getLocalGames: (filter?: GameFilter) => Promise<LocalGame[]>;
   saveScannedGames: (games: LocalGame[]) => Promise<void>;
   pickExecutable: (defaultPath?: string) => Promise<string | null>;
+  pickFolder: (defaultPath?: string) => Promise<string | null>;
+  openDirectoryDialog: (defaultPath?: string) => Promise<string | null>;
   getScanPaths: () => Promise<{ path: string; type: 'game' | 'iso' }[]>;
   saveScanPaths: (paths: { path: string; type: 'game' | 'iso' }[]) => Promise<void>;
   getLocalGamesMap: () => Promise<Record<string, LocalGame>>;

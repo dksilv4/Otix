@@ -1,15 +1,21 @@
-import { createContext, useContext, useState, useMemo, type ReactNode } from 'react'
+import { createContext, useContext, useState, useMemo, useEffect, useCallback, type ReactNode } from 'react'
 import {
   type NodesViewMode,
+  type NodesActiveTab,
   type NodesCategoryFilter,
   type NodesStatusFilter,
   loadStoredNodesViewMode,
   saveStoredNodesViewMode,
+  loadStoredNodesActiveTab,
+  saveStoredNodesActiveTab,
+  resolveNodesActiveTabFromHash,
 } from '../utils/node-views'
 
 export interface NodesViewContextValue {
   viewMode: NodesViewMode
   setViewMode: (mode: NodesViewMode) => void
+  activeTab: NodesActiveTab
+  setActiveTab: (tab: NodesActiveTab) => void
   searchQuery: string
   setSearchQuery: (query: string) => void
   categoryFilter: NodesCategoryFilter
@@ -33,6 +39,7 @@ export interface NodesViewProviderProps {
 
 export const NodesViewProvider = ({ children }: NodesViewProviderProps) => {
   const [viewMode, setViewModeState] = useState<NodesViewMode>(loadStoredNodesViewMode)
+  const [activeTab, setActiveTabState] = useState<NodesActiveTab>(loadStoredNodesActiveTab)
   const [searchQuery, setSearchQuery] = useState('')
   const [categoryFilter, setCategoryFilter] = useState<NodesCategoryFilter>('all')
   const [statusFilter, setStatusFilter] = useState<NodesStatusFilter>('all')
@@ -45,6 +52,37 @@ export const NodesViewProvider = ({ children }: NodesViewProviderProps) => {
     saveStoredNodesViewMode(mode)
   }
 
+  const setActiveTab = useCallback((tab: NodesActiveTab) => {
+    setActiveTabState(tab)
+    saveStoredNodesActiveTab(tab)
+    if (typeof window !== 'undefined') {
+      const nextHash = tab === 'infrastructure' ? '' : `#${tab}`
+      if (window.location.hash !== nextHash) {
+        window.history.replaceState(null, '', nextHash || window.location.pathname)
+      }
+    }
+  }, [])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const handleHashChange = () => {
+      const parsed = resolveNodesActiveTabFromHash(window.location.hash)
+      if (parsed) {
+        setActiveTabState(parsed)
+      } else if (
+        !window.location.hash ||
+        window.location.hash === '#' ||
+        window.location.hash === '#map' ||
+        window.location.hash === '#grid' ||
+        window.location.hash === '#list'
+      ) {
+        setActiveTabState('infrastructure')
+      }
+    }
+    window.addEventListener('hashchange', handleHashChange)
+    return () => window.removeEventListener('hashchange', handleHashChange)
+  }, [])
+
   const resetFilters = () => {
     setSearchQuery('')
     setCategoryFilter('all')
@@ -55,6 +93,8 @@ export const NodesViewProvider = ({ children }: NodesViewProviderProps) => {
     () => ({
       viewMode,
       setViewMode,
+      activeTab,
+      setActiveTab,
       searchQuery,
       setSearchQuery,
       categoryFilter,
@@ -69,7 +109,17 @@ export const NodesViewProvider = ({ children }: NodesViewProviderProps) => {
       onlineCount,
       setOnlineCount,
     }),
-    [viewMode, searchQuery, categoryFilter, statusFilter, addModalOpen, totalCount, onlineCount],
+    [
+      viewMode,
+      activeTab,
+      setActiveTab,
+      searchQuery,
+      categoryFilter,
+      statusFilter,
+      addModalOpen,
+      totalCount,
+      onlineCount,
+    ],
   )
 
   return <NodesViewContext.Provider value={value}>{children}</NodesViewContext.Provider>
@@ -78,6 +128,8 @@ export const NodesViewProvider = ({ children }: NodesViewProviderProps) => {
 const defaultFallbackValue: NodesViewContextValue = {
   viewMode: 'map',
   setViewMode: () => {},
+  activeTab: 'infrastructure',
+  setActiveTab: () => {},
   searchQuery: '',
   setSearchQuery: () => {},
   categoryFilter: 'all',

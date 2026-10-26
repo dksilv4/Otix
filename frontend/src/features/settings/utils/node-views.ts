@@ -7,6 +7,8 @@ import { isLocalDesktopNode } from '../local-desktop-node'
 import { getOSLabel } from './server-machines'
 import { formatBytes } from '@/lib/utils'
 import { isDesktop } from '@/lib/desktop/api'
+import { Network, FolderOpen, Sparkles, Wand2 } from 'lucide-react'
+import type { ComponentType } from 'react'
 
 export const getNavPillsTopOffset = (isMap: boolean): string => {
   const desktop = isDesktop()
@@ -14,6 +16,94 @@ export const getNavPillsTopOffset = (isMap: boolean): string => {
     return desktop ? 'top-24 sm:top-28' : 'top-16 sm:top-20'
   }
   return desktop ? 'pt-24 sm:pt-28' : 'pt-16 sm:pt-20'
+}
+
+export type NodesActiveTab = 'infrastructure' | 'paths' | 'organize' | 'proposals'
+
+export const NODES_ACTIVE_TAB_STORAGE_KEY = 'otix:nodes-active-tab'
+
+export const resolveNodesActiveTabFromHash = (hash: string | null | undefined): NodesActiveTab | null => {
+  if (!hash) return null
+  const clean = hash.replace(/^#/, '').toLowerCase()
+  if (clean === 'paths' || clean === 'organize' || clean === 'proposals' || clean === 'infrastructure') {
+    return clean
+  }
+  return null
+}
+
+export const loadStoredNodesActiveTab = (): NodesActiveTab => {
+  if (typeof window === 'undefined') return 'infrastructure'
+  try {
+    const fromHash = resolveNodesActiveTabFromHash(window.location.hash)
+    if (fromHash) return fromHash
+    const search = new URLSearchParams(window.location.search).get('tab')
+    if (search === 'paths' || search === 'organize' || search === 'proposals' || search === 'infrastructure') {
+      return search
+    }
+    const stored = window.localStorage.getItem(NODES_ACTIVE_TAB_STORAGE_KEY)
+    if (stored === 'paths' || stored === 'organize' || stored === 'proposals' || stored === 'infrastructure') {
+      return stored
+    }
+  } catch {
+    // ignore
+  }
+  return 'infrastructure'
+}
+
+export const saveStoredNodesActiveTab = (tab: NodesActiveTab): void => {
+  if (typeof window === 'undefined') return
+  try {
+    window.localStorage.setItem(NODES_ACTIVE_TAB_STORAGE_KEY, tab)
+  } catch {
+    // ignore
+  }
+}
+
+export interface NodesTabDefinition {
+  id: NodesActiveTab
+  label: string
+  description: string
+  iconName: 'Network' | 'FolderOpen' | 'Sparkles' | 'Wand2'
+}
+
+export const NODES_WORKSPACE_TABS: NodesTabDefinition[] = [
+  {
+    id: 'infrastructure',
+    label: 'Infrastructure',
+    description: 'Topology map, connected worker daemons, and homelab servers',
+    iconName: 'Network',
+  },
+  {
+    id: 'paths',
+    label: 'Paths',
+    description: 'Library scan locations, ISO folders, and game storage directories per node',
+    iconName: 'FolderOpen',
+  },
+  {
+    id: 'organize',
+    label: 'Organize',
+    description: 'Directory structure, renaming presets, repack rules, and automation per node',
+    iconName: 'Sparkles',
+  },
+  {
+    id: 'proposals',
+    label: 'Match Proposals',
+    description: 'Metadata matching candidates, review suggestions, and game identity confirmation',
+    iconName: 'Wand2',
+  },
+]
+
+export const getNodesTabIcon = (tabId: NodesActiveTab): ComponentType<{ className?: string }> => {
+  switch (tabId) {
+    case 'infrastructure':
+      return Network
+    case 'paths':
+      return FolderOpen
+    case 'organize':
+      return Sparkles
+    case 'proposals':
+      return Wand2
+  }
 }
 
 export type NodesViewMode = 'map' | 'grid' | 'list'
@@ -197,37 +287,83 @@ export const flattenInfrastructureItems = ({
   // 4. Custom & Server Samba Shares
   const seenSamba = new Set<string>()
   for (const machine of serverMachines) {
-    if (machine.smbEnabled) {
-      const smbId = `smb-machine-${machine.id}`
-      seenSamba.add(smbId)
-      items.push({
-        id: smbId,
-        entityId: `smb-${machine.id}`,
-        name: machine.smbShareName ? `/${machine.smbShareName}` : 'Samba Share',
-        type: 'samba',
-        typeLabel: 'Network Share (SMB)',
-        isOnline: Boolean(machine.isOnline),
-        homeId: machine.homeId,
-        homeName: machine.homeId ? homesMap.get(machine.homeId) : null,
-        endpoint: `${machine.smbHost || machine.host || 'localhost'}:${machine.smbPort || 445}`,
-        details: `Hosted on ${machine.name}`,
-        raw: {
-          samba: {
-            id: smbId,
+    const machineShares: SambaShareConfig[] = []
+    const seenShareNames = new Set<string>()
+
+    if (machine.smbShares && Array.isArray(machine.smbShares)) {
+      for (const sh of machine.smbShares) {
+        if (!sh || !sh.shareName) continue
+        const key = sh.shareName.toLowerCase()
+        if (!seenShareNames.has(key)) {
+          seenShareNames.add(key)
+          machineShares.push({
+            id: sh.id || `smb-machine-${machine.id}-${sh.shareName}`,
             serverId: machine.id,
             serverName: machine.name,
-            shareName: machine.smbShareName || 'share',
-            host: machine.smbHost || machine.host || '',
-            port: machine.smbPort || 445,
+            shareName: sh.shareName,
+            host: sh.host || machine.smbHost || machine.host || '',
+            port: sh.port || machine.smbPort || 445,
             isOnline: machine.isOnline,
-          },
-        },
+            nodeIds: sh.nodeIds || machine.smbNodeIds || [],
+          })
+        }
+      }
+    }
+
+    if (machine.smbEnabled && machine.smbShareName) {
+      const key = machine.smbShareName.toLowerCase()
+      if (!seenShareNames.has(key)) {
+        seenShareNames.add(key)
+        machineShares.unshift({
+          id: `smb-machine-${machine.id}`,
+          serverId: machine.id,
+          serverName: machine.name,
+          shareName: machine.smbShareName,
+          host: machine.smbHost || machine.host || '',
+          port: machine.smbPort || 445,
+          isOnline: machine.isOnline,
+          nodeIds: machine.smbNodeIds || [],
+        })
+      }
+    }
+
+    for (const sh of customSambaShares) {
+      if (sh.serverId === machine.id && sh.shareName) {
+        const key = sh.shareName.toLowerCase()
+        if (!seenShareNames.has(key)) {
+          seenShareNames.add(key)
+          machineShares.push({
+            ...sh,
+            id: sh.id || `smb-custom-${machine.id}-${sh.shareName}`,
+            serverId: machine.id,
+            serverName: machine.name,
+            isOnline: machine.isOnline,
+          })
+        }
+      }
+    }
+
+    for (const sh of machineShares) {
+      seenSamba.add(sh.id)
+      items.push({
+        id: sh.id,
+        entityId: sh.id,
+        name: sh.shareName ? `/${sh.shareName}` : 'Samba Share',
+        type: 'samba',
+        typeLabel: 'Network Share (SMB)',
+        isOnline: Boolean(sh.isOnline ?? machine.isOnline),
+        homeId: machine.homeId,
+        homeName: machine.homeId ? homesMap.get(machine.homeId) : null,
+        endpoint: `${sh.host || machine.host || 'localhost'}:${sh.port || 445}`,
+        details: `Hosted on ${machine.name}`,
+        raw: { samba: sh },
       })
     }
   }
 
   for (const samba of customSambaShares) {
     if (seenSamba.has(samba.id)) continue
+    seenSamba.add(samba.id)
     items.push({
       id: samba.id,
       entityId: samba.id,

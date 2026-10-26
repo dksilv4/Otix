@@ -340,8 +340,11 @@ class DesktopNodeHeartbeatView(APIView):
                 node.is_local = True
                 fields.append("is_local")
             if name and node.name != name:
-                node.name = name
-                fields.append("name")
+                is_generic = name in ("This PC", "This Mac", "This computer")
+                has_custom_name = node.name and node.name not in ("This PC", "This Mac", "This computer")
+                if not (is_generic and has_custom_name):
+                    node.name = name
+                    fields.append("name")
             if device_id and node.local_url != local_url:
                 node.local_url = local_url
                 fields.append("local_url")

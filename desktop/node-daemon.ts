@@ -343,8 +343,7 @@ export class NodeDaemonManager {
           const tokenMatch = /auth_token:\s*["']?([a-zA-Z0-9_-]+)["']?/.exec(content);
           const existingToken = tokenMatch ? tokenMatch[1] : '';
           if (existingToken) {
-            const platformLabel = process.platform === 'darwin' ? 'This Mac' : process.platform === 'win32' ? 'This PC' : 'This computer';
-            const serverName = `${platformLabel} Node (${os.hostname()})`;
+            const serverName = `${os.hostname()} OTIX NODE`;
             const apiBase = getApiBaseUrl().replace(/\/$/, '');
             const backendClaimUrl = `${apiBase}/api/v1/library/servers/claim-direct`;
             await net.fetch(backendClaimUrl, {
@@ -373,8 +372,7 @@ export class NodeDaemonManager {
     const claimCode = statusRes.claim_code;
     if (!claimCode) return false;
 
-    const platformLabel = process.platform === 'darwin' ? 'This Mac' : process.platform === 'win32' ? 'This PC' : 'This computer';
-    const serverName = `${platformLabel} Node (${os.hostname()})`;
+    const serverName = `${os.hostname()} OTIX NODE`;
     const nodeAuthToken = crypto.randomBytes(24).toString('hex');
     const apiBase = getApiBaseUrl().replace(/\/$/, '');
 
@@ -455,14 +453,38 @@ export class NodeDaemonManager {
     }
   }
 
+  /** Returns the local node auth token from node-config.yaml or memory */
+  public getNodeAuthToken(): string {
+    if (this.currentAuthToken) return this.currentAuthToken;
+    try {
+      const configPath = path.join(this.userDataPath, 'node-config.yaml');
+      if (fs.existsSync(configPath)) {
+        const content = fs.readFileSync(configPath, 'utf-8');
+        const tokenMatch = /auth_token:\s*["']?([a-zA-Z0-9_-]+)["']?/.exec(content);
+        if (tokenMatch && tokenMatch[1]) {
+          this.currentAuthToken = tokenMatch[1];
+          return tokenMatch[1];
+        }
+      }
+    } catch {
+      // ignore
+    }
+    return '';
+  }
+
   /** Synchronize local library paths to the running embedded node */
   public async syncLibraries(paths: { path: string; type: 'game' | 'iso' }[]): Promise<boolean> {
     const isLive = await this.probeNode(this.currentPort, 400);
     if (!isLive) return false;
     try {
+      const token = this.getNodeAuthToken();
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
       const resp = await net.fetch(`http://127.0.0.1:${this.currentPort}/api/v1/libraries`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
           libraries: paths.map((item) => ({
             name: path.basename(item.path) || item.type,

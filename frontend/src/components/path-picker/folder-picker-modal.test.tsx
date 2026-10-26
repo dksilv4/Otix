@@ -38,6 +38,14 @@ vi.mock('@/features/downloads/use-server-explorer', () => ({
     isFetching: false,
     refetch: vi.fn(),
   }),
+  useCreateServerFolder: () => ({
+    mutateAsync: vi.fn().mockResolvedValue({ path: '' }),
+    isPending: false,
+  }),
+  useConnectServerShare: () => ({
+    mutateAsync: vi.fn().mockResolvedValue({ path: '' }),
+    isPending: false,
+  }),
 }))
 
 const renderModal = (props?: Partial<React.ComponentProps<typeof FolderPickerModal>>) => {
@@ -156,7 +164,7 @@ describe('FolderPickerModal', () => {
     mockBrowse = null
     renderModal()
 
-    expect(screen.getByText(/No Otix nodes connected to browse folders/i)).toBeInTheDocument()
+    expect(screen.getByText(/No Otix (?:worker )?nodes connected to browse folders/i)).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /Use this folder/i })).not.toBeInTheDocument()
   })
 })

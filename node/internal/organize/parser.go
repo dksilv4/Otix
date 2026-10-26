@@ -400,12 +400,26 @@ func ParseReleaseName(rawName string) ParsedRelease {
 		res.Platform = "GameCube"
 
 	case ".chd":
-
-		res.Platform = "PS2"
+		upper := strings.ToUpper(baseName)
+		if strings.Contains(upper, "[PS1]") || strings.Contains(upper, "(PS1)") || strings.Contains(upper, "[PSX]") || strings.Contains(upper, "(PSX)") {
+			res.Platform = "PS1"
+		} else if strings.Contains(upper, "[PS2]") || strings.Contains(upper, "(PS2)") {
+			res.Platform = "PS2"
+		} else if strings.Contains(upper, "[DREAMCAST]") || strings.Contains(upper, "(DREAMCAST)") || strings.Contains(upper, "[DC]") || strings.Contains(upper, "(DC)") {
+			res.Platform = "Dreamcast"
+		} else if strings.Contains(upper, "[SATURN]") || strings.Contains(upper, "(SATURN)") || strings.Contains(upper, "[SS]") || strings.Contains(upper, "(SS)") {
+			res.Platform = "Saturn"
+		} else if strings.Contains(upper, "[ARCADE]") || strings.Contains(upper, "(ARCADE)") || strings.Contains(upper, "[MAME]") || strings.Contains(upper, "(MAME)") {
+			res.Platform = "Arcade"
+		}
 
 	case ".pbp":
-
-		res.Platform = "PSP"
+		upper := strings.ToUpper(baseName)
+		if strings.Contains(upper, "[PS1]") || strings.Contains(upper, "(PS1)") || strings.Contains(upper, "[PSX]") || strings.Contains(upper, "(PSX)") {
+			res.Platform = "PS1"
+		} else if strings.Contains(upper, "[PSP]") || strings.Contains(upper, "(PSP)") {
+			res.Platform = "PSP"
+		}
 
 	case ".vpk":
 
@@ -448,8 +462,16 @@ func ParseReleaseName(rawName string) ParsedRelease {
 		}
 
 	case ".pkg":
-
-		res.Platform = "PS3"
+		upperName := strings.ToUpper(baseName)
+		if strings.Contains(upperName, "CUSA") {
+			res.Platform = "PS4"
+		} else if strings.Contains(upperName, "PPSA") {
+			res.Platform = "PS5"
+		} else if strings.Contains(upperName, "PCSB") || strings.Contains(upperName, "PCSF") || strings.Contains(upperName, "PCSE") {
+			res.Platform = "PSVita"
+		} else if strings.Contains(upperName, "BCUS") || strings.Contains(upperName, "BLES") || strings.Contains(upperName, "BLUS") || strings.Contains(upperName, "NPEB") || strings.Contains(upperName, "NPUB") || strings.Contains(upperName, "[PS3]") || strings.Contains(upperName, "(PS3)") {
+			res.Platform = "PS3"
+		}
 
 	default:
 
@@ -637,6 +659,13 @@ func dedupAllBracketTags(pathStr string) string {
 	return strings.Join(segments, "/")
 }
 
+func SanitizePathSegment(val string) string {
+	if val == "" {
+		return ""
+	}
+	return sanitizePathTitle(val)
+}
+
 func ApplyNamingTemplate(release ParsedRelease, template string, ext string, baseDir string) string {
 
 	extClean := strings.TrimPrefix(ext, ".")
@@ -654,27 +683,27 @@ func ApplyNamingTemplate(release ParsedRelease, template string, ext string, bas
 
 	tokens := map[string]string{
 
-		"Title": release.Title,
+		"Title": SanitizePathSegment(release.Title),
 
-		"CleanTitle": release.CleanTitle,
+		"CleanTitle": SanitizePathSegment(release.CleanTitle),
 
 		"Year": release.Year,
 
-		"Edition": release.Edition,
+		"Edition": SanitizePathSegment(release.Edition),
 
-		"Platform": release.Platform,
+		"Platform": SanitizePathSegment(release.Platform),
 
-		"ReleaseGroup": release.ReleaseGroup,
+		"ReleaseGroup": SanitizePathSegment(release.ReleaseGroup),
 
-		"Version": release.Version,
+		"Version": SanitizePathSegment(release.Version),
 
-		"Region": release.Region,
+		"Region": SanitizePathSegment(release.Region),
 
-		"TitleId": release.TitleId,
+		"TitleId": SanitizePathSegment(release.TitleId),
 
-		"OriginalName": rawBase,
+		"OriginalName": SanitizePathSegment(rawBase),
 
-		"MediaType": release.Platform,
+		"MediaType": SanitizePathSegment(release.Platform),
 
 		"ext": extClean,
 	}

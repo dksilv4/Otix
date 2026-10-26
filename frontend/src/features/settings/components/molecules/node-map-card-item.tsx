@@ -54,6 +54,7 @@ interface NodeMapCardItemProps {
   onOpenNodeSettings?: (server: GameServer) => void
   onEditNode?: (server: GameServer) => void
   onRenameNode?: (server: GameServer) => void
+  onDuplicateNode?: (server: GameServer) => void
   onPingNode?: (server: GameServer) => void
   onClaimPendingNode?: (pending: PendingNode) => void
   onOpenSambaSettings?: (samba: SambaShareConfig) => void
@@ -85,6 +86,7 @@ export const NodeMapCardItem = ({
   onOpenNodeSettings,
   onEditNode,
   onRenameNode,
+  onDuplicateNode,
   onPingNode,
   onClaimPendingNode,
   onOpenSambaSettings,
@@ -461,6 +463,20 @@ export const NodeMapCardItem = ({
                 >
                   <Pencil size={11} />
                   <span>Rename</span>
+                </DkButton>
+              )}
+
+              {onDuplicateNode && (
+                <DkButton
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  aria-label={`Duplicate ${data.server.name}`}
+                  onClick={() => onDuplicateNode(data.server)}
+                  className="h-6 px-2 text-[11px] font-medium gap-1 text-foreground hover:bg-[var(--dk-surface-hover)] rounded-lg"
+                >
+                  <Copy size={11} />
+                  <span>Duplicate</span>
                 </DkButton>
               )}
 

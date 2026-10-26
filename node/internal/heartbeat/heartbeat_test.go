@@ -36,8 +36,8 @@ func TestResolveRegistryURL(t *testing.T) {
 	// Unset env
 	t.Setenv("OTIX_REGISTRY_URL", "")
 	cfg.Server.RegistryURL = ""
-	if got := ResolveRegistryURL(cfg); got != "" {
-		t.Errorf("expected empty string when RegistryURL is empty, got %q", got)
+	if got := ResolveRegistryURL(cfg); got != DefaultRegistryURL {
+		t.Errorf("expected default registry when RegistryURL is empty, got %q", got)
 	}
 
 	cfg.Server.RegistryURL = "https://app.otix.cloud/api/"
@@ -89,11 +89,11 @@ func TestHeartbeatRunner(t *testing.T) {
 	// Set OTIX_REGISTRY_URL so docker container doesn't rewrite loopback to http://api:8000
 	t.Setenv("OTIX_REGISTRY_URL", srv.URL)
 
-	// Successful heartbeat
+	// Successful heartbeat (claimed)
 	statusToReturn = http.StatusOK
 	delay, err = runner.SendOnce()
-	if err != nil || delay != 5*time.Minute {
-		t.Errorf("expected 5m delay on success, got %v, err=%v", delay, err)
+	if err != nil || delay != 30*time.Second {
+		t.Errorf("expected 30s delay on success, got %v, err=%v", delay, err)
 	}
 	if receivedPayload.ServerName != "Test-Node" || receivedPayload.Port != 8090 || receivedPayload.AuthToken != "test-token" {
 		t.Errorf("payload mismatch: %+v", receivedPayload)
@@ -102,8 +102,8 @@ func TestHeartbeatRunner(t *testing.T) {
 	// Server error
 	statusToReturn = http.StatusInternalServerError
 	delay, err = runner.SendOnce()
-	if err == nil || delay != 15*time.Second {
-		t.Errorf("expected 15s delay on error, got %v, err=%v", delay, err)
+	if err == nil || delay != 10*time.Second {
+		t.Errorf("expected 10s delay on error, got %v, err=%v", delay, err)
 	}
 
 	// Start & Stop lifecycle

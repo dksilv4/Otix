@@ -1,3 +1,5 @@
+import type { SambaShareConfig } from './node-map'
+
 export interface ServerDriveConfig {
   id: string
   drive: string
@@ -40,6 +42,7 @@ export interface UserServerMachine {
   smbPassword?: string
   smbWorkgroup?: string
   smbMountPath?: string
+  smbShares?: SambaShareConfig[]
   smbNodeIds: number[]
   smbNodes: Array<{ id: number; name: string; primaryUrl: string }>
   drivesConfig: ServerDriveConfig[]
@@ -66,6 +69,7 @@ export interface ServerMachineInput {
   smbPassword?: string
   smbWorkgroup?: string
   smbMountPath?: string
+  smbShares?: SambaShareConfig[]
   smbNodeIds: number[]
   drivesConfig: ServerDriveConfig[]
   isOnline: boolean

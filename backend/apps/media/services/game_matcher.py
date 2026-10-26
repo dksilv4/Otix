@@ -975,16 +975,41 @@ class GameMatcher:
                     query_id=req.query_id,
                     query_title=req.title,
                     candidates=candidates,
-                    auto_match=self._decide_auto_match(candidates),
+                    auto_match=self._decide_auto_match(candidates, req),
                 )
             )
         return results
 
     @staticmethod
-    def _decide_auto_match(candidates: list[MatchCandidate]) -> MatchCandidate | None:
+    def _decide_auto_match(
+        candidates: list[MatchCandidate],
+        request: MatchRequest | None = None,
+    ) -> MatchCandidate | None:
         if not candidates:
             return None
         best = candidates[0]
+
+        # 1) If the scan request specifies platforms and candidate specifies platforms,
+        # verify that they actually overlap. If a PC game was scanned but the top candidate is
+        # a console exclusive (e.g. PS3 or Xbox 360), auto-matching is an ambiguous guess!
+        # It must be left for the user to review and select.
+        if request and request.platforms and best.platforms:
+            target_plats = {
+                PLATFORM_NORMALIZATION.get(p, p.lower()) for p in request.platforms if p
+            }
+            cand_plats = {
+                PLATFORM_NORMALIZATION.get(p, p.lower()) for p in best.platforms if p
+            }
+            if target_plats and cand_plats and not (target_plats & cand_plats):
+                return None
+
+        # 2) If multiple candidates exist and the runner-up is very close in confidence,
+        # it is ambiguous (e.g. remake vs original, duplicate titles).
+        # Leave for the user to select.
+        if len(candidates) > 1:
+            second = candidates[1]
+            if best.confidence - second.confidence < 0.08:
+                return None
         if best.needs_import:
             if best.confidence >= 0.90 and best.match_type in (
                 _MATCH_IGDB_SEARCH,

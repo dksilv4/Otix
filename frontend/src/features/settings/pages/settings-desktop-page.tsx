@@ -32,6 +32,7 @@ import {
   useDeleteHome,
 } from '../hooks/use-server-machines'
 import { CreateWorkerNodeModal } from '../components/organisms/create-worker-node-modal'
+import { DuplicateWorkerNodeModal } from '../components/organisms/duplicate-worker-node-modal'
 import { EditWorkerNodeModal } from '../components/organisms/edit-worker-node-modal'
 import { CreateServerMachineModal } from '../components/organisms/create-server-machine-modal'
 import { EditServerMachineModal } from '../components/organisms/edit-server-machine-modal'
@@ -44,6 +45,9 @@ import { NodesTopologyCanvas } from '../components/organisms/nodes-topology-canv
 import { GameServersDrawer } from '../components/organisms/game-servers-drawer'
 import { NodesGridView } from '../components/organisms/nodes-grid-view'
 import { NodesListView } from '../components/organisms/nodes-list-view'
+import { SettingsPathsPage } from './settings-paths-page'
+import { SettingsOrganizePage } from './settings-organize-page'
+import { SettingsProposalsPage } from './settings-proposals-page'
 import { useNodesView } from '../context/nodes-view-context'
 import {
   flattenInfrastructureItems,
@@ -76,7 +80,8 @@ export const SettingsNodesPage = () => {
 
   const handleOpenNodeSettings = (node: GameServer) => {
     setSelectedNodeId(node.id)
-    void navigate({ to: '/settings/library', hash: 'organize' })
+    setActiveTab('organize')
+    void navigate({ to: '/settings/nodes', hash: 'organize' })
   }
   const deleteServerMutation = useDeleteGameServer()
   const pingServerMutation = usePingGameServer()
@@ -99,6 +104,8 @@ export const SettingsNodesPage = () => {
   const [editingGameServer, setEditingGameServer] = useState<DedicatedGameServer | null>(null)
 
   const [createWorkerNodeOpen, setCreateWorkerNodeOpen] = useState(false)
+  const [duplicateWorkerNodeOpen, setDuplicateWorkerNodeOpen] = useState(false)
+  const [nodeToDuplicate, setNodeToDuplicate] = useState<GameServer | null>(null)
   const [editingWorkerNode, setEditingWorkerNode] = useState<GameServer | null>(null)
   const [createServerMachineOpen, setCreateServerMachineOpen] = useState(false)
   const [createServerHomeId, setCreateServerHomeId] = useState<number | null>(null)
@@ -118,6 +125,8 @@ export const SettingsNodesPage = () => {
   const [isSavingRename, setIsSavingRename] = useState(false)
 
   const {
+    activeTab,
+    setActiveTab,
     viewMode,
     searchQuery,
     categoryFilter,
@@ -358,6 +367,11 @@ export const SettingsNodesPage = () => {
     setRenameInput(server.name)
   }
 
+  const handleDuplicateNode = (node: GameServer) => {
+    setNodeToDuplicate(node)
+    setDuplicateWorkerNodeOpen(true)
+  }
+
   const handleDetectDrivesForMachine = async (machine: UserServerMachine) => {
     try {
       const res = await detectDrivesMutation.mutateAsync({
@@ -450,6 +464,57 @@ export const SettingsNodesPage = () => {
     )
   }
 
+  if (activeTab === 'paths') {
+    return (
+      <div
+        id="settings-nodes-section"
+        className={cn(
+          'relative w-full h-full overflow-y-auto px-4 sm:px-6 lg:px-8 pb-28',
+          getNavPillsTopOffset(false),
+        )}
+      >
+        <div className="max-w-5xl xl:max-w-6xl mx-auto space-y-5">
+          <SettingsPathsPage
+            onNavigateToOrganize={() => setActiveTab('organize')}
+            onNavigateToInfrastructure={() => setActiveTab('infrastructure')}
+          />
+        </div>
+      </div>
+    )
+  }
+
+  if (activeTab === 'organize') {
+    return (
+      <div
+        id="settings-nodes-section"
+        className={cn(
+          'relative w-full h-full overflow-y-auto px-4 sm:px-6 lg:px-8 pb-28',
+          getNavPillsTopOffset(false),
+        )}
+      >
+        <div className="max-w-5xl xl:max-w-6xl mx-auto space-y-5">
+          <SettingsOrganizePage />
+        </div>
+      </div>
+    )
+  }
+
+  if (activeTab === 'proposals') {
+    return (
+      <div
+        id="settings-nodes-section"
+        className={cn(
+          'relative w-full h-full overflow-y-auto px-4 sm:px-6 lg:px-8 pb-28',
+          getNavPillsTopOffset(false),
+        )}
+      >
+        <div className="max-w-5xl xl:max-w-6xl mx-auto space-y-5">
+          <SettingsProposalsPage />
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div
       id="settings-nodes-section"
@@ -508,25 +573,28 @@ export const SettingsNodesPage = () => {
           onOpenNodeSettings={handleOpenNodeSettings}
           onEditNode={(node) => setEditingWorkerNode(node)}
           onRenameNode={(node) => openRenameModal(node)}
+          onDuplicateNode={handleDuplicateNode}
           onPingNode={handlePingServerInstance}
         />
       )}
 
       {viewMode !== 'map' && (
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6 pb-4 border-b border-white/[0.04]">
-          <div>
-            <div className="flex items-center gap-2.5">
-              <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">
-                Nodes &amp; Infrastructure
-              </h1>
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-mono font-semibold bg-primary/10 text-primary border border-primary/20">
-                <span className="w-1.5 h-1.5 rounded-full bg-status-online" />
-                <span>{onlineInfrastructureCount}/{totalInfrastructureCount} online</span>
-              </span>
+        <div className="space-y-4 mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-white/[0.04]">
+            <div>
+              <div className="flex items-center gap-2.5">
+                <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">
+                  Nodes
+                </h1>
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-mono font-semibold bg-primary/10 text-primary border border-primary/20">
+                  <span className="w-1.5 h-1.5 rounded-full bg-status-online" />
+                  <span>{onlineInfrastructureCount}/{totalInfrastructureCount} online</span>
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Worker companions, server machines, Samba network storage, and dedicated game servers.
+              </p>
             </div>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Worker companions, server machines, Samba network storage, and dedicated game servers.
-            </p>
           </div>
         </div>
       )}
@@ -539,6 +607,7 @@ export const SettingsNodesPage = () => {
             onOpenNodeSettings={handleOpenNodeSettings}
             onEditNode={(node) => setEditingWorkerNode(node)}
             onRenameNode={(node) => openRenameModal(node)}
+            onDuplicateNode={handleDuplicateNode}
             onPingNode={handlePingServerInstance}
             onDisconnectNode={(node) => setNodeToDelete(node)}
             onEditServer={(server) => setEditingServerMachine(server)}
@@ -569,6 +638,7 @@ export const SettingsNodesPage = () => {
             onOpenNodeSettings={handleOpenNodeSettings}
             onEditNode={(node) => setEditingWorkerNode(node)}
             onRenameNode={(node) => openRenameModal(node)}
+            onDuplicateNode={handleDuplicateNode}
             onPingNode={handlePingServerInstance}
             onDisconnectNode={(node) => setNodeToDelete(node)}
             onEditServer={(server) => setEditingServerMachine(server)}
@@ -715,6 +785,18 @@ export const SettingsNodesPage = () => {
           homes={homes}
           serverMachines={serverMachines}
           onOpenFullSettings={handleOpenNodeSettings}
+        />
+      )}
+
+      {duplicateWorkerNodeOpen && (
+        <DuplicateWorkerNodeModal
+          open={duplicateWorkerNodeOpen}
+          onOpenChange={(open) => {
+            setDuplicateWorkerNodeOpen(open)
+            if (!open) setNodeToDuplicate(null)
+          }}
+          sourceNode={nodeToDuplicate}
+          homes={homes}
         />
       )}
 

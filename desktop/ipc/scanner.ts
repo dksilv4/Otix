@@ -1,4 +1,5 @@
-import { dialog, ipcMain } from 'electron';
+import * as http from 'http';
+import { BrowserWindow, dialog, ipcMain } from 'electron';
 import * as gameService from '../game/storage';
 import type { LocalGame } from '../preload-api';
 import type { GameScanOrchestrator, ScannedGame } from '../game/orchestrator';
@@ -22,56 +23,159 @@ export function setPluginManager(pm: PluginManager): void {
 }
 
 export function registerScannerIPC(gameDetector: GameDetector | null, nodeDaemon?: import('../node-daemon').NodeDaemonManager | null): void {
-  // Scan game in paths
+  // Scan game in paths via Otix Node engine
   ipcMain.handle('scanner:scan-paths', async (event, paths: string[], isoPaths: string[]) => {
-    event.sender.send('scanner:progress', { currentDir: 'Scanning library folders...', progress: 5 });
-    // ── Save paths to local-files plugin config ──
+    event.sender.send('scanner:progress', { currentDir: 'Scanning library folders via Otix Node...', progress: 10 });
+
     try {
-      if (_pluginManager) {
-        _pluginManager.setConfig('local-files', 'scanDirectories', paths);
-        _pluginManager.setConfig('local-files', 'isoDirectories', isoPaths);
+      const port = (nodeDaemon as any)?.currentPort || 8090;
+      const nodeToken = (nodeDaemon as any)?.getNodeAuthToken ? (nodeDaemon as any).getNodeAuthToken() : '';
+      const authHeaders: Record<string, string> = nodeToken ? { Authorization: `Bearer ${nodeToken}` } : {};
+
+      // If paths are provided, synchronize them to node libraries first
+      if ((paths && paths.length > 0) || (isoPaths && isoPaths.length > 0)) {
+        const scanItems: { path: string; type: 'game' | 'iso' }[] = [
+          ...(paths || []).map((p) => ({ path: p, type: 'game' as const })),
+          ...(isoPaths || []).map((p) => ({ path: p, type: 'iso' as const })),
+        ];
+        if (nodeDaemon) {
+          await nodeDaemon.syncLibraries(scanItems);
+        }
       }
-    } catch (err) {
-      console.warn('[scanner:scan-paths] Could not save to plugin config:', err);
-    }
 
-    // ── Scan via plugin if available ──
-    let games: any[] = [];
-    try {
-      if (_pluginManager) {
-        const result = await _pluginManager.callPluginData('local-files', 'scan');
-        games = (result as { games?: any[] })?.games || (result as any[]) || [];
+      event.sender.send('scanner:progress', { currentDir: 'Indexing library files...', progress: 30 });
+
+      // Trigger node scan with progress polling
+      let scanDone = false;
+      const progressTimer = setInterval(async () => {
+        if (scanDone) return;
+        try {
+          const status: any = await new Promise((resolve) => {
+            const sreq = http.get(
+              `http://127.0.0.1:${port}/api/v1/scan/status`,
+              { headers: authHeaders, timeout: 2000 },
+              (res) => {
+                let buf = '';
+                res.on('data', (c) => { buf += c; });
+                res.on('end', () => {
+                  try { resolve(JSON.parse(buf)); } catch { resolve(null); }
+                });
+              }
+            );
+            sreq.on('error', () => resolve(null));
+            sreq.on('timeout', () => { sreq.destroy(); resolve(null); });
+          });
+          if (status && status.phase === 'scanning') {
+            const scanned = status.files_scanned || 0;
+            const dirParts = (status.current_directory || '').split(/[\\/]/).filter(Boolean);
+            const displayDir = dirParts.length > 0 ? dirParts[dirParts.length - 1] : 'libraries';
+            event.sender.send('scanner:progress', {
+              currentDir: `Scanning ${displayDir} (${scanned} files)...`,
+              progress: Math.min(85, 30 + Math.floor(scanned / 50)),
+            });
+          }
+        } catch {
+          // ignore
+        }
+      }, 500);
+
+      try {
+        await new Promise<void>((resolve) => {
+          const req = http.request(
+            `http://127.0.0.1:${port}/api/v1/scan?wait=1`,
+            { method: 'POST', headers: authHeaders, timeout: 120000 },
+            () => resolve()
+          );
+          req.on('error', (e) => {
+            console.warn('[scanner:scan-paths] Node scan request error:', e.message);
+            resolve();
+          });
+          req.on('timeout', () => {
+            req.destroy();
+            resolve();
+          });
+          req.end();
+        });
+      } finally {
+        scanDone = true;
+        clearInterval(progressTimer);
       }
-    } catch (err: any) {
-      console.warn('[scanner:scan-paths] Plugin scan failed:', err.message);
-    }
 
-    // Feed scanned game into detector for external process matching
-    gameDetector?.setLibrary(games as LocalGame[]);
-    gameDetector?.startPeriodicScan();
-    // Persist to local DB (source of truth)
-    if (games.length > 0) {
-      gameService.upsertGames(games);
-      gameService.notifyGamesChanged();
-    }
-    event.sender.send('scanner:progress', { currentDir: 'Scan complete', progress: 100 });
+      event.sender.send('scanner:progress', { currentDir: 'Fetching indexed games...', progress: 88 });
 
-    // Match directory games through the same pipeline as plugin games
-    if (_orchestrator && games.length > 0) {
-      const scanned: ScannedGame[] = games.map((g: any) => ({
-        id: typeof g.id === 'string' ? g.id.replace('pc_', '') : g.id,
-        title: g.title,
-        platform: 'pc',
-        externalIds: [{ source: 'pc', id: typeof g.id === 'string' ? g.id.replace('pc_', '') : g.id }],
-        exePath: g.exePath,
-        installPath: g.installDir,
-        posterUrl: g.posterUrl,
+      // Fetch hosted files from node
+      const nodeFiles: any[] = await new Promise((resolve) => {
+        const req = http.get(`http://127.0.0.1:${port}/api/v1/files`, { headers: authHeaders, timeout: 30000 }, (res) => {
+          let buf = '';
+          res.on('data', (c) => { buf += c; });
+          res.on('end', () => {
+            try {
+              const parsed = JSON.parse(buf);
+              resolve(Array.isArray(parsed) ? parsed : []);
+            } catch {
+              resolve([]);
+            }
+          });
+        });
+        req.on('error', (e) => {
+          console.warn('[scanner:scan-paths] Node files fetch error:', e.message);
+          resolve([]);
+        });
+        req.on('timeout', () => {
+          req.destroy();
+          resolve([]);
+        });
+      });
+
+      const games: LocalGame[] = (nodeFiles || []).map((f: any) => ({
+        id: f.id || `node_${f.filename}`,
+        title: f.game_title || f.filename,
+        exePath: f.filepath,
+        installDir: f.filepath ? f.filepath.substring(0, Math.max(f.filepath.lastIndexOf('/'), f.filepath.lastIndexOf('\\'))) : '',
+        platform: f.format_category === 'iso' ? 'iso' : (f.format_category === 'rom' ? 'rom' : 'pc'),
+        isDlc: f.format_category === 'dlc' || f.format_category === 'update',
+        otixMediaId: f.otix_media_id,
+        otixMediaTitle: f.otix_title,
+        otixConfidence: f.otix_confidence,
       }));
-      // Games saved to DB above — matching handled by scanPlugin when user clicks Scan
-      // from the Library page. No fire-and-forget match here anymore.
-    }
 
-    return games;
+      gameDetector?.setLibrary(games);
+      gameDetector?.startPeriodicScan();
+      if (games.length > 0) {
+        gameService.upsertGames(games as any[]);
+        gameService.notifyGamesChanged();
+      }
+
+      event.sender.send('scanner:progress', { currentDir: 'Scan complete', progress: 100 });
+      return games;
+    } catch (err: any) {
+      console.warn('[scanner:scan-paths] Node scan failed:', err);
+      event.sender.send('scanner:progress', { currentDir: 'Scan error', progress: 100 });
+      return [];
+    }
+  });
+
+  // Native folder picker dialogs
+  ipcMain.handle('dialog:open-directory', async (event, defaultPath?: string) => {
+    const win = (event?.sender ? BrowserWindow.fromWebContents(event.sender) : null) || BrowserWindow.getFocusedWindow();
+    const opts = {
+      title: 'Select Folder',
+      defaultPath,
+      properties: ['openDirectory' as const, 'createDirectory' as const],
+    };
+    const result = win ? await dialog.showOpenDialog(win, opts) : await dialog.showOpenDialog(opts);
+    return result.canceled ? null : result.filePaths[0];
+  });
+
+  ipcMain.handle('scanner:pick-folder', async (event, defaultPath?: string) => {
+    const win = (event?.sender ? BrowserWindow.fromWebContents(event.sender) : null) || BrowserWindow.getFocusedWindow();
+    const opts = {
+      title: 'Select Folder',
+      defaultPath,
+      properties: ['openDirectory' as const, 'createDirectory' as const],
+    };
+    const result = win ? await dialog.showOpenDialog(win, opts) : await dialog.showOpenDialog(opts);
+    return result.canceled ? null : result.filePaths[0];
   });
 
   // Scan installed launcher libraries (now handled by matching:scan plugins)
@@ -224,13 +328,15 @@ export function registerScannerIPC(gameDetector: GameDetector | null, nodeDaemon
   });
 
   // Pick an executable via native file dialog
-  ipcMain.handle('scanner:pick-executable', async (_event, defaultPath?: string) => {
-    const result = await dialog.showOpenDialog({
+  ipcMain.handle('scanner:pick-executable', async (event, defaultPath?: string) => {
+    const win = (event?.sender ? BrowserWindow.fromWebContents(event.sender) : null) || BrowserWindow.getFocusedWindow();
+    const opts = {
       title: 'Select Game Executable',
       defaultPath,
       filters: [{ name: 'Executables', extensions: ['exe'] }],
-      properties: ['openFile'],
-    });
+      properties: ['openFile' as const],
+    };
+    const result = win ? await dialog.showOpenDialog(win, opts) : await dialog.showOpenDialog(opts);
     return result.canceled ? null : result.filePaths[0];
   });
 }

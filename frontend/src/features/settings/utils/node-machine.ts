@@ -189,3 +189,43 @@ export const formatUptime = (seconds?: number): string => {
   if (hours > 0) return `${hours}h ${minutes}m`
   return `${minutes}m`
 }
+
+export const suggestDuplicateNodeName = (
+  sourceName: string,
+  existingNames: string[] = [],
+): string => {
+  const trimmed = sourceName.trim()
+  const base = `${trimmed} (Copy)`
+  if (!existingNames.includes(base)) return base
+  let index = 2
+  while (existingNames.includes(`${trimmed} (Copy ${index})`)) {
+    index++
+  }
+  return `${trimmed} (Copy ${index})`
+}
+
+export const suggestDuplicateNodeUrl = (sourceUrl?: string | null): string => {
+  if (!sourceUrl) return 'http://127.0.0.1:8091'
+  try {
+    const url = new URL(sourceUrl)
+    const port = Number(url.port)
+    if (port && !Number.isNaN(port)) {
+      url.port = String(port + 1)
+      return url.toString().replace(/\/$/, '')
+    }
+  } catch {
+    const match = sourceUrl.match(/:(\d+)$/)
+    if (match) {
+      const port = Number(match[1]) + 1
+      return sourceUrl.replace(/:\d+$/, `:${port}`)
+    }
+  }
+  return sourceUrl
+}
+
+export const generateDuplicateNodeToken = (): string => {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID().replace(/-/g, '')
+  }
+  return Math.random().toString(36).substring(2) + Date.now().toString(36)
+}

@@ -15,6 +15,7 @@ import {
   Home,
   Lock,
   Monitor,
+  Network,
   Package,
   RefreshCw,
   RotateCcw,

@@ -11,6 +11,7 @@ import {
   EditHomeModal,
   CreateSambaShareModal,
   EditSambaShareModal,
+  DuplicateWorkerNodeModal,
 } from '../components'
 import type { GameServer } from '@/features/downloads/types'
 import type { UserHome, UserServerMachine } from '../types/server-machines'
@@ -58,6 +59,11 @@ vi.mock('../hooks/use-server-machines', () => ({
   useCreateHome: () => ({ mutateAsync: mockCreateHome, isPending: false }),
   useUpdateHome: () => ({ mutateAsync: mockUpdateHome, isPending: false }),
   useDeleteHome: () => ({ mutateAsync: mockDeleteHome, isPending: false }),
+}))
+
+const mockReplicateNodeSettings = vi.fn().mockResolvedValue({ successCount: 1, failedCount: 0, errors: [] })
+vi.mock('../utils/replicate-node-settings', () => ({
+  replicateNodeSettings: (...args: any[]) => mockReplicateNodeSettings(...args),
 }))
 
 const sampleNode: GameServer = {
@@ -344,6 +350,153 @@ describe('Separated Node Modals', () => {
           smbShareName: sampleSamba.shareName,
         }),
       )
+    })
+    it('allows adding a second Samba share to a server machine without overwriting the first', async () => {
+      const user = userEvent.setup()
+      const handleClose = vi.fn()
+      const machineWithExistingShare: UserServerMachine = {
+        ...sampleMachine,
+        smbEnabled: true,
+        smbShareName: 'games',
+        smbShares: [
+          {
+            id: 'samba-1',
+            serverId: sampleMachine.id,
+            serverName: sampleMachine.name,
+            shareName: 'games',
+            host: '192.168.1.100',
+            port: 445,
+            isOnline: true,
+            nodeIds: [],
+          },
+        ],
+      }
+
+      render(
+        <CreateSambaShareModal
+          open={true}
+          onOpenChange={handleClose}
+          serverMachines={[machineWithExistingShare]}
+        />,
+      )
+
+      const nameInput = screen.getByDisplayValue('games')
+      await user.clear(nameInput)
+      await user.type(nameInput, 'roms')
+
+      await user.click(screen.getByRole('button', { name: /connect share/i }))
+
+      expect(mockUpdateServerMachine).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: machineWithExistingShare.id,
+          smbEnabled: true,
+          smbShares: expect.arrayContaining([
+            expect.objectContaining({ shareName: 'games' }),
+            expect.objectContaining({ shareName: 'roms' }),
+          ]),
+        }),
+      )
+    })
+
+    it('disconnects one share from a machine with multiple shares while preserving remaining shares', async () => {
+      const user = userEvent.setup()
+      const handleClose = vi.fn()
+      const shareToRemove: SambaShareConfig = {
+        id: 'samba-roms',
+        serverId: sampleMachine.id,
+        serverName: sampleMachine.name,
+        shareName: 'roms',
+        host: '192.168.1.100',
+        port: 445,
+        isOnline: true,
+        nodeIds: [],
+      }
+      const machineWithTwoShares: UserServerMachine = {
+        ...sampleMachine,
+        smbEnabled: true,
+        smbShareName: 'games',
+        smbShares: [
+          {
+            id: 'samba-games',
+            serverId: sampleMachine.id,
+            serverName: sampleMachine.name,
+            shareName: 'games',
+            host: '192.168.1.100',
+            port: 445,
+            isOnline: true,
+            nodeIds: [],
+          },
+          shareToRemove,
+        ],
+      }
+
+      render(
+        <EditSambaShareModal
+          open={true}
+          onOpenChange={handleClose}
+          samba={shareToRemove}
+          serverMachines={[machineWithTwoShares]}
+        />,
+      )
+
+      await user.click(screen.getByRole('button', { name: /unlink from server/i }))
+
+      expect(mockUpdateServerMachine).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: sampleMachine.id,
+          smbShares: [expect.objectContaining({ shareName: 'games' })],
+        }),
+      )
+    })
+  })
+
+  describe('DuplicateWorkerNodeModal', () => {
+    it('renders DuplicateWorkerNodeModal, creates duplicate node and replicates settings', async () => {
+      const user = userEvent.setup()
+      const handleClose = vi.fn()
+      const handleSuccess = vi.fn()
+
+      const createdNode: GameServer = {
+        ...sampleNode,
+        id: 2,
+        name: 'Primary Node (Copy)',
+        localUrl: 'http://192.168.1.100:8091',
+      }
+      mockCreateGameServer.mockResolvedValueOnce(createdNode)
+
+      render(
+        <DuplicateWorkerNodeModal
+          open={true}
+          onOpenChange={handleClose}
+          sourceNode={sampleNode}
+          homes={[sampleHome]}
+          onSuccess={handleSuccess}
+        />,
+      )
+
+      expect(screen.getByRole('heading', { name: 'Duplicate Worker Node' })).toBeInTheDocument()
+      expect(screen.getByDisplayValue('Primary Node (Copy)')).toBeInTheDocument()
+      expect(screen.getByDisplayValue('http://192.168.1.100:8091')).toBeInTheDocument()
+
+      const submitBtn = screen.getByRole('button', { name: /duplicate node/i })
+      await user.click(submitBtn)
+
+      expect(mockCreateGameServer).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'Primary Node (Copy)',
+          local_url: 'http://192.168.1.100:8091',
+        }),
+      )
+
+      expect(mockReplicateNodeSettings).toHaveBeenCalledWith(
+        expect.objectContaining({
+          sourceNodeId: sampleNode.id,
+          targetNodeIds: [2],
+          copyOrganize: true,
+          copyPaths: true,
+        }),
+      )
+      expect(handleSuccess).toHaveBeenCalledWith(createdNode)
     })
   })
 })

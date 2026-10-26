@@ -36,6 +36,7 @@ export interface NodesGridViewProps {
   onOpenNodeSettings?: (node: GameServer) => void
   onEditNode?: (node: GameServer) => void
   onRenameNode?: (node: GameServer) => void
+  onDuplicateNode?: (node: GameServer) => void
   onPingNode?: (node: GameServer) => void
   onDisconnectNode?: (node: GameServer) => void
   onEditServer?: (server: UserServerMachine) => void
@@ -61,6 +62,7 @@ export const NodesGridView = ({
   onOpenNodeSettings,
   onEditNode,
   onRenameNode: _onRenameNode,
+  onDuplicateNode,
   onPingNode,
   onDisconnectNode,
   onEditServer,
@@ -298,6 +300,18 @@ export const NodesGridView = ({
                 >
                   <Pencil size={13} />
                 </DkButton>
+                {onDuplicateNode && (
+                  <DkButton
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => onDuplicateNode(item.raw.node!)}
+                    title="Duplicate Node"
+                    className="px-2"
+                  >
+                    <Copy size={13} />
+                  </DkButton>
+                )}
               </div>
 
               <div className="flex items-center gap-1">

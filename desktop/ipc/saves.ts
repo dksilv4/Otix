@@ -1,6 +1,6 @@
 /* ── Save Management IPC Handlers ── */
 
-import { ipcMain, dialog } from 'electron';
+import { BrowserWindow, ipcMain, dialog } from 'electron';
 import type { SaveDaemon } from '../saves';
 import { exportProfile, importSaves } from '../saves/export';
 import * as path from 'path';
@@ -131,33 +131,39 @@ export function registerSaveIPC(daemon: SaveDaemon): void {
 
   // ── Dialog: select export directory ──
 
-  ipcMain.handle('save:select-export-dir', async () => {
-    const result = await dialog.showOpenDialog({
+  ipcMain.handle('save:select-export-dir', async (event) => {
+    const win = (event?.sender ? BrowserWindow.fromWebContents(event.sender) : null) || BrowserWindow.getFocusedWindow();
+    const opts = {
       title: 'Select Export Directory',
-      properties: ['openDirectory', 'createDirectory'],
-    });
+      properties: ['openDirectory' as const, 'createDirectory' as const],
+    };
+    const result = win ? await dialog.showOpenDialog(win, opts) : await dialog.showOpenDialog(opts);
     if (result.canceled) return null;
     return result.filePaths[0];
   });
 
   // ── Dialog: select import directory ──
 
-  ipcMain.handle('save:select-import-dir', async () => {
-    const result = await dialog.showOpenDialog({
+  ipcMain.handle('save:select-import-dir', async (event) => {
+    const win = (event?.sender ? BrowserWindow.fromWebContents(event.sender) : null) || BrowserWindow.getFocusedWindow();
+    const opts = {
       title: 'Select Save Import Directory',
-      properties: ['openDirectory'],
-    });
+      properties: ['openDirectory' as const],
+    };
+    const result = win ? await dialog.showOpenDialog(win, opts) : await dialog.showOpenDialog(opts);
     if (result.canceled) return null;
     return result.filePaths[0];
   });
 
   // ── Dialog: select override path ──
 
-  ipcMain.handle('save:select-override-path', async () => {
-    const result = await dialog.showOpenDialog({
+  ipcMain.handle('save:select-override-path', async (event) => {
+    const win = (event?.sender ? BrowserWindow.fromWebContents(event.sender) : null) || BrowserWindow.getFocusedWindow();
+    const opts = {
       title: 'Select Game Save Directory',
-      properties: ['openDirectory'],
-    });
+      properties: ['openDirectory' as const],
+    };
+    const result = win ? await dialog.showOpenDialog(win, opts) : await dialog.showOpenDialog(opts);
     if (result.canceled) return null;
     return result.filePaths[0];
   });

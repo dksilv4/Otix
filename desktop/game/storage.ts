@@ -129,7 +129,7 @@ function rowToGame(row: DbRow): GameRow {
             const raw = row.otix_data as string | undefined;
             if (raw) {
               const parsed = JSON.parse(raw);
-              return { ...base, ...parsed };
+              return { ...base, ...parsed, platform: row.platform as GamePlatform };
             }
           } catch { /* ignore parse errors */ }
           return base;

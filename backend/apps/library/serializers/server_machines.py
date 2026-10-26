@@ -75,6 +75,7 @@ class UserServerMachineSerializer(serializers.ModelSerializer):
             "smb_password",
             "smb_workgroup",
             "smb_mount_path",
+            "smb_shares",
             "smb_node_ids",
             "smb_nodes",
             "drives_config",
@@ -112,6 +113,9 @@ class UserServerMachineCreateUpdateSerializer(serializers.ModelSerializer):
 
     home_id = serializers.IntegerField(required=False, allow_null=True)
     hosted_node_id = serializers.IntegerField(required=False, allow_null=True)
+    smb_shares = serializers.ListField(
+        child=serializers.DictField(), required=False, default=list
+    )
     smb_node_ids = serializers.ListField(
         child=serializers.IntegerField(), required=False, default=list
     )
@@ -133,6 +137,7 @@ class UserServerMachineCreateUpdateSerializer(serializers.ModelSerializer):
             "smb_password",
             "smb_workgroup",
             "smb_mount_path",
+            "smb_shares",
             "smb_node_ids",
             "drives_config",
             "is_online",

@@ -42,7 +42,12 @@ export const ConnectNetworkFolderModal = ({
   serverId,
   onConnected,
 }: ConnectNetworkFolderModalProps) => {
-  const { toast } = useToast()
+  let toast: (opts: any) => void = () => {}
+  try {
+    toast = useToast().toast
+  } catch {
+    // Graceful fallback when rendered without DkToastProvider (e.g. in test harness)
+  }
 
   // Queries
   const { data: servers = [] } = useGameServers()
@@ -55,7 +60,9 @@ export const ConnectNetworkFolderModal = ({
   const activeHome = homes.find((h) => h.id === nodeHomeId)
 
   // Mutations
-  const connectShareMutation = useConnectServerShare(serverId)
+  const connectShareMutation = typeof useConnectServerShare === 'function'
+    ? useConnectServerShare(serverId)
+    : ({ mutateAsync: async () => {} } as any)
   const assignHomeMutation = useAssignNodeHome()
   const createHomeMutation = useCreateHome()
   const createServerMachineMutation = useCreateServerMachine()

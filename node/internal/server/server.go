@@ -60,11 +60,22 @@ type Server struct {
 }
 
 func NewServer(cfg *config.AppConfig, claimMgr *claim.ClaimManager) *Server {
-	idx := indexer.NewStorageIndexer(cfg.GameLibraries)
-	go idx.ScanAll()
-
 	storageDir := cfg.ResolveStorageDir()
 	_ = os.MkdirAll(storageDir, 0755)
+
+	idx := indexer.NewStorageIndexer(cfg.GameLibraries)
+	cacheDB := filepath.Join(storageDir, "indexer_cache.db")
+	if store, err := indexer.OpenStore(cacheDB); err == nil {
+		_ = idx.SetStore(store)
+	}
+	if watcher, err := indexer.NewWatcher(func(changedPath string) {
+		if !idx.IsScanning() {
+			go idx.ScanAll()
+		}
+	}); err == nil {
+		idx.AttachWatcher(watcher)
+	}
+	go idx.ScanAll()
 
 	savesPath := cfg.ResolveSavesPath()
 	_ = os.MkdirAll(savesPath, 0755)
@@ -852,11 +863,53 @@ func (s *Server) setupRoutes() {
 			jsonResponse(w, http.StatusOK, s.cfg.GameLibraries)
 		})
 
+		authed.Get("/api/v1/scan/status", func(w http.ResponseWriter, r *http.Request) {
+			jsonResponse(w, http.StatusOK, s.indexer.GetStatus())
+		})
+
+		authed.Get("/api/v1/scan/progress", func(w http.ResponseWriter, r *http.Request) {
+			flusher, ok := w.(http.Flusher)
+			if !ok {
+				http.Error(w, `{"error":"Streaming unsupported"}`, http.StatusInternalServerError)
+				return
+			}
+
+			w.Header().Set("Content-Type", "text/event-stream")
+			w.Header().Set("Cache-Control", "no-cache")
+			w.Header().Set("Connection", "keep-alive")
+			w.Header().Set("Access-Control-Allow-Origin", "*")
+
+			ch := s.indexer.SubscribeProgress()
+			defer s.indexer.UnsubscribeProgress(ch)
+
+			initStatus, _ := json.Marshal(s.indexer.GetStatus())
+			fmt.Fprintf(w, "event: scan_status\ndata: %s\n\n", initStatus)
+			flusher.Flush()
+
+			notify := r.Context().Done()
+			for {
+				select {
+				case <-notify:
+					return
+				case ev, ok := <-ch:
+					if !ok {
+						return
+					}
+					data, err := json.Marshal(ev.Data)
+					if err == nil {
+						fmt.Fprintf(w, "event: %s\ndata: %s\n\n", ev.Event, data)
+						flusher.Flush()
+					}
+				}
+			}
+		})
+
 		authed.Post("/api/v1/scan", func(w http.ResponseWriter, r *http.Request) {
 			wait := r.URL.Query().Get("wait") == "1" || r.URL.Query().Get("wait") == "true"
+			deep := r.URL.Query().Get("deep") == "1" || r.URL.Query().Get("deep") == "true" || r.URL.Query().Get("force") == "1"
 			skipSync := r.URL.Query().Get("skip_sync") == "1" || r.Header.Get("X-Otix-Skip-Sync") == "true"
 			if wait {
-				files := s.indexer.ScanAll()
+				files := s.indexer.ScanAllWithDeep(deep)
 				if !skipSync {
 					s.triggerBackendSync()
 				}
@@ -867,7 +920,7 @@ func (s *Server) setupRoutes() {
 				return
 			}
 			go func() {
-				s.indexer.ScanAll()
+				s.indexer.ScanAllWithDeep(deep)
 				if !skipSync {
 					s.triggerBackendSync()
 				}

@@ -18,6 +18,8 @@ import {
   parseReleaseName,
   applyNamingTemplate,
   validateNamingTemplate,
+  getFolderTemplate,
+  sanitizePathSegment,
   VALID_TOKENS,
   type ParsedRelease,
   type FileInfo,
@@ -128,7 +130,103 @@ const ARCHIVE_EXTENSIONS = new Set([
   '.zip', '.rar', '.7z', '.tar', '.gz', '.xz', '.bz2', '.001',
 ]);
 
+const KNOWN_GAME_SUBDIRS = new Set([
+  'bin', 'binaries', 'bin32', 'bin64', 'x64', 'x86', 'win64', 'win32',
+  'system', 'shipping', 'retail', 'game', 'release', 'app', 'build',
+]);
+
 // ── Content discovery ────────────────────────────────────────────────────────
+
+function isNoiseExecutableName(nameLower: string): boolean {
+  return (
+    nameLower.includes('unins') ||
+    nameLower.includes('crash') ||
+    nameLower.includes('helper') ||
+    nameLower.includes('check') ||
+    nameLower.includes('hash') ||
+    nameLower.includes('redist') ||
+    nameLower.includes('dxsetup') ||
+    nameLower.includes('vcredist') ||
+    nameLower.includes('dotnet') ||
+    nameLower.includes('easyanticheat') ||
+    nameLower.includes('battleye') ||
+    nameLower.includes('benchmark') ||
+    nameLower.includes('bugreport') ||
+    nameLower.includes('dowser') ||
+    nameLower.includes('quicksfv') ||
+    nameLower.includes('autorun')
+  );
+}
+
+const CRACK_REGEX = /(?:^|[\s._\-\[(])(?:crack\s*fix|crackfix|crack\s*only|crack|cracked|online\s*fix|onlinefix|no\s*cd|nocd)(?:[\s._\-\])]|$)|\+crack/i;
+
+function isGameExecutableName(name: string): boolean {
+  const nl = name.toLowerCase();
+  return (
+    nl.endsWith('.exe') &&
+    !isNoiseExecutableName(nl) &&
+    !nl.includes('setup') &&
+    !nl.includes('installer') &&
+    !nl.includes('update') &&
+    !nl.includes('patch') &&
+    !nl.includes('hotfix') &&
+    !nl.includes('dlc') &&
+    !nl.includes('addon') &&
+    !CRACK_REGEX.test(nl)
+  );
+}
+
+async function scanForGameExecutable(dirPath: string): Promise<boolean> {
+  try {
+    const entries = await fs.readdir(dirPath, { withFileTypes: true });
+    const files = entries.filter((e) => e.isFile()).map((e) => e.name);
+    if (files.some((f) => isGameExecutableName(f))) {
+      return true;
+    }
+    const subdirs = entries.filter(
+      (e) =>
+        e.isDirectory() &&
+        !SKIP_DIRS.has(e.name.toLowerCase()) &&
+        !e.name.startsWith('.') &&
+        !e.name.startsWith('$') &&
+        !['updates', 'dlc', 'crack'].includes(e.name.toLowerCase()),
+    );
+    for (const sd of subdirs) {
+      if (subdirs.length > 1 && !KNOWN_GAME_SUBDIRS.has(sd.name.toLowerCase())) {
+        continue;
+      }
+      const subPath = path.join(dirPath, sd.name);
+      try {
+        const subEntries = await fs.readdir(subPath, { withFileTypes: true });
+        const subFiles = subEntries.filter((e) => e.isFile()).map((e) => e.name);
+        if (subFiles.some((f) => isGameExecutableName(f))) {
+          return true;
+        }
+        const deeperSubdirs = subEntries.filter(
+          (e) =>
+            e.isDirectory() &&
+            !SKIP_DIRS.has(e.name.toLowerCase()) &&
+            !e.name.startsWith('.') &&
+            !e.name.startsWith('$') &&
+            !['updates', 'dlc', 'crack'].includes(e.name.toLowerCase()),
+        );
+        for (const dsd of deeperSubdirs) {
+          if (deeperSubdirs.length > 1 && !KNOWN_GAME_SUBDIRS.has(dsd.name.toLowerCase())) {
+            continue;
+          }
+          const deeperPath = path.join(subPath, dsd.name);
+          try {
+            const deeperEntries = await fs.readdir(deeperPath, { withFileTypes: true });
+            if (deeperEntries.filter((e) => e.isFile()).some((e) => isGameExecutableName(e.name))) {
+              return true;
+            }
+          } catch {}
+        }
+      } catch {}
+    }
+  } catch {}
+  return false;
+}
 
 /**
  * Recursively walk a download directory and find all downloadable content.
@@ -158,6 +256,10 @@ export async function findDownloadedContent(
 
   async function traverse(currentDir: string, depth: number) {
     if (depth > maxDepth) return;
+    // If currentDir is inside an already identified game package, do not inspect subfolders as separate games
+    if (results.some((r) => currentDir.toLowerCase().startsWith(r.path.toLowerCase() + path.sep.toLowerCase()))) {
+      return;
+    }
     try {
       const entries = await fs.readdir(currentDir, { withFileTypes: true });
       let hasExe = false;
@@ -171,10 +273,10 @@ export async function findDownloadedContent(
       const hasBins = childFiles.some((f) => /\.(bin|cab|doi)$/i.test(f));
       const hasCrackDll = childFiles.some((f) => /^(?:steam_api64?\.dll|steam_emu\.ini)$/i.test(f));
       const isPs5 = childNames.some((f) => /^ppsa\d{5}/i.test(f)) || folderLower.includes('.ps5') || folderLower.includes('-ps5') || folderLower.includes('[ps5]');
-      const isPs3 = childNames.some((f) => /^(?:ps3_game|ps3_disc\.sfb|param\.sfo)$/i.test(f));
+      const isPs3 = childNames.some((f) => /^(?:ps3_game|ps3_disc\.sfb)$/i.test(f));
       const isPs4 = (childNames.some((f) => /^sce_sys$/i.test(f)) || folderLower.includes('.ps4') || folderLower.includes('-ps4') || folderLower.includes('[ps4]')) && !isPs5;
-      const isConsoleFolder = isPs5 || isPs3 || isPs4;
-      const consolePlatform = isPs5 ? 'PS5' : isPs3 ? 'PS3' : isPs4 ? 'PS4' : undefined;
+      const isConsoleFolder = !hasSetup && !hasCrackDll && (isPs5 || isPs3 || isPs4);
+      const consolePlatform = isConsoleFolder ? (isPs5 ? 'PS5' : isPs3 ? 'PS3' : isPs4 ? 'PS4' : undefined) : undefined;
       const isCrackFolder =
         hasCrackDll ||
         /(?:^|[\s._\-\[(])(?:crack\s*fix|crackfix|crack\s*only|crack|cracked|online\s*fix|onlinefix|no\s*cd|nocd)(?:[\s._\-\])]|$)|\+crack/i.test(folderLower) ||
@@ -216,42 +318,86 @@ export async function findDownloadedContent(
             const subBins = subFiles.some((f) => /\.(bin|cab|doi)$/i.test(f));
             const subCrackDll = subFiles.some((f) => /^(?:steam_api64?\.dll|steam_emu\.ini)$/i.test(f));
             const subIsPs5 = subNames.some((f) => /^ppsa\d{5}/i.test(f)) || nameLower.includes('.ps5') || nameLower.includes('-ps5') || nameLower.includes('[ps5]');
-            const subIsPs3 = subNames.some((f) => /^(?:ps3_game|ps3_disc\.sfb|param\.sfo)$/i.test(f));
+            const subIsPs3 = subNames.some((f) => /^(?:ps3_game|ps3_disc\.sfb)$/i.test(f));
             const subIsPs4 = (subNames.some((f) => /^sce_sys$/i.test(f)) || nameLower.includes('.ps4') || nameLower.includes('-ps4') || nameLower.includes('[ps4]')) && !subIsPs5;
-            const subIsConsole = subIsPs5 || subIsPs3 || subIsPs4;
-            const subConsolePlatform = subIsPs5 ? 'PS5' : subIsPs3 ? 'PS3' : subIsPs4 ? 'PS4' : undefined;
+            const subIsConsole = !subSetup && !subCrackDll && (subIsPs5 || subIsPs3 || subIsPs4);
+            const subConsolePlatform = subIsConsole ? (subIsPs5 ? 'PS5' : subIsPs3 ? 'PS3' : subIsPs4 ? 'PS4' : undefined) : undefined;
+            const isGenericContainer = nameLower === 'crack' || nameLower === 'cracks' || nameLower === 'updates' || nameLower === 'dlc';
+            if (isGenericContainer) {
+              if (depth < maxDepth) {
+                childDirs.push(fullPath);
+              }
+              continue;
+            }
+
             const subIsCrack =
               subCrackDll ||
               /crack(?:fix|\.fix|-fix|\s*only)?/i.test(nameLower) ||
               /^(?:codex|rune|flt|skidrow|empress|goldberg)$/i.test(nameLower);
 
+            const nonNoiseSubdirs = subEntries.filter(
+              (e) => e.isDirectory() && !SKIP_DIRS.has(e.name.toLowerCase()) && !e.name.startsWith('.') && !e.name.startsWith('$')
+            );
             let hasOtix = subFiles.some((f) => f.toLowerCase() === '.otix');
-            if (!hasOtix) {
-              for (const d of subEntries.filter((e) => e.isDirectory())) {
-                try {
-                  const deepFiles = await fs.readdir(path.join(fullPath, d.name));
-                  if (deepFiles.some((f) => f.toLowerCase() === '.otix')) {
-                    hasOtix = true;
-                    break;
-                  }
-                } catch {}
-              }
+            if (!hasOtix && nonNoiseSubdirs.length === 1) {
+              try {
+                const deepFiles = await fs.readdir(path.join(fullPath, nonNoiseSubdirs[0].name));
+                if (deepFiles.some((f) => f.toLowerCase() === '.otix')) {
+                  hasOtix = true;
+                }
+              } catch {}
             }
             const subHasIso = subFiles.some((f) => /\.(iso|img|mdf|bin)$/i.test(f));
-            if (subIsConsole || subIsCrack || (subSetup && subBins) || hasOtix || (depth === 1 && subHasIso)) {
+            const subDirectExe = isGameExecutableName(entry.name) ? false : subFiles.some((f) => isGameExecutableName(f));
+            let packagePath = fullPath;
+            let packageName = entry.name;
+            let hasGameExe = subDirectExe;
+
+            // Unpack single-child redundant wrapper folders directly under the main directory
+            const nonNoiseFiles = subFiles.filter((f) => {
+              const fl = f.toLowerCase();
+              return !fl.endsWith('.nfo') && !fl.endsWith('.sfv') && !fl.endsWith('.txt') && !fl.endsWith('.url') && fl !== '.otix';
+            });
+            if (depth === 1 && nonNoiseSubdirs.length === 1 && nonNoiseFiles.length === 0 && !subSetup) {
+              const singleChild = nonNoiseSubdirs[0];
+              const singleChildLower = singleChild.name.toLowerCase();
+              const isGenericFolder = ['bin', 'x64', 'win64', 'win32', 'data', 'content', 'engine', 'system', 'updates', 'dlc', 'crack'].includes(singleChildLower);
+              if (!isGenericFolder) {
+                const childPath = path.join(fullPath, singleChild.name);
+                if (await scanForGameExecutable(childPath)) {
+                  packagePath = childPath;
+                  packageName = singleChild.name;
+                  hasGameExe = true;
+                }
+              }
+            }
+
+            if (!hasGameExe && depth === 1 && !isGenericContainer) {
+              hasGameExe = await scanForGameExecutable(packagePath);
+            }
+
+            const isGameFolder = hasGameExe;
+            if (
+              subIsConsole ||
+              subIsCrack ||
+              (subSetup && subBins) ||
+              hasOtix ||
+              (depth === 1 && (subHasIso || isGameFolder))
+            ) {
               let integrity: ArchiveDiagnosis | undefined;
               if (subBins || nameLower.includes('elamigos') || nameLower.includes('fitgirl')) {
-                integrity = await diagnoseArchiveIntegrity(fullPath);
+                integrity = await diagnoseArchiveIntegrity(packagePath);
               }
+              const packageEntries = packagePath === fullPath ? subEntries : await fs.readdir(packagePath, { withFileTypes: true }).catch(() => subEntries);
               results.push({
-                path: fullPath,
-                name: entry.name,
+                path: packagePath,
+                name: packageName,
                 type: subIsCrack ? 'crack' : 'pc_game',
                 platform: subConsolePlatform,
                 integrity,
-          subdirectories: subEntries
-            .filter((e) => e.isDirectory() && !SKIP_DIRS.has(e.name.toLowerCase()))
-            .map((e) => e.name),
+                subdirectories: packageEntries
+                  .filter((e) => e.isDirectory() && !SKIP_DIRS.has(e.name.toLowerCase()))
+                  .map((e) => e.name),
               });
               continue;
             }
@@ -348,16 +494,20 @@ export async function findDownloadedContent(
       }
 
       // If a subfolder contains game executables, mark as PC game folder if not already captured
-      if (depth > 1 && hasExe && !results.some((r) => r.path === currentDir)) {
-        const currentSubdirs = entries
-          .filter((e) => e.isDirectory() && !SKIP_DIRS.has(e.name.toLowerCase()))
-          .map((e) => e.name);
-        results.push({
-          path: currentDir,
-          name: path.basename(currentDir),
-          type: 'pc_game',
-          subdirectories: currentSubdirs.length > 0 ? currentSubdirs : undefined,
-        });
+      if (depth > 1 && hasExe) {
+        if (!results.some((r) => r.path.toLowerCase() === currentDir.toLowerCase())) {
+          const currentSubdirs = entries
+            .filter((e) => e.isDirectory() && !SKIP_DIRS.has(e.name.toLowerCase()))
+            .map((e) => e.name);
+          results.push({
+            path: currentDir,
+            name: path.basename(currentDir),
+            type: 'pc_game',
+            subdirectories: currentSubdirs.length > 0 ? currentSubdirs : undefined,
+          });
+        }
+        // Once this directory is identified as a game package, do not recurse into its internal subdirectories!
+        return;
       }
 
       // Recurse into child dirs
@@ -376,7 +526,51 @@ export async function findDownloadedContent(
 // ── Template application ────────────────────────────────────────────────────
 
 // Re-export naming template utilities from canonical game/parser
-export { applyNamingTemplate, validateNamingTemplate, VALID_TOKENS };
+export { applyNamingTemplate, validateNamingTemplate, getFolderTemplate, sanitizePathSegment, VALID_TOKENS };
+
+/**
+ * Resolves the canonical platform from a `.otix` sidecar.
+ * Prioritizes PC/Windows whenever present in platforms; only falls back to console platforms
+ * if PC is not supported or if explicit console files are detected.
+ */
+export function resolveSidecarPlatform(sc: any, fallback: string = 'PC'): string {
+  if (sc && Array.isArray(sc.platforms) && sc.platforms.length > 0) {
+    // 1. Prioritize PC if present anywhere in platforms
+    const hasPc = sc.platforms.some((p: any) => {
+      const name = String(p?.name || (typeof p === 'string' ? p : '')).toUpperCase();
+      const slug = String(p?.slug || (typeof p === 'string' ? p : '')).toUpperCase();
+      return (
+        name.includes('PC') ||
+        name.includes('WINDOWS') ||
+        name.includes('LINUX') ||
+        name.includes('MAC') ||
+        slug.includes('WIN') ||
+        slug.includes('PC') ||
+        slug.includes('LINUX') ||
+        slug.includes('MAC')
+      );
+    });
+    if (hasPc) return 'PC';
+
+    // 2. If no PC platform, check console platforms in order of specificity
+    for (const p of sc.platforms) {
+      const name = String(p?.name || (typeof p === 'string' ? p : '')).toUpperCase();
+      const slug = String(p?.slug || (typeof p === 'string' ? p : '')).toUpperCase();
+      const combined = `${name} ${slug}`;
+      if (combined.includes('SWITCH') || combined.includes('NSW')) return 'Switch';
+      if (combined.includes('PS5') || combined.includes('PLAYSTATION 5') || combined.includes('PLAYSTATION-5')) return 'PS5';
+      if (combined.includes('PS4') || combined.includes('PLAYSTATION 4') || combined.includes('PLAYSTATION-4')) return 'PS4';
+      if (combined.includes('PS3') || combined.includes('PLAYSTATION 3') || combined.includes('PLAYSTATION-3')) return 'PS3';
+      if (combined.includes('3DS')) return '3DS';
+      if (combined.includes('WII U') || combined.includes('WIIU') || combined.includes('WII-U')) return 'WiiU';
+      if (combined.includes('WII')) return 'Wii';
+      if (combined.includes('XBOX 360') || combined.includes('XBOX-360') || combined.includes('XBOX360')) return 'Xbox360';
+      if (combined.includes('XBOX ONE') || combined.includes('XBOX-ONE') || combined.includes('XBOX SERIES') || combined.includes('SERIES-X')) return 'Xbox';
+      if (combined.includes('XBOX')) return 'Xbox';
+    }
+  }
+  return fallback;
+}
 
 /**
  * Smart-preview a directory using parseReleaseName + naming template.
@@ -402,11 +596,41 @@ export async function smartOrganizePreview(
   const items: OrganizationPreviewItem[] = [];
 
   for (const item of content) {
-    const parentName = path.basename(path.dirname(item.path));
+    const parentDirRaw = path.basename(path.dirname(item.path)).toLowerCase();
+    const isAuxiliaryFolder = ['updates', 'dlc', 'crack', 'cracks'].includes(parentDirRaw);
+    let parentName = path.basename(path.dirname(item.path));
+    if (isAuxiliaryFolder) {
+      const grandParent = path.basename(path.dirname(path.dirname(item.path)));
+      if (grandParent && grandParent !== '.' && !grandParent.startsWith('..')) {
+        parentName = grandParent;
+      }
+    }
     const release = parseReleaseName(item.name, undefined, parentName);
+    if (isAuxiliaryFolder && parentName) {
+      const pRel = parseReleaseName(parentName);
+      if (pRel.title) {
+        release.title = pRel.title;
+        release.cleanTitle = pRel.cleanTitle;
+      }
+    }
     if (item.platform) {
       release.platform = item.platform;
     }
+
+    // Infer platform from ancestor path if tagged [PC], [Switch], etc.
+    const normPath = item.path.replace(/\\/g, '/');
+    if (/(?:^|\/)\[PC\](?:\/|$)/i.test(normPath) || /(?:^|\/)\(PC\)(?:\/|$)/i.test(normPath)) {
+      release.platform = 'PC';
+    } else if (/(?:^|\/)\[Switch\](?:\/|$)/i.test(normPath) || /(?:^|\/)\(Switch\)(?:\/|$)/i.test(normPath)) {
+      release.platform = 'Switch';
+    } else if (/(?:^|\/)\[PS5\](?:\/|$)/i.test(normPath) || /(?:^|\/)\(PS5\)(?:\/|$)/i.test(normPath)) {
+      release.platform = 'PS5';
+    } else if (/(?:^|\/)\[PS4\](?:\/|$)/i.test(normPath) || /(?:^|\/)\(PS4\)(?:\/|$)/i.test(normPath)) {
+      release.platform = 'PS4';
+    } else if (/(?:^|\/)\[PS3\](?:\/|$)/i.test(normPath) || /(?:^|\/)\(PS3\)(?:\/|$)/i.test(normPath)) {
+      release.platform = 'PS3';
+    }
+
     let title = release.title;
 
     // For update files, strip sequence prefixes, update/patch noise and version digits from title
@@ -420,66 +644,95 @@ export async function smartOrganizePreview(
       title = title.replace(/\s+/g, sepChar);
     }
 
+    const cleanTitle = (title || '').trim();
+    if (!cleanTitle) {
+      // Cannot organize an item with no game title
+      continue;
+    }
+
+    // Default platform to PC if still unset
+    if (!release.platform) {
+      release.platform = 'PC';
+    }
+
     const fileInfo: FileInfo = {
       name: item.name,
       ext: path.extname(item.name).substring(1),
       type: item.type,
     };
 
-    let targetRaw = '';
-    if (item.type === 'update') {
-      const yearPart = release.year ? ` (${release.year})` : '';
-      const platformPart = release.platform ? ` [${release.platform}]` : ' [PC]';
-      targetRaw = path.join(directory, `${title}${yearPart}${platformPart}`, 'Updates', item.name);
-    } else if (item.type === 'dlc') {
-      const yearPart = release.year ? ` (${release.year})` : '';
-      const platformPart = release.platform ? ` [${release.platform}]` : ' [PC]';
-      targetRaw = path.join(directory, `${title}${yearPart}${platformPart}`, 'DLC', item.name);
-    } else if (item.type === 'crack') {
-      const yearPart = release.year ? ` (${release.year})` : '';
-      const platformPart = release.platform ? ` [${release.platform}]` : ' [PC]';
-      targetRaw = path.join(directory, `${title}${yearPart}${platformPart}`, 'Crack', item.name);
-    } else if (item.type === 'archive_part') {
-      const yearPart = release.year ? ` (${release.year})` : '';
-      const platformPart = release.platform ? ` [${release.platform}]` : ' [PC]';
-      targetRaw = path.join(directory, `${title}${yearPart}${platformPart}`, item.name);
-    } else if (item.type === 'pc_game') {
+    if (item.type === 'pc_game') {
       try {
         let otixPath = path.join(item.path, '.otix');
         try {
           await fs.access(otixPath);
         } catch {
           const children = await fs.readdir(item.path, { withFileTypes: true });
-          for (const c of children) {
-            if (c.isDirectory()) {
-              const deepOtix = path.join(item.path, c.name, '.otix');
-              try {
-                await fs.access(deepOtix);
-                otixPath = deepOtix;
-                break;
-              } catch {}
-            }
+          const nonNoiseDirs = children.filter(
+            (c) => c.isDirectory() && !SKIP_DIRS.has(c.name.toLowerCase()) && !c.name.startsWith('.') && !c.name.startsWith('$')
+          );
+          // Only check child directory if there is EXACTLY ONE child directory.
+          if (nonNoiseDirs.length === 1) {
+            const deepOtix = path.join(item.path, nonNoiseDirs[0].name, '.otix');
+            try {
+              await fs.access(deepOtix);
+              otixPath = deepOtix;
+            } catch {}
           }
         }
         const otixRaw = await fs.readFile(otixPath, 'utf8');
         const sc = JSON.parse(otixRaw);
         if (sc.title) {
-          title = cleanGameTitle(sc.title);
-          release.title = title;
-          release.cleanTitle = title;
+          const otixTitle = cleanGameTitle(sc.title);
+          if (otixTitle) {
+            title = otixTitle;
+            release.title = otixTitle;
+            release.cleanTitle = otixTitle;
+          }
         }
-        if (sc.platforms && sc.platforms[0]?.name) {
-          release.platform = sc.platforms[0].name;
+        const sidecarPlat = resolveSidecarPlatform(sc, release.platform || 'PC');
+        if (item.platform) {
+          // Explicit console folder detected from structure
+          release.platform = item.platform;
+        } else if (sidecarPlat === 'PC' || !release.platform) {
+          release.platform = 'PC';
         }
       } catch {}
-      const folderTemplate = namingTemplate.split('/').slice(0, -1).join('/') || namingTemplate;
-      targetRaw = applyNamingTemplate({ ...release, title }, folderTemplate, fileInfo, directory);
+    }
+
+    const safeTitle = sanitizePathSegment(cleanTitle);
+    const folderTemplate = getFolderTemplate(namingTemplate);
+    const gameFolderTarget = applyNamingTemplate(
+      { ...release, title: safeTitle, platform: release.platform || 'PC' },
+      folderTemplate,
+      fileInfo,
+      directory,
+    );
+
+    let targetRaw = '';
+    if (item.type === 'update') {
+      const isContainerName = item.name.toLowerCase() === 'updates' || item.name.toLowerCase() === 'update';
+      targetRaw = isContainerName
+        ? path.join(gameFolderTarget, 'Updates')
+        : path.join(gameFolderTarget, 'Updates', item.name);
+    } else if (item.type === 'dlc') {
+      const isContainerName = item.name.toLowerCase() === 'dlc' || item.name.toLowerCase() === 'dlcs';
+      targetRaw = isContainerName
+        ? path.join(gameFolderTarget, 'DLC')
+        : path.join(gameFolderTarget, 'DLC', item.name);
+    } else if (item.type === 'crack') {
+      const isContainerName = item.name.toLowerCase() === 'crack' || item.name.toLowerCase() === 'cracks';
+      targetRaw = isContainerName
+        ? path.join(gameFolderTarget, 'Crack')
+        : path.join(gameFolderTarget, 'Crack', item.name);
+    } else if (item.type === 'archive_part') {
+      targetRaw = path.join(gameFolderTarget, item.name);
+    } else if (item.type === 'pc_game') {
+      targetRaw = gameFolderTarget;
     } else if (item.type === 'file') {
-      const yearPart = release.year ? ` (${release.year})` : '';
-      const platformPart = release.platform ? ` [${release.platform}]` : ' [PC]';
-      targetRaw = path.join(directory, `${title}${yearPart}${platformPart}`, item.name);
+      targetRaw = path.join(gameFolderTarget, item.name);
     } else {
-      targetRaw = applyNamingTemplate({ ...release, title }, namingTemplate, fileInfo, directory);
+      targetRaw = applyNamingTemplate({ ...release, title: safeTitle, platform: release.platform || 'PC' }, namingTemplate, fileInfo, directory);
     }
 
     const mappedType: string =
@@ -506,8 +759,27 @@ export async function smartOrganizePreview(
     else if (mappedType === 'crack') status = 'secondary_crack';
     else if (mappedType === 'archive_part') status = 'secondary_archive_part';
 
-    if (item.path === targetRaw) {
+    const normSrc = path.resolve(item.path).toLowerCase();
+    const normDst = path.resolve(targetRaw).toLowerCase();
+
+    if (normSrc === normDst) {
       status = 'already_organized';
+    } else if (normDst.startsWith(normSrc + path.sep.toLowerCase())) {
+      status = 'conflict';
+    } else {
+      try {
+        const dstStat = await fs.stat(targetRaw);
+        if (dstStat.isDirectory()) {
+          const entries = await fs.readdir(targetRaw);
+          if (entries.length > 0) {
+            status = 'conflict';
+          }
+        } else {
+          status = 'conflict';
+        }
+      } catch {
+        // Target does not exist, good
+      }
     }
 
     const foldersToCreate: string[] = [];
@@ -623,8 +895,23 @@ export async function batchOrganizeDirectory(
   const organizeItems: { sourcePath: string; targetPath: string }[] = [];
 
   for (const item of content) {
-    const parentName = path.basename(path.dirname(item.path));
+    const parentDirRaw = path.basename(path.dirname(item.path)).toLowerCase();
+    const isAuxiliaryFolder = ['updates', 'dlc', 'crack', 'cracks'].includes(parentDirRaw);
+    let parentName = path.basename(path.dirname(item.path));
+    if (isAuxiliaryFolder) {
+      const grandParent = path.basename(path.dirname(path.dirname(item.path)));
+      if (grandParent && grandParent !== '.' && !grandParent.startsWith('..')) {
+        parentName = grandParent;
+      }
+    }
     const release = parseReleaseName(item.name, undefined, parentName);
+    if (isAuxiliaryFolder && parentName) {
+      const pRel = parseReleaseName(parentName);
+      if (pRel.title) {
+        release.title = pRel.title;
+        release.cleanTitle = pRel.cleanTitle;
+      }
+    }
     if (item.platform) {
       release.platform = item.platform;
     }
@@ -643,37 +930,33 @@ export async function batchOrganizeDirectory(
         }
       }
       fileInfo = { name: item.name, ext: '', type: 'pc_game' };
-      const folderTemplate = template.split('/').slice(0, -1).join('/') || template;
+      const folderTemplate = getFolderTemplate(template);
       target = applyNamingTemplate(release, folderTemplate, fileInfo, directory);
       organizeItems.push({ sourcePath: item.path, targetPath: target });
-    } else if (item.type === 'crack') {
-      const yearPart = release.year ? ` (${release.year})` : '';
-      const platformPart = release.platform ? ` [${release.platform}]` : ' [PC]';
-      target = path.join(directory, `${release.title}${yearPart}${platformPart}`, 'Crack', item.name);
-      organizeItems.push({ sourcePath: item.path, targetPath: target });
-    } else if (item.type === 'update') {
-      const yearPart = release.year ? ` (${release.year})` : '';
-      const platformPart = release.platform ? ` [${release.platform}]` : ' [PC]';
-      target = path.join(directory, `${release.title}${yearPart}${platformPart}`, 'Updates', item.name);
-      organizeItems.push({ sourcePath: item.path, targetPath: target });
-    } else if (item.type === 'dlc') {
-      const yearPart = release.year ? ` (${release.year})` : '';
-      const platformPart = release.platform ? ` [${release.platform}]` : ' [PC]';
-      target = path.join(directory, `${release.title}${yearPart}${platformPart}`, 'DLC', item.name);
-      organizeItems.push({ sourcePath: item.path, targetPath: target });
-    } else if (item.type === 'archive_part') {
-      const yearPart = release.year ? ` (${release.year})` : '';
-      const platformPart = release.platform ? ` [${release.platform}]` : ' [PC]';
-      target = path.join(directory, `${release.title}${yearPart}${platformPart}`, item.name);
-      organizeItems.push({ sourcePath: item.path, targetPath: target });
     } else {
-      fileInfo = {
-        name: item.name,
-        ext: path.extname(item.name).substring(1),
-        type: item.type,
-      };
-      target = applyNamingTemplate(release, template, fileInfo, directory);
-      organizeItems.push({ sourcePath: item.path, targetPath: target });
+      const folderTemplate = getFolderTemplate(template);
+      const gameFolderTarget = applyNamingTemplate(release, folderTemplate, { name: item.name, ext: '', type: 'pc_game' }, directory);
+      if (item.type === 'crack') {
+        target = path.join(gameFolderTarget, 'Crack', item.name);
+        organizeItems.push({ sourcePath: item.path, targetPath: target });
+      } else if (item.type === 'update') {
+        target = path.join(gameFolderTarget, 'Updates', item.name);
+        organizeItems.push({ sourcePath: item.path, targetPath: target });
+      } else if (item.type === 'dlc') {
+        target = path.join(gameFolderTarget, 'DLC', item.name);
+        organizeItems.push({ sourcePath: item.path, targetPath: target });
+      } else if (item.type === 'archive_part') {
+        target = path.join(gameFolderTarget, item.name);
+        organizeItems.push({ sourcePath: item.path, targetPath: target });
+      } else {
+        fileInfo = {
+          name: item.name,
+          ext: path.extname(item.name).substring(1),
+          type: item.type,
+        };
+        target = applyNamingTemplate(release, template, fileInfo, directory);
+        organizeItems.push({ sourcePath: item.path, targetPath: target });
+      }
     }
   }
 
@@ -807,37 +1090,29 @@ export async function autoOrganizeDownload(
       itemRelease.platform = content.platform;
     }
 
+    const folderTemplate = getFolderTemplate(namingTemplate);
+    const gameFolderTarget = applyNamingTemplate(
+      { ...itemRelease, title: itemRelease.title || content.name },
+      folderTemplate,
+      fileInfo,
+      effectiveDest,
+    );
+
     if (content.type === 'pc_game') {
       // PC game folder: move entire folder
-      fileInfo = { name: content.name, ext: '', type: 'pc_game' };
-      const folderTarget = applyNamingTemplate(
-        { ...itemRelease, title: itemRelease.title || content.name },
-        namingTemplate.split('/').slice(0, -1).join('/') || namingTemplate,
-        fileInfo,
-        effectiveDest,
-      );
-      // For folder moves, target is the folder itself, not a file inside it
-      targetDir = folderTarget;
+      targetDir = gameFolderTarget;
       organizeItems.push({ sourcePath: content.path, targetPath: targetDir });
     } else if (content.type === 'crack') {
-      const yearPart = itemRelease.year ? ` (${itemRelease.year})` : '';
-      const platformPart = itemRelease.platform ? ` [${itemRelease.platform}]` : ' [PC]';
-      const target = path.join(effectiveDest, `${itemRelease.title}${yearPart}${platformPart}`, 'Crack', content.name);
+      const target = path.join(gameFolderTarget, 'Crack', content.name);
       organizeItems.push({ sourcePath: content.path, targetPath: target });
     } else if (content.type === 'archive_part') {
-      const yearPart = itemRelease.year ? ` (${itemRelease.year})` : '';
-      const platformPart = itemRelease.platform ? ` [${itemRelease.platform}]` : ' [PC]';
-      const target = path.join(effectiveDest, `${itemRelease.title}${yearPart}${platformPart}`, content.name);
+      const target = path.join(gameFolderTarget, content.name);
       organizeItems.push({ sourcePath: content.path, targetPath: target });
     } else if (content.type === 'update') {
-      const yearPart = itemRelease.year ? ` (${itemRelease.year})` : '';
-      const platformPart = itemRelease.platform ? ` [${itemRelease.platform}]` : ' [PC]';
-      const target = path.join(effectiveDest, `${itemRelease.title}${yearPart}${platformPart}`, 'Updates', content.name);
+      const target = path.join(gameFolderTarget, 'Updates', content.name);
       organizeItems.push({ sourcePath: content.path, targetPath: target });
     } else if (content.type === 'dlc') {
-      const yearPart = itemRelease.year ? ` (${itemRelease.year})` : '';
-      const platformPart = itemRelease.platform ? ` [${itemRelease.platform}]` : ' [PC]';
-      const target = path.join(effectiveDest, `${itemRelease.title}${yearPart}${platformPart}`, 'DLC', content.name);
+      const target = path.join(gameFolderTarget, 'DLC', content.name);
       organizeItems.push({ sourcePath: content.path, targetPath: target });
     } else {
       // File-based (ISO, ROM, executable)

@@ -95,56 +95,110 @@ export const buildNodeMapGraph = (
       })
     }
 
-    // If server has SMB share enabled, render a dedicated Samba Share node connected to this server
-    if (machine.smbEnabled) {
-      const sambaId = `samba-server-${machine.id}`
-      items.push({
-        id: sambaId,
-        type: 'samba',
-        entityId: `smb-${machine.id}`,
-        name: machine.smbShareName ? `/${machine.smbShareName}` : 'Samba Share',
-        data: {
-          type: 'samba',
-          samba: {
-            id: sambaId,
+    // Collect all SMB shares configured on this server machine:
+    // 1. From machine.smbShares
+    // 2. From machine.smbShareName (if enabled)
+    // 3. From customSambaShares matching this machine.id
+    const serverSambaShares: SambaShareConfig[] = []
+    const seenShareKeys = new Set<string>()
+
+    if (machine.smbShares && Array.isArray(machine.smbShares)) {
+      for (const sh of machine.smbShares) {
+        if (!sh || !sh.shareName) continue
+        const key = sh.shareName.toLowerCase()
+        if (!seenShareKeys.has(key)) {
+          seenShareKeys.add(key)
+          serverSambaShares.push({
+            id: sh.id || `samba-server-${machine.id}-${sh.shareName}`,
             serverId: machine.id,
             serverName: machine.name,
-            shareName: machine.smbShareName || 'share',
-            host: machine.smbHost || machine.host || '',
-            port: machine.smbPort || 445,
-            username: machine.smbUsername || '',
-            password: machine.smbPassword || '',
-            workgroup: machine.smbWorkgroup || 'WORKGROUP',
-            mountPath: machine.smbMountPath || '',
+            shareName: sh.shareName,
+            host: sh.host || machine.smbHost || machine.host || '',
+            port: sh.port || machine.smbPort || 445,
+            username: sh.username ?? machine.smbUsername ?? '',
+            password: sh.password ?? machine.smbPassword ?? '',
+            workgroup: sh.workgroup || machine.smbWorkgroup || 'WORKGROUP',
+            mountPath: sh.mountPath || machine.smbMountPath || '',
             isOnline: machine.isOnline,
+            nodeIds: sh.nodeIds || machine.smbNodeIds || [],
+          })
+        }
+      }
+    }
+
+    if (machine.smbEnabled && machine.smbShareName) {
+      const key = machine.smbShareName.toLowerCase()
+      if (!seenShareKeys.has(key)) {
+        seenShareKeys.add(key)
+        serverSambaShares.unshift({
+          id: `samba-server-${machine.id}`,
+          serverId: machine.id,
+          serverName: machine.name,
+          shareName: machine.smbShareName,
+          host: machine.smbHost || machine.host || '',
+          port: machine.smbPort || 445,
+          username: machine.smbUsername || '',
+          password: machine.smbPassword || '',
+          workgroup: machine.smbWorkgroup || 'WORKGROUP',
+          mountPath: machine.smbMountPath || '',
+          isOnline: machine.isOnline,
+          nodeIds: machine.smbNodeIds || [],
+        })
+      }
+    }
+
+    for (const sh of customSambaShares) {
+      if (sh.serverId === machine.id && sh.shareName) {
+        const key = sh.shareName.toLowerCase()
+        if (!seenShareKeys.has(key)) {
+          seenShareKeys.add(key)
+          serverSambaShares.push({
+            ...sh,
+            id: sh.id || `samba-custom-${machine.id}-${sh.shareName}`,
+            serverId: machine.id,
+            serverName: machine.name,
+            isOnline: machine.isOnline,
+          })
+        }
+      }
+    }
+
+    if (serverSambaShares.length > 0) {
+      for (const share of serverSambaShares) {
+        items.push({
+          id: share.id,
+          type: 'samba',
+          entityId: share.id,
+          name: share.shareName ? `/${share.shareName}` : 'Samba Share',
+          data: {
+            type: 'samba',
+            samba: share,
           },
-        },
-      })
+        })
 
-      edges.push({
-        id: `edge-server-${machine.id}-samba-${machine.id}`,
-        sourceId: `server-${machine.id}`,
-        sourceType: 'server',
-        targetId: sambaId,
-        targetType: 'samba',
-        relation: 'samba_server_link',
-        label: `SMB /${machine.smbShareName || 'share'}`,
-        detail: `Port ${machine.smbPort || 445}`,
-      })
+        edges.push({
+          id: `edge-server-${machine.id}-samba-${share.id}`,
+          sourceId: `server-${machine.id}`,
+          sourceType: 'server',
+          targetId: share.id,
+          targetType: 'samba',
+          relation: 'samba_server_link',
+          label: `SMB /${share.shareName || 'share'}`,
+          detail: `Port ${share.port || 445}`,
+        })
 
-      // Connect Samba share to any Worker Nodes granted SMB access
-      if (machine.smbNodeIds?.length) {
-        for (const nodeId of machine.smbNodeIds) {
+        const accessNodeIds = share.nodeIds?.length ? share.nodeIds : machine.smbNodeIds || []
+        for (const nodeId of accessNodeIds) {
           if (nodes.some((n) => n.id === nodeId)) {
             edges.push({
-              id: `edge-smb-server-${machine.id}-node-${nodeId}`,
-              sourceId: sambaId,
+              id: `edge-smb-server-${machine.id}-share-${share.id}-node-${nodeId}`,
+              sourceId: share.id,
               sourceType: 'samba',
               targetId: `node-${nodeId}`,
               targetType: 'node',
               relation: 'smb_link',
               label: 'SMB Access',
-              detail: `/${machine.smbShareName || 'share'}`,
+              detail: `/${share.shareName || 'share'}`,
             })
           }
         }
@@ -199,7 +253,8 @@ export const buildNodeMapGraph = (
 
   // Include custom standalone Samba shares (not yet connected to a server or created manually)
   for (const samba of customSambaShares) {
-    if (samba.serverId && serverMachines.some((m) => m.id === samba.serverId && m.smbEnabled)) {
+    if (samba.serverId && serverMachines.some((m) => m.id === samba.serverId)) {
+      // Already rendered under the hosting server machine above
       continue
     }
     items.push({

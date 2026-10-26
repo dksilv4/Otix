@@ -108,21 +108,47 @@ export const CreateSambaShareModal = ({
         nodeIds: [],
       }
 
-      if (targetServerId) {
+      if (targetServerId && targetServer) {
+        const existingShares = Array.isArray(targetServer.smbShares) ? [...targetServer.smbShares] : []
+        if (
+          targetServer.smbShareName &&
+          !existingShares.some(
+            (s) => s.shareName?.toLowerCase() === targetServer.smbShareName?.toLowerCase(),
+          )
+        ) {
+          existingShares.unshift({
+            id: `samba-server-${targetServer.id}`,
+            serverId: targetServer.id,
+            serverName: targetServer.name,
+            shareName: targetServer.smbShareName,
+            host: targetServer.smbHost || targetServer.host || '',
+            port: targetServer.smbPort || 445,
+            username: targetServer.smbUsername || '',
+            password: targetServer.smbPassword || '',
+            workgroup: targetServer.smbWorkgroup || 'WORKGROUP',
+            mountPath: targetServer.smbMountPath || '',
+            isOnline: targetServer.isOnline,
+            nodeIds: targetServer.smbNodeIds || [],
+          })
+        }
+        const nextShares = [...existingShares, nextConfig]
+
         await updateServerMutation.mutateAsync({
           id: targetServerId,
           smbEnabled: true,
-          smbShareName: cleanName,
-          smbHost: nextConfig.host,
-          smbPort: nextConfig.port,
-          smbUsername: nextConfig.username,
-          smbPassword: nextConfig.password,
-          smbWorkgroup: nextConfig.workgroup,
-          smbMountPath: nextConfig.mountPath,
+          smbShareName: targetServer.smbShareName || cleanName,
+          smbHost: targetServer.smbHost || nextConfig.host,
+          smbPort: targetServer.smbPort || nextConfig.port,
+          smbUsername: targetServer.smbUsername || nextConfig.username,
+          smbPassword: targetServer.smbPassword || nextConfig.password,
+          smbWorkgroup: targetServer.smbWorkgroup || nextConfig.workgroup,
+          smbMountPath: targetServer.smbMountPath || nextConfig.mountPath,
+          smbShares: nextShares,
         })
+        onSaveCustom?.(nextConfig)
         toast({
           title: 'Samba Share Configured',
-          description: `Share "/${cleanName}" updated on server "${targetServer?.name}".`,
+          description: `Share "/${cleanName}" added to server "${targetServer.name}".`,
           variant: 'default',
         })
       } else {

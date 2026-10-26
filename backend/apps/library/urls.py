@@ -9,6 +9,16 @@ are declared before the generic ``<tab>`` so ``installed``/``plex``/``steam``/
 from django.urls import path, register_converter
 
 from apps.library.converters import SignedIntConverter
+from apps.library.views.storage_shares import (
+    GameMatchCenterView,
+    GameMatchConfirmView,
+    GameMatchUnmatchView,
+    NodeLibraryPathDetailView,
+    NodeLibraryPathsView,
+    NodeManifestIngestView,
+    StorageShareDetailView,
+    StorageSharesView,
+)
 from apps.library.views import (
     DesktopNodeHeartbeatView,
     EpicLibraryView,
@@ -541,5 +551,14 @@ urlpatterns = [
     path("gog/status", GOGStatusView.as_view(), name="library-gog-status"),
     path("gog/unmatched", GOGUnmatchedView.as_view(), name="library-gog-unmatched"),
     path("youtube", YoutubeLibraryView.as_view(), name="library-youtube"),
+    # Storage Shares, Node Paths & Match Center
+    path("shares", StorageSharesView.as_view(), name="library-storage-shares"),
+    path("shares/<int:pk>", StorageShareDetailView.as_view(), name="library-storage-share-detail"),
+    path("nodes/<sint:node_id>/paths", NodeLibraryPathsView.as_view(), name="library-node-paths"),
+    path("nodes/<sint:node_id>/paths/<int:path_id>", NodeLibraryPathDetailView.as_view(), name="library-node-path-detail"),
+    path("nodes/<sint:node_id>/manifest", NodeManifestIngestView.as_view(), name="library-node-manifest"),
+    path("matches", GameMatchCenterView.as_view(), name="library-game-matches"),
+    path("matches/<int:record_id>/confirm", GameMatchConfirmView.as_view(), name="library-game-match-confirm"),
+    path("matches/<int:record_id>/unmatch", GameMatchUnmatchView.as_view(), name="library-game-match-unmatch"),
     path("<tab>", LibraryTabView.as_view(), name="library-tab"),
 ]

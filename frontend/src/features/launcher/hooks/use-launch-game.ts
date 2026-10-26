@@ -20,6 +20,18 @@ export const useLaunchGame = () => {
 
   const launch = useCallback(async (game: LocalGame) => {
     if (!hasDesktopAPI()) {
+      const remoteNodeId = (game as any).nodeId || (game as any).serverMachineId || (game as any).remoteNodeId
+      if (remoteNodeId) {
+        toast({
+          title: 'Remote Node Stream',
+          description: `Streaming from remote node #${remoteNodeId}...`,
+        })
+        if (typeof window !== 'undefined') {
+          window.open(`/api/v1/library/servers/${remoteNodeId}/stream?game_id=${encodeURIComponent(game.id)}`, '_blank')
+        }
+        return
+      }
+
       toast({
         title: 'Desktop Client Required',
         description: 'Launching games requires the Otix Desktop application.',

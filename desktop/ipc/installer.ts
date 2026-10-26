@@ -1,4 +1,4 @@
-import { ipcMain, dialog } from 'electron';
+import { BrowserWindow, dialog, ipcMain } from 'electron';
 import { randomUUID } from 'crypto';
 import {
   mountIso,
@@ -26,12 +26,14 @@ import { updateGamePathInDb, getScanPathsFromDb } from '../downloads';
 
 export function registerInstallerIPC(): void {
   // Select ISO dialog
-  ipcMain.handle('installer:select-iso', async () => {
-    const result = await dialog.showOpenDialog({
+  ipcMain.handle('installer:select-iso', async (event) => {
+    const win = (event?.sender ? BrowserWindow.fromWebContents(event.sender) : null) || BrowserWindow.getFocusedWindow();
+    const opts = {
       title: 'Select Game ISO File',
       filters: [{ name: 'Disk Images', extensions: ['iso'] }],
-      properties: ['openFile'],
-    });
+      properties: ['openFile' as const],
+    };
+    const result = win ? await dialog.showOpenDialog(win, opts) : await dialog.showOpenDialog(opts);
     if (result.canceled) return null;
     return result.filePaths[0];
   });

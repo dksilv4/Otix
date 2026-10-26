@@ -202,8 +202,8 @@ func TestWebUIOnboardingRender(t *testing.T) {
 	if !bytes.Contains([]byte(body), []byte("OTX-")) {
 		t.Error("expected onboarding wizard to show OTX- PIN")
 	}
-	if !bytes.Contains([]byte(body), []byte("Already claimed this node before?")) {
-		t.Error("expected onboarding wizard to include already claimed reconnect tip")
+	if !bytes.Contains([]byte(body), []byte("Account Login")) {
+		t.Error("expected onboarding wizard to include Account Login tab")
 	}
 }
 
@@ -224,23 +224,14 @@ func TestWebUIClaimedDashboardRender(t *testing.T) {
 	}
 
 	body := w.Body.String()
-	if !bytes.Contains([]byte(body), []byte("How to Reconnect to this Node")) {
-		t.Error("expected dashboard to show 'How to Reconnect to this Node' section")
-	}
-	if !bytes.Contains([]byte(body), []byte("This node is already claimed")) {
-		t.Error("expected dashboard to mention that node is already claimed")
-	}
-	if !bytes.Contains([]byte(body), []byte("the user must log in")) {
-		t.Error("expected dashboard to state that the user must log in to reconnect")
-	}
 	if !bytes.Contains([]byte(body), []byte("dksilv4")) {
 		t.Error("expected dashboard to show claiming username")
 	}
-	if !bytes.Contains([]byte(body), []byte("Unclaim Node")) {
-		t.Error("expected dashboard to show Unclaim Node button")
+	if !bytes.Contains([]byte(body), []byte("Unclaim")) {
+		t.Error("expected dashboard to show Unclaim button")
 	}
-	if !bytes.Contains([]byte(body), []byte("Copy Token")) {
-		t.Error("expected dashboard to show Copy Token action")
+	if !bytes.Contains([]byte(body), []byte("btn-copy-token")) {
+		t.Error("expected dashboard to show copy token action")
 	}
 }
 
@@ -806,3 +797,32 @@ func TestGamesAndOverlayEndpoints(t *testing.T) {
 	}
 }
 
+
+
+func TestScanStatusAndProgressSSE(t *testing.T) {
+	srv, _, _ := setupTestServer()
+
+	// 1. GET /api/v1/scan/status
+	reqStatus := httptest.NewRequest("GET", "/api/v1/scan/status", nil)
+	wStatus := httptest.NewRecorder()
+	srv.Router().ServeHTTP(wStatus, reqStatus)
+	if wStatus.Code != http.StatusOK {
+		t.Fatalf("expected 200 from /api/v1/scan/status, got %d", wStatus.Code)
+	}
+
+	var status map[string]interface{}
+	if err := json.Unmarshal(wStatus.Body.Bytes(), &status); err != nil {
+		t.Fatalf("failed to decode scan status: %v", err)
+	}
+	if status["phase"] == "" {
+		t.Fatalf("expected non-empty phase in status: %+v", status)
+	}
+
+	// 2. Trigger scan
+	reqScan := httptest.NewRequest("POST", "/api/v1/scan?wait=1&skip_sync=1", nil)
+	wScan := httptest.NewRecorder()
+	srv.Router().ServeHTTP(wScan, reqScan)
+	if wScan.Code != http.StatusOK {
+		t.Fatalf("expected 200 from /api/v1/scan, got %d", wScan.Code)
+	}
+}

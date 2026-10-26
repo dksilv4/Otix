@@ -349,6 +349,8 @@ export class GameScanOrchestrator extends EventEmitter {
     const requests = games.map(g => ({
       query_id: `${g.platform}:${g.id}`,
       title: g.title,
+      platform: g.platform,
+      platforms: g.platform ? [g.platform] : undefined,
       developer: g.developer || null,
       publisher: g.publisher || null,
       release_year: g.releaseYear || null,
@@ -558,8 +560,7 @@ export class GameScanOrchestrator extends EventEmitter {
         platforms: best.platforms || [], confidence: best.confidence,
         _candidates: data.candidates,
       });
-      hydrateGame(scannedGameId, best.title, null, best.poster_url || null,
-        { candidates: data.candidates, best_candidate: best }, best.confidence);
+      // Do not hydrate / overwrite scanned game title or artwork with unconfirmed suggestions.
       notifyGamesChanged();
     }
     // unmatched → no persistence needed

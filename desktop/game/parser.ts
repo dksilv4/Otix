@@ -346,6 +346,14 @@ export function dedupAllBracketTags(pathStr: string): string {
   return dedupedSegments.join('/');
 }
 
+export function sanitizePathSegment(val: string): string {
+  if (!val) return '';
+  return val
+    .replace(/[\\/:*?"<>|]/g, ' - ')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
+
 export function applyNamingTemplate(
   release: ParsedRelease,
   template: string,
@@ -353,18 +361,20 @@ export function applyNamingTemplate(
   baseDir?: string,
 ): string {
   const tokens: Record<string, string> = {
-    Title: release.title,
-    CleanTitle: release.cleanTitle,
+    Title: sanitizePathSegment(release.title),
+    CleanTitle: sanitizePathSegment(release.cleanTitle),
     Year: release.year ?? '',
-    Edition: release.edition ?? '',
-    Platform: release.platform ?? 'PC',
-    ReleaseGroup: release.group ?? '',
-    Version: release.version ?? '',
-    Region: (release as any).region ?? '',
-    TitleId: (release as any).titleId ?? '',
-    OriginalName: fileInfo.ext && release.rawName.toLowerCase().endsWith('.' + fileInfo.ext.toLowerCase())
-      ? release.rawName.slice(0, -(fileInfo.ext.length + 1))
-      : release.rawName,
+    Edition: sanitizePathSegment(release.edition ?? ''),
+    Platform: sanitizePathSegment(release.platform ?? 'PC'),
+    ReleaseGroup: sanitizePathSegment(release.group ?? ''),
+    Version: sanitizePathSegment(release.version ?? ''),
+    Region: sanitizePathSegment((release as any).region ?? ''),
+    TitleId: sanitizePathSegment((release as any).titleId ?? ''),
+    OriginalName: sanitizePathSegment(
+      fileInfo.ext && release.rawName.toLowerCase().endsWith('.' + fileInfo.ext.toLowerCase())
+        ? release.rawName.slice(0, -(fileInfo.ext.length + 1))
+        : release.rawName
+    ),
     MediaType: fileInfo.type === 'iso' ? 'ISO' : fileInfo.type === 'pc_game' ? 'PC' : fileInfo.type === 'rom' ? 'ROM' : 'Update',
     ext: fileInfo.ext,
   };
@@ -404,6 +414,31 @@ export function applyNamingTemplate(
 function pathJoin(a: string, b: string): string {
   const sep = a.includes('\\') ? '\\' : '/';
   return a.replace(/[\\/]+$/, '') + sep + b.replace(/^[\\/]+/, '');
+}
+
+/**
+ * Extracts the folder structure portion of a naming template.
+ * If the template ends with a file name pattern (e.g. `/{CleanTitle}.{ext}`),
+ * it returns the parent folder path. If the template is already a folder path
+ * (e.g. `{Platform}/{Title}`), it preserves the full template so the game folder
+ * token is never stripped.
+ */
+export function getFolderTemplate(template: string): string {
+  if (!template) return '{Title} [{Platform}]';
+  const parts = template.split('/');
+  const last = parts[parts.length - 1].toLowerCase();
+  if (
+    last.includes('.{ext}') ||
+    last.includes('{originalname}') ||
+    last.includes('.iso') ||
+    last.includes('.exe') ||
+    (last.includes('.') && !last.includes('{title}'))
+  ) {
+    if (parts.length > 1) {
+      return parts.slice(0, -1).join('/');
+    }
+  }
+  return template;
 }
 
 // ── validateNamingTemplate ──────────────────────────────────────────────────

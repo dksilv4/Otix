@@ -518,3 +518,326 @@ func TestPreviewOrganizationCrackSupport(t *testing.T) {
 		t.Errorf("expected to find secondary_crack item in preview: %+v", items)
 	}
 }
+
+func TestPreviewOrganizationPlatformPrioritization(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "otix-platform-test-*")
+	if err != nil {
+		t.Fatalf("failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	gameDir := filepath.Join(tmpDir, "Baldurs Gate 3")
+	if err := os.MkdirAll(gameDir, 0755); err != nil {
+		t.Fatalf("failed to create game dir: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(gameDir, "bg3.exe"), []byte("exe"), 0755); err != nil {
+		t.Fatalf("failed to write exe: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(gameDir, "bg3_dx11.exe"), []byte("exe"), 0755); err != nil {
+		t.Fatalf("failed to write exe: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(gameDir, "steam_api64.dll"), []byte("dll"), 0644); err != nil {
+		t.Fatalf("failed to write dll: %v", err)
+	}
+
+	// Sidecar has Xbox as first platform, and PC as second platform (like IGDB multiplatform)
+	sc := &otixmeta.Sidecar{
+		Version:  1,
+		MediaID:  "29572",
+		Title:    "Baldur's Gate 3",
+		Platforms: []map[string]any{
+			{"id": 19, "name": "Xbox Series X|S", "slug": "xbox-series-x-s"},
+			{"id": 10, "name": "PC (Microsoft Windows)", "slug": "windows"},
+			{"id": 22, "name": "PlayStation 5", "slug": "playstation-5"},
+		},
+	}
+	if err := otixmeta.Write(gameDir, sc); err != nil {
+		t.Fatalf("failed to write sidecar: %v", err)
+	}
+
+	items, err := PreviewOrganization(tmpDir, "{Title} [{Platform}]", false)
+	if err != nil {
+		t.Fatalf("PreviewOrganization failed: %v", err)
+	}
+
+	if len(items) == 0 {
+		t.Fatalf("expected items in preview, got none")
+	}
+
+	for _, it := range items {
+		if strings.Contains(it.SourcePath, "Baldurs Gate 3") {
+			if strings.Contains(it.TargetPath, "[Xbox]") || strings.Contains(it.TargetPath, "Xbox Series") {
+				t.Errorf("game was incorrectly classified as Xbox instead of PC: %s", it.TargetPath)
+			}
+			if !strings.Contains(it.TargetPath, "[PC]") {
+				t.Errorf("expected target path to contain [PC], got: %s", it.TargetPath)
+			}
+		}
+	}
+}
+
+func TestPreviewOrganizationPS3PlatformPrioritization(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "otix-ps3-platform-test-*")
+	if err != nil {
+		t.Fatalf("failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	gameDir := filepath.Join(tmpDir, "Grand Theft Auto V")
+	if err := os.MkdirAll(gameDir, 0755); err != nil {
+		t.Fatalf("failed to create game dir: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(gameDir, "setup.exe"), []byte("exe"), 0755); err != nil {
+		t.Fatalf("failed to write setup.exe: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(gameDir, "setup-1.bin"), []byte("bin"), 0644); err != nil {
+		t.Fatalf("failed to write bin: %v", err)
+	}
+
+	// Sidecar has PS3 as first platform, Xbox 360 second, and PC third (release order on IGDB)
+	sc := &otixmeta.Sidecar{
+		Version: 1,
+		MediaID: "1020",
+		Title:   "Grand Theft Auto V",
+		Platforms: []map[string]any{
+			{"id": 9, "name": "PlayStation 3", "slug": "playstation-3"},
+			{"id": 12, "name": "Xbox 360", "slug": "xbox-360"},
+			{"id": 6, "name": "PC (Microsoft Windows)", "slug": "windows"},
+		},
+	}
+	if err := otixmeta.Write(gameDir, sc); err != nil {
+		t.Fatalf("failed to write sidecar: %v", err)
+	}
+
+	items, err := PreviewOrganization(tmpDir, "{Title} [{Platform}]", false)
+	if err != nil {
+		t.Fatalf("PreviewOrganization failed: %v", err)
+	}
+
+	if len(items) == 0 {
+		t.Fatalf("expected items in preview, got none")
+	}
+
+	for _, it := range items {
+		if strings.Contains(it.SourcePath, "Grand Theft Auto V") {
+			if strings.Contains(it.TargetPath, "[PS3]") || strings.Contains(it.TargetPath, "PlayStation") {
+				t.Errorf("PC repack was incorrectly classified as PS3 instead of PC: %s", it.TargetPath)
+			}
+			if !strings.Contains(it.TargetPath, "[PC]") {
+				t.Errorf("expected target path to contain [PC], got: %s", it.TargetPath)
+			}
+		}
+	}
+}
+
+func TestPreviewOrganizationParentDoesNotSwallowSiblingGames(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "otix-sibling-games-*")
+	if err != nil {
+		t.Fatalf("failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	// Sibling 1: Game A with .otix
+	gameADir := filepath.Join(tmpDir, "Game A")
+	if err := os.MkdirAll(gameADir, 0755); err != nil {
+		t.Fatalf("failed to create gameADir: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(gameADir, "game.exe"), []byte("exe"), 0755); err != nil {
+		t.Fatalf("failed to write game.exe: %v", err)
+	}
+	scA := &otixmeta.Sidecar{
+		Version: 1,
+		MediaID: "1001",
+		Title:   "Game A",
+		Platforms: []map[string]any{
+			{"name": "PC (Microsoft Windows)", "slug": "windows"},
+		},
+	}
+	if err := otixmeta.Write(gameADir, scA); err != nil {
+		t.Fatalf("failed to write sidecar: %v", err)
+	}
+
+	// Sibling 2: Game B repack
+	gameBDir := filepath.Join(tmpDir, "Game B")
+	if err := os.MkdirAll(gameBDir, 0755); err != nil {
+		t.Fatalf("failed to create gameBDir: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(gameBDir, "setup.exe"), []byte("exe"), 0755); err != nil {
+		t.Fatalf("failed to write setup.exe: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(gameBDir, "setup-1.bin"), []byte("bin"), 0644); err != nil {
+		t.Fatalf("failed to write bin: %v", err)
+	}
+
+	items, err := PreviewOrganization(tmpDir, "{Title} [{Platform}]", false)
+	if err != nil {
+		t.Fatalf("PreviewOrganization failed: %v", err)
+	}
+
+	// tmpDir itself must NEVER be an item in items (which would rename tmpDir to Game A and put Game B inside it)
+	for _, it := range items {
+		if filepath.Clean(it.SourcePath) == filepath.Clean(tmpDir) {
+			t.Fatalf("parent directory containing multiple games was mistakenly swallowed as a single game: %s", it.SourcePath)
+		}
+	}
+
+	// Both Game A and Game B should be independent items
+	var foundA, foundB bool
+	for _, it := range items {
+		if filepath.Clean(it.SourcePath) == filepath.Clean(gameADir) {
+			foundA = true
+		}
+		if filepath.Clean(it.SourcePath) == filepath.Clean(gameBDir) {
+			foundB = true
+		}
+	}
+	if !foundA {
+		t.Errorf("expected Game A to be recognized as an item")
+	}
+	if !foundB {
+		t.Errorf("expected Game B to be recognized as an item")
+	}
+}
+
+func TestApplyNamingTemplateSanitizesSlashes(t *testing.T) {
+	rel := ParsedRelease{
+		Title:      "Fate/stay night",
+		CleanTitle: "Fate/stay night",
+		Platform:   "PC",
+	}
+	out := ApplyNamingTemplate(rel, "{Title} [{Platform}]", "", "/games")
+	expected := filepath.Join(filepath.Clean("/games"), "Fate - stay night [PC]")
+	if filepath.Clean(out) != expected {
+		t.Errorf("expected sanitized title path %q, got %q", expected, out)
+	}
+}
+
+func TestExecuteOrganizationCollisionProtection(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "otix-exec-collision-*")
+	if err != nil {
+		t.Fatalf("failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	srcDir := filepath.Join(tmpDir, "Game Source")
+	if err := os.MkdirAll(srcDir, 0755); err != nil {
+		t.Fatalf("failed to create srcDir: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(srcDir, "source.txt"), []byte("source"), 0644); err != nil {
+		t.Fatalf("failed to write source.txt: %v", err)
+	}
+
+	dstDir := filepath.Join(tmpDir, "Existing Destination")
+	if err := os.MkdirAll(dstDir, 0755); err != nil {
+		t.Fatalf("failed to create dstDir: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(dstDir, "destination.txt"), []byte("destination"), 0644); err != nil {
+		t.Fatalf("failed to write destination.txt: %v", err)
+	}
+
+	results, err := ExecuteOrganization([]ExecuteItem{
+		{SourcePath: srcDir, TargetPath: dstDir},
+	})
+	if err != nil {
+		t.Fatalf("ExecuteOrganization failed unexpectedly: %v", err)
+	}
+	if len(results) != 1 {
+		t.Fatalf("expected 1 result, got %d", len(results))
+	}
+	if results[0].Success {
+		t.Fatalf("expected move into existing non-empty directory to fail, but it succeeded!")
+	}
+	if !strings.Contains(results[0].Error, "already exists and is not empty") {
+		t.Errorf("expected error message to mention 'already exists and is not empty', got: %s", results[0].Error)
+	}
+}
+
+func TestPreviewOrganizationNestedExecutableTopLevel(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	gameDir := filepath.Join(tmpDir, "Cyberpunk 2077")
+	binDir := filepath.Join(gameDir, "bin", "x64")
+	if err := os.MkdirAll(binDir, 0755); err != nil {
+		t.Fatalf("failed to create binDir: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(binDir, "Cyberpunk2077.exe"), []byte("exe"), 0755); err != nil {
+		t.Fatalf("failed to write exe: %v", err)
+	}
+
+	items, err := PreviewOrganization(tmpDir, "{Platform}/{Title}", false)
+	if err != nil {
+		t.Fatalf("PreviewOrganization failed: %v", err)
+	}
+
+	if len(items) != 1 {
+		t.Fatalf("expected 1 item, got %d: %+v", len(items), items)
+	}
+	if items[0].SourcePath != gameDir {
+		t.Errorf("expected SourcePath %s, got %s", gameDir, items[0].SourcePath)
+	}
+	expectedTarget := filepath.Join(tmpDir, "PC", "Cyberpunk 2077")
+	if items[0].TargetPath != expectedTarget {
+		t.Errorf("expected TargetPath %s, got %s", expectedTarget, items[0].TargetPath)
+	}
+}
+
+func TestPreviewOrganizationUnwrapSingleChildWrapper(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	wrapperDir := filepath.Join(tmpDir, "Cyberpunk.2077.v2.12.REPACK-ELAMIGOS")
+	innerDir := filepath.Join(wrapperDir, "Cyberpunk 2077")
+	binDir := filepath.Join(innerDir, "bin", "x64")
+	if err := os.MkdirAll(binDir, 0755); err != nil {
+		t.Fatalf("failed to create binDir: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(binDir, "Cyberpunk2077.exe"), []byte("exe"), 0755); err != nil {
+		t.Fatalf("failed to write exe: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(wrapperDir, "release.nfo"), []byte("nfo"), 0644); err != nil {
+		t.Fatalf("failed to write nfo: %v", err)
+	}
+
+	items, err := PreviewOrganization(tmpDir, "{Platform}/{Title}", false)
+	if err != nil {
+		t.Fatalf("PreviewOrganization failed: %v", err)
+	}
+
+	if len(items) != 1 {
+		t.Fatalf("expected 1 item, got %d: %+v", len(items), items)
+	}
+	// SourcePath should be unwrapped to the inner game directory
+	if items[0].SourcePath != innerDir {
+		t.Errorf("expected unwrapped SourcePath %s, got %s", innerDir, items[0].SourcePath)
+	}
+	expectedTarget := filepath.Join(tmpDir, "PC", "Cyberpunk 2077")
+	if items[0].TargetPath != expectedTarget {
+		t.Errorf("expected TargetPath %s, got %s", expectedTarget, items[0].TargetPath)
+	}
+}
+
+func TestPreviewOrganizationSecondaryItemsFollowFolderTemplate(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	parentDir := filepath.Join(tmpDir, "Elden Ring")
+	updatesDir := filepath.Join(parentDir, "Updates")
+	if err := os.MkdirAll(updatesDir, 0755); err != nil {
+		t.Fatalf("failed to create updatesDir: %v", err)
+	}
+	updateFile := filepath.Join(updatesDir, "elden_ring_update_1.13.exe")
+	if err := os.WriteFile(updateFile, []byte("exe"), 0755); err != nil {
+		t.Fatalf("failed to write updateFile: %v", err)
+	}
+
+	items, err := PreviewOrganization(tmpDir, "{Platform}/{Title}", false)
+	if err != nil {
+		t.Fatalf("PreviewOrganization failed: %v", err)
+	}
+
+	if len(items) != 1 {
+		t.Fatalf("expected 1 item, got %d: %+v", len(items), items)
+	}
+	expectedTarget := filepath.Join(tmpDir, "PC", "Elden Ring", "Updates", "elden_ring_update_1.13.exe")
+	if items[0].TargetPath != expectedTarget {
+		t.Errorf("expected TargetPath %s, got %s", expectedTarget, items[0].TargetPath)
+	}
+}

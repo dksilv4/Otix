@@ -167,21 +167,20 @@ function ensureVisible(saved: WindowState): Electron.Rectangle {
     }
   }
 
-  const onScreen = screen.getAllDisplays().some((d) => {
-    const { x, y, width, height } = d.workArea
-    return (
-      saved.x! >= x && saved.x! + w <= x + width &&
-      saved.y! >= y && saved.y! + h <= y + height
-    )
-  })
+  // Ensure window is placed on the primary display work area to prevent launching
+  // hidden on secondary/off-screen monitors or monitors with negative virtual coordinates.
+  const onPrimary = (
+    saved.x >= pri.x && saved.x + w <= pri.x + pri.width &&
+    saved.y >= pri.y && saved.y + h <= pri.y + pri.height
+  )
 
-  if (onScreen) {
+  if (onPrimary) {
     return { x: saved.x, y: saved.y, width: w, height: h }
   }
 
   return {
-    x: pri.x + Math.max(0, (pri.width - w) / 2),
-    y: pri.y + Math.max(0, (pri.height - h) / 2),
+    x: pri.x + Math.max(0, Math.round((pri.width - w) / 2)),
+    y: pri.y + Math.max(0, Math.round((pri.height - h) / 2)),
     width: w,
     height: h,
   }
@@ -809,9 +808,7 @@ app.on('ready', async () => {
     const apiBase = getApiBaseUrl();
     const url = `${apiBase}/api/v1/library/nodes/desktop-heartbeat`;
     const deviceId = fetchBridge?.deviceId || os.hostname();
-    const platformLabel =
-      process.platform === 'darwin' ? 'This Mac' : process.platform === 'win32' ? 'This PC' : 'This computer';
-    const name = `${platformLabel} (${os.hostname()})`;
+    const name = `${os.hostname()} OTIX`;
     const runningList = gameDetector ? gameDetector.getRunningGames() : [];
     const totalFiles = gameDetector ? gameDetector.getLibrary().length : 0;
 
@@ -1038,11 +1035,14 @@ app.on('ready', async () => {
     return shell.openPath(filePath);
   });
 
-  ipcMain.handle('dialog:select-directory', async () => {
-    const result = await dialog.showOpenDialog({
+  ipcMain.handle('dialog:select-directory', async (event, defaultPath?: string) => {
+    const win = (event?.sender ? BrowserWindow.fromWebContents(event.sender) : null) || BrowserWindow.getFocusedWindow();
+    const opts = {
       title: 'Select Game Directory or Steam Library Folder',
-      properties: ['openDirectory'],
-    });
+      defaultPath,
+      properties: ['openDirectory' as const, 'createDirectory' as const],
+    };
+    const result = win ? await dialog.showOpenDialog(win, opts) : await dialog.showOpenDialog(opts);
     if (result.canceled) return null;
     return result.filePaths[0];
   });

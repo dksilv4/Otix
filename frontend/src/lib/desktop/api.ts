@@ -425,6 +425,8 @@ export interface DesktopAPI {
   // ISO install (legacy)
   installGame(isoPath: string, targetDir: string, gameTitle: string): Promise<Record<string, unknown>>
   selectDirectory(): Promise<string | null>
+  openDirectoryDialog?(options?: { title?: string; defaultPath?: string }): Promise<string | null>
+  pickFolder?(): Promise<string | null>
   selectIso(): Promise<string | null>
   mountIso(path: string): Promise<{ setupPath?: string }>
   dismountIso(path: string): Promise<void>

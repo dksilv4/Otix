@@ -13,8 +13,6 @@ import {
   Server,
   SlidersHorizontal,
   Sparkles,
-  FolderOpen,
-  Wand2,
 } from 'lucide-react'
 import type { ComponentType } from 'react'
 import type { PluginSettingsTab } from '@/features/_config/slots'
@@ -32,8 +30,8 @@ export const NAV_GROUPS: { id: NavGroup; label: string }[] = [
 /** Previously desktop-only section ids. Empty now that Otix nodes cover those settings on web. */
 export const DESKTOP_SECTIONS = new Set<string>()
 
-export const SETTINGS_LAST_SECTION_KEY = 'otix:settings-last-section'
 export const DEFAULT_SETTINGS_SECTION = 'general'
+export const SETTINGS_LAST_SECTION_KEY = 'otix:last-settings-section'
 
 export interface NavItem {
   id: string
@@ -41,12 +39,9 @@ export interface NavItem {
   icon: ComponentType<{ className?: string }>
   desktop: boolean
   requiresAuth: boolean
-  /** Visible only to signed-in admins (server storage & admin tooling) */
   adminOnly?: boolean
   group: NavGroup
-  /** Extra terms for the settings sidebar search. */
   keywords?: string
-  /** Small status chips shown beside the nav label (e.g. Beta). */
   badges?: string[]
   /** True for standalone workspace pages with their own menu (e.g. Nodes) rather than simple settings form sections. */
   isPage?: boolean
@@ -99,24 +94,6 @@ export const NAV_ITEMS: NavItem[] = [
     keywords: 'sound quiet hours push desktop chime alerts',
   },
   {
-    id: 'organize',
-    label: 'Organize',
-    icon: Sparkles,
-    desktop: false,
-    requiresAuth: false,
-    group: 'library',
-    keywords: 'organize folders naming templates presets iso rename structure rules wishlist repackers directory',
-  },
-  {
-    id: 'paths',
-    label: 'Paths',
-    icon: FolderOpen,
-    desktop: false,
-    requiresAuth: false,
-    group: 'library',
-    keywords: 'paths folders scan games iso download install directory storage nodes',
-  },
-  {
     id: 'nodes',
     label: 'Nodes',
     icon: Server,
@@ -125,16 +102,7 @@ export const NAV_ITEMS: NavItem[] = [
     adminOnly: false,
     group: 'library',
     isPage: true,
-    keywords: 'otix nodes desktop tray startup minimize close always on top window node native servers nas share remote worker machine paths folders organize downloaders sabnzbd scan epic games store egs homelab server machines hard drives drives storage homes smb dedicated game servers multiplayer host connect valheim minecraft cs2 rust palworld join share steam',
-  },
-  {
-    id: 'proposals',
-    label: 'Match Proposals',
-    icon: Wand2,
-    desktop: false,
-    requiresAuth: false,
-    group: 'library',
-    keywords: 'proposals matching candidates metadata steam igdb review titles games',
+    keywords: 'otix nodes desktop tray startup minimize close always on top window node native servers nas share remote worker machine paths folders organize downloaders sabnzbd scan epic games store egs homelab server machines hard drives drives storage homes smb dedicated game servers multiplayer host connect valheim minecraft cs2 rust palworld join share steam match matching proposals metadata review candidates rules naming templates directory structure',
   },
   {
     id: 'connections',
@@ -216,7 +184,7 @@ export function matchNavItem(item: NavItem, query: string): boolean {
 export function getLastSettingsSection(allowedIds?: Set<string>): string {
   try {
     const stored = localStorage.getItem(SETTINGS_LAST_SECTION_KEY)
-    if (stored === 'desktop') return 'nodes'
+    if (stored === 'desktop' || stored === 'organize' || stored === 'paths' || stored === 'proposals') return 'nodes'
     if (stored && (!allowedIds || allowedIds.has(stored))) return stored
     if (stored && NAV_ITEMS.some((i) => i.id === stored) && !allowedIds) return stored
   } catch {
@@ -226,8 +194,8 @@ export function getLastSettingsSection(allowedIds?: Set<string>): string {
 }
 
 export function rememberSettingsSection(id: string) {
-  if (id === 'desktop') id = 'nodes'
-  if (!id || id === 'overview' || id === 'integrations' || id === 'proposals') {
+  if (id === 'desktop' || id === 'organize' || id === 'paths' || id === 'proposals') id = 'nodes'
+  if (!id || id === 'overview' || id === 'integrations') {
     return
   }
   try {

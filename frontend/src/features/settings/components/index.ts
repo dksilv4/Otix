@@ -1,5 +1,6 @@
 export { PluginPermissionModal } from '@/features/plugins'
 export { CreateWorkerNodeModal, CreateNodeModal } from './organisms/create-worker-node-modal'
+export { DuplicateWorkerNodeModal } from './organisms/duplicate-worker-node-modal'
 export { EditWorkerNodeModal, EditNodeModal } from './organisms/edit-worker-node-modal'
 export { CreateServerMachineModal } from './organisms/create-server-machine-modal'
 export { EditServerMachineModal } from './organisms/edit-server-machine-modal'

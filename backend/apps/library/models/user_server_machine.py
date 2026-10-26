@@ -57,6 +57,7 @@ class UserServerMachine(TimestampedModel):
     smb_password = models.CharField(max_length=255, blank=True, default="")
     smb_workgroup = models.CharField(max_length=64, default="WORKGROUP")
     smb_mount_path = models.CharField(max_length=1024, blank=True, default="")
+    smb_shares = models.JSONField(default=list, blank=True)
 
     # Nodes configured to communicate with this server through SMB
     smb_nodes = models.ManyToManyField(

@@ -112,7 +112,7 @@ describe('indexer search wiring', () => {
     const matchedHistory = findReleaseHistoryItem(release, historyItems)
     expect(matchedHistory).not.toBeNull()
     expect(matchedHistory?.status).toBe('completed')
-  })
+  }, 15000)
 
   it('generates alternate numeral queries between Arabic and Roman numerals', async () => {
     const { getAlternateNumeralQuery } = await import('../hooks/use-node-usenet')

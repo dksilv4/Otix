@@ -23,7 +23,6 @@ import { NodesViewProvider } from '../context/nodes-view-context'
 import { NodesSecondarySettingsMenu } from '../components/organisms/nodes-secondary-settings-menu'
 import {
   rememberPreviousSettingsTab,
-  getPreviousSettingsTab,
 } from '../utils/node-views'
 import { SettingsSaveBar } from '../components/molecules/settings-save-bar'
 import { OtixLoadingScreen } from '@ui/atoms/otix-loading-screen'
@@ -172,8 +171,8 @@ const SettingsLayoutInner = () => {
   }, [activeSection])
 
   const handleBackToSettings = () => {
-    const prevTab = getPreviousSettingsTab(DEFAULT_SETTINGS_SECTION)
-    navigate({ to: `/settings/${prevTab}` })
+    rememberSettingsSection(DEFAULT_SETTINGS_SECTION)
+    navigate({ to: `/settings/${DEFAULT_SETTINGS_SECTION}` })
   }
 
   const toggleCollapsed = () => {

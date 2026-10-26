@@ -103,6 +103,8 @@ contextBridge.exposeInMainWorld('desktopAPI', {
   getGameCount: (filter: unknown) => ipcRenderer.invoke('scanner:get-game-count', filter),
   saveScannedGames: (games: unknown[]) => ipcRenderer.invoke('scanner:save-scanned-game', games),
   pickExecutable: (defaultPath?: string) => ipcRenderer.invoke('scanner:pick-executable', defaultPath),
+  pickFolder: (defaultPath?: string) => ipcRenderer.invoke('scanner:pick-folder', defaultPath),
+  openDirectoryDialog: (defaultPath?: string) => ipcRenderer.invoke('dialog:open-directory', defaultPath),
   getScanPaths: () => ipcRenderer.invoke('scanner:get-scan-paths'),
   resetGameData: () => ipcRenderer.invoke('scanner:reset-game-data'),
   saveScanPaths: (paths: unknown[]) => ipcRenderer.invoke('scanner:save-scan-paths', paths),
