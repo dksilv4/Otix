@@ -18,16 +18,16 @@ describe('use-latest-release', () => {
 
   it('fetchLatestGitHubRelease parses successful GitHub API response', async () => {
     const mockPayload = {
-      tag_name: 'v0.1.25',
-      name: 'Otix v0.1.25',
+      tag_name: 'v0.1.26',
+      name: 'Otix v0.1.26',
       body: '- Fixed direct bitstream audio',
-      published_at: '2026-10-22T00:00:00Z',
+      published_at: '2026-10-27T00:00:00Z',
       assets: [
         {
-          name: 'Otix-Setup-0.1.25.exe',
+          name: 'Otix-Setup-0.1.26.exe',
           size: 130000000,
           browser_download_url:
-            'https://github.com/dksilv4/Otix/releases/download/v0.1.25/Otix-Setup-0.1.25.exe',
+            'https://github.com/dksilv4/Otix/releases/download/v0.1.26/Otix-Setup-0.1.26.exe',
         },
       ],
     }
@@ -39,10 +39,10 @@ describe('use-latest-release', () => {
     } as Response)
 
     const result = await fetchLatestGitHubRelease()
-    expect(result.version).toBe('0.1.25')
-    expect(result.tagName).toBe('v0.1.25')
+    expect(result.version).toBe('0.1.26')
+    expect(result.tagName).toBe('v0.1.26')
     expect(result.assets.length).toBe(1)
-    expect(result.assets[0].name).toBe('Otix-Setup-0.1.25.exe')
+    expect(result.assets[0].name).toBe('Otix-Setup-0.1.26.exe')
   })
 
   it('useLatestRelease provides default release info initially', () => {

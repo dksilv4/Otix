@@ -21,6 +21,71 @@ _async_clients: weakref.WeakKeyDictionary[asyncio.AbstractEventLoop, dict[str, A
     weakref.WeakKeyDictionary()
 )
 _fallback_async_clients: dict[str, Any] = {}
+_wrapped_loops: weakref.WeakSet[asyncio.AbstractEventLoop] = weakref.WeakSet()
+
+
+def _force_close_redis_client(client: Any) -> None:
+    """Synchronously force-close underlying sockets of a redis client or pool."""
+    if client is None:
+        return
+    pool = getattr(client, "connection_pool", None)
+    if pool is not None:
+        try:
+            conns = list(getattr(pool, "_available_connections", [])) + list(
+                getattr(pool, "_in_use_connections", [])
+            )
+        except Exception:
+            conns = []
+        for conn in conns:
+            try:
+                writer = getattr(conn, "_writer", None)
+                if writer is not None:
+                    transport = getattr(writer, "transport", None)
+                    if transport is not None:
+                        sock = transport.get_extra_info("socket")
+                        if sock is not None and hasattr(sock, "close"):
+                            sock.close()
+                        if hasattr(transport, "close"):
+                            transport.close()
+                    if hasattr(writer, "close"):
+                        writer.close()
+            except Exception:
+                pass
+            try:
+                if hasattr(conn, "_close"):
+                    conn._close()
+            except Exception:
+                pass
+        try:
+            pool._available_connections.clear()
+            pool._in_use_connections.clear()
+        except Exception:
+            pass
+    try:
+        if hasattr(client, "close") and not asyncio.iscoroutinefunction(client.close):
+            res = client.close()
+            if asyncio.iscoroutine(res):
+                res.close()
+    except Exception:
+        pass
+
+
+def _bind_loop_cleanup(loop: asyncio.AbstractEventLoop) -> None:
+    if loop in _wrapped_loops:
+        return
+    _wrapped_loops.add(loop)
+    orig_close = loop.close
+
+    def _cleanup_and_close(*args: Any, **kwargs: Any) -> Any:
+        loop_clients = _async_clients.pop(loop, {})
+        for c in loop_clients.values():
+            _force_close_redis_client(c)
+        return orig_close(*args, **kwargs)
+
+    try:
+        loop.close = _cleanup_and_close  # type: ignore[assignment]
+    except (AttributeError, TypeError):
+        pass
 
 
 def get_client() -> Any:
@@ -31,10 +96,7 @@ def get_client() -> Any:
         return _sync_client
 
     if _sync_client is not None:
-        try:
-            _sync_client.close()
-        except Exception:
-            pass
+        _force_close_redis_client(_sync_client)
         _sync_client = None
 
     from redis import Redis  # local import: only pay the dep when realtime is used
@@ -62,6 +124,8 @@ def get_async_client() -> Any:
         _fallback_async_clients[url] = client
         return client
 
+    _bind_loop_cleanup(loop)
+
     loop_clients = _async_clients.get(loop)
     if loop_clients is not None and url in loop_clients:
         return loop_clients[url]
@@ -78,12 +142,14 @@ def close_redis_clients() -> None:
     """Close and reset cached sync and async clients."""
     global _sync_client, _sync_client_url
     if _sync_client is not None:
-        try:
-            _sync_client.close()
-        except Exception:
-            pass
+        _force_close_redis_client(_sync_client)
         _sync_client = None
         _sync_client_url = None
+    for _loop, clients in list(_async_clients.items()):
+        for c in clients.values():
+            _force_close_redis_client(c)
     _async_clients.clear()
+    for c in list(_fallback_async_clients.values()):
+        _force_close_redis_client(c)
     _fallback_async_clients.clear()
 

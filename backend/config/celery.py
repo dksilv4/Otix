@@ -38,4 +38,10 @@ def on_task_postrun(*args, **kwargs):
         for conn in connections.all(initialized_only=True):
             if not conn.in_atomic_block:
                 conn.close_if_unusable_or_obsolete()
+        try:
+            from core.redis import close_redis_clients
+
+            close_redis_clients()
+        except Exception:
+            pass
 

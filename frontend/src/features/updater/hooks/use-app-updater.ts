@@ -11,7 +11,7 @@ import {
   fetchLatestReleaseNotes,
 } from '../utils/updater-utils'
 
-const FALLBACK_VERSION = '0.1.25'
+const FALLBACK_VERSION = '0.1.26'
 
 let globalIsModalOpen = false
 const modalSubscribers = new Set<(open: boolean) => void>()

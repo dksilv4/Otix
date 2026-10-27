@@ -21,7 +21,7 @@ import (
 
 var (
 	Version   = "0.1.0"
-	BuildTime = "2026-10-24"
+	BuildTime = "2026-10-27"
 )
 
 func openBrowser(targetURL string) {

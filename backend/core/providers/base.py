@@ -265,12 +265,24 @@ def resolve_shared_http_client(
                     transport = getattr(current_client, "_transport", None)
                     pool = getattr(transport, "_pool", None)
                     if pool is not None:
-                        for conn in list(getattr(pool, "_connections", [])):
+                        conns = list(getattr(pool, "_connections", []))
+                        if not conns and hasattr(pool, "connections"):
+                            try:
+                                conns = list(pool.connections)
+                            except Exception:
+                                pass
+                        for conn in conns:
                             try:
                                 stream = getattr(conn, "_network_stream", None)
-                                raw = getattr(stream, "_raw_stream", None)
-                                if hasattr(raw, "close"):
-                                    raw.close()
+                                sock = None
+                                if hasattr(stream, "get_extra_info"):
+                                    sock = stream.get_extra_info("socket")
+                                if sock is None:
+                                    sock = getattr(stream, "_raw_stream", None)
+                                if sock is not None and hasattr(sock, "close"):
+                                    sock.close()
+                                if hasattr(stream, "close"):
+                                    stream.close()
                             except Exception:
                                 pass
                 except Exception:

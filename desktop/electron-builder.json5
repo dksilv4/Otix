@@ -3,6 +3,7 @@
   "appId": "com.otix.launcher",
   "productName": "Otix",
   "copyright": "Copyright © 2026 Otix",
+  "afterPack": "./scripts/after-pack.js",
   "directories": {
     "output": "release",
     "buildResources": "assets"
@@ -88,7 +89,7 @@
     ],
     "icon": "assets/icon.icns",
     "category": "public.app-category.games",
-    "hardenedRuntime": true,
+    "hardenedRuntime": false,
     "gatekeeperAssess": false,
     "artifactName": "${productName}-${version}-${arch}.${ext}"
   },

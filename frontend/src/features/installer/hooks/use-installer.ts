@@ -10,7 +10,7 @@ import { getDesktopAPI } from '@/lib/desktop/api'
 
 export const useInstaller = () => {
   const [step, setStep] = useState<InstallerStep>('welcome')
-  const [version, setVersion] = useState<string>('0.1.25')
+  const [version, setVersion] = useState<string>('0.1.26')
   const [installPath, setInstallPath] = useState<string>('C:\\Program Files\\Otix')
   const [createDesktopShortcut, setCreateDesktopShortcut] = useState<boolean>(true)
   const [createStartMenuShortcut, setCreateStartMenuShortcut] = useState<boolean>(true)
