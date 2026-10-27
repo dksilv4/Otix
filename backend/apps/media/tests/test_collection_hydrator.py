@@ -14,6 +14,9 @@ from core.providers.tmdb.hydrators import seed_movie_from_tmdb
 
 class CollectionHydratorTests(TestCase):
     def setUp(self) -> None:
+        from django.core.cache import cache
+
+        cache.clear()
         self.client = APIClient()
 
         self.movie_1_raw = {

@@ -956,6 +956,7 @@ class OmdbEnrichFoldInTests(TestCase):
             raise AssertionError("OMDb enrich ran with no key configured")
 
         with (
+            override_settings(OMDB_API_KEY=""),
             mock.patch("apps.media.services.tmdb_ingest.seed_movie_from_tmdb", return_value=9876),
             mock.patch(
                 "apps.media.services.tmdb_ingest.omdb_enrich_ratings",
@@ -1024,7 +1025,7 @@ class FanartEnrichFoldInTests(TestCase):
         # OMDb is configured so the movie tail reaches the Fanart gate; an unset
         # FANART_API_KEY must return before the enrich driver is ever awaited.
         with (
-            override_settings(OMDB_API_KEY="test-key"),
+            override_settings(OMDB_API_KEY="test-key", FANART_API_KEY=""),
             mock.patch("apps.media.services.tmdb_ingest.seed_movie_from_tmdb", return_value=9876),
             mock.patch(
                 "apps.media.services.tmdb_ingest.omdb_enrich_ratings",

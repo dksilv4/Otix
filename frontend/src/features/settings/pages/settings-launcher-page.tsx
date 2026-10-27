@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import {
   Gamepad2,
@@ -85,9 +85,34 @@ export const SettingsLauncherPage = () => {
 
   const [activeCategory, setActiveCategory] = useState<ThemeCategory>('all')
 
-  const selectedThemeMeta = useMemo(() => {
-    return LAUNCHER_THEMES.find((t) => t.id === 'modern') || LAUNCHER_THEMES[1]
+  const [activeTheme, setActiveTheme] = useState<LauncherThemeId>(() => {
+    try {
+      const stored = localStorage.getItem('otix:launcher-theme') as LauncherThemeId | null
+      if (stored && LAUNCHER_THEMES.some((t) => t.id === stored)) return stored
+    } catch {
+      // ignore unavailable localStorage (private mode / SSR)
+    }
+    return 'modern'
+  })
+
+  useEffect(() => {
+    const handleSync = () => {
+      try {
+        const stored = localStorage.getItem('otix:launcher-theme') as LauncherThemeId | null
+        if (stored && LAUNCHER_THEMES.some((t) => t.id === stored)) {
+          setActiveTheme(stored)
+        }
+      } catch {
+        // ignore
+      }
+    }
+    window.addEventListener('storage', handleSync)
+    return () => window.removeEventListener('storage', handleSync)
   }, [])
+
+  const selectedThemeMeta = useMemo(() => {
+    return LAUNCHER_THEMES.find((t) => t.id === activeTheme) || LAUNCHER_THEMES[1]
+  }, [activeTheme])
 
   const filteredThemes = useMemo(() => {
     if (activeCategory === 'all') return LAUNCHER_THEMES
@@ -95,19 +120,16 @@ export const SettingsLauncherPage = () => {
   }, [activeCategory])
 
   const handleSelectTheme = (themeId: LauncherThemeId) => {
-    if (themeId !== 'modern') {
-      toast({
-        title: 'Theme in development',
-        description: 'Engineering focus is locked to perfecting the Modern edition before enabling other themes.',
-        variant: 'default',
-      })
-      return
+    setActiveTheme(themeId)
+    try {
+      localStorage.setItem('otix:launcher-theme', themeId)
+      window.dispatchEvent(new Event('storage'))
+    } catch {
+      // ignore
     }
-    localStorage.setItem('otix:launcher-theme', 'modern')
-    window.dispatchEvent(new Event('storage'))
     toast({
-      title: 'Launcher Theme Active',
-      description: 'Default layout set to Modern (Cinematic Deck).',
+      title: 'Launcher Theme Updated',
+      description: `Default layout set to ${LAUNCHER_THEMES.find((t) => t.id === themeId)?.name}.`,
       variant: 'success',
     })
   }
@@ -226,14 +248,12 @@ export const SettingsLauncherPage = () => {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 pt-1">
             {filteredThemes.map((theme) => {
-              const isModern = theme.id === 'modern'
-              const isSelected = isModern
+              const isSelected = activeTheme === theme.id
               return (
                 <div
                   key={theme.id}
                   role="button"
-                  tabIndex={isModern ? 0 : -1}
-                  aria-disabled={!isModern}
+                  tabIndex={0}
                   onClick={() => handleSelectTheme(theme.id)}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' || e.key === ' ') {
@@ -242,10 +262,10 @@ export const SettingsLauncherPage = () => {
                     }
                   }}
                   className={cn(
-                    'group relative flex flex-col rounded-2xl p-3.5 transition-all duration-200 text-left',
-                    isModern
-                      ? 'bg-[var(--dk-surface-raised)] shadow-lg cursor-pointer ring-1 ring-primary/20'
-                      : 'bg-[var(--dk-surface-field)] opacity-60 cursor-not-allowed hover:opacity-75',
+                    'group relative flex flex-col rounded-2xl p-3.5 transition-all duration-200 text-left cursor-pointer',
+                    isSelected
+                      ? 'bg-[var(--dk-surface-raised)] shadow-lg ring-1 ring-primary/20'
+                      : 'bg-[var(--dk-surface-field)] hover:bg-[var(--dk-surface-hover)]',
                   )}
                   style={
                     isSelected
@@ -271,7 +291,7 @@ export const SettingsLauncherPage = () => {
                       </h4>
                     </div>
 
-                    {isModern ? (
+                    {isSelected ? (
                       <span
                         className="inline-flex items-center gap-1 text-[11px] font-extrabold shrink-0"
                         style={{ color: theme.accentColor }}
@@ -280,8 +300,8 @@ export const SettingsLauncherPage = () => {
                         Active
                       </span>
                     ) : (
-                      <span className="text-[10px] font-semibold text-muted-foreground/80 px-2 py-0.5 rounded-full bg-[var(--dk-surface-ghost)] shrink-0">
-                        In Development
+                      <span className="text-[11px] font-medium text-muted-foreground group-hover:text-foreground transition-colors shrink-0">
+                        Select
                       </span>
                     )}
                   </div>
@@ -302,7 +322,7 @@ export const SettingsLauncherPage = () => {
                   {/* Bottom status bar */}
                   <div className="w-full pt-2.5 mt-3 flex items-center justify-between">
                     <span className="text-[10px] text-muted-foreground">
-                      {isModern ? 'Active focus layout' : 'Disabled during development'}
+                      {isSelected ? 'Default layout' : 'Click to activate'}
                     </span>
                     <div
                       className="h-1.5 rounded-full transition-all"
@@ -318,99 +338,99 @@ export const SettingsLauncherPage = () => {
           </div>
         </SettingsCard>
 
-      {/* ── Playback & Display Options ── */}
-      <SettingsCard>
-        <SectionHeader
-          title="Display & Behavior"
-          description="Fine-tune animations, backdrop transitions, and launcher start behaviors."
-        />
-
-        <div className="space-y-2">
-          <SettingsRow
-            icon={<Palette className="h-5 w-5" />}
-            label="Dynamic Background Transitions"
-            description="Dynamically shift wallpaper artwork and cinematic gradients based on hovered games"
-            action={
-              <DkSwitch
-                checked={settings.backgroundTransitions}
-                onCheckedChange={(checked) => update('backgroundTransitions', checked)}
-              />
-            }
+        {/* ── Playback & Display Options ── */}
+        <SettingsCard>
+          <SectionHeader
+            title="Display & Behavior"
+            description="Fine-tune animations, backdrop transitions, and launcher start behaviors."
           />
 
-          <SettingsRow
-            icon={<Monitor className="h-5 w-5" />}
-            label="Landing View Format"
-            description="Default tab or landing format when entering the launcher"
-            action={
-              <DkDropdown
-                options={[
-                  { value: 'library', label: 'Library (Full Catalog)' },
-                  { value: 'slide-picker', label: 'Spotlight Carousel' },
-                ]}
-                value={settings.defaultPage}
-                onChange={(v) => update('defaultPage', v as typeof settings.defaultPage)}
-                className="w-48"
-              />
-            }
-          />
-        </div>
-      </SettingsCard>
+          <div className="space-y-2">
+            <SettingsRow
+              icon={<Palette className="h-5 w-5" />}
+              label="Dynamic Background Transitions"
+              description="Dynamically shift wallpaper artwork and cinematic gradients based on hovered games"
+              action={
+                <DkSwitch
+                  checked={settings.backgroundTransitions}
+                  onCheckedChange={(checked) => update('backgroundTransitions', checked)}
+                />
+              }
+            />
 
-      {/* ── Game Sessions & Privacy ── */}
-      <SettingsCard>
-        <SectionHeader
-          title="Game Sessions & Privacy"
-          description="Manage automated gameplay session recording and profile session visibility."
-        />
-
-        <div className="space-y-2 mt-2">
-          <SettingsRow
-            icon={<Gamepad2 className="h-5 w-5" />}
-            label="Record Game Sessions"
-            description="Automatically track play duration, telemetry, and FPS performance when playing games"
-            action={
-              <DkSwitch
-                checked={user?.saveGameSessions ?? true}
-                onCheckedChange={handleToggleSaveSessions}
-              />
-            }
-          />
-
-          <SettingsRow
-            icon={<Lock className="h-5 w-5" />}
-            label="Default Session Privacy"
-            description="Keep recorded game sessions private to your profile by default"
-            action={
-              <DkSwitch
-                checked={user?.gameSessionsPrivate ?? true}
-                onCheckedChange={handleToggleSessionPrivacy}
-              />
-            }
-          />
-        </div>
-      </SettingsCard>
-
-      {/* ── Emulators & Consoles ── */}
-      <div id="emulators" className="scroll-mt-28">
-        <SettingsEmulatorsCard />
-      </div>
-
-      {/* ── Overview Tip ── */}
-      <SettingsCard>
-        <div className="flex items-start gap-4">
-          <div className="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
-            <Sparkles size={18} />
+            <SettingsRow
+              icon={<Monitor className="h-5 w-5" />}
+              label="Landing View Format"
+              description="Default tab or landing format when entering the launcher"
+              action={
+                <DkDropdown
+                  options={[
+                    { value: 'library', label: 'Library (Full Catalog)' },
+                    { value: 'slide-picker', label: 'Spotlight Carousel' },
+                  ]}
+                  value={settings.defaultPage}
+                  onChange={(v) => update('defaultPage', v as typeof settings.defaultPage)}
+                  className="w-48"
+                />
+              }
+            />
           </div>
-          <div className="text-xs space-y-1">
-            <p className="font-semibold text-foreground">Looking for Game Library & Download Settings?</p>
-            <p className="text-muted-foreground leading-relaxed">
-              Local folder scan paths, game matching, download directories, and worker nodes are managed under <span className="font-medium text-foreground">Settings &gt; Library</span> and <span className="font-medium text-foreground">Settings &gt; Nodes</span>.
-              Linked accounts (Steam, Plex, *arr) are under <span className="font-medium text-foreground">Settings &gt; Connections</span>.
-            </p>
+        </SettingsCard>
+
+        {/* ── Game Sessions & Privacy ── */}
+        <SettingsCard>
+          <SectionHeader
+            title="Game Sessions & Privacy"
+            description="Manage automated gameplay session recording and profile session visibility."
+          />
+
+          <div className="space-y-2 mt-2">
+            <SettingsRow
+              icon={<Gamepad2 className="h-5 w-5" />}
+              label="Record Game Sessions"
+              description="Automatically track play duration, telemetry, and FPS performance when playing games"
+              action={
+                <DkSwitch
+                  checked={user?.saveGameSessions ?? true}
+                  onCheckedChange={handleToggleSaveSessions}
+                />
+              }
+            />
+
+            <SettingsRow
+              icon={<Lock className="h-5 w-5" />}
+              label="Default Session Privacy"
+              description="Keep recorded game sessions private to your profile by default"
+              action={
+                <DkSwitch
+                  checked={user?.gameSessionsPrivate ?? true}
+                  onCheckedChange={handleToggleSessionPrivacy}
+                />
+              }
+            />
           </div>
+        </SettingsCard>
+
+        {/* ── Emulators & Consoles ── */}
+        <div id="emulators" className="scroll-mt-28">
+          <SettingsEmulatorsCard />
         </div>
-      </SettingsCard>
+
+        {/* ── Overview Tip ── */}
+        <SettingsCard>
+          <div className="flex items-start gap-4">
+            <div className="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+              <Sparkles size={18} />
+            </div>
+            <div className="text-xs space-y-1">
+              <p className="font-semibold text-foreground">Looking for Game Library & Download Settings?</p>
+              <p className="text-muted-foreground leading-relaxed">
+                Local folder scan paths, game matching, download directories, and worker nodes are managed under <span className="font-medium text-foreground">Settings &gt; Library</span> and <span className="font-medium text-foreground">Settings &gt; Nodes</span>.
+                Linked accounts (Steam, Plex, *arr) are under <span className="font-medium text-foreground">Settings &gt; Connections</span>.
+              </p>
+            </div>
+          </div>
+        </SettingsCard>
       </div>
     </div>
   )

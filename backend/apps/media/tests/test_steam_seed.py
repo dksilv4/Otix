@@ -67,9 +67,10 @@ class SeedGamesFromTitlesTests(TestCase):
         self.assertEqual(result["skipped"], ["Balatro"])
         self.assertEqual(result["created"], [])
 
+    @patch("apps.media.services.catalog_resolve._default_steam_lookup", return_value={})
     @patch("apps.media.services.steam_seed.fetch_steam_appdetails")
     @patch("apps.media.services.steam_seed.search_steam_store")
-    def test_seeds_exact_steam_hit(self, search, details):
+    def test_seeds_exact_steam_hit(self, search, details, steam_lookup):
         search.return_value = [{"id": 400, "name": "Portal", "type": "app"}]
         details.return_value = {
             "name": "Portal",
