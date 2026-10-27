@@ -35,6 +35,8 @@ describe('menu-builders', () => {
     const ids = items.map((i) => i.id)
     expect(ids).toContain('stream-in-otix')
     expect(ids).toContain('watch-trailer')
+    expect(ids).toContain('ai-quick-glance')
+    expect(ids.filter((id) => id === 'ai-quick-glance')).toHaveLength(1)
     expect(ids).toContain('view-details')
     expect(ids).toContain('open-new-tab')
     expect(ids).toContain('library-submenu')

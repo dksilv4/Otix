@@ -1,9 +1,11 @@
 package organize
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/dksilv4/otix/node/internal/otixmeta"
@@ -841,3 +843,278 @@ func TestPreviewOrganizationSecondaryItemsFollowFolderTemplate(t *testing.T) {
 		t.Errorf("expected TargetPath %s, got %s", expectedTarget, items[0].TargetPath)
 	}
 }
+
+func TestCopyFileAndVerify_Success(t *testing.T) {
+	tmpDir := t.TempDir()
+	src := filepath.Join(tmpDir, "source.iso")
+	dst := filepath.Join(tmpDir, "sub", "target.iso")
+	data := []byte("ISO GAME IMAGE BINARY STREAM DATA 0123456789")
+
+	if err := os.WriteFile(src, data, 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := CopyFileAndVerify(src, dst, 0644); err != nil {
+		t.Fatalf("CopyFileAndVerify failed: %v", err)
+	}
+
+	dstData, err := os.ReadFile(dst)
+	if err != nil {
+		t.Fatalf("failed to read dst: %v", err)
+	}
+	if string(dstData) != string(data) {
+		t.Errorf("expected copied content %q, got %q", string(data), string(dstData))
+	}
+
+	// Verify source is still intact
+	srcData, err := os.ReadFile(src)
+	if err != nil || string(srcData) != string(data) {
+		t.Errorf("source was modified or deleted")
+	}
+}
+
+func TestCopyFileAndVerify_NonExistentSource(t *testing.T) {
+	tmpDir := t.TempDir()
+	src := filepath.Join(tmpDir, "does_not_exist.bin")
+	dst := filepath.Join(tmpDir, "target.bin")
+
+	if err := CopyFileAndVerify(src, dst, 0644); err == nil {
+		t.Errorf("expected error for non-existent source")
+	}
+
+	// Verify destination was not created
+	if _, err := os.Stat(dst); !os.IsNotExist(err) {
+		t.Errorf("destination should not exist after failure")
+	}
+}
+
+func TestMovePath_CrossDeviceSimulation(t *testing.T) {
+	tmpDir := t.TempDir()
+	src := filepath.Join(tmpDir, "staging", "Witcher3.iso")
+	dst := filepath.Join(tmpDir, "library", "PC", "Witcher3.iso")
+	_ = os.MkdirAll(filepath.Dir(src), 0755)
+
+	content := []byte("Large game file content simulating cross-filesystem payload")
+	if err := os.WriteFile(src, content, 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := MovePath(src, dst); err != nil {
+		t.Fatalf("MovePath failed: %v", err)
+	}
+
+	// Destination must exist and have correct content
+	dstData, err := os.ReadFile(dst)
+	if err != nil || string(dstData) != string(content) {
+		t.Fatalf("destination file missing or corrupted: %v", err)
+	}
+
+	// Source must be cleanly removed upon successful move
+	if _, err := os.Stat(src); !os.IsNotExist(err) {
+		t.Errorf("source file should have been cleaned up after successful move")
+	}
+}
+
+func TestMovePath_DirectoryRelocation(t *testing.T) {
+	tmpDir := t.TempDir()
+	staging := filepath.Join(tmpDir, "staging", "Cyberpunk.2077.REPACK-RUNE")
+	library := filepath.Join(tmpDir, "library", "PC", "Cyberpunk 2077")
+
+	_ = os.MkdirAll(filepath.Join(staging, "bin", "x64"), 0755)
+	_ = os.WriteFile(filepath.Join(staging, "bin", "x64", "Cyberpunk2077.exe"), []byte("exe-data"), 0755)
+	_ = os.WriteFile(filepath.Join(staging, "data.bin"), []byte("bin-data"), 0644)
+	_ = os.WriteFile(filepath.Join(staging, "setup.exe"), []byte("setup-data"), 0755)
+
+	if err := MovePath(staging, library); err != nil {
+		t.Fatalf("MovePath directory failed: %v", err)
+	}
+
+	// Verify all target files
+	checkFiles := []struct {
+		rel  string
+		want string
+	}{
+		{"bin/x64/Cyberpunk2077.exe", "exe-data"},
+		{"data.bin", "bin-data"},
+		{"setup.exe", "setup-data"},
+	}
+
+	for _, cf := range checkFiles {
+		p := filepath.Join(library, filepath.FromSlash(cf.rel))
+		data, err := os.ReadFile(p)
+		if err != nil || string(data) != cf.want {
+			t.Errorf("file %s corrupted or missing: %v", cf.rel, err)
+		}
+	}
+
+	// Staging must be removed
+	if _, err := os.Stat(staging); !os.IsNotExist(err) {
+		t.Errorf("staging directory should be removed after move")
+	}
+}
+
+func TestOrganizeRelocationIntegration(t *testing.T) {
+	tmpDir := t.TempDir()
+	stagingDir := filepath.Join(tmpDir, "downloads")
+	libraryDir := filepath.Join(tmpDir, "games")
+
+	_ = os.MkdirAll(stagingDir, 0755)
+	_ = os.MkdirAll(libraryDir, 0755)
+
+	// Create sample repack folder in staging
+	gameStaging := filepath.Join(stagingDir, "Elden.Ring.v1.12.REPACK-FITGIRL")
+	_ = os.MkdirAll(gameStaging, 0755)
+	_ = os.WriteFile(filepath.Join(gameStaging, "eldenring.exe"), []byte("game binary"), 0755)
+	_ = os.WriteFile(filepath.Join(gameStaging, "setup.exe"), []byte("installer binary"), 0755)
+
+	// Create sample standalone ISO in staging
+	isoStaging := filepath.Join(stagingDir, "God.of.War.Ragnarok-RUNE.iso")
+	_ = os.WriteFile(isoStaging, []byte("god of war iso payload"), 0644)
+
+	// Execute organization
+	items := []ExecuteItem{
+		{
+			SourcePath: gameStaging,
+			TargetPath: filepath.Join(libraryDir, "PC", "Elden Ring"),
+		},
+		{
+			SourcePath: isoStaging,
+			TargetPath: filepath.Join(libraryDir, "PC", "God of War Ragnarok", "God of War Ragnarok.iso"),
+		},
+	}
+
+	results, err := ExecuteOrganization(items)
+	if err != nil {
+		t.Fatalf("ExecuteOrganization failed: %v", err)
+	}
+
+	if len(results) != 2 {
+		t.Fatalf("expected 2 results, got %d", len(results))
+	}
+	for i, res := range results {
+		if !res.Success {
+			t.Errorf("item %d failed: %s", i, res.Error)
+		}
+	}
+
+	// Verify target library files exist and have exact contents
+	erExe := filepath.Join(libraryDir, "PC", "Elden Ring", "eldenring.exe")
+	if data, err := os.ReadFile(erExe); err != nil || string(data) != "game binary" {
+		t.Errorf("Elden Ring executable verification failed: %v", err)
+	}
+
+	gowIso := filepath.Join(libraryDir, "PC", "God of War Ragnarok", "God of War Ragnarok.iso")
+	if data, err := os.ReadFile(gowIso); err != nil || string(data) != "god of war iso payload" {
+		t.Errorf("God of War ISO verification failed: %v", err)
+	}
+
+	// Verify staging sources are cleaned up
+	if _, err := os.Stat(gameStaging); !os.IsNotExist(err) {
+		t.Errorf("staging folder should not exist after successful relocation")
+	}
+	if _, err := os.Stat(isoStaging); !os.IsNotExist(err) {
+		t.Errorf("staging ISO should not exist after successful relocation")
+	}
+}
+
+func TestMovePath_PreventSilentOverwrite(t *testing.T) {
+	tmpDir := t.TempDir()
+	src := filepath.Join(tmpDir, "source.iso")
+	dst := filepath.Join(tmpDir, "target.iso")
+
+	srcContent := []byte("SOURCE_FILE_PAYLOAD_NEW")
+	dstContent := []byte("TARGET_FILE_PREEXISTING_DATA")
+
+	if err := os.WriteFile(src, srcContent, 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(dst, dstContent, 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	// MovePath MUST refuse to overwrite dst
+	err := MovePath(src, dst)
+	if err == nil {
+		t.Fatalf("expected MovePath to fail when destination exists, but it succeeded")
+	}
+
+	// Verify destination content was preserved completely
+	dstActual, err := os.ReadFile(dst)
+	if err != nil || string(dstActual) != string(dstContent) {
+		t.Fatalf("destination was modified or corrupted: %v", err)
+	}
+
+	// Verify source content was NOT deleted
+	srcActual, err := os.ReadFile(src)
+	if err != nil || string(srcActual) != string(srcContent) {
+		t.Fatalf("source was deleted or corrupted on move failure: %v", err)
+	}
+}
+
+func TestMovePath_ConcurrentSameDestinationRace(t *testing.T) {
+	tmpDir := t.TempDir()
+	dst := filepath.Join(tmpDir, "shared_target.iso")
+
+	const contenders = 10
+	srcs := make([]string, contenders)
+	contents := make([]string, contenders)
+	for i := 0; i < contenders; i++ {
+		srcs[i] = filepath.Join(tmpDir, fmt.Sprintf("src_%d.iso", i))
+		contents[i] = fmt.Sprintf("PAYLOAD_FROM_SOURCE_%d", i)
+		if err := os.WriteFile(srcs[i], []byte(contents[i]), 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	startGate := make(chan struct{})
+	var wg sync.WaitGroup
+	errs := make([]error, contenders)
+
+	for i := 0; i < contenders; i++ {
+		wg.Add(1)
+		go func(idx int) {
+			defer wg.Done()
+			<-startGate
+			errs[idx] = MovePath(srcs[idx], dst)
+		}(i)
+	}
+
+	close(startGate)
+	wg.Wait()
+
+	var successCount, failCount int
+	var winnerIdx = -1
+	for i, err := range errs {
+		if err == nil {
+			successCount++
+			winnerIdx = i
+		} else {
+			failCount++
+		}
+	}
+
+	if successCount != 1 {
+		t.Fatalf("expected exactly 1 move to succeed, got %d successes and %d failures", successCount, failCount)
+	}
+
+	// Target file must contain the winner's content
+	targetData, err := os.ReadFile(dst)
+	if err != nil || string(targetData) != contents[winnerIdx] {
+		t.Fatalf("target content does not match winner's payload: got %q, expected %q", string(targetData), contents[winnerIdx])
+	}
+
+	// All other source files MUST still exist on disk untouched
+	for i := 0; i < contenders; i++ {
+		if i == winnerIdx {
+			if _, err := os.Stat(srcs[i]); !os.IsNotExist(err) {
+				t.Errorf("winner source %d should have been removed", i)
+			}
+		} else {
+			data, err := os.ReadFile(srcs[i])
+			if err != nil || string(data) != contents[i] {
+				t.Errorf("loser source %d was deleted or corrupted: %v", i, err)
+			}
+		}
+	}
+}
+

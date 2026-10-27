@@ -17,6 +17,8 @@ import (
 
 	"strings"
 
+	"sync"
+
 	"github.com/dksilv4/otix/node/internal/otixmeta"
 )
 
@@ -1623,126 +1625,194 @@ func healRepackDir(dir string) {
 
 }
 
+var (
+	moveMu    sync.Mutex
+	moveLocks = make(map[string]*pathLock)
+)
+
+type pathLock struct {
+	mu       sync.Mutex
+	refCount int
+}
+
+func acquireMoveLock(p string) func() {
+	moveMu.Lock()
+	pl, exists := moveLocks[p]
+	if !exists {
+		pl = &pathLock{}
+		moveLocks[p] = pl
+	}
+	pl.refCount++
+	moveMu.Unlock()
+
+	pl.mu.Lock()
+
+	return func() {
+		pl.mu.Unlock()
+		moveMu.Lock()
+		pl.refCount--
+		if pl.refCount == 0 {
+			delete(moveLocks, p)
+		}
+		moveMu.Unlock()
+	}
+}
+
+func MovePath(src, dst string) error {
+	return movePath(src, dst)
+}
+
 func movePath(src, dst string) error {
+	cleanSrc := filepath.Clean(strings.TrimSpace(src))
+	cleanDst := filepath.Clean(strings.TrimSpace(dst))
+
+	if cleanSrc == "" || cleanSrc == "." {
+		return fmt.Errorf("source path is empty")
+	}
+	if cleanDst == "" || cleanDst == "." {
+		return fmt.Errorf("destination path is empty")
+	}
+
+	if cleanSrc == cleanDst {
+		return fmt.Errorf("source and destination are identical: %s", cleanSrc)
+	}
+
+	srcFi, err := os.Lstat(cleanSrc)
+	if err != nil {
+		return fmt.Errorf("source stat failed: %w", err)
+	}
+
+	unlock := acquireMoveLock(cleanDst)
+	defer unlock()
+
+	// Prevent silent overwrite of existing destination files or directories
+	if _, err := os.Lstat(cleanDst); err == nil {
+		return fmt.Errorf("destination path %q already exists: %w", cleanDst, os.ErrExist)
+	}
+
+	if err := os.MkdirAll(filepath.Dir(cleanDst), 0755); err != nil {
+		return fmt.Errorf("create destination directory failed: %w", err)
+	}
 
 	// Fast atomic rename on same filesystem
-
-	if err := os.Rename(src, dst); err == nil {
-
+	if err := os.Rename(cleanSrc, cleanDst); err == nil {
 		return nil
-
 	}
 
-	// Fallback: cross-device or cross-mount move (copy + delete)
-
-	fi, err := os.Stat(src)
-
-	if err != nil {
-
-		return fmt.Errorf("source stat failed: %w", err)
-
-	}
-
-	if fi.IsDir() {
-
-		if err := copyDir(src, dst); err != nil {
-
+	// Fallback: cross-device or cross-mount move (copy + verify + delete)
+	if srcFi.IsDir() {
+		if err := copyDir(cleanSrc, cleanDst); err != nil {
+			_ = os.RemoveAll(cleanDst)
 			return fmt.Errorf("cross-device directory copy failed: %w", err)
-
 		}
-
-		if err := os.RemoveAll(src); err != nil {
-
+		if err := os.RemoveAll(cleanSrc); err != nil {
 			return fmt.Errorf("cleanup source directory failed: %w", err)
-
 		}
-
 		return nil
-
 	}
 
-	if err := copyFile(src, dst, fi.Mode()); err != nil {
-
+	if err := copyFileAndVerify(cleanSrc, cleanDst, srcFi.Mode()); err != nil {
+		// Destination is already removed by copyFileAndVerify on failure.
+		// Source file is preserved untouched.
 		return fmt.Errorf("cross-device file copy failed: %w", err)
-
 	}
 
-	if err := os.Remove(src); err != nil {
-
+	if err := os.Remove(cleanSrc); err != nil {
 		return fmt.Errorf("cleanup source file failed: %w", err)
-
 	}
 
 	return nil
+}
 
+// CopyFileAndVerify copies src to dst, calls Sync, and verifies exact byte size match.
+// On failure, dst is removed and src is untouched.
+func CopyFileAndVerify(src, dst string, mode fs.FileMode) error {
+	return copyFileAndVerify(src, dst, mode)
+}
+
+func copyFileAndVerify(src, dst string, mode fs.FileMode) error {
+	in, err := os.Open(src)
+	if err != nil {
+		return fmt.Errorf("open source file failed: %w", err)
+	}
+	defer in.Close()
+
+	srcInfo, err := in.Stat()
+	if err != nil {
+		return fmt.Errorf("stat source file failed: %w", err)
+	}
+
+	if err := os.MkdirAll(filepath.Dir(dst), 0755); err != nil {
+		return fmt.Errorf("create destination directory failed: %w", err)
+	}
+
+	out, err := os.OpenFile(dst, os.O_CREATE|os.O_WRONLY|os.O_EXCL, mode)
+	if err != nil {
+		return fmt.Errorf("create destination file failed: %w", err)
+	}
+
+	copied, copyErr := io.Copy(out, in)
+	if copyErr != nil {
+		_ = out.Close()
+		_ = os.Remove(dst)
+		return fmt.Errorf("stream copy failed: %w", copyErr)
+	}
+
+	if syncErr := out.Sync(); syncErr != nil {
+		_ = out.Close()
+		_ = os.Remove(dst)
+		return fmt.Errorf("sync destination file failed: %w", syncErr)
+	}
+
+	if closeErr := out.Close(); closeErr != nil {
+		_ = os.Remove(dst)
+		return fmt.Errorf("close destination file failed: %w", closeErr)
+	}
+
+	// Verify exact byte length against source fi.Size()
+	if copied != srcInfo.Size() {
+		_ = os.Remove(dst)
+		return fmt.Errorf("size verification failed: copied %d bytes, expected %d", copied, srcInfo.Size())
+	}
+
+	// Double check destination file on disk
+	dstInfo, statErr := os.Stat(dst)
+	if statErr != nil {
+		_ = os.Remove(dst)
+		return fmt.Errorf("stat destination file failed: %w", statErr)
+	}
+
+	if dstInfo.Size() != srcInfo.Size() {
+		_ = os.Remove(dst)
+		return fmt.Errorf("destination file size on disk mismatch: got %d, expected %d", dstInfo.Size(), srcInfo.Size())
+	}
+
+	return nil
 }
 
 func copyFile(src, dst string, mode fs.FileMode) error {
-
-	in, err := os.Open(src)
-
-	if err != nil {
-
-		return err
-
-	}
-
-	defer in.Close()
-
-	out, err := os.OpenFile(dst, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, mode)
-
-	if err != nil {
-
-		return err
-
-	}
-
-	defer out.Close()
-
-	if _, err := io.Copy(out, in); err != nil {
-
-		return err
-
-	}
-
-	return out.Sync()
-
+	return copyFileAndVerify(src, dst, mode)
 }
 
 func copyDir(src, dst string) error {
-
-	return filepath.Walk(src, func(path string, info fs.FileInfo, err error) error {
-
+	err := filepath.Walk(src, func(path string, info fs.FileInfo, err error) error {
 		if err != nil {
-
 			return err
-
 		}
-
 		rel, err := safeRel(src, path)
-
 		if err != nil {
-
 			return err
-
 		}
-
 		target := filepath.Join(dst, rel)
-
 		if info.IsDir() {
-
 			return os.MkdirAll(target, info.Mode())
-
 		}
-
-		if err := os.MkdirAll(filepath.Dir(target), 0755); err != nil {
-
-			return err
-
-		}
-
-		return copyFile(path, target, info.Mode())
-
+		return copyFileAndVerify(path, target, info.Mode())
 	})
-
+	if err != nil {
+		_ = os.RemoveAll(dst)
+		return err
+	}
+	return nil
 }
+

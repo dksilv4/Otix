@@ -22,7 +22,7 @@ export const CalendarTimelinePage = () => {
           <button
             type="button"
             onClick={() => void refetch()}
-            className="mt-3 rounded-md border border-[var(--dk-separator)] px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground hover:bg-[var(--dk-surface-ghost)]"
+            className="mt-3 rounded-xl bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-ghost-hover)] px-4 py-2 text-xs font-medium text-muted-foreground transition-all hover:text-foreground shadow-sm"
           >
             Retry
           </button>

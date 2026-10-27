@@ -1,6 +1,8 @@
 import { useEffect, useCallback } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { useModal } from '@/lib/modals'
+import { OPEN_AI_QUICK_GLANCE_EVENT, type AiQuickGlanceEventDetail } from '@/features/media/utils/open-ai-quick-glance'
+import { AiQuickGlanceModal } from '@/features/media/components/organisms/ai-quick-glance-modal'
 import { useOptionalMenuContext } from './context-menu-context'
 import { resolveContextMenuTarget } from './utils/dom-resolver'
 import {
@@ -112,6 +114,25 @@ export const GlobalContextMenuListener = () => {
       window.removeEventListener('contextmenu', handleContextMenu)
     }
   }, [handleContextMenu])
+
+  useEffect(() => {
+    const handleQuickGlance = (e: Event) => {
+      const detail = (e as CustomEvent<AiQuickGlanceEventDetail>).detail
+      if (!detail) return
+      openModal(
+        <AiQuickGlanceModal
+          mediaType={detail.mediaType}
+          mediaId={detail.mediaId}
+          initialTitle={detail.title}
+          initialPosterUrl={detail.posterUrl}
+          initialBackdropUrl={detail.backdropUrl}
+          initialTmdbId={detail.tmdbId}
+        />,
+      )
+    }
+    window.addEventListener(OPEN_AI_QUICK_GLANCE_EVENT, handleQuickGlance)
+    return () => window.removeEventListener(OPEN_AI_QUICK_GLANCE_EVENT, handleQuickGlance)
+  }, [openModal])
 
   return null
 }

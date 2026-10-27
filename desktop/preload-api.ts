@@ -776,8 +776,12 @@ export interface IDesktopAPI {
   uninstallerOnProgress: (callback: (progress: { percent: number; status: string }) => void) => () => void;
 }
 
+export type DaemonLifecycleState = 'stopped' | 'starting' | 'running' | 'error' | 'stopping';
+
 export interface NodeDaemonStatus {
+  state: DaemonLifecycleState;
   running: boolean;
+  starting: boolean;
   embedded: boolean;
   port: number;
   url: string;

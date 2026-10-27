@@ -127,29 +127,21 @@ const ReviewComposer = ({ mediaType, mediaId, existingReview, existingRating, on
        </span>
      </div>
 
-     {/* Spoiler toggle */}
-     <label className={cn("dk-review-composer__toggle", reviewLocked && "dk-review-composer__toggle--locked")}>
+     {/* Spoiler & Privacy toggles using standard DkCheckbox */}
+     <div className="flex flex-col gap-2.5">
        <DkCheckbox
+         label="Contains spoilers"
          checked={isSpoiler}
          onCheckedChange={(v) => setIsSpoiler(!!v)}
          disabled={isSaving || reviewLocked}
        />
-       <span className="dk-review-composer__toggle-text">
-         Contains spoilers
-       </span>
-     </label>
-
-     {/* Privacy toggle */}
-     <label className={cn("dk-review-composer__toggle", reviewLocked && "dk-review-composer__toggle--locked")}>
        <DkCheckbox
+         label="Make this review private"
          checked={isPrivate}
          onCheckedChange={(v) => setIsPrivate(!!v)}
          disabled={isSaving || reviewLocked}
        />
-       <span className="dk-review-composer__toggle-text">
-         Make this review private
-       </span>
-     </label>
+     </div>
 
      {/* Cooldown lock notice â€” only for review text */}
      {reviewLocked && (

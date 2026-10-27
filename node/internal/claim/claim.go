@@ -64,6 +64,20 @@ func (cm *ClaimManager) IsClaimed() bool {
 	return cm.claimed
 }
 
+// ValidateToken checks if the daemon is claimed and if the provided token matches cm.cfg.Server.AuthToken.
+func (cm *ClaimManager) ValidateToken(token string) bool {
+	cm.mu.RLock()
+	defer cm.mu.RUnlock()
+	if !cm.claimed || cm.cfg == nil || cm.cfg.Server.AuthToken == "" {
+		return false
+	}
+	trimmed := strings.TrimSpace(token)
+	if trimmed == "" {
+		return false
+	}
+	return cm.cfg.Server.AuthToken == trimmed
+}
+
 func (cm *ClaimManager) Status() ClaimStatus {
 	cm.mu.Lock()
 	defer cm.mu.Unlock()
@@ -176,6 +190,10 @@ func (cm *ClaimManager) ConfirmDirect(authToken string, serverName string, usern
 		return fmt.Errorf("valid auth token is required")
 	}
 
+	if cm.cfg == nil {
+		return fmt.Errorf("configuration not loaded")
+	}
+
 	prevToken := cm.cfg.Server.AuthToken
 	prevName := cm.cfg.Server.Name
 	prevClaimed := cm.cfg.Server.Claimed
@@ -189,6 +207,8 @@ func (cm *ClaimManager) ConfirmDirect(authToken string, serverName string, usern
 		if !isGenericIncoming || !currentHasCustom {
 			cm.cfg.Server.Name = incomingDirectName
 		}
+	} else if cm.cfg.Server.Name == "" && incomingDirectName != "" {
+		cm.cfg.Server.Name = incomingDirectName
 	}
 	cm.cfg.Server.Claimed = true
 	cm.cfg.Server.ClaimedBy = strings.TrimSpace(username)

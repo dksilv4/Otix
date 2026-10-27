@@ -1,4 +1,5 @@
-import { useEffect, useState, useMemo, useCallback } from 'react'
+import { useEffect, useState, useMemo, useCallback, useContext } from 'react'
+import { QueryClientContext } from '@tanstack/react-query'
 import {
   AlertCircle,
   ArrowRight,
@@ -479,6 +480,7 @@ export const OrganizeTestRunModal = ({
   }, [isoDirectory, mergedScanPaths, customPaths])
 
   const initialDir = isoDirectory || folderOptions[0]?.value || ''
+  const queryClient = useContext(QueryClientContext)
   const [selectedFolder, setSelectedFolder] = useState<string>(initialDir)
   const [loading, setLoading] = useState(false)
   const [executing, setExecuting] = useState(false)
@@ -705,6 +707,16 @@ export const OrganizeTestRunModal = ({
       } else {
         setExecutedCount(succeededCount)
         void fetchRealPreview(selectedFolder, true)
+        queryClient?.invalidateQueries({ queryKey: ['server-games'] })
+        queryClient?.invalidateQueries({ queryKey: ['node-games'] })
+        queryClient?.invalidateQueries({ queryKey: ['local-games'] })
+        queryClient?.invalidateQueries({ queryKey: ['library', 'matches'] })
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new Event('scanned-games-updated'))
+        }
+        if (nodeId && nodeId > 0) {
+          void apiClient.post(`/library/servers/${nodeId}/scan`).catch(() => {})
+        }
       }
     } catch (err: any) {
       setExecutionError(err?.message || 'An unexpected error occurred while executing organization.')

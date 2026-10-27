@@ -23,7 +23,7 @@ export const FriendRequestCard = ({
   const relativeTime = formatRelativeTime(request.createdAt)
 
   return (
-    <div className="flex items-center justify-between gap-3 rounded-2xl bg-[var(--dk-surface-glass)] p-4 transition-all duration-200 border border-[var(--dk-separator)] shadow-sm">
+    <div className="flex items-center justify-between gap-3 rounded-2xl bg-[var(--dk-surface-glass)] backdrop-blur-xl shadow-[var(--dk-shadow-glass)] p-4 transition-all duration-200 hover:bg-[var(--dk-surface-glass-hover)]">
       <Link
         to="/u/$username"
         params={{ username: targetUser.username }}

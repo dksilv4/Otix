@@ -54,7 +54,7 @@ export const UserProfileLibraryBreakdown = ({
       />
 
       <div className="px-4 sm:px-6 lg:px-8">
-        <div className="p-4 rounded-2xl bg-[var(--dk-surface-base)] border border-[var(--dk-separator)] space-y-4">
+        <div className="p-4 rounded-2xl bg-[var(--dk-surface-base)] shadow-sm space-y-4">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {mediaTypes.map((item) => {
               const Icon = item.icon
@@ -85,7 +85,7 @@ export const UserProfileLibraryBreakdown = ({
           </div>
 
           {stats?.completionRate != null && stats.completionRate > 0 && (
-            <div className="pt-2 border-t border-[var(--dk-separator)] flex items-center justify-between text-xs text-muted-foreground">
+            <div className="pt-2 flex items-center justify-between text-xs text-muted-foreground">
               <span>Overall Completion Rate</span>
               <span className="font-semibold text-foreground">
                 {Math.round(stats.completionRate * 100)}%

@@ -454,7 +454,7 @@ class MediaAssetsView(APIView):
             raise NotFound(MEDIA_ITEM_NOT_FOUND)
         # Materialized textless twins exist only to back a textless pick; the
         # source image (poster/backdrop) is shown instead, flagged via is_textless.
-        assets = (
+        assets = list(
             item.assets.all()
             .exclude(label=assets_service.MATERIALIZED_TEXTLESS_LABEL)
             .order_by("asset_type", "lang", "-score")
@@ -473,7 +473,7 @@ class MediaAssetsView(APIView):
                         "textless_urls": assets_service.textless_winner_urls(item),
                     },
                 ).data,
-                "total": assets.count(),
+                "total": len(assets),
             }
         )
 

@@ -4,6 +4,7 @@ import { formatBytes } from '@/lib/utils'
 import { isTitleMatch } from '@media/utils'
 import { useLocalGame } from '@/features/launcher/data/game-queries'
 import { useInstallProgress } from '@/features/launcher/data/install-store'
+import { useRunningGame } from '@/features/launcher/hooks/use-running-game'
 import { useServerGames, useRemoteDownloads } from '@/features/downloads/use-server-downloads'
 import { matchServerGameFile } from '@/features/downloads/server-availability'
 import { gameInstallCompatibility, treatInstallAsAvailable } from '@/features/downloads/os-compatibility'
@@ -25,6 +26,7 @@ export const LauncherPlayButton = ({ onOpenInstaller }: LauncherPlayButtonProps)
   const p = useParams({ strict: false })
   const gameId = (p as Record<string, string>).gameId
   const { data: g } = useLocalGame(gameId)
+  const { runningGames } = useRunningGame()
   const { activeInstalls, cancelInstall } = useInstallProgress()
   const { data: serverGamesData } = useServerGames()
   const {
@@ -42,11 +44,24 @@ export const LauncherPlayButton = ({ onOpenInstaller }: LauncherPlayButtonProps)
     return (
       <button
         onClick={() => navigate({ to: '/settings/library' })}
-        className="h-10 px-6 bg-cyan-400 hover:bg-cyan-300 text-neutral-950 font-black rounded-xl text-xs uppercase tracking-wider flex items-center gap-2 transition-all cursor-pointer shadow-[0_0_24px_rgba(34,211,238,0.35)] hover:shadow-[0_0_30px_rgba(34,211,238,0.55)] active:scale-95 shrink-0"
+        className="h-10 px-6 bg-primary hover:bg-primary/90 text-primary-foreground font-black rounded-xl text-xs uppercase tracking-wider flex items-center gap-2 transition-all cursor-pointer shadow-lg active:scale-95 shrink-0"
       >
         <FolderOpen size={16} className="stroke-[2.5]" /> Scan Library
       </button>
     )
+  }
+
+  const isRunning = runningGames.some(
+    (rg) =>
+      rg.game.id === g.id ||
+      (Boolean(rg.game.exePath && g.exePath) &&
+        rg.game.exePath.toLowerCase() === g.exePath.toLowerCase()) ||
+      (Boolean(rg.game.title && g.title) &&
+        rg.game.title.toLowerCase() === g.title.toLowerCase()),
+  )
+
+  if (isRunning) {
+    return <PlayGameButton game={g} />
   }
 
   const isInstalled = !!g?.exePath && g?.platform !== 'iso' && !!g.data?.id
@@ -71,24 +86,24 @@ export const LauncherPlayButton = ({ onOpenInstaller }: LauncherPlayButtonProps)
     const isDownloading = activeTransfer.status === 'downloading'
     const speedMBps = activeTransfer.speedBytesPerSec / (1024 * 1024)
     return (
-      <div className="flex items-center gap-3 bg-[var(--dk-surface-overlay)] border border-cyan-500/30 px-4 py-2 rounded-xl backdrop-blur-md shadow-lg shadow-cyan-500/10">
+      <div className="flex items-center gap-3 bg-[var(--dk-surface-overlay)] border border-white/[0.05] px-4 py-2 rounded-xl backdrop-blur-md shadow-lg">
         <div className="flex items-center gap-2.5">
           {isDownloading ? (
-            <Server className="h-4 w-4 text-cyan-400 animate-pulse shrink-0" />
+            <Server className="h-4 w-4 text-primary animate-pulse shrink-0" />
           ) : (
-            <Pause className="h-4 w-4 text-amber-500 shrink-0" />
+            <Pause className="h-4 w-4 text-muted-foreground shrink-0" />
           )}
           <div className="flex flex-col">
             <div className="flex items-center gap-2 text-xs font-bold text-foreground">
               <span>{isDownloading ? 'Streaming from Server' : 'Paused'}</span>
-              <span className="text-cyan-500 tabular-nums font-mono">{activeTransfer.percentage}%</span>
+              <span className="text-primary tabular-nums font-mono">{activeTransfer.percentage}%</span>
               {speedMBps > 0 && isDownloading && (
                 <span className="text-[10px] text-muted-foreground font-mono">({speedMBps.toFixed(1)} MB/s)</span>
               )}
             </div>
             <div className="w-36 h-1.5 bg-[var(--dk-surface-field)] rounded-full overflow-hidden mt-1">
               <div
-                className="h-full bg-cyan-500 rounded-full transition-all duration-300"
+                className="h-full bg-primary rounded-full transition-all duration-300"
                 style={{ width: `${Math.min(100, Math.max(0, activeTransfer.percentage))}%` }}
               />
             </div>
@@ -107,7 +122,7 @@ export const LauncherPlayButton = ({ onOpenInstaller }: LauncherPlayButtonProps)
           ) : (
             <button
               onClick={() => resumeDownload(activeTransfer.id)}
-              className="p-1.5 hover:bg-[var(--dk-surface-field)] rounded-lg text-cyan-500 hover:text-cyan-400 transition-colors cursor-pointer"
+              className="p-1.5 hover:bg-[var(--dk-surface-field)] rounded-lg text-primary hover:text-primary/80 transition-colors cursor-pointer"
               title="Resume download"
             >
               <Play className="h-3.5 w-3.5 fill-current" />
@@ -173,7 +188,7 @@ export const LauncherPlayButton = ({ onOpenInstaller }: LauncherPlayButtonProps)
         onClick={async () => {
           await startDownload(matchingServerFile, mediaId)
         }}
-        className="h-10 px-5 bg-green-600 hover:bg-green-500 text-white font-black rounded-xl text-xs uppercase tracking-wider flex items-center gap-2 transition-all cursor-pointer shadow-[0_0_24px_rgba(22,163,74,0.35)] hover:shadow-[0_0_30px_rgba(22,163,74,0.55)] active:scale-95 shrink-0"
+        className="h-10 px-5 bg-primary hover:bg-primary/90 text-primary-foreground font-black rounded-xl text-xs uppercase tracking-wider flex items-center gap-2 transition-all cursor-pointer shadow-lg active:scale-95 shrink-0"
         title={`On ${matchingServerFile.serverName}, not installed on this device (${formatBytes(matchingServerFile.filesize)})`}
       >
         <Server size={15} className="stroke-[2.5]" />

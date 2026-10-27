@@ -41,9 +41,18 @@ class CalendarApiTests(TestCase):
         self.anon = APIClient()
 
     # ── Calendar ─────────────────────────────────────────────────────
-    def test_calendar_requires_auth(self) -> None:
+    def test_calendar_allows_anonymous_access(self) -> None:
+        MediaItem.objects.create(
+            media_type="movie",
+            title="Public Future Film",
+            slug="public-future-film",
+            release_date=date.today() + timedelta(days=10),
+        )
         response = self.anon.get("/api/v1/calendar")
-        self.assertEqual(response.status_code, 401)
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("events", response.data)
+        self.assertGreaterEqual(len(response.data["events"]), 1)
+        self.assertEqual(response.data["events"][0]["event_type"], "public_release")
 
     def test_calendar_returns_franchise_sequel_events(self) -> None:
         starter = MediaItem.objects.create(

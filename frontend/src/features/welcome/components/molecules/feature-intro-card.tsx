@@ -20,7 +20,7 @@ export const FeatureIntroCard = ({
   }
 
   return (
-    <div className="group relative flex flex-col justify-between rounded-3xl glass-card p-6 shadow-[var(--dk-shadow-glass)] transition-all duration-200 hover:bg-[var(--dk-surface-ghost-hover)]">
+    <div className="group relative flex flex-col justify-between rounded-3xl bg-[var(--dk-surface-glass)] backdrop-blur-xl p-6 shadow-[var(--dk-shadow-glass)] transition-all duration-200 hover:bg-[var(--dk-surface-ghost-hover)]">
       <div className="space-y-4">
         {/* Top Header: Tinted Icon Pod & Direct Jump Icon */}
         <div className="flex items-center justify-between">
@@ -69,7 +69,7 @@ export const FeatureIntroCard = ({
       </div>
 
       {/* Card Actions */}
-      <div className="mt-6 pt-4 border-t border-[var(--dk-separator)] flex items-center justify-between gap-3">
+      <div className="mt-6 pt-4 flex items-center justify-between gap-3">
         <DkButton
           type="button"
           variant="secondary"

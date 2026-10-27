@@ -21,7 +21,10 @@ export interface LauncherThemeMeta {
   badgeColor: string
   accentColor: string
   icon: "layout-grid" | "sparkles" | "gamepad" | "tv" | "box" | "disc" | "terminal" | "feather" | "flame" | "layers"
+  isEnabled?: boolean
 }
+
+export const ACTIVE_LAUNCHER_THEME_ID: LauncherThemeId = "modern"
 
 export const LAUNCHER_THEMES: LauncherThemeMeta[] = [
   {
@@ -33,6 +36,7 @@ export const LAUNCHER_THEMES: LauncherThemeMeta[] = [
     badgeColor: "bg-[var(--dk-surface-ghost)] text-foreground border-[var(--dk-separator)]",
     accentColor: "#3b82f6",
     icon: "layout-grid",
+    isEnabled: false,
   },
   {
     id: "modern",
@@ -43,6 +47,7 @@ export const LAUNCHER_THEMES: LauncherThemeMeta[] = [
     badgeColor: "bg-primary/20 text-primary border-primary/30",
     accentColor: "oklch(0.705 0.213 47.604)",
     icon: "sparkles",
+    isEnabled: true,
   },
   {
     id: "steam",
@@ -53,6 +58,7 @@ export const LAUNCHER_THEMES: LauncherThemeMeta[] = [
     badgeColor: "bg-[#66c0f4]/20 text-[#66c0f4] border-[#66c0f4]/40",
     accentColor: "#66c0f4",
     icon: "gamepad",
+    isEnabled: false,
   },
   {
     id: "playstation",
@@ -63,6 +69,7 @@ export const LAUNCHER_THEMES: LauncherThemeMeta[] = [
     badgeColor: "bg-blue-600/20 text-blue-400 border-blue-500/40",
     accentColor: "#2563eb",
     icon: "tv",
+    isEnabled: false,
   },
   {
     id: "xbox",
@@ -73,6 +80,7 @@ export const LAUNCHER_THEMES: LauncherThemeMeta[] = [
     badgeColor: "bg-emerald-600/20 text-emerald-400 border-emerald-500/40",
     accentColor: "#107c10",
     icon: "box",
+    isEnabled: false,
   },
   {
     id: "switch",
@@ -83,6 +91,7 @@ export const LAUNCHER_THEMES: LauncherThemeMeta[] = [
     badgeColor: "bg-rose-600/20 text-rose-400 border-rose-500/40",
     accentColor: "#e60012",
     icon: "disc",
+    isEnabled: false,
   },
   {
     id: "retro",
@@ -93,6 +102,7 @@ export const LAUNCHER_THEMES: LauncherThemeMeta[] = [
     badgeColor: "bg-amber-500/20 text-amber-400 border-amber-500/40",
     accentColor: "#f59e0b",
     icon: "terminal",
+    isEnabled: false,
   },
   {
     id: "minimal",
@@ -103,6 +113,7 @@ export const LAUNCHER_THEMES: LauncherThemeMeta[] = [
     badgeColor: "bg-neutral-800 text-neutral-300 border-neutral-700",
     accentColor: "#ffffff",
     icon: "feather",
+    isEnabled: false,
   },
   {
     id: "forge",
@@ -113,6 +124,7 @@ export const LAUNCHER_THEMES: LauncherThemeMeta[] = [
     badgeColor: "bg-cyan-500/20 text-cyan-400 border-cyan-500/40",
     accentColor: "#06b6d4",
     icon: "flame",
+    isEnabled: false,
   },
   {
     id: "glass",
@@ -123,11 +135,11 @@ export const LAUNCHER_THEMES: LauncherThemeMeta[] = [
     badgeColor: "bg-purple-500/20 text-purple-300 border-purple-400/40",
     accentColor: "#a855f7",
     icon: "layers",
+    isEnabled: false,
   },
 ]
 
 const STORAGE_KEY = "otix:launcher-theme"
-const DEFAULT_THEME: LauncherThemeId = "modern"
 
 interface LauncherThemeContextType {
   currentTheme: LauncherThemeId
@@ -143,24 +155,34 @@ export const LauncherThemeProvider = ({ children }: { children: React.ReactNode 
   const [currentTheme, setCurrentThemeState] = useState<LauncherThemeId>(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEY) as LauncherThemeId | null
-      if (stored && LAUNCHER_THEMES.some((t) => t.id === stored)) {
-        return stored
+      const matched = LAUNCHER_THEMES.find((t) => t.id === stored)
+      if (matched && matched.isEnabled !== false) {
+        return matched.id
       }
     } catch {
       // localStorage may fail in some environments
     }
-    return DEFAULT_THEME
+    return ACTIVE_LAUNCHER_THEME_ID
   })
 
   useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY, currentTheme)
+    } catch {
+      // LocalStorage access not available
+    }
+
     const handleSync = () => {
       try {
         const stored = localStorage.getItem(STORAGE_KEY) as LauncherThemeId | null
-        if (stored && LAUNCHER_THEMES.some((t) => t.id === stored)) {
-          setCurrentThemeState(stored)
+        const matched = LAUNCHER_THEMES.find((t) => t.id === stored)
+        if (matched && matched.isEnabled !== false) {
+          setCurrentThemeState(matched.id)
+        } else {
+          setCurrentThemeState(ACTIVE_LAUNCHER_THEME_ID)
         }
       } catch {
-        // LocalStorage access not available
+        // ignore
       }
     }
 
@@ -168,9 +190,13 @@ export const LauncherThemeProvider = ({ children }: { children: React.ReactNode 
     return () => {
       window.removeEventListener('storage', handleSync)
     }
-  }, [])
+  }, [currentTheme])
 
   const setTheme = useCallback((theme: LauncherThemeId) => {
+    const target = LAUNCHER_THEMES.find((t) => t.id === theme)
+    if (!target || target.isEnabled === false) {
+      return
+    }
     setCurrentThemeState(theme)
     try {
       localStorage.setItem(STORAGE_KEY, theme)
@@ -181,12 +207,20 @@ export const LauncherThemeProvider = ({ children }: { children: React.ReactNode 
   }, [])
 
   const cycleTheme = useCallback(() => {
+    const enabledThemes = LAUNCHER_THEMES.filter((t) => t.isEnabled !== false)
+    if (enabledThemes.length <= 1) {
+      if (enabledThemes.length === 1) {
+        setCurrentThemeState(enabledThemes[0].id)
+      }
+      return
+    }
     setCurrentThemeState((prev) => {
-      const idx = LAUNCHER_THEMES.findIndex((t) => t.id === prev)
-      const nextIdx = (idx + 1) % LAUNCHER_THEMES.length
-      const nextTheme = LAUNCHER_THEMES[nextIdx].id
+      const idx = enabledThemes.findIndex((t) => t.id === prev)
+      const nextIdx = (idx + 1) % enabledThemes.length
+      const nextTheme = enabledThemes[nextIdx].id
       try {
         localStorage.setItem(STORAGE_KEY, nextTheme)
+        window.dispatchEvent(new Event('storage'))
       } catch {
         // ignore
       }

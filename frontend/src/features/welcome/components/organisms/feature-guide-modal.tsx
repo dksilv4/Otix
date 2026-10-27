@@ -119,7 +119,7 @@ export const FeatureGuideModal = ({
         </div>
 
         {/* Footer Actions: Generous sizing and backgrounds on all buttons */}
-        <div className="flex flex-col-reverse sm:flex-row items-center justify-between gap-3 pt-3 border-t border-[var(--dk-separator)]">
+        <div className="flex flex-col-reverse sm:flex-row items-center justify-between gap-3 pt-4">
           {hasTourPagination ? (
             <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-start">
               <DkButton

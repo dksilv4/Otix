@@ -584,6 +584,29 @@ app.on('ready', async () => {
     callback({ cancel: false, responseHeaders });
   });
 
+  // YouTube & Google video embed headers interceptor (prevents Error 150/101 in Electron custom protocols)
+  const applyYouTubeHeaderInterceptor = (targetSession: any) => {
+    targetSession.webRequest.onBeforeSendHeaders(
+      {
+        urls: [
+          '*://*.youtube.com/*',
+          '*://*.youtube-nocookie.com/*',
+          '*://*.googlevideo.com/*',
+        ],
+      },
+      (details: any, callback: any) => {
+        const requestHeaders = details.requestHeaders || {};
+        requestHeaders['Referer'] = 'https://www.youtube.com/';
+        requestHeaders['Origin'] = 'https://www.youtube.com';
+        callback({ cancel: false, requestHeaders });
+      }
+    );
+  };
+  applyYouTubeHeaderInterceptor(sess);
+  if (session.defaultSession && session.defaultSession !== sess) {
+    applyYouTubeHeaderInterceptor(session.defaultSession);
+  }
+
   // Register app:// scheme to serve the production frontend safely with SPA fallback
   const candidateDirs = [
     path.join(process.resourcesPath, 'frontend'),

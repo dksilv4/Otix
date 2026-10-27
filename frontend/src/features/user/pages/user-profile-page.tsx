@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import { useParams } from '@tanstack/react-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Helmet } from 'react-helmet-async'
@@ -34,6 +34,7 @@ import { useProfileSections } from '../hooks/use-profile-sections'
 import { computeGamification, getLevelTier, pickGradient, formatMemberSince } from '@user/utils'
 import { XPProgressRing } from '@user/components/atoms/user-xp-progress-ring'
 import { UserProfileSkeleton } from '@user/components/organisms/user-profile-skeleton'
+import { UserXpProgressionBar } from '../components/molecules/user-xp-progression-bar'
 
 // ── Page ──
 
@@ -45,8 +46,6 @@ export const UserProfilePage = () => {
   const profileQuery = useQuery(userQueries.profile(username))
   const reviewsQuery = useQuery(userQueries.reviews(username))
 
-  // Animate XP bar
-  const [barProgress, setBarProgress] = useState(0)
   const profile = profileQuery.data
   const gamification = useMemo(
     () => computeGamification(profile?.totalXp ?? 0),
@@ -70,13 +69,6 @@ export const UserProfilePage = () => {
     username,
     currentSections: activeSections,
   })
-
-  useEffect(() => {
-    if (profile) {
-      const id = setTimeout(() => setBarProgress(gamification.xpProgress), 500)
-      return () => clearTimeout(id)
-    }
-  }, [profile, gamification.xpProgress])
 
   // Loading state
   if (profileQuery.isLoading) {
@@ -127,7 +119,7 @@ export const UserProfilePage = () => {
 
       {/* ── Hero ── */}
       <div
-        className="relative overflow-hidden rounded-2xl flex flex-col justify-end mx-0 min-h-[380px] bg-[var(--dk-surface-base)] border border-[var(--dk-separator)] transition-shadow duration-300 shadow-md hover:shadow-lg"
+        className="relative overflow-hidden rounded-2xl flex flex-col justify-end mx-0 min-h-[380px] bg-[var(--dk-surface-base)] transition-shadow duration-300 shadow-md hover:shadow-xl"
       >
         <div className="absolute inset-0">
           {profile.backgroundUrl ? (
@@ -338,92 +330,16 @@ export const UserProfilePage = () => {
             </div>
           </div>
 
-          {/* XP Bar */}
-          <div
-            className="relative rounded-xl"
-            style={{
-              animation: 'profileFadeIn 0.4s ease-out both',
-              animationDelay: '300ms',
-              boxShadow: tier.hasGlow ? `0 0 20px ${tier.glow}, inset 0 0 12px ${tier.glow}` : undefined,
-            }}
-          >
-            <div className="relative h-[52px] rounded-xl overflow-hidden bg-[var(--dk-surface-ghost)] border border-[var(--dk-separator)]">
-              {/* Fill */}
-              <div
-                className="absolute inset-y-0 left-0 rounded-xl transition-all duration-1000 ease-out"
-                style={{
-                  width: `${barProgress * 100}%`,
-                  background: tier.barColor,
-                }}
-              />
-              {/* Shimmer effect (level 35+) */}
-              {tier.hasShimmer && (
-                <div
-                  className="absolute inset-y-0 left-0 overflow-hidden"
-                  style={{ width: `${barProgress * 100}%` }}
-                >
-                  <div
-                    className="absolute inset-0"
-                    style={{
-                      background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.08) 50%, transparent 100%)',
-                      animation: 'xpShimmer 2s ease-in-out infinite',
-                    }}
-                  />
-                </div>
-              )}
-              {/* Subtle top highlight across the whole bar */}
-              <div
-                className="absolute top-0 inset-x-0 h-[1px]"
-                style={{ background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent)' }}
-              />
-
-              {/* Content overlay */}
-              <div className="absolute inset-0 flex items-center justify-between px-4">
-                <div className="flex items-center gap-1.5">
-                  <span
-                    className="text-[10px] font-semibold uppercase tracking-widest"
-                    style={{ color: `${tier.color}b3` }}
-                  >
-                    Level
-                  </span>
-                  <span
-                    className="text-sm font-extrabold tabular-nums leading-none"
-                    style={{ color: tier.color }}
-                  >
-                    {gamification.level}
-                  </span>
-                  <span className="text-xs font-medium text-muted-foreground/50 ml-0.5">
-                    · {profile.levelTitle ?? gamification.levelTitle}
-                  </span>
-                </div>
-
-                <div className="flex items-center gap-1 tabular-nums">
-                  <span className="text-xs font-semibold text-foreground/90">
-                    {gamification.xp.toLocaleString()}
-                  </span>
-                  <span className="text-muted-foreground/30">/</span>
-                  <span className="text-xs text-muted-foreground/40">
-                    {(gamification.xpToNextLevel + (gamification.level - 1) * 300).toLocaleString()}
-                  </span>
-                  <span className="ml-1.5 text-[10px] font-medium text-muted-foreground/35 uppercase tracking-wider">
-                    XP
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* XP Rank position */}
-            {profile.xpRank != null && (
-              <div
-                className="mt-1 text-right text-[10px] font-medium text-muted-foreground/60"
-                style={{ animation: 'profileFadeIn 0.4s ease-out both', animationDelay: '350ms' }}
-              >
-                <span>#{profile.xpRank.toLocaleString()}</span>
-                {profile.xpPercentile != null && (
-                  <span>· Top {profile.xpPercentile}%</span>
-                )}
-              </div>
-            )}
+          {/* XP Progression Bar — Borderless glassmorphism with fluid shimmer */}
+          <UserXpProgressionBar
+            totalXp={gamification.xp}
+            level={gamification.level}
+            tier={tier}
+            levelTitle={profile.levelTitle ?? gamification.levelTitle}
+            xpToNextLevel={gamification.xpToNextLevel}
+            xpRank={profile.xpRank}
+            xpPercentile={profile.xpPercentile}
+          />
 
             {/* Streaks */}
             <div
@@ -453,7 +369,7 @@ export const UserProfilePage = () => {
                 href={profile.steam.profileurl ?? '#'}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 bg-[var(--dk-surface-ghost)] text-muted-foreground hover:bg-[var(--dk-surface-ghost-hover)] hover:text-foreground border border-[var(--dk-separator)]"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 bg-[var(--dk-surface-ghost)] text-muted-foreground hover:bg-[var(--dk-surface-ghost-hover)] hover:text-foreground shadow-xs"
               >
                 <SteamIcon className="h-3.5 w-3.5" />
                 Steam
@@ -464,7 +380,7 @@ export const UserProfilePage = () => {
                 href={profile.plex.username ? `https://app.plex.tv/desktop/#!/u/${profile.plex.username}` : '#'}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 bg-[var(--dk-surface-ghost)] text-muted-foreground hover:bg-[var(--dk-surface-ghost-hover)] hover:text-foreground border border-[var(--dk-separator)]"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 bg-[var(--dk-surface-ghost)] text-muted-foreground hover:bg-[var(--dk-surface-ghost-hover)] hover:text-foreground shadow-xs"
               >
                 <PlexIcon className="h-3.5 w-3.5 text-[#e5a00d]" />
                 Plex
@@ -475,7 +391,7 @@ export const UserProfilePage = () => {
                 href={`https://www.themoviedb.org/u/${profile.tmdbUsername}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 bg-[var(--dk-surface-ghost)] text-muted-foreground hover:bg-[var(--dk-surface-ghost-hover)] hover:text-foreground border border-[var(--dk-separator)]"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 bg-[var(--dk-surface-ghost)] text-muted-foreground hover:bg-[var(--dk-surface-ghost-hover)] hover:text-foreground shadow-xs"
               >
                 <TmdbIcon className="h-3.5 w-3.5 text-[#01b4e4]" />
                 TMDb
@@ -484,7 +400,6 @@ export const UserProfilePage = () => {
           </div>
         </div>
       )}
-      </div>
 
       {/* Dynamic Profile Sections */}
       {activeSections.length > 0 ? (
@@ -503,7 +418,7 @@ export const UserProfilePage = () => {
         </div>
       ) : isOwner ? (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-12 w-full">
-          <div className="py-12 flex flex-col items-center justify-center text-center rounded-2xl border border-[var(--dk-separator)] bg-[var(--dk-surface-base)]">
+          <div className="py-12 flex flex-col items-center justify-center text-center rounded-2xl bg-[var(--dk-surface-base)] shadow-sm">
             <Sparkles className="h-6 w-6 text-primary/70 mb-2" />
             <p className="text-sm font-semibold text-foreground">
               No sections on your profile yet
@@ -515,7 +430,7 @@ export const UserProfilePage = () => {
         </div>
       ) : (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-12 w-full">
-          <div className="py-12 flex flex-col items-center justify-center text-center rounded-2xl border border-[var(--dk-separator)] bg-[var(--dk-surface-base)]">
+          <div className="py-12 flex flex-col items-center justify-center text-center rounded-2xl bg-[var(--dk-surface-base)] shadow-sm">
             <Lock className="h-6 w-6 text-muted-foreground/40 mb-2" />
             <p className="text-sm font-semibold text-foreground">
               No public sections available

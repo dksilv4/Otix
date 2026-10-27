@@ -6,9 +6,10 @@ import sys
 
 
 def main() -> None:
-    # Default to local development settings; override with
-    # DJANGO_SETTINGS_MODULE=config.settings.{dev,test,prod} as appropriate.
-    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings.dev")
+    # Default to test settings when running test command, otherwise local development settings;
+    # override with DJANGO_SETTINGS_MODULE=config.settings.{dev,test,prod} as appropriate.
+    default_settings = "config.settings.test" if "test" in sys.argv else "config.settings.dev"
+    os.environ.setdefault("DJANGO_SETTINGS_MODULE", default_settings)
     try:
         from django.core.management import execute_from_command_line
     except ImportError as exc:

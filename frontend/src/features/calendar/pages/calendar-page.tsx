@@ -41,7 +41,7 @@ export const CalendarPage = () => {
         <h1 className="text-xl font-bold text-foreground">Calendar</h1>
         <Link
           to="/calendar/timeline"
-          className="rounded-md border border-[var(--dk-separator)] px-2.5 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:text-foreground hover:bg-[var(--dk-surface-ghost)]"
+          className="rounded-xl bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-ghost-hover)] px-3 py-1.5 text-xs font-medium text-muted-foreground transition-all hover:text-foreground shadow-sm"
         >
           Timeline <span className="text-muted-foreground/60">Beta</span>
         </Link>
@@ -50,7 +50,7 @@ export const CalendarPage = () => {
       <div className="mb-6 flex items-center justify-between">
         <button
           onClick={prevMonth}
-          className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-[var(--dk-surface-ghost)] hover:text-foreground"
+          className="flex h-8 w-8 items-center justify-center rounded-xl bg-[var(--dk-surface-glass)] text-muted-foreground transition-all hover:bg-[var(--dk-surface-ghost-hover)] hover:text-foreground shadow-sm"
         >
           <ChevronLeft className="h-4 w-4" />
         </button>
@@ -59,7 +59,7 @@ export const CalendarPage = () => {
           <h2 className="text-base font-semibold text-foreground">{monthLabel}</h2>
           <button
             onClick={goToToday}
-            className="rounded-md border border-[var(--dk-separator)] px-2.5 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:text-foreground hover:bg-[var(--dk-surface-ghost)]"
+            className="rounded-xl bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-ghost-hover)] px-3 py-1.5 text-xs font-medium text-muted-foreground transition-all hover:text-foreground shadow-sm"
           >
             Today
           </button>
@@ -67,7 +67,7 @@ export const CalendarPage = () => {
 
         <button
           onClick={nextMonth}
-          className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-[var(--dk-surface-ghost)] hover:text-foreground"
+          className="flex h-8 w-8 items-center justify-center rounded-xl bg-[var(--dk-surface-glass)] text-muted-foreground transition-all hover:bg-[var(--dk-surface-ghost-hover)] hover:text-foreground shadow-sm"
         >
           <ChevronRight className="h-4 w-4" />
         </button>
@@ -75,7 +75,7 @@ export const CalendarPage = () => {
 
       {isLoading && (
         <div className="space-y-2">
-          <div className="h-64 animate-pulse rounded-lg bg-[var(--dk-surface-ghost)]" />
+          <div className="h-64 animate-pulse rounded-2xl bg-[var(--dk-surface-ghost)]" />
         </div>
       )}
 
@@ -85,7 +85,7 @@ export const CalendarPage = () => {
           <button
             type="button"
             onClick={() => void refetch()}
-            className="mt-3 rounded-md border border-[var(--dk-separator)] px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground hover:bg-[var(--dk-surface-ghost)]"
+            className="mt-3 rounded-xl bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-ghost-hover)] px-4 py-2 text-xs font-medium text-muted-foreground transition-all hover:text-foreground shadow-sm"
           >
             Retry
           </button>

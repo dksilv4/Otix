@@ -55,12 +55,12 @@ export const UserProfileTopRated = ({
             {[1, 2, 3, 4, 5, 6].map((i) => (
               <div
                 key={i}
-                className="aspect-[2/3] rounded-xl bg-[var(--dk-surface-ghost)] animate-pulse border border-[var(--dk-separator)]"
+                className="aspect-[2/3] rounded-xl bg-[var(--dk-surface-ghost)] animate-pulse shadow-xs"
               />
             ))}
           </div>
         ) : items.length === 0 ? (
-          <div className="py-8 flex flex-col items-center justify-center text-center rounded-2xl border border-dashed border-[var(--dk-separator)] bg-[var(--dk-surface-ghost)]/40">
+          <div className="py-8 flex flex-col items-center justify-center text-center rounded-2xl bg-[var(--dk-surface-ghost)]/40 shadow-xs">
             <Star className="h-6 w-6 text-muted-foreground/40 mb-1.5" />
             <p className="text-xs font-semibold text-muted-foreground">
               No top rated items yet
@@ -74,7 +74,7 @@ export const UserProfileTopRated = ({
             {items.slice(0, 6).map((item, idx) => (
               <div
                 key={item.mediaItem?.id || idx}
-                className="group relative flex flex-col rounded-xl overflow-hidden bg-[var(--dk-surface-base)] border border-[var(--dk-separator)] hover:scale-[1.02] transition-all duration-200"
+                className="group relative flex flex-col rounded-xl overflow-hidden bg-[var(--dk-surface-base)] shadow-xs hover:scale-[1.02] transition-all duration-200"
               >
                 <div className="relative aspect-[2/3] w-full bg-[var(--dk-surface-ghost)] overflow-hidden">
                   {item.mediaItem?.posterUrl ? (

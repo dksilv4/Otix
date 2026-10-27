@@ -56,12 +56,49 @@ _RELEASE_KIND_LABEL: dict[str, str] = {
 }
 
 
-def build_calendar(user_id: int) -> list[dict]:
+def build_calendar(user_id: int | None = None) -> list[dict]:
     events: list[dict] = []
-    events.extend(_watchlist_releases(user_id))
-    events.extend(_recent_episodes(user_id))
-    events.extend(_sequels(user_id))
+    if user_id is not None:
+        events.extend(_watchlist_releases(user_id))
+        events.extend(_recent_episodes(user_id))
+        events.extend(_sequels(user_id))
+    else:
+        events.extend(_public_releases())
     events.sort(key=lambda e: e["release_date"], reverse=True)
+    return events
+
+
+def _public_releases() -> list[dict]:
+    cutoff = date.today() - timedelta(days=RECENT_WINDOW_DAYS)
+    items = list(
+        MediaItem.objects.filter(release_date__gte=cutoff)
+        .prefetch_related("releases", "assets")
+        .order_by("-release_date")[:60]
+    )
+    attach_media_urls(items)
+    today = date.today()
+    events = []
+    for item in items:
+        for release_date, kind in _release_milestones(item, cutoff):
+            upcoming = release_date >= today
+            label = release_kind_label(kind)
+            prefix = "Upcoming" if upcoming else "Recently released"
+            events.append(
+                {
+                    "id": f"pub-{item.id}-{kind}-{release_date.isoformat()}",
+                    "media_item_id": item.id,
+                    "media_type": item.media_type,
+                    "title": item.title,
+                    "poster_url": item.poster_url,
+                    "slug": item.slug,
+                    "release_date": release_date,
+                    "event_type": "public_release",
+                    "release_kind": kind,
+                    "reason": f"{prefix} — {label}",
+                    "episode_info": None,
+                    "season_number": None,
+                }
+            )
     return events
 
 

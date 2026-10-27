@@ -59,8 +59,10 @@
 .dk-downloads__empty {
   @apply flex flex-col items-center py-16 text-center rounded-2xl;
 
-  // Use direct CSS for custom properties (var(--dk-*))
-  background-color: var(--dk-surface-base);
+  background-color: var(--dk-surface-glass);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow: var(--dk-shadow-glass);
 }
 
 .dk-downloads__empty-text {

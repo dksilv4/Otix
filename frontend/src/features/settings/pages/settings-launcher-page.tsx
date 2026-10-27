@@ -85,19 +85,9 @@ export const SettingsLauncherPage = () => {
 
   const [activeCategory, setActiveCategory] = useState<ThemeCategory>('all')
 
-  const [activeTheme, setActiveTheme] = useState<LauncherThemeId>(() => {
-    try {
-      const stored = localStorage.getItem('otix:launcher-theme') as LauncherThemeId | null
-      if (stored && LAUNCHER_THEMES.some((t) => t.id === stored)) return stored
-    } catch {
-      // ignore unavailable localStorage (private mode / SSR)
-    }
-    return 'modern'
-  })
-
   const selectedThemeMeta = useMemo(() => {
-    return LAUNCHER_THEMES.find((t) => t.id === activeTheme) || LAUNCHER_THEMES[0]
-  }, [activeTheme])
+    return LAUNCHER_THEMES.find((t) => t.id === 'modern') || LAUNCHER_THEMES[1]
+  }, [])
 
   const filteredThemes = useMemo(() => {
     if (activeCategory === 'all') return LAUNCHER_THEMES
@@ -105,12 +95,19 @@ export const SettingsLauncherPage = () => {
   }, [activeCategory])
 
   const handleSelectTheme = (themeId: LauncherThemeId) => {
-    setActiveTheme(themeId)
-    localStorage.setItem('otix:launcher-theme', themeId)
+    if (themeId !== 'modern') {
+      toast({
+        title: 'Theme in development',
+        description: 'Engineering focus is locked to perfecting the Modern edition before enabling other themes.',
+        variant: 'default',
+      })
+      return
+    }
+    localStorage.setItem('otix:launcher-theme', 'modern')
     window.dispatchEvent(new Event('storage'))
     toast({
-      title: 'Launcher Theme Updated',
-      description: `Default layout set to ${LAUNCHER_THEMES.find((t) => t.id === themeId)?.name}.`,
+      title: 'Launcher Theme Active',
+      description: 'Default layout set to Modern (Cinematic Deck).',
       variant: 'success',
     })
   }
@@ -229,12 +226,14 @@ export const SettingsLauncherPage = () => {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 pt-1">
             {filteredThemes.map((theme) => {
-              const isSelected = activeTheme === theme.id
+              const isModern = theme.id === 'modern'
+              const isSelected = isModern
               return (
                 <div
                   key={theme.id}
                   role="button"
-                  tabIndex={0}
+                  tabIndex={isModern ? 0 : -1}
+                  aria-disabled={!isModern}
                   onClick={() => handleSelectTheme(theme.id)}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' || e.key === ' ') {
@@ -243,10 +242,10 @@ export const SettingsLauncherPage = () => {
                     }
                   }}
                   className={cn(
-                    'group relative flex flex-col rounded-2xl p-3.5 transition-all duration-200 text-left cursor-pointer',
-                    isSelected
-                      ? 'bg-[var(--dk-surface-raised)] shadow-lg'
-                      : 'bg-[var(--dk-surface-field)] hover:bg-[var(--dk-surface-hover)]',
+                    'group relative flex flex-col rounded-2xl p-3.5 transition-all duration-200 text-left',
+                    isModern
+                      ? 'bg-[var(--dk-surface-raised)] shadow-lg cursor-pointer ring-1 ring-primary/20'
+                      : 'bg-[var(--dk-surface-field)] opacity-60 cursor-not-allowed hover:opacity-75',
                   )}
                   style={
                     isSelected
@@ -272,7 +271,7 @@ export const SettingsLauncherPage = () => {
                       </h4>
                     </div>
 
-                    {isSelected ? (
+                    {isModern ? (
                       <span
                         className="inline-flex items-center gap-1 text-[11px] font-extrabold shrink-0"
                         style={{ color: theme.accentColor }}
@@ -281,8 +280,8 @@ export const SettingsLauncherPage = () => {
                         Active
                       </span>
                     ) : (
-                      <span className="text-[11px] font-medium text-muted-foreground group-hover:text-foreground transition-colors shrink-0">
-                        Select
+                      <span className="text-[10px] font-semibold text-muted-foreground/80 px-2 py-0.5 rounded-full bg-[var(--dk-surface-ghost)] shrink-0">
+                        In Development
                       </span>
                     )}
                   </div>
@@ -303,12 +302,12 @@ export const SettingsLauncherPage = () => {
                   {/* Bottom status bar */}
                   <div className="w-full pt-2.5 mt-3 flex items-center justify-between">
                     <span className="text-[10px] text-muted-foreground">
-                      {isSelected ? 'Default layout' : 'Click to activate'}
+                      {isModern ? 'Active focus layout' : 'Disabled during development'}
                     </span>
                     <div
                       className="h-1.5 rounded-full transition-all"
                       style={{
-                        backgroundColor: isSelected ? theme.accentColor : 'var(--dk-separator)',
+                        backgroundColor: isSelected ? theme.accentColor : 'var(--dk-surface-ghost)',
                         width: isSelected ? '24px' : '8px',
                       }}
                     />

@@ -55,12 +55,12 @@ export const UserProfileActivity = ({
             {[1, 2, 3].map((i) => (
               <div
                 key={i}
-                className="h-14 rounded-xl bg-[var(--dk-surface-ghost)] animate-pulse border border-[var(--dk-separator)]"
+                className="h-14 rounded-xl bg-[var(--dk-surface-ghost)] animate-pulse shadow-xs"
               />
             ))}
           </div>
         ) : events.length === 0 ? (
-          <div className="py-8 flex flex-col items-center justify-center text-center rounded-2xl border border-dashed border-[var(--dk-separator)] bg-[var(--dk-surface-ghost)]/40">
+          <div className="py-8 flex flex-col items-center justify-center text-center rounded-2xl bg-[var(--dk-surface-ghost)]/40 shadow-xs">
             <Activity className="h-6 w-6 text-muted-foreground/40 mb-1.5" />
             <p className="text-xs font-semibold text-muted-foreground">
               No recent activity
@@ -78,7 +78,7 @@ export const UserProfileActivity = ({
               return (
                 <div
                   key={idx}
-                  className="flex items-center justify-between p-3 rounded-xl bg-[var(--dk-surface-base)] border border-[var(--dk-separator)]"
+                  className="flex items-center justify-between p-3 rounded-xl bg-[var(--dk-surface-base)] shadow-xs hover:bg-[var(--dk-surface-ghost-hover)] transition-colors"
                 >
                   <div className="flex items-center gap-3 min-w-0">
                     <div className="h-8 w-8 rounded-lg flex items-center justify-center bg-[var(--dk-surface-ghost)] text-primary shrink-0">

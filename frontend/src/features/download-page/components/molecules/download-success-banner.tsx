@@ -19,7 +19,7 @@ export const DownloadSuccessBanner = ({
     <div
       role="status"
       aria-live="polite"
-      className="relative rounded-2xl p-5 sm:p-6 backdrop-blur-xl bg-primary/[0.06] border border-primary/20 shadow-[var(--dk-shadow-sm)] space-y-4 animate-in fade-in slide-in-from-top-4 duration-300"
+      className="relative rounded-2xl p-5 sm:p-6 backdrop-blur-xl bg-primary/[0.06] shadow-[var(--dk-shadow-sm)] space-y-4 animate-in fade-in slide-in-from-top-4 duration-300"
     >
       <button
         type="button"
@@ -58,7 +58,7 @@ export const DownloadSuccessBanner = ({
       </div>
 
       {/* Next Steps for Platform */}
-      <div className="pt-3 border-t border-primary/10">
+      <div className="pt-3">
         <h4 className="text-xs font-semibold text-foreground/90 uppercase tracking-wider mb-2">
           Next steps to get started:
         </h4>

@@ -21,7 +21,7 @@ export const WelcomeCommandPaletteBar = () => {
   }
 
   return (
-    <div className="relative overflow-hidden rounded-[2.5rem] glass-card p-6 sm:p-8 shadow-[var(--dk-shadow-glass)] space-y-5">
+    <div className="relative overflow-hidden rounded-[2.5rem] bg-[var(--dk-surface-glass)] backdrop-blur-xl p-6 sm:p-8 shadow-[var(--dk-shadow-glass)] space-y-5">
       <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="space-y-1">
           <div className="inline-flex items-center gap-2 rounded-full glass-inset px-3 py-1 text-xs font-semibold text-primary">

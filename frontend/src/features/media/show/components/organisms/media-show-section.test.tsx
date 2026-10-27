@@ -163,19 +163,18 @@ describe('ShowSection', () => {
 
     render(<ShowSection />)
 
-    // Watched episode 1 toggle button should have opaque emerald styling and proper label
+    // Watched episode 1 toggle button should have semantic status-online styling and proper label
     const watchedBtn = screen.getByRole('button', { name: 'Mark episode as unwatched' })
     expect(watchedBtn).toBeInTheDocument()
-    expect(watchedBtn).toHaveClass('bg-emerald-500')
-    expect(watchedBtn).toHaveClass('text-white')
+    expect(watchedBtn).toHaveClass('bg-[var(--status-online)]')
+    expect(watchedBtn).toHaveClass('text-primary-foreground')
     expect(watchedBtn).not.toHaveClass('glass-badge')
-    expect(watchedBtn).not.toHaveClass('bg-emerald-500/10')
 
     // Unwatched episode 2 toggle button should have unwatched label and muted styling
     const unwatchedBtn = screen.getByRole('button', { name: 'Mark episode as watched' })
     expect(unwatchedBtn).toBeInTheDocument()
     expect(unwatchedBtn).toHaveClass('text-muted-foreground')
-    expect(unwatchedBtn).not.toHaveClass('bg-emerald-500')
+    expect(unwatchedBtn).not.toHaveClass('bg-[var(--status-online)]')
 
     // Clicking watched button triggers toggle to unwatched (false)
     watchedBtn.click()

@@ -199,15 +199,7 @@ export const ShowSection = ({
   }
 
  return (
- <section className={cn("space-y-6", className)}>
- {/* ── Seasons Heading ── */}
- <div className="px-6 sm:px-7 flex items-center justify-between">
-   <div className="flex items-center gap-2.5">
-     <div className="h-4 w-0.5 rounded-full bg-primary/60 shrink-0" />
-     <h2 className="text-base font-semibold tracking-tight">Seasons</h2>
-   </div>
- </div>
-
+ <section className={cn("space-y-4", className)}>
  {/* ── Season Tabs ── */}
  <div className="relative group/tabs px-6 sm:px-7">
  <button
@@ -326,7 +318,7 @@ export const ShowSection = ({
          {hasEpisodes && currentUnwatched > 0 && currentSeason.seasonNumber !== 0 && (
            <button
              onClick={handleMarkSeasonWatchedConfirm}
-             className="text-xs font-medium transition-all text-muted-foreground hover:text-emerald-600 dark:hover:text-emerald-400 flex items-center gap-1.5 bg-[var(--dk-surface-glass)] px-3 py-1.5 rounded-full hover:bg-[var(--dk-surface-glass-hover)] shadow-sm hover:shadow-md hover:-translate-y-0.5"
+             className="text-xs font-medium transition-all text-muted-foreground hover:text-[var(--status-online)] flex items-center gap-1.5 bg-[var(--dk-surface-glass)] px-3 py-1.5 rounded-full hover:bg-[var(--dk-surface-glass-hover)] shadow-sm hover:shadow-md hover:-translate-y-0.5"
            >
              <CheckCircle2 className="w-3.5 h-3.5" />
              Mark all as watched
@@ -432,7 +424,7 @@ export const ShowSection = ({
                  />
                )
              }}
-             className={`glass-episode-card group shrink-0 flex flex-col w-[260px] text-left rounded-2xl overflow-hidden relative transition-all hover:-translate-y-0.5 hover:shadow-xl ${isActive ? "bg-[var(--dk-surface-glass-hover)] border border-[var(--dk-separator)]" : ""}`}
+             className={`glass-episode-card group shrink-0 flex flex-col w-[260px] text-left rounded-2xl overflow-hidden relative transition-all hover:-translate-y-0.5 hover:shadow-xl ${isActive ? "bg-[var(--dk-surface-glass-hover)] shadow-[var(--dk-shadow-glass)]" : ""}`}
            >
              <div data-thumb className="relative aspect-video bg-black/10 overflow-hidden">
                <Image
@@ -500,7 +492,7 @@ export const ShowSection = ({
                      }
                    }}
                    className={`absolute top-1.5 left-1.5 rounded-full p-1 transition-all cursor-pointer hover:scale-110 z-10 ${isWatched
-                     ? "bg-emerald-500 hover:bg-emerald-400 text-white shadow-md shadow-emerald-950/30"
+                     ? "bg-[var(--status-online)] hover:opacity-90 text-primary-foreground shadow-md"
                      : "glass-badge text-muted-foreground hover:text-foreground"}`}
                  >
                    {isWatched ? (

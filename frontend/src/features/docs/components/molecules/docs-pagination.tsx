@@ -17,7 +17,7 @@ export const DocsPagination = ({
   return (
     <nav
       aria-label="Documentation article pagination"
-      className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-10 mt-12 border-t border-[var(--dk-separator)]"
+      className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-10 mt-12"
     >
       {prev ? (
         <button

@@ -357,3 +357,187 @@ func TestScanAllIndexesUpdatesWithParentGame(t *testing.T) {
 		t.Fatalf("expected 3 updates, got %d (%+v)", updateCount, files)
 	}
 }
+
+func TestDetermineFileFormatCategoryAndPlatformROMsAndArchives(t *testing.T) {
+	tests := []struct {
+		filename         string
+		fullPath         string
+		expectedCategory string
+		expectedPlatform indexer.PlatformType
+	}{
+		// ROMs
+		{"Super Mario Odyssey.nsp", "/roms/switch/Super Mario Odyssey.nsp", "rom", indexer.PlatformSwitch},
+		{"Super Mario 64.z64", "/roms/n64/Super Mario 64.z64", "rom", indexer.PlatformN64},
+		{"Super Mario World.sfc", "/roms/snes/Super Mario World.sfc", "rom", indexer.PlatformSNES},
+		{"Crash Bandicoot.chd", "/roms/ps1/Crash Bandicoot.chd", "rom", indexer.PlatformPS1},
+		{"Mario Kart Wii.rvz", "/roms/wii/Mario Kart Wii.rvz", "rom", indexer.PlatformWii},
+
+		// Archives
+		{"Pokemon Emerald [GBA].zip", "/roms/gba/Pokemon Emerald [GBA].zip", "archive", indexer.PlatformGBA},
+		{"Metroid Dread [Switch].7z", "/roms/switch/Metroid Dread [Switch].7z", "archive", indexer.PlatformSwitch},
+		{"FitGirl Repack.zip", "/downloads/FitGirl Repack.zip", "archive", indexer.PlatformPC},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.filename, func(t *testing.T) {
+			cat := indexer.DetermineFileFormatCategory(tt.fullPath, tt.filename)
+			if cat != tt.expectedCategory {
+				t.Errorf("DetermineFileFormatCategory(%q) = %s, want %s", tt.filename, cat, tt.expectedCategory)
+			}
+
+			plat := indexer.DeterminePlatform(tt.filename, tt.fullPath)
+			if plat != tt.expectedPlatform {
+				t.Errorf("DeterminePlatform(%q, %q) = %s, want %s", tt.filename, tt.fullPath, plat, tt.expectedPlatform)
+			}
+		})
+	}
+}
+
+func TestStorageIndexerScanningROMsAndArchives(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "otix_indexer_roms_test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	// Create synthetic fixture directory structure
+	switchDir := filepath.Join(tmpDir, "Switch")
+	n64Dir := filepath.Join(tmpDir, "N64")
+	snesDir := filepath.Join(tmpDir, "SNES")
+	ps1Dir := filepath.Join(tmpDir, "PS1")
+	wiiDir := filepath.Join(tmpDir, "Wii")
+	archiveDir := filepath.Join(tmpDir, "Archives")
+
+	for _, d := range []string{switchDir, n64Dir, snesDir, ps1Dir, wiiDir, archiveDir} {
+		if err := os.MkdirAll(d, 0755); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	// 1. Switch ROM (.nsp)
+	_ = os.WriteFile(filepath.Join(switchDir, "Super Mario Odyssey.nsp"), []byte("nsp header"), 0644)
+
+	// 2. N64 ROM (.z64)
+	_ = os.WriteFile(filepath.Join(n64Dir, "Super Mario 64.z64"), []byte("z64 header"), 0644)
+
+	// 3. SNES ROM (.sfc)
+	_ = os.WriteFile(filepath.Join(snesDir, "Super Mario World.sfc"), []byte("sfc header"), 0644)
+
+	// 4. PS1 ROM (.chd)
+	_ = os.WriteFile(filepath.Join(ps1Dir, "Crash Bandicoot.chd"), []byte("chd header"), 0644)
+
+	// 5. Wii ROM (.rvz)
+	_ = os.WriteFile(filepath.Join(wiiDir, "Mario Kart Wii.rvz"), []byte("rvz header"), 0644)
+
+	// 6. GBA Archive (.zip)
+	_ = os.WriteFile(filepath.Join(archiveDir, "Pokemon Emerald [GBA].zip"), []byte("zip archive"), 0644)
+
+	// 7. Switch Archive (.7z)
+	_ = os.WriteFile(filepath.Join(archiveDir, "Metroid Dread [Switch].7z"), []byte("7z archive"), 0644)
+
+	libraries := []config.LibraryConfig{
+		{
+			Name:              "Emulation",
+			Path:              tmpDir,
+			Kind:              "rom",
+			AllowedExtensions: []string{".nsp", ".z64", ".sfc", ".chd", ".rvz", ".zip", ".7z"},
+		},
+	}
+
+	idx := indexer.NewStorageIndexer(libraries)
+	files := idx.ScanAll()
+
+	if len(files) != 7 {
+		t.Fatalf("expected 7 indexed files, got %d: %+v", len(files), files)
+	}
+
+	byName := make(map[string]indexer.HostedFile)
+	for _, f := range files {
+		byName[f.Filename] = f
+	}
+
+	// Verify .nsp
+	nsp, ok := byName["Super Mario Odyssey.nsp"]
+	if !ok {
+		t.Fatalf("missing Super Mario Odyssey.nsp")
+	}
+	if nsp.FormatCategory != "rom" {
+		t.Errorf("nsp category: expected rom, got %s", nsp.FormatCategory)
+	}
+	if plat := indexer.DeterminePlatform(nsp.Filename, nsp.Filepath); plat != indexer.PlatformSwitch {
+		t.Errorf("nsp platform: expected Switch, got %s", plat)
+	}
+
+	// Verify .z64
+	z64, ok := byName["Super Mario 64.z64"]
+	if !ok {
+		t.Fatalf("missing Super Mario 64.z64")
+	}
+	if z64.FormatCategory != "rom" {
+		t.Errorf("z64 category: expected rom, got %s", z64.FormatCategory)
+	}
+	if plat := indexer.DeterminePlatform(z64.Filename, z64.Filepath); plat != indexer.PlatformN64 {
+		t.Errorf("z64 platform: expected N64, got %s", plat)
+	}
+
+	// Verify .sfc
+	sfc, ok := byName["Super Mario World.sfc"]
+	if !ok {
+		t.Fatalf("missing Super Mario World.sfc")
+	}
+	if sfc.FormatCategory != "rom" {
+		t.Errorf("sfc category: expected rom, got %s", sfc.FormatCategory)
+	}
+	if plat := indexer.DeterminePlatform(sfc.Filename, sfc.Filepath); plat != indexer.PlatformSNES {
+		t.Errorf("sfc platform: expected SNES, got %s", plat)
+	}
+
+	// Verify .chd
+	chd, ok := byName["Crash Bandicoot.chd"]
+	if !ok {
+		t.Fatalf("missing Crash Bandicoot.chd")
+	}
+	if chd.FormatCategory != "rom" {
+		t.Errorf("chd category: expected rom, got %s", chd.FormatCategory)
+	}
+	if plat := indexer.DeterminePlatform(chd.Filename, chd.Filepath); plat != indexer.PlatformPS1 {
+		t.Errorf("chd platform: expected PS1, got %s", plat)
+	}
+
+	// Verify .rvz
+	rvz, ok := byName["Mario Kart Wii.rvz"]
+	if !ok {
+		t.Fatalf("missing Mario Kart Wii.rvz")
+	}
+	if rvz.FormatCategory != "rom" {
+		t.Errorf("rvz category: expected rom, got %s", rvz.FormatCategory)
+	}
+	if plat := indexer.DeterminePlatform(rvz.Filename, rvz.Filepath); plat != indexer.PlatformWii {
+		t.Errorf("rvz platform: expected Wii, got %s", plat)
+	}
+
+	// Verify .zip
+	zipFile, ok := byName["Pokemon Emerald [GBA].zip"]
+	if !ok {
+		t.Fatalf("missing Pokemon Emerald [GBA].zip")
+	}
+	if zipFile.FormatCategory != "archive" {
+		t.Errorf("zip category: expected archive, got %s", zipFile.FormatCategory)
+	}
+	if plat := indexer.DeterminePlatform(zipFile.Filename, zipFile.Filepath); plat != indexer.PlatformGBA {
+		t.Errorf("zip platform: expected GBA, got %s", plat)
+	}
+
+	// Verify .7z
+	sevenZip, ok := byName["Metroid Dread [Switch].7z"]
+	if !ok {
+		t.Fatalf("missing Metroid Dread [Switch].7z")
+	}
+	if sevenZip.FormatCategory != "archive" {
+		t.Errorf("7z category: expected archive, got %s", sevenZip.FormatCategory)
+	}
+	if plat := indexer.DeterminePlatform(sevenZip.Filename, sevenZip.Filepath); plat != indexer.PlatformSwitch {
+		t.Errorf("7z platform: expected Switch, got %s", plat)
+	}
+}
+

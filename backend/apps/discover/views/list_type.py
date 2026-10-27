@@ -71,6 +71,7 @@ class DiscoverListView(APIView):
                 language=language,
                 is_anime=is_anime,
                 exclude_adult=exclude_adult,
+                user=request.user if getattr(request.user, "is_authenticated", False) else None,
             )
             serializer_cls = SeasonSummarySerializer
         else:

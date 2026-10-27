@@ -13,7 +13,7 @@ import {
 import { useRunningGame } from "@/features/launcher/hooks/use-running-game"
 import { getDesktopAPI, hasDesktopAPI, type DiskInfo } from "@/lib/desktop/api"
 import { useToast } from "@ui/molecules/toast"
-import { formatElapsed } from "@/features/launcher/utils"
+import { GameSessionStatusIndicator } from "@/features/launcher/components/atoms/game-session-status-indicator"
 
 interface ModernHeaderProps {
   activeTab: "dashboard" | "library"
@@ -141,20 +141,11 @@ export const ModernHeader = ({
       </div>
 
       {/* Middle: Live Running Game Pill (if active) */}
-      {runningGame && (
-        <div className="flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-500 dark:text-emerald-400 text-xs font-bold shadow-[0_0_20px_rgba(16,185,129,0.15)] animate-pulse">
-          <span className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-          </span>
-          <span className="font-semibold text-foreground max-w-[180px] truncate">
-            {runningGame.game.title}
-          </span>
-          <span className="text-[11px] font-mono text-emerald-600 dark:text-emerald-300/80 pl-1 border-l border-emerald-500/20">
-            {formatElapsed(elapsedMs)}
-          </span>
-        </div>
-      )}
+      <GameSessionStatusIndicator
+        runningGame={runningGame}
+        elapsedMs={elapsedMs}
+        variant="pill"
+      />
 
       {/* Right Controls: Search, Scan, Disk, Settings */}
       <div className="flex items-center gap-3">

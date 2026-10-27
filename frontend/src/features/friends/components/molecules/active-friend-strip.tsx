@@ -11,7 +11,7 @@ export const ActiveFriendStrip = ({ activeFriends }: ActiveFriendStripProps) => 
   if (activeFriends.length === 0) return null
 
   return (
-    <div className="relative rounded-2xl bg-[var(--dk-surface-glass)] p-4 border border-[var(--dk-separator)] shadow-sm">
+    <div className="relative rounded-2xl bg-[var(--dk-surface-glass)] backdrop-blur-xl shadow-[var(--dk-shadow-glass)] p-4">
       <div className="mb-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-primary" />

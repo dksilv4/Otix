@@ -137,7 +137,7 @@ export const FriendsNavDropdown = ({ bare }: FriendsNavDropdownProps) => {
             {/* Incoming Requests Banner (if any) */}
             {incomingCount > 0 && (
               <>
-                <div className="my-1 border-t" style={{ borderColor: 'var(--dk-separator)' }} />
+                <div className="my-1 h-[1px] bg-[var(--dk-surface-ghost)]" />
                 <div className="mx-1 my-1 flex flex-col gap-1.5 rounded-xl bg-primary/10 px-2.5 py-2 text-xs">
                   <div className="flex items-center justify-between text-primary font-semibold">
                     <div className="flex items-center gap-1.5">
@@ -201,7 +201,7 @@ export const FriendsNavDropdown = ({ bare }: FriendsNavDropdownProps) => {
             {/* Active Now Section */}
             {activeNowFriends.length > 0 && (
               <>
-                <div className="my-1 border-t" style={{ borderColor: 'var(--dk-separator)' }} />
+                <div className="my-1 h-[1px] bg-[var(--dk-surface-ghost)]" />
                 <div className="px-2 pt-1 pb-0.5 text-[11px] font-semibold text-primary flex items-center gap-1">
                   <Sparkles className="h-3 w-3" />
                   <span>Active Now ({activeNowFriends.length})</span>
@@ -249,7 +249,7 @@ export const FriendsNavDropdown = ({ bare }: FriendsNavDropdownProps) => {
             )}
 
             {/* All Friends List */}
-            <div className="my-1 border-t" style={{ borderColor: 'var(--dk-separator)' }} />
+            <div className="my-1 h-[1px] bg-[var(--dk-surface-ghost)]" />
             <div className="px-2 pt-1 pb-0.5 text-[11px] font-semibold text-muted-foreground">
               Friends List
             </div>
@@ -280,7 +280,7 @@ export const FriendsNavDropdown = ({ bare }: FriendsNavDropdownProps) => {
             )}
 
             {/* Bottom Actions matching UserMenu bottom links */}
-            <div className="my-1 border-t" style={{ borderColor: 'var(--dk-separator)' }} />
+            <div className="my-1 h-[1px] bg-[var(--dk-surface-ghost)]" />
 
             <button
               type="button"

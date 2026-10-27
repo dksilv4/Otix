@@ -1,4 +1,4 @@
-import { Building2 } from 'lucide-react'
+import { Building2, ChevronRight } from 'lucide-react'
 import { Link } from '@tanstack/react-router'
 import type { MediaItemDetail } from '@media'
 import { formatCurrency, formatDate, languageName } from '@media'
@@ -128,32 +128,59 @@ export const MediaSpecsCard = ({ detail, className = '' }: MediaSpecsCardProps) 
       {hasCompanies && (
         <div className="pt-2 space-y-2.5">
           <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-            Production
+            Production &amp; Studios
           </span>
 
-          <div className="flex flex-wrap gap-2">
-            {validCompanies.slice(0, 6).map((ic) => (
-              <Link
-                key={ic.id}
-                to="/company/$companyId"
-                params={{ companyId: ic.company.id }}
-                className="glass-inset inline-flex items-center gap-2 px-2.5 py-1.5 rounded-xl hover:bg-[var(--dk-surface-glass-hover)] transition-colors max-w-full"
-                title={ic.company.name}
-              >
-                {ic.company.logoUrl ? (
-                  <img
-                    src={ic.company.logoUrl}
-                    alt=""
-                    className="h-4 max-w-[48px] object-contain opacity-75"
-                  />
-                ) : (
-                  <Building2 className="h-3 w-3 text-muted-foreground shrink-0" />
-                )}
-                <span className="text-xs font-medium text-muted-foreground hover:text-foreground truncate max-w-[140px]">
-                  {ic.company.name}
-                </span>
-              </Link>
-            ))}
+          <div className="flex flex-col gap-2">
+            {validCompanies.slice(0, 6).map((ic) => {
+              const role = ic.developer
+                ? 'Developer'
+                : ic.publisher
+                  ? 'Publisher'
+                  : ic.production
+                    ? 'Production'
+                    : ic.porting
+                      ? 'Porting'
+                      : ic.supporting
+                        ? 'Supporting'
+                        : null
+
+              return (
+                <Link
+                  key={ic.id}
+                  to="/company/$companyId"
+                  params={{ companyId: ic.company.id }}
+                  className="w-full flex items-center justify-between p-2.5 rounded-xl bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-glass-hover)] transition-all duration-200 group shadow-xs cursor-pointer"
+                  title={ic.company.name}
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="h-8 w-10 rounded-lg bg-[var(--dk-surface-glass)] flex items-center justify-center p-1 shrink-0 overflow-hidden">
+                      {ic.company.logoUrl ? (
+                        <img
+                          src={ic.company.logoUrl}
+                          alt=""
+                          className="h-full w-full object-contain opacity-85 group-hover:opacity-100 transition-opacity"
+                        />
+                      ) : (
+                        <Building2 className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors" />
+                      )}
+                    </div>
+                    <span className="text-xs font-medium text-foreground/90 group-hover:text-primary transition-colors truncate">
+                      {ic.company.name}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0 ml-3">
+                    {role && (
+                      <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full bg-primary/10 text-primary">
+                        {role}
+                      </span>
+                    )}
+                    <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/40 group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
+                  </div>
+                </Link>
+              )
+            })}
           </div>
         </div>
       )}

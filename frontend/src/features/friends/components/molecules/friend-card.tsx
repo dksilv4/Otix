@@ -16,7 +16,7 @@ export const FriendCard = ({ friend, activeInfo, onManage }: FriendCardProps) =>
   const stateLabel = activeInfo?.stateLabel ?? 'Offline'
 
   return (
-    <div className="group relative flex flex-col justify-between rounded-2xl bg-[var(--dk-surface-glass)] p-4 transition-all duration-200 hover:bg-[var(--dk-surface-ghost-hover)] border border-[var(--dk-separator)] shadow-sm"
+    <div className="group relative flex flex-col justify-between rounded-2xl bg-[var(--dk-surface-glass)] backdrop-blur-xl shadow-[var(--dk-shadow-glass)] p-4 transition-all duration-200 hover:bg-[var(--dk-surface-glass-hover)]"
       data-context-type="user"
       data-user-id={friend.id}
       data-user-username={friend.username}
@@ -61,7 +61,7 @@ export const FriendCard = ({ friend, activeInfo, onManage }: FriendCardProps) =>
         </p>
       )}
 
-      <div className="mt-4 flex items-center justify-between gap-2 border-t border-[var(--dk-separator)] pt-3">
+      <div className="mt-4 flex items-center justify-between gap-2 pt-2">
         <span className="text-[11px] text-muted-foreground">
           {formatFriendsSince(friend.friendsSince)}
         </span>

@@ -16,17 +16,22 @@
   }
 
   &__textarea {
-    @apply w-full min-h-[140px] rounded-2xl px-4 py-3 text-sm resize-y transition-colors;
-    background: var(--dk-surface-field);
+    @apply w-full min-h-[140px] rounded-2xl px-4 py-3 text-sm resize-y transition-all;
+    background: var(--dk-surface-glass);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
 
     &::placeholder {
       color: hsl(var(--muted-foreground) / 0.5);
     }
 
+    &:hover {
+      background: var(--dk-surface-glass-hover);
+    }
+
     &:focus-visible {
       outline: none;
-      border-color: var(--dk-border-accent);
-      box-shadow: 0 0 0 1px var(--dk-border-accent);
+      box-shadow: 0 0 0 2px var(--dk-ring-color);
     }
 
     &:disabled {

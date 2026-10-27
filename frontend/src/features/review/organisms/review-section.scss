@@ -13,9 +13,11 @@
 /* ── Card ────────────────────────────────────────────── */
 
 .dk-review-section__card {
-  @apply rounded-3xl border border-[var(--dk-separator)];
+  @apply rounded-3xl;
   background: var(--dk-surface-ghost);
-  box-shadow: var(--dk-shadow-xs);
+  box-shadow: var(--dk-shadow-sm);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   transition: background var(--dk-duration-fast) var(--dk-ease-out);
 
   &--loading {

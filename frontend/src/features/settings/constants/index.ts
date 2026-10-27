@@ -13,6 +13,7 @@ import {
   Server,
   SlidersHorizontal,
   Sparkles,
+  ScrollText,
 } from 'lucide-react'
 import type { ComponentType } from 'react'
 import type { PluginSettingsTab } from '@/features/_config/slots'
@@ -92,6 +93,15 @@ export const NAV_ITEMS: NavItem[] = [
     requiresAuth: false,
     group: 'preferences',
     keywords: 'sound quiet hours push desktop chime alerts',
+  },
+  {
+    id: 'release-notes',
+    label: 'Release Notes',
+    icon: ScrollText,
+    desktop: false,
+    requiresAuth: false,
+    group: 'preferences',
+    keywords: 'changelog updates release notes version features fixes what is new',
   },
   {
     id: 'nodes',

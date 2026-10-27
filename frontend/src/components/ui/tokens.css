@@ -46,6 +46,31 @@
   --status-warning-foreground: oklch(0.2 0.05 70.08);
   --status-offline: oklch(0.577 0.245 27.325);
   --status-offline-foreground: oklch(0.985 0 0);
+
+  /* Level Tier Tokens */
+  --tier-transcendent: oklch(0.75 0.18 290);
+  --tier-transcendent-bar: oklch(0.75 0.18 290 / 0.2);
+  --tier-transcendent-glow: oklch(0.7 0.2 290 / 0.25);
+
+  --tier-master: oklch(0.78 0.16 200);
+  --tier-master-bar: oklch(0.78 0.16 200 / 0.2);
+  --tier-master-glow: oklch(0.75 0.18 200 / 0.25);
+
+  --tier-expert: oklch(0.75 0.17 150);
+  --tier-expert-bar: oklch(0.75 0.17 150 / 0.2);
+  --tier-expert-glow: oklch(0.7 0.19 150 / 0.25);
+
+  --tier-adept: oklch(0.78 0.17 75);
+  --tier-adept-bar: oklch(0.78 0.17 75 / 0.2);
+  --tier-adept-glow: oklch(0.75 0.18 75 / 0.25);
+
+  --tier-apprentice: oklch(0.7 0.05 240);
+  --tier-apprentice-bar: oklch(0.7 0.05 240 / 0.2);
+  --tier-apprentice-glow: oklch(0.65 0.06 240 / 0.25);
+
+  --tier-novice: oklch(0.65 0.16 45);
+  --tier-novice-bar: oklch(0.65 0.16 45 / 0.2);
+  --tier-novice-glow: oklch(0.6 0.18 45 / 0.25);
 }
 
 [data-theme='dark'] {
@@ -72,6 +97,31 @@
   --status-warning-foreground: oklch(0.18 0.05 75);
   --status-offline: oklch(0.65 0.24 25.7);
   --status-offline-foreground: oklch(0.985 0 0);
+
+  /* Level Tier Tokens */
+  --tier-transcendent: oklch(0.75 0.18 290);
+  --tier-transcendent-bar: oklch(0.75 0.18 290 / 0.2);
+  --tier-transcendent-glow: oklch(0.7 0.2 290 / 0.25);
+
+  --tier-master: oklch(0.78 0.16 200);
+  --tier-master-bar: oklch(0.78 0.16 200 / 0.2);
+  --tier-master-glow: oklch(0.75 0.18 200 / 0.25);
+
+  --tier-expert: oklch(0.75 0.17 150);
+  --tier-expert-bar: oklch(0.75 0.17 150 / 0.2);
+  --tier-expert-glow: oklch(0.7 0.19 150 / 0.25);
+
+  --tier-adept: oklch(0.78 0.17 75);
+  --tier-adept-bar: oklch(0.78 0.17 75 / 0.2);
+  --tier-adept-glow: oklch(0.75 0.18 75 / 0.25);
+
+  --tier-apprentice: oklch(0.7 0.05 240);
+  --tier-apprentice-bar: oklch(0.7 0.05 240 / 0.2);
+  --tier-apprentice-glow: oklch(0.65 0.06 240 / 0.25);
+
+  --tier-novice: oklch(0.65 0.16 45);
+  --tier-novice-bar: oklch(0.65 0.16 45 / 0.2);
+  --tier-novice-glow: oklch(0.6 0.18 45 / 0.25);
 }
 
 /* ═══════════════════════════════════════════════

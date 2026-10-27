@@ -1,27 +1,28 @@
 import { useMemo, useState, useEffect, useCallback } from "react"
 import { Helmet } from "react-helmet-async"
-import { Outlet, useLocation, useNavigate } from "@tanstack/react-router"
+import { Outlet, useLocation, useNavigate, useRouterState } from "@tanstack/react-router"
 import { motion, AnimatePresence } from "framer-motion"
 import {
   BookmarkIcon, Gamepad2Icon, LayoutDashboardIcon, ListIcon,
-  SlidersHorizontal, Check,
+  SlidersHorizontal,
 } from "lucide-react"
 import { useAuth } from "@/lib/providers/auth"
+import { useModal } from "@/lib/modals"
 import { TAB_LABELS } from "@library/library-queries"
 import { getPlatformTabs } from "@library/platforms"
 import { CORE_TABS } from "@library/constants"
 import { TabBar } from "@library/molecules/tab-bar"
+import { LibraryTabSettingsModal } from "@library/molecules/library-tab-settings-modal"
 import { useSlotData, SlotRenderer } from "@/features/_config/slots"
 import { getPluginAPI, getPluginIcon } from "@/features/plugins/api"
 import type { SlotContribution, PluginInfo } from "@/features/plugins/types/plugins"
 import { OfflineNotice } from "@/lib/offline-notice"
-import { cn } from "@/lib/utils"
 
 // Side-effect imports to register platform definitions
 import "@library/platforms/steam"
 import "@library/platforms/plex"
 import "@library/platforms/youtube"
-import { VISIBILITY_KEY, readVisibility } from "../utils"
+import { readVisibility, readTabOrder, sortTabsByOrder } from "../utils"
 
 type LibTab = {
   id: string
@@ -37,8 +38,10 @@ export const LibraryLayout = () => {
   const { user, isLoading: authLoading } = useAuth()
 
   // Plugin/all tabs have no URL, so they live in local state; media tabs navigate.
+  const { openModal } = useModal()
+  const isPending = useRouterState({ select: (s) => s.status === 'pending' })
   const [customTab, setCustomTab] = useState<string | null>(null)
-  const [manageOpen, setManageOpen] = useState(false)
+  const [tabOrder, setTabOrder] = useState<string[] | null>(readTabOrder)
   const [visibility, setVisibility] = useState<string[] | null>(readVisibility)
   const [pluginInfos, setPluginInfos] = useState<PluginInfo[]>([])
   const { data: slotData } = useSlotData("library")
@@ -101,21 +104,29 @@ export const LibraryLayout = () => {
 
   const allTabs = useMemo(() => [...mediaTabs, ...pluginTabs], [mediaTabs, pluginTabs])
 
-  const visibleTabs = useMemo<LibTab[]>(() => {
-    return allTabs.filter((t) => !visibility || visibility.includes(t.id))
-  }, [allTabs, visibility])
+  const orderedTabs = useMemo(() => {
+    return sortTabsByOrder(allTabs, tabOrder)
+  }, [allTabs, tabOrder])
 
-  const setTabVisible = useCallback((id: string, visible: boolean) => {
-    setVisibility((prev) => {
-      const base = prev ?? allTabs.map((t) => t.id)
-      const next = new Set(base)
-      if (visible) next.add(id)
-      else next.delete(id)
-      const arr = allTabs.map((t) => t.id).filter((tabId) => next.has(tabId))
-      try { localStorage.setItem(VISIBILITY_KEY, JSON.stringify(arr)) } catch { /* ignore */ }
-      return arr
-    })
-  }, [allTabs])
+  const visibleTabs = useMemo<LibTab[]>(() => {
+    return orderedTabs.filter((t) => !visibility || visibility.includes(t.id))
+  }, [orderedTabs, visibility])
+
+  const handleOpenSettingsModal = useCallback(() => {
+    let closeFn: () => void = () => {}
+    closeFn = openModal(
+      <LibraryTabSettingsModal
+        allTabs={allTabs.map((t) => ({ id: t.id, label: t.label, icon: t.icon }))}
+        currentOrder={tabOrder ?? allTabs.map((t) => t.id)}
+        currentVisibility={visibility ?? allTabs.map((t) => t.id)}
+        onSave={(newOrder, newVisibility) => {
+          setTabOrder(newOrder)
+          setVisibility(newVisibility)
+        }}
+        onClose={() => closeFn()}
+      />,
+    )
+  }, [allTabs, tabOrder, visibility, openModal])
 
   const handleTabClick = useCallback((id: string) => {
     // Plugin tabs have no URL route
@@ -148,40 +159,22 @@ export const LibraryLayout = () => {
 
       <div className="flex items-start gap-2 mb-2">
         <div className="flex-1 min-w-0">
-          <TabBar tabs={visibleTabs} activeTab={activeTab} onTabClick={handleTabClick} />
+          <TabBar
+            tabs={visibleTabs}
+            activeTab={activeTab}
+            onTabClick={handleTabClick}
+            isLoading={isPending}
+          />
         </div>
         <div className="relative shrink-0 pt-0.5">
           <button
-            onClick={() => setManageOpen((open) => !open)}
-            className={cn(
-              "flex items-center gap-1.5 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors duration-200",
-              manageOpen ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground",
-            )}
-            aria-label="Manage tabs"
+            type="button"
+            onClick={handleOpenSettingsModal}
+            className="flex items-center gap-1.5 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-ghost-hover)] transition-colors duration-200"
+            aria-label="Customize tabs"
           >
             <SlidersHorizontal className="h-4 w-4" />
           </button>
-          {manageOpen && (
-            <div className="absolute right-0 top-full z-30 mt-2 w-64 rounded-xl border border-border bg-background p-2 shadow-2xl">
-              <p className="px-2 pb-1.5 pt-1 text-xs font-medium text-muted-foreground">Show tabs</p>
-              {allTabs.map((tab) => {
-                const checked = !visibility || visibility.includes(tab.id)
-                return (
-                  <button
-                    key={tab.id}
-                    onClick={() => setTabVisible(tab.id, !checked)}
-                    className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-foreground hover:bg-muted"
-                  >
-                    <span className={cn("flex h-4 w-4 shrink-0 items-center justify-center rounded border", checked ? "border-primary bg-primary text-primary-foreground" : "border-border")}>
-                      {checked && <Check className="h-3 w-3" />}
-                    </span>
-                    {tab.icon}
-                    {tab.label}
-                  </button>
-                )
-              })}
-            </div>
-          )}
         </div>
       </div>
 

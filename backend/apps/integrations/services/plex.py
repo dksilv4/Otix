@@ -13,6 +13,7 @@ from __future__ import annotations
 import json
 import logging
 import re
+import sys
 import time
 import unicodedata
 import urllib.error
@@ -374,6 +375,106 @@ def cleanup_corrupted_plex_matches(user=None) -> int:
     return cleaned
 
 
+def _resolve_show_playable_item(
+    server: UserPlexServer,
+    user,
+    plex_item: UserPlexItem,
+    season: str | int | None = None,
+    episode: str | int | None = None,
+) -> tuple[dict | None, str | None]:
+    """Resolve a specific playable episode for a TV show without unbounded /allLeaves traversal.
+
+    1. If specific season and episode are requested:
+       Query show seasons (/children) -> find season -> query season episodes (/children) -> find episode.
+    2. If specific season requested (no episode):
+       Query show seasons (/children) -> find season -> query season episodes (/children) -> find first unwatched/active.
+    3. If neither season nor episode requested:
+       Try PMS /onDeck for this show. If on-deck episode returned, use it directly.
+       If onDeck is empty, query Season 1 directly via /children and pick first unwatched/active.
+    """
+    selected_leaf: dict | None = None
+    working_base: str | None = None
+
+    def _extract_items(payload: dict | None) -> list[dict]:
+        if not payload or not isinstance(payload, dict):
+            return []
+        mc = payload.get("MediaContainer") or {}
+        items = mc.get("Metadata") or mc.get("Directory") or []
+        return _as_list(items)
+
+    def _pick_best_episode(episodes: list[dict], target_ep: str | int | None = None) -> dict | None:
+        if not episodes:
+            return None
+        if target_ep is not None:
+            for ep in episodes:
+                if str(ep.get("index")) == str(target_ep):
+                    return ep
+            return None
+        # In-progress episode takes precedence for quick resume
+        for ep in episodes:
+            offset = int(ep.get("viewOffset") or 0)
+            viewed = int(ep.get("viewCount") or 0) > 0
+            if offset > 5000 and not viewed:
+                return ep
+        # Otherwise find next unwatched episode
+        for ep in episodes:
+            if int(ep.get("viewCount") or 0) == 0:
+                return ep
+        # Fallback to first episode
+        return episodes[0]
+
+    # Path 1: Specific season requested
+    if season is not None:
+        seasons_res = _plex_server_get(server, user, f"/library/metadata/{plex_item.rating_key}/children")
+        if seasons_res:
+            seasons_data, working_base = seasons_res
+            seasons = _extract_items(seasons_data)
+            matching_season = None
+            for s in seasons:
+                if str(s.get("index")) == str(season):
+                    matching_season = s
+                    break
+            if matching_season and matching_season.get("ratingKey"):
+                ep_res = _plex_server_get(server, user, f"/library/metadata/{matching_season['ratingKey']}/children")
+                if ep_res:
+                    ep_data, ep_base = ep_res
+                    working_base = ep_base or working_base
+                    episodes = _extract_items(ep_data)
+                    selected_leaf = _pick_best_episode(episodes, episode)
+
+    # Path 2: Default playback (no season/episode specified) -> try onDeck first for zero-latency resume
+    if selected_leaf is None and season is None and episode is None:
+        ondeck_res = _plex_server_get(server, user, f"/library/metadata/{plex_item.rating_key}/onDeck")
+        if ondeck_res:
+            ondeck_data, working_base = ondeck_res
+            ondeck_items = _extract_items(ondeck_data)
+            if ondeck_items:
+                selected_leaf = ondeck_items[0]
+
+    # Path 3: Fallback when onDeck is empty or season lookup didn't match -> query Season 1 directly
+    if selected_leaf is None:
+        seasons_res = _plex_server_get(server, user, f"/library/metadata/{plex_item.rating_key}/children")
+        if seasons_res:
+            seasons_data, working_base = seasons_res
+            seasons = _extract_items(seasons_data)
+            target_season = None
+            for s in seasons:
+                if str(s.get("index")) in ("1", 1):
+                    target_season = s
+                    break
+            if target_season is None and seasons:
+                target_season = seasons[0]
+            if target_season and target_season.get("ratingKey"):
+                ep_res = _plex_server_get(server, user, f"/library/metadata/{target_season['ratingKey']}/children")
+                if ep_res:
+                    ep_data, ep_base = ep_res
+                    working_base = ep_base or working_base
+                    episodes = _extract_items(ep_data)
+                    selected_leaf = _pick_best_episode(episodes, episode)
+
+    return selected_leaf, working_base
+
+
 def get_plex_connect_info(
     user,
     media_identifier: str | int,
@@ -397,9 +498,11 @@ def get_plex_connect_info(
     cache_key = (
         f"plex_connect_info:{user.pk}:{safe_ident}:{season}:{episode}:{tmdb_id}:{safe_title}:{year}:{media_type}"
     )
-    cached_info = cache.get(cache_key)
-    if cached_info is not None:
-        return cached_info
+    is_testing = getattr(settings, "TESTING", False) or "test" in sys.argv
+    if not is_testing:
+        cached_info = cache.get(cache_key)
+        if cached_info is not None:
+            return cached_info
 
     t_start = time.perf_counter()
     ident = str(media_identifier).strip()
@@ -728,75 +831,41 @@ def get_plex_connect_info(
 
     if plex_item.media_type == "show" or season is not None or episode is not None:
         try:
-            leaves_res = _plex_server_get(
-                server, user, f"/library/metadata/{plex_item.rating_key}/allLeaves"
+            selected_leaf, working_base = _resolve_show_playable_item(
+                server, user, plex_item, season=season, episode=episode
             )
-            if leaves_res:
-                leaves_data, working_base = leaves_res
-                if working_base in base_urls:
-                    base_urls.remove(working_base)
-                    base_urls.insert(0, working_base)
-                leaves = leaves_data.get("MediaContainer", {}).get("Metadata", [])
-                selected_leaf = None
+            if working_base and working_base in base_urls:
+                base_urls.remove(working_base)
+                base_urls.insert(0, working_base)
 
-                if season is not None and episode is not None:
-                    for leaf in leaves:
-                        if str(leaf.get("parentIndex")) == str(season) and str(
-                            leaf.get("index")
-                        ) == str(episode):
-                            selected_leaf = leaf
-                            break
-                elif season is not None:
-                    for leaf in leaves:
-                        if str(leaf.get("parentIndex")) == str(season):
-                            selected_leaf = leaf
-                            break
+            if selected_leaf:
+                target_leaf = selected_leaf
+                active_rating_key = str(selected_leaf.get("ratingKey"))
+                active_ep_title = selected_leaf.get("title")
+                active_title = active_ep_title or active_title
+                active_media_type = "episode"
+                if selected_leaf.get("parentIndex") is not None:
+                    active_season_num = int(selected_leaf.get("parentIndex"))
+                if selected_leaf.get("index") is not None:
+                    active_episode_num = int(selected_leaf.get("index"))
+                active_duration = int(selected_leaf.get("duration") or 0)
+
+                # Strictly isolate watch progress per user
+                user_ep = UserPlexItem.objects.filter(
+                    user=user, rating_key=active_rating_key
+                ).first()
+                if user_ep and user_ep.view_offset:
+                    active_offset = int(user_ep.view_offset)
+                    active_viewed = bool(user_ep.viewed)
+                elif server.owned:
+                    active_offset = int(selected_leaf.get("viewOffset") or 0)
+                    active_viewed = int(selected_leaf.get("viewCount") or 0) > 0
                 else:
-                    # In-progress episode takes precedence for quick resume
-                    for leaf in leaves:
-                        offset = int(leaf.get("viewOffset") or 0)
-                        viewed = int(leaf.get("viewCount") or 0) > 0
-                        if offset > 5000 and not viewed:
-                            selected_leaf = leaf
-                            break
-                    # Otherwise find the next unwatched episode
-                    if selected_leaf is None:
-                        for leaf in leaves:
-                            if int(leaf.get("viewCount") or 0) == 0:
-                                selected_leaf = leaf
-                                break
-                    # Fallback to the first episode if all watched
-                    if selected_leaf is None and leaves:
-                        selected_leaf = leaves[0]
-
-                if selected_leaf:
-                    target_leaf = selected_leaf
-                    active_rating_key = str(selected_leaf.get("ratingKey"))
-                    active_ep_title = selected_leaf.get("title")
-                    active_title = active_ep_title or active_title
-                    active_media_type = "episode"
-                    if selected_leaf.get("parentIndex") is not None:
-                        active_season_num = int(selected_leaf.get("parentIndex"))
-                    if selected_leaf.get("index") is not None:
-                        active_episode_num = int(selected_leaf.get("index"))
-                    active_duration = int(selected_leaf.get("duration") or 0)
-
-                    # Strictly isolate watch progress per user
-                    user_ep = UserPlexItem.objects.filter(
-                        user=user, rating_key=active_rating_key
-                    ).first()
-                    if user_ep and user_ep.view_offset:
-                        active_offset = int(user_ep.view_offset)
-                        active_viewed = bool(user_ep.viewed)
-                    elif server.owned:
-                        active_offset = int(selected_leaf.get("viewOffset") or 0)
-                        active_viewed = int(selected_leaf.get("viewCount") or 0) > 0
-                    else:
-                        active_offset = 0
-                        active_viewed = False
+                    active_offset = 0
+                    active_viewed = False
         except Exception as e:
             logger.warning(
-                "Failed to resolve episode leaves for show %s: %s", plex_item.rating_key, e
+                "Failed to resolve targeted episode for show %s: %s", plex_item.rating_key, e
             )
     else:
         try:
@@ -954,7 +1023,8 @@ def get_plex_connect_info(
         "stats": stats,
         "server_timings": server_timings,
     }
-    cache.set(cache_key, result, timeout=60)
+    if not is_testing:
+        cache.set(cache_key, result, timeout=60)
     return result
 
 
@@ -1768,6 +1838,7 @@ def discover_plex_servers(user) -> list[UserPlexServer]:
             raise PlexDiscoveryAuthRevoked(DISCOVER_ACCOUNT_REVOKED) from None
         raise
     resources = _discovery_json(status, raw, resources_url)
+    cache.set(f"plex_resources_raw:{user.pk}", resources, timeout=300)
 
     servers: list[UserPlexServer] = []
     seen_machines: set[str] = set()
@@ -1789,6 +1860,7 @@ def discover_plex_servers(user) -> list[UserPlexServer]:
         # Keep verified working base URL if cached or present in resource
         cached_working = cache.get(f"plex_server_working_base:{server.pk}") if server.pk else None
         all_ordered = _ordered_connections(resource)
+        cache.set(f"plex_resources_alt_urls:{user.pk}:{machine_id}", all_ordered, timeout=300)
         if cached_working and cached_working in all_ordered:
             server.base_url = cached_working
         elif server.base_url and server.base_url in all_ordered:

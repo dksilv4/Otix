@@ -48,7 +48,7 @@ const YoutubeEmptyState = ({ onScan }: PlatformEmptyStateProps) => {
         </button>
         <button
           onClick={() => navigate({ to: "/settings" })}
-          className="inline-flex items-center gap-2 rounded-lg bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-glass-hover)] px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground border border-[var(--dk-separator)] transition-colors"
+          className="inline-flex items-center gap-2 rounded-lg bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-glass-hover)] px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground border border-white/[0.04] transition-colors"
         >
           Open Settings
         </button>
@@ -95,7 +95,7 @@ const YoutubeVideoCard = ({ video }: { video: YoutubeLikedVideo }) => {
 
   // Unmatched — show raw YouTube data
   return (
-    <div className="group rounded-xl overflow-hidden bg-[var(--dk-surface-glass)] border border-[var(--dk-separator)] hover:bg-[var(--dk-surface-elevated)] transition-all">
+    <div className="group rounded-xl overflow-hidden bg-[var(--dk-surface-glass)]/60 backdrop-blur-xl border border-white/[0.04] hover:bg-[var(--dk-surface-elevated)] transition-all">
       <a href={youtubeUrl} target="_blank" rel="noopener noreferrer" className="block">
         <div className="aspect-video bg-black/20 dark:bg-black/40 relative overflow-hidden">
           {video.thumbnailUrl ? (
@@ -236,7 +236,7 @@ const YoutubeOverviewModule = () => {
   if (items.length === 0) return null
 
   return (
-    <div className="rounded-2xl overflow-hidden bg-[var(--dk-surface-glass)] border border-[var(--dk-separator)]">
+    <div className="rounded-2xl overflow-hidden bg-[var(--dk-surface-glass)]/60 backdrop-blur-xl border border-white/[0.04]">
       <button className="w-full flex items-center gap-3 p-4 hover:bg-[var(--dk-surface-elevated)] transition-colors text-left">
         <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-red-500/10 shrink-0">
           <Play className="h-5 w-5 text-red-500" />

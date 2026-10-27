@@ -54,22 +54,22 @@ export const NodeDownloaderCard = ({ server }: { server: GameServer }) => {
   }
 
   return (
-    <div className="rounded-2xl p-4 bg-[var(--dk-surface-base)] border border-[var(--dk-separator)] space-y-3">
+    <div className="rounded-2xl p-4 bg-[var(--dk-surface-glass)] backdrop-blur-xl shadow-[var(--dk-shadow-glass)] space-y-3">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-3.5 min-w-0">
-          <div className="h-11 w-11 rounded-2xl bg-amber-500/10 flex items-center justify-center shrink-0 border border-amber-500/20 text-amber-600 dark:text-amber-400">
+          <div className="h-11 w-11 rounded-2xl bg-[var(--status-warning)]/15 flex items-center justify-center shrink-0 text-[var(--status-warning)]">
             <DownloadCloud className="h-5 w-5" />
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <h4 className="text-sm font-bold text-foreground">SABnzbd Downloader</h4>
               {isConfigured ? (
-                <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-[var(--status-online)] bg-[var(--status-online)]/15 px-2 py-0.5 rounded-full">
+                  <span className="h-1.5 w-1.5 rounded-full bg-[var(--status-online)] animate-pulse" />
                   Connected
                 </span>
               ) : (
-                <span className="inline-flex items-center gap-1 text-[10px] font-medium text-muted-foreground bg-[var(--dk-surface-ghost)] px-2 py-0.5 rounded-full border border-[var(--dk-separator)]">
+                <span className="inline-flex items-center gap-1 text-[10px] font-medium text-muted-foreground bg-[var(--dk-surface-ghost)] px-2 py-0.5 rounded-full">
                   Not Configured
                 </span>
               )}
@@ -93,7 +93,7 @@ export const NodeDownloaderCard = ({ server }: { server: GameServer }) => {
             title="Configure Client"
             aria-label="Configure Client"
           >
-            <Sliders className="h-4 w-4 text-amber-400" />
+            <Sliders className="h-4 w-4 text-foreground/80" />
           </DkButton>
           <DkButton
             size="sm"
@@ -104,19 +104,19 @@ export const NodeDownloaderCard = ({ server }: { server: GameServer }) => {
             title="Test Connection"
             aria-label="Test Connection"
           >
-            <RefreshCw className={cn('h-4 w-4 text-sky-400', testing && 'animate-spin')} />
+            <RefreshCw className={cn('h-4 w-4 text-primary', testing && 'animate-spin')} />
           </DkButton>
         </div>
       </div>
 
       {testResult?.ok && (
-        <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-400 flex items-center gap-2">
+        <div className="p-2.5 rounded-xl bg-[var(--status-online)]/10 text-xs text-[var(--status-online)] flex items-center gap-2">
           <CheckCircle2 className="h-4 w-4 shrink-0" />
           <span>{testResult.message || 'SABnzbd is connected and responding.'}</span>
         </div>
       )}
       {testResult && !testResult.ok && (
-        <div className="p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-xs text-rose-400 flex items-center gap-2">
+        <div className="p-2.5 rounded-xl bg-destructive/10 text-xs text-destructive flex items-center gap-2">
           <AlertCircle className="h-4 w-4 shrink-0" />
           <span>{testResult.message || 'Could not connect to SABnzbd.'}</span>
         </div>

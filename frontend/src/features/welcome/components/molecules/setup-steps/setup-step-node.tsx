@@ -97,8 +97,8 @@ export const SetupStepNode = ({
 
         {/* If node is detected: Claim form or Orphaned Reset */}
         {isOnline && !isSuccess && isOrphaned && (
-          <div className="pt-3 border-t border-[var(--dk-separator)] space-y-3">
-            <div className="rounded-xl p-3.5 bg-destructive/10 border border-[var(--dk-separator)] space-y-2">
+          <div className="pt-3 space-y-3">
+            <div className="rounded-xl p-3.5 bg-destructive/10 space-y-2">
               <div className="flex items-center gap-2 text-destructive font-semibold text-xs">
                 <AlertCircle className="h-4 w-4 shrink-0" />
                 <span>Node is linked to a deleted or different account</span>
@@ -133,7 +133,7 @@ export const SetupStepNode = ({
         )}
 
         {isOnline && !isSuccess && !isOrphaned && (
-          <div className="pt-3 border-t border-[var(--dk-separator)] space-y-3">
+          <div className="pt-3 space-y-3">
             <div className="space-y-1.5">
               <label className="text-xs font-semibold text-foreground">
                 6-Digit Claim PIN
@@ -184,7 +184,7 @@ export const SetupStepNode = ({
 
         {/* If Claim Succeeded */}
         {isSuccess && (
-          <div className="pt-3 border-t border-[var(--dk-separator)] flex items-center gap-2.5 text-xs text-primary font-semibold">
+          <div className="pt-3 flex items-center gap-2.5 text-xs text-primary font-semibold">
             <CheckCircle2 className="h-4 w-4 shrink-0" />
             <span>Otix Node linked successfully to your account!</span>
           </div>
@@ -192,7 +192,7 @@ export const SetupStepNode = ({
 
         {/* If Node is not running: Helpful instructions */}
         {!isOnline && (
-          <div className="pt-3 border-t border-[var(--dk-separator)] space-y-3 text-xs text-muted-foreground">
+          <div className="pt-3 space-y-3 text-xs text-muted-foreground">
             <p>
               The Otix Node companion runs automatically on Desktop, or can be deployed independently
               on your home server, NAS, or Docker.

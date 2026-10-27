@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron';
-import type { LocalGame } from './preload-api';
+import type { LocalGame, NodeDaemonStatus } from './preload-api';
 
 // Resolves once the main process has registered all IPC handlers.
 let _resolveIpcReady: (() => void) | null = null;
@@ -364,8 +364,8 @@ contextBridge.exposeInMainWorld('desktopAPI', {
     start: (port?: number) => ipcRenderer.invoke('node-daemon:start', port),
     stop: () => ipcRenderer.invoke('node-daemon:stop'),
     restart: (port?: number) => ipcRenderer.invoke('node-daemon:restart', port),
-    onStatusChanged: (callback: (status: any) => void) => {
-      const handler = (_event: any, status: any) => callback(status);
+    onStatusChanged: (callback: (status: NodeDaemonStatus) => void) => {
+      const handler = (_event: any, status: NodeDaemonStatus) => callback(status);
       ipcRenderer.on('node-daemon:status-changed', handler);
       return () => ipcRenderer.removeListener('node-daemon:status-changed', handler);
     },

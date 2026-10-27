@@ -3,13 +3,12 @@
 /* ── Rating Card (User Rating Only) ─────────────────────── */
 
 .dk-rating-card {
-  @apply rounded-xl px-4 py-3 transition-all duration-150 flex items-center justify-between gap-3 border border-[var(--dk-separator)];
+  @apply rounded-xl px-4 py-3 transition-all duration-150 flex items-center justify-between gap-3;
   background: var(--dk-surface-ghost);
   box-shadow: var(--dk-shadow-xs);
 
   &:hover {
     background: var(--dk-surface-ghost-hover);
-    border-color: var(--dk-separator);
   }
 }
 
@@ -18,7 +17,7 @@
 }
 
 .dk-rating-card__avatar {
-  @apply h-8 w-8 rounded-full flex items-center justify-center text-xs font-semibold uppercase shrink-0 text-foreground bg-[var(--dk-surface-glass)] border border-[var(--dk-separator)];
+  @apply h-8 w-8 rounded-full flex items-center justify-center text-xs font-semibold uppercase shrink-0 text-foreground bg-[var(--dk-surface-glass)];
 }
 
 .dk-rating-card__meta {
@@ -46,7 +45,7 @@
 }
 
 .dk-rating-card__badge--own {
-  @apply text-[10px] font-medium px-1.5 py-0.5 rounded bg-primary/10 text-primary/80 border border-primary/20;
+  @apply text-[10px] font-medium px-1.5 py-0.5 rounded bg-primary/15 text-primary;
 }
 
 .dk-rating-card__action-text {
@@ -66,5 +65,5 @@
 }
 
 .dk-rating-card__edit-btn {
-  @apply inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs text-muted-foreground/60 hover:text-foreground hover:bg-[var(--dk-surface-glass-hover)] transition-colors border border-transparent hover:border-[var(--dk-separator)];
+  @apply inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs text-muted-foreground/60 hover:text-foreground hover:bg-[var(--dk-surface-glass-hover)] transition-colors;
 }

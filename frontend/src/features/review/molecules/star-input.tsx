@@ -43,11 +43,11 @@ const StarInput = ({ value, onChange, size = "md", disabled = false, className }
     if (disabled) return
     if (pointerActiveRef.current) {
       holdScoreRef.current = score
-      setTooltipScore(score)
-      setHoveredScore(score)
+      setTooltipScore((prev) => (prev === score ? prev : score))
+      setHoveredScore((prev) => (prev === score ? prev : score))
       try { navigator.vibrate?.(10) } catch { /* not supported */ }
     } else {
-      setHoveredScore(score)
+      setHoveredScore((prev) => (prev === score ? prev : score))
     }
   }, [disabled])
 
@@ -55,8 +55,10 @@ const StarInput = ({ value, onChange, size = "md", disabled = false, className }
     if (disabled) return
     if (pointerActiveRef.current) {
       holdScoreRef.current = score
-      setTooltipScore(score)
-      setHoveredScore(score)
+      setTooltipScore((prev) => (prev === score ? prev : score))
+      setHoveredScore((prev) => (prev === score ? prev : score))
+    } else {
+      setHoveredScore((prev) => (prev === score ? prev : score))
     }
   }, [disabled])
 

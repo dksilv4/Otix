@@ -63,7 +63,7 @@ export const HeroCard = ({
       className={`absolute rounded-xl cursor-pointer shadow-[0_24px_60px_rgba(0,0,0,0.85)]${isActive ? ' z-10' : ''} ${className || ''}`}
       style={{
         ...style,
-        ...(isActive ? {} : { filter: `brightness(0.6) blur(${layerDistance * 2}px)` }),
+        ...(isActive ? {} : { filter: 'brightness(0.7)', opacity: Math.max(0.45, 1 - layerDistance * 0.22) }),
       }}
       onMouseMove={isActive ? handleMouseMove : undefined}
       onMouseEnter={onMouseEnter}

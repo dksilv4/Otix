@@ -1,5 +1,5 @@
 import { useRef, useState, useEffect, useCallback, useMemo } from 'react'
-import { ChevronLeft, ChevronRight, Layers, Sparkles } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Layers } from 'lucide-react'
 import { MediaCard } from '@ui/molecules/media-card'
 import { useQuery } from '@tanstack/react-query'
 import { mediaQueries, formatYear, useMediaParams } from '@media'
@@ -110,8 +110,7 @@ export const CollectionSection = ({ className }: { className?: string } = {}) =>
 
           <div className="space-y-1 min-w-0">
             <div className="flex items-center gap-2">
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider text-primary bg-primary/10">
-                <Sparkles className="h-2.5 w-2.5" />
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider text-primary bg-primary/10">
                 Franchise
               </span>
               {years && (
@@ -138,7 +137,7 @@ export const CollectionSection = ({ className }: { className?: string } = {}) =>
               type="button"
               onClick={() => scrollBy(-360)}
               disabled={!canScrollLeft}
-              className="p-1.5 rounded-lg bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-base)] border border-[var(--dk-separator)] text-muted-foreground hover:text-foreground disabled:opacity-25 disabled:pointer-events-none transition-all shadow-sm active:scale-95"
+              className="p-1.5 rounded-lg bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-base)] text-muted-foreground hover:text-foreground disabled:opacity-25 disabled:pointer-events-none transition-all shadow-sm active:scale-95 cursor-pointer"
               aria-label="Scroll left"
             >
               <ChevronLeft className="h-4 w-4" />
@@ -147,7 +146,7 @@ export const CollectionSection = ({ className }: { className?: string } = {}) =>
               type="button"
               onClick={() => scrollBy(360)}
               disabled={!canScrollRight}
-              className="p-1.5 rounded-lg bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-base)] border border-[var(--dk-separator)] text-muted-foreground hover:text-foreground disabled:opacity-25 disabled:pointer-events-none transition-all shadow-sm active:scale-95"
+              className="p-1.5 rounded-lg bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-base)] text-muted-foreground hover:text-foreground disabled:opacity-25 disabled:pointer-events-none transition-all shadow-sm active:scale-95 cursor-pointer"
               aria-label="Scroll right"
             >
               <ChevronRight className="h-4 w-4" />

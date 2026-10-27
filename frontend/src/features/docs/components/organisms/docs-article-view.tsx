@@ -36,7 +36,7 @@ export const DocsArticleView = ({
       aria-label={article.title}
     >
       {/* Header Block */}
-      <header className="space-y-3 pb-6 border-b border-[var(--dk-separator)]">
+      <header className="space-y-3 pb-6">
         <div className="flex items-center gap-2">
           <span className="text-xs font-semibold tracking-wider uppercase text-primary">
             {category.title}
@@ -63,7 +63,7 @@ export const DocsArticleView = ({
               <h2
                 key={`subhead-${block.subheading.id}-${idx}`}
                 id={block.subheading.id}
-                className="text-xl sm:text-2xl font-bold tracking-tight text-foreground pt-6 pb-2 scroll-mt-24 border-b border-[var(--dk-separator)]"
+                className="text-xl sm:text-2xl font-bold tracking-tight text-foreground pt-6 pb-2 scroll-mt-24"
               >
                 {block.subheading.title}
               </h2>
@@ -152,10 +152,10 @@ export const DocsArticleView = ({
             return (
               <div
                 key={`table-${idx}`}
-                className="overflow-x-auto rounded-2xl border border-white/[0.05] bg-[var(--dk-surface-base)] shadow-[var(--dk-shadow-xs)] my-4"
+                className="overflow-x-auto rounded-2xl bg-[var(--dk-surface-base)] shadow-[var(--dk-shadow-xs)] my-4"
               >
                 <table className="w-full text-left text-xs sm:text-sm">
-                  <thead className="border-b border-[var(--dk-separator)] bg-[var(--dk-surface-raised)] text-foreground font-semibold">
+                  <thead className="bg-[var(--dk-surface-ghost)] text-foreground font-semibold">
                     <tr>
                       {block.table.headers.map((header, hIdx) => (
                         <th key={`th-${hIdx}`} className="p-3 sm:p-4">
@@ -164,7 +164,7 @@ export const DocsArticleView = ({
                       ))}
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-[var(--dk-separator)] text-muted-foreground">
+                  <tbody className="text-muted-foreground">
                     {block.table.rows.map((row, rIdx) => (
                       <tr
                         key={`tr-${rIdx}`}

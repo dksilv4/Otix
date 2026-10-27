@@ -19,7 +19,7 @@ export const FriendActivityItem = ({ activity }: FriendActivityItemProps) => {
     : null
 
   return (
-    <div className="flex gap-4 rounded-2xl bg-[var(--dk-surface-glass)] p-4 transition-all duration-200 border border-[var(--dk-separator)] shadow-sm hover:bg-[var(--dk-surface-ghost-hover)]">
+    <div className="flex gap-4 rounded-2xl bg-[var(--dk-surface-glass)] backdrop-blur-xl shadow-[var(--dk-shadow-glass)] p-4 transition-all duration-200 hover:bg-[var(--dk-surface-glass-hover)]">
       {/* User avatar */}
       <Link
         to="/u/$username"

@@ -112,7 +112,7 @@ export const ManageFriendModal = ({
         </Link>
 
         {/* Danger zone / Remove friend */}
-        <div className="border-t border-[var(--dk-separator)] pt-4">
+        <div className="pt-3">
           {confirmingRemove ? (
             <div className="space-y-3 rounded-2xl bg-destructive/10 p-4">
               <div className="flex items-start gap-2.5">

@@ -25,7 +25,7 @@ export const FriendRequestsView = ({
   return (
     <div className="space-y-4">
       {/* Sub-tabs: Received vs Sent */}
-      <div className="flex items-center gap-1.5 rounded-2xl bg-[var(--dk-surface-glass)] p-1.5 border border-[var(--dk-separator)] w-fit">
+      <div className="flex items-center gap-1.5 rounded-2xl bg-[var(--dk-surface-glass)] backdrop-blur-xl shadow-[var(--dk-shadow-glass)] p-1.5 w-fit">
         <button
           type="button"
           onClick={() => setSubTab('incoming')}
@@ -69,13 +69,13 @@ export const FriendRequestsView = ({
           {Array.from({ length: 3 }).map((_, i) => (
             <div
               key={i}
-              className="h-20 rounded-2xl bg-[var(--dk-surface-glass)] animate-pulse border border-[var(--dk-separator)]"
+              className="h-20 rounded-2xl bg-[var(--dk-surface-glass)] backdrop-blur-xl animate-pulse shadow-sm"
             />
           ))}
         </div>
       ) : subTab === 'incoming' ? (
         incoming.length === 0 ? (
-          <div className="rounded-3xl bg-[var(--dk-surface-glass)] p-12 text-center border border-[var(--dk-separator)] shadow-sm">
+          <div className="rounded-3xl bg-[var(--dk-surface-glass)] backdrop-blur-xl p-12 text-center shadow-[var(--dk-shadow-glass)]">
             <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
               <Inbox className="h-7 w-7" />
             </div>
@@ -101,7 +101,7 @@ export const FriendRequestsView = ({
           </div>
         )
       ) : outgoing.length === 0 ? (
-        <div className="rounded-3xl bg-[var(--dk-surface-glass)] p-12 text-center border border-[var(--dk-separator)] shadow-sm">
+        <div className="rounded-3xl bg-[var(--dk-surface-glass)] backdrop-blur-xl p-12 text-center shadow-[var(--dk-shadow-glass)]">
           <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
             <Send className="h-7 w-7" />
           </div>

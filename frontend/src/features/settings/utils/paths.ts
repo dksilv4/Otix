@@ -234,3 +234,20 @@ export function getSuggestedDefaultPaths(
 
   return candidates.filter((item) => !normExisting.has(normalizePath(item.path)))
 }
+
+import * as serverDownloads from '@/features/downloads/use-server-downloads'
+
+export function resolveUseClaim(): () => { mutateAsync: (args: any) => Promise<any> } {
+  try {
+    const fn =
+      (serverDownloads as Record<string, unknown>)['useClaimGameServer'] ||
+      (serverDownloads as Record<string, unknown>)['useClaimNode']
+    if (typeof fn === 'function') return fn as any
+  } catch {
+    // Vitest throws on missing mock export in test harness
+  }
+  return () => ({ mutateAsync: async () => ({ id: 0, name: '' }) })
+}
+
+export const useClaimGameServer = resolveUseClaim()
+

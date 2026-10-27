@@ -19,6 +19,7 @@ from rest_framework.authtoken.models import Token
 from rest_framework.test import APIClient
 
 from apps.media.models import (
+    Episode,
     Game,
     Genre,
     MediaAsset,
@@ -99,6 +100,8 @@ def _list_url(media_type: str, list_type: str) -> str:
 
 class DiscoverApiTests(TestCase):
     def setUp(self) -> None:
+        from django.core.cache import cache
+        cache.clear()
         self.staff = User.objects.create_user(
             username="mod", password="a-strong-pass", is_staff=True
         )
@@ -106,6 +109,10 @@ class DiscoverApiTests(TestCase):
         self.client = APIClient()  # anonymous
         self.staff_client = APIClient()
         self.staff_client.credentials(HTTP_AUTHORIZATION=f"Token {self.staff_token.key}")
+
+    def tearDown(self) -> None:
+        from django.core.cache import cache
+        cache.clear()
 
     # ── /hero ────────────────────────────────────────────────────────
     def test_hero_public_and_limited(self) -> None:
@@ -483,6 +490,8 @@ class TrendingShowsSeasonTests(TestCase):
     """/discover/season/trending returns each show's latest Season within window."""
 
     def setUp(self) -> None:
+        from django.core.cache import cache
+        cache.clear()
         self.staff = User.objects.create_user(
             username="mod2", password="a-strong-pass", is_staff=True
         )
@@ -490,6 +499,10 @@ class TrendingShowsSeasonTests(TestCase):
         self.client = APIClient()  # anonymous
         self.staff_client = APIClient()
         self.staff_client.credentials(HTTP_AUTHORIZATION=f"Token {self.staff_token.key}")
+
+    def tearDown(self) -> None:
+        from django.core.cache import cache
+        cache.clear()
 
     def _feed(self, params: dict | None = None):
         response = self.client.get(_list_url("season", "trending"), params or {})
@@ -685,3 +698,41 @@ class TrendingShowsSeasonTests(TestCase):
         talk_pks = [item["id"] for item in talk_response.data["items"]]
         self.assertIn(talk.pk, talk_pks)
         self.assertNotIn(normal.pk, talk_pks)
+
+    def test_trending_seasons_personalization_prioritizes_user_interactions(self) -> None:
+        from apps.social.models import UserMediaInteraction
+
+        older_show = _make_show("User-Watched-Older", seasons=[(1, _days(-100))])
+        _make_show("General-Newer", seasons=[(1, _days(-10))])
+
+        # Anonymous gets newer first
+        anon_resp = self.client.get(_list_url("season", "trending"))
+        self.assertEqual(anon_resp.status_code, 200)
+        anon_titles = [item["show_title"] for item in anon_resp.data["items"]]
+        self.assertEqual(anon_titles, ["General-Newer", "User-Watched-Older"])
+
+        # Authenticated user who watched or watchlisted older_show sees older_show first
+        UserMediaInteraction.objects.create(
+            user=self.staff,
+            media_item=older_show.media_item,
+            interaction_type="watchlisted",
+        )
+        auth_resp = self.staff_client.get(_list_url("season", "trending"))
+        self.assertEqual(auth_resp.status_code, 200)
+        auth_titles = [item["show_title"] for item in auth_resp.data["items"]]
+        self.assertEqual(auth_titles, ["User-Watched-Older", "General-Newer"])
+
+    def test_trending_seasons_personalization_prioritizes_user_episode_interactions(self) -> None:
+        from apps.social.models import UserEpisodeInteraction
+
+        older_show = _make_show("Ep-Watched-Older", seasons=[(1, _days(-100))])
+        _make_show("Ep-General-Newer", seasons=[(1, _days(-10))])
+        season = older_show.seasons.first()
+        episode = Episode.objects.create(season=season, episode_number=1, name="Ep 1")
+
+        UserEpisodeInteraction.objects.create(user=self.staff, episode=episode)
+
+        auth_resp = self.staff_client.get(_list_url("season", "trending"))
+        self.assertEqual(auth_resp.status_code, 200)
+        auth_titles = [item["show_title"] for item in auth_resp.data["items"]]
+        self.assertEqual(auth_titles, ["Ep-Watched-Older", "Ep-General-Newer"])

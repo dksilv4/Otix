@@ -36,7 +36,7 @@ export const LibraryPage = () => {
       <h1 className="text-2xl font-bold text-foreground mb-6">Library</h1>
 
       {/* Tabs */}
-      <div className="flex items-center gap-1 mb-6 p-1 rounded-xl bg-[var(--dk-surface-ghost)] border border-[var(--dk-separator)] w-fit">
+      <div className="flex items-center gap-1 mb-6 p-1 rounded-xl bg-[var(--dk-surface-ghost)] border border-white/[0.04] w-fit">
         {TABS.map(tab => (
           <button
             key={tab.id}
@@ -214,7 +214,7 @@ const ArrTab = ({
 
   if (libraries.length === 0) {
     return (
-      <div className="p-12 rounded-2xl bg-[var(--dk-surface-ghost)] border border-[var(--dk-separator)] text-center">
+      <div className="p-12 rounded-2xl bg-[var(--dk-surface-ghost)] border border-white/[0.04] text-center">
         <Icon className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
         <h3 className="text-foreground font-medium mb-1">No {label} instances configured</h3>
         <p className="text-muted-foreground text-sm">Configure a {label} plugin instance to see your library here.</p>
@@ -227,7 +227,7 @@ const ArrTab = ({
       {libraries.map((lib, idx) => {
         const items = lib.movies || lib.series || lib.albums || lib.items || []
         return (
-          <div key={idx} className="rounded-2xl overflow-hidden border border-[var(--dk-separator)]" style={{ backgroundColor: 'var(--dk-surface-base)' }}>
+          <div key={idx} className="rounded-2xl overflow-hidden border border-white/[0.04]" style={{ backgroundColor: 'var(--dk-surface-base)' }}>
             <button
               onClick={() => setExpandedInstance(expandedInstance === lib.name ? null : lib.name)}
               className="w-full flex items-center justify-between p-4 hover:bg-[var(--dk-surface-ghost-hover)] transition-colors"
@@ -249,7 +249,7 @@ const ArrTab = ({
               <div className="px-4 pb-4">
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
                   {items.map((item) => (
-                    <div key={item.id} className="rounded-xl overflow-hidden bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)] transition-colors border border-[var(--dk-separator)]">
+                    <div key={item.id} className="rounded-xl overflow-hidden bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)] transition-colors border border-white/[0.04]">
                       {item.images?.[0]?.remoteUrl ? (
                         <img src={item.images[0].remoteUrl} alt={item.title} className="w-full aspect-[2/3] object-cover" loading="lazy" />
                       ) : (
@@ -330,7 +330,7 @@ const DownloadsTab = () => {
 
   if (!desktop) {
     return (
-      <div className="p-12 rounded-2xl bg-[var(--dk-surface-ghost)] border border-[var(--dk-separator)] text-center">
+      <div className="p-12 rounded-2xl bg-[var(--dk-surface-ghost)] border border-white/[0.04] text-center">
         <Download className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
         <p className="text-muted-foreground text-sm">Downloads are only available in the desktop app.</p>
       </div>
@@ -348,7 +348,7 @@ const DownloadsTab = () => {
 
   if (downloads.length === 0) {
     return (
-      <div className="p-12 rounded-2xl bg-[var(--dk-surface-ghost)] border border-[var(--dk-separator)] text-center">
+      <div className="p-12 rounded-2xl bg-[var(--dk-surface-ghost)] border border-white/[0.04] text-center">
         <Download className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
         <h3 className="text-foreground font-medium mb-1">No downloads yet</h3>
         <p className="text-muted-foreground text-sm">Your downloaded games will appear here.</p>
@@ -359,7 +359,7 @@ const DownloadsTab = () => {
   return (
     <div className="grid gap-3">
       {downloads.map((dl) => (
-        <div key={dl.id} className="flex items-center gap-4 p-4 rounded-2xl border border-[var(--dk-separator)]" style={{ backgroundColor: 'var(--dk-surface-base)' }}>
+        <div key={dl.id} className="flex items-center gap-4 p-4 rounded-2xl border border-white/[0.04]" style={{ backgroundColor: 'var(--dk-surface-base)' }}>
           {/* Status icon */}
           <div className="shrink-0">
             {dl.status === 'downloading' ? (

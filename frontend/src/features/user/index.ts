@@ -1,5 +1,6 @@
 export { LevelUpModal } from './components/molecules/level-up-modal'
 export { LevelUpHost } from './components/organisms/level-up-host'
+export { UserXpProgressionBar } from './components/molecules/user-xp-progression-bar'
 export { XPProgressRing } from './components/atoms/user-xp-progress-ring'
 export { AddSectionButton } from './components/molecules/user-add-section-button'
 export { SectionPrivacyToggle } from './components/molecules/section-privacy-toggle'

@@ -12,6 +12,7 @@ import { DkSwitch } from '@ui/atoms/switch'
 import { useToast } from '@ui/molecules/toast'
 import { useAuth } from '@/lib/providers/auth'
 import { useDownloadConfig } from '@/features/downloads/use-downloads'
+import { pendingNodesToClaim } from '@/features/downloads/pending-nodes'
 import { getDesktopAPI, isDesktop } from '@/lib/desktop/api'
 import { apiClient } from '@/lib/api/client'
 import { useSettingsNode } from '../../context/settings-node-context'
@@ -28,9 +29,6 @@ import { ScannedFilesSummary } from '../molecules/scanned-files-summary'
 import { ViewScannedGamesModal } from './view-scanned-games-modal'
 import { MatchReviewCenterModal } from './match-review-center-modal'
 import {
-  useNodePaths,
-  useSaveNodePaths,
-  useStorageShares,
   useGameMatches,
 } from '../../hooks/use-node-paths'
 import {
@@ -46,11 +44,13 @@ import {
   type PathsViewMode,
   type PathsFilterTab,
   normalizePath,
+  getBaseFolderName,
   buildConfiguredFolderList,
   filterFolderItems,
   loadStoredPathsViewMode,
   saveStoredPathsViewMode,
   getSuggestedDefaultPaths,
+  useClaimGameServer,
 } from '../../utils/paths'
 import { cn } from '@/lib/utils'
 
@@ -78,7 +78,10 @@ export const SettingsPathsSection = ({
   }
 
   const { config: dlConfig, saveConfig } = useDownloadConfig(user?.id)
-  const { selectedNode, servers } = useSettingsNode()
+  const { selectedNode, servers, pendingNodes = [], setSelectedNodeId } = useSettingsNode()
+  const claimServerMutation = useClaimGameServer()
+  const [isClaimingDiscovered, setIsClaimingDiscovered] = useState(false)
+  const unclaimedNodes = useMemo(() => pendingNodesToClaim(pendingNodes, servers), [pendingNodes, servers])
   const nodeId = nodeIdProp !== undefined ? nodeIdProp : (selectedNode?.id ?? null)
   const activeNode = servers?.find((s) => s.id === nodeId) ?? (selectedNode?.id === nodeId ? selectedNode : null)
   const isLocalNode = isLocalDesktopNode(activeNode) || isLocalDesktopNodeId(nodeId)
@@ -938,21 +941,97 @@ export const SettingsPathsSection = ({
       description: `Added ${p} to monitored scan paths.`,
       variant: 'success',
     })
+
+    // Automatically trigger immediate scan of new directory
+    void handleTriggerScan()
+  }
+
+  // ── One-click Claim Discovered Node ──
+  const handleClaimDiscoveredNode = async (node: any) => {
+    if (!node?.claimCode) return
+    setIsClaimingDiscovered(true)
+    try {
+      const claimed = await claimServerMutation.mutateAsync({
+        claim_code: node.claimCode,
+        node_url: node.localUrl || undefined,
+        server_name: node.serverName,
+        is_local: true,
+      })
+      toast({
+        title: 'Node Claimed',
+        description: `Successfully claimed ${claimed.name}. You can now manage and scan its folders.`,
+        variant: 'success',
+      })
+      if (claimed?.id != null) {
+        setSelectedNodeId(claimed.id)
+      }
+      setIsAddingFolder(true)
+    } catch (err: any) {
+      toast({
+        title: 'Claim Failed',
+        description: err?.response?.data?.error || err?.message || 'Could not claim node.',
+        variant: 'error',
+      })
+    } finally {
+      setIsClaimingDiscovered(false)
+    }
   }
 
   // ── Trigger Scan Handler ──
-  const handleTriggerScan = async () => {
+  const handleTriggerScan = async (targetPath?: string | unknown) => {
+    const specificPath = typeof targetPath === 'string' ? targetPath : undefined
     setIsScanning(true)
-    scanProgress.startScan(remoteNodeId ? 'Connecting to node...' : 'Scanning library paths...')
+    scanProgress.startScan(
+      specificPath
+        ? `Scanning ${getBaseFolderName(specificPath)}...`
+        : remoteNodeId
+          ? 'Connecting to node...'
+          : 'Scanning library paths...',
+    )
     try {
       if (remoteNodeId) {
-        scanProgress.reportProgress(25, 'Scanning library paths on node...', 'scanning')
-        const scanRes = await apiClient.post<{ count?: number; status?: string }>(
-          `/library/servers/${remoteNodeId}/scan?wait=true`,
+        scanProgress.reportProgress(10, 'Starting library scan on node...', 'scanning')
+        // Trigger scan start
+        await apiClient.post<{ count?: number; status?: string }>(
+          `/library/servers/${remoteNodeId}/scan`,
+          specificPath ? { path: specificPath } : undefined,
         )
-        const scannedCount = scanRes?.data?.count ?? 0
 
-        if (writeOtixAfterScan) {
+        // Poll for real-time progress from node
+        let scannedCount = 0
+        for (let i = 0; i < 60; i++) {
+          await new Promise((resolve) => setTimeout(resolve, 400))
+          try {
+            const { data } = await apiClient.get<{
+              phase?: string
+              percentage?: number
+              files_scanned?: number
+              filesScanned?: number
+              total_files?: number
+              totalFiles?: number
+              current_directory?: string
+              currentDirectory?: string
+              is_scanning?: boolean
+              isScanning?: boolean
+            }>(`/library/servers/${remoteNodeId}/scan`)
+
+            const count = data?.totalFiles || data?.total_files || data?.filesScanned || data?.files_scanned || 0
+            if (count > 0) scannedCount = count
+            const pct = typeof data?.percentage === 'number' ? Math.max(15, Math.min(95, data.percentage)) : 30
+            const dir = data?.currentDirectory || data?.current_directory || `Indexing files (${count} found)...`
+
+            const scanning = data?.isScanning ?? (data?.phase === 'scanning' || data?.phase === 'running')
+            if (scanning) {
+              scanProgress.reportProgress(pct, dir, 'scanning')
+            } else if (data?.phase === 'completed' || data?.phase === 'idle' || data?.phase === 'complete') {
+              break
+            }
+          } catch {
+            break
+          }
+        }
+
+        if (writeOtixAfterScan || specificPath) {
           setIsSyncingOtix(true)
           scanProgress.reportProgress(65, 'Writing .otix metadata sidecars...', 'matching')
           try {
@@ -964,6 +1043,7 @@ export const SettingsPathsSection = ({
             }>(`/library/servers/${remoteNodeId}/otix/sync`, {
               writeOtix: true,
               downloadImages: downloadOtixImages,
+              path: specificPath,
             })
             scanProgress.reportProgress(85, 'Writing .otix metadata sidecars...', 'matching')
             const written = data?.written ?? 0
@@ -1005,15 +1085,26 @@ export const SettingsPathsSection = ({
       } else {
         const api = getDesktopAPI() ?? (typeof window !== 'undefined' ? (window as any).desktopAPI : null)
         if (api?.scanPaths) {
-          const gameDirs = scanPaths.filter((p) => p.type === 'game').map((p) => p.path)
-          const isoDirs = scanPaths.filter((p) => p.type === 'iso').map((p) => p.path)
-          scanProgress.reportProgress(15, 'Scanning configured local directories...', 'scanning')
+          const isIsoPath = specificPath && scanPaths.some((p) => p.path === specificPath && p.type === 'iso')
+          const gameDirs = specificPath
+            ? isIsoPath
+              ? []
+              : [specificPath]
+            : scanPaths.filter((p) => p.type === 'game').map((p) => p.path)
+          const isoDirs = specificPath
+            ? isIsoPath
+              ? [specificPath]
+              : []
+            : scanPaths.filter((p) => p.type === 'iso').map((p) => p.path)
+          scanProgress.reportProgress(15, `Scanning ${specificPath ? getBaseFolderName(specificPath) : 'configured local directories'}...`, 'scanning')
           await api.scanPaths(gameDirs, isoDirs)
         }
-        scanProgress.finishScan('Local library scan complete')
+        scanProgress.finishScan(specificPath ? `Scanned ${getBaseFolderName(specificPath)} and matched metadata` : 'Local library scan complete')
         toast({
           title: 'Library Scanned',
-          description: 'Completed scanning configured library and download paths.',
+          description: specificPath
+            ? `Completed scanning and metadata matching for ${getBaseFolderName(specificPath)}.`
+            : 'Completed scanning configured library and download paths.',
           variant: 'success',
         })
       }
@@ -1093,6 +1184,42 @@ export const SettingsPathsSection = ({
   return (
     <div id="paths" className={cn('space-y-4 scroll-mt-28', className)}>
       <h2 className="sr-only">Paths</h2>
+
+      {/* ── Discovered Node One-Click Claim Banner ── */}
+      {unclaimedNodes.length > 0 && (
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3.5 rounded-2xl bg-primary/[0.08] backdrop-blur-xl border border-white/[0.04] gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="h-9 w-9 rounded-xl bg-primary/15 text-primary flex items-center justify-center shrink-0">
+              <Sparkles size={17} />
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs font-semibold text-foreground truncate">
+                  Discovered Otix Node: {unclaimedNodes[0].serverName || 'Otix Node'}
+                </span>
+                {unclaimedNodes[0].claimCode && (
+                  <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-primary/20 text-primary">
+                    PIN: {unclaimedNodes[0].claimCode}
+                  </span>
+                )}
+              </div>
+              <p className="text-[11px] text-muted-foreground truncate">
+                {unclaimedNodes[0].localUrl} — Ready to pair and configure storage paths.
+              </p>
+            </div>
+          </div>
+          <DkButton
+            type="button"
+            size="sm"
+            variant="primary"
+            onClick={() => handleClaimDiscoveredNode(unclaimedNodes[0])}
+            loading={isClaimingDiscovered}
+            className="h-8 px-3.5 text-xs font-bold shrink-0"
+          >
+            Claim & Add Folders
+          </DkButton>
+        </div>
+      )}
 
       {/* ── Scanned Files Quick Summary with Integrated Real-time Progress ── */}
       <ScannedFilesSummary
@@ -1363,6 +1490,8 @@ export const SettingsPathsSection = ({
                 onToggleIso={handleToggleIso}
                 onRemove={handleRemoveFolder}
                 onCopyPath={handleCopyPath}
+                onRescan={(path) => handleTriggerScan(path)}
+                isScanning={isScanning}
               />
             ))}
             {filteredFolders.length === 0 && searchQuery && (

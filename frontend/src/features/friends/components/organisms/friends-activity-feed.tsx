@@ -78,12 +78,12 @@ export const FriendsActivityFeed = ({
           {Array.from({ length: 4 }).map((_, i) => (
             <div
               key={i}
-              className="h-24 rounded-2xl bg-[var(--dk-surface-glass)] animate-pulse border border-[var(--dk-separator)]"
+              className="h-24 rounded-2xl bg-[var(--dk-surface-glass)] backdrop-blur-xl animate-pulse shadow-sm"
             />
           ))}
         </div>
       ) : activities.length === 0 ? (
-        <div className="rounded-3xl bg-[var(--dk-surface-glass)] p-12 text-center border border-[var(--dk-separator)] shadow-sm">
+        <div className="rounded-3xl bg-[var(--dk-surface-glass)] backdrop-blur-xl p-12 text-center shadow-[var(--dk-shadow-glass)]">
           <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
             <Activity className="h-7 w-7" />
           </div>

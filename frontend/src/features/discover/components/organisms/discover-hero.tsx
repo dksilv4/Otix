@@ -2,11 +2,12 @@ import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Link } from '@tanstack/react-router'
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
-import { Film, Tv, Gamepad2, Sparkles, ChevronRight, Star, Play, Loader2 } from 'lucide-react'
+import { Film, Tv, Gamepad2, Sparkles, ChevronRight, Star, Play, Loader2, Info, Download } from 'lucide-react'
 import { Badge } from '@ui/atoms/badge'
 import { Skeleton } from '@ui/atoms/skeleton'
 import { MediaLogo } from '@/lib/media/media-logo'
 import { cn } from '@/lib/utils'
+import { isDesktop } from '@/lib/desktop'
 import { useStreamAvailability } from '@/features/media/hooks/use-stream-availability'
 import { useQuickStream } from '@/features/media/hooks/use-quick-stream'
 import { discoverQueries } from '@discover/queries/discover-queries'
@@ -168,7 +169,7 @@ export const DiscoverHero = ({ className }: DiscoverHeroProps) => {
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
     >
-      <div className="relative w-full h-[100dvh] sm:h-auto min-h-[100dvh] sm:min-h-[560px] md:min-h-[680px] lg:min-h-[760px] xl:min-h-[820px] rounded-none sm:rounded-3xl overflow-hidden bg-[var(--dk-surface-base)] border-0 sm:border sm:border-[var(--dk-separator)] shadow-none sm:shadow-[var(--dk-shadow-dialog)] flex flex-col justify-between">
+      <div className="relative w-full h-[100dvh] sm:h-auto min-h-[100dvh] sm:min-h-[560px] md:min-h-[680px] lg:min-h-[760px] xl:min-h-[820px] rounded-none sm:rounded-3xl overflow-hidden bg-[var(--dk-surface-base)] shadow-none sm:shadow-[var(--dk-shadow-dialog)] flex flex-col justify-between">
         {/* Ambient Backdrop Canvas */}
         <div className="absolute inset-0 z-0 overflow-hidden">
           <AnimatePresence mode="wait">
@@ -191,7 +192,7 @@ export const DiscoverHero = ({ className }: DiscoverHeroProps) => {
         <div className="relative z-20 flex flex-col justify-between flex-1 p-5 pt-20 pb-8 sm:p-8 sm:pt-8 sm:pb-10 md:p-12 lg:p-16">
           {/* Top Row: Clean Media Switcher */}
           <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-[var(--dk-surface-glass)] backdrop-blur-xl border border-[var(--dk-separator)] shadow-sm">
+            <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-[var(--dk-surface-glass)] backdrop-blur-xl shadow-sm">
               <button
                 type="button"
                 onClick={() => {
@@ -296,7 +297,7 @@ export const DiscoverHero = ({ className }: DiscoverHeroProps) => {
                           key={p.id}
                           title={p.platform.name}
                           aria-label={p.platform.name}
-                          className="inline-flex items-center justify-center h-6 w-6 rounded-lg bg-[var(--dk-surface-ghost)] text-muted-foreground border border-[var(--dk-separator)]"
+                          className="inline-flex items-center justify-center h-6 w-6 rounded-lg bg-[var(--dk-surface-ghost)] text-muted-foreground shadow-xs"
                         >
                           {Icon ? (
                             <Icon className="h-3.5 w-3.5 fill-current" />
@@ -353,7 +354,7 @@ export const DiscoverHero = ({ className }: DiscoverHeroProps) => {
                   ) : (
                     <Play className="h-4 w-4 fill-current" />
                   )}
-                  Stream Now
+                  <span>Stream Now</span>
                 </button>
               )}
 
@@ -361,18 +362,21 @@ export const DiscoverHero = ({ className }: DiscoverHeroProps) => {
                 to="/media/$mediaType/$mediaId"
                 params={{ mediaType: activeItem.mediaType, mediaId: activeItem.id }}
                 className={cn(
-                  'flex items-center gap-2 px-5 sm:px-6 py-2.5 sm:py-3 rounded-2xl font-bold text-xs sm:text-sm md:text-base transition-all cursor-pointer',
+                  'flex items-center gap-2 px-4 sm:px-5 py-2.5 sm:py-3 rounded-2xl font-bold text-xs sm:text-sm md:text-base transition-all cursor-pointer shadow-sm',
                   isStreamable
-                    ? 'bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-glass-hover)] text-foreground border border-[var(--dk-separator)]'
+                    ? 'bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-glass-hover)] text-foreground'
                     : 'bg-primary text-primary-foreground shadow-lg hover:opacity-95',
                 )}
+                title="View full media details and cast"
+                aria-label="View Details"
               >
-                View Details
-                <ChevronRight className="h-4 w-4" />
+                <Info className="h-4 w-4 text-primary" />
+                <span>View Details</span>
+                <ChevronRight className="h-4 w-4 opacity-60" />
               </Link>
 
               {(ratingScore || releaseYear) && (
-                <div className="flex items-center gap-2 px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-2xl bg-[var(--dk-surface-glass)] backdrop-blur-xl border border-[var(--dk-separator)] text-xs sm:text-sm text-foreground shadow-sm select-none">
+                <div className="flex items-center gap-2 px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-2xl bg-[var(--dk-surface-glass)] backdrop-blur-xl text-xs sm:text-sm text-foreground shadow-sm select-none">
                   {ratingScore && (
                     <span className="inline-flex items-center gap-1 font-bold text-primary">
                       <Star className="h-3.5 w-3.5 fill-primary" />
@@ -388,6 +392,17 @@ export const DiscoverHero = ({ className }: DiscoverHeroProps) => {
                     </span>
                   )}
                 </div>
+              )}
+
+              {!isDesktop() && (
+                <Link
+                  to="/download"
+                  className="flex items-center gap-2 px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-2xl bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-glass-hover)] backdrop-blur-xl text-xs sm:text-sm font-semibold text-foreground shadow-sm transition-all hover:scale-[1.02] active:scale-[0.98]"
+                  title="Download the native Otix app for offline downloads and maximum performance"
+                >
+                  <Download className="h-4 w-4 text-primary shrink-0" />
+                  <span className="hidden sm:inline">Get Desktop App</span>
+                </Link>
               )}
             </div>
           </div>

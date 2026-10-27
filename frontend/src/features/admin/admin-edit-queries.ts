@@ -87,6 +87,7 @@ export function useMediaAssets(mediaType: string, mediaId: string) {
       return data
     },
     staleTime: 60_000,
+    enabled: Boolean(mediaType && mediaId),
   })
 }
 

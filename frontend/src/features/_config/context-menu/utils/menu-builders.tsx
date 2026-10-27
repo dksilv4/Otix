@@ -50,6 +50,8 @@ import { queryClient } from '@/lib/query/client'
 import { showToast, showErrorToast } from '@ui/molecules/toast'
 import { openCommandPalette } from '@/features/hub/open-command-palette'
 import { openQuickStream } from '@/features/media/utils/open-quick-stream'
+import { openAiQuickGlance } from '@/features/media/utils/open-ai-quick-glance'
+import { AiQuickGlanceModal } from '@/features/media/components/organisms/ai-quick-glance-modal'
 import { AddToListModal } from '@/features/list/components/organisms/add-to-list-modal'
 import { MediaScreenshotLightboxModal } from '@/features/media/components/molecules/media-screenshot-lightbox-modal'
 import { ShareModal } from '@/features/list/components/molecules/list-actions'
@@ -227,6 +229,35 @@ export const buildMediaMenuItems = (
     })
   }
 
+  items.push({
+    id: 'ai-quick-glance',
+    label: 'AI Quick Glance',
+    icon: Sparkles,
+    onClick: () => {
+      if (context?.openModal) {
+        context.openModal(
+          <AiQuickGlanceModal
+            mediaType={mediaType}
+            mediaId={id}
+            initialTitle={title}
+            initialPosterUrl={posterUrl}
+            initialBackdropUrl={target.backdropUrl}
+            initialTmdbId={target.tmdbId}
+          />,
+        )
+      } else {
+        openAiQuickGlance({
+          mediaId: id,
+          mediaType,
+          title,
+          posterUrl,
+          backdropUrl: target.backdropUrl,
+          tmdbId: target.tmdbId,
+        })
+      }
+    },
+  })
+
   if (mediaType === 'movie' || mediaType === 'show') {
     items.push({
       id: 'watch-trailer',
@@ -239,6 +270,7 @@ export const buildMediaMenuItems = (
       },
     })
   }
+
 
   items.push(
     {
@@ -1033,7 +1065,7 @@ export const buildDownloadMenuItems = (
   target: ResolvedDownloadTarget,
   context?: MenuBuilderContext,
 ): ContextMenuItemDef[] => {
-  const { downloadId, title, filename, status, mediaItemId, mediaType } = target
+  const { title, filename, status, mediaItemId, mediaType } = target
   const isDownloading = status === 'downloading'
   const isPaused = status === 'paused'
 

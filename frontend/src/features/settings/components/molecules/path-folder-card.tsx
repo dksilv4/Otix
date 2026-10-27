@@ -1,16 +1,35 @@
 import { useState } from 'react'
-import { FolderOpen, Copy, Trash2, Check, HardDrive, Download, Disc, SlidersHorizontal } from 'lucide-react'
+import {
+  FolderOpen,
+  Copy,
+  Trash2,
+  Check,
+  HardDrive,
+  Download,
+  Disc,
+  SlidersHorizontal,
+  RefreshCw,
+  Network,
+  Eye,
+} from 'lucide-react'
 import { DkButton } from '@ui/atoms/button'
 import { cn } from '@/lib/utils'
 import type { ConfiguredFolderItem } from '../../utils/paths'
 
 export interface PathFolderCardProps {
-  item: ConfiguredFolderItem
+  item: ConfiguredFolderItem & {
+    isNetwork?: boolean
+    watcherStatus?: 'Watching' | 'Indexing' | 'Active' | string
+  }
   onToggleInstallation: (path: string) => void
   onAssignDownload: (path: string) => void
   onToggleIso: (path: string) => void
   onRemove: (path: string) => void
   onCopyPath: (path: string) => void
+  onRescan?: (path: string) => void
+  isScanning?: boolean
+  watcherStatus?: 'Watching' | 'Indexing' | 'Active' | string
+  isNetwork?: boolean
   className?: string
 }
 
@@ -21,21 +40,39 @@ export const PathFolderCard = ({
   onToggleIso,
   onRemove,
   onCopyPath,
+  onRescan,
+  isScanning = false,
+  watcherStatus: watcherStatusProp,
+  isNetwork: isNetworkProp,
   className,
 }: PathFolderCardProps) => {
   const [showRoleSelect, setShowRoleSelect] = useState(false)
+
+  const isNetwork = Boolean(
+    isNetworkProp ??
+      item.isNetwork ??
+      (item.path.startsWith('\\\\') ||
+        item.path.startsWith('//') ||
+        item.path.toLowerCase().startsWith('smb://')),
+  )
+  const storageKind = isNetwork ? 'Network / Samba' : 'Local'
+  const watcherStatus =
+    watcherStatusProp ??
+    item.watcherStatus ??
+    (isScanning ? 'Indexing' : 'Watching')
+  const isIndexing = isScanning || watcherStatus.toLowerCase() === 'indexing'
 
   return (
     <div
       className={cn(
         'group relative flex flex-col justify-between p-4 rounded-2xl transition-all duration-200',
-        'bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)]',
+        'bg-[var(--dk-surface-glass)] backdrop-blur-xl hover:bg-[var(--dk-surface-glass)]/90',
         'border border-white/[0.04] hover:border-white/[0.08]',
         className,
       )}
     >
       {/* Top Header: Icon, Name, and Quick Actions */}
-      <div className="flex items-start justify-between gap-2.5 mb-3">
+      <div className="flex items-start justify-between gap-2.5 mb-2.5">
         <div className="flex items-center gap-2.5 min-w-0">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
             <FolderOpen className="h-4 w-4" />
@@ -89,6 +126,54 @@ export const PathFolderCard = ({
             <Trash2 className="h-3.5 w-3.5" />
           </DkButton>
         </div>
+      </div>
+
+      {/* Status Badges & Direct Rescan Action */}
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+        <div className="flex flex-wrap items-center gap-1.5 min-w-0">
+          {/* Storage Kind Badge */}
+          <span
+            className={cn(
+              'inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-semibold border border-white/[0.04]',
+              isNetwork
+                ? 'bg-primary/15 text-primary'
+                : 'bg-primary/10 text-primary',
+            )}
+            data-testid="storage-kind-badge"
+          >
+            {isNetwork ? <Network className="h-3 w-3" /> : <HardDrive className="h-3 w-3" />}
+            <span>{storageKind}</span>
+          </span>
+
+          {/* Directory Watcher Status Badge */}
+          <span
+            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-semibold bg-primary/10 text-primary border border-white/[0.04]"
+            data-testid="watcher-status-badge"
+          >
+            {isIndexing ? (
+              <RefreshCw className="h-3 w-3 animate-spin" />
+            ) : (
+              <Eye className="h-3 w-3" />
+            )}
+            <span>{watcherStatus}</span>
+          </span>
+        </div>
+
+        {/* Rescan & Match Metadata Button */}
+        <DkButton
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={() => onRescan?.(item.path)}
+          disabled={isScanning}
+          loading={isScanning}
+          title="Rescan & Match Metadata"
+          aria-label={`Rescan & Match Metadata for ${item.name}`}
+          className="h-7 px-2.5 gap-1.5 text-xs text-muted-foreground hover:text-foreground cursor-pointer rounded-lg bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)]"
+        >
+          <RefreshCw className={cn('h-3 w-3', isScanning && 'animate-spin')} />
+          <span className="text-[11px] font-medium">Rescan & Match Metadata</span>
+        </DkButton>
       </div>
 
       {/* Role Assignment: Badges by default, Toggles on demand */}

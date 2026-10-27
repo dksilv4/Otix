@@ -137,7 +137,7 @@ export const ListsTabContent = () => {
     <div className="space-y-6">
       {/* Action / Selection toolbar */}
       {isSelecting ? (
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[var(--dk-separator)] bg-[var(--dk-surface-glass)] p-3">
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/[0.04] bg-[var(--dk-surface-glass)]/60 backdrop-blur-xl p-3">
           <div className="flex items-center gap-3">
             <span className="text-sm font-semibold text-foreground">
               {selectedIds.size} of {listItems.length} selected
@@ -205,7 +205,7 @@ export const ListsTabContent = () => {
             <button
               type="button"
               onClick={() => setIsSelecting(true)}
-              className="inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-sm font-medium bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-glass-hover)] text-foreground border border-[var(--dk-separator)] transition-all"
+              className="inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-sm font-medium bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-glass-hover)] text-foreground border border-white/[0.04] transition-all"
             >
               <CheckSquare className="h-4 w-4 text-muted-foreground" />
               Select

@@ -1,7 +1,7 @@
 import { memo, useMemo, useCallback, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
-import { Star, Play, Loader2 } from 'lucide-react'
+import { Star, Play, Loader2, Sparkles } from 'lucide-react'
 import { DkImage } from '@ui/atoms/image'
 import { mediaQueries } from '@media/queries/media-queries'
 import { cn } from '@/lib/utils'
@@ -11,6 +11,8 @@ import { parsePositionFromUrl, stripPositionFromUrl } from '@/lib/utils/image-po
 import { formatSeasonBadgeText } from '@/lib/utils/media-badge'
 import { useStreamAvailability } from '@/features/media/hooks/use-stream-availability'
 import { useQuickStream } from '@/features/media/hooks/use-quick-stream'
+import { useModal } from '@/lib/modals/modal-context'
+import { AiQuickGlanceModal } from '@/features/media/components/organisms/ai-quick-glance-modal'
 
 interface DkMediaCardProps {
   id: string
@@ -82,6 +84,7 @@ const DkMediaCard = memo(({
     mediaType,
   })
   const { quickStream, isStartingStream } = useQuickStream()
+  const { openModal } = useModal()
 
   // Card art resolution:
   // 1. Textless poster (preferred clean art)
@@ -215,6 +218,34 @@ const DkMediaCard = memo(({
             <Play className="h-2.5 w-2.5 fill-current" />
             <span>{providerLabel || 'Stream'}</span>
           </span>
+        </div>
+      )}
+
+      {/* AI Quick Glance Trigger Button on Hover */}
+      {interactive && (
+        <div className="absolute top-2.5 left-2.5 z-20 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+          <button
+            type="button"
+            aria-label={`AI Quick Glance for ${title}`}
+            title="AI Quick Glance"
+            onClick={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              openModal(
+                <AiQuickGlanceModal
+                  mediaType={mediaType}
+                  mediaId={id}
+                  initialTitle={title}
+                  initialPosterUrl={posterUrl}
+                  initialBackdropUrl={backdropUrl}
+                  initialTmdbId={tmdbId}
+                />,
+              )
+            }}
+            className="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--dk-surface-glass)] hover:bg-white/20 text-primary backdrop-blur-xl shadow-lg transition-transform hover:scale-110 active:scale-95 border-0"
+          >
+            <Sparkles className="h-3.5 w-3.5" />
+          </button>
         </div>
       )}
 

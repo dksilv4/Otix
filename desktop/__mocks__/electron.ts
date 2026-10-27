@@ -1,6 +1,7 @@
 import { EventEmitter } from 'events'
 import * as os from 'os'
 import * as path from 'path'
+import { vi } from 'vitest'
 
 const tmpBase = path.join(os.tmpdir(), 'otix-test')
 
@@ -29,15 +30,30 @@ mockIpcMain._invoke = async (channel: string, ...args: any[]) => {
 }
 mockApp.getVersion = () => '0.1.0'
 
+const mockNet = {
+  fetch: vi.fn(),
+}
+
+export const net = mockNet
+export const app = mockApp
+export const ipcMain = mockIpcMain
+export class BrowserWindow {}
+export const dialog = {}
+export const shell = {}
+export const screen = {
+  getPrimaryDisplay: () => ({ workArea: { x: 0, y: 0, width: 1920, height: 1080 } }),
+  getAllDisplays: () => [],
+}
+export const session = { fromPartition: () => ({ webRequest: { onHeadersReceived: () => {} } }) }
+
 module.exports = {
   app: mockApp,
-  BrowserWindow: class {},
+  BrowserWindow,
   ipcMain: mockIpcMain,
-  dialog: {},
-  shell: {},
-  screen: {
-    getPrimaryDisplay: () => ({ workArea: { x: 0, y: 0, width: 1920, height: 1080 } }),
-    getAllDisplays: () => [],
-  },
-  session: { fromPartition: () => ({ webRequest: { onHeadersReceived: () => {} } }) },
+  dialog,
+  shell,
+  screen,
+  session,
+  net: mockNet,
 }
+

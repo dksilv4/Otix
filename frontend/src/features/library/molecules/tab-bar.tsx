@@ -1,21 +1,26 @@
 import { useRef, useEffect, type ReactNode } from "react"
 import { motion } from "framer-motion"
+import { Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 export interface TabBarProps {
   tabs: Array<{ id: string; label: string; icon: ReactNode }>
   activeTab: string
   onTabClick: (id: string) => void
+  isLoading?: boolean
+  loadingTabId?: string | null
 }
 
-export const TabBar = ({ tabs, activeTab, onTabClick }: TabBarProps) => {
+export const TabBar = ({ tabs, activeTab, onTabClick, isLoading, loadingTabId }: TabBarProps) => {
   const containerRef = useRef<HTMLDivElement>(null)
 
   // Scroll active tab into view on change
   useEffect(() => {
     if (!containerRef.current) return
     const activeBtn = containerRef.current.querySelector(`[data-tab-id="${activeTab}"]`) as HTMLElement | null
-    activeBtn?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" })
+    if (typeof activeBtn?.scrollIntoView === "function") {
+      activeBtn.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" })
+    }
   }, [activeTab])
 
   return (
@@ -45,6 +50,9 @@ export const TabBar = ({ tabs, activeTab, onTabClick }: TabBarProps) => {
           <span className="relative z-0 flex items-center gap-2">
             {tab.icon}
             {tab.label}
+            {((activeTab === tab.id && isLoading) || loadingTabId === tab.id) && (
+              <Loader2 className="h-3 w-3 animate-spin text-primary shrink-0" />
+            )}
           </span>
         </button>
       ))}

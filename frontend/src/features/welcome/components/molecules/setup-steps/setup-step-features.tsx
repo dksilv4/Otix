@@ -86,7 +86,7 @@ export const SetupStepFeatures = ({
           />
         </div>
 
-        <div className="border-t border-[var(--dk-separator)] pt-3 flex items-center justify-between gap-4">
+        <div className="pt-3 flex items-center justify-between gap-4">
           <div className="space-y-0.5">
             <span className="text-xs font-semibold text-foreground flex items-center gap-2">
               <ShieldCheck className="h-3.5 w-3.5 text-primary" />

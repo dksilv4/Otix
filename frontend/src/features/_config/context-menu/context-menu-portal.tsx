@@ -10,7 +10,7 @@ export const ContextMenuPortal = () => {
   const [ready, setReady] = useState(false)
 
   const {
-    refs: { setReference, setFloating },
+    refs,
     floatingStyles,
   } = useFloating({
     placement: 'bottom-start',
@@ -29,6 +29,7 @@ export const ContextMenuPortal = () => {
       }),
     ],
   })
+  const { setReference, setFloating } = refs
 
   // Set virtual element from position
   useEffect(() => {
@@ -54,17 +55,28 @@ export const ContextMenuPortal = () => {
     requestAnimationFrame(() => setReady(true))
   }, [isOpen, position, setReference])
 
-  // Close on scroll
+  // Close on outside scroll or wheel (with 150ms settle delay to ignore inertia scroll events on smooth shelves)
   useEffect(() => {
     if (!isOpen) return
-    const handler = () => close()
-    window.addEventListener('scroll', handler, { passive: true })
-    window.addEventListener('wheel', handler, { passive: true })
-    return () => {
-      window.removeEventListener('scroll', handler)
-      window.removeEventListener('wheel', handler)
+    const openedAt = Date.now()
+
+    const handleScrollOrWheel = (e: Event) => {
+      if (Date.now() - openedAt < 150) {
+        return // Allow momentum/inertia scrolling to settle without closing menu
+      }
+      const floatingEl = refs.floating.current
+      if (floatingEl && e.target instanceof Node && floatingEl.contains(e.target)) {
+        return // Allow scrolling smoothly inside the context menu!
+      }
+      close()
     }
-  }, [isOpen, close])
+    window.addEventListener('scroll', handleScrollOrWheel, { capture: true, passive: true })
+    window.addEventListener('wheel', handleScrollOrWheel, { passive: true })
+    return () => {
+      window.removeEventListener('scroll', handleScrollOrWheel, { capture: true })
+      window.removeEventListener('wheel', handleScrollOrWheel)
+    }
+  }, [isOpen, close, refs.floating])
 
   // Close on Escape
   useEffect(() => {

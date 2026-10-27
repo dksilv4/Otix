@@ -178,9 +178,11 @@ export function useAutoClaimPendingServers(enabled: boolean) {
   const { data: servers = [] } = useNodes({ enabled: active, refetchInterval: 15_000 })
   const createServer = useCreateNode()
   const updateServer = useUpdateNode()
+  const claimServer = useClaimNode()
   const claiming = useRef(false)
   const createMutateAsync = createServer.mutateAsync
   const updateMutateAsync = updateServer.mutateAsync
+  const claimMutateAsync = claimServer.mutateAsync
 
   const pendingQuery = useQuery<PendingNode[]>({
     queryKey: [...nodeKeys.all, 'pending'],
@@ -192,6 +194,9 @@ export function useAutoClaimPendingServers(enabled: boolean) {
         local_url?: string
         authToken?: string
         auth_token?: string
+        claimCode?: string
+        claim_code?: string
+        claimed?: boolean
       }>>('/library/servers/pending')
       return (data || []).map(mapPendingRow)
     },
@@ -236,14 +241,27 @@ export function useAutoClaimPendingServers(enabled: boolean) {
           name: node.serverName,
         }),
       ),
-      ...toClaim.map((node) =>
-        createMutateAsync({
+      ...toClaim.map((node) => {
+        if (node.claimCode) {
+          return claimMutateAsync({
+            claim_code: node.claimCode,
+            node_url: node.localUrl || undefined,
+            server_name: node.serverName,
+            is_local: true,
+          })
+        }
+        return createMutateAsync({
           name: node.serverName,
           local_url: node.localUrl,
           auth_token: node.authToken || undefined,
-        }),
-      ),
+        })
+      }),
     ])
+      .then((results) => {
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('node-claimed', { detail: results }))
+        }
+      })
       .catch(() => {
         for (const node of toClaim) {
           for (const key of claimKeysFor(node)) inFlightClaimKeys.delete(key)
@@ -252,7 +270,7 @@ export function useAutoClaimPendingServers(enabled: boolean) {
       .finally(() => {
         claiming.current = false
       })
-  }, [createMutateAsync, enabled, localProbe.data, pendingQuery.data, servers, updateMutateAsync])
+  }, [claimMutateAsync, createMutateAsync, enabled, localProbe.data, pendingQuery.data, servers, updateMutateAsync])
 }
 
 export function useNodeGames(options?: { refetchInterval?: number | false }) {

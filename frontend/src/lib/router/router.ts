@@ -16,9 +16,6 @@ const TermsPage = safeLazy(() =>
 const PrivacyPage = safeLazy(() =>
   import("@/pages/privacy-page").then((m) => ({ default: m.PrivacyPage })),
 )
-const ReleaseNotesPage = safeLazy(() =>
-  import("@/pages/release-notes-page").then((m) => ({ default: m.ReleaseNotesPage })),
-)
 const InstallerPage = safeLazy(() =>
   import("@/features/installer").then((m) => ({ default: m.InstallerPage })),
 )
@@ -95,7 +92,9 @@ const uninstallerRoute = createRoute({
 const releaseNotesRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/release-notes",
-  component: ReleaseNotesPage,
+  beforeLoad: () => {
+    throw redirect({ to: "/settings/release-notes" })
+  },
 })
 
 const routeTree = rootRoute.addChildren([

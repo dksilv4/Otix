@@ -47,7 +47,7 @@ export const DiscoverContinueWatchingCard = memo(
         className="group relative flex flex-col w-full text-left select-none cursor-pointer"
       >
         {/* 16:9 Thumbnail Pod with Soft Glassmorphic Tonal Surface */}
-        <div className="relative aspect-video w-full rounded-2xl overflow-hidden bg-card/60 shadow-md backdrop-blur-xl transition-all duration-300 group-hover:shadow-xl group-hover:-translate-y-0.5 border border-[var(--dk-separator)]">
+        <div className="relative aspect-video w-full rounded-2xl overflow-hidden bg-card/60 shadow-md backdrop-blur-xl transition-all duration-300 group-hover:shadow-xl group-hover:-translate-y-0.5">
           {/* Edge-to-edge artwork */}
           <div className="absolute inset-0 scale-100 group-hover:scale-105 transition-transform duration-500">
             <DkImage
@@ -64,7 +64,7 @@ export const DiscoverContinueWatchingCard = memo(
           {/* Top Row Badges: Episode index / Remaining duration */}
           <div className="absolute top-2.5 inset-x-2.5 flex items-center justify-between z-10 pointer-events-none">
             {item.mediaType === 'show' && item.seasonNumber != null && item.episodeNumber != null ? (
-              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold text-foreground bg-background/60 backdrop-blur-xl border border-[var(--dk-separator)] shadow-sm">
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold text-foreground bg-background/60 backdrop-blur-xl shadow-sm">
                 S{item.seasonNumber}:E{item.episodeNumber}
               </span>
             ) : (
@@ -72,7 +72,7 @@ export const DiscoverContinueWatchingCard = memo(
             )}
 
             {remainingText && (
-              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-medium text-foreground/90 bg-background/60 backdrop-blur-xl border border-[var(--dk-separator)] shadow-sm">
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-medium text-foreground/90 bg-background/60 backdrop-blur-xl shadow-sm">
                 {remainingText}
               </span>
             )}

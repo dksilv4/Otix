@@ -161,7 +161,7 @@ export const SetupWizardModal = ({
 
         {/* Navigation Footer (for steps 1 to 4) */}
         {step < 5 && (
-          <div className="flex items-center justify-between pt-4 border-t border-[var(--dk-separator)]">
+          <div className="flex items-center justify-between pt-4">
             <DkButton
               type="button"
               variant="ghost"

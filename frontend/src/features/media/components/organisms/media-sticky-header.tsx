@@ -172,7 +172,7 @@ export const MediaStickyHeader = ({ detail, mediaType }: MediaStickyHeaderProps)
       data-testid="media-sticky-header"
       data-placement={placement}
       className={cn(
-        'fixed z-[9990] flex items-center gap-2 sm:gap-3 rounded-[2rem] px-2.5 sm:px-3.5 py-1.5 shadow-[var(--dk-shadow-glass)] backdrop-blur-[16px] border border-[var(--dk-separator)]',
+        'fixed z-[9990] flex items-center gap-2 sm:gap-3 rounded-[2rem] px-2.5 sm:px-3.5 py-1.5 shadow-[var(--dk-shadow-glass)] backdrop-blur-[16px]',
         visible ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none',
       )}
       style={getContainerStyles()}
@@ -183,7 +183,7 @@ export const MediaStickyHeader = ({ detail, mediaType }: MediaStickyHeaderProps)
           <img
             src={detail.posterUrl}
             alt=""
-            className="h-8 w-5 sm:h-8 sm:w-6 rounded-md object-cover border border-[var(--dk-separator)] shrink-0 shadow-sm"
+            className="h-8 w-5 sm:h-8 sm:w-6 rounded-md object-cover shrink-0 shadow-sm"
           />
         )}
         <div className="flex items-center gap-1.5 min-w-0">

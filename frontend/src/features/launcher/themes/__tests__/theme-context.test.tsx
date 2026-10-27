@@ -15,21 +15,28 @@ describe("LauncherThemeProvider & useLauncherTheme", () => {
     expect(result.current.themeMeta.id).toBe("modern")
   })
 
-  it("changes theme and persists to localStorage", () => {
+  it("only allows selecting enabled themes and rejects disabled themes", () => {
     const { result } = renderHook(() => useLauncherTheme(), {
       wrapper: LauncherThemeProvider,
     })
 
+    // "steam" is currently disabled per active theme focus
     act(() => {
       result.current.setTheme("steam")
     })
 
-    expect(result.current.currentTheme).toBe("steam")
-    expect(result.current.themeMeta.name).toBe("Deck")
-    expect(localStorage.getItem("otix:launcher-theme")).toBe("steam")
+    expect(result.current.currentTheme).toBe("modern")
+    expect(result.current.themeMeta.id).toBe("modern")
+    expect(localStorage.getItem("otix:launcher-theme")).toBe("modern")
+
+    // Selecting "modern" succeeds
+    act(() => {
+      result.current.setTheme("modern")
+    })
+    expect(result.current.currentTheme).toBe("modern")
   })
 
-  it("cycles through available themes sequentially", () => {
+  it("cycles only through enabled themes", () => {
     const { result } = renderHook(() => useLauncherTheme(), {
       wrapper: LauncherThemeProvider,
     })
@@ -39,15 +46,10 @@ describe("LauncherThemeProvider & useLauncherTheme", () => {
     act(() => {
       result.current.cycleTheme()
     })
-    expect(result.current.currentTheme).toBe("steam")
-
-    act(() => {
-      result.current.cycleTheme()
-    })
-    expect(result.current.currentTheme).toBe("playstation")
+    expect(result.current.currentTheme).toBe("modern")
   })
 
-  it("provides full list of 10 available themes", () => {
+  it("provides full list of 10 available themes with isEnabled flags", () => {
     const { result } = renderHook(() => useLauncherTheme(), {
       wrapper: LauncherThemeProvider,
     })
@@ -65,5 +67,11 @@ describe("LauncherThemeProvider & useLauncherTheme", () => {
       "forge",
       "glass",
     ])
+
+    const modernTheme = result.current.availableThemes.find((t) => t.id === "modern")
+    expect(modernTheme?.isEnabled).toBe(true)
+
+    const disabledThemes = result.current.availableThemes.filter((t) => t.id !== "modern")
+    expect(disabledThemes.every((t) => t.isEnabled === false)).toBe(true)
   })
 })

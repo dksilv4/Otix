@@ -38,7 +38,7 @@ export const DownloadHero = ({
   }
 
   return (
-    <section className="relative overflow-hidden rounded-3xl p-6 sm:p-10 backdrop-blur-2xl bg-[var(--dk-surface-base)] border border-[var(--dk-separator)] shadow-[var(--dk-shadow-glass)]">
+    <section className="relative overflow-hidden rounded-3xl p-6 sm:p-10 backdrop-blur-2xl bg-[var(--dk-surface-glass)] shadow-[var(--dk-shadow-glass)]">
       {/* Background ambient glow without harsh borders or hardcoded colors */}
       <div
         className="pointer-events-none absolute -top-24 -right-24 h-72 w-72 rounded-full opacity-20 blur-3xl"
@@ -109,7 +109,7 @@ export const DownloadHero = ({
         )}
 
         {/* Other Platforms Switcher */}
-        <div className="pt-4 border-t border-[var(--dk-separator)] w-full flex flex-wrap items-center justify-center gap-2 text-xs text-muted-foreground">
+        <div className="pt-4 w-full flex flex-wrap items-center justify-center gap-2 text-xs text-muted-foreground">
           <span>Looking for another platform?</span>
           <button
             type="button"

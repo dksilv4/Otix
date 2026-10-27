@@ -34,7 +34,7 @@ export const PeopleTimeline = ({ credits, mediaTypeFilter, roleFilter }: PeopleT
 
   return (
     <div id="people-timeline" className="relative">
-      <div className="absolute left-[23px] top-4 bottom-4 w-px bg-border" aria-hidden="true" />
+      <div className="absolute left-[23px] top-4 bottom-4 w-px bg-foreground/10" aria-hidden="true" />
 
       <div className="space-y-10">
         {(Array.isArray(groups) ? groups.filter(Boolean) : []).map((group) => (
@@ -42,7 +42,7 @@ export const PeopleTimeline = ({ credits, mediaTypeFilter, roleFilter }: PeopleT
             {/* Year marker — sticky */}
             <div className="sticky top-0 z-20 -mt-4 pt-4 pb-2 mb-3 bg-background/80 backdrop-blur-sm">
               <div className="relative flex items-center gap-5">
-                <div className="relative z-10 flex h-[46px] w-[46px] shrink-0 items-center justify-center rounded-full bg-card ring-2 ring-border">
+                <div className="relative z-10 flex h-[46px] w-[46px] shrink-0 items-center justify-center rounded-full bg-card shadow-sm">
                   <div className="h-3 w-3 rounded-full bg-primary" />
                 </div>
                 <h3
@@ -81,7 +81,7 @@ export const PeopleTimeline = ({ credits, mediaTypeFilter, roleFilter }: PeopleT
                         <path
                           d="M 0,0 C 18,0 28,28 46,28"
                           stroke="currentColor"
-                          className="text-border"
+                          className="text-foreground/15"
                           fill="none"
                           strokeWidth="1"
                         />
@@ -90,9 +90,9 @@ export const PeopleTimeline = ({ credits, mediaTypeFilter, roleFilter }: PeopleT
                       <Link
                         to="/media/$mediaType/$mediaId"
                         params={{ mediaType: credit.mediaType, mediaId: credit.mediaId }}
-                        className="inline-flex items-start gap-3 rounded-xl bg-card/40 p-3 max-w-lg hover:border-border hover:bg-card/80 transition-colors"
+                        className="inline-flex items-start gap-3 rounded-xl bg-card/40 p-3 max-w-lg hover:bg-card/80 transition-colors shadow-xs"
                       >
-                        <div className="h-[68px] w-[45px] shrink-0 overflow-hidden rounded-md ring-1 ring-border/50">
+                        <div className="h-[68px] w-[45px] shrink-0 overflow-hidden rounded-md shadow-sm">
                           <Image
                             src={credit.posterUrl ?? undefined}
                             alt={credit.title}
@@ -142,7 +142,7 @@ export const PeopleTimeline = ({ credits, mediaTypeFilter, roleFilter }: PeopleT
                             {(Array.isArray(credit.roles) ? credit.roles.filter(Boolean) : []).map((r, i) => (
                               <span key={i} className="inline-flex items-center gap-1">
                                 {i > 0 && <span className="text-muted-foreground/40">·</span>}
-                                <span className="rounded px-1.5 py-0.5 text-[11px] font-medium bg-[var(--dk-surface-glass)] text-muted-foreground border border-[var(--dk-separator)]">
+                                <span className="rounded px-1.5 py-0.5 text-[11px] font-medium bg-[var(--dk-surface-glass)] text-muted-foreground">
                                   {formatRole(r.role)}
                                 </span>
                                 {r.characterName && (
@@ -160,7 +160,7 @@ export const PeopleTimeline = ({ credits, mediaTypeFilter, roleFilter }: PeopleT
                     {/* Episode sub-nodes */}
                     {credit.episodes.length > 0 && (
                       <div className="relative ml-10">
-                        <div className="absolute left-[10px] -top-1 bottom-0 w-px bg-border/40" aria-hidden="true" />
+                        <div className="absolute left-[10px] -top-1 bottom-0 w-px bg-foreground/10" aria-hidden="true" />
 
                         <div className="space-y-0">
                           {(Array.isArray(credit.episodes) ? credit.episodes.filter(Boolean) : []).map((ep) => (
@@ -173,7 +173,7 @@ export const PeopleTimeline = ({ credits, mediaTypeFilter, roleFilter }: PeopleT
                                 <path
                                   d="M 0,4 Q 7,4 14,4"
                                   stroke="currentColor"
-                                  className="text-border/40"
+                                  className="text-foreground/15"
                                   fill="none"
                                   strokeWidth="1"
                                 />

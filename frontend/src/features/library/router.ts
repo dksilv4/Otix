@@ -10,6 +10,7 @@ const LibraryLayout = safeLazy(() => import('./pages/library-layout').then(m => 
 
 // Page components
 const LibraryOverviewPage = safeLazy(() => import('./pages/library-overview-page').then(m => ({ default: m.LibraryOverviewPage })))
+const LibraryGamesPage = safeLazy(() => import('./pages/library-core-tab-pages').then(m => ({ default: m.LibraryGamesPage })))
 const LibraryWatchlistPage = safeLazy(() => import('./pages/library-core-tab-pages').then(m => ({ default: m.LibraryWatchlistPage })))
 const LibraryLikePage = safeLazy(() => import('./pages/library-core-tab-pages').then(m => ({ default: m.LibraryLikePage })))
 const LibraryWatchedPage = safeLazy(() => import('./pages/library-core-tab-pages').then(m => ({ default: m.LibraryWatchedPage })))
@@ -51,6 +52,7 @@ export function createLibraryRoutes(rootRoute: AnyRoute) {
     getParentRoute: () => libraryLayoutRoute,
     path: '/overview',
     component: LibraryOverviewPage,
+    pendingComponent: () => null,
     loader: ({ context }: { context: { queryClient: QueryClient } }) => {
       safePrefetchChunk(() => import('./pages/library-overview-page'))
       if (localStorage.getItem(ACCESS_TOKEN_KEY)) {
@@ -61,10 +63,19 @@ export function createLibraryRoutes(rootRoute: AnyRoute) {
 
   const coreTabChunk = () => import('./pages/library-core-tab-pages')
 
+  const libraryGamesRoute = createRoute({
+    getParentRoute: () => libraryLayoutRoute,
+    path: '/games',
+    component: LibraryGamesPage,
+    pendingComponent: () => null,
+    loader: libraryTabLoader('games', coreTabChunk),
+  })
+
   const libraryWatchlistRoute = createRoute({
     getParentRoute: () => libraryLayoutRoute,
     path: '/watchlist',
     component: LibraryWatchlistPage,
+    pendingComponent: () => null,
     loader: libraryTabLoader('watchlist', coreTabChunk),
   })
 
@@ -72,6 +83,7 @@ export function createLibraryRoutes(rootRoute: AnyRoute) {
     getParentRoute: () => libraryLayoutRoute,
     path: '/like',
     component: LibraryLikePage,
+    pendingComponent: () => null,
     loader: libraryTabLoader('like', coreTabChunk),
   })
 
@@ -79,6 +91,7 @@ export function createLibraryRoutes(rootRoute: AnyRoute) {
     getParentRoute: () => libraryLayoutRoute,
     path: '/watched',
     component: LibraryWatchedPage,
+    pendingComponent: () => null,
     loader: libraryTabLoader('watched', coreTabChunk),
   })
 
@@ -86,6 +99,7 @@ export function createLibraryRoutes(rootRoute: AnyRoute) {
     getParentRoute: () => libraryLayoutRoute,
     path: '/played',
     component: LibraryPlayedPage,
+    pendingComponent: () => null,
     loader: libraryTabLoader('played', coreTabChunk),
   })
 
@@ -93,6 +107,7 @@ export function createLibraryRoutes(rootRoute: AnyRoute) {
     getParentRoute: () => libraryLayoutRoute,
     path: '/listened',
     component: LibraryListenedPage,
+    pendingComponent: () => null,
     loader: libraryTabLoader('listened', coreTabChunk),
   })
 
@@ -100,6 +115,7 @@ export function createLibraryRoutes(rootRoute: AnyRoute) {
     getParentRoute: () => libraryLayoutRoute,
     path: '/owned',
     component: LibraryOwnedPage,
+    pendingComponent: () => null,
     loader: libraryTabLoader('owned', coreTabChunk),
   })
 
@@ -107,6 +123,7 @@ export function createLibraryRoutes(rootRoute: AnyRoute) {
     getParentRoute: () => libraryLayoutRoute,
     path: '/steam',
     component: LibraryIntegrationSteamSection,
+    pendingComponent: () => null,
     loader: libraryTabLoader('steam', () => import('./pages/library-integration-steam-section')),
   })
 
@@ -114,6 +131,7 @@ export function createLibraryRoutes(rootRoute: AnyRoute) {
     getParentRoute: () => libraryLayoutRoute,
     path: '/plex',
     component: LibraryIntegrationPlexSection,
+    pendingComponent: () => null,
     loader: libraryTabLoader('plex', () => import('./pages/library-integration-plex-section')),
   })
 
@@ -121,6 +139,7 @@ export function createLibraryRoutes(rootRoute: AnyRoute) {
     getParentRoute: () => libraryLayoutRoute,
     path: '/youtube',
     component: LibraryIntegrationYoutubeSection,
+    pendingComponent: () => null,
     loader: libraryTabLoader('youtube', () => import('./pages/library-integration-youtube-section')),
   })
 
@@ -128,6 +147,7 @@ export function createLibraryRoutes(rootRoute: AnyRoute) {
     getParentRoute: () => libraryLayoutRoute,
     path: '/wishlist',
     component: LibraryWishlistPage,
+    pendingComponent: () => null,
     loader: ({ context }: { context: { queryClient: QueryClient } }) => {
       safePrefetchChunk(() => import('./pages/library-wishlist-page'))
       if (localStorage.getItem(ACCESS_TOKEN_KEY)) {
@@ -140,6 +160,7 @@ export function createLibraryRoutes(rootRoute: AnyRoute) {
     getParentRoute: () => libraryLayoutRoute,
     path: '/lists',
     component: LibraryListsPage,
+    pendingComponent: () => null,
     loader: ({ context }: { context: { queryClient: QueryClient } }) => {
       safePrefetchChunk(() => import('./pages/library-lists-page'))
       if (localStorage.getItem(ACCESS_TOKEN_KEY)) {
@@ -152,6 +173,7 @@ export function createLibraryRoutes(rootRoute: AnyRoute) {
     libraryLayoutRoute,
     libraryIndexRoute,
     libraryOverviewRoute,
+    libraryGamesRoute,
     libraryWatchlistRoute,
     libraryLikeRoute,
     libraryWatchedRoute,

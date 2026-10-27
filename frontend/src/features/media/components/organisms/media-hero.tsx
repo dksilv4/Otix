@@ -205,7 +205,7 @@ export const MediaHero = ({ className = '' }: MediaHeroProps) => {
         <div className="flex flex-col items-center sm:flex-row sm:items-center lg:items-end gap-6 sm:gap-8 lg:gap-10">
           {/* Poster with subtle ambient glow */}
           <div className="w-36 shrink-0 sm:w-44 lg:w-56 xl:w-60 group">
-            <div className="overflow-hidden rounded-2xl shadow-2xl border border-[var(--dk-separator)] bg-[var(--dk-surface-glass)] transition-all duration-300 group-hover:scale-[1.02]">
+            <div className="overflow-hidden rounded-2xl shadow-2xl bg-[var(--dk-surface-glass)] transition-all duration-300 group-hover:scale-[1.02]">
               {!posterUrl || posterFailed ? (
                 <div
                   className={`w-full flex flex-col items-center justify-center p-4 text-center bg-[var(--dk-surface-glass)] ${
@@ -286,9 +286,9 @@ export const MediaHero = ({ className = '' }: MediaHeroProps) => {
               {activePromotion && (
                 <Badge
                   variant="secondary"
-                  className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 gap-1.5 font-medium border-0"
+                  className="bg-primary/15 text-primary gap-1.5 font-medium border-0"
                 >
-                  <Gift className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
+                  <Gift className="h-3 w-3 text-primary" />
                   Free on {activePromotion.storeName}
                 </Badge>
               )}
@@ -358,7 +358,7 @@ export const MediaHero = ({ className = '' }: MediaHeroProps) => {
                     'group relative inline-flex items-center gap-2 rounded-full h-10 px-4 sm:px-5 py-2 text-sm font-semibold transition-all hover:scale-[1.02] active:scale-[0.98] shadow-md backdrop-blur-xl',
                     trailerIsPrimary
                       ? 'bg-primary text-primary-foreground shadow-md'
-                      : 'bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-base)] text-foreground border border-[var(--dk-separator)]',
+                      : 'bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-base)] text-foreground',
                   )}
                   title="Watch Trailer"
                   aria-label="Watch Trailer"
@@ -369,7 +369,7 @@ export const MediaHero = ({ className = '' }: MediaHeroProps) => {
               )}
 
               {/* ── Secondary Icon-Based Interaction Cluster ── */}
-              <div className="flex items-center gap-1 rounded-full h-10 bg-[var(--dk-surface-glass)] px-1.5 backdrop-blur-xl shadow-lg border border-[var(--dk-separator)]">
+              <div className="flex items-center gap-1 rounded-full h-10 bg-[var(--dk-surface-glass)] px-1.5 backdrop-blur-xl shadow-lg">
                 {/* Watchlist / Wishlist Button */}
                 {isAuthenticated && (
                   <button
@@ -398,14 +398,14 @@ export const MediaHero = ({ className = '' }: MediaHeroProps) => {
                     className={cn(
                       'inline-flex h-8 w-8 items-center justify-center rounded-full transition-all hover:scale-110 active:scale-95',
                       isWatched
-                        ? 'bg-emerald-500/25 text-emerald-700 dark:text-emerald-200 ring-1 ring-emerald-500/50 shadow-sm'
+                        ? 'bg-primary text-primary-foreground shadow-sm'
                         : 'text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-base)]',
                     )}
                     title={isWatched ? `Marked as ${watchedLabel}` : `Mark ${watchedLabel}`}
                     aria-label={isWatched ? `Marked as ${watchedLabel}` : `Mark ${watchedLabel}`}
                   >
                     <CheckCircle2
-                      className={cn('h-4 w-4', isWatched && 'text-emerald-600 dark:text-emerald-400')}
+                      className={cn('h-4 w-4', isWatched ? 'text-primary-foreground' : 'text-muted-foreground')}
                     />
                   </button>
                 )}

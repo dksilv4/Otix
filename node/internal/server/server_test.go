@@ -104,6 +104,162 @@ func TestClaimFlowEndpoints(t *testing.T) {
 	}
 }
 
+func TestClaimDirectLoopbackRestriction(t *testing.T) {
+	srv, _, _ := setupTestServer()
+
+	payload, _ := json.Marshal(map[string]string{
+		"auth_token":  "token_secret_123",
+		"server_name": "Remote Node",
+		"username":    "bob",
+	})
+
+	// 1. External IPv4 client (e.g. 192.168.1.100) must be rejected with 403
+	reqExternal := httptest.NewRequest("POST", "/api/v1/claim/direct", bytes.NewReader(payload))
+	reqExternal.RemoteAddr = "192.168.1.100:45678"
+	reqExternal.Header.Set("Content-Type", "application/json")
+	wExternal := httptest.NewRecorder()
+	srv.Router().ServeHTTP(wExternal, reqExternal)
+
+	if wExternal.Code != http.StatusForbidden {
+		t.Fatalf("expected status 403 Forbidden for non-loopback IP, got %d (body: %s)", wExternal.Code, wExternal.Body.String())
+	}
+	if !bytes.Contains(wExternal.Body.Bytes(), []byte("loopback")) {
+		t.Errorf("expected error message to mention loopback, got: %s", wExternal.Body.String())
+	}
+
+	// 2. Default httptest.NewRequest RemoteAddr (192.0.2.1:1234) must also be rejected
+	reqDefault := httptest.NewRequest("POST", "/api/v1/claim/direct", bytes.NewReader(payload))
+	reqDefault.Header.Set("Content-Type", "application/json")
+	wDefault := httptest.NewRecorder()
+	srv.Router().ServeHTTP(wDefault, reqDefault)
+
+	if wDefault.Code != http.StatusForbidden {
+		t.Fatalf("expected status 403 Forbidden for default RemoteAddr, got %d", wDefault.Code)
+	}
+}
+
+func TestClaimDirectEndpointSuccessAndPersistence(t *testing.T) {
+	srv, cfg, cm := setupTestServer()
+
+	configDir := t.TempDir()
+	configPath := filepath.Join(configDir, "config.yaml")
+	cfg.SetConfigPath(configPath)
+
+	payload, _ := json.Marshal(map[string]string{
+		"auth_token":  "direct_auth_secret_999",
+		"server_name": "Companion Node Mac",
+		"username":    "dksilv4",
+	})
+
+	req := httptest.NewRequest("POST", "/api/v1/claim/direct", bytes.NewReader(payload))
+	req.RemoteAddr = "127.0.0.1:58432"
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	srv.Router().ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200 OK from direct claim, got %d (body: %s)", w.Code, w.Body.String())
+	}
+
+	var res map[string]interface{}
+	if err := json.Unmarshal(w.Body.Bytes(), &res); err != nil {
+		t.Fatalf("failed to decode json response: %v", err)
+	}
+
+	if res["status"] != "claimed" {
+		t.Errorf("expected status 'claimed', got %v", res["status"])
+	}
+	if res["server_name"] != "Companion Node Mac" {
+		t.Errorf("expected server_name 'Companion Node Mac', got %v", res["server_name"])
+	}
+	if res["username"] != "dksilv4" {
+		t.Errorf("expected username 'dksilv4', got %v", res["username"])
+	}
+
+	// Verify ClaimManager state
+	if !cm.IsClaimed() {
+		t.Fatal("expected ClaimManager.IsClaimed() to be true")
+	}
+	if !cm.ValidateToken("direct_auth_secret_999") {
+		t.Fatal("expected cm.ValidateToken('direct_auth_secret_999') to be true")
+	}
+
+	// Verify status endpoint reflects claimed state
+	reqStatus := httptest.NewRequest("GET", "/api/v1/claim/status", nil)
+	wStatus := httptest.NewRecorder()
+	srv.Router().ServeHTTP(wStatus, reqStatus)
+	var statusRes claim.ClaimStatus
+	_ = json.Unmarshal(wStatus.Body.Bytes(), &statusRes)
+	if !statusRes.Claimed {
+		t.Fatal("expected /api/v1/claim/status to report claimed=true")
+	}
+	if statusRes.Username != "dksilv4" {
+		t.Fatalf("expected status username 'dksilv4', got %s", statusRes.Username)
+	}
+
+	// Verify disk persistence via config load
+	diskCfg := config.LoadConfig(configPath)
+	if !diskCfg.Server.Claimed {
+		t.Fatal("expected disk configuration to have Claimed=true")
+	}
+	if diskCfg.Server.AuthToken != "direct_auth_secret_999" {
+		t.Fatalf("expected persisted token 'direct_auth_secret_999', got %s", diskCfg.Server.AuthToken)
+	}
+	if diskCfg.Server.ClaimedBy != "dksilv4" {
+		t.Fatalf("expected persisted ClaimedBy 'dksilv4', got %s", diskCfg.Server.ClaimedBy)
+	}
+	if diskCfg.Server.Name != "Companion Node Mac" {
+		t.Fatalf("expected persisted Name 'Companion Node Mac', got %s", diskCfg.Server.Name)
+	}
+}
+
+func TestClaimDirectIPv6AndValidationErrors(t *testing.T) {
+	srv, _, _ := setupTestServer()
+
+	// 1. IPv6 Loopback should succeed
+	payloadIPv6, _ := json.Marshal(map[string]string{
+		"auth_token":  "ipv6_secret_tok",
+		"server_name": "IPv6 Node",
+		"username":    "charlie",
+	})
+	reqIPv6 := httptest.NewRequest("POST", "/api/v1/claim/direct", bytes.NewReader(payloadIPv6))
+	reqIPv6.RemoteAddr = "[::1]:52341"
+	reqIPv6.Header.Set("Content-Type", "application/json")
+	wIPv6 := httptest.NewRecorder()
+	srv.Router().ServeHTTP(wIPv6, reqIPv6)
+
+	if wIPv6.Code != http.StatusOK {
+		t.Fatalf("expected 200 OK for IPv6 loopback, got %d (body: %s)", wIPv6.Code, wIPv6.Body.String())
+	}
+
+	// 2. Bad request: invalid JSON
+	reqBadJSON := httptest.NewRequest("POST", "/api/v1/claim/direct", bytes.NewReader([]byte("{invalid-json")))
+	reqBadJSON.RemoteAddr = "127.0.0.1:52341"
+	reqBadJSON.Header.Set("Content-Type", "application/json")
+	wBadJSON := httptest.NewRecorder()
+	srv.Router().ServeHTTP(wBadJSON, reqBadJSON)
+
+	if wBadJSON.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400 Bad Request for malformed JSON, got %d", wBadJSON.Code)
+	}
+
+	// 3. Bad request: empty auth token
+	emptyPayload, _ := json.Marshal(map[string]string{
+		"auth_token":  "",
+		"server_name": "Empty Node",
+		"username":    "charlie",
+	})
+	reqEmptyTok := httptest.NewRequest("POST", "/api/v1/claim/direct", bytes.NewReader(emptyPayload))
+	reqEmptyTok.RemoteAddr = "127.0.0.1:52341"
+	reqEmptyTok.Header.Set("Content-Type", "application/json")
+	wEmptyTok := httptest.NewRecorder()
+	srv.Router().ServeHTTP(wEmptyTok, reqEmptyTok)
+
+	if wEmptyTok.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400 Bad Request for empty auth token, got %d", wEmptyTok.Code)
+	}
+}
+
 func TestClaimLoginDirect(t *testing.T) {
 	// Mock Otix backend server
 	mockBackend := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

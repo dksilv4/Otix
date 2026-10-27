@@ -74,7 +74,7 @@ export const DownloadNodeModal = ({ isOpen, isExiting, onClose }: DownloadNodeMo
     >
       <div className="space-y-4 max-h-[72vh] overflow-y-auto pr-1 pt-1 pb-1">
         {/* Onboarding Highlights Banner */}
-        <div className="p-4 rounded-2xl bg-primary/10 border border-primary/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+        <div className="p-4 rounded-2xl bg-primary/10 shadow-[var(--dk-shadow-sm)] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div className="flex items-start gap-3">
             <div className="h-9 w-9 rounded-xl bg-primary/20 flex items-center justify-center shrink-0 text-primary mt-0.5 sm:mt-0">
               <Sparkles className="h-5 w-5" />
@@ -100,7 +100,7 @@ export const DownloadNodeModal = ({ isOpen, isExiting, onClose }: DownloadNodeMo
           {downloadOptions.map((opt) => (
             <div
               key={opt.platform}
-              className="p-4 rounded-xl bg-[var(--dk-surface-ghost)] border border-[var(--dk-separator)] flex flex-col justify-between space-y-3"
+              className="p-4 rounded-xl bg-[var(--dk-surface-ghost)] flex flex-col justify-between space-y-3"
             >
               <div>
                 <div className="flex items-center justify-between gap-2 mb-1">
@@ -114,7 +114,7 @@ export const DownloadNodeModal = ({ isOpen, isExiting, onClose }: DownloadNodeMo
                     )}
                     <span className="text-sm font-bold text-foreground">{opt.platform}</span>
                   </div>
-                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[var(--dk-surface-ghost-hover)] text-muted-foreground border border-[var(--dk-separator)]">
+                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[var(--dk-surface-ghost-hover)] text-muted-foreground">
                     {opt.badge}
                   </span>
                 </div>
@@ -122,7 +122,7 @@ export const DownloadNodeModal = ({ isOpen, isExiting, onClose }: DownloadNodeMo
                 <p className="text-xs text-muted-foreground leading-relaxed">{opt.description}</p>
               </div>
 
-              <div className="pt-2 border-t border-[var(--dk-separator)] flex items-center justify-between gap-2">
+              <div className="pt-2 flex items-center justify-between gap-2">
                 <span className="text-[10px] font-mono text-muted-foreground/60 truncate">{opt.filename}</span>
                 <DkButton size="sm" variant={opt.primary ? 'primary' : 'secondary'} asChild>
                   <a href={opt.url} target="_blank" rel="noreferrer" download className="flex items-center gap-1.5">
@@ -136,7 +136,7 @@ export const DownloadNodeModal = ({ isOpen, isExiting, onClose }: DownloadNodeMo
         </div>
 
         {/* 3-Step Setup Instructions */}
-        <div className="p-4 rounded-xl bg-[var(--dk-surface-ghost)] border border-[var(--dk-separator)] space-y-2.5">
+        <div className="p-4 rounded-xl bg-[var(--dk-surface-ghost)] space-y-2.5">
           <h5 className="text-xs font-bold uppercase tracking-wider text-foreground/80">How it works</h5>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs text-muted-foreground">
             <div className="flex items-start gap-2">

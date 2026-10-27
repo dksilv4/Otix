@@ -24,7 +24,7 @@ export const RemoteDownloadCard = ({
   const isError = transfer.status === 'error'
 
   return (
-    <div className="dk-download-card border border-[var(--dk-separator)] bg-[var(--dk-surface-base)] hover:border-primary/40 transition-colors"
+    <div className="dk-download-card bg-[var(--dk-surface-glass)] backdrop-blur-xl shadow-[var(--dk-shadow-glass)] transition-colors"
       data-context-type="download"
       data-download-id={transfer.id}
       data-download-title={transfer.gameTitle || transfer.filename}
@@ -37,10 +37,10 @@ export const RemoteDownloadCard = ({
       <div
         className={cn(
           'dk-download-card__icon',
-          isDownloading && 'bg-cyan-500/20 text-cyan-400',
-          isPaused && 'bg-amber-500/20 text-amber-400',
-          isCompleted && 'bg-green-500/20 text-green-400',
-          isError && 'bg-red-500/20 text-red-400'
+          isDownloading && 'bg-primary/20 text-primary',
+          isPaused && 'bg-[var(--status-warning)]/20 text-[var(--status-warning)]',
+          isCompleted && 'bg-[var(--status-online)]/20 text-[var(--status-online)]',
+          isError && 'bg-destructive/20 text-destructive'
         )}
       >
         {isCompleted ? (
@@ -77,8 +77,8 @@ export const RemoteDownloadCard = ({
             className={cn(
               'text-xs font-semibold px-2 py-0.5 rounded-md uppercase tracking-wider text-[10px]',
               isDownloading && 'bg-primary/20 text-primary',
-              isPaused && 'bg-amber-500/20 text-amber-500 dark:text-amber-300',
-              isCompleted && 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-300',
+              isPaused && 'bg-[var(--status-warning)]/20 text-[var(--status-warning)]',
+              isCompleted && 'bg-[var(--status-online)]/20 text-[var(--status-online)]',
               isError && 'bg-destructive/20 text-destructive'
             )}
           >
@@ -111,7 +111,7 @@ export const RemoteDownloadCard = ({
           <div
             className={cn(
               'dk-download-card__progress-bar',
-              isPaused ? 'bg-amber-500' : 'bg-primary'
+              isPaused ? 'bg-[var(--status-warning)]' : 'bg-primary'
             )}
             style={{ width: `${Math.min(100, Math.max(0, transfer.percentage))}%` }}
           />

@@ -55,7 +55,7 @@ export const FriendsOverview = ({
       {/* Tabs & Search Strip */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         {/* Navigation Tabs */}
-        <div className="flex items-center gap-1.5 overflow-x-auto rounded-2xl bg-[var(--dk-surface-glass)] p-1.5 border border-[var(--dk-separator)]">
+        <div className="flex items-center gap-1.5 overflow-x-auto rounded-2xl bg-[var(--dk-surface-glass)] backdrop-blur-xl shadow-[var(--dk-shadow-glass)] p-1.5">
           <button
             type="button"
             onClick={() => onSelectTab('all')}

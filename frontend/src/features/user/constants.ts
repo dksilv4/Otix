@@ -9,12 +9,12 @@ export interface LevelTier {
 }
 
 export const LEVEL_TIERS: { min: number; tier: LevelTier }[] = [
-  { min: 50, tier: { color: '#a78bfa', barColor: '#a78bfa33', glow: '#8b5cf633', hasShimmer: true, hasGlow: true } },
-  { min: 35, tier: { color: '#22d3ee', barColor: '#22d3ee33', glow: '#06b6d433', hasShimmer: true, hasGlow: true } },
-  { min: 20, tier: { color: '#34d399', barColor: '#34d39933', glow: '#10b98133', hasShimmer: false, hasGlow: true } },
-  { min: 10, tier: { color: '#fbbf24', barColor: '#fbbf2433', glow: '#eab30833', hasShimmer: false, hasGlow: false } },
-  { min: 5, tier: { color: '#94a3b8', barColor: '#94a3b833', glow: '#64748b33', hasShimmer: false, hasGlow: false } },
-  { min: 1, tier: { color: '#d97706', barColor: '#d9770633', glow: '#b4530933', hasShimmer: false, hasGlow: false } },
+  { min: 50, tier: { color: 'var(--tier-transcendent)', barColor: 'var(--tier-transcendent-bar)', glow: 'var(--tier-transcendent-glow)', hasShimmer: true, hasGlow: true } },
+  { min: 35, tier: { color: 'var(--tier-master)', barColor: 'var(--tier-master-bar)', glow: 'var(--tier-master-glow)', hasShimmer: true, hasGlow: true } },
+  { min: 20, tier: { color: 'var(--tier-expert)', barColor: 'var(--tier-expert-bar)', glow: 'var(--tier-expert-glow)', hasShimmer: false, hasGlow: true } },
+  { min: 10, tier: { color: 'var(--tier-adept)', barColor: 'var(--tier-adept-bar)', glow: 'var(--tier-adept-glow)', hasShimmer: false, hasGlow: false } },
+  { min: 5, tier: { color: 'var(--tier-apprentice)', barColor: 'var(--tier-apprentice-bar)', glow: 'var(--tier-apprentice-glow)', hasShimmer: false, hasGlow: false } },
+  { min: 1, tier: { color: 'var(--tier-novice)', barColor: 'var(--tier-novice-bar)', glow: 'var(--tier-novice-glow)', hasShimmer: false, hasGlow: false } },
 ]
 
 export const LEVEL_TITLES: { min: number; max: number; title: string }[] = [

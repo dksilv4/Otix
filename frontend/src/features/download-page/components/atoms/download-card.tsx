@@ -35,8 +35,8 @@ export const DownloadCard = ({ option, onDownload }: DownloadCardProps) => {
       className={
         'group relative flex flex-col justify-between p-5 rounded-2xl backdrop-blur-xl transition-all duration-200 ' +
         (option.isPrimary
-          ? 'bg-[var(--dk-surface-raised)] border border-primary/20 shadow-[var(--dk-shadow-sm)] hover:shadow-[var(--dk-shadow-glass)]'
-          : 'bg-[var(--dk-surface-base)] border border-[var(--dk-separator)] hover:bg-[var(--dk-surface-glass-hover)] shadow-[var(--dk-shadow-xs)]')
+          ? 'bg-[var(--dk-surface-raised)] shadow-[var(--dk-shadow-sm)] hover:shadow-[var(--dk-shadow-glass)]'
+          : 'bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-ghost-hover)] shadow-[var(--dk-shadow-glass)]')
       }
     >
       <div className="space-y-3">
@@ -102,7 +102,7 @@ export const DownloadCard = ({ option, onDownload }: DownloadCardProps) => {
       </div>
 
       {/* Footer: File info & Direct Download Action */}
-      <div className="pt-4 mt-4 border-t border-[var(--dk-separator)] flex items-center justify-between gap-3">
+      <div className="pt-4 mt-4 flex items-center justify-between gap-3">
         <div className="flex flex-col">
           <span className="text-[11px] font-mono text-muted-foreground">
             {option.filename}

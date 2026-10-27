@@ -16,7 +16,7 @@ export const WelcomeVisibilityControls = () => {
   const allHidden = !isWelcomeNavVisible && !isWelcomeBannerVisible
 
   return (
-    <div className="relative overflow-hidden rounded-[2.5rem] glass-card p-7 sm:p-9 shadow-[var(--dk-shadow-glass)] space-y-6">
+    <div className="relative overflow-hidden rounded-[2.5rem] bg-[var(--dk-surface-glass)] backdrop-blur-xl p-7 sm:p-9 shadow-[var(--dk-shadow-glass)] space-y-6">
       <div className="relative z-10 space-y-1.5">
         <h2 className="text-base font-bold tracking-tight text-foreground">
           Guide Visibility & Navigation
@@ -61,7 +61,7 @@ export const WelcomeVisibilityControls = () => {
         </div>
       </div>
 
-      <div className="relative z-10 flex flex-wrap items-center justify-between gap-4 pt-3 border-t border-[var(--dk-separator)]">
+      <div className="relative z-10 flex flex-wrap items-center justify-between gap-4 pt-4">
         <p className="text-[11px] text-muted-foreground">
           {allHidden
             ? 'The welcome guide is currently hidden from navigation and feeds.'

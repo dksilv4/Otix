@@ -48,8 +48,8 @@ const InteractiveStar = ({
         className="dk-review-interactive-star__hit--left"
         style={{ touchAction: "none" }}
         onPointerDown={(e) => { e.preventDefault(); onPointerDown(halfScore) }}
-        onPointerEnter={(e) => { e.preventDefault(); onPointerEnter(halfScore) }}
-        onPointerMove={(e) => { e.preventDefault(); onPointerMove(halfScore) }}
+        onPointerEnter={() => onPointerEnter(halfScore)}
+        onPointerMove={() => onPointerMove(halfScore)}
       />
 
       {/* Right half hit area */}
@@ -57,8 +57,8 @@ const InteractiveStar = ({
         className="dk-review-interactive-star__hit--right"
         style={{ touchAction: "none" }}
         onPointerDown={(e) => { e.preventDefault(); onPointerDown(fullScore) }}
-        onPointerEnter={(e) => { e.preventDefault(); onPointerEnter(fullScore) }}
-        onPointerMove={(e) => { e.preventDefault(); onPointerMove(fullScore) }}
+        onPointerEnter={() => onPointerEnter(fullScore)}
+        onPointerMove={() => onPointerMove(fullScore)}
       />
 
       {/* Filled overlay */}

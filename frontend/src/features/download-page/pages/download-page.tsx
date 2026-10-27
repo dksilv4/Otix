@@ -125,7 +125,7 @@ export const DownloadPage = () => {
 
       {/* Release Highlights / What's New Card */}
       {highlights.length > 0 && (
-        <section className="rounded-2xl sm:rounded-3xl p-6 sm:p-7 backdrop-blur-xl bg-[var(--dk-surface-base)] border border-[var(--dk-separator)] shadow-[var(--dk-shadow-xs)] space-y-3">
+        <section className="rounded-2xl sm:rounded-3xl p-6 sm:p-7 backdrop-blur-xl bg-[var(--dk-surface-glass)] shadow-[var(--dk-shadow-glass)] space-y-3">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-2 text-sm font-bold text-foreground">
               <Sparkles className="h-4 w-4 text-primary" />
@@ -179,7 +179,7 @@ export const DownloadPage = () => {
         {activeTab === 'node' ? (
           <div className="space-y-6">
             <div className="flex justify-center pb-2">
-              <div className="flex items-center gap-1.5 p-1.5 rounded-2xl bg-[var(--dk-surface-ghost)] backdrop-blur-xl border border-[var(--dk-separator)]">
+              <div className="flex items-center gap-1.5 p-1.5 rounded-2xl bg-[var(--dk-surface-ghost)] backdrop-blur-xl shadow-inner">
                 <button
                   type="button"
                   onClick={() => handleTabSelect('windows')}
@@ -223,7 +223,7 @@ export const DownloadPage = () => {
       </section>
 
       {/* Frequently Asked Questions */}
-      <section className="rounded-2xl sm:rounded-3xl p-6 sm:p-8 backdrop-blur-xl bg-[var(--dk-surface-base)] border border-[var(--dk-separator)] shadow-[var(--dk-shadow-xs)] space-y-6">
+      <section className="rounded-2xl sm:rounded-3xl p-6 sm:p-8 backdrop-blur-xl bg-[var(--dk-surface-glass)] shadow-[var(--dk-shadow-glass)] space-y-6">
         <div className="flex items-center gap-2 text-foreground font-bold text-base sm:text-lg">
           <HelpCircle className="h-5 w-5 text-primary" />
           <span>Downloads FAQ</span>
@@ -233,7 +233,7 @@ export const DownloadPage = () => {
           {DOWNLOAD_FAQS.map((faq, idx) => (
             <div
               key={idx}
-              className="p-4 rounded-xl bg-[var(--dk-surface-ghost)] border border-[var(--dk-separator)] space-y-2"
+              className="p-4 rounded-xl bg-[var(--dk-surface-ghost)] space-y-2"
             >
               <h3 className="font-semibold text-xs sm:text-sm text-foreground">
                 {faq.question}

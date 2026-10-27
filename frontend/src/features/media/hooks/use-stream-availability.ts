@@ -3,6 +3,7 @@ import { useAuth } from '@auth/hooks/use-auth'
 import { useLibraryTab } from '@/features/library/library-queries'
 import { getPluginAPI } from '@/features/plugins/api'
 import type { MediaItemSummary } from '@/features/media/queries/media-queries'
+import { fetchPlexConnectInfoCached } from '../utils/plex-stream'
 
 const SLOT_LOCATION = 'media/card/badges'
 
@@ -29,8 +30,8 @@ export const useStreamableCatalog = () => {
   }
   const isPlexConnected = Boolean(plexId)
 
-  // Query user's plex library when connected
-  const { data, isLoading, isError } = useLibraryTab('plex', undefined)
+  // Avoid full catalog scanning: query only first page for streamable shelves
+  const { data, isLoading, isError } = useLibraryTab('plex', { limit: '24' })
 
   const items = useMemo<MediaItemSummary[]>(() => {
     if (!isPlexConnected || !data?.pages) return []
@@ -67,6 +68,8 @@ export const useStreamAvailability = ({
   const [pluginStreamable, setPluginStreamable] = useState<boolean | null>(null)
   const [pluginLabel, setPluginLabel] = useState<string | undefined>(undefined)
   const [pluginLoading, setPluginLoading] = useState(false)
+  const [targetedStreamable, setTargetedStreamable] = useState<boolean | null>(null)
+  const [targetedLoading, setTargetedLoading] = useState(false)
 
   // Check desktop plugin slot data
   useEffect(() => {
@@ -125,22 +128,52 @@ export const useStreamAvailability = ({
     }
   }, [mediaId, tmdbId, mediaType])
 
-  // Media is streamable if desktop plugin matched OR backend catalog matched
+  // Media is streamable if present in cached streamable set
   const isCatalogMatch = useMemo(() => {
-    if (!isPlexConnected) return false
+    if (!isPlexConnected || mediaType === 'game') return false
     if (streamableIds.has(String(mediaId))) return true
     if (tmdbId && streamableIds.has(String(tmdbId))) return true
     return false
-  }, [isPlexConnected, streamableIds, mediaId, tmdbId])
+  }, [isPlexConnected, streamableIds, mediaId, tmdbId, mediaType])
 
-  const isStreamable = Boolean(pluginStreamable || isCatalogMatch)
-  const providerLabel = pluginLabel || (isCatalogMatch ? 'Plex' : 'Stream')
+  // Targeted single-item lookup for Plex if not present in initial shelf
+  useEffect(() => {
+    if (!isPlexConnected || mediaType === 'game' || !mediaId || isCatalogMatch) {
+      setTargetedStreamable(null)
+      return
+    }
+
+    let cancelled = false
+    setTargetedLoading(true)
+
+    fetchPlexConnectInfoCached(mediaId, {
+      tmdbId: tmdbId ? String(tmdbId) : undefined,
+      mediaType,
+    })
+      .then((info) => {
+        if (cancelled) return
+        setTargetedStreamable(Boolean(info && (info.ratingKey || info.rating_key)))
+      })
+      .catch(() => {
+        if (!cancelled) setTargetedStreamable(false)
+      })
+      .finally(() => {
+        if (!cancelled) setTargetedLoading(false)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [isPlexConnected, mediaId, tmdbId, mediaType, isCatalogMatch])
+
+  const isStreamable = Boolean(pluginStreamable || isCatalogMatch || targetedStreamable)
+  const providerLabel = pluginLabel || ((isCatalogMatch || targetedStreamable) ? 'Plex' : 'Stream')
   const tone = providerLabel.toLowerCase().includes('plex') ? 'amber' : 'primary'
 
   return {
     isStreamable,
     providerLabel,
     tone,
-    isLoading: pluginLoading || (isPlexConnected && catalogLoading),
+    isLoading: pluginLoading || (isPlexConnected && (catalogLoading || targetedLoading)),
   }
 }

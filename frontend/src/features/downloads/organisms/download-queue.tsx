@@ -15,6 +15,7 @@ import { useServerUsenetHistory, useServerUsenetQueue, useCancelServerQueueDownl
 import { DkButton } from '@ui/atoms/button';
 import { cn, formatBytes } from '@/lib/utils';
 import { isDesktop } from '@/lib/desktop/api';
+import { DownloadRelocationPrompt } from '../components/molecules/download-relocation-prompt';
 import './download-queue.scss';
 
 
@@ -170,7 +171,7 @@ export const DownloadQueuePage = () => {
                     />,
                   );
                 }}
-                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-muted/60 hover:bg-muted text-foreground text-xs font-semibold border border-border transition-colors"
+                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-muted/60 hover:bg-muted text-foreground text-xs font-semibold transition-colors"
                 title="Configure SABnzbd"
               >
                 <Sliders className="h-3.5 w-3.5" />
@@ -187,7 +188,7 @@ export const DownloadQueuePage = () => {
 
 
       {/* Queue toolbar */}
-      <div className="flex items-center gap-2 mb-4 border-b border-border pb-3">
+      <div className="flex items-center gap-2 mb-4 pb-3">
         <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-primary text-primary-foreground shadow-sm">
           <Download className="h-3.5 w-3.5" />
           <span>Downloads Queue</span>
@@ -213,8 +214,11 @@ export const DownloadQueuePage = () => {
         )}
       </div>
 
+      {/* ── 1-Click Relocation Prompt & Destination Preview ── */}
+      <DownloadRelocationPrompt className="mb-5" />
+
       {/* Assigned Save Location Banner */}
-      <div className="mb-5 px-3.5 py-2.5 rounded-xl bg-card border border-border flex items-center justify-between text-xs">
+      <div className="mb-5 px-3.5 py-2.5 rounded-xl bg-[var(--dk-surface-ghost)] flex items-center justify-between text-xs">
         <div className="flex items-center gap-2 text-muted-foreground min-w-0">
           <FolderOpen className="h-4 w-4 text-primary shrink-0" />
           <span className="shrink-0 font-medium text-foreground">Local Save Folder:</span>
@@ -227,7 +231,7 @@ export const DownloadQueuePage = () => {
             <button
               type="button"
               onClick={openServerExplorer}
-              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-primary/15 hover:bg-primary/25 text-primary text-[11px] font-semibold border border-primary/25 transition-colors"
+              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-primary/15 hover:bg-primary/25 text-primary text-[11px] font-semibold transition-colors"
             >
               <HardDrive className="h-3 w-3" />
               <span>Browse Server</span>
@@ -244,7 +248,7 @@ export const DownloadQueuePage = () => {
 
           {/* ── Active Server SABnzbd Usenet Queue ── */}
           {hasGameServers && usenetQueueData && usenetQueueData.items.length > 0 && (
-            <div className="mb-5 p-4 rounded-2xl bg-card border border-primary/30 shadow-md space-y-3">
+            <div className="mb-5 p-4 rounded-2xl bg-[var(--dk-surface-glass)] backdrop-blur-xl shadow-[var(--dk-shadow-glass)] space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
                   <div className="p-1.5 rounded-xl bg-primary/15 text-primary">
@@ -265,7 +269,7 @@ export const DownloadQueuePage = () => {
                 {usenetQueueData.items.map((item) => (
                   <div
                     key={item.nzo_id}
-                    className="p-3 rounded-xl bg-muted/30 border border-border space-y-2"
+                    className="p-3 rounded-xl bg-muted/30 space-y-2"
                   >
                     <div className="flex items-center justify-between text-xs">
                       <span className="font-semibold text-foreground truncate max-w-[70%]">
@@ -277,7 +281,7 @@ export const DownloadQueuePage = () => {
                         </span>
                         <button
                           onClick={() => cancelUsenetDownloadMutation.mutate(item.nzo_id)}
-                          className="text-[11px] text-rose-400 hover:text-rose-300 font-medium"
+                          className="text-[11px] text-destructive hover:opacity-80 font-medium"
                         >
                           Cancel
                         </button>
@@ -302,13 +306,13 @@ export const DownloadQueuePage = () => {
           )}
 
           {hasGameServers && usenetHistoryItems.length > 0 && (
-            <div className="mb-5 p-4 rounded-2xl bg-card border border-border space-y-3">
+            <div className="mb-5 p-4 rounded-2xl bg-[var(--dk-surface-glass)] backdrop-blur-xl shadow-[var(--dk-shadow-glass)] space-y-3">
               <h3 className="text-xs font-bold text-foreground">Download History</h3>
               <div className="space-y-2">
                 {usenetHistoryItems.map((item) => (
                   <div
                     key={item.nzo_id || item.id}
-                    className="flex items-center justify-between gap-3 p-3 rounded-xl bg-muted/30 border border-border"
+                    className="flex items-center justify-between gap-3 p-3 rounded-xl bg-muted/30"
                   >
                     <div className="min-w-0">
                       <p className="text-xs font-semibold text-foreground truncate">{item.title}</p>
@@ -318,7 +322,7 @@ export const DownloadQueuePage = () => {
                       </p>
                     </div>
                     {item.status === 'failed' && item.error_message ? (
-                      <p className="text-[10px] text-rose-400 max-w-[40%] truncate" title={item.error_message}>
+                      <p className="text-[10px] text-destructive max-w-[40%] truncate" title={item.error_message}>
                         {item.error_message}
                       </p>
                     ) : null}
@@ -351,7 +355,7 @@ export const DownloadQueuePage = () => {
       {/* Web Mode: Connected Servers & Direct Download Library */}
       {!desktop && hasGameServers && (
         <div className="mb-6 space-y-4">
-          <div className="flex items-center justify-between p-4 rounded-xl bg-muted/40 border border-border">
+          <div className="flex items-center justify-between p-4 rounded-xl bg-muted/40">
             <div className="flex items-center gap-3">
               <Server className="h-5 w-5 text-primary" />
               <div>
@@ -370,7 +374,7 @@ export const DownloadQueuePage = () => {
             {serverData?.files?.map((file) => (
               <div
                 key={`${file.serverId}-${file.fileId}`}
-                className="flex items-center justify-between p-4 rounded-xl bg-card border border-border hover:border-primary/40 transition-colors"
+                className="flex items-center justify-between p-4 rounded-xl bg-[var(--dk-surface-glass)] backdrop-blur-xl shadow-[var(--dk-shadow-glass)] transition-colors"
               >
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
@@ -379,7 +383,7 @@ export const DownloadQueuePage = () => {
                       {file.formatCategory}
                     </span>
                     {file.isShared && file.sharedBy && (
-                      <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-amber-500/15 text-amber-300 border border-amber-500/25">
+                      <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-primary/10 text-primary">
                         Shared by @{file.sharedBy.username}
                       </span>
                     )}

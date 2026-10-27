@@ -29,7 +29,7 @@ export const DownloadOptionsGrid = ({
     <div className="space-y-8">
       {/* Platform Switcher Tabs */}
       <div className="flex items-center justify-start sm:justify-center overflow-x-auto pb-2 scrollbar-none">
-        <div className="flex items-center gap-1.5 p-1.5 rounded-2xl bg-[var(--dk-surface-ghost)] backdrop-blur-xl border border-[var(--dk-separator)]">
+        <div className="flex items-center gap-1.5 p-1.5 rounded-2xl bg-[var(--dk-surface-ghost)] backdrop-blur-xl shadow-inner">
           <button
             type="button"
             onClick={() => onSelectTab('windows')}
@@ -97,7 +97,7 @@ export const DownloadOptionsGrid = ({
 
       {/* System Requirements Card */}
       {req && (
-        <div className="rounded-2xl p-5 sm:p-6 backdrop-blur-xl bg-[var(--dk-surface-base)] border border-[var(--dk-separator)] shadow-[var(--dk-shadow-xs)] space-y-4">
+        <div className="rounded-2xl p-5 sm:p-6 backdrop-blur-xl bg-[var(--dk-surface-glass)] shadow-[var(--dk-shadow-glass)] space-y-4">
           <div className="flex items-center gap-2 text-foreground font-semibold text-sm">
             <Info className="h-4 w-4 text-primary" />
             <span>{req.osName} System Requirements</span>
@@ -123,7 +123,7 @@ export const DownloadOptionsGrid = ({
           </div>
 
           {req.notes && (
-            <p className="text-xs text-muted-foreground border-t border-[var(--dk-separator)] pt-3">
+            <p className="text-xs text-muted-foreground pt-3">
               {req.notes}
             </p>
           )}

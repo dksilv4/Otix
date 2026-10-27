@@ -45,18 +45,22 @@ export const calculateCardTransform = (
   isActive: boolean,
 ): CSSProperties => {
   const abs = Math.abs(slideOffset)
-  const scale = Math.max(0.7, 1 - abs * 0.10)
-  const translateY = abs * 14
-  const layerGap = cardOffset * (1 - abs * 0.06)
+  const scale = Math.max(0.72, 1 - abs * 0.08)
+  const translateY = abs * 12
+  const layerGap = cardOffset * (1 - abs * 0.05)
+  const rotateY = isActive ? 0 : slideOffset < 0 ? 12 : -12
+  const translateZ = isActive ? 0 : -abs * 85
 
   let transform: string
   if (isActive) {
-    transform = 'translateX(-50%) translateY(-50%) scale(1)'
+    transform = 'translateX(-50%) translateY(-50%) translateZ(0px) rotateY(0deg) scale(1)'
   } else {
     transform = [
       'translateX(-50%)',
       `translateX(${slideOffset * layerGap}px)`,
       `translateY(calc(-50% + ${translateY}px))`,
+      `translateZ(${translateZ}px)`,
+      `rotateY(${rotateY}deg)`,
       `scale(${scale})`,
     ].join(' ')
   }
@@ -65,11 +69,10 @@ export const calculateCardTransform = (
     left: '50%',
     top: '50%',
     transform,
-    zIndex: Math.max(0, 10 - abs * 2),
+    zIndex: Math.max(0, 20 - abs * 4),
     transition:
-      'transform 600ms cubic-bezier(0.34, 1.3, 0.64, 1), opacity 500ms ease-out',
+      'transform 650ms cubic-bezier(0.16, 1, 0.3, 1), opacity 500ms ease-out',
     pointerEvents: abs >= 3 ? 'none' : 'auto',
-    perspective: '1200px',
     touchAction: 'manipulation',
   }
 }

@@ -31,7 +31,7 @@ export const DownloadNodeSection = ({
   return (
     <section className="space-y-6">
       {/* Intro Header */}
-      <div className="rounded-2xl sm:rounded-3xl p-6 sm:p-7 backdrop-blur-xl bg-[var(--dk-surface-base)] border border-[var(--dk-separator)] shadow-[var(--dk-shadow-xs)] space-y-3">
+      <div className="rounded-2xl sm:rounded-3xl p-6 sm:p-7 backdrop-blur-xl bg-[var(--dk-surface-glass)] shadow-[var(--dk-shadow-glass)] space-y-3">
         <div className="flex flex-wrap items-center gap-2">
           <DkBadge variant="default" size="sm" className="gap-1.5 px-3 py-1 font-semibold">
             <Server className="h-3.5 w-3.5" />
@@ -51,7 +51,7 @@ export const DownloadNodeSection = ({
       </div>
 
       {/* Docker Quickstart Container Pod */}
-      <div className="rounded-2xl p-6 bg-[var(--dk-surface-raised)] border border-[var(--dk-separator)] shadow-[var(--dk-shadow-xs)] space-y-4">
+      <div className="rounded-2xl p-6 bg-[var(--dk-surface-glass)] backdrop-blur-xl shadow-[var(--dk-shadow-glass)] space-y-4">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2.5">
             <div className="h-8 w-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
@@ -82,7 +82,7 @@ export const DownloadNodeSection = ({
           </DkButton>
         </div>
 
-        <div className="overflow-x-auto p-4 rounded-xl bg-[var(--dk-surface-ghost)] border border-[var(--dk-separator)] font-mono text-xs text-foreground/90 leading-relaxed select-all">
+        <div className="overflow-x-auto p-4 rounded-xl bg-[var(--dk-surface-ghost)] font-mono text-xs text-foreground/90 leading-relaxed select-all">
           <pre>{DOCKER_NODE_COMMAND}</pre>
         </div>
 

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Star, Pencil, Award, Sparkles, ExternalLink, LogIn } from 'lucide-react'
+import { Star, Pencil, Sparkles, ExternalLink, LogIn } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '@auth/hooks/use-auth'
 import { useModal } from '@/lib/modals'
@@ -120,31 +120,9 @@ export const RatingsHub = ({
     <div className={`glass-card p-5 sm:p-6 space-y-4 ${className}`}>
       {/* ── Community Rating & Multi-Source Badges ── */}
       <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Award className="h-4 w-4 text-primary" />
-            <h3 className="text-sm font-semibold tracking-tight">Ratings &amp; Scores</h3>
-          </div>
-
-          <div className="flex items-center gap-1.5">
-            {imdbUrl && (
-              <a
-                href={imdbUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-600 dark:text-amber-400 hover:bg-amber-500/25 text-[10px] font-bold tracking-wider transition-colors inline-flex items-center gap-1"
-                title="View on IMDb"
-              >
-                IMDb
-                <ExternalLink className="h-2.5 w-2.5 opacity-60" />
-              </a>
-            )}
-          </div>
-        </div>
-
         {/* Primary Otix Score Banner */}
         <div className="glass-inset p-3.5 rounded-2xl flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3.5">
+          <div className="flex items-center gap-3.5 min-w-0">
             <div
               className={cn(
                 'flex h-13 w-13 shrink-0 flex-col items-center justify-center rounded-xl font-black transition-all',
@@ -165,12 +143,25 @@ export const RatingsHub = ({
               <div className="flex items-center gap-1.5">
                 <span className="text-xs font-semibold text-foreground">Otix Community</span>
                 {avgRating && (
-                  <span className="text-[11px] text-amber-600 dark:text-amber-400 font-medium">({(avgRating / 2).toFixed(1)}/5 ★)</span>
+                  <span className="text-[11px] text-[var(--status-warning)] font-medium">({(avgRating / 2).toFixed(1)}/5 ★)</span>
                 )}
               </div>
               <p className="text-[11px] text-muted-foreground truncate">{subtitle}</p>
             </div>
           </div>
+
+          {imdbUrl && (
+            <a
+              href={imdbUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="shrink-0 px-2.5 py-1 rounded-lg bg-[var(--status-warning)]/15 text-primary hover:bg-[var(--status-warning)]/25 text-[10px] font-bold tracking-wider transition-colors inline-flex items-center gap-1.5"
+              title="View on IMDb"
+            >
+              IMDb
+              <ExternalLink className="h-3 w-3 opacity-70" />
+            </a>
+          )}
         </div>
       </div>
 
@@ -242,7 +233,7 @@ export const RatingsHub = ({
                         }}
                       >
                         <Star
-                          className="w-6 h-6 text-amber-500 fill-amber-500 drop-shadow-[0_0_8px_rgba(245,158,11,0.3)] transition-transform duration-150"
+                          className="w-6 h-6 text-[var(--status-warning)] fill-[var(--status-warning)] drop-shadow-[0_0_8px_rgba(245,158,11,0.3)] transition-transform duration-150"
                           strokeWidth={1.5}
                         />
                       </div>
@@ -255,14 +246,14 @@ export const RatingsHub = ({
             {/* Centered Rating Preview directly beneath the stars */}
             <div className="flex items-center justify-center min-h-[24px]">
               {activeDisplayScore != null && activeDisplayScore > 0 ? (
-                <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-amber-500/15 text-xs font-semibold text-amber-600 dark:text-amber-400 animate-fade-in">
+                <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-[var(--status-warning)]/15 text-xs font-semibold text-[var(--status-warning)] animate-fade-in">
                   <span>
                     {(activeDisplayScore / 2).toFixed(activeDisplayScore % 2 === 0 ? 0 : 1)} / 5 ★
                   </span>
                   {activeLabel && (
                     <>
                       <span className="opacity-40">•</span>
-                      <span className="text-[11px] font-medium text-amber-600/90 dark:text-amber-300/90">{activeLabel}</span>
+                      <span className="text-[11px] font-medium text-[var(--status-warning)]/90">{activeLabel}</span>
                     </>
                   )}
                 </div>
@@ -327,7 +318,7 @@ export const RatingsHub = ({
             <button
               type="button"
               onClick={handleOpenComposer}
-              className="w-full text-left relative overflow-hidden rounded-2xl bg-[var(--dk-surface-glass)] border border-[var(--dk-separator)] p-4 transition-all duration-200 hover:bg-[var(--dk-surface-glass-hover)] hover:shadow-lg group cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              className="w-full text-left relative overflow-hidden rounded-2xl bg-[var(--dk-surface-glass)] p-4 transition-all duration-200 hover:bg-[var(--dk-surface-glass-hover)] hover:shadow-lg group cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             >
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-3 min-w-0">

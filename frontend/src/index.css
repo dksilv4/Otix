@@ -334,6 +334,21 @@
     }
 }
 
+/* ── Fluid XP shimmer ── */
+@keyframes fluidShimmer {
+    0% {
+        transform: translateX(-150%) skewX(-20deg);
+        opacity: 0;
+    }
+    50% {
+        opacity: 0.6;
+    }
+    100% {
+        transform: translateX(250%) skewX(-20deg);
+        opacity: 0;
+    }
+}
+
 /* ── XP bar glow pulse (level 50+) ── */
 @keyframes xpGlow {
     0%, 100% {

@@ -1469,9 +1469,23 @@ class GameServerSabnzbdQueueControlView(APIView):
 
 
 class GameServerScanView(APIView):
-    """``POST /api/v1/library/servers/{server_id}/scan`` — re-index hosted installer files."""
+    """``GET /api/v1/library/servers/{server_id}/scan`` — get live indexing status.
+    ``POST /api/v1/library/servers/{server_id}/scan`` — re-index hosted installer files.
+    """
 
     permission_classes = (permissions.IsAuthenticated,)
+
+    def get(self, request: Request, server_id: int) -> Response:
+        server = _get_server_or_404(request, server_id)
+        target_url = server.primary_url or server.local_url or ""
+        if not server.is_online or not target_url or target_url.startswith("otix://"):
+            return Response({"phase": "idle", "percentage": 0.0, "is_scanning": False, "files_scanned": 0, "total_files": 0})
+        status_code, data = node_service.usenet_proxy_request(server, "GET", "/api/v1/scan/status", timeout=5.0)
+        if status_code < 400 and isinstance(data, dict):
+            phase = str(data.get("phase") or "idle").lower()
+            data["is_scanning"] = phase in ("scanning", "running")
+            return Response(data, status=status_code)
+        return Response({"phase": "idle", "percentage": 0.0, "is_scanning": False, "files_scanned": 0, "total_files": 0})
 
     def post(self, request: Request, server_id: int) -> Response:
         server = _get_server_or_404(request, server_id)
@@ -1927,6 +1941,44 @@ class GameServerLibrariesView(APIView):
         if isinstance(payload, list):
             payload = {"libraries": payload}
         status_code, data = node_replace_libraries(server, payload)
+
+        # Synchronize NodeLibraryPath records for this server
+        try:
+            from apps.library.models import NodeLibraryPath
+
+            raw_libs = payload.get("libraries") or []
+            if isinstance(raw_libs, list):
+                active_paths = []
+                for lib in raw_libs:
+                    path_str = lib.get("path") if isinstance(lib, dict) else str(lib)
+                    if not path_str:
+                        continue
+                    active_paths.append(path_str)
+                    clean_name = (
+                        (lib.get("name") if isinstance(lib, dict) else None)
+                        or path_str.rstrip("/\\").split("/")[-1]
+                        or path_str.rstrip("/\\").split("\\")[-1]
+                        or "Games"
+                    )
+                    kind = (lib.get("kind") if isinstance(lib, dict) else None) or "game"
+                    allowed_exts = lib.get("allowed_extensions", []) if isinstance(lib, dict) else []
+                    NodeLibraryPath.objects.update_or_create(
+                        node=server,
+                        path=path_str,
+                        defaults={
+                            "name": clean_name,
+                            "kind": kind,
+                            "allowed_extensions": allowed_exts,
+                            "is_active": True,
+                        },
+                    )
+                if active_paths:
+                    NodeLibraryPath.objects.filter(node=server).exclude(path__in=active_paths).update(
+                        is_active=False
+                    )
+        except Exception as exc:
+            logger.warning("NodeLibraryPath sync failed: %s", exc)
+
         return Response(data, status=status_code)
 
 

@@ -24,7 +24,7 @@ export const DownloadVerificationSection = ({
   }
 
   return (
-    <section className="rounded-2xl sm:rounded-3xl p-6 sm:p-7 backdrop-blur-xl bg-[var(--dk-surface-base)] border border-[var(--dk-separator)] shadow-[var(--dk-shadow-xs)] space-y-4">
+    <section className="rounded-2xl sm:rounded-3xl p-6 sm:p-7 backdrop-blur-xl bg-[var(--dk-surface-glass)] shadow-[var(--dk-shadow-glass)] space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
@@ -53,7 +53,7 @@ export const DownloadVerificationSection = ({
         </DkButton>
       </div>
 
-      <div className="p-3.5 rounded-xl bg-[var(--dk-surface-ghost)] border border-[var(--dk-separator)] font-mono text-xs text-foreground/90 flex items-center justify-between gap-3 overflow-x-auto select-all">
+      <div className="p-3.5 rounded-xl bg-[var(--dk-surface-ghost)] font-mono text-xs text-foreground/90 flex items-center justify-between gap-3 overflow-x-auto select-all">
         <code>{command}</code>
       </div>
     </section>

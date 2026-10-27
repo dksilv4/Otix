@@ -67,3 +67,14 @@ export const getPlexClientId = (): string => {
     return 'otix-web-player'
   }
 }
+
+export const checkViewportExternalSpace = (
+  viewportHeight: number,
+  videoElementHeight: number,
+  requiredMargin = 140,
+): boolean => {
+  return viewportHeight >= videoElementHeight + requiredMargin
+}
+
+export { buildYouTubeEmbedUrl } from '@/features/discover/utils/trailer'
+

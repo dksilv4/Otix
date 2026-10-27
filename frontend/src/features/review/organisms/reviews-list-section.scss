@@ -17,7 +17,7 @@
 }
 
 .dk-review__tabs {
-  @apply inline-flex items-center p-1 rounded-xl bg-[var(--dk-surface-ghost)] border border-[var(--dk-separator)];
+  @apply inline-flex items-center p-1 rounded-xl bg-[var(--dk-surface-ghost)] shadow-xs;
 }
 
 .dk-review__tab {

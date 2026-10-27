@@ -2,6 +2,7 @@ package server
 
 import (
 	"bytes"
+	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
@@ -163,16 +164,84 @@ func (s *Server) announceHeartbeat() {
 	}
 }
 
-func isLoopback(r *http.Request) bool {
-	host, _, err := net.SplitHostPort(r.RemoteAddr)
-	if err != nil {
-		host = r.RemoteAddr
+type serverContextKey string
+
+const rawRemoteAddrCtxKey serverContextKey = "otix.rawRemoteAddr"
+
+func rawRemoteAddrMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx := context.WithValue(r.Context(), rawRemoteAddrCtxKey, r.RemoteAddr)
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+}
+
+func isLoopbackHost(host string) bool {
+	if host == "" {
+		return false
 	}
-	ip := net.ParseIP(host)
-	if ip != nil && ip.IsLoopback() {
+	host = strings.TrimSpace(host)
+	host = strings.TrimPrefix(host, "[")
+	host = strings.TrimSuffix(host, "]")
+	if host == "localhost" || host == "127.0.0.1" || host == "::1" {
 		return true
 	}
-	return host == "localhost" || host == "127.0.0.1" || host == "::1"
+	ip := net.ParseIP(host)
+	if ip == nil {
+		return false
+	}
+	if ip.IsLoopback() {
+		return true
+	}
+	if ip4 := ip.To4(); ip4 != nil && ip4.IsLoopback() {
+		return true
+	}
+	return false
+}
+
+func isLoopbackAddr(addr string) bool {
+	if strings.TrimSpace(addr) == "" {
+		return false
+	}
+	host, _, err := net.SplitHostPort(addr)
+	if err != nil {
+		host = addr
+	}
+	return isLoopbackHost(host)
+}
+
+func isLoopback(r *http.Request) bool {
+	if r == nil {
+		return false
+	}
+
+	// 1. Verify the physical socket address before any reverse-proxy rewrites
+	rawAddr := r.RemoteAddr
+	if val, ok := r.Context().Value(rawRemoteAddrCtxKey).(string); ok && val != "" {
+		rawAddr = val
+	}
+	if !isLoopbackAddr(rawAddr) {
+		return false
+	}
+
+	// 2. Reject requests bearing proxy forwarding headers.
+	// Loopback-restricted management endpoints must be called directly from the local host,
+	// never routed through external proxies or reverse proxies that forward client identities.
+	if r.Header.Get("X-Forwarded-For") != "" ||
+		r.Header.Get("X-Real-IP") != "" ||
+		r.Header.Get("Forwarded") != "" ||
+		r.Header.Get("Client-IP") != "" ||
+		r.Header.Get("CF-Connecting-IP") != "" ||
+		r.Header.Get("True-Client-IP") != "" ||
+		r.Header.Get("X-Cluster-Client-IP") != "" {
+		return false
+	}
+
+	// 3. Current RemoteAddr check (in case middleware or transport set it to non-loopback)
+	if !isLoopbackAddr(r.RemoteAddr) {
+		return false
+	}
+
+	return true
 }
 
 func (s *Server) verifyToken(next http.Handler) http.Handler {
@@ -239,6 +308,7 @@ func matchLibraryPath(filePath string, libPaths []string) string {
 func (s *Server) setupRoutes() {
 	r := s.router
 
+	r.Use(rawRemoteAddrMiddleware)
 	r.Use(middleware.RequestID)
 	r.Use(middleware.RealIP)
 	r.Use(middleware.Recoverer)
@@ -305,6 +375,41 @@ func (s *Server) setupRoutes() {
 		jsonResponse(w, http.StatusOK, map[string]interface{}{
 			"status":  "claimed",
 			"message": "Node successfully claimed and assigned to account",
+		})
+	})
+
+	r.Post("/api/v1/claim/direct", func(w http.ResponseWriter, r *http.Request) {
+		if !isLoopback(r) {
+			http.Error(w, `{"error":"Direct claim only permitted from loopback"}`, http.StatusForbidden)
+			return
+		}
+		var req struct {
+			AuthToken  string `json:"auth_token"`
+			ServerName string `json:"server_name"`
+			Username   string `json:"username"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, `{"error":"Invalid request payload"}`, http.StatusBadRequest)
+			return
+		}
+
+		if s.claimMgr == nil {
+			http.Error(w, `{"error":"Claim manager not available"}`, http.StatusInternalServerError)
+			return
+		}
+
+		if err := s.claimMgr.ConfirmDirect(req.AuthToken, req.ServerName, req.Username); err != nil {
+			http.Error(w, fmt.Sprintf(`{"error":%q}`, err.Error()), http.StatusBadRequest)
+			return
+		}
+
+		s.announceHeartbeat()
+		s.triggerBackendSync()
+
+		jsonResponse(w, http.StatusOK, map[string]any{
+			"status":      "claimed",
+			"server_name": s.cfg.Server.Name,
+			"username":    req.Username,
 		})
 	})
 
@@ -2243,6 +2348,22 @@ func (s *Server) setupRoutes() {
 				http.Error(w, fmt.Sprintf(`{"error":%q}`, err.Error()), http.StatusInternalServerError)
 				return
 			}
+
+			// Automatically refresh indexer and notify backend if items were moved
+			hasSuccess := false
+			for _, res := range results {
+				if res.Success {
+					hasSuccess = true
+					break
+				}
+			}
+			if hasSuccess {
+				go func() {
+					s.indexer.ScanAll()
+					s.triggerBackendSync()
+				}()
+			}
+
 			jsonResponse(w, http.StatusOK, map[string]interface{}{
 				"success": true,
 				"results": results,
@@ -2295,20 +2416,25 @@ func (s *Server) triggerBackendSync() {
 	if registryURL == "" {
 		return
 	}
+	serverName := s.cfg.Server.Name
+	serverPort := s.cfg.Server.Port
+	authToken := s.cfg.Server.AuthToken
+	downloadImages := s.cfg.Server.DownloadOtixImages
+	writeOtix := s.cfg.Server.WriteOtixAfterScan
 	go func() {
 		client := &http.Client{Timeout: 30 * time.Second}
 		targetURL := fmt.Sprintf("%s/v1/servers/scan-complete", registryURL)
 		localIP := heartbeat.GetLocalIP()
 		payload := map[string]any{
-			"server_name": s.cfg.Server.Name,
-			"port":        s.cfg.Server.Port,
-			"auth_token":  s.cfg.Server.AuthToken,
+			"server_name": serverName,
+			"port":        serverPort,
+			"auth_token":  authToken,
 			"local_endpoints": []string{
-				fmt.Sprintf("http://%s:%d", localIP, s.cfg.Server.Port),
-				fmt.Sprintf("http://127.0.0.1:%d", s.cfg.Server.Port),
+				fmt.Sprintf("http://%s:%d", localIP, serverPort),
+				fmt.Sprintf("http://127.0.0.1:%d", serverPort),
 			},
-			"download_images": s.cfg.Server.DownloadOtixImages,
-			"write_otix":      s.cfg.Server.WriteOtixAfterScan,
+			"download_images": downloadImages,
+			"write_otix":      writeOtix,
 		}
 		data, err := json.Marshal(payload)
 		if err != nil {
@@ -2319,8 +2445,8 @@ func (s *Server) triggerBackendSync() {
 			return
 		}
 		req.Header.Set("Content-Type", "application/json")
-		if s.cfg.Server.AuthToken != "" {
-			req.Header.Set("Authorization", "Bearer "+s.cfg.Server.AuthToken)
+		if authToken != "" {
+			req.Header.Set("Authorization", "Bearer "+authToken)
 		}
 		resp, err := client.Do(req)
 		if err != nil {

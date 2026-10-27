@@ -56,7 +56,7 @@ export const UserProfileRatingDistribution = ({
       />
 
       <div className="px-4 sm:px-6 lg:px-8">
-        <div className="p-4 rounded-2xl bg-[var(--dk-surface-base)] border border-[var(--dk-separator)]">
+        <div className="p-4 rounded-2xl bg-[var(--dk-surface-base)] shadow-sm">
           {total === 0 ? (
             <div className="py-6 flex flex-col items-center justify-center text-center">
               <Star className="h-6 w-6 text-muted-foreground/40 mb-1.5" />

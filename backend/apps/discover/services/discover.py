@@ -164,6 +164,7 @@ def trending_seasons(
     language: str | None,
     is_anime: bool | None,
     exclude_adult: bool,
+    user=None,
 ) -> list:
     """Latest season per show whose season premiered in the trending window.
 
@@ -177,6 +178,10 @@ def trending_seasons(
     the show's poster) and plain-text title, and requiring show-level
     logo/textless assets would wrongly hide fresh seasons.
 
+    When an authenticated user is provided, seasons belonging to shows the user
+    has interacted with (watched, started, watchlisted, liked, or viewed episodes)
+    are elevated to the top of the shelf via affinity ranking.
+
     Returns the ordered list (materialized here — the candidate set is bounded by
     the date window and one season per show, and Python lets the two date
     directions sort portably across Postgres/SQLite): aired seasons newest-first,
@@ -185,6 +190,23 @@ def trending_seasons(
     today = date.today()
     date_from = today - timedelta(days=365)
     date_to = today + timedelta(days=180)
+
+    user_show_ids: set[int] = set()
+    if user and getattr(user, "is_authenticated", False):
+        from apps.social.models import UserEpisodeInteraction, UserMediaInteraction
+
+        user_show_ids.update(
+            UserMediaInteraction.objects.filter(
+                user=user,
+                interaction_type__in=("watched", "started", "watchlisted", "liked"),
+                media_item__media_type="show",
+            ).values_list("media_item_id", flat=True)
+        )
+        user_show_ids.update(
+            UserEpisodeInteraction.objects.filter(user=user).values_list(
+                "episode__season__show_id", flat=True
+            )
+        )
 
     latest_number = (
         Season.objects.filter(show_id=OuterRef("show_id"))
@@ -215,12 +237,13 @@ def trending_seasons(
     )
     seasons = list(qs.select_related("show__media_item").distinct())
 
-    def _sort_key(season: Season) -> tuple[int, int, int]:
+    def _sort_key(season: Season) -> tuple[int, int, int, int]:
+        affinity_rank = 0 if season.show_id in user_show_ids else 1
         local_rank = 0 if getattr(season, "_has_local", False) else 1
         days_to_premiere = (season.air_date - today).days
         if days_to_premiere <= 0:
-            return (local_rank, 0, -days_to_premiere)  # aired, newest first
-        return (local_rank, 1, days_to_premiere)  # future, soonest first
+            return (affinity_rank, local_rank, 0, -days_to_premiere)  # aired, newest first
+        return (affinity_rank, local_rank, 1, days_to_premiere)  # future, soonest first
 
     seasons.sort(key=_sort_key)
     return seasons

@@ -40,7 +40,7 @@ export const DocsSearchInput = ({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full pl-10 pr-10 py-2 rounded-xl text-xs sm:text-sm bg-[var(--dk-surface-field)] text-foreground placeholder:text-muted-foreground/60 border border-[var(--dk-separator)] focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all duration-150"
+        className="w-full pl-10 pr-10 py-2 rounded-xl text-xs sm:text-sm bg-[var(--dk-surface-field)] text-foreground placeholder:text-muted-foreground/60 border-none focus:outline-none focus:ring-1 focus:ring-primary transition-all duration-150"
       />
       {value ? (
         <button

@@ -52,3 +52,33 @@ export const heroBackdrop = (url: string | null): string | undefined => {
   return url.replace(/\/w1280\//, '/original/')
 }
 
+export interface YouTubeEmbedOptions {
+  autoplay?: boolean
+  enablejsapi?: number
+  controls?: number
+  mute?: boolean
+  loop?: boolean
+  playlist?: string
+}
+
+export const buildYouTubeEmbedUrl = (youtubeId: string, options?: YouTubeEmbedOptions): string => {
+  const isWebHttp =
+    typeof window !== 'undefined' &&
+    (window.location.protocol === 'http:' || window.location.protocol === 'https:')
+
+  // Only pass origin query parameter if on standard web HTTP/HTTPS; sanitize so non-http/https origins (app://, file://) are never sent
+  const origin = isWebHttp && window.location.origin ? window.location.origin : ''
+  const originParam = origin
+    ? `&origin=${encodeURIComponent(origin)}`
+    : '&origin=https://www.youtube.com'
+
+  const autoplay = options?.autoplay !== false ? 1 : 0
+  const enablejsapi = options?.enablejsapi ?? 1
+  const controls = options?.controls ?? 0
+  const muteParam = options?.mute ? '&mute=1' : ''
+  const loopParam = options?.loop ? `&loop=1&playlist=${options.playlist || youtubeId}` : ''
+
+  return `https://www.youtube-nocookie.com/embed/${youtubeId}?autoplay=${autoplay}&enablejsapi=${enablejsapi}&controls=${controls}&rel=0&modestbranding=1&disablekb=1&playsinline=1&iv_load_policy=3${muteParam}${loopParam}${originParam}`
+}
+
+

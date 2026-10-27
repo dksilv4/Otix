@@ -101,16 +101,18 @@ export function pendingNodesToRefresh(
   })
 }
 
-export async function unclaimLocalGameNode(fetcher: typeof fetch = fetch, authToken?: string): Promise<boolean> {
+export async function unclaimLocalGameNode(fetcher: typeof fetch = fetch, authToken?: string, customPort?: number): Promise<boolean> {
+  const port = customPort && customPort > 0 ? customPort : 8090
+  const baseUrl = `http://127.0.0.1:${port}`
   try {
-    let url = 'http://127.0.0.1:8090/api/v1/claim/unclaim'
+    let url = `${baseUrl}/api/v1/claim/unclaim`
     const headers: Record<string, string> = {}
     if (authToken) {
       url += `?token=${encodeURIComponent(authToken)}`
       headers['Authorization'] = `Bearer ${authToken}`
     } else {
       try {
-        const home = await fetcher('http://127.0.0.1:8090/', { signal: AbortSignal.timeout(1500) })
+        const home = await fetcher(`${baseUrl}/`, { signal: AbortSignal.timeout(1500) })
         if (home.ok) {
           const html = await home.text()
           const match = html.match(/id="node-access-token"[^>]*value="([^"]*)"/) || html.match(/const TOKEN\s*=\s*"([^"]*)"/)
@@ -134,7 +136,9 @@ export async function unclaimLocalGameNode(fetcher: typeof fetch = fetch, authTo
   }
 }
 
-export async function probeLocalGameNode(fetcher: typeof fetch = fetch): Promise<PendingNode | null> {
+export async function probeLocalGameNode(fetcher: typeof fetch = fetch, customPort?: number): Promise<PendingNode | null> {
+  const port = customPort && customPort > 0 ? customPort : 8090
+  const baseUrl = `http://127.0.0.1:${port}`
   try {
     let serverName = 'Otix Game Server'
     let claimCode = ''
@@ -144,7 +148,7 @@ export async function probeLocalGameNode(fetcher: typeof fetch = fetch): Promise
     let reached = false
 
     try {
-      const statusResp = await fetcher('http://127.0.0.1:8090/api/v1/status', {
+      const statusResp = await fetcher(`${baseUrl}/api/v1/status`, {
         signal: AbortSignal.timeout(600),
       })
       if (statusResp.ok) {
@@ -155,17 +159,17 @@ export async function probeLocalGameNode(fetcher: typeof fetch = fetch): Promise
         if (data.claimed !== undefined) claimed = Boolean(data.claimed)
         if (data.claimed_by) claimedBy = data.claimed_by
       } else if (statusResp.status === 404) {
-        // Server exists on port 8090 but has an older endpoint structure
+        // Server exists on port but has an older endpoint structure
         reached = true
       }
     } catch {
-      // Nothing is listening on port 8090 or request was blocked; abort probe immediately
+      // Nothing is listening on port or request was blocked; abort probe immediately
       return null
     }
 
     if (!reached) {
       try {
-        const pingResp = await fetcher('http://127.0.0.1:8090/api/v1/ping', {
+        const pingResp = await fetcher(`${baseUrl}/api/v1/ping`, {
           signal: AbortSignal.timeout(600),
         })
         if (pingResp.ok) {
@@ -182,7 +186,7 @@ export async function probeLocalGameNode(fetcher: typeof fetch = fetch): Promise
 
     if (!reached) {
       try {
-        const claimResp = await fetcher('http://127.0.0.1:8090/api/v1/claim/status', {
+        const claimResp = await fetcher(`${baseUrl}/api/v1/claim/status`, {
           signal: AbortSignal.timeout(600),
         })
         if (claimResp.ok) {
@@ -201,7 +205,7 @@ export async function probeLocalGameNode(fetcher: typeof fetch = fetch): Promise
     if (!reached) return null
 
     try {
-      const home = await fetcher('http://127.0.0.1:8090/', { signal: AbortSignal.timeout(600) })
+      const home = await fetcher(`${baseUrl}/`, { signal: AbortSignal.timeout(600) })
       if (home.ok) {
         const html = await home.text()
         const match = html.match(/id="node-access-token"[^>]*value="([^"]*)"/) || html.match(/const TOKEN\s*=\s*"([^"]*)"/)
@@ -213,7 +217,7 @@ export async function probeLocalGameNode(fetcher: typeof fetch = fetch): Promise
 
     if (!claimed && !claimCode) {
       try {
-        const claimResp = await fetcher('http://127.0.0.1:8090/api/v1/claim/status', {
+        const claimResp = await fetcher(`${baseUrl}/api/v1/claim/status`, {
           signal: AbortSignal.timeout(600),
         })
         if (claimResp.ok) {
@@ -229,7 +233,7 @@ export async function probeLocalGameNode(fetcher: typeof fetch = fetch): Promise
 
     const res: PendingNode = {
       serverName,
-      localUrl: 'http://127.0.0.1:8090',
+      localUrl: baseUrl,
       authToken,
       claimCode,
       claimed,

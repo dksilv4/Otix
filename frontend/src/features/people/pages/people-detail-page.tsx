@@ -17,7 +17,7 @@ import { RatingsSection } from '@/features/review/organisms/ratings-section'
 
 const StatBox = ({ label, value }: { label: string; value: string | number }) => {
   return (
-    <div className="rounded-2xl bg-[var(--dk-surface-ghost)] border border-[var(--dk-separator)] px-4 py-3.5 text-center shadow-sm hover:bg-[var(--dk-surface-ghost-hover)] hover:-translate-y-0.5 transition-all duration-300 min-w-[110px] shrink-0">
+    <div className="rounded-2xl bg-[var(--dk-surface-ghost)] px-4 py-3.5 text-center shadow-xs hover:bg-[var(--dk-surface-ghost-hover)] hover:-translate-y-0.5 transition-all duration-300 min-w-[110px] shrink-0">
       <div className="text-2xl font-black text-foreground tracking-tight whitespace-nowrap truncate">{value}</div>
       <div className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground mt-1 whitespace-nowrap truncate">{label}</div>
     </div>
@@ -163,7 +163,7 @@ export const PeopleDetailPage = () => {
       </Helmet>
 
       {/* ── Glassmorphic Hero Banner ── */}
-      <div className="relative overflow-hidden rounded-3xl bg-[var(--dk-surface-ghost)] border border-[var(--dk-separator)] p-6 sm:p-8 md:p-10 shadow-lg backdrop-blur-md">
+      <div className="relative overflow-hidden rounded-3xl bg-[var(--dk-surface-ghost)] p-6 sm:p-8 md:p-10 shadow-lg backdrop-blur-xl">
         {/* Soft Blurred Background Image */}
         {person.photoUrl && (
           <>
@@ -181,7 +181,7 @@ export const PeopleDetailPage = () => {
 
         <div className="flex flex-col items-center gap-8 sm:flex-row sm:items-start relative z-10">
           {/* Avatar Photo */}
-          <div className="w-36 sm:w-44 aspect-[2/3] shrink-0 overflow-hidden rounded-2xl ring-2 ring-[var(--dk-separator)] shadow-xl scale-[1.02] hover:scale-[1.04] transition-all duration-500 bg-muted">
+          <div className="w-36 sm:w-44 aspect-[2/3] shrink-0 overflow-hidden rounded-2xl shadow-2xl shadow-black/40 scale-[1.02] hover:scale-[1.04] transition-all duration-500 bg-muted">
             <Image
               src={person.photoUrl ?? undefined}
               alt={person.name}
@@ -213,7 +213,7 @@ export const PeopleDetailPage = () => {
                   className={cn(
                     'inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-bold uppercase tracking-wider transition-all duration-200 shadow-sm active:scale-95 cursor-pointer',
                     person.isFollowed
-                      ? 'bg-[var(--dk-surface-glass-hover)] text-foreground hover:bg-[var(--dk-surface-ghost-active)] border border-[var(--dk-separator)]'
+                      ? 'bg-[var(--dk-surface-glass-hover)] text-foreground hover:bg-[var(--dk-surface-ghost-active)]'
                       : 'bg-primary text-primary-foreground hover:bg-primary/90 hover:shadow-primary/20',
                   )}
                 >
@@ -227,7 +227,7 @@ export const PeopleDetailPage = () => {
               )}
               
               {person.followerCount > 0 && (
-                <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground bg-[var(--dk-surface-glass)] border border-[var(--dk-separator)] backdrop-blur-sm">
+                <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground bg-[var(--dk-surface-glass)] backdrop-blur-sm">
                   <UserRoundPlus className="h-3.5 w-3.5" />
                   <span>{person.followerCount} followers</span>
                 </span>
@@ -236,16 +236,16 @@ export const PeopleDetailPage = () => {
 
             {/* Rating */}
             {isAuthenticated && (
-              <div className="mt-4 flex items-center justify-center sm:justify-start gap-2.5 bg-[var(--dk-surface-glass)] border border-[var(--dk-separator)] backdrop-blur-sm px-3 py-2 rounded-xl w-fit mx-auto sm:mx-0">
+              <div className="mt-4 flex items-center justify-center sm:justify-start gap-2.5 bg-[var(--dk-surface-glass)] backdrop-blur-sm px-3 py-2 rounded-xl w-fit mx-auto sm:mx-0 shadow-xs">
                 <span className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold">Your Rating</span>
-                <div className="h-3 w-px bg-[var(--dk-separator)]" />
+                <div className="h-3 w-px bg-foreground/10" />
                 <StarRating
                   value={person.userRating ?? null}
                   onChange={(score) => rate.mutate(score)}
                 />
                 {(person.userRating ?? null) != null && (
                   <>
-                    <div className="h-3 w-px bg-[var(--dk-separator)]" />
+                    <div className="h-3 w-px bg-foreground/10" />
                     <button
                       onClick={() => unrate.mutate()}
                       className="text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors duration-150 cursor-pointer"
@@ -259,7 +259,7 @@ export const PeopleDetailPage = () => {
 
             <div className="mt-4 flex flex-wrap justify-center gap-2.5 text-xs font-medium text-muted-foreground sm:justify-start">
               {person.birthday && (
-                <span className="flex items-center gap-1.5 bg-[var(--dk-surface-glass)] border border-[var(--dk-separator)] backdrop-blur-sm px-3 py-1.5 rounded-lg">
+                <span className="flex items-center gap-1.5 bg-[var(--dk-surface-glass)] backdrop-blur-sm px-3 py-1.5 rounded-lg shadow-xs">
                   <svg className="h-3.5 w-3.5 opacity-60" viewBox="0 0 20 20" fill="currentColor">
                     <path fillRule="evenodd" d="M6 2a1 1 0 00-1-1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V4a2 2 0 00-2-2h-1V1a1 1 0 10-2 0v1H7V1a1 1 0 00-1-1zM4 5h12v2H4V5zm0 4h12v6H4V9z" clipRule="evenodd" />
                   </svg>
@@ -267,7 +267,7 @@ export const PeopleDetailPage = () => {
                 </span>
               )}
               {person.deathday && (
-                <span className="flex items-center gap-1.5 bg-[var(--dk-surface-glass)] border border-[var(--dk-separator)] backdrop-blur-sm px-3 py-1.5 rounded-lg text-rose-500 dark:text-rose-400">
+                <span className="flex items-center gap-1.5 bg-[var(--dk-surface-glass)] backdrop-blur-sm px-3 py-1.5 rounded-lg text-rose-500 dark:text-rose-400 shadow-xs">
                   <svg className="h-3.5 w-3.5 opacity-60" viewBox="0 0 20 20" fill="currentColor">
                     <path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd" />
                   </svg>
@@ -275,7 +275,7 @@ export const PeopleDetailPage = () => {
                 </span>
               )}
               {person.placeOfBirth && (
-                <span className="flex items-center gap-1.5 bg-[var(--dk-surface-glass)] border border-[var(--dk-separator)] backdrop-blur-sm px-3 py-1.5 rounded-lg">
+                <span className="flex items-center gap-1.5 bg-[var(--dk-surface-glass)] backdrop-blur-sm px-3 py-1.5 rounded-lg shadow-xs">
                   <svg className="h-3.5 w-3.5 opacity-60" viewBox="0 0 20 20" fill="currentColor">
                     <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
                   </svg>

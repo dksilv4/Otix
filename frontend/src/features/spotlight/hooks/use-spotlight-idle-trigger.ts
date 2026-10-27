@@ -6,10 +6,11 @@ import {
   shouldTriggerAutomaticSpotlight,
   setSessionDismissed,
   isSessionDismissed,
+  writeSpotlightPreferences,
 } from '../utils/spotlight-storage'
 
-const IDLE_DELAY_MS = 10_000 // 10 seconds of inactivity
-const TEASER_AUTO_DISMISS_MS = 16_000 // Fades after 16 seconds if ignored
+const IDLE_DELAY_MS = 60_000 // 60 seconds of continuous inactivity
+const TEASER_AUTO_DISMISS_MS = 14_000 // Fades after 14 seconds if ignored
 
 const DISALLOWED_PATH_PREFIXES = [
   '/auth',
@@ -57,6 +58,10 @@ export const useSpotlightIdleTrigger = () => {
     const tip = getNextTip()
     setTeaserTip(tip)
     setIsTeaserVisible(true)
+
+    // Mark session as shown and set last shown timestamp to prevent repetitive popping in/out
+    setSessionDismissed()
+    writeSpotlightPreferences({ lastShownTimestamp: Date.now() })
 
     // Set auto-dismiss timer
     if (autoDismissTimerRef.current) clearTimeout(autoDismissTimerRef.current)

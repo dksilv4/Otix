@@ -15,7 +15,7 @@ export const WelcomeHero = ({ onStartTour, onStartSetup }: WelcomeHeroProps) => 
   }
 
   return (
-    <div className="relative overflow-hidden rounded-[2.5rem] glass-card p-8 sm:p-10 shadow-[var(--dk-shadow-glass)]">
+    <div className="relative overflow-hidden rounded-[2.5rem] bg-[var(--dk-surface-glass)] backdrop-blur-xl p-8 sm:p-10 shadow-[var(--dk-shadow-glass)]">
       <div className="relative z-10 max-w-3xl space-y-5">
         {/* Subtle badge */}
         <div className="inline-flex items-center gap-2 rounded-full glass-inset px-3.5 py-1 text-xs font-semibold text-primary">

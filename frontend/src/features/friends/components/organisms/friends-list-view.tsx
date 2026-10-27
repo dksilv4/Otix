@@ -27,7 +27,7 @@ export const FriendsListView = ({
         {Array.from({ length: 6 }).map((_, i) => (
           <div
             key={i}
-            className="h-36 rounded-2xl bg-[var(--dk-surface-glass)] animate-pulse border border-[var(--dk-separator)]"
+            className="h-36 rounded-2xl bg-[var(--dk-surface-glass)] backdrop-blur-xl animate-pulse shadow-sm"
           />
         ))}
       </div>
@@ -37,7 +37,7 @@ export const FriendsListView = ({
   if (friends.length === 0) {
     if (searchQuery.trim().length > 0) {
       return (
-        <div className="rounded-2xl bg-[var(--dk-surface-glass)] p-12 text-center border border-[var(--dk-separator)]">
+        <div className="rounded-2xl bg-[var(--dk-surface-glass)] backdrop-blur-xl p-12 text-center shadow-[var(--dk-shadow-glass)]">
           <p className="text-sm font-semibold text-foreground">
             No friends found
           </p>
@@ -49,7 +49,7 @@ export const FriendsListView = ({
     }
 
     return (
-      <div className="rounded-3xl bg-[var(--dk-surface-glass)] p-12 text-center border border-[var(--dk-separator)] shadow-sm">
+      <div className="rounded-3xl bg-[var(--dk-surface-glass)] backdrop-blur-xl p-12 text-center shadow-[var(--dk-shadow-glass)]">
         <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
           <Users className="h-7 w-7" />
         </div>

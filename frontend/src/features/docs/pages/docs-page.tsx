@@ -107,10 +107,10 @@ export const DocsPage = () => {
 
           {/* Drawer panel */}
           <div
-            className="relative ml-0 mr-auto w-4/5 max-w-sm h-full p-5 flex flex-col gap-4 shadow-[var(--dk-shadow-dialog)] border-r border-[var(--dk-separator)]"
+            className="relative ml-0 mr-auto w-4/5 max-w-sm h-full p-5 flex flex-col gap-4 shadow-[var(--dk-shadow-dialog)] backdrop-blur-2xl"
             style={{ backgroundColor: 'var(--dk-surface-overlay)' }}
           >
-            <div className="flex items-center justify-between pb-3 border-b border-[var(--dk-separator)]">
+            <div className="flex items-center justify-between pb-3">
               <span className="font-bold text-sm tracking-tight text-foreground">
                 Documentation
               </span>

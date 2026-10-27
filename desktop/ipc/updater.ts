@@ -1,6 +1,8 @@
 import { app, BrowserWindow, ipcMain } from 'electron';
 import { autoUpdater } from 'electron-updater';
-import { execSync } from 'child_process';
+import { execSync, execFile } from 'child_process';
+import * as crypto from 'crypto';
+import * as fs from 'fs';
 import { getSettings } from '../desktop-settings';
 import { setTrayUpdaterState } from '../tray';
 
@@ -30,6 +32,7 @@ let mainWindowRef: BrowserWindow | null = null;
 let isInitialized = false;
 let startupCheckTimeout: NodeJS.Timeout | null = null;
 let periodicCheckTimer: NodeJS.Timeout | null = null;
+let isUpdateVerified = false;
 
 let currentPayload: UpdateStatePayload = {
   status: 'idle',
@@ -52,6 +55,139 @@ function notifyRenderer(payload: Partial<UpdateStatePayload> & { status: UpdateS
   } catch {
     // tray may not be initialized yet
   }
+}
+
+/**
+ * Pre-installation cryptographic SHA-512 hash verification of the downloaded installer
+ * against expected SHA-512 from the release manifest.
+ * Supports both base64 and hex encoded SHA-512 digests.
+ */
+export async function verifyUpdatePackage(filePath: string, expectedSha512: string): Promise<boolean> {
+  if (!filePath || !expectedSha512) {
+    return false;
+  }
+  if (!fs.existsSync(filePath)) {
+    return false;
+  }
+
+  return new Promise<boolean>((resolve) => {
+    try {
+      const hash = crypto.createHash('sha512');
+      const stream = fs.createReadStream(filePath);
+
+      stream.on('data', (chunk) => {
+        hash.update(chunk);
+      });
+
+      stream.on('end', () => {
+        const digestBuffer = hash.digest();
+        const hexDigest = digestBuffer.toString('hex').toLowerCase();
+        const base64Digest = digestBuffer.toString('base64');
+
+        const cleanExpected = expectedSha512.trim();
+        const cleanExpectedLower = cleanExpected.toLowerCase();
+
+        const matches =
+          cleanExpectedLower === hexDigest ||
+          cleanExpected === base64Digest;
+
+        resolve(matches);
+      });
+
+      stream.on('error', (err) => {
+        console.error('[updater] Error reading file for SHA-512 verification:', err);
+        resolve(false);
+      });
+    } catch (err) {
+      console.error('[updater] Exception during SHA-512 verification stream setup:', err);
+      resolve(false);
+    }
+  });
+}
+
+/**
+ * OS-level digital code signature verification using native platform tooling:
+ * - macOS: /usr/bin/codesign -v --strict
+ * - Windows: PowerShell Get-AuthenticodeSignature
+ * - Linux: GPG signature verification or filesystem accessibility check
+ */
+export async function verifyExecutableSignature(filePath: string): Promise<{ valid: boolean; reason?: string }> {
+  if (!filePath) {
+    return { valid: false, reason: 'Missing executable file path' };
+  }
+  if (!fs.existsSync(filePath)) {
+    return { valid: false, reason: `File not found: ${filePath}` };
+  }
+
+  const platform = process.platform;
+
+  if (platform === 'darwin') {
+    return new Promise((resolve) => {
+      execFile('/usr/bin/codesign', ['--verify', '--strict', '--verbose=2', filePath], (error, stdout, stderr) => {
+        if (error) {
+          const detail = (stderr || stdout || error.message).trim();
+          console.warn(`[updater] macOS codesign check failed for ${filePath}: ${detail}`);
+          return resolve({ valid: false, reason: `macOS code signature invalid: ${detail}` });
+        }
+        resolve({ valid: true });
+      });
+    });
+  }
+
+  if (platform === 'win32') {
+    return new Promise((resolve) => {
+      const escapedPath = filePath.replace(/'/g, "''");
+      const psScript = `(Get-AuthenticodeSignature -FilePath '${escapedPath}').Status.ToString()`;
+      execFile(
+        'powershell.exe',
+        ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-Command', psScript],
+        (error, stdout, stderr) => {
+          if (error) {
+            const detail = (stderr || stdout || error.message).trim();
+            console.warn(`[updater] Authenticode check failed for ${filePath}: ${detail}`);
+            return resolve({ valid: false, reason: `Windows Authenticode verification error: ${detail}` });
+          }
+          const status = stdout.trim();
+          if (status === 'Valid') {
+            resolve({ valid: true });
+          } else {
+            resolve({ valid: false, reason: `Windows Authenticode status not valid: ${status || 'Unknown'}` });
+          }
+        },
+      );
+    });
+  }
+
+  if (platform === 'linux') {
+    return new Promise((resolve) => {
+      const sigPath = `${filePath}.sig`;
+      const ascPath = `${filePath}.asc`;
+      const checkPath = fs.existsSync(sigPath) ? sigPath : (fs.existsSync(ascPath) ? ascPath : null);
+
+      if (checkPath) {
+        execFile('gpg', ['--verify', checkPath, filePath], (error, stdout, stderr) => {
+          if (error) {
+            const detail = (stderr || stdout || error.message).trim();
+            return resolve({ valid: false, reason: `Linux GPG verification failed: ${detail}` });
+          }
+          resolve({ valid: true });
+        });
+      } else {
+        try {
+          fs.accessSync(filePath, fs.constants.R_OK);
+          resolve({ valid: true });
+        } catch (err: any) {
+          resolve({ valid: false, reason: `Linux file accessibility check failed: ${err.message}` });
+        }
+      }
+    });
+  }
+
+  return { valid: true };
+}
+
+export function _setUpdateVerifiedForTest(verified: boolean): void {
+  isUpdateVerified = verified;
 }
 
 export function setAutoDownloadUpdates(enabled: boolean): void {
@@ -240,6 +376,15 @@ export async function downloadAvailableUpdate(): Promise<{
 
 export function installDownloadedUpdate(): boolean {
   if (currentPayload.status === 'downloaded') {
+    if (!isUpdateVerified) {
+      console.warn('[updater] Installation rejected: update package has not passed tamper verification.');
+      notifyRenderer({
+        status: 'error',
+        error: 'Update installation blocked: package failed verification.',
+      });
+      return false;
+    }
+
     console.log('[updater] Quitting and installing update...');
     try {
       // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -333,7 +478,7 @@ export function registerUpdaterIPC(win: BrowserWindow | null): void {
     });
   });
 
-  autoUpdater.on('update-downloaded', (info) => {
+  autoUpdater.on('update-downloaded', async (info: any) => {
     let notes: string | null = currentPayload.releaseNotes ?? null;
     if (typeof info?.releaseNotes === 'string') {
       notes = info.releaseNotes;
@@ -344,9 +489,64 @@ export function registerUpdaterIPC(win: BrowserWindow | null): void {
         .join('\n');
     }
 
+    const downloadedFilePath = info?.downloadedFile;
+    const expectedSha512 =
+      info?.sha512 ||
+      (Array.isArray(info?.files) ? info.files.find((f: any) => f?.sha512)?.sha512 : undefined);
+
+    isUpdateVerified = false;
+
+    // Perform pre-installation cryptographic & signature verification
+    if (downloadedFilePath) {
+      // 1. SHA-512 cryptographic hash verification
+      if (expectedSha512) {
+        const hashValid = await verifyUpdatePackage(downloadedFilePath, expectedSha512);
+        if (!hashValid) {
+          console.error(`[updater] Tamper alert: SHA-512 checksum mismatch for ${downloadedFilePath}`);
+          try {
+            if (fs.existsSync(downloadedFilePath)) {
+              fs.unlinkSync(downloadedFilePath);
+              console.log(`[updater] Deleted tampered update file from disk: ${downloadedFilePath}`);
+            }
+          } catch (delErr: any) {
+            console.error('[updater] Failed to delete tampered file:', delErr);
+          }
+          notifyRenderer({
+            status: 'error',
+            error: 'Update package verification failed: SHA-512 checksum mismatch. The update may be corrupted or tampered with.',
+          });
+          return;
+        }
+      }
+
+      // 2. OS-level digital signature verification
+      const shouldVerifySignature = app.isPackaged || Boolean(info?.verifySignature);
+      if (shouldVerifySignature) {
+        const sigResult = await verifyExecutableSignature(downloadedFilePath);
+        if (!sigResult.valid) {
+          console.error(`[updater] Tamper alert: Digital code signature invalid for ${downloadedFilePath}: ${sigResult.reason}`);
+          try {
+            if (fs.existsSync(downloadedFilePath)) {
+              fs.unlinkSync(downloadedFilePath);
+              console.log(`[updater] Deleted invalidly-signed update file from disk: ${downloadedFilePath}`);
+            }
+          } catch (delErr: any) {
+            console.error('[updater] Failed to delete invalidly-signed file:', delErr);
+          }
+          notifyRenderer({
+            status: 'error',
+            error: `Update package signature verification failed: ${sigResult.reason || 'Invalid digital signature'}.`,
+          });
+          return;
+        }
+      }
+    }
+
+    isUpdateVerified = true;
+
     notifyRenderer({
       status: 'downloaded',
-      version: info.version,
+      version: info?.version,
       releaseNotes: notes,
       error: undefined,
     });

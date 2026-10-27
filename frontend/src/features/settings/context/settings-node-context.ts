@@ -1,8 +1,10 @@
 import { createContext, createElement, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import * as serverDownloads from '@/features/downloads/use-server-downloads'
 import type { GameServer } from '@/features/downloads/types'
-import { isLocalDesktopNode, mergeLocalDesktopNode, pickSettingsNode, syncServersWithPendingNodes } from '../local-desktop-node'
+import { LOCAL_DESKTOP_NODE_ID, isLocalDesktopNode, mergeLocalDesktopNode, pickSettingsNode, syncServersWithPendingNodes } from '../local-desktop-node'
 import { nodeUrlKey, type PendingNode } from '@/features/downloads/pending-nodes'
+import { useCompanionNode } from '../hooks/use-companion-node'
+import { queryClient } from '@/lib/query/client'
 
 function resolveUsePending(): (options?: { enabled?: boolean }) => { data?: PendingNode[] } {
   try {
@@ -36,6 +38,8 @@ export interface SettingsNodeValue {
   selectedNodeId: number | null
   setSelectedNodeId: (id: number | null) => void
   isLoading: boolean
+  pendingNodes?: PendingNode[]
+  companionNode?: ReturnType<typeof useCompanionNode>
 }
 
 const SettingsNodeContext = createContext<SettingsNodeValue | null>(null)
@@ -51,13 +55,20 @@ function readStoredNodeId(): number | null {
   }
 }
 
-export function SettingsNodeProvider({
+export const SettingsNodeProvider = ({
   children,
   enabled = true,
 }: {
   children: ReactNode
   enabled?: boolean
-}) {
+}) => {
+  // Automatically discover and claim companion nodes
+  if (typeof serverDownloads.useAutoClaimPendingServers === 'function') {
+    serverDownloads.useAutoClaimPendingServers(enabled)
+  }
+
+  const companion = useCompanionNode({ autoPair: enabled })
+
   const { data: remoteServers = [], isLoading } = useGameServers({
     enabled,
     refetchInterval: enabled ? 10_000 : false,
@@ -72,6 +83,92 @@ export function SettingsNodeProvider({
   const [preferredId, setPreferredId] = useState<number | null>(readStoredNodeId)
 
   const selectedNode = useMemo(() => pickSettingsNode(servers, preferredId), [servers, preferredId])
+
+  // When a node is newly claimed, automatically switch to it if currently on default/fallback
+  useEffect(() => {
+    const handleNodeClaimed = (e: Event) => {
+      const custom = e as CustomEvent
+      const results = custom.detail
+      if (Array.isArray(results) && results.length > 0) {
+        const first = results[0]
+        if (first?.id != null) {
+          setPreferredId(Number(first.id))
+        }
+      }
+    }
+    window.addEventListener('node-claimed', handleNodeClaimed)
+    return () => window.removeEventListener('node-claimed', handleNodeClaimed)
+  }, [])
+
+  // Immediately recognize and switch to the local companion node when daemon becomes running
+  const lastAutoSwitchedIdRef = useRef<number | null>(null)
+  const prevRunningRef = useRef(false)
+
+  useEffect(() => {
+    if (companion.isRunning && !prevRunningRef.current) {
+      lastAutoSwitchedIdRef.current = null
+    }
+    prevRunningRef.current = companion.isRunning
+
+    if (!companion.isRunning) return
+
+    const claimedCompanion = servers.find(
+      (s) =>
+        s.id !== LOCAL_DESKTOP_NODE_ID &&
+        (isLocalDesktopNode(s) ||
+          (companion.port &&
+            ((s.localUrl && s.localUrl.includes(`:${companion.port}`)) ||
+              (s.primaryUrl && s.primaryUrl.includes(`:${companion.port}`))))),
+    )
+    const targetCompanion = claimedCompanion ?? servers.find((s) => isLocalDesktopNode(s))
+
+    if (!targetCompanion) return
+
+    const shouldSwitch =
+      lastAutoSwitchedIdRef.current === null ||
+      (lastAutoSwitchedIdRef.current === LOCAL_DESKTOP_NODE_ID && targetCompanion.id !== LOCAL_DESKTOP_NODE_ID)
+
+    if (shouldSwitch) {
+      lastAutoSwitchedIdRef.current = targetCompanion.id
+      setPreferredId(targetCompanion.id)
+    }
+  }, [companion.isRunning, companion.port, servers])
+
+  // Listen to companion lifecycle events to immediately switch active server without waiting 15s
+  useEffect(() => {
+    const handleCompanionEvent = (e: Event) => {
+      const custom = e as CustomEvent
+      const detail = custom?.detail
+      const port = detail?.port
+
+      try {
+        queryClient.invalidateQueries({ queryKey: ['nodes'] })
+        queryClient.invalidateQueries({ queryKey: ['game-servers'] })
+      } catch {
+        // ignore
+      }
+
+      const claimed = servers.find(
+        (s) =>
+          s.id !== LOCAL_DESKTOP_NODE_ID &&
+          (isLocalDesktopNode(s) ||
+            (port &&
+              ((s.localUrl && s.localUrl.includes(`:${port}`)) ||
+                (s.primaryUrl && s.primaryUrl.includes(`:${port}`))))),
+      )
+      const target = claimed ?? servers.find((s) => isLocalDesktopNode(s))
+      if (target) {
+        setPreferredId(target.id)
+      }
+    }
+
+    window.addEventListener('companion-node-running', handleCompanionEvent)
+    window.addEventListener('companion-node-ready', handleCompanionEvent)
+    return () => {
+      window.removeEventListener('companion-node-running', handleCompanionEvent)
+      window.removeEventListener('companion-node-ready', handleCompanionEvent)
+    }
+  }, [servers])
 
   const attemptedRenamesRef = useRef<Set<string>>(new Set())
 
@@ -126,15 +223,18 @@ export function SettingsNodeProvider({
       selectedNodeId: selectedNode?.id ?? null,
       setSelectedNodeId,
       isLoading,
+      pendingNodes,
+      companionNode: companion,
     }),
-    [servers, selectedNode, setSelectedNodeId, isLoading],
+    [servers, selectedNode, setSelectedNodeId, isLoading, pendingNodes, companion],
   )
 
   return createElement(SettingsNodeContext.Provider, { value }, children)
 }
 
-export function useSettingsNode(): SettingsNodeValue {
+export const useSettingsNode = (): SettingsNodeValue => {
   const ctx = useContext(SettingsNodeContext)
+  const companion = useCompanionNode()
   const { data: remoteServers = [], isLoading } = useGameServers({ refetchInterval: 10_000 })
   const { data: pendingNodes = [] } = usePendingGameServers()
   const servers = useMemo(
@@ -142,6 +242,41 @@ export function useSettingsNode(): SettingsNodeValue {
     [remoteServers, pendingNodes],
   )
   const [preferredId, setPreferredId] = useState<number | null>(readStoredNodeId)
+
+  // Auto-switch in hook fallback mode when outside SettingsNodeProvider
+  const lastAutoSwitchedIdRef = useRef<number | null>(null)
+  const prevRunningRef = useRef(false)
+
+  useEffect(() => {
+    if (ctx) return
+    if (companion.isRunning && !prevRunningRef.current) {
+      lastAutoSwitchedIdRef.current = null
+    }
+    prevRunningRef.current = companion.isRunning
+
+    if (!companion.isRunning) return
+
+    const claimedCompanion = servers.find(
+      (s) =>
+        s.id !== LOCAL_DESKTOP_NODE_ID &&
+        (isLocalDesktopNode(s) ||
+          (companion.port &&
+            ((s.localUrl && s.localUrl.includes(`:${companion.port}`)) ||
+              (s.primaryUrl && s.primaryUrl.includes(`:${companion.port}`))))),
+    )
+    const targetCompanion = claimedCompanion ?? servers.find((s) => isLocalDesktopNode(s))
+
+    if (!targetCompanion) return
+
+    const shouldSwitch =
+      lastAutoSwitchedIdRef.current === null ||
+      (lastAutoSwitchedIdRef.current === LOCAL_DESKTOP_NODE_ID && targetCompanion.id !== LOCAL_DESKTOP_NODE_ID)
+
+    if (shouldSwitch) {
+      lastAutoSwitchedIdRef.current = targetCompanion.id
+      setPreferredId(targetCompanion.id)
+    }
+  }, [ctx, companion.isRunning, companion.port, servers])
 
   const selectedNode = useMemo(() => pickSettingsNode(servers, preferredId), [servers, preferredId])
 
@@ -163,6 +298,9 @@ export function useSettingsNode(): SettingsNodeValue {
     selectedNodeId: selectedNode?.id ?? null,
     setSelectedNodeId,
     isLoading,
+    pendingNodes,
+    companionNode: companion,
   }
 }
+
 

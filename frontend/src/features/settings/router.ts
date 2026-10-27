@@ -49,18 +49,12 @@ const SettingsIntegrationsPage = safeLazy(() =>
 const SettingsStoragePage = safeLazy(() =>
   import('./pages/settings-storage-page').then((m) => ({ default: m.SettingsStoragePage })),
 )
-const SettingsOrganizePage = safeLazy(() =>
-  import('./pages/settings-organize-page').then((m) => ({ default: m.SettingsOrganizePage })),
-)
-const SettingsPathsPage = safeLazy(() =>
-  import('./pages/settings-paths-page').then((m) => ({ default: m.SettingsPathsPage })),
-)
-const SettingsProposalsPage = safeLazy(() =>
-  import('./pages/settings-proposals-page').then((m) => ({ default: m.SettingsProposalsPage })),
-)
 
 const SettingsPluginsPage = safeLazy(() =>
   import('@/features/plugins/pages/plugins-page').then((m) => ({ default: m.SettingsPluginsPage })),
+)
+const SettingsReleaseNotesPage = safeLazy(() =>
+  import('@/features/updater/pages/release-notes-page').then((m) => ({ default: m.ReleaseNotesPage })),
 )
 
 function preload(load: () => Promise<unknown>) {
@@ -230,6 +224,14 @@ export function createSettingsRoutes(rootRoute: AnyRoute, pluginTabs?: PluginSet
     loader: preload(() => import('./pages/settings-notifications-page')),
   })
 
+  const settingsReleaseNotesRoute = createRoute({
+    getParentRoute: () => settingsRoute,
+    path: '/release-notes',
+    component: SettingsReleaseNotesPage,
+
+    loader: preload(() => import('@/features/updater/pages/release-notes-page')),
+  })
+
   const settingsConnectionsRoute = createRoute({
     getParentRoute: () => settingsRoute,
     path: '/connections',
@@ -344,6 +346,7 @@ export function createSettingsRoutes(rootRoute: AnyRoute, pluginTabs?: PluginSet
       settingsAppearanceRoute,
       settingsLauncherRoute,
       settingsNotificationsRoute,
+      settingsReleaseNotesRoute,
       settingsConnectionsRoute,
       settingsLibraryRoute,
       settingsOrganizeRoute,

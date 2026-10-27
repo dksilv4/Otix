@@ -38,7 +38,7 @@ export const WelcomeGettingStartedSteps = () => {
   ]
 
   return (
-    <div className="relative overflow-hidden rounded-[2.5rem] glass-card p-7 sm:p-9 shadow-[var(--dk-shadow-glass)] space-y-6">
+    <div className="relative overflow-hidden rounded-[2.5rem] bg-[var(--dk-surface-glass)] backdrop-blur-xl p-7 sm:p-9 shadow-[var(--dk-shadow-glass)] space-y-6">
       <div className="space-y-1">
         <h2 className="text-xl font-bold tracking-tight text-foreground">
           Getting Started in 3 Simple Steps
@@ -82,7 +82,7 @@ export const WelcomeGettingStartedSteps = () => {
                 </div>
               </div>
 
-              <div className="pt-4 mt-2 border-t border-[var(--dk-separator)]">
+              <div className="pt-4 mt-2">
                 <DkButton
                   type="button"
                   variant="secondary"

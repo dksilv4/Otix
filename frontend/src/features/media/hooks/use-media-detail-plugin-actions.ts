@@ -14,6 +14,13 @@ import type {
   PlayInstance,
   PlayWidget,
 } from '../components/organisms/plugin-detail-actions'
+import {
+  lookupTmdbTerm,
+  matchLookupByTmdb,
+  radarrStatusFromLookup,
+  sonarrStatusFromLookup,
+  type ArrLookupItem,
+} from './arr-detail-status'
 
 interface PluginApi {
   getSlotData: (location: string, context?: Record<string, unknown>) => Promise<unknown>
@@ -102,25 +109,19 @@ export function useMediaDetailPluginActions(
       }
     }
 
-    // Check connected Otix game server for Radarr/Sonarr if no request widgets
+    // Check connected Otix game server for targeted Radarr/Sonarr lookup if no request widgets
     if (requestWidgets.length === 0 && activeServer) {
       try {
         const numId = Number(requestId)
+        const term = numId && !isNaN(numId) ? lookupTmdbTerm(numId) : (mediaTitle || requestId)
         if (mediaType === 'movie') {
-          const { data } = await apiClient.get<Array<{
-            id: number
-            title: string
-            tmdb_id?: number
-            tmdbId?: number
-            has_file?: boolean
-            hasFile?: boolean
-            monitored?: boolean
-          }>>(`/library/servers/${activeServer.id}/radarr/movies`)
-          const movies = data || []
-          const existing = movies.find(m => (m.tmdb_id || m.tmdbId) === numId)
-          const status: RequestInstance['status'] = existing
-            ? (existing.has_file || existing.hasFile ? 'downloaded' : 'requested')
-            : 'not_exists'
+          const { data } = await apiClient.get<ArrLookupItem[]>(
+            `/library/servers/${activeServer.id}/radarr/lookup`,
+            { params: { term } },
+          )
+          const results = data || []
+          const match = numId && !isNaN(numId) ? matchLookupByTmdb(results, numId) : results[0] || null
+          const status = radarrStatusFromLookup(match)
 
           requestWidgets.push({
             pluginId: 'server-radarr',
@@ -139,35 +140,13 @@ export function useMediaDetailPluginActions(
             },
           })
         } else if (mediaType === 'show') {
-          const { data } = await apiClient.get<Array<{
-            id: number
-            title: string
-            tvdb_id?: number
-            tvdbId?: number
-            tmdb_id?: number
-            tmdbId?: number
-            statistics?: {
-              episodeFileCount?: number
-              totalEpisodeCount?: number
-              episodeCount?: number
-            }
-            monitored?: boolean
-          }>>(`/library/servers/${activeServer.id}/sonarr/series`)
-          const seriesList = data || []
-          const existing = seriesList.find(
-            s => (s.tvdb_id || s.tvdbId) === numId || (s.tmdb_id || s.tmdbId) === numId,
+          const { data } = await apiClient.get<ArrLookupItem[]>(
+            `/library/servers/${activeServer.id}/sonarr/lookup`,
+            { params: { term } },
           )
-          let status: RequestInstance['status'] = 'not_exists'
-          if (existing) {
-            const stats = existing.statistics || {}
-            const files = stats.episodeFileCount ?? 0
-            const total = stats.totalEpisodeCount ?? stats.episodeCount ?? 0
-            if (files > 0) {
-              status = total > 0 && files < total ? 'partially_available' : 'downloaded'
-            } else {
-              status = 'requested'
-            }
-          }
+          const results = data || []
+          const match = numId && !isNaN(numId) ? matchLookupByTmdb(results, numId) : results[0] || null
+          const status = sonarrStatusFromLookup(match)
 
           requestWidgets.push({
             pluginId: 'server-sonarr',

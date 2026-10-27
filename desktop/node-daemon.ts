@@ -4,11 +4,16 @@ import * as fs from 'fs';
 import * as http from 'http';
 import * as os from 'os';
 import * as crypto from 'crypto';
+import * as netSocket from 'net';
 import { net, type WebContents } from 'electron';
 import { getApiBaseUrl } from './config';
 
+export type DaemonLifecycleState = 'stopped' | 'starting' | 'running' | 'error' | 'stopping';
+
 export interface NodeDaemonStatus {
+  state: DaemonLifecycleState;
   running: boolean;
+  starting: boolean;
   embedded: boolean;
   port: number;
   url: string;
@@ -23,6 +28,32 @@ export interface NodeDaemonOptions {
   authToken?: string;
 }
 
+/** Check if a TCP port is available on the specified host */
+export async function isPortAvailable(port: number, host = '127.0.0.1'): Promise<boolean> {
+  return new Promise((resolve) => {
+    const server = netSocket.createServer();
+    server.once('error', () => {
+      resolve(false);
+    });
+    server.once('listening', () => {
+      server.close(() => {
+        resolve(true);
+      });
+    });
+    server.listen(port, host);
+  });
+}
+
+/** Search sequentially for the next available TCP port starting from startPort */
+export async function findAvailablePort(startPort = 8090, maxAttempts = 50, host = '127.0.0.1'): Promise<number> {
+  for (let port = startPort; port < startPort + maxAttempts; port++) {
+    if (await isPortAvailable(port, host)) {
+      return port;
+    }
+  }
+  throw new Error(`Could not find an available port in range ${startPort}-${startPort + maxAttempts - 1}`);
+}
+
 export class NodeDaemonManager {
   private childProcess: ChildProcess | null = null;
   private isEmbeddedProcess = false;
@@ -31,6 +62,7 @@ export class NodeDaemonManager {
   private lastError: string | null = null;
   private cachedVersion: string | null = null;
   private currentAuthToken = '';
+  private currentState: DaemonLifecycleState = 'stopped';
 
   constructor(
     private readonly userDataPath: string,
@@ -40,13 +72,18 @@ export class NodeDaemonManager {
   /** Set webContents to forward status updates to renderer */
   public setWebContents(wc: WebContents | null): void {
     this.webContents = wc;
+    if (wc && !wc.isDestroyed()) {
+      this.notifyStatus(false);
+    }
   }
 
   /** Set user auth token to auto-claim companion node on launch */
   public setAuthToken(token: string): void {
     this.currentAuthToken = token;
-    if (token && (this.childProcess || this.isEmbeddedProcess)) {
+    if (token && (this.currentState === 'running' || this.childProcess || this.isEmbeddedProcess)) {
       void this.ensureClaimed(token);
+    } else if (!token && this.currentState === 'running') {
+      void this.unclaim();
     }
   }
 
@@ -128,19 +165,23 @@ export class NodeDaemonManager {
 
   /** Start the embedded node daemon if not already running */
   public async start(options?: NodeDaemonOptions): Promise<NodeDaemonStatus> {
-    const port = options?.port || this.currentPort;
-    this.currentPort = port;
+    const requestedPort = options?.port || this.currentPort;
+    this.currentPort = requestedPort;
     this.lastError = null;
+    this.currentState = 'starting';
+    this.notifyStatus();
+
     if (options?.authToken) {
       this.currentAuthToken = options.authToken;
     }
 
     const registryUrl = `${getApiBaseUrl().replace(/\/$/, '')}/api`;
 
-    // Check if a node is already active at this port
-    const isAlreadyRunning = await this.probeNode(port);
+    // Check if an Otix Node is already active at this port
+    const isAlreadyRunning = await this.probeNode(requestedPort);
     if (isAlreadyRunning) {
-      console.log(`[node-daemon] Detected active Otix Node on port ${port}`);
+      console.log(`[node-daemon] Detected active Otix Node on port ${requestedPort}`);
+      this.currentState = 'running';
       this.isEmbeddedProcess = Boolean(this.childProcess);
       this.notifyStatus();
       if (this.currentAuthToken) {
@@ -149,10 +190,28 @@ export class NodeDaemonManager {
       return this.getStatus();
     }
 
+    // Check port availability: if requestedPort is in use by another process, hunt for the next free port
+    let port = requestedPort;
+    const isAvailable = await isPortAvailable(port);
+    if (!isAvailable) {
+      console.log(`[node-daemon] Port ${port} is occupied by another process, hunting for next available port...`);
+      try {
+        port = await findAvailablePort(port + 1, 50);
+        this.currentPort = port;
+        console.log(`[node-daemon] Automatically allocated port ${port}`);
+      } catch (err: unknown) {
+        this.lastError = err instanceof Error ? err.message : String(err);
+        this.currentState = 'error';
+        this.notifyStatus();
+        return this.getStatus();
+      }
+    }
+
     // Resolve binary
     const binary = this.resolveBinaryPath();
     if (!binary) {
       this.lastError = 'Otix Node companion binary not found';
+      this.currentState = 'error';
       console.warn(`[node-daemon] ${this.lastError}`);
       this.notifyStatus();
       return this.getStatus();
@@ -186,9 +245,17 @@ export class NodeDaemonManager {
       this.isEmbeddedProcess = true;
 
       proc.stdout?.on('data', (data: Buffer) => {
-        const lines = data.toString().trim().split('\n');
+        const text = data.toString();
+        const lines = text.trim().split('\n');
         for (const line of lines) {
           if (line) console.log(`[otix-node] ${line}`);
+        }
+        if (this.currentState === 'starting' && (text.includes('Listening') || text.includes('started') || text.includes('Server running'))) {
+          this.currentState = 'running';
+          this.notifyStatus();
+          if (this.currentAuthToken) {
+            void this.ensureClaimed(this.currentAuthToken);
+          }
         }
       });
 
@@ -202,6 +269,7 @@ export class NodeDaemonManager {
       proc.on('error', (err) => {
         console.error('[node-daemon] Process error:', err);
         this.lastError = err.message;
+        this.currentState = 'error';
         this.childProcess = null;
         this.isEmbeddedProcess = false;
         this.notifyStatus();
@@ -211,6 +279,16 @@ export class NodeDaemonManager {
         console.log(`[node-daemon] Process exited with code ${code}, signal ${signal}`);
         this.childProcess = null;
         this.isEmbeddedProcess = false;
+        if (this.currentState === 'stopping') {
+          this.currentState = 'stopped';
+        } else if (code !== 0 && code !== null) {
+          this.currentState = 'error';
+          if (!this.lastError) {
+            this.lastError = `Process exited with code ${code}`;
+          }
+        } else {
+          this.currentState = 'stopped';
+        }
         this.notifyStatus();
       });
 
@@ -231,30 +309,42 @@ export class NodeDaemonManager {
 
       if (ready) {
         console.log(`[node-daemon] Embedded Otix Node is live on http://127.0.0.1:${port}`);
+        this.currentState = 'running';
+        this.lastError = null;
+        this.notifyStatus();
         if (this.currentAuthToken) {
           void this.ensureClaimed(this.currentAuthToken);
         }
-      } else if (!this.lastError) {
+      } else if (!this.lastError && this.childProcess) {
         this.lastError = 'Node started but did not respond within timeout';
+        this.currentState = 'error';
+        this.notifyStatus();
       }
     } catch (err: any) {
       this.lastError = err.message;
+      this.currentState = 'error';
       console.error('[node-daemon] Failed to spawn node process:', err);
       this.childProcess = null;
       this.isEmbeddedProcess = false;
+      this.notifyStatus();
     }
 
-    this.notifyStatus();
     return this.getStatus();
   }
 
   /** Stop the embedded node process */
   public async stop(): Promise<NodeDaemonStatus> {
     if (!this.childProcess) {
+      this.currentState = 'stopped';
+      this.isEmbeddedProcess = false;
+      this.notifyStatus();
       return this.getStatus();
     }
 
     console.log('[node-daemon] Stopping embedded Otix Node...');
+    this.currentState = 'stopping';
+    this.notifyStatus();
+
     const proc = this.childProcess;
     this.childProcess = null;
     this.isEmbeddedProcess = false;
@@ -294,6 +384,7 @@ export class NodeDaemonManager {
     });
 
     console.log('[node-daemon] Embedded Otix Node stopped.');
+    this.currentState = 'stopped';
     this.notifyStatus();
     return this.getStatus();
   }
@@ -501,9 +592,12 @@ export class NodeDaemonManager {
 
   /** Return current daemon status */
   public getStatus(): NodeDaemonStatus {
-    const isRunning = Boolean(this.childProcess);
+    const isRunning = this.currentState === 'running' || Boolean(this.childProcess);
+    const isStarting = this.currentState === 'starting';
     return {
+      state: this.currentState,
       running: isRunning,
+      starting: isStarting,
       embedded: this.isEmbeddedProcess,
       port: this.currentPort,
       url: `http://127.0.0.1:${this.currentPort}`,
@@ -518,9 +612,16 @@ export class NodeDaemonManager {
     await this.stop();
   }
 
-  private notifyStatus(): void {
+  private notifyStatus(suppressErrors = true): void {
     if (this.webContents && !this.webContents.isDestroyed()) {
-      this.webContents.send('node-daemon:status-changed', this.getStatus());
+      try {
+        this.webContents.send('node-daemon:status-changed', this.getStatus());
+      } catch (err) {
+        if (!suppressErrors) {
+          throw err;
+        }
+        console.warn('[node-daemon] Failed to send status-changed event to webContents:', err);
+      }
     }
   }
 
