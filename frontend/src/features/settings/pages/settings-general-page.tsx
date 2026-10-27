@@ -5,8 +5,6 @@ import { DkSwitch } from '@ui/atoms/switch'
 import {
   Trash2,
   CheckCircle2,
-  Sparkles,
-  Wand2,
   SlidersHorizontal,
   RefreshCw,
   DownloadCloud,
@@ -32,7 +30,6 @@ import {
   formatSpeed,
   formatUpdateError,
 } from '@/features/updater'
-import { useWelcomePreferences, SetupWizardModal } from '@/features/welcome'
 import { openFeatureSpotlight, useFeatureSpotlight } from '@/features/spotlight'
 import { router } from '@/lib/router'
 import { useSettingsHashScroll } from '../hooks/use-settings-hash-scroll'
@@ -45,14 +42,9 @@ import {
 export const SettingsGeneralPage = () => {
   const [defaultPage, setDefaultPage] = useState(readDefaultPage)
   const [cleared, setCleared] = useState(false)
-  const [showSetupWizard, setShowSetupWizard] = useState(false)
   const desktop = isDesktop()
   const platformInfo = useMemo(() => getDesktopPlatform(), [])
   useSettingsHashScroll()
-  const {
-    isWelcomeBannerVisible,
-    setWelcomeBannerVisible,
-  } = useWelcomePreferences()
   const {
     isAutoEnabled: isSpotlightAutoEnabled,
     setAutoEnabled: setSpotlightAutoEnabled,
@@ -122,7 +114,7 @@ export const SettingsGeneralPage = () => {
         variant="page"
         icon={SlidersHorizontal}
         title="General"
-        description="Application defaults, startup view, welcome guides, and local cache."
+        description="Application defaults, startup view, feature tips, and local cache."
       />
 
       <div id="general" className="space-y-5 scroll-mt-28">
@@ -142,11 +134,11 @@ export const SettingsGeneralPage = () => {
           />
         </SettingsCard>
 
-        {/* Welcome & Feature Guide */}
+        {/* Feature Tips & Discovery */}
         <SettingsCard>
           <SectionHeader
-            title="Welcome & Feature Guide"
-            description="Manage getting started guides, walkthroughs, and navigation shortcuts."
+            title="Feature Tips &amp; Discovery"
+            description="Manage contextual pro tips, feature spotlights, and interactive guidance."
           />
 
           <div className="space-y-4">
@@ -155,25 +147,9 @@ export const SettingsGeneralPage = () => {
               style={{ backgroundColor: 'var(--dk-surface-raised)' }}
             >
               <div className="space-y-0.5 pr-4">
-                <span className="text-sm font-semibold text-foreground">Discover Greeting Banner</span>
+                <span className="text-sm font-semibold text-foreground">Automatic Feature Tips</span>
                 <p className="text-xs text-muted-foreground">
-                  Display the introductory welcome card above the feed on Discover.
-                </p>
-              </div>
-              <DkSwitch
-                checked={isWelcomeBannerVisible}
-                onCheckedChange={setWelcomeBannerVisible}
-              />
-            </div>
-
-            <div
-              className="flex items-center justify-between rounded-2xl p-4 sm:p-5"
-              style={{ backgroundColor: 'var(--dk-surface-raised)' }}
-            >
-              <div className="space-y-0.5 pr-4">
-                <span className="text-sm font-semibold text-foreground">Automatic Feature Tips &amp; Discovery</span>
-                <p className="text-xs text-muted-foreground">
-                  Gently present non-intrusive tips highlighting useful features, pro-tips, and shortcuts during idle moments.
+                  Gently present non-intrusive tips highlighting useful features and pro-tips during idle moments.
                 </p>
               </div>
               <DkSwitch
@@ -183,26 +159,6 @@ export const SettingsGeneralPage = () => {
             </div>
 
             <div className="pt-2 flex flex-wrap gap-2.5 justify-start">
-              <DkButton
-                variant="primary"
-                size="sm"
-                leftIcon={Wand2}
-                onClick={() => setShowSetupWizard(true)}
-                className="rounded-xl px-4 text-xs font-semibold"
-              >
-                Run Setup Wizard
-              </DkButton>
-
-              <DkButton
-                variant="secondary"
-                size="sm"
-                leftIcon={Sparkles}
-                onClick={() => router.navigate({ to: '/welcome' })}
-                className="rounded-xl px-4 text-xs font-semibold"
-              >
-                Open Welcome Guide
-              </DkButton>
-
               <DkButton
                 variant="secondary"
                 size="sm"
@@ -496,7 +452,8 @@ export const SettingsGeneralPage = () => {
                   <div className="flex justify-between items-center text-[11px] text-muted-foreground">
                     <span>{updateProgress.percent.toFixed(1)}%</span>
                     <span>
-                      {formatBytes(updateProgress.transferred)} of {formatBytes(updateProgress.total)} ({formatSpeed(updateProgress.bytesPerSecond)})
+                      {formatBytes(updateProgress.transferred)} of {formatBytes(updateProgress.total)} (
+                      {formatSpeed(updateProgress.bytesPerSecond)})
                     </span>
                   </div>
                 </div>
@@ -512,13 +469,6 @@ export const SettingsGeneralPage = () => {
           </SettingsCard>
         )}
       </div>
-
-      {showSetupWizard && (
-        <SetupWizardModal
-          isOpen={showSetupWizard}
-          onClose={() => setShowSetupWizard(false)}
-        />
-      )}
     </div>
   )
 };

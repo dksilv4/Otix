@@ -57,7 +57,7 @@ export const NAV_ITEMS: NavItem[] = [
     desktop: false,
     requiresAuth: false,
     group: 'preferences',
-    keywords: 'defaults landing page cache wizard welcome about version client environment',
+    keywords: 'defaults landing page cache tips spotlight client environment',
   },
   {
     id: 'appearance',

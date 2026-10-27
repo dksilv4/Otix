@@ -8,16 +8,6 @@ vi.mock('@/lib/desktop/api', () => ({
   getDesktopAPI: vi.fn().mockReturnValue(null),
 }))
 
-vi.mock('@/features/welcome', () => ({
-  useWelcomePreferences: () => ({
-    isWelcomeNavVisible: true,
-    isWelcomeBannerVisible: true,
-    setWelcomeNavVisible: vi.fn(),
-    setWelcomeBannerVisible: vi.fn(),
-  }),
-  SetupWizardModal: () => null,
-}))
-
 vi.mock('../hooks/use-settings-hash-scroll', () => ({
   useSettingsHashScroll: vi.fn(),
 }))
@@ -175,5 +165,35 @@ describe('SettingsGeneralPage - System & Updates', () => {
     expect(screen.queryByText(/Electron/)).toBeNull()
     expect(screen.getByText('Include pre-release builds')).toBeDefined()
     expect(screen.queryByText('GitHub Release Access Token')).toBeNull()
+  })
+
+  it('does not render Welcome section and renders Feature Tips instead', () => {
+    vi.spyOn(updaterModule, 'useAppUpdater').mockReturnValue({
+      status: 'idle',
+      currentVersion: '0.1.40',
+      availableVersion: null,
+      releaseNotes: null,
+      progress: null,
+      error: null,
+      isChecking: false,
+      isDownloading: false,
+      isDownloaded: false,
+      isUpdateAvailable: false,
+      isDesktop: true,
+      isDismissed: false,
+      checkForUpdates: vi.fn(),
+      downloadUpdate: vi.fn(),
+      installUpdate: vi.fn(),
+      dismissNotification: vi.fn(),
+    })
+
+    render(<SettingsGeneralPage />)
+
+    expect(screen.queryByText(/Welcome & Feature Guide/i)).toBeNull()
+    expect(screen.queryByText(/Open Welcome Guide/i)).toBeNull()
+    expect(screen.queryByText(/Discover Greeting Banner/i)).toBeNull()
+    expect(screen.getByText('Feature Tips & Discovery')).toBeDefined()
+    expect(screen.getByText('Automatic Feature Tips')).toBeDefined()
+    expect(screen.getByRole('button', { name: /explore pro tips/i })).toBeDefined()
   })
 })
