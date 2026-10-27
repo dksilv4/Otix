@@ -349,6 +349,7 @@ describe('Production Game Organization & Scanning', () => {
       cleanTitle: 'Fate/stay night',
       platform: 'PC',
       rawName: 'Fate/stay night',
+      isScene: false,
     };
     const fileInfo = { name: 'Fate/stay night', ext: '', type: 'pc_game' as const };
     const target = applyNamingTemplate(release, '{Title} [{Platform}]', fileInfo, '/games');

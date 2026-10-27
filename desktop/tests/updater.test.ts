@@ -206,7 +206,7 @@ describe('Desktop Auto-Updater IPC', () => {
         version: '2.0.0',
         downloadedFile: tamperedFile,
         sha512: wrongHash,
-      });
+      } as any);
 
       // Allow asynchronous verification promise to settle
       await new Promise((r) => setTimeout(r, 80));
@@ -238,7 +238,7 @@ describe('Desktop Auto-Updater IPC', () => {
         downloadedFile: invalidSignedFile,
         sha512: validHash,
         verifySignature: true,
-      });
+      } as any);
 
       await new Promise((r) => setTimeout(r, 120));
 
@@ -264,7 +264,7 @@ describe('Desktop Auto-Updater IPC', () => {
         downloadedFile: legitimateFile,
         sha512: validHash,
         verifySignature: false, // development test mode
-      });
+      } as any);
 
       await new Promise((r) => setTimeout(r, 80));
 

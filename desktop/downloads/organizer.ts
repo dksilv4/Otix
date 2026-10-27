@@ -1083,7 +1083,11 @@ export async function autoOrganizeDownload(
   const organizeItems: { sourcePath: string; targetPath: string }[] = [];
 
   for (const content of allContent) {
-    let fileInfo: FileInfo;
+    let fileInfo: FileInfo = {
+      name: content.name,
+      ext: path.extname(content.name).substring(1),
+      type: content.type as any,
+    };
     let targetDir: string;
     const itemRelease = { ...release };
     if (content.platform) {
