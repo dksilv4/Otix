@@ -50,9 +50,7 @@ export const SettingsGeneralPage = () => {
   const platformInfo = useMemo(() => getDesktopPlatform(), [])
   useSettingsHashScroll()
   const {
-    isWelcomeNavVisible,
     isWelcomeBannerVisible,
-    setWelcomeNavVisible,
     setWelcomeBannerVisible,
   } = useWelcomePreferences()
   const {
@@ -152,22 +150,6 @@ export const SettingsGeneralPage = () => {
           />
 
           <div className="space-y-4">
-            <div
-              className="flex items-center justify-between rounded-2xl p-4 sm:p-5"
-              style={{ backgroundColor: 'var(--dk-surface-raised)' }}
-            >
-              <div className="space-y-0.5 pr-4">
-                <span className="text-sm font-semibold text-foreground">Show in Navigation Menu</span>
-                <p className="text-xs text-muted-foreground">
-                  Display the Welcome Guide link in the floating navigation menu dropdown.
-                </p>
-              </div>
-              <DkSwitch
-                checked={isWelcomeNavVisible}
-                onCheckedChange={setWelcomeNavVisible}
-              />
-            </div>
-
             <div
               className="flex items-center justify-between rounded-2xl p-4 sm:p-5"
               style={{ backgroundColor: 'var(--dk-surface-raised)' }}

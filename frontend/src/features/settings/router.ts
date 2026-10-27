@@ -56,6 +56,9 @@ const SettingsPluginsPage = safeLazy(() =>
 const SettingsReleaseNotesPage = safeLazy(() =>
   import('@/features/updater/pages/release-notes-page').then((m) => ({ default: m.ReleaseNotesPage })),
 )
+const SettingsAboutPage = safeLazy(() =>
+  import('./pages/settings-about-page').then((m) => ({ default: m.SettingsAboutPage })),
+)
 
 function preload(load: () => Promise<unknown>) {
   return () => {
@@ -232,6 +235,14 @@ export function createSettingsRoutes(rootRoute: AnyRoute, pluginTabs?: PluginSet
     loader: preload(() => import('@/features/updater/pages/release-notes-page')),
   })
 
+  const settingsAboutRoute = createRoute({
+    getParentRoute: () => settingsRoute,
+    path: '/about',
+    component: SettingsAboutPage,
+
+    loader: preload(() => import('./pages/settings-about-page')),
+  })
+
   const settingsConnectionsRoute = createRoute({
     getParentRoute: () => settingsRoute,
     path: '/connections',
@@ -347,6 +358,7 @@ export function createSettingsRoutes(rootRoute: AnyRoute, pluginTabs?: PluginSet
       settingsLauncherRoute,
       settingsNotificationsRoute,
       settingsReleaseNotesRoute,
+      settingsAboutRoute,
       settingsConnectionsRoute,
       settingsLibraryRoute,
       settingsOrganizeRoute,

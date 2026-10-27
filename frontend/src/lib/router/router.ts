@@ -97,6 +97,14 @@ const releaseNotesRoute = createRoute({
   },
 })
 
+const aboutRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/about",
+  beforeLoad: () => {
+    throw redirect({ to: "/settings/about" })
+  },
+})
+
 const routeTree = rootRoute.addChildren([
   logoLoadingTestRoute,
   telemetryTestRoute,
@@ -105,6 +113,7 @@ const routeTree = rootRoute.addChildren([
   installerRoute,
   uninstallerRoute,
   releaseNotesRoute,
+  aboutRoute,
   ...createAuthRoutes(rootRoute),
   ...createCalendarRoutes(rootRoute),
   ...createDiscoverRoutes(rootRoute),

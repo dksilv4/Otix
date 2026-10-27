@@ -20,6 +20,8 @@ describe('settings navigation IA', () => {
     expect(NAV_ITEMS.find((i) => i.id === 'appearance')?.group).toBe('preferences')
     expect(NAV_ITEMS.find((i) => i.id === 'recommendations')?.group).toBe('preferences')
     expect(NAV_ITEMS.find((i) => i.id === 'launcher')?.group).toBe('preferences')
+    expect(NAV_ITEMS.find((i) => i.id === 'about')?.group).toBe('preferences')
+    expect(NAV_ITEMS.find((i) => i.id === 'about')?.label).toBe('About')
     expect(NAV_ITEMS.find((i) => i.id === 'connections')?.label).toBe('Connections')
     expect(NAV_ITEMS.find((i) => i.id === 'nodes')?.label).toBe('Nodes')
     expect(NAV_ITEMS.find((i) => i.id === 'nodes')?.isPage).toBe(true)
@@ -62,6 +64,11 @@ describe('settings navigation IA', () => {
     const launcher = NAV_ITEMS.find((i) => i.id === 'launcher')!
     expect(matchNavItem(launcher, 'xbox')).toBe(true)
     expect(matchNavItem(launcher, 'layout')).toBe(true)
+    const about = NAV_ITEMS.find((i) => i.id === 'about')!
+    expect(matchNavItem(about, 'about')).toBe(true)
+    expect(matchNavItem(about, 'welcome')).toBe(true)
+    expect(matchNavItem(about, 'documentation')).toBe(true)
+    expect(matchNavItem(about, 'version')).toBe(true)
   })
 
   it('remembers the last valid section and ignores retired paths', () => {

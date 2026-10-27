@@ -237,7 +237,7 @@ export const MediaStickyHeader = ({ detail, mediaType }: MediaStickyHeaderProps)
             className="inline-flex items-center gap-1.5 rounded-full bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-glass-hover)] active:scale-95 px-2.5 sm:px-3 py-1 text-[11px] sm:text-xs font-semibold text-foreground shadow-sm transition-all shrink-0 group/trailer"
             title="Watch Trailer"
           >
-            <Film className="h-3 w-3 text-primary group-hover/trailer:scale-110 transition-transform shrink-0" />
+            <Film className="h-3 w-3 text-white group-hover/trailer:scale-110 transition-transform shrink-0" />
             <span>Trailer</span>
           </button>
         ) : null}

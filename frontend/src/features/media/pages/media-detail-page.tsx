@@ -43,6 +43,16 @@ const MediaGameUserStats = safeLazy(() =>
 const GameSection = safeLazy(() =>
   import('@media/game/components/organisms/media-game-section').then((m) => ({ default: m.GameSection })),
 )
+const MediaGamePlatformsSection = safeLazy(() =>
+  import('@media/game/components/organisms/media-game-platforms-section').then((m) => ({
+    default: m.MediaGamePlatformsSection,
+  })),
+)
+const MediaGameModesSection = safeLazy(() =>
+  import('@media/game/components/organisms/media-game-modes-section').then((m) => ({
+    default: m.MediaGameModesSection,
+  })),
+)
 const FreeGamePromotionBanner = safeLazy(() =>
   import('@media/game/components/organisms/free-game-promotion-banner').then((m) => ({
     default: m.FreeGamePromotionBanner,
@@ -84,6 +94,7 @@ import {
   mediaTypeFromParam,
   seoDescription,
 } from '../utils'
+import { hasGameOverviewContent } from '@/features/media/game/utils/platforms'
 import { useDesktopPlatform } from '@/lib/desktop/platform'
 
 export const MediaDetailPage = () => {
@@ -271,7 +282,7 @@ export const MediaDetailPage = () => {
             />
 
             {/* Games: Blueprints, Vault & Community */}
-            {isGame(detail) && (
+            {isGame(detail) && (pluginTabs.length > 0 || hasGameOverviewContent(detail)) && (
               <div className="glass-card p-6 sm:p-7 space-y-6">
                 <Suspense fallback={<SectionSkeleton height={220} />}>
                   <GameTabBar
@@ -370,6 +381,20 @@ export const MediaDetailPage = () => {
 
             {/* Where to Watch V4 with Personal Library Spotlight (movies/shows) */}
             {displayType !== 'game' && <WhereToWatch watchProviders={detail.watchProviders} mediaType={displayType} />}
+
+            {/* Platforms (Games only) */}
+            {isGame(detail) && (
+              <Suspense fallback={null}>
+                <MediaGamePlatformsSection detail={detail} />
+              </Suspense>
+            )}
+
+            {/* Game Modes (Games only) */}
+            {isGame(detail) && (
+              <Suspense fallback={null}>
+                <MediaGameModesSection detail={detail} />
+              </Suspense>
+            )}
 
             {/* Technical Information & Specs */}
             <MediaSpecsCard detail={detail} />

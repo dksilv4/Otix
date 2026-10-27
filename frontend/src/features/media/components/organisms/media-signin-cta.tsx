@@ -6,9 +6,11 @@ export const SignInCTA = () => {
 
   return (
     <div>
-      <div className="glass-card relative overflow-hidden p-8 transition-all duration-300 group">
-        {/* Apple-like soft structural glow */}
-        <div className="pointer-events-none absolute -right-32 -top-32 h-80 w-80 rounded-full bg-primary/5 blur-3xl group-hover:bg-primary/10 transition-all duration-500" />
+      <div className="glass-card relative overflow-hidden isolate p-8 transition-all duration-300 group">
+        {/* Soft structural glow strictly contained inside */}
+        <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-[inherit]">
+          <div className="pointer-events-none absolute top-0 right-0 h-48 w-48 rounded-full bg-primary/5 blur-2xl group-hover:bg-primary/10 transition-all duration-500" />
+        </div>
         
         <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-8">
           <div className="flex flex-col sm:flex-row items-center gap-6 text-center sm:text-left">

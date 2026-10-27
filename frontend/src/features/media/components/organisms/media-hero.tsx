@@ -363,15 +363,15 @@ export const MediaHero = ({ className = '' }: MediaHeroProps) => {
                   title="Watch Trailer"
                   aria-label="Watch Trailer"
                 >
-                  <Film className="h-4 w-4 text-rose-500 dark:text-rose-400 group-hover:scale-110 transition-transform shrink-0" />
+                  <Film className="h-4 w-4 text-white group-hover:scale-110 transition-transform shrink-0" />
                   <span>Trailer</span>
                 </button>
               )}
 
               {/* ── Secondary Icon-Based Interaction Cluster ── */}
-              <div className="flex items-center gap-1 rounded-full h-10 bg-[var(--dk-surface-glass)] px-1.5 backdrop-blur-xl shadow-lg">
-                {/* Watchlist / Wishlist Button */}
-                {isAuthenticated && (
+              {isAuthenticated && (
+                <div className="flex items-center gap-1 rounded-full h-10 bg-[var(--dk-surface-glass)] px-1.5 backdrop-blur-xl shadow-lg">
+                  {/* Watchlist / Wishlist Button */}
                   <button
                     type="button"
                     onClick={() => handleToggle('watchlisted')}
@@ -388,10 +388,8 @@ export const MediaHero = ({ className = '' }: MediaHeroProps) => {
                       className={cn('h-4 w-4', isWatchlisted && 'fill-current text-sky-600 dark:text-sky-400')}
                     />
                   </button>
-                )}
 
-                {/* Watched / Played Button */}
-                {isAuthenticated && (
+                  {/* Watched / Played Button */}
                   <button
                     type="button"
                     onClick={() => handleToggle(watchedType)}
@@ -408,10 +406,8 @@ export const MediaHero = ({ className = '' }: MediaHeroProps) => {
                       className={cn('h-4 w-4', isWatched ? 'text-primary-foreground' : 'text-muted-foreground')}
                     />
                   </button>
-                )}
 
-                {/* Like Button */}
-                {isAuthenticated && (
+                  {/* Like Button */}
                   <button
                     type="button"
                     onClick={() => handleToggle('liked')}
@@ -428,18 +424,14 @@ export const MediaHero = ({ className = '' }: MediaHeroProps) => {
                       className={cn('h-4 w-4', isLiked && 'fill-current text-rose-600 dark:text-rose-400')}
                     />
                   </button>
-                )}
 
-                {/* Add to List */}
-                {isAuthenticated && (
+                  {/* Add to List */}
                   <AddToListButton mediaItemId={detail.id} variant="icon" />
-                )}
 
-                {/* Admin Actions */}
-                {isAuthenticated && (
+                  {/* Admin Actions */}
                   <AdminActionsMenu mediaId={detail.id} media={detail} variant="icon" />
-                )}
-              </div>
+                </div>
+              )}
             </div>
           </div>
         </div>

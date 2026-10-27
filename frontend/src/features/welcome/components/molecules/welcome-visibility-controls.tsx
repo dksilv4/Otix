@@ -5,15 +5,13 @@ import { useWelcomePreferences } from '../../hooks/use-welcome-preferences'
 
 export const WelcomeVisibilityControls = () => {
   const {
-    isWelcomeNavVisible,
     isWelcomeBannerVisible,
-    setWelcomeNavVisible,
     setWelcomeBannerVisible,
     hideWelcomeCompletely,
     resetWelcome,
   } = useWelcomePreferences()
 
-  const allHidden = !isWelcomeNavVisible && !isWelcomeBannerVisible
+  const allHidden = !isWelcomeBannerVisible
 
   return (
     <div className="relative overflow-hidden rounded-[2.5rem] bg-[var(--dk-surface-glass)] backdrop-blur-xl p-7 sm:p-9 shadow-[var(--dk-shadow-glass)] space-y-6">
@@ -23,7 +21,7 @@ export const WelcomeVisibilityControls = () => {
         </h2>
         <p className="text-xs text-muted-foreground leading-relaxed">
           Choose where introduction guides and quick links appear. You can return to this
-          page at any time via <span className="font-mono text-primary">/welcome</span>, your avatar menu, or Command Palette (<span className="font-mono text-primary">Cmd+K</span>).
+          page at any time via <span className="font-mono text-primary">/welcome</span>, Settings &gt; About, your avatar menu, or Command Palette (<span className="font-mono text-primary">Cmd+K</span>).
         </p>
       </div>
 
@@ -31,17 +29,15 @@ export const WelcomeVisibilityControls = () => {
         <div className="flex items-center justify-between rounded-2xl glass-inset p-5">
           <div className="space-y-1 pr-4">
             <p className="text-xs font-semibold text-foreground">
-              Navigation Menu Shortcut
+              Settings &amp; About Shortcut
             </p>
             <p className="text-[11px] text-muted-foreground leading-normal">
-              Show "Welcome Guide" in the floating menu dropdown
+              Always available in Settings &gt; About and Command Palette
             </p>
           </div>
-          <DkSwitch
-            checked={isWelcomeNavVisible}
-            onCheckedChange={setWelcomeNavVisible}
-            aria-label="Toggle navigation menu shortcut"
-          />
+          <span className="text-[11px] font-semibold text-primary px-2.5 py-1 rounded-lg bg-primary/10">
+            Active
+          </span>
         </div>
 
         <div className="flex items-center justify-between rounded-2xl glass-inset p-5">

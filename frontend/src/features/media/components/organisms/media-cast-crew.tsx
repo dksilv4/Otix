@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { ChevronLeft, ChevronRight, Users } from 'lucide-react'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { PeopleCard } from '@people/components/molecules/people-card'
 import { groupByRole } from '@media'
 import { DkDialog } from '@ui/molecules/dialog'
@@ -79,12 +79,11 @@ export const CastCrew = ({ credits = [], className = '' }: CastCrewProps) => {
     <div className={cn('glass-card py-6 sm:py-7 space-y-4 overflow-visible', className)}>
       {/* ── Header with Category Tabs & Nav Chevrons ── */}
       <div className="px-6 sm:px-7 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="flex items-center gap-2.5">
-          <div className="h-4 w-0.5 rounded-full bg-primary/60 shrink-0" />
+        <div>
           <h2 className="text-base font-semibold tracking-tight">Cast &amp; Crew</h2>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 flex-wrap sm:flex-nowrap">
           {/* Segmented Category Filter */}
           {categories.length > 1 && (
             <div className="flex items-center gap-1 rounded-xl bg-[var(--dk-surface-glass)] p-0.5 overflow-x-auto scrollbar-none">
@@ -111,6 +110,18 @@ export const CastCrew = ({ credits = [], className = '' }: CastCrewProps) => {
                 )
               })}
             </div>
+          )}
+
+          {/* Standardized View All Trigger */}
+          {activeCategory.items.length > 16 && (
+            <button
+              type="button"
+              onClick={() => setIsModalOpen(true)}
+              className="text-xs font-medium text-muted-foreground hover:text-foreground transition-all inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-base)] shadow-xs active:scale-95 cursor-pointer"
+            >
+              <span>View all</span>
+              <span className="text-[10px] opacity-70 font-semibold">({activeCategory.items.length})</span>
+            </button>
           )}
 
           {/* Desktop Chevron Controls */}
@@ -156,20 +167,6 @@ export const CastCrew = ({ credits = [], className = '' }: CastCrewProps) => {
           ) : null,
         )}
       </div>
-
-      {/* ── View All Dialog Trigger ── */}
-      {activeCategory.items.length > 16 && (
-        <div className="px-6 sm:px-7 flex justify-end pt-1">
-          <button
-            type="button"
-            onClick={() => setIsModalOpen(true)}
-            className="text-xs font-semibold text-primary hover:underline inline-flex items-center gap-1"
-          >
-            <Users className="h-3.5 w-3.5" />
-            <span>View all {activeCategory.items.length} {activeCategory.label.toLowerCase()}</span>
-          </button>
-        </div>
-      )}
 
       {/* ── Full Credits Modal Dialog ── */}
       {isModalOpen && (

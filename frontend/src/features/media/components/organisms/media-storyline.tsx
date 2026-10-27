@@ -30,8 +30,7 @@ export const MediaStoryline = ({ detail, mediaType, className = '' }: MediaStory
   return (
     <div className={`glass-card p-6 sm:p-7 space-y-4 ${className}`}>
       {/* Heading */}
-      <div className="flex items-center gap-2.5">
-        <div className="h-4 w-0.5 rounded-full bg-primary/60 shrink-0" />
+      <div>
         <h2 className="text-base font-semibold tracking-tight">Storyline</h2>
       </div>
 

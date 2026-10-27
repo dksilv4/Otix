@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Bell, Lock, Volume2, Monitor, Radio } from 'lucide-react'
+import { Bell, Lock, Volume2, Monitor, Radio, Globe } from 'lucide-react'
 import { useAuth } from '@/lib/providers/auth'
 import { apiClient } from '@/lib/api/client'
 import { cn } from '@/lib/utils'
@@ -132,6 +132,7 @@ export const SettingsNotificationsPage = () => {
 
         {typeof Notification !== 'undefined' && (
           <SettingsRow
+            icon={<Globe className="h-5 w-5" />}
             label="Browser notifications"
             description={
               Notification.permission === 'granted'

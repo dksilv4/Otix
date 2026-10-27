@@ -14,6 +14,7 @@ import {
   SlidersHorizontal,
   Sparkles,
   ScrollText,
+  Info,
 } from 'lucide-react'
 import type { ComponentType } from 'react'
 import type { PluginSettingsTab } from '@/features/_config/slots'
@@ -102,6 +103,15 @@ export const NAV_ITEMS: NavItem[] = [
     requiresAuth: false,
     group: 'preferences',
     keywords: 'changelog updates release notes version features fixes what is new',
+  },
+  {
+    id: 'about',
+    label: 'About',
+    icon: Info,
+    desktop: false,
+    requiresAuth: false,
+    group: 'preferences',
+    keywords: 'about otix version welcome guide documentation docs environment build release notes updates',
   },
   {
     id: 'nodes',

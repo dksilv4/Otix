@@ -1,8 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
 import { mediaQueries, formatNumber, formatPlaytime, formatMinutesToHours, formatDaysAgo, useMediaParams } from '@media'
-import { Badge } from '@ui/atoms/badge'
-import { PlatformIcon } from './media-game-platform-icon'
-import { isPS5Slug, isPS4Slug } from '@/features/media/game/utils/platform-icons'
 import { MediaGameServersSection } from '@/features/gameservers'
 
 interface GameSectionProps {
@@ -16,14 +13,10 @@ export const GameSection = ({ className }: GameSectionProps = {}) => {
   if (!data || !data.game) return null
 
   const game = data.game
-  const platforms = Array.isArray(data.platforms) ? data.platforms.filter((p) => p && p.platform) : []
-  const gameModes = Array.isArray(data.gameModes) ? data.gameModes.filter((m) => m && m.gameMode) : []
   const steamPlaytimeForever = data.steamPlaytimeForever
   const steamPlaytime2weeks = data.steamPlaytime2weeks
   const steamRtimeLastPlayed = data.steamRtimeLastPlayed
 
-  const hasModes = gameModes.length > 0
-  const hasPlatforms = platforms.length > 0
   const hasSteamStats =
     game.currentPlayers != null ||
     game.recommendations != null ||
@@ -31,67 +24,10 @@ export const GameSection = ({ className }: GameSectionProps = {}) => {
   const hasPlaytime = steamPlaytimeForever != null
   const hasTimeToBeat = game.timeToBeat?.normally != null || game.timeToBeat?.hastly != null || game.timeToBeat?.completely != null
 
-  if (!hasModes && !hasPlatforms && !hasSteamStats && !hasPlaytime && !hasTimeToBeat && !game.website) return null
+  if (!hasSteamStats && !hasPlaytime && !hasTimeToBeat) return null
 
   return (
     <section id="media-game-section" className={`space-y-6 ${className || ''}`}>
-      {/* Platforms */}
-      {hasPlatforms && (
-        <div className="space-y-2">
-          <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-            Platforms
-          </h3>
-          <div className="flex flex-wrap items-center gap-2">
-            {platforms.map((p) => {
-              const isPs = isPS5Slug(p.platform.slug) || isPS4Slug(p.platform.slug)
-
-              if (isPs) {
-                return (
-                  <div
-                    key={p.id}
-                    title={p.platform.name}
-                    aria-label={p.platform.name}
-                    className="flex items-center justify-center transition-transform hover:scale-105"
-                  >
-                    <PlatformIcon
-                      slug={p.platform.slug}
-                      className="h-8 px-2.5 text-xs rounded-[4px]"
-                    />
-                  </div>
-                )
-              }
-
-              return (
-                <div
-                  key={p.id}
-                  title={p.platform.name}
-                  aria-label={p.platform.name}
-                  className="glass-inset flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-all hover:scale-105 hover:bg-[var(--dk-surface-glass)] hover:text-foreground"
-                >
-                  <PlatformIcon slug={p.platform.slug} className="h-4 w-4" />
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Game modes */}
-      {hasModes && (
-        <div className="space-y-2">
-          <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-            Game Modes
-          </h3>
-          <div className="flex flex-wrap gap-1.5">
-            {gameModes.map((m) => (
-              <Badge key={m.id} variant="outline">
-                {m.gameMode.name}
-              </Badge>
-            ))}
-          </div>
-        </div>
-      )}
-
       {/* Your Steam Playtime */}
       {hasPlaytime && (
         <div className="space-y-2">

@@ -139,8 +139,7 @@ export const ShowSection = ({
   if (seasons.length === 0) {
     return (
       <section className={cn("space-y-6 px-6 sm:px-7", className)}>
-        <div className="flex items-center gap-2.5">
-          <div className="h-4 w-0.5 rounded-full bg-primary/60 shrink-0" />
+        <div>
           <h2 className="text-base font-semibold tracking-tight">Seasons</h2>
         </div>
         <div className="rounded-2xl p-8 text-center glass-inset">
@@ -349,8 +348,7 @@ export const ShowSection = ({
    <div className="space-y-4">
      {/* ── Episodes Header with Title & Nav Chevrons ── */}
      <div className="px-6 sm:px-7 flex items-center justify-between gap-3">
-       <div className="flex items-center gap-2.5">
-         <div className="h-4 w-0.5 rounded-full bg-primary/60 shrink-0" />
+       <div className="flex items-center gap-2">
          <h3 className="text-base font-semibold tracking-tight">Episodes</h3>
          <span className="text-xs text-muted-foreground font-medium">
            ({currentEpisodes.length})

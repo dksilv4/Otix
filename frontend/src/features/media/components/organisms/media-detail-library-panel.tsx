@@ -24,8 +24,7 @@ export const MediaDetailLibraryPanel = ({
 
   return (
     <div className="glass-card p-5 sm:p-6 space-y-4">
-      <div className="flex items-center gap-2">
-        <div className="h-4 w-0.5 rounded-full bg-primary/60 shrink-0" />
+      <div>
         <h3 className="text-sm font-semibold tracking-tight">Library Server Status</h3>
       </div>
       <MediaDetailPluginLibraryStatus widgets={libraryWidgets} />

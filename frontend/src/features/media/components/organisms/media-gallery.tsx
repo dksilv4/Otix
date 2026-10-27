@@ -97,8 +97,7 @@ export const MediaGallery = ({
     >
       {/* ── Header with Category Tabs & Nav Chevrons ── */}
       <div className="px-6 sm:px-7 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2.5">
-          <div className="h-4 w-0.5 rounded-full bg-primary/60 shrink-0" />
+        <div className="flex items-center gap-2">
           <h2 className="text-base font-semibold tracking-tight">Media Gallery</h2>
           <span className="text-xs text-muted-foreground font-medium">
             ({parsedVideos.length + validScreenshots.length})
