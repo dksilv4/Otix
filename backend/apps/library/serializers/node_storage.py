@@ -37,7 +37,9 @@ class NodeLibraryPathSerializer(serializers.ModelSerializer):
         required=False,
         allow_null=True,
     )
-    storage_share_name = serializers.CharField(source="storage_share.name", read_only=True, allow_null=True)
+    storage_share_name = serializers.CharField(
+        source="storage_share.name", read_only=True, allow_null=True
+    )
 
     class Meta:
         model = NodeLibraryPath
@@ -63,7 +65,9 @@ class NodeLibraryPathSerializer(serializers.ModelSerializer):
 
 class GameMatchRecordSerializer(serializers.ModelSerializer):
     media = MediaItemSummarySerializer(source="media_item", read_only=True, allow_null=True)
-    storage_share_name = serializers.CharField(source="storage_share.name", read_only=True, allow_null=True)
+    storage_share_name = serializers.CharField(
+        source="storage_share.name", read_only=True, allow_null=True
+    )
     node_name = serializers.CharField(source="node.name", read_only=True, allow_null=True)
 
     class Meta:

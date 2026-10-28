@@ -143,7 +143,6 @@ def execute_sync_job(job_pk: int) -> dict[str, Any]:
     if job is None:
         return {"status": "skipped", "task_id": str(job_pk)}
 
-
     task_id = str(job.pk)
     progress = progress_lib.RedisProgress(f"{job.provider}:sync")
     context = _job_context(job)

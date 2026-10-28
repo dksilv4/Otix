@@ -152,4 +152,3 @@ def close_redis_clients() -> None:
     for c in list(_fallback_async_clients.values()):
         _force_close_redis_client(c)
     _fallback_async_clients.clear()
-

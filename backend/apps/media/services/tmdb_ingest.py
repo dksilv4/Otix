@@ -523,7 +523,6 @@ def _upsert_tmdb_rating(media: MediaItem, raw: dict[str, Any]) -> None:
     compute_and_store_overall_rating(media.pk)
 
 
-
 def _hydrate_relations(media: MediaItem, raw: dict[str, Any]) -> None:
     """Fold the detail's relation enrichment onto *media*.
 

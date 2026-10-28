@@ -2,7 +2,7 @@ import { useEffect, useId, useRef, useState } from 'react'
 import { DkDialog } from '@ui/molecules/dialog'
 import { IsoInstallerModal } from '@/features/launcher/components/organisms/iso-installer-modal'
 import { ServerGameSearchModal } from '@/features/downloads/molecules/server-game-search-modal'
-import { Play, Download, Loader2, CheckCircle2, XCircle, FolderOpen, Disc, Server, Pause, X, AlertTriangle, ChevronDown } from 'lucide-react'
+import { Play, Download, Loader2, CheckCircle2, XCircle, FolderOpen, Disc, Server, Pause, X, AlertTriangle, ChevronDown, ArrowDownToLine, Search } from 'lucide-react'
 import { cn, formatBytes } from '@/lib/utils'
 import { DOWNLOAD_STATUS_LABELS } from '../../../constants'
 import { useDownloadGame } from '../../hooks/use-download-game'
@@ -532,14 +532,95 @@ export const DownloadGameButton = () => {
         )}
 
         {!showInstall && state.hasGameServer && state.activeServer && (
-          <button
-            onClick={openServerSearch}
-            className="inline-flex items-center gap-2 rounded-full bg-primary hover:bg-primary/90 px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-lg transition-all duration-200 active:scale-95 cursor-pointer"
-            title="Download"
-          >
-            <Download className="h-4 w-4" />
-            <span>Download</span>
-          </button>
+          <div ref={menuRef} className="relative inline-flex overflow-visible rounded-full shadow-lg">
+            <button
+              type="button"
+              onClick={() => void state.handleRequestGame(openServerSearch)}
+              disabled={state.requesting}
+              className="inline-flex items-center gap-2 rounded-l-full bg-primary hover:bg-primary/90 px-5 py-2.5 text-sm font-semibold text-primary-foreground transition-all duration-200 active:scale-95 cursor-pointer disabled:opacity-60 disabled:pointer-events-none"
+              title="Request and auto-download game"
+            >
+              {state.requesting ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <ArrowDownToLine className="h-4 w-4" />
+              )}
+              <span>{state.requesting ? 'Requesting…' : 'Request'}</span>
+            </button>
+            <button
+              ref={menuButtonRef}
+              type="button"
+              onClick={() => setMenuOpen((open) => !open)}
+              onKeyDown={(event) => {
+                if (event.key !== 'ArrowDown') return
+                event.preventDefault()
+                setMenuOpen(true)
+              }}
+              aria-label="Show download options"
+              aria-haspopup="menu"
+              aria-expanded={menuOpen}
+              aria-controls={menuId}
+              className="inline-flex items-center justify-center rounded-r-full border-l border-primary-foreground/20 bg-primary hover:bg-primary/90 px-2.5 py-2.5 text-primary-foreground transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70"
+            >
+              <ChevronDown className={cn('h-4 w-4 transition-transform', menuOpen && 'rotate-180')} />
+            </button>
+
+            {menuOpen && (
+              <div
+                id={menuId}
+                role="menu"
+                aria-label="Request options"
+                className="absolute left-0 top-full z-50 mt-2 min-w-64 overflow-hidden rounded-2xl border border-[var(--dk-separator)] bg-[var(--dk-surface-raised)]/95 p-1.5 shadow-2xl backdrop-blur-xl"
+              >
+                <p className="px-3 pb-1.5 pt-2 text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground/70">
+                  Options
+                </p>
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setMenuOpen(false)
+                    openServerSearch()
+                  }}
+                  className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm text-foreground/80 transition-colors hover:bg-[var(--dk-surface-glass)] hover:text-foreground cursor-pointer focus-visible:bg-[var(--dk-surface-glass)] focus-visible:outline-none"
+                >
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-cyan-500/15">
+                    <Search className="h-4 w-4 text-cyan-600 dark:text-cyan-400" />
+                  </span>
+                  <span className="flex min-w-0 flex-col">
+                    <span className="font-medium text-foreground">Browse / Search releases manually</span>
+                    <span className="text-xs text-muted-foreground">Pick a release on {state.activeServer.name}</span>
+                  </span>
+                </button>
+                {state.canLocalDownload && (
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      setMenuOpen(false)
+                      void state.handleDownload()
+                    }}
+                    disabled={state.searching}
+                    className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm text-foreground/80 transition-colors hover:bg-[var(--dk-surface-glass)] hover:text-foreground cursor-pointer focus-visible:bg-[var(--dk-surface-glass)] focus-visible:outline-none disabled:opacity-50 disabled:pointer-events-none"
+                  >
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-violet-500/15">
+                      {state.searching ? (
+                        <Loader2 className="h-4 w-4 animate-spin text-violet-600 dark:text-violet-400" />
+                      ) : (
+                        <Disc className="h-4 w-4 text-violet-600 dark:text-violet-400" />
+                      )}
+                    </span>
+                    <span className="flex min-w-0 flex-col">
+                      <span className="font-medium text-foreground">
+                        {state.searching ? 'Searching…' : 'Download ISO (local)'}
+                      </span>
+                      <span className="text-xs text-muted-foreground">Search configured download providers</span>
+                    </span>
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
         )}
 
         {!showInstall && state.canLocalDownload && (
@@ -566,4 +647,6 @@ export const DownloadGameButton = () => {
 
   // ── Fallback (downloads disabled) → null content ──
   return null
-};
+}
+
+export const RequestGameButton = DownloadGameButton

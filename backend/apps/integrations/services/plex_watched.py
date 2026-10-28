@@ -66,8 +66,7 @@ def _fetch_library_watched_items(
     if data is None and filter_param:
         # Fallback without unwatched filter
         first_url = (
-            f"{prefix}?includeGuids=1&"
-            f"X-Plex-Container-Start=0&X-Plex-Container-Size={_PAGE_SIZE}"
+            f"{prefix}?includeGuids=1&X-Plex-Container-Start=0&X-Plex-Container-Size={_PAGE_SIZE}"
         )
         data = _page_json(
             first_url,
@@ -223,13 +222,13 @@ def sync_plex_watched(user) -> dict:
                 leaf_count = int(item.get("leafCount") or 0)
                 viewed_leaf_count = int(item.get("viewedLeafCount") or 0)
 
-                is_watched = (
-                    (plex_type == "movie" and view_count > 0)
-                    or (plex_type == "show" and (
-                        view_count > 0 or (leaf_count > 0 and viewed_leaf_count == leaf_count)
-                    ))
+                is_watched = (plex_type == "movie" and view_count > 0) or (
+                    plex_type == "show"
+                    and (view_count > 0 or (leaf_count > 0 and viewed_leaf_count == leaf_count))
                 )
-                is_started = not is_watched and (viewed_leaf_count > 0 or bool(item.get("viewOffset")))
+                is_started = not is_watched and (
+                    viewed_leaf_count > 0 or bool(item.get("viewOffset"))
+                )
 
                 if not is_watched and not is_started:
                     continue

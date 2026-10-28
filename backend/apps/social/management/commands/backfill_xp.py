@@ -108,9 +108,7 @@ class Command(BaseCommand):
             user_xp += lists_count * LIST_CREATE
 
             # 6. Mood check-ins
-            mood_count = UserMoodCheckIn.objects.filter(
-                user_id=user.id, status="submitted"
-            ).count()
+            mood_count = UserMoodCheckIn.objects.filter(user_id=user.id, status="submitted").count()
             user_xp += mood_count * MOOD_CHECKIN
 
             # 7. Claimed Badges
@@ -125,9 +123,7 @@ class Command(BaseCommand):
             total_xp_all += user_xp
             updated_users += 1
 
-            self.stdout.write(
-                f"  {user.username} (id={user.id}): {user.total_xp} -> {user_xp} XP"
-            )
+            self.stdout.write(f"  {user.username} (id={user.id}): {user.total_xp} -> {user_xp} XP")
 
             if not dry_run:
                 with transaction.atomic():

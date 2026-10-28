@@ -103,8 +103,7 @@ class UserServerMachineSerializer(serializers.ModelSerializer):
 
     def get_smb_nodes(self, obj: UserServerMachine) -> list[dict]:
         return [
-            {"id": n.id, "name": n.name, "primary_url": n.primary_url}
-            for n in obj.smb_nodes.all()
+            {"id": n.id, "name": n.name, "primary_url": n.primary_url} for n in obj.smb_nodes.all()
         ]
 
 
@@ -113,9 +112,7 @@ class UserServerMachineCreateUpdateSerializer(serializers.ModelSerializer):
 
     home_id = serializers.IntegerField(required=False, allow_null=True)
     hosted_node_id = serializers.IntegerField(required=False, allow_null=True)
-    smb_shares = serializers.ListField(
-        child=serializers.DictField(), required=False, default=list
-    )
+    smb_shares = serializers.ListField(child=serializers.DictField(), required=False, default=list)
     smb_node_ids = serializers.ListField(
         child=serializers.IntegerField(), required=False, default=list
     )
@@ -188,7 +185,11 @@ class UserServerMachineCreateUpdateSerializer(serializers.ModelSerializer):
             **validated_data,
         )
         if smb_node_ids:
-            nodes = UserNode.objects.filter(id__in=smb_node_ids, user=user) if user else UserNode.objects.none()
+            nodes = (
+                UserNode.objects.filter(id__in=smb_node_ids, user=user)
+                if user
+                else UserNode.objects.none()
+            )
             server.smb_nodes.set(nodes)
 
         server.recalculate_storage()
@@ -196,9 +197,9 @@ class UserServerMachineCreateUpdateSerializer(serializers.ModelSerializer):
         return server
 
     def update(self, instance, validated_data):
-        home_id = validated_data.pop("home_id", ... )
-        hosted_node_id = validated_data.pop("hosted_node_id", ... )
-        smb_node_ids = validated_data.pop("smb_node_ids", ... )
+        home_id = validated_data.pop("home_id", ...)
+        hosted_node_id = validated_data.pop("hosted_node_id", ...)
+        smb_node_ids = validated_data.pop("smb_node_ids", ...)
         user = self._get_context_user()
 
         if home_id is not ...:
@@ -210,7 +211,11 @@ class UserServerMachineCreateUpdateSerializer(serializers.ModelSerializer):
             setattr(instance, attr, value)
 
         if smb_node_ids is not ...:
-            nodes = UserNode.objects.filter(id__in=smb_node_ids, user=user) if user else UserNode.objects.none()
+            nodes = (
+                UserNode.objects.filter(id__in=smb_node_ids, user=user)
+                if user
+                else UserNode.objects.none()
+            )
             instance.smb_nodes.set(nodes)
 
         instance.recalculate_storage()

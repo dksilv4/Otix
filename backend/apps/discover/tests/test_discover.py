@@ -101,6 +101,7 @@ def _list_url(media_type: str, list_type: str) -> str:
 class DiscoverApiTests(TestCase):
     def setUp(self) -> None:
         from django.core.cache import cache
+
         cache.clear()
         self.staff = User.objects.create_user(
             username="mod", password="a-strong-pass", is_staff=True
@@ -112,6 +113,7 @@ class DiscoverApiTests(TestCase):
 
     def tearDown(self) -> None:
         from django.core.cache import cache
+
         cache.clear()
 
     # ── /hero ────────────────────────────────────────────────────────
@@ -491,6 +493,7 @@ class TrendingShowsSeasonTests(TestCase):
 
     def setUp(self) -> None:
         from django.core.cache import cache
+
         cache.clear()
         self.staff = User.objects.create_user(
             username="mod2", password="a-strong-pass", is_staff=True
@@ -502,6 +505,7 @@ class TrendingShowsSeasonTests(TestCase):
 
     def tearDown(self) -> None:
         from django.core.cache import cache
+
         cache.clear()
 
     def _feed(self, params: dict | None = None):

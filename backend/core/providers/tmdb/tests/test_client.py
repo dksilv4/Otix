@@ -96,7 +96,9 @@ class TMDBClientTests(SimpleTestCase):
 
     def test_get_collection(self) -> None:
         async def run() -> None:
-            mapping = {("GET", "/3/collection/10"): (200, {"id": 10, "name": "Star Wars Collection"})}
+            mapping = {
+                ("GET", "/3/collection/10"): (200, {"id": 10, "name": "Star Wars Collection"})
+            }
             provider, _, calls = self._make_provider(mapping)
             async with provider.http:
                 data = await provider.get_collection(10, language="en-US")

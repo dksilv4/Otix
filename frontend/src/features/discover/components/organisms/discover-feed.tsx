@@ -5,7 +5,6 @@ import { DiscoverIntentBar } from '../molecules/discover-intent-bar'
 import { DiscoverWelcomeBanner } from '../molecules/discover-welcome-banner'
 import { DiscoverFanCarousel } from './discover-fan-carousel'
 import { DiscoverContinueWatchingSection } from './discover-continue-watching-section'
-import { DiscoverStreamableSection } from './discover-streamable-section'
 import { DiscoverDecideSection } from './discover-decide-section'
 import { TrendingSeasonsSection } from './trending-seasons-section'
 import { FreeGamesSection } from './free-games-section'
@@ -58,7 +57,7 @@ export const DiscoverFeed = () => {
       return (
         id === 'trending_movies' ||
         id === 'continue_watching' ||
-        id === 'streamable_media' ||
+        id === 'player_activity' ||
         id === 'decide_for_me' ||
         id === 'fan_spotlight' ||
         id === 'genres_explore' ||
@@ -70,7 +69,7 @@ export const DiscoverFeed = () => {
         id === 'trending_shows' ||
         id === 'trending_seasons' ||
         id === 'continue_watching' ||
-        id === 'streamable_media' ||
+        id === 'player_activity' ||
         id === 'decide_for_me' ||
         id === 'fan_spotlight' ||
         id === 'genres_explore' ||
@@ -93,7 +92,14 @@ export const DiscoverFeed = () => {
       return id === 'free_games' || id === 'gaming_rails'
     }
     if (activeIntent === 'streamable') {
-      return id === 'continue_watching' || id === 'streamable_media' || id === 'decide_for_me'
+      return (
+        id === 'trending_movies' ||
+        id === 'trending_shows' ||
+        id === 'extended_catalog' ||
+        id === 'continue_watching' ||
+        id === 'player_activity' ||
+        id === 'decide_for_me'
+      )
     }
     return true
   }
@@ -128,8 +134,8 @@ export const DiscoverFeed = () => {
               case 'continue_watching':
                 return <DiscoverContinueWatchingSection key={section.id} eager />
 
-              case 'streamable_media':
-                return <DiscoverStreamableSection key={section.id} />
+              case 'player_activity':
+                return <DiscoverPlayerActivitySection key={section.id} />
 
               case 'decide_for_me':
                 return <DiscoverDecideSection key={section.id} />
@@ -142,6 +148,7 @@ export const DiscoverFeed = () => {
                     mediaType="movie"
                     listType="trending"
                     eager
+                    activeIntent={activeIntent}
                   />
                 )
 
@@ -153,6 +160,7 @@ export const DiscoverFeed = () => {
                     mediaType="show"
                     listType="trending"
                     eager
+                    activeIntent={activeIntent}
                   />
                 )
 
@@ -170,17 +178,16 @@ export const DiscoverFeed = () => {
                       mediaType="game"
                       listType="now_playing"
                       eager
+                      activeIntent={activeIntent}
                     />
                     <MediaSection
                       title="Top Rated Games"
                       mediaType="game"
                       listType="top_rated"
+                      activeIntent={activeIntent}
                     />
                   </div>
                 )
-
-              case 'player_activity':
-                return <DiscoverPlayerActivitySection key={section.id} />
 
               case 'genres_explore':
                 return <DiscoverGenresSection key={section.id} />
@@ -195,6 +202,7 @@ export const DiscoverFeed = () => {
                         mediaType={rail.mediaType}
                         listType={rail.listType}
                         platform={'platform' in rail ? rail.platform : undefined}
+                        activeIntent={activeIntent}
                       />
                     ))}
                   </div>

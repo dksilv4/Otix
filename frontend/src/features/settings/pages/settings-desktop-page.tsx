@@ -48,6 +48,7 @@ import { NodesListView } from '../components/organisms/nodes-list-view'
 import { SettingsPathsPage } from './settings-paths-page'
 import { SettingsOrganizePage } from './settings-organize-page'
 import { SettingsProposalsPage } from './settings-proposals-page'
+import { SettingsNodeConnectionsPage } from './settings-node-connections-page'
 import { useNodesView } from '../context/nodes-view-context'
 import {
   flattenInfrastructureItems,
@@ -494,6 +495,22 @@ export const SettingsNodesPage = () => {
       >
         <div className="max-w-5xl xl:max-w-6xl mx-auto space-y-5">
           <SettingsOrganizePage />
+        </div>
+      </div>
+    )
+  }
+
+  if (activeTab === 'connections') {
+    return (
+      <div
+        id="settings-nodes-section"
+        className={cn(
+          'relative w-full h-full overflow-y-auto px-4 sm:px-6 lg:px-8 pb-28',
+          getNavPillsTopOffset(false),
+        )}
+      >
+        <div className="max-w-5xl xl:max-w-6xl mx-auto space-y-5">
+          <SettingsNodeConnectionsPage />
         </div>
       </div>
     )

@@ -135,7 +135,9 @@ def sync_otix_sidecars(
 
     if ensure_scan:
         # Ensure the in-memory index is fresh before matching.
-        usenet_proxy_request(server, "POST", "/api/v1/scan", params={"wait": "1", "skip_sync": "1"}, timeout=300.0)
+        usenet_proxy_request(
+            server, "POST", "/api/v1/scan", params={"wait": "1", "skip_sync": "1"}, timeout=300.0
+        )
 
     files_status, files_data = usenet_proxy_request(server, "GET", "/api/v1/files", timeout=30.0)
     if files_status >= 400:

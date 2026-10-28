@@ -16,6 +16,14 @@ describe('useDiscoverSections', () => {
     expect(result.current.isCustomizeOpen).toBe(false)
   })
 
+  it('places player_activity directly below continue_watching in default order', () => {
+    const { result } = renderHook(() => useDiscoverSections())
+    const continueWatchingIndex = result.current.sections.findIndex((s) => s.id === 'continue_watching')
+    const playerActivityIndex = result.current.sections.findIndex((s) => s.id === 'player_activity')
+    expect(continueWatchingIndex).toBeGreaterThan(-1)
+    expect(playerActivityIndex).toBe(continueWatchingIndex + 1)
+  })
+
   it('toggles section visibility and persists to localStorage', () => {
     const { result } = renderHook(() => useDiscoverSections())
     const initialFreeGames = result.current.sections.find((s) => s.id === 'free_games')

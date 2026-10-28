@@ -23,6 +23,7 @@ from apps.integrations.views import (
     PlexStorageRefreshView,
     PlexStorageServersView,
     PlexStorageSummaryView,
+    PlexStreamableIdsView,
     PlexStreamView,
     PlexSyncStreamView,
     PlexSyncView,
@@ -55,6 +56,7 @@ urlpatterns = [
     # Plex read/library-state surface.
     path("plex/servers", PlexServersView.as_view(), name="plex-servers"),
     path("plex/libraries", PlexLibrariesView.as_view(), name="plex-libraries"),
+    path("plex/streamable-ids", PlexStreamableIdsView.as_view(), name="plex-streamable-ids"),
     path("plex/stream/<str:rating_key>", PlexStreamView.as_view(), name="plex-stream"),
     path(
         "plex/connect-info/<str:media_identifier>",

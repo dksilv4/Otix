@@ -138,7 +138,9 @@ class GoogleDriveLinkInitiateView(GenericAPIView):
     def post(self, request, *args, **kwargs):
         source = request.data.get("source") if request.data else None
         try:
-            auth_url, state = oauth_service.build_google_drive_link_url(request.user.pk, source=source)
+            auth_url, state = oauth_service.build_google_drive_link_url(
+                request.user.pk, source=source
+            )
         except OAuthFlowError as exc:
             return Response({"detail": exc.detail}, status=exc.status_code)
         return Response({"auth_url": auth_url, "state": state}, status=status.HTTP_200_OK)
@@ -195,7 +197,9 @@ class PlexLinkInitiateView(GenericAPIView):
             )
         source = request.data.get("source") if request.data else None
         try:
-            auth_url, state, pin_id = oauth_service.build_plex_link_url(request.user.pk, source=source)
+            auth_url, state, pin_id = oauth_service.build_plex_link_url(
+                request.user.pk, source=source
+            )
         except OAuthFlowError as exc:
             return Response({"detail": exc.detail}, status=exc.status_code)
         return Response(
@@ -327,7 +331,10 @@ class GoogleLoginCallbackView(GenericAPIView):
         state = serializer.validated_data["state"]
 
         peeked = oauth_service.peek_state(state)
-        if peeked and peeked.get("flow") in (oauth_service.GOOGLE_OAUTH_FLOW, oauth_service.DRIVE_OAUTH_FLOW):
+        if peeked and peeked.get("flow") in (
+            oauth_service.GOOGLE_OAUTH_FLOW,
+            oauth_service.DRIVE_OAUTH_FLOW,
+        ):
             try:
                 if peeked.get("flow") == oauth_service.DRIVE_OAUTH_FLOW:
                     source = oauth_service.link_google_drive_to_user(request.user, code, state)
@@ -471,7 +478,9 @@ class TMDbLinkInitiateView(GenericAPIView):
             else request.build_absolute_uri(redirect_path)
         )
         try:
-            auth_url, state = oauth_service.build_tmdb_link_url(request.user.pk, redirect_url, source=source)
+            auth_url, state = oauth_service.build_tmdb_link_url(
+                request.user.pk, redirect_url, source=source
+            )
         except OAuthFlowError as exc:
             return Response({"detail": exc.detail}, status=exc.status_code)
         return Response({"auth_url": auth_url, "state": state}, status=status.HTTP_200_OK)
@@ -482,13 +491,17 @@ class TMDbLinkRedirectView(GenericAPIView):
 
     permission_classes = (permissions.AllowAny,)
 
-    def _redirect(self, status_value: str, message: str | None = None, source: str | None = None) -> HttpResponseRedirect:
+    def _redirect(
+        self, status_value: str, message: str | None = None, source: str | None = None
+    ) -> HttpResponseRedirect:
         query = {"tmdb_link": status_value}
         if message:
             query["message"] = message
         if source:
             query["source"] = source
-        target = f"{oauth_service.frontend_base()}/auth/callback/tmdb?{urllib.parse.urlencode(query)}"
+        target = (
+            f"{oauth_service.frontend_base()}/auth/callback/tmdb?{urllib.parse.urlencode(query)}"
+        )
         return HttpResponseRedirect(target, status=303)
 
     def get(self, request, *args, **kwargs):
@@ -507,7 +520,9 @@ class TMDbLinkRedirectView(GenericAPIView):
             source = getattr(user, "_oauth_source", None) or source
         except Exception:  # noqa: BLE001 - the hop always bounces back to the frontend
             oauth_service.logger.exception("tmdb redirect link failed")
-            return self._redirect("error", "Failed to link TMDb account. Please try again.", source=source)
+            return self._redirect(
+                "error", "Failed to link TMDb account. Please try again.", source=source
+            )
         return self._redirect("success", source=source)
 
 
@@ -845,9 +860,7 @@ class GOGDisconnectView(GenericAPIView):
             except Exception:
                 pass
 
-        return Response(
-            {"message": "GOG account unlinked successfully"}, status=status.HTTP_200_OK
-        )
+        return Response({"message": "GOG account unlinked successfully"}, status=status.HTTP_200_OK)
 
 
 class OAuthProvidersView(GenericAPIView):

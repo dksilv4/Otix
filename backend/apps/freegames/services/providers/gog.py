@@ -115,9 +115,13 @@ class GOGFreeGamesProvider(BaseFreeGamesProvider):
                         cover_h = prod.get("coverHorizontal")
                         logo = prod.get("logo")
                         if cover_v:
-                            poster_url = cover_v if cover_v.startswith("http") else f"https:{cover_v}"
+                            poster_url = (
+                                cover_v if cover_v.startswith("http") else f"https:{cover_v}"
+                            )
                         if cover_h:
-                            backdrop_url = cover_h if cover_h.startswith("http") else f"https:{cover_h}"
+                            backdrop_url = (
+                                cover_h if cover_h.startswith("http") else f"https:{cover_h}"
+                            )
                         if logo:
                             logo_url = logo if logo.startswith("http") else f"https:{logo}"
                         break
@@ -161,8 +165,12 @@ class GOGFreeGamesProvider(BaseFreeGamesProvider):
         cover_v = prod.get("coverVertical")
         cover_h = prod.get("coverHorizontal")
         logo = prod.get("logo")
-        poster_url = (cover_v if cover_v.startswith("http") else f"https:{cover_v}") if cover_v else None
-        backdrop_url = (cover_h if cover_h.startswith("http") else f"https:{cover_h}") if cover_h else None
+        poster_url = (
+            (cover_v if cover_v.startswith("http") else f"https:{cover_v}") if cover_v else None
+        )
+        backdrop_url = (
+            (cover_h if cover_h.startswith("http") else f"https:{cover_h}") if cover_h else None
+        )
         logo_url = (logo if logo.startswith("http") else f"https:{logo}") if logo else None
 
         price = prod.get("price") or {}

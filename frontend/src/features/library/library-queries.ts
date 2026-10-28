@@ -180,6 +180,20 @@ export function usePlexStatus({ enabled = true }: { enabled?: boolean } = {}) {
   })
 }
 
+export function useStreamableMediaIds({ enabled = true }: { enabled?: boolean } = {}) {
+  return useQuery({
+    queryKey: [...libraryKeys.tab("plex"), "streamable-ids"],
+    queryFn: async () => {
+      const { data } = await apiClient.get<{ mediaIds?: string[] }>(
+        "/integrations/plex/streamable-ids",
+      )
+      return data?.mediaIds ?? []
+    },
+    staleTime: 1000 * 60 * 5,
+    enabled,
+  })
+}
+
 export interface PlexLibraryInfo {
   id: string
   serverId: string

@@ -10,6 +10,7 @@ import {
 import { useAuth } from '@/lib/providers/auth'
 import { ActivityModuleSection } from './activity-module-section'
 import { formatBytes } from '@/lib/utils'
+import { resolveDownloadDisplayTitle } from '@/features/downloads/utils'
 
 import { historyMeta } from '../../utils/downloads'
 
@@ -106,8 +107,8 @@ export const ActivityModuleDownloads = () => {
                     <Loader2 className="h-4 w-4 text-blue-500 dark:text-blue-400 animate-spin shrink-0" />
                   )}
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold truncate text-foreground" title={item.filename}>
-                      {item.filename || 'SABnzbd download'}
+                    <p className="text-sm font-semibold truncate text-foreground" title={resolveDownloadDisplayTitle(item)}>
+                      {resolveDownloadDisplayTitle(item)}
                     </p>
                     <p className="flex items-center gap-1.5 text-[10px] mt-0.5 font-medium text-muted-foreground">
                       <span className="uppercase tracking-wider text-[9px] font-bold text-blue-500 dark:text-blue-300/70">Usenet</span>
@@ -144,8 +145,8 @@ export const ActivityModuleDownloads = () => {
               <div className="flex items-center gap-3">
                 <HistoryStatusIcon status={item.status} />
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold truncate text-foreground" title={item.title}>
-                    {item.title}
+                  <p className="text-sm font-semibold truncate text-foreground" title={resolveDownloadDisplayTitle(item)}>
+                    {resolveDownloadDisplayTitle(item)}
                   </p>
                   <p className="flex items-center gap-1.5 text-[10px] mt-0.5 font-medium text-muted-foreground">
                     {historyMeta(item)}

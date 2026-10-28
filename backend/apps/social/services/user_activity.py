@@ -279,9 +279,9 @@ def get_activity_heatmap(user_id: int, weeks: int) -> dict:
     ).only("start_time"):
         date_map[session.start_time.date()]["game"] += 1
 
-    for review in Review.objects.filter(
-        user_id=user_id, created_at__date__gte=start_date
-    ).only("created_at"):
+    for review in Review.objects.filter(user_id=user_id, created_at__date__gte=start_date).only(
+        "created_at"
+    ):
         date_map[review.created_at.date()]["review"] += 1
 
     dates_list = []

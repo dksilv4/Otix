@@ -32,7 +32,10 @@ def generate_canonical_key(
     rel = (relative_path or "").strip().replace("\\", "/").lower()
     if storage_share:
         return f"share:{storage_share.id}:{rel}"
-    if sha256_head and sha256_head != "0000000000000000000000000000000000000000000000000000000000000000":
+    if (
+        sha256_head
+        and sha256_head != "0000000000000000000000000000000000000000000000000000000000000000"
+    ):
         return f"hash:{sha256_head}"
     node_id = node.id if node else "unknown"
     return f"node:{node_id}:{rel}"
@@ -76,7 +79,9 @@ def find_matching_candidates(
 
         if item_norm == norm_target:
             score = 1.0
-        elif norm_target and (item_norm.startswith(norm_target) or norm_target.startswith(item_norm)):
+        elif norm_target and (
+            item_norm.startswith(norm_target) or norm_target.startswith(item_norm)
+        ):
             ratio = min(len(item_norm), len(norm_target)) / max(len(item_norm), len(norm_target))
             score = 0.85 * ratio
         elif any(k in item_norm for k in keys if len(k) >= 4):
@@ -90,15 +95,17 @@ def find_matching_candidates(
 
     candidates: list[dict[str, Any]] = []
     for score, item in scored[:limit]:
-        candidates.append({
-            "media_id": str(item.id),
-            "title": item.title,
-            "slug": item.slug,
-            "poster_url": getattr(item, "poster_url", "") or "",
-            "backdrop_url": getattr(item, "backdrop_url", "") or "",
-            "release_year": item.release_date.year if item.release_date else None,
-            "confidence": round(score, 3),
-        })
+        candidates.append(
+            {
+                "media_id": str(item.id),
+                "title": item.title,
+                "slug": item.slug,
+                "poster_url": getattr(item, "poster_url", "") or "",
+                "backdrop_url": getattr(item, "backdrop_url", "") or "",
+                "release_year": item.release_date.year if item.release_date else None,
+                "confidence": round(score, 3),
+            }
+        )
 
     return candidates
 
@@ -216,7 +223,9 @@ def confirm_match(user, record_id: int, media_item_id: str | int) -> GameMatchRe
     record.match_status = "matched"
     record.confidence = 1.0
     record.user_override = True
-    record.save(update_fields=["media_item", "match_status", "confidence", "user_override", "updated_at"])
+    record.save(
+        update_fields=["media_item", "match_status", "confidence", "user_override", "updated_at"]
+    )
     return record
 
 
@@ -227,5 +236,7 @@ def unmatch_record(user, record_id: int) -> GameMatchRecord:
     record.match_status = "unmatched"
     record.confidence = 0.0
     record.user_override = True
-    record.save(update_fields=["media_item", "match_status", "confidence", "user_override", "updated_at"])
+    record.save(
+        update_fields=["media_item", "match_status", "confidence", "user_override", "updated_at"]
+    )
     return record

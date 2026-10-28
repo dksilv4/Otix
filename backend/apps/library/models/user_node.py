@@ -56,7 +56,9 @@ class UserNode(TimestampedModel):
         """Return the directly assigned home or inherit from parent hosting server machine."""
         if self.home_id:
             return self.home
-        parent = self.hosted_server_machines.filter(home__isnull=False).select_related("home").first()
+        parent = (
+            self.hosted_server_machines.filter(home__isnull=False).select_related("home").first()
+        )
         return parent.home if parent else None
 
 

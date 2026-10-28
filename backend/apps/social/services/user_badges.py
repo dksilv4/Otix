@@ -74,9 +74,7 @@ def build_badge_context(user_id: int) -> dict:
 def check_and_award_badges(user_id: int) -> list[str]:
     """Evaluate badge criteria against the user's context; persist newly earned badges."""
     context = build_badge_context(user_id)
-    earned_keys = set(
-        UserBadge.objects.filter(user_id=user_id).values_list("badge_key", flat=True)
-    )
+    earned_keys = set(UserBadge.objects.filter(user_id=user_id).values_list("badge_key", flat=True))
     new_badges: list[str] = []
     for badge_def in ordered_badge_defs():
         if badge_def.key in earned_keys:

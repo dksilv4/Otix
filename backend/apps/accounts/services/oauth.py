@@ -239,9 +239,7 @@ def _authorization_url(
 ) -> tuple[str, str]:
     client_id, _ = _google_credentials()
     redirect_uri = callback or _callback_url(provider)
-    state, verifier = _store_state(
-        flow, user_id=user_id, source=source, redirect_uri=redirect_uri
-    )
+    state, verifier = _store_state(flow, user_id=user_id, source=source, redirect_uri=redirect_uri)
     if flow == GOOGLE_LOGIN_FLOW:
         scopes = GOOGLE_LOGIN_SCOPES
     elif flow == GOOGLE_OAUTH_FLOW:
@@ -1111,7 +1109,9 @@ def authenticate_steam(params: dict, raw_query: str | None = None) -> User:
     """Consume a login callback and return the resolved/created Steam user."""
     steam_id = validate_steam_callback(params, raw_query)
     user = find_or_create_steam_user(steam_id)
-    source = getattr(steam_id, "source", None) or _steam_flat_params(params, raw_query).get("source")
+    source = getattr(steam_id, "source", None) or _steam_flat_params(params, raw_query).get(
+        "source"
+    )
     if source:
         user._oauth_source = source
     return user

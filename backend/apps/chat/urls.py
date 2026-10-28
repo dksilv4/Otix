@@ -20,7 +20,11 @@ urlpatterns = [
     path("unread-count", ConversationUnreadCountView.as_view(), name="chat-unread-count"),
     path("unread-count/", ConversationUnreadCountView.as_view(), name="chat-unread-count-slash"),
     path("conversations", ConversationListCreateView.as_view(), name="conversation-list-create"),
-    path("conversations/", ConversationListCreateView.as_view(), name="conversation-list-create-slash"),
+    path(
+        "conversations/",
+        ConversationListCreateView.as_view(),
+        name="conversation-list-create-slash",
+    ),
     path(
         "conversations/<uuid:conversation_id>",
         ConversationDetailView.as_view(),

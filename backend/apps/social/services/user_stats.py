@@ -64,8 +64,7 @@ def get_hall_of_fame(user_id: int, media_type: str | None = None) -> list[dict]:
         return []
 
     media_items = {
-        str(m.id): m
-        for m in MediaItem.objects.filter(id__in=clean_ids).prefetch_related("assets")
+        str(m.id): m for m in MediaItem.objects.filter(id__in=clean_ids).prefetch_related("assets")
     }
     user_reviews = {
         str(r.media_item_id): r.score

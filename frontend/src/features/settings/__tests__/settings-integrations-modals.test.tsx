@@ -35,6 +35,7 @@ vi.mock('@/lib/providers/auth', () => ({
 vi.mock('@tanstack/react-router', () => ({
   Link: ({ children, to, ...props }: any) => <a href={to} {...props}>{children}</a>,
   useLocation: () => ({ href: '/settings/connections' }),
+  useNavigate: () => vi.fn(),
 }))
 
 vi.mock('@ui/molecules/toast', () => ({

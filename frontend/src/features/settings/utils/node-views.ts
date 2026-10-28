@@ -7,7 +7,7 @@ import { isLocalDesktopNode } from '../local-desktop-node'
 import { getOSLabel } from './server-machines'
 import { formatBytes } from '@/lib/utils'
 import { isDesktop } from '@/lib/desktop/api'
-import { Network, FolderOpen, Sparkles, Wand2 } from 'lucide-react'
+import { Network, FolderOpen, Sparkles, Wand2, Link2 } from 'lucide-react'
 import type { ComponentType } from 'react'
 
 export const getNavPillsTopOffset = (isMap: boolean): string => {
@@ -18,14 +18,20 @@ export const getNavPillsTopOffset = (isMap: boolean): string => {
   return desktop ? 'pt-24 sm:pt-28' : 'pt-16 sm:pt-20'
 }
 
-export type NodesActiveTab = 'infrastructure' | 'paths' | 'organize' | 'proposals'
+export type NodesActiveTab = 'infrastructure' | 'paths' | 'organize' | 'connections' | 'proposals'
 
 export const NODES_ACTIVE_TAB_STORAGE_KEY = 'otix:nodes-active-tab'
 
 export const resolveNodesActiveTabFromHash = (hash: string | null | undefined): NodesActiveTab | null => {
   if (!hash) return null
   const clean = hash.replace(/^#/, '').toLowerCase()
-  if (clean === 'paths' || clean === 'organize' || clean === 'proposals' || clean === 'infrastructure') {
+  if (
+    clean === 'paths' ||
+    clean === 'organize' ||
+    clean === 'connections' ||
+    clean === 'proposals' ||
+    clean === 'infrastructure'
+  ) {
     return clean
   }
   return null
@@ -37,11 +43,23 @@ export const loadStoredNodesActiveTab = (): NodesActiveTab => {
     const fromHash = resolveNodesActiveTabFromHash(window.location.hash)
     if (fromHash) return fromHash
     const search = new URLSearchParams(window.location.search).get('tab')
-    if (search === 'paths' || search === 'organize' || search === 'proposals' || search === 'infrastructure') {
+    if (
+      search === 'paths' ||
+      search === 'organize' ||
+      search === 'connections' ||
+      search === 'proposals' ||
+      search === 'infrastructure'
+    ) {
       return search
     }
     const stored = window.localStorage.getItem(NODES_ACTIVE_TAB_STORAGE_KEY)
-    if (stored === 'paths' || stored === 'organize' || stored === 'proposals' || stored === 'infrastructure') {
+    if (
+      stored === 'paths' ||
+      stored === 'organize' ||
+      stored === 'connections' ||
+      stored === 'proposals' ||
+      stored === 'infrastructure'
+    ) {
       return stored
     }
   } catch {
@@ -63,7 +81,7 @@ export interface NodesTabDefinition {
   id: NodesActiveTab
   label: string
   description: string
-  iconName: 'Network' | 'FolderOpen' | 'Sparkles' | 'Wand2'
+  iconName: 'Network' | 'FolderOpen' | 'Sparkles' | 'Link2' | 'Wand2'
 }
 
 export const NODES_WORKSPACE_TABS: NodesTabDefinition[] = [
@@ -86,6 +104,12 @@ export const NODES_WORKSPACE_TABS: NodesTabDefinition[] = [
     iconName: 'Sparkles',
   },
   {
+    id: 'connections',
+    label: 'Connections',
+    description: 'Downloader clients, indexers, and arr service integrations per node',
+    iconName: 'Link2',
+  },
+  {
     id: 'proposals',
     label: 'Match Proposals',
     description: 'Metadata matching candidates, review suggestions, and game identity confirmation',
@@ -101,6 +125,8 @@ export const getNodesTabIcon = (tabId: NodesActiveTab): ComponentType<{ classNam
       return FolderOpen
     case 'organize':
       return Sparkles
+    case 'connections':
+      return Link2
     case 'proposals':
       return Wand2
   }

@@ -46,6 +46,9 @@ const SettingsNotificationsPage = safeLazy(() =>
 const SettingsIntegrationsPage = safeLazy(() =>
   import('./pages/settings-integrations-page').then((m) => ({ default: m.SettingsIntegrationsPage })),
 )
+const SettingsNodeConnectionsPage = safeLazy(() =>
+  import('./pages/settings-node-connections-page').then((m) => ({ default: m.SettingsNodeConnectionsPage })),
+)
 const SettingsStoragePage = safeLazy(() =>
   import('./pages/settings-storage-page').then((m) => ({ default: m.SettingsStoragePage })),
 )
@@ -161,6 +164,14 @@ export function createSettingsRoutes(rootRoute: AnyRoute, pluginTabs?: PluginSet
     },
   })
 
+  const settingsNodesConnectionsRedirect = createRoute({
+    getParentRoute: () => settingsRoute,
+    path: '/nodes/connections',
+    beforeLoad: () => {
+      throw redirect({ to: '/settings/node-connections' })
+    },
+  })
+
   const settingsNodeDetailRoute = createRoute({
     getParentRoute: () => settingsRoute,
     path: '/nodes/$nodeId',
@@ -249,6 +260,14 @@ export function createSettingsRoutes(rootRoute: AnyRoute, pluginTabs?: PluginSet
     component: SettingsIntegrationsPage,
 
     loader: preload(() => import('./pages/settings-integrations-page')),
+  })
+
+  const settingsNodeConnectionsRoute = createRoute({
+    getParentRoute: () => settingsRoute,
+    path: '/node-connections',
+    component: SettingsNodeConnectionsPage,
+
+    loader: preload(() => import('./pages/settings-node-connections-page')),
   })
 
   const settingsOrganizeRoute = createRoute({
@@ -347,6 +366,7 @@ export function createSettingsRoutes(rootRoute: AnyRoute, pluginTabs?: PluginSet
       settingsNodesRoute,
       settingsNodesPathsRedirect,
       settingsNodesOrganizeRedirect,
+      settingsNodesConnectionsRedirect,
       settingsNodesProposalsRedirect,
       settingsNodeDetailRoute,
       settingsIntegrationsRedirect,
@@ -360,6 +380,7 @@ export function createSettingsRoutes(rootRoute: AnyRoute, pluginTabs?: PluginSet
       settingsReleaseNotesRoute,
       settingsAboutRoute,
       settingsConnectionsRoute,
+      settingsNodeConnectionsRoute,
       settingsLibraryRoute,
       settingsOrganizeRoute,
       settingsPathsRoute,

@@ -12,6 +12,7 @@ interface DiscoverMediaCardProps {
   className?: string
   priority?: boolean
   interactive?: boolean
+  hideStreamBadge?: boolean
 }
 
 export const DiscoverMediaCard = memo(({
@@ -21,6 +22,7 @@ export const DiscoverMediaCard = memo(({
   className,
   priority = false,
   interactive = true,
+  hideStreamBadge = false,
 }: DiscoverMediaCardProps) => {
   const navigate = useNavigate()
   const { openModal } = useModal()
@@ -69,6 +71,7 @@ export const DiscoverMediaCard = memo(({
         className={className}
         priority={priority}
         interactive={interactive}
+        hideStreamBadge={hideStreamBadge}
       />
     </ContextMenuTrigger>
   )

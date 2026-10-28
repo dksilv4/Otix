@@ -84,6 +84,7 @@ from apps.library.views import (
     GOGUnmatchedView,
     InstalledGamesView,
     LibraryTabView,
+    MediaActivityView,
     NodeConnectionsSyncView,
     NodeConnectionsView,
     NodeShareDeleteView,
@@ -100,6 +101,8 @@ from apps.library.views import (
     UserGameSessionsView,
     UserHomeDetailView,
     UserHomeListCreateView,
+    UserMediaRequestDetailView,
+    UserMediaRequestsView,
     UserServerMachineDetailView,
     UserServerMachineDetectDrivesView,
     UserServerMachineListCreateView,
@@ -123,6 +126,12 @@ app_name = "library"
 
 urlpatterns = [
     path("installed", InstalledGamesView.as_view(), name="library-installed"),
+    path("requests", UserMediaRequestsView.as_view(), name="library-media-requests-list"),
+    path(
+        "requests/<int:request_id>",
+        UserMediaRequestDetailView.as_view(),
+        name="library-media-requests-detail",
+    ),
     path("homes", UserHomeListCreateView.as_view(), name="library-homes"),
     path("homes/<int:home_id>", UserHomeDetailView.as_view(), name="library-home-detail"),
     path(
@@ -177,6 +186,10 @@ urlpatterns = [
         "nodes/claim-direct",
         GameServerClaimDirectView.as_view(),
         name="library-nodes-claim-direct",
+    ),
+    path("nodes/media-activity", MediaActivityView.as_view(), name="library-nodes-media-activity"),
+    path(
+        "servers/media-activity", MediaActivityView.as_view(), name="library-servers-media-activity"
     ),
     path("nodes/pending", GameServerPendingView.as_view(), name="library-nodes-pending"),
     path("nodes/<sint:server_id>", GameServerDetailView.as_view(), name="library-node-detail"),
@@ -555,10 +568,26 @@ urlpatterns = [
     path("shares", StorageSharesView.as_view(), name="library-storage-shares"),
     path("shares/<int:pk>", StorageShareDetailView.as_view(), name="library-storage-share-detail"),
     path("nodes/<sint:node_id>/paths", NodeLibraryPathsView.as_view(), name="library-node-paths"),
-    path("nodes/<sint:node_id>/paths/<int:path_id>", NodeLibraryPathDetailView.as_view(), name="library-node-path-detail"),
-    path("nodes/<sint:node_id>/manifest", NodeManifestIngestView.as_view(), name="library-node-manifest"),
+    path(
+        "nodes/<sint:node_id>/paths/<int:path_id>",
+        NodeLibraryPathDetailView.as_view(),
+        name="library-node-path-detail",
+    ),
+    path(
+        "nodes/<sint:node_id>/manifest",
+        NodeManifestIngestView.as_view(),
+        name="library-node-manifest",
+    ),
     path("matches", GameMatchCenterView.as_view(), name="library-game-matches"),
-    path("matches/<int:record_id>/confirm", GameMatchConfirmView.as_view(), name="library-game-match-confirm"),
-    path("matches/<int:record_id>/unmatch", GameMatchUnmatchView.as_view(), name="library-game-match-unmatch"),
+    path(
+        "matches/<int:record_id>/confirm",
+        GameMatchConfirmView.as_view(),
+        name="library-game-match-confirm",
+    ),
+    path(
+        "matches/<int:record_id>/unmatch",
+        GameMatchUnmatchView.as_view(),
+        name="library-game-match-unmatch",
+    ),
     path("<tab>", LibraryTabView.as_view(), name="library-tab"),
 ]

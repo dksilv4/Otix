@@ -15,6 +15,7 @@ import {
   Sparkles,
   ScrollText,
   Info,
+  Network,
 } from 'lucide-react'
 import type { ComponentType } from 'react'
 import type { PluginSettingsTab } from '@/features/_config/slots'
@@ -132,6 +133,15 @@ export const NAV_ITEMS: NavItem[] = [
     requiresAuth: false,
     group: 'connections',
     keywords: 'integrations steam plex tmdb youtube accounts oauth google google drive',
+  },
+  {
+    id: 'node-connections',
+    label: 'Node Connections',
+    icon: Network,
+    desktop: false,
+    requiresAuth: true,
+    group: 'connections',
+    keywords: 'node connections worker daemon companion sabnzbd prowlarr radarr sonarr usenet torrent arr indexer downloader services host',
   },
   {
     id: 'plugins',

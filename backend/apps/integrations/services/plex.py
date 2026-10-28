@@ -232,8 +232,10 @@ def _are_titles_compatible(
         return True
     main1 = _normalize_title(str(title_a).split(":")[0].split(" - ")[0])
     main2 = _normalize_title(str(title_b).split(":")[0].split(" - ")[0])
-    if main1 and main2 and (
-        main1 == main2 or (len(main1) >= 4 and (main1 in main2 or main2 in main1))
+    if (
+        main1
+        and main2
+        and (main1 == main2 or (len(main1) >= 4 and (main1 in main2 or main2 in main1)))
     ):
         return True
     return SequenceMatcher(None, n1, n2).ratio() >= min_ratio
@@ -319,12 +321,20 @@ def _is_compatible_plex_match(
     target_title = getattr(target_media_item, "title", None)
     plex_title = getattr(plex_item, "title", None)
     if not has_guid_match:
-        if target_title and plex_title and not _are_titles_compatible(target_title, plex_title, min_ratio=0.60):
+        if (
+            target_title
+            and plex_title
+            and not _are_titles_compatible(target_title, plex_title, min_ratio=0.60)
+        ):
             return False
     else:
         # If years are missing on both sides, guard against zero-similarity GUID collisions
         if not c_year and not p_year:
-            if target_title and plex_title and not _are_titles_compatible(target_title, plex_title, min_ratio=0.30):
+            if (
+                target_title
+                and plex_title
+                and not _are_titles_compatible(target_title, plex_title, min_ratio=0.30)
+            ):
                 return False
 
     return True
@@ -425,7 +435,9 @@ def _resolve_show_playable_item(
 
     # Path 1: Specific season requested
     if season is not None:
-        seasons_res = _plex_server_get(server, user, f"/library/metadata/{plex_item.rating_key}/children")
+        seasons_res = _plex_server_get(
+            server, user, f"/library/metadata/{plex_item.rating_key}/children"
+        )
         if seasons_res:
             seasons_data, working_base = seasons_res
             seasons = _extract_items(seasons_data)
@@ -435,7 +447,9 @@ def _resolve_show_playable_item(
                     matching_season = s
                     break
             if matching_season and matching_season.get("ratingKey"):
-                ep_res = _plex_server_get(server, user, f"/library/metadata/{matching_season['ratingKey']}/children")
+                ep_res = _plex_server_get(
+                    server, user, f"/library/metadata/{matching_season['ratingKey']}/children"
+                )
                 if ep_res:
                     ep_data, ep_base = ep_res
                     working_base = ep_base or working_base
@@ -444,7 +458,9 @@ def _resolve_show_playable_item(
 
     # Path 2: Default playback (no season/episode specified) -> try onDeck first for zero-latency resume
     if selected_leaf is None and season is None and episode is None:
-        ondeck_res = _plex_server_get(server, user, f"/library/metadata/{plex_item.rating_key}/onDeck")
+        ondeck_res = _plex_server_get(
+            server, user, f"/library/metadata/{plex_item.rating_key}/onDeck"
+        )
         if ondeck_res:
             ondeck_data, working_base = ondeck_res
             ondeck_items = _extract_items(ondeck_data)
@@ -453,7 +469,9 @@ def _resolve_show_playable_item(
 
     # Path 3: Fallback when onDeck is empty or season lookup didn't match -> query Season 1 directly
     if selected_leaf is None:
-        seasons_res = _plex_server_get(server, user, f"/library/metadata/{plex_item.rating_key}/children")
+        seasons_res = _plex_server_get(
+            server, user, f"/library/metadata/{plex_item.rating_key}/children"
+        )
         if seasons_res:
             seasons_data, working_base = seasons_res
             seasons = _extract_items(seasons_data)
@@ -465,7 +483,9 @@ def _resolve_show_playable_item(
             if target_season is None and seasons:
                 target_season = seasons[0]
             if target_season and target_season.get("ratingKey"):
-                ep_res = _plex_server_get(server, user, f"/library/metadata/{target_season['ratingKey']}/children")
+                ep_res = _plex_server_get(
+                    server, user, f"/library/metadata/{target_season['ratingKey']}/children"
+                )
                 if ep_res:
                     ep_data, ep_base = ep_res
                     working_base = ep_base or working_base
@@ -495,9 +515,7 @@ def get_plex_connect_info(
     """
     safe_ident = urllib.parse.quote(str(media_identifier), safe="")
     safe_title = urllib.parse.quote(str(title), safe="") if title else ""
-    cache_key = (
-        f"plex_connect_info:{user.pk}:{safe_ident}:{season}:{episode}:{tmdb_id}:{safe_title}:{year}:{media_type}"
-    )
+    cache_key = f"plex_connect_info:{user.pk}:{safe_ident}:{season}:{episode}:{tmdb_id}:{safe_title}:{year}:{media_type}"
     is_testing = getattr(settings, "TESTING", False) or "test" in sys.argv
     if not is_testing:
         cached_info = cache.get(cache_key)
@@ -689,7 +707,9 @@ def get_plex_connect_info(
     )
     p_type_filter = []
     if media_type:
-        p_type_filter = ["show", "episode"] if media_type in ("show", "series", "tv") else [media_type]
+        p_type_filter = (
+            ["show", "episode"] if media_type in ("show", "series", "tv") else [media_type]
+        )
 
     if plex_item is None and tmdb_id:
         qs = UserPlexItem.objects.filter(user=user, guids__tmdb=str(tmdb_id))
@@ -740,9 +760,7 @@ def get_plex_connect_info(
         ):
             plex_item = cand
     if plex_item is None and title:
-        qs = UserPlexItem.objects.filter(
-            user=user, title__iexact=str(title).strip()
-        )
+        qs = UserPlexItem.objects.filter(user=user, title__iexact=str(title).strip())
         if target_media_item:
             p_filter_type = [target_media_item.media_type]
             if target_media_item.media_type == "show":
@@ -925,23 +943,21 @@ def get_plex_connect_info(
                     lang = s.get("languageCode") or s.get("language") or "und"
                     disp = s.get("displayTitle") or s.get("title")
                     if stype == 2:  # Audio
-                        audio_tracks.append({
-                            "id": sid,
-                            "index": sidx,
-                            "label": disp or f"{lang} ({codec})",
-                            "language": lang,
-                            "codec": codec,
-                            "channels": int(s.get("channels") or 2),
-                        })
+                        audio_tracks.append(
+                            {
+                                "id": sid,
+                                "index": sidx,
+                                "label": disp or f"{lang} ({codec})",
+                                "language": lang,
+                                "codec": codec,
+                                "channels": int(s.get("channels") or 2),
+                            }
+                        )
                     elif stype == 3:  # Subtitle
                         sub_format = (
                             "pgs"
                             if codec == "pgs"
-                            else (
-                                "ass"
-                                if codec == "ass"
-                                else ("srt" if codec == "srt" else "vtt")
-                            )
+                            else ("ass" if codec == "ass" else ("srt" if codec == "srt" else "vtt"))
                         )
                         sub_key = s.get("key")
                         sub_url = (
@@ -949,16 +965,18 @@ def get_plex_connect_info(
                             if (sub_key and base_urls and token)
                             else None
                         )
-                        subtitles.append({
-                            "id": sid,
-                            "index": sidx,
-                            "label": disp or lang or "Subtitles",
-                            "language": lang,
-                            "url": sub_url,
-                            "format": sub_format,
-                            "is_external": bool(sub_key),
-                            "requires_burn_in": codec in ("pgs", "ass"),
-                        })
+                        subtitles.append(
+                            {
+                                "id": sid,
+                                "index": sidx,
+                                "label": disp or lang or "Subtitles",
+                                "language": lang,
+                                "url": sub_url,
+                                "format": sub_format,
+                                "is_external": bool(sub_key),
+                                "requires_burn_in": codec in ("pgs", "ass"),
+                            }
+                        )
 
     primary_url = base_urls[0] if base_urls else None
     direct_url = (
@@ -1150,7 +1168,9 @@ def report_plex_timeline(
     # Also scrobble if stopped and >= 90% watched
     scrobble_url = None
     if state == "stopped" and duration_ms > 0 and time_ms >= duration_ms * 0.9:
-        scrobble_url = f"{clean_url}/:/scrobble?key={rating_key}&identifier=com.plexapp.plugins.library"
+        scrobble_url = (
+            f"{clean_url}/:/scrobble?key={rating_key}&identifier=com.plexapp.plugins.library"
+        )
         if token:
             scrobble_url += f"&X-Plex-Token={token}"
 
@@ -1327,9 +1347,7 @@ def get_plex_sessions(user) -> list[dict]:
             )
 
     # 1. Bulk-match catalog media_item_ids from synced UserPlexItem rows
-    rating_keys = {
-        s["rating_key"] for s in all_sessions if s.get("rating_key")
-    } | {
+    rating_keys = {s["rating_key"] for s in all_sessions if s.get("rating_key")} | {
         s["grandparent_rating_key"] for s in all_sessions if s.get("grandparent_rating_key")
     }
     if rating_keys:
@@ -1394,7 +1412,12 @@ def get_plex_sessions(user) -> list[dict]:
             continue
         target_key = s.get("grandparent_rating_key") or s.get("rating_key")
         server_obj = server_map.get(s.get("server_id"))
-        if not target_key or not server_obj or not server_obj.base_url or not server_obj.access_token:
+        if (
+            not target_key
+            or not server_obj
+            or not server_obj.base_url
+            or not server_obj.access_token
+        ):
             continue
         try:
             m_status, m_raw = _request(
@@ -1435,7 +1458,9 @@ def get_plex_sessions(user) -> list[dict]:
                                 fetch_and_seed_show,
                             )
 
-                            m_type = "show" if s.get("media_type") == "episode" else s.get("media_type")
+                            m_type = (
+                                "show" if s.get("media_type") == "episode" else s.get("media_type")
+                            )
                             if m_type == "show":
                                 resolved_id = async_to_sync(fetch_and_seed_show)(int(tmdb_id))
                             else:
@@ -1779,7 +1804,6 @@ class PlexDiscoveryConnectError(PlexDiscoveryError):
     def __init__(self, url: str) -> None:
         self.url = url
         super().__init__(_connect_detail(url))
-
 
 
 def _best_connection(resource: dict) -> str | None:

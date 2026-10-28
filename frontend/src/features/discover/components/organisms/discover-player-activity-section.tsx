@@ -137,20 +137,17 @@ export const DiscoverPlayerActivitySection = () => {
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
-      className="space-y-4"
     >
-      <div className="px-8">
-        <Carousel
-          title="Live Activity"
-          minItemWidth={260}
-          gap={16}
-          showArrows
-        >
-          {items.map((item) => (
-            <DiscoverPlayerActivityCard key={item.id} item={item} />
-          ))}
-        </Carousel>
-      </div>
+      <Carousel
+        title="Live Activity"
+        minItemWidth={260}
+        gap={16}
+        showArrows
+      >
+        {items.map((item) => (
+          <DiscoverPlayerActivityCard key={item.id} item={item} />
+        ))}
+      </Carousel>
     </motion.section>
   )
 };

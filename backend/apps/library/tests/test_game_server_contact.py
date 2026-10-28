@@ -154,9 +154,7 @@ class ServerProxyRequestFallbackTests(TestCase):
         self.assertFalse(server.is_online)
 
     @mock.patch("apps.library.services.node.httpx.Client")
-    def test_proxy_all_endpoints_fail_connection_refused_returns_clean_502(
-        self, mock_client_cls
-    ):
+    def test_proxy_all_endpoints_fail_connection_refused_returns_clean_502(self, mock_client_cls):
         """When connection refused, return clean user-facing message and mark offline."""
         from apps.library.services.node import server_proxy_request
 
@@ -225,9 +223,7 @@ class ServerProxyRequestFallbackTests(TestCase):
         self.assertFalse(get_res.json()["is_scanning"])
 
     @mock.patch("apps.library.services.node.httpx.Client")
-    def test_proxy_malformed_url_candidate_falls_back_to_valid_candidate(
-        self, mock_client_cls
-    ):
+    def test_proxy_malformed_url_candidate_falls_back_to_valid_candidate(self, mock_client_cls):
         """Malformed URL string (invalid IPv6) does not raise unhandled ValueError and falls back to valid URL."""
         from apps.library.services.node import server_proxy_request
 
@@ -552,5 +548,6 @@ class ServerProxyRequestFallbackTests(TestCase):
 
         # Synchronous scan trigger (wait=1) -> timeout=120.0
         scan_game_libraries(server, params={"wait": "1"})
-        mock_proxy.assert_called_with(server, "POST", "/api/v1/scan", params={"wait": "1"}, timeout=120.0)
-
+        mock_proxy.assert_called_with(
+            server, "POST", "/api/v1/scan", params={"wait": "1"}, timeout=120.0
+        )

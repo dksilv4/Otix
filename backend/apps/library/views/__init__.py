@@ -18,6 +18,11 @@ from apps.library.views.library import (
     SteamWishlistView,
     YoutubeLibraryView,
 )
+from apps.library.views.media_activity import MediaActivityView
+from apps.library.views.media_requests import (
+    UserMediaRequestDetailView,
+    UserMediaRequestsView,
+)
 from apps.library.views.nodes import (
     DesktopNodeHeartbeatView,
     GameServerAcknowledgeUpdatesView,
@@ -200,6 +205,7 @@ __all__ = [
     "GOGStatusView",
     "GOGUnmatchedView",
     "LibraryTabView",
+    "MediaActivityView",
     "PlexLibraryView",
     "PlexStatusView",
     "PlexThumbView",
@@ -217,6 +223,8 @@ __all__ = [
     "UserGameSessionsView",
     "UserHomeListCreateView",
     "UserHomeDetailView",
+    "UserMediaRequestDetailView",
+    "UserMediaRequestsView",
     "UserServerMachineListCreateView",
     "UserServerMachineDetailView",
     "UserServerMachineDetectDrivesView",

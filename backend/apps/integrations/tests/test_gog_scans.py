@@ -105,7 +105,9 @@ class GOGScanTests(TestCase):
     @patch("apps.integrations.services.gog.proxy_gog_scan")
     def test_title_fallback_match(self, proxy):
         _node(self.user)
-        media = MediaItem.objects.create(media_type="game", title="Cyberpunk 2077", slug="cyberpunk-2077")
+        media = MediaItem.objects.create(
+            media_type="game", title="Cyberpunk 2077", slug="cyberpunk-2077"
+        )
         Game.objects.create(media_item=media)
 
         proxy.return_value = (

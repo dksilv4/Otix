@@ -205,5 +205,3 @@ class GameServerHeartbeatTests(TestCase):
         self.assertEqual(servers[0].name, "Restored Node")
         self.assertTrue(servers[0].is_online)
         self.assertEqual(servers[0].auth_token, "token_restored_123")
-
-

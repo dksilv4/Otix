@@ -112,7 +112,15 @@ class PlexConnectInfoTests(_ApiTestBase):
         self.assertEqual(resp.status_code, 200)
         body = resp.json()
         self.assertTrue(
-            {"base_url", "base_urls", "token", "rating_key", "album_thumb_url", "provider", "provider_label"}.issubset(set(body))
+            {
+                "base_url",
+                "base_urls",
+                "token",
+                "rating_key",
+                "album_thumb_url",
+                "provider",
+                "provider_label",
+            }.issubset(set(body))
         )
         self.assertEqual(body["base_url"], self.server.base_url)
         self.assertEqual(body["base_urls"], [self.server.base_url])
@@ -1266,7 +1274,9 @@ class PlexTimelineViewTests(_ApiTestBase):
         mock_req.assert_not_called()
 
     def test_timeline_proxy_outbound_includes_session_and_client_identifiers(self):
-        with mock.patch("apps.integrations.services.plex._request", return_value=(200, "ok")) as mock_req:
+        with mock.patch(
+            "apps.integrations.services.plex._request", return_value=(200, "ok")
+        ) as mock_req:
             resp = self.client.post(
                 self.url,
                 {
@@ -1291,4 +1301,3 @@ class PlexTimelineViewTests(_ApiTestBase):
         self.assertIn("X-Plex-Playback-Session-Id=sess-xyz", called_url)
         self.assertIn("X-Plex-Client-Identifier=otix-client-1", called_url)
         self.assertEqual(kwargs["headers"]["X-Plex-Client-Identifier"], "otix-client-1")
-

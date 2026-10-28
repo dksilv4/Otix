@@ -877,16 +877,23 @@ class NonExistentNodeApiTests(TestCase):
         self.assertIn(self.client.get(f"/api/v1/library/servers/{node.id}").status_code, (401, 403))
 
         # Different user cannot see or modify this user's node
-        other = User.objects.create_user(username="other_dev", email="dev@example.com", password="pass")
+        other = User.objects.create_user(
+            username="other_dev", email="dev@example.com", password="pass"
+        )
         self.client.force_authenticate(user=other)
         res_other = self.client.get("/api/v1/library/servers")
         self.assertEqual(res_other.status_code, 200)
         self.assertEqual(len(res_other.json()), 0)
 
         # Other user cannot PATCH, DELETE, or ping the private node
-        self.assertEqual(self.client.patch(f"/api/v1/library/servers/{node.id}", {"name": "Hacked"}).status_code, 404)
+        self.assertEqual(
+            self.client.patch(f"/api/v1/library/servers/{node.id}", {"name": "Hacked"}).status_code,
+            404,
+        )
         self.assertEqual(self.client.delete(f"/api/v1/library/servers/{node.id}").status_code, 404)
-        self.assertEqual(self.client.post(f"/api/v1/library/servers/{node.id}/ping").status_code, 404)
+        self.assertEqual(
+            self.client.post(f"/api/v1/library/servers/{node.id}/ping").status_code, 404
+        )
 
     def test_desktop_node_heartbeat_registers_and_updates(self):
         # 1. Desktop heartbeat registers desktop node
@@ -928,9 +935,13 @@ class NonExistentNodeApiTests(TestCase):
             "is_online": True,
             "total_files": 16,
         }
-        res2 = self.client.post("/api/v1/library/nodes/desktop-heartbeat", update_payload, format="json")
+        res2 = self.client.post(
+            "/api/v1/library/nodes/desktop-heartbeat", update_payload, format="json"
+        )
         self.assertEqual(res2.status_code, 200)
-        self.assertEqual(UserGameServer.objects.filter(user=self.user, is_local_desktop=True).count(), 1)
+        self.assertEqual(
+            UserGameServer.objects.filter(user=self.user, is_local_desktop=True).count(), 1
+        )
         node.refresh_from_db()
         self.assertEqual(node.name, "Gaming PC")
         self.assertEqual(node.total_files, 16)
@@ -940,7 +951,9 @@ class NonExistentNodeApiTests(TestCase):
             "device_id": "win-device-123",
             "is_online": False,
         }
-        res_off = self.client.post("/api/v1/library/nodes/desktop-heartbeat", offline_payload, format="json")
+        res_off = self.client.post(
+            "/api/v1/library/nodes/desktop-heartbeat", offline_payload, format="json"
+        )
         self.assertEqual(res_off.status_code, 200)
         self.assertFalse(res_off.json()["is_online"])
 
@@ -983,5 +996,6 @@ class NonExistentNodeApiTests(TestCase):
         self.assertEqual(list_res.status_code, 200)
         names = [s["name"] for s in list_res.json()]
         self.assertNotIn("Firefox on macOS", names)
-        self.assertFalse(UserGameServer.objects.filter(user=self.user, name="Firefox on macOS").exists())
-
+        self.assertFalse(
+            UserGameServer.objects.filter(user=self.user, name="Firefox on macOS").exists()
+        )

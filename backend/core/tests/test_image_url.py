@@ -31,7 +31,10 @@ class CleanImageUrlTests(SimpleTestCase):
 
     def test_preserves_localhost_uploads_in_dev_and_tests(self):
         url = "http://localhost:8000/uploads/c58230d426e24fc3947df07347c19d4c.webp"
-        self.assertEqual(clean_image_url(url), "http://localhost:8000/uploads/c58230d426e24fc3947df07347c19d4c.webp")
+        self.assertEqual(
+            clean_image_url(url),
+            "http://localhost:8000/uploads/c58230d426e24fc3947df07347c19d4c.webp",
+        )
 
     def test_upgrades_otix_app_http_to_https(self):
         url = "http://otix.app/assets/banner.png"

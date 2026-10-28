@@ -38,11 +38,13 @@ from apps.library.serializers import (
 from apps.library.services.download_history import (
     apply_history_slots,
     apply_queue_progress,
+    enrich_queue_items,
     list_download_history,
     mark_download_cancelled,
     proxy_download_payload,
     record_queued_download,
 )
+from apps.library.services.media_requests import record_media_request
 from apps.library.services.node import (
     PENDING_CACHE_KEY,
     PENDING_TTL,
@@ -155,9 +157,22 @@ def _get_server_or_404(request: Request, server_id: int) -> UserGameServer:
     if not resolved_user:
         raise NotAuthenticated("User authentication required")
     server = UserGameServer.objects.filter(id=server_id, user=resolved_user).first()
-    if not server:
-        raise NotFound("Otix node not found")
-    return server
+    if server:
+        return server
+    share = (
+        UserNodeShare.objects.filter(
+            node_id=server_id, shared_with=resolved_user, node__is_active=True
+        )
+        .select_related("node")
+        .first()
+    )
+    if share:
+        if request.method in ("DELETE", "POST", "PUT", "PATCH") and share.permission != "admin":
+            from rest_framework.exceptions import PermissionDenied
+
+            raise PermissionDenied("You do not have management permissions on this shared node")
+        return share.node
+    raise NotFound("Otix node not found")
 
 
 def _arr_instance_id(request: Request) -> str | None:
@@ -341,7 +356,11 @@ class DesktopNodeHeartbeatView(APIView):
                 fields.append("is_local")
             if name and node.name != name:
                 is_generic = name in ("This PC", "This Mac", "This computer")
-                has_custom_name = node.name and node.name not in ("This PC", "This Mac", "This computer")
+                has_custom_name = node.name and node.name not in (
+                    "This PC",
+                    "This Mac",
+                    "This computer",
+                )
                 if not (is_generic and has_custom_name):
                     node.name = name
                     fields.append("name")
@@ -442,13 +461,15 @@ class GameServerPendingUpdatesView(APIView):
     def get(self, request: Request, server_id: int) -> Response:
         server = _get_server_or_404(request, server_id)
         updates = node_service.get_node_pending_updates(server.id)
-        return Response({
-            "node_id": server.id,
-            "name": server.name,
-            "is_online": server.is_online,
-            "pending_updates": updates,
-            "count": len(updates),
-        })
+        return Response(
+            {
+                "node_id": server.id,
+                "name": server.name,
+                "is_online": server.is_online,
+                "pending_updates": updates,
+                "count": len(updates),
+            }
+        )
 
 
 class GameServerAcknowledgeUpdatesView(APIView):
@@ -777,7 +798,9 @@ class GameServerDetailView(APIView):
             server = serializer.save()
         except IntegrityError:
             return Response(
-                {"detail": "Could not assign node to home. Please ensure the home exists or create a new one."},
+                {
+                    "detail": "Could not assign node to home. Please ensure the home exists or create a new one."
+                },
                 status=status.HTTP_400_BAD_REQUEST,
             )
         if new_name and isinstance(new_name, str) and new_name.strip() and server.is_online:
@@ -1286,6 +1309,17 @@ class GameServerUsenetDownloadView(APIView):
             _track_download_history(
                 record_queued_download, server, payload, data, user=request.user
             )
+            try:
+                record_media_request(
+                    user=request.user,
+                    server=server,
+                    service="usenet",
+                    media_type="game" if payload.get("media_type") == "game" else "usenet",
+                    payload=payload,
+                    result=data,
+                )
+            except Exception:
+                pass
         return Response(data, status=status_code)
 
 
@@ -1299,6 +1333,7 @@ class GameServerUsenetQueueView(APIView):
         status_code, data = usenet_get_queue(server)
         if status_code < 300:
             _track_download_history(apply_queue_progress, server, data)
+            _track_download_history(enrich_queue_items, server, data)
         return Response(data, status=status_code)
 
     def delete(self, request: Request, server_id: int, nzo_id: str) -> Response:
@@ -1380,6 +1415,17 @@ class GameServerDownloadsAddView(APIView):
             _track_download_history(
                 record_queued_download, server, payload, data, user=request.user
             )
+            try:
+                record_media_request(
+                    user=request.user,
+                    server=server,
+                    service=downloader or "usenet",
+                    media_type="game" if payload.get("media_type") == "game" else "usenet",
+                    payload=payload,
+                    result=data,
+                )
+            except Exception:
+                pass
         return Response(data, status=status_code)
 
 
@@ -1394,6 +1440,7 @@ class GameServerDownloadsQueueView(APIView):
         status_code, data = downloads_queue(server, downloader=downloader)
         if status_code < 300:
             _track_download_history(apply_queue_progress, server, data)
+            _track_download_history(enrich_queue_items, server, data)
         return Response(data, status=status_code)
 
     def delete(self, request: Request, server_id: int, download_id: str) -> Response:
@@ -1479,15 +1526,33 @@ class GameServerScanView(APIView):
         server = _get_server_or_404(request, server_id)
         target_url = server.primary_url or server.local_url or ""
         if not server.is_online or not target_url or target_url.startswith("otix://"):
-            return Response({"phase": "idle", "percentage": 0.0, "is_scanning": False, "files_scanned": 0, "total_files": 0})
-        status_code, data = node_service.usenet_proxy_request(server, "GET", "/api/v1/scan/status", timeout=5.0)
+            return Response(
+                {
+                    "phase": "idle",
+                    "percentage": 0.0,
+                    "is_scanning": False,
+                    "files_scanned": 0,
+                    "total_files": 0,
+                }
+            )
+        status_code, data = node_service.usenet_proxy_request(
+            server, "GET", "/api/v1/scan/status", timeout=5.0
+        )
         if status_code < 400 and isinstance(data, dict):
             phase = str(data.get("phase") or "idle").lower()
             data["is_scanning"] = phase in ("scanning", "running")
             return Response(data, status=status_code)
         if status_code >= 400:
             return Response(data, status=status_code)
-        return Response({"phase": "idle", "percentage": 0.0, "is_scanning": False, "files_scanned": 0, "total_files": 0})
+        return Response(
+            {
+                "phase": "idle",
+                "percentage": 0.0,
+                "is_scanning": False,
+                "files_scanned": 0,
+                "total_files": 0,
+            }
+        )
 
     def post(self, request: Request, server_id: int) -> Response:
         server = _get_server_or_404(request, server_id)
@@ -1693,6 +1758,18 @@ class GameServerRadarrMoviesView(APIView):
     def post(self, request: Request, server_id: int) -> Response:
         server = _get_server_or_404(request, server_id)
         status_code, data = radarr_add_movie(server, request.data)
+        if status_code < 300:
+            try:
+                record_media_request(
+                    user=request.user,
+                    server=server,
+                    service="radarr",
+                    media_type="movie",
+                    payload=request.data if isinstance(request.data, dict) else {},
+                    result=data,
+                )
+            except Exception:
+                pass
         return Response(data, status=status_code)
 
 
@@ -1828,6 +1905,18 @@ class GameServerSonarrSeriesView(APIView):
     def post(self, request: Request, server_id: int) -> Response:
         server = _get_server_or_404(request, server_id)
         status_code, data = sonarr_add_series(server, request.data)
+        if status_code < 300:
+            try:
+                record_media_request(
+                    user=request.user,
+                    server=server,
+                    service="sonarr",
+                    media_type="show",
+                    payload=request.data if isinstance(request.data, dict) else {},
+                    result=data,
+                )
+            except Exception:
+                pass
         return Response(data, status=status_code)
 
 
@@ -1902,7 +1991,11 @@ class GameServerDesktopView(APIView):
     def get(self, request: Request, server_id: int) -> Response:
         if server_id == -1:
             user = _resolve_user(request)
-            server = UserGameServer.objects.filter(user=user, is_local_desktop=True).first() if user else None
+            server = (
+                UserGameServer.objects.filter(user=user, is_local_desktop=True).first()
+                if user
+                else None
+            )
             if not server:
                 return Response({})
         else:
@@ -1916,7 +2009,11 @@ class GameServerDesktopView(APIView):
     def post(self, request: Request, server_id: int) -> Response:
         if server_id == -1:
             user = _resolve_user(request)
-            server = UserGameServer.objects.filter(user=user, is_local_desktop=True).first() if user else None
+            server = (
+                UserGameServer.objects.filter(user=user, is_local_desktop=True).first()
+                if user
+                else None
+            )
             if not server:
                 return Response({"status": "ignored"}, status=status.HTTP_200_OK)
         else:
@@ -1963,7 +2060,9 @@ class GameServerLibrariesView(APIView):
                         or "Games"
                     )
                     kind = (lib.get("kind") if isinstance(lib, dict) else None) or "game"
-                    allowed_exts = lib.get("allowed_extensions", []) if isinstance(lib, dict) else []
+                    allowed_exts = (
+                        lib.get("allowed_extensions", []) if isinstance(lib, dict) else []
+                    )
                     NodeLibraryPath.objects.update_or_create(
                         node=server,
                         path=path_str,
@@ -1975,9 +2074,9 @@ class GameServerLibrariesView(APIView):
                         },
                     )
                 if active_paths:
-                    NodeLibraryPath.objects.filter(node=server).exclude(path__in=active_paths).update(
-                        is_active=False
-                    )
+                    NodeLibraryPath.objects.filter(node=server).exclude(
+                        path__in=active_paths
+                    ).update(is_active=False)
         except Exception as exc:
             logger.warning("NodeLibraryPath sync failed: %s", exc)
 

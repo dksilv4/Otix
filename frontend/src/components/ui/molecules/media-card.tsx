@@ -8,11 +8,14 @@ import { cn } from '@/lib/utils'
 import { MediaLogo } from '@/lib/media/media-logo'
 import { MEDIA_TYPE_ICON, MEDIA_TYPE_COLOR } from '@/constants/media'
 import { parsePositionFromUrl, stripPositionFromUrl } from '@/lib/utils/image-position'
-import { formatSeasonBadgeText } from '@/lib/utils/media-badge'
+import { formatSeasonBadgeText, resolveMediaCardRatingPosition } from '@/lib/utils/media-badge'
 import { useStreamAvailability } from '@/features/media/hooks/use-stream-availability'
 import { useQuickStream } from '@/features/media/hooks/use-quick-stream'
 import { useModal } from '@/lib/modals/modal-context'
 import { AiQuickGlanceModal } from '@/features/media/components/organisms/ai-quick-glance-modal'
+import { useMediaActivity } from '@/features/media/hooks/use-media-activity'
+import { MediaActivityTag } from '@/features/media/components/molecules/media-activity-tag'
+import { MediaActivityModal } from '@/features/media/components/organisms/media-activity-modal'
 
 interface DkMediaCardProps {
   id: string
@@ -43,6 +46,8 @@ interface DkMediaCardProps {
   interactive?: boolean
   /** Prioritize image loading for above-the-fold cards. */
   priority?: boolean
+  /** Suppress the streamable badge on the card (e.g., when the entire view is already filtered to streamable items). */
+  hideStreamBadge?: boolean
 }
 
 const DkMediaCard = memo(({
@@ -70,6 +75,7 @@ const DkMediaCard = memo(({
   enableQuickStream = true,
   interactive = true,
   priority = false,
+  hideStreamBadge = false,
 }: DkMediaCardProps) => {
   const year = releaseDate?.slice(0, 4)
   const params = useMemo(() => ({ mediaType, mediaId: id }), [mediaType, id])
@@ -83,6 +89,14 @@ const DkMediaCard = memo(({
     tmdbId,
     mediaType,
   })
+  const nodeActivity = useMediaActivity(mediaType, tmdbId, id)
+  const effectiveActivityStatus = nodeActivity?.status || (isStreamable ? 'available' : undefined)
+  const isAvailableToStream = effectiveActivityStatus === 'available'
+  const hasActivityTag = Boolean(effectiveActivityStatus && !hideStreamBadge)
+  const ratingPositionClass = useMemo(
+    () => resolveMediaCardRatingPosition({ hasActivityTag, isAdult, newSeasonReleased }),
+    [hasActivityTag, isAdult, newSeasonReleased],
+  )
   const { quickStream, isStartingStream } = useQuickStream()
   const { openModal } = useModal()
 
@@ -133,7 +147,7 @@ const DkMediaCard = memo(({
       className={cn(
         'group relative block overflow-hidden rounded-lg transition-shadow duration-300',
         mediaType === 'music' ? 'aspect-square' : 'aspect-[2/3]',
-        isStreamable && 'group-hover:shadow-[0_0_24px_rgba(var(--primary-rgb),0.18)]',
+        isAvailableToStream && 'group-hover:shadow-[0_0_24px_rgba(var(--primary-rgb),0.18)]',
         className,
       )}
     >
@@ -206,18 +220,50 @@ const DkMediaCard = memo(({
         </div>
       )}
 
-      {/* Stream Availability Badge */}
-      {isStreamable && (
+      {/* Media Activity Tag (Requested, Processing, Available) */}
+      {hasActivityTag && (
         <div
           className={cn(
             'absolute z-10',
             newSeasonReleased ? 'top-10 right-3' : isAdult ? 'top-8 right-2.5' : 'top-3 right-3',
           )}
         >
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wide backdrop-blur-md shadow-lg border border-white/[0.06] bg-primary/20 text-primary transition-transform duration-300 group-hover:scale-105">
-            <Play className="h-2.5 w-2.5 fill-current" />
-            <span>{providerLabel || 'Stream'}</span>
-          </span>
+          <MediaActivityTag
+            status={effectiveActivityStatus}
+            progress={nodeActivity?.progress}
+            nodeName={nodeActivity?.nodeName || (isStreamable ? providerLabel || 'Stream' : undefined)}
+            ownerName={nodeActivity?.owner?.displayName || nodeActivity?.owner?.username}
+            isOwned={nodeActivity?.isOwned ?? true}
+            onClick={() => {
+              if (nodeActivity) {
+                openModal(
+                  <MediaActivityModal
+                    activity={nodeActivity}
+                    mediaId={id}
+                    initialPosterUrl={cleanSrc || posterUrl}
+                  />,
+                )
+              } else if (isStreamable) {
+                openModal(
+                  <MediaActivityModal
+                    activity={{
+                      status: 'available',
+                      mediaType: mediaType as 'movie' | 'show',
+                      tmdbId,
+                      title,
+                      year: year ? Number(year) : undefined,
+                      nodeName: providerLabel || 'Stream',
+                      isOwned: true,
+                      canManage: false,
+                      owner: { id: 0, username: 'Local' },
+                    }}
+                    mediaId={id}
+                    initialPosterUrl={cleanSrc || posterUrl}
+                  />,
+                )
+              }
+            }}
+          />
         </div>
       )}
 
@@ -250,7 +296,7 @@ const DkMediaCard = memo(({
       )}
 
       {/* Centered Quick-Stream Play Button on Hover */}
-      {isStreamable && enableQuickStream && interactive && (
+      {isAvailableToStream && enableQuickStream && interactive && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-20 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
           <button
             type="button"
@@ -285,12 +331,11 @@ const DkMediaCard = memo(({
       {avgRating != null && avgRating > 0 && (
         <div
           className={cn(
-            'absolute right-2 opacity-0 group-hover:opacity-100',
-            isAdult ? 'top-8' : 'top-2',
+            'absolute z-20 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300',
+            ratingPositionClass,
           )}
-          style={{ transition: 'opacity 500ms var(--dk-ease-out)' }}
         >
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold text-primary-foreground bg-primary/80 backdrop-blur-sm">
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold text-primary-foreground bg-primary/80 backdrop-blur-sm shadow-sm">
             <Star className="h-3 w-3 fill-current" />
             {avgRating.toFixed(1)}
           </span>

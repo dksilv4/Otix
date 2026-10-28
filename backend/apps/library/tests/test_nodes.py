@@ -75,4 +75,3 @@ class DeviceRegistrationAndOfflineUpdatesTests(APITestCase):
         )
         self.assertEqual(ack_resp.status_code, status.HTTP_200_OK)
         self.assertEqual(ack_resp.data.get("remaining_updates"), 0)
-

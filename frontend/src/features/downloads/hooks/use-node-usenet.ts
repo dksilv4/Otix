@@ -156,14 +156,16 @@ export function useNodeUsenetSearch(nodeId?: number, query?: string) {
       }
 
       const results = await Promise.all(
-        queries.map(async (searchQuery) => {
+        queries.map(async (searchQuery, idx) => {
           try {
             const { data } = await apiClient.get<unknown>(
               `/library/servers/${nodeId}/usenet/search`,
               { params: { query: searchQuery } }
             );
             return Array.isArray(data) ? data : [];
-          } catch {
+          } catch (err) {
+            // Re-throw if primary search query fails so React Query populates the error state in the UI.
+            if (idx === 0) throw err;
             return [];
           }
         }),

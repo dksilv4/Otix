@@ -471,6 +471,7 @@ func (c *ProwlarrClient) Search(query string, categories []int) ([]ProwlarrRelea
 		Title       string  `json:"title"`
 		Size        int64   `json:"size"`
 		DownloadURL string  `json:"downloadUrl"`
+		MagnetURL   string  `json:"magnetUrl"`
 		InfoURL     *string `json:"infoUrl"`
 		PublishDate *string `json:"publishDate"`
 		Indexer     string  `json:"indexer"`
@@ -488,11 +489,19 @@ func (c *ProwlarrClient) Search(query string, categories []int) ([]ProwlarrRelea
 		if proto == "" {
 			proto = "usenet"
 		}
+		dl := item.DownloadURL
+		if dl == "" {
+			if item.MagnetURL != "" {
+				dl = item.MagnetURL
+			} else if strings.HasPrefix(item.GUID, "magnet:") {
+				dl = item.GUID
+			}
+		}
 		releases = append(releases, ProwlarrRelease{
 			GUID:        item.GUID,
 			Title:       item.Title,
 			Size:        item.Size,
-			DownloadURL: item.DownloadURL,
+			DownloadURL: dl,
 			InfoURL:     item.InfoURL,
 			PublishDate: item.PublishDate,
 			Indexer:     item.Indexer,

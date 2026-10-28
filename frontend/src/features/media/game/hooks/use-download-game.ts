@@ -3,8 +3,30 @@ import { useParams } from '@tanstack/react-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@auth/hooks/use-auth'
 import { useDownloads, useDownloadConfig } from '@/features/downloads/use-downloads'
-import { useServerUsenetHistory, useServerUsenetQueue, useCancelServerQueueDownload } from '@/features/downloads/use-server-usenet'
+import {
+  useServerUsenetHistory,
+  useServerUsenetQueue,
+  useCancelServerQueueDownload,
+  useNodeUsenetConfig,
+  getAlternateNumeralQuery,
+  usenetKeys,
+} from '@/features/downloads/use-node-usenet'
+import { useNodeProviders } from '@/features/downloads/use-node-providers'
+import { findBestGameRelease } from '@/features/downloads/game-auto-match'
+import {
+  hasConfiguredDownloader,
+  inferReleaseProtocol,
+} from '@/features/downloads/provider-utils'
+import {
+  isSabnzbdConfigured,
+  normalizeProwlarrRelease,
+  releaseDownloadUrl,
+} from '@/features/downloads/usenet-utils'
+import { mediaRequestKeys } from '@/features/downloads/use-media-requests'
 import { releaseMatchesSearchHint } from '@/features/downloads/release-parse'
+import { apiClient } from '@/lib/api/client'
+import { useToast } from '@ui/molecules/toast'
+import type { ServerProwlarrRelease } from '@/features/downloads/usenet-types'
 import {
   findCompletedServerDownload,
   matchServerGameFile,
@@ -90,6 +112,8 @@ export interface DownloadGameState {
   // Actions
   handlePlay: () => Promise<void>
   handleDownload: () => Promise<void>
+  handleRequestGame: (onNoMatch?: () => void) => Promise<void>
+  requesting: boolean
   handleRemoteDownload: () => Promise<void>
   handleRemotePause: () => Promise<boolean | undefined>
   handleRemoteResume: () => Promise<boolean | undefined>
@@ -147,6 +171,10 @@ export function useDownloadGame(): DownloadGameState {
   const { installs: allInstalls } = useInstallProgress()
   const scannedForNzo = useRef<string | null>(null)
   const completedKey = completedDownloadKey(completedServerDownload)
+  const { toast } = useToast()
+  const [requesting, setRequesting] = useState(false)
+  const { data: providers } = useNodeProviders(activeServer?.id)
+  const { data: usenetConfig } = useNodeUsenetConfig(activeServer?.id)
   const storedLocalGame = useMemo(() => {
     try {
       return getLocalGamesMap()[mediaId] || null
@@ -285,6 +313,149 @@ export function useDownloadGame(): DownloadGameState {
       setErrorMsg(result.error)
     }
     setSearching(false)
+  }
+
+  const handleRequestGame = async (onNoMatch?: () => void) => {
+    if (!activeServer?.id || !mediaTitle) return
+    setRequesting(true)
+    setErrorMsg('')
+
+    try {
+      const q = mediaTitle.trim()
+      const queries = [q]
+      const alt = getAlternateNumeralQuery(q)
+      if (alt && alt.toLowerCase() !== q.toLowerCase()) {
+        queries.push(alt)
+      }
+
+      const results = await Promise.all(
+        queries.map(async (searchQuery, idx) => {
+          try {
+            const { data: resData } = await apiClient.get<unknown>(
+              `/library/servers/${activeServer.id}/usenet/search`,
+              { params: { query: searchQuery } },
+            )
+            return Array.isArray(resData) ? resData : []
+          } catch (err) {
+            if (idx === 0) throw err
+            return []
+          }
+        }),
+      )
+
+      const seen = new Set<string>()
+      const releases: ServerProwlarrRelease[] = []
+      for (const row of results.flat()) {
+        const item = normalizeProwlarrRelease(row)
+        if (item && !seen.has(item.guid)) {
+          seen.add(item.guid)
+          releases.push(item)
+        }
+      }
+
+      const torrentConfigured = hasConfiguredDownloader(providers?.downloaders, 'torrent')
+      const usenetConfigured =
+        hasConfiguredDownloader(providers?.downloaders, 'usenet') ||
+        isSabnzbdConfigured(usenetConfig?.sabnzbd)
+
+      const releaseYear = (data as { releaseDate?: string })?.releaseDate
+        ? new Date((data as { releaseDate: string }).releaseDate).getFullYear()
+        : (data as { year?: number })?.year ?? null
+
+      const match = findBestGameRelease(
+        releases,
+        {
+          title: mediaTitle,
+          year: releaseYear && !isNaN(releaseYear) ? releaseYear : null,
+          mediaItemId: mediaId,
+        },
+        { torrentConfigured, usenetConfigured },
+      )
+
+      if (!match) {
+        toast({
+          title: 'No optimal release found',
+          description: `Could not auto-match an optimal release for “${mediaTitle}”. Opening indexer search…`,
+          variant: 'default',
+        })
+        onNoMatch?.()
+        return
+      }
+
+      const downloadUrl = releaseDownloadUrl(match.baseRelease)
+      const protocol = inferReleaseProtocol(match.baseRelease)
+      const dlRes = await apiClient.post<{ nzo_id?: string }>(
+        `/library/servers/${activeServer.id}/usenet/download`,
+        {
+          title: match.baseRelease.title,
+          download_url: downloadUrl,
+          category: 'games',
+          protocol,
+          media_item_id: mediaId || null,
+          size: match.baseRelease.size || null,
+        },
+      )
+
+      let updatesQueued = 0
+      for (const update of match.companionUpdates) {
+        const updUrl = releaseDownloadUrl(update)
+        try {
+          await apiClient.post(
+            `/library/servers/${activeServer.id}/usenet/download`,
+            {
+              title: update.title,
+              download_url: updUrl,
+              category: 'games',
+              protocol: inferReleaseProtocol(update),
+              media_item_id: mediaId || null,
+              size: update.size || null,
+            },
+          )
+          updatesQueued += 1
+        } catch {
+          // non-fatal
+        }
+      }
+
+      try {
+        await apiClient.post('/library/requests', {
+          server_id: activeServer.id,
+          service: protocol === 'torrent' ? 'torrent' : 'usenet',
+          media_type: 'game',
+          title: mediaTitle,
+          year: releaseYear && !isNaN(releaseYear) ? releaseYear : null,
+          status: 'downloading',
+          media_item_id: mediaId ? Number(mediaId) || null : null,
+          poster_url: (data as { posterUrl?: string })?.posterUrl || null,
+          external_id: dlRes.data?.nzo_id || match.baseRelease.guid,
+        })
+      } catch {
+        // non-fatal
+      }
+
+      queryClient.invalidateQueries({ queryKey: usenetKeys.queue(activeServer.id) })
+      queryClient.invalidateQueries({ queryKey: usenetKeys.history(activeServer.id) })
+      queryClient.invalidateQueries({ queryKey: mediaRequestKeys.all })
+
+      toast({
+        title: updatesQueued > 0 ? 'Game and updates queued' : 'Game request queued',
+        description:
+          updatesQueued > 0
+            ? `Sent “${match.baseRelease.title}” and ${updatesQueued} update${updatesQueued === 1 ? '' : 's'} to ${activeServer.name}.`
+            : `Sent “${match.baseRelease.title}” to ${activeServer.name}.`,
+        variant: 'success',
+      })
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to request game'
+      setErrorMsg(msg)
+      toast({
+        title: 'Request failed',
+        description: msg,
+        variant: 'error',
+      })
+    } finally {
+      setRequesting(false)
+    }
   }
 
   const handleHvConfirm = async () => {
@@ -452,6 +623,8 @@ export function useDownloadGame(): DownloadGameState {
     hvPendingGameName,
     handlePlay,
     handleDownload,
+    handleRequestGame,
+    requesting,
     handleRemoteDownload,
     handleRemotePause,
     handleRemoteResume,

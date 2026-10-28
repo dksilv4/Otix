@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { DownloadCloud } from 'lucide-react';
+import { DownloadCloud, Sliders, History } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { useToast } from '@ui/molecules/toast';
 import { DkInput } from '@ui/atoms/input';
 import {
@@ -7,6 +8,8 @@ import {
   useSaveNodeSabnzbdConfig,
   useServerUsenetConfig,
   useNodeUsenetConfig,
+  useServerUsenetHistory,
+  useNodeUsenetHistory,
   useTestSabnzbd,
 } from '../use-server-usenet';
 import type { ConnectionTestResult, ServerUsenetConfig } from '../usenet-types';
@@ -21,6 +24,7 @@ import { useIntegrationTargetNode } from './use-integration-target-node';
 import { IntegrationConnectionFields } from './integration-connection-fields';
 import { IntegrationModalForm } from './integration-modal-form';
 import { IntegrationPathMappings, type PathMappingRow } from './integration-path-mappings';
+import { DownloadHistoryPanel } from './download-history-panel';
 import { isSabnzbdConfigured } from '../usenet-utils';
 
 export interface NodeSabnzbdSettingsModalProps {
@@ -256,11 +260,15 @@ export const NodeSabnzbdSettingsModal = ({
   isExiting,
   onClose,
 }: NodeSabnzbdSettingsModalProps) => {
+  const [activeTab, setActiveTab] = useState<'settings' | 'history'>('settings');
   const effectiveId = nodeId ?? serverId;
   const effectiveName = nodeName !== 'Node' ? nodeName : (serverName ?? 'Node');
   const { targetNodeId, targetNodeName } = useIntegrationTargetNode(effectiveId, effectiveName);
   const configHook = useServerUsenetConfig || useNodeUsenetConfig;
-  const { data: config, isLoading } = configHook(targetNodeId);
+  const { data: config, isLoading } = configHook ? configHook(targetNodeId) : { data: undefined, isLoading: false };
+  const historyHook = useServerUsenetHistory || useNodeUsenetHistory;
+  const { data: usenetHistory = [], isLoading: historyLoading } =
+    typeof historyHook === 'function' ? historyHook(targetNodeId) : { data: [], isLoading: false };
 
   return (
     <NodeIntegrationModalShell
@@ -273,6 +281,7 @@ export const NodeSabnzbdSettingsModal = ({
       brandBgClass="text-amber-400"
       isLoading={isLoading}
       hasNode={Boolean(targetNodeId)}
+      maxWidthClass={activeTab === 'history' ? 'max-w-3xl' : 'max-w-xl'}
       emptyNodeState={
         <IntegrationEmptyNodeState
           serviceName="SABnzbd"
@@ -281,13 +290,67 @@ export const NodeSabnzbdSettingsModal = ({
       }
     >
       {targetNodeId ? (
-        <SabnzbdForm
-          key={`${targetNodeId}-${config ? 'ready' : 'loading'}`}
-          config={config}
-          targetNodeId={targetNodeId}
-          targetNodeName={targetNodeName}
-          onClose={onClose}
-        />
+        <div className="flex flex-col flex-1 min-h-0">
+          <div className="flex items-center gap-2 px-4 pt-1 pb-3 shrink-0">
+            <button
+              type="button"
+              onClick={() => setActiveTab('settings')}
+              className={cn(
+                'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all border border-white/[0.04]',
+                activeTab === 'settings'
+                  ? 'bg-primary text-primary-foreground shadow-sm'
+                  : 'bg-[var(--dk-surface-ghost)] text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-overlay)]',
+              )}
+            >
+              <Sliders className="h-3.5 w-3.5" />
+              <span>Settings</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('history')}
+              className={cn(
+                'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all border border-white/[0.04]',
+                activeTab === 'history'
+                  ? 'bg-primary text-primary-foreground shadow-sm'
+                  : 'bg-[var(--dk-surface-ghost)] text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-overlay)]',
+              )}
+            >
+              <History className="h-3.5 w-3.5" />
+              <span>Download History</span>
+              {usenetHistory.length > 0 && (
+                <span
+                  className={cn(
+                    'px-1.5 py-0.2 rounded-full text-[10px] font-bold',
+                    activeTab === 'history'
+                      ? 'bg-black/20 text-primary-foreground'
+                      : 'bg-muted text-muted-foreground',
+                  )}
+                >
+                  {usenetHistory.length}
+                </span>
+              )}
+            </button>
+          </div>
+
+          <div className="flex-1 min-h-0 overflow-y-auto">
+            {activeTab === 'settings' ? (
+              <SabnzbdForm
+                key={`${targetNodeId}-${config ? 'ready' : 'loading'}`}
+                config={config}
+                targetNodeId={targetNodeId}
+                targetNodeName={targetNodeName}
+                onClose={onClose}
+              />
+            ) : (
+              <div className="p-4">
+                <DownloadHistoryPanel
+                  items={usenetHistory}
+                  isLoading={historyLoading}
+                />
+              </div>
+            )}
+          </div>
+        </div>
       ) : null}
     </NodeIntegrationModalShell>
   );

@@ -15,11 +15,15 @@ import {
   Bookmark,
   CheckCircle2,
   Gift,
+  Play,
+  Loader2,
 } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '@auth/hooks/use-auth'
 import { MediaLogo } from '@/lib/media/media-logo'
 import { useModal } from '@/lib/modals'
+import { useMediaActivity } from '@/features/media/hooks/use-media-activity'
+import { MediaActivityModal } from '@/features/media/components/organisms/media-activity-modal'
 import { useGameFreePromotions } from '@media/game/hooks/use-game-free-promotions'
 import { TrailerVideoModal } from '@/features/discover/components/molecules/trailer-video-modal'
 import {
@@ -61,6 +65,7 @@ export const MediaHero = ({ className = '' }: MediaHeroProps) => {
   const { activePromotion } = useGameFreePromotions(detail)
 
   const activeMediaId = detail?.id ? String(detail.id) : (detail?.slug || mediaId)
+  const activity = useMediaActivity(mediaType, detail?.tmdbId, activeMediaId)
 
   const { data: userInteractions } = useUserInteractions(mediaType, activeMediaId, {
     enabled: isAuthenticated && Boolean(activeMediaId),
@@ -340,6 +345,39 @@ export const MediaHero = ({ className = '' }: MediaHeroProps) => {
                 >
                   18+
                 </Badge>
+              )}
+
+              {activity && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    openModal(
+                      <MediaActivityModal
+                        activity={activity}
+                        mediaId={activeMediaId}
+                        initialPosterUrl={posterUrl}
+                      />,
+                    )
+                  }}
+                  className={cn(
+                    GLASS_PILL,
+                    'inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-xs font-semibold transition-transform hover:scale-105 active:scale-95 cursor-pointer',
+                    activity.status === 'available' && 'bg-primary/20 text-primary',
+                    activity.status === 'processing' && 'bg-sky-500/20 text-sky-400',
+                    activity.status === 'requested' && 'bg-amber-500/20 text-amber-400',
+                  )}
+                >
+                  {activity.status === 'available' && <Play className="h-3 w-3 fill-current" />}
+                  {activity.status === 'processing' && <Loader2 className="h-3 w-3 animate-spin" />}
+                  {activity.status === 'requested' && <Clock className="h-3 w-3" />}
+                  <span>
+                    {activity.status === 'processing'
+                      ? `Downloading (${activity.progress?.toFixed(0)}%) · ${activity.nodeName}`
+                      : activity.status === 'requested'
+                        ? `Requested · ${activity.nodeName}`
+                        : `Available · ${activity.nodeName}`}
+                  </span>
+                </button>
               )}
             </div>
 

@@ -49,7 +49,6 @@ import {
 } from './settings-integration-card'
 import { openBoundModal } from '../../utils/integrations'
 import {
-  NODE_KEYWORDS,
   NODE_SERVICE_BG,
   NODE_SERVICE_COLORS,
 } from '../../utils/node-connections'
@@ -59,6 +58,7 @@ export interface NodeConnectionsGroupProps {
   searchQuery?: string
   onOpenSettings?: (server: GameServer) => void
   defaultExpanded?: boolean
+  hideNodeHeader?: boolean
 }
 
 /** Renders SABnzbd, Prowlarr, Radarr, and Sonarr cards scoped to a single Otix worker node. */
@@ -67,10 +67,11 @@ export const NodeConnectionsGroup = ({
   searchQuery = '',
   onOpenSettings,
   defaultExpanded = true,
+  hideNodeHeader = false,
 }: NodeConnectionsGroupProps) => {
   const { openModal } = useModal()
   const hasQuery = Boolean(searchQuery && searchQuery.trim().length > 0)
-  const [nodeOpen, setNodeOpen] = useState(defaultExpanded || hasQuery)
+  const [nodeOpen, setNodeOpen] = useState(defaultExpanded || hasQuery || hideNodeHeader)
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [prowlarrSyncProtocol, setProwlarrSyncProtocol] = useState<'all' | 'torrent' | 'usenet'>('all')
   const [prowlarrSyncMessage, setProwlarrSyncMessage] = useState<string | null>(null)
@@ -234,17 +235,173 @@ export const NodeConnectionsGroup = ({
     ? nodeDefs.filter(
         (i) =>
           i.name.toLowerCase().includes(query) ||
-          i.keywords.includes(query) ||
-          server.name.toLowerCase().includes(query) ||
-          NODE_KEYWORDS.includes(query)
+          i.keywords.toLowerCase().includes(query)
       )
     : nodeDefs).slice().sort((a, b) => (b.isConnected ? 1 : 0) - (a.isConnected ? 1 : 0))
 
   if (filteredDefs.length === 0) return null
 
+  if (hideNodeHeader) {
+    return (
+      <div className="space-y-3">
+        {filteredDefs.map((item) => (
+          <IntegrationCard
+            key={item.id}
+            name={item.name}
+            description={item.description}
+            icon={item.icon}
+            brandColor={item.brandColor}
+            brandBg={item.brandBg}
+            isConnected={item.isConnected}
+            expanded={expandedId === item.id}
+            onToggle={() => toggleExpand(item.id)}
+            onConnect={item.onConnect}
+          >
+            {item.id === 'sabnzbd' && (
+              <>
+                {isSabnzbdConfigured && (
+                  <IntegrationStats
+                    items={[
+                      { label: 'status', value: sabnzbdQueue?.status || (isQueuePaused ? 'Paused' : 'Idle') },
+                      { label: 'speed', value: sabnzbdQueue?.speed || '0 KB/s' },
+                      { label: 'time left', value: sabnzbdQueue?.time_left || (sabnzbdQueue as any)?.timeleft || '0:00:00' },
+                      { label: 'size left', value: (sabnzbdQueue as any)?.size_left || (sabnzbdQueue as any)?.sizeleft || '0 MB' },
+                    ]}
+                  />
+                )}
+                <IntegrationAction
+                  label="SABnzbd Settings"
+                  description="Configure host, port, API key, and download folder options"
+                  buttonLabel="Configure SABnzbd"
+                  buttonIcon={DownloadCloud}
+                  onPress={openSabnzbdModal}
+                />
+                {isSabnzbdConfigured && (
+                  <IntegrationAction
+                    label={isQueuePaused ? 'Resume Queue' : 'Pause Queue'}
+                    description={isQueuePaused ? 'Downloads are currently paused' : 'Pause all active Usenet downloads'}
+                    buttonLabel={isQueuePaused ? 'Resume Downloads' : 'Pause Downloads'}
+                    buttonIcon={isQueuePaused ? Play : Pause}
+                    onPress={handleToggleQueuePause}
+                  />
+                )}
+              </>
+            )}
+
+            {item.id === 'prowlarr' && (
+              <>
+                {isProwlarrConfigured && (
+                  <IntegrationStats
+                    items={[
+                      { label: 'indexers configured', value: String(prowlarrIndexers.length) },
+                      { label: 'sync target', value: prowlarrSyncProtocol },
+                    ]}
+                  />
+                )}
+                <IntegrationAction
+                  label="Prowlarr Settings"
+                  description="Configure host, port, API key, and indexer sync categories"
+                  buttonLabel="Configure Prowlarr"
+                  buttonIcon={Search}
+                  onPress={openProwlarrModal}
+                />
+                {isProwlarrConfigured && (
+                  <>
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl bg-[var(--dk-surface-field)] border border-white/[0.04]">
+                      <div className="min-w-0">
+                        <p className="text-xs font-semibold text-foreground">Sync Indexers</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          Manually sync indexers to applications for this node
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <DkDropdown
+                          value={prowlarrSyncProtocol}
+                          onChange={(val) => setProwlarrSyncProtocol(val as 'all' | 'torrent' | 'usenet')}
+                          options={[
+                            { value: 'all', label: 'All Protocols' },
+                            { value: 'torrent', label: 'Torrents Only' },
+                            { value: 'usenet', label: 'Usenet Only' },
+                          ]}
+                          className="text-xs"
+                        />
+                        <DkButton
+                          size="sm"
+                          variant="secondary"
+                          onClick={handleProwlarrSync}
+                          loading={syncProwlarrMutation.isPending}
+                          className="text-xs"
+                        >
+                          Sync Now
+                        </DkButton>
+                      </div>
+                    </div>
+                    {prowlarrSyncMessage && (
+                      <p className="text-xs text-primary px-1">{prowlarrSyncMessage}</p>
+                    )}
+                    <ProwlarrIndexersPanel
+                      protocol={prowlarrSyncProtocol}
+                      onProtocolChange={setProwlarrSyncProtocol}
+                      onSync={handleProwlarrSync}
+                      isSyncing={syncProwlarrMutation.isPending}
+                      indexers={prowlarrIndexers}
+                      syncMessage={prowlarrSyncMessage}
+                    />
+                  </>
+                )}
+              </>
+            )}
+
+            {item.id === 'radarr' && (
+              <>
+                {isRadarrConfigured && (
+                  <IntegrationStats
+                    items={[
+                      { label: 'indexed movies', value: String(radarrMovies.length) },
+                      { label: 'monitored', value: String(radarrMovies.filter((m) => m.monitored).length) },
+                      { label: 'queued downloads', value: String(radarrQueue?.totalRecords ?? radarrQueue?.records?.length ?? 0) },
+                    ]}
+                  />
+                )}
+                <IntegrationAction
+                  label="Radarr Settings"
+                  description="Configure host, port, API key, root folders, and quality profiles"
+                  buttonLabel="Configure Radarr"
+                  buttonIcon={Film}
+                  onPress={openRadarrModal}
+                />
+              </>
+            )}
+
+            {item.id === 'sonarr' && (
+              <>
+                {isSonarrConfigured && (
+                  <IntegrationStats
+                    items={[
+                      { label: 'indexed series', value: String(sonarrSeries.length) },
+                      { label: 'monitored', value: String(sonarrSeries.filter((s) => s.monitored).length) },
+                      { label: 'queued downloads', value: String(sonarrQueue?.totalRecords ?? sonarrQueue?.records?.length ?? 0) },
+                    ]}
+                  />
+                )}
+                <IntegrationAction
+                  label="Sonarr Settings"
+                  description="Configure host, port, API key, quality profile, and series options"
+                  buttonLabel="Configure Sonarr"
+                  buttonIcon={Tv}
+                  onPress={openSonarrModal}
+                />
+              </>
+            )}
+          </IntegrationCard>
+        ))}
+      </div>
+    )
+  }
+
   return (
     <div
-      className="rounded-2xl sm:rounded-3xl overflow-hidden backdrop-blur-xl transition-all duration-200 border border-[var(--dk-separator)]"
+      className="rounded-2xl sm:rounded-3xl overflow-hidden backdrop-blur-xl transition-all duration-200 border border-white/[0.04]"
       style={{
         backgroundColor: 'var(--dk-surface-raised)',
         boxShadow: 'var(--dk-shadow-md)',
@@ -276,15 +433,15 @@ export const NodeConnectionsGroup = ({
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-sm font-semibold text-foreground truncate">{server.name}</span>
-            <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-[var(--dk-surface-field)] border border-[var(--dk-separator)] text-muted-foreground">
+            <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-[var(--dk-surface-field)] border border-white/[0.04] text-muted-foreground">
               {nodeDefs.filter((d) => d.isConnected).length} of {nodeDefs.length} connected
             </span>
             {server.isOnline ? (
-              <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-primary/15 text-primary">
+              <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-status-online/15 text-status-online">
                 Online
               </span>
             ) : (
-              <span className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/20">
+              <span className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full bg-status-offline/15 text-status-offline border border-white/[0.04]">
                 <AlertTriangle size={10} />
                 Offline
               </span>

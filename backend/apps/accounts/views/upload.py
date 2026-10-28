@@ -337,7 +337,9 @@ class UploadedFileView(APIView):
 
         # Defensive Security Headers
         response["X-Content-Type-Options"] = "nosniff"
-        response["Content-Security-Policy"] = "default-src 'none'; style-src 'unsafe-inline'; sandbox"
+        response["Content-Security-Policy"] = (
+            "default-src 'none'; style-src 'unsafe-inline'; sandbox"
+        )
         response["X-Frame-Options"] = "DENY"
         response["Cross-Origin-Resource-Policy"] = "cross-origin"
         return response

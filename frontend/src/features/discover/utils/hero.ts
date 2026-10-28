@@ -91,3 +91,50 @@ export const resolvePlatformIcon = (
   }
   return null
 }
+
+export const formatMediaFormatLabel = (mediaType?: string | null): string => {
+  switch (mediaType) {
+    case 'movie':
+      return 'Movie'
+    case 'show':
+      return 'Shows'
+    case 'game':
+      return 'Game'
+    default:
+      return 'Featured'
+  }
+}
+
+export const formatAudienceMetric = (
+  popularity?: number | null,
+  ratingCount?: number | null,
+  watchedCount?: number | null,
+): string => {
+  const raw = watchedCount || ratingCount || popularity || 150
+  if (raw >= 1000) {
+    const k = (raw / 1000).toFixed(raw >= 10000 ? 0 : 1)
+    return `${k}k+`
+  }
+  return `${Math.round(raw)}+`
+}
+
+export const extractTrailerYoutubeId = (
+  youtubeVideoId?: string | null,
+  videos?: Array<{ videoType?: string | null; url: string; providerId?: string | null }> | null,
+): string | null => {
+  if (youtubeVideoId) return youtubeVideoId
+  if (!videos || videos.length === 0) return null
+  const trailer = videos.find(
+    (v) =>
+      v.videoType?.toLowerCase().includes('trailer') ||
+      v.url?.includes('youtube') ||
+      v.url?.includes('youtu.be'),
+  )
+  if (trailer?.providerId) return trailer.providerId
+  if (trailer?.url) {
+    const match = trailer.url.match(/(?:youtu\.be\/|v\/|u\/\w\/|embed\/|watch\?v=)([^#&?]*)/)
+    return match?.[1] ?? null
+  }
+  return null
+}
+

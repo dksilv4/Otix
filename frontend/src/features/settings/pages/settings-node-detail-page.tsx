@@ -12,6 +12,7 @@ import {
   AlertTriangle,
   ExternalLink,
   ShieldAlert,
+  Link2,
 } from 'lucide-react'
 import { DkButton } from '@ui/atoms/button'
 import { DkDialog } from '@ui/molecules/dialog'
@@ -210,7 +211,7 @@ export const SettingsNodeDetailPage = () => {
       </div>
 
       {/* Navigation Shortcuts for Node */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
         <Link
           to="/settings/nodes"
           hash="paths"
@@ -249,6 +250,27 @@ export const SettingsNodeDetailPage = () => {
               </h3>
               <p className="text-xs text-muted-foreground">
                 Set directory structuring and automated repack renaming presets.
+              </p>
+            </div>
+          </div>
+          <ExternalLink className="h-4 w-4 text-muted-foreground/60 group-hover:text-foreground transition-colors shrink-0" />
+        </Link>
+
+        <Link
+          to="/settings/node-connections"
+          onClick={() => setSelectedNodeId(node.id)}
+          className="flex items-center justify-between p-4 rounded-2xl bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)] border border-white/[0.04] transition-all cursor-pointer group"
+        >
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-primary/10 text-primary group-hover:scale-105 transition-transform shadow-xs">
+              <Link2 className="h-5 w-5" />
+            </div>
+            <div>
+              <h3 className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors">
+                Node Connections
+              </h3>
+              <p className="text-xs text-muted-foreground">
+                Configure SABnzbd, Prowlarr, Radarr, and Sonarr service integrations for this node.
               </p>
             </div>
           </div>

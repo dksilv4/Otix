@@ -13,6 +13,11 @@ export interface ParsedGameRelease {
   sceneGroup: string | null
   repackerKey: string
   repackerLabel: string
+  platform: string | null
+  platformKey: string | null
+  location: string | null
+  locationCode: string | null
+  year: string | null
   matchedQuery: boolean
   rawTitle: string
 }
@@ -153,7 +158,229 @@ const NOISE_TAGS = new Set([
   'cut',
   'year',
   'the',
+  // Platforms
+  'switch',
+  'nsw',
+  'ps5',
+  'ps4',
+  'ps3',
+  'ps2',
+  'ps1',
+  'psx',
+  'psp',
+  'psvita',
+  'xbox',
+  'x360',
+  'wii',
+  'wiiu',
+  'gamecube',
+  'ngc',
+  'snes',
+  'sfc',
+  'nes',
+  'nds',
+  '3ds',
+  'gba',
+  'gbc',
+  'linux',
+  'macos',
+  'osx',
+  // Locations / Countries
+  'usa',
+  'eur',
+  'jpn',
+  'asia',
+  'world',
+  'global',
+  'ger',
+  'fra',
+  'spa',
+  'ita',
+  'kor',
+  'rus',
+  'bra',
+  'aus',
+  'chn',
 ])
+
+export interface PlatformInfo {
+  key: string
+  label: string
+}
+
+export interface LocationInfo {
+  code: string
+  label: string
+}
+
+const PLATFORMS: { key: string; label: string; pattern: RegExp }[] = [
+  // Nintendo consoles & handhelds
+  { key: 'switch', label: 'Nintendo Switch', pattern: /(?:^|[^a-z0-9])(?:nsw|switch|nintendo[\s._-]*switch)(?=$|[^a-z0-9])/i },
+  { key: 'wiiu', label: 'Wii U', pattern: /(?:^|[^a-z0-9])(?:wii[\s._-]*u|wiiu)(?=$|[^a-z0-9])/i },
+  { key: 'wii', label: 'Wii', pattern: /(?:^|[^a-z0-9])wii(?=$|[^a-z0-9])/i },
+  { key: 'gamecube', label: 'GameCube', pattern: /(?:^|[^a-z0-9])(?:gamecube|ngc)(?=$|[^a-z0-9])/i },
+  { key: 'n64', label: 'Nintendo 64', pattern: /(?:^|[^a-z0-9])(?:n64|nintendo[\s._-]*64)(?=$|[^a-z0-9])/i },
+  { key: 'snes', label: 'SNES', pattern: /(?:^|[^a-z0-9])(?:snes|sfc|super[\s._-]*nintendo)(?=$|[^a-z0-9])/i },
+  { key: 'nes', label: 'NES', pattern: /(?:^|[^a-z0-9])(?:nes|famicom)(?=$|[^a-z0-9])/i },
+  { key: '3ds', label: 'Nintendo 3DS', pattern: /(?:^|[^a-z0-9])(?:3ds|nintendo[\s._-]*3ds)(?=$|[^a-z0-9])/i },
+  { key: 'nds', label: 'Nintendo DS', pattern: /(?:^|[^a-z0-9])(?:nds|nintendo[\s._-]*ds)(?=$|[^a-z0-9])/i },
+  { key: 'gba', label: 'Game Boy Advance', pattern: /(?:^|[^a-z0-9])(?:gba|game[\s._-]*boy[\s._-]*advance)(?=$|[^a-z0-9])/i },
+  { key: 'gbc', label: 'Game Boy Color', pattern: /(?:^|[^a-z0-9])(?:gbc|game[\s._-]*boy[\s._-]*color)(?=$|[^a-z0-9])/i },
+  { key: 'gb', label: 'Game Boy', pattern: /(?:^|[^a-z0-9])(?:game[\s._-]*boy|\(gb\)|\[gb\])(?=$|[^a-z0-9])/i },
+
+  // PlayStation
+  { key: 'ps5', label: 'PS5', pattern: /(?:^|[^a-z0-9])(?:ps5|playstation[\s._-]*5)(?=$|[^a-z0-9])/i },
+  { key: 'ps4', label: 'PS4', pattern: /(?:^|[^a-z0-9])(?:ps4|playstation[\s._-]*4)(?=$|[^a-z0-9])/i },
+  { key: 'ps3', label: 'PS3', pattern: /(?:^|[^a-z0-9])(?:ps3|playstation[\s._-]*3)(?=$|[^a-z0-9])/i },
+  { key: 'ps2', label: 'PS2', pattern: /(?:^|[^a-z0-9])(?:ps2|playstation[\s._-]*2)(?=$|[^a-z0-9])/i },
+  { key: 'ps1', label: 'PS1', pattern: /(?:^|[^a-z0-9])(?:ps1|psx|playstation[\s._-]*1)(?=$|[^a-z0-9])/i },
+  { key: 'psp', label: 'PSP', pattern: /(?:^|[^a-z0-9])(?:psp|playstation[\s._-]*portable)(?=$|[^a-z0-9])/i },
+  { key: 'psvita', label: 'PS Vita', pattern: /(?:^|[^a-z0-9])(?:psvita|psv|vita)(?=$|[^a-z0-9])/i },
+
+  // Xbox
+  { key: 'xbox-series', label: 'Xbox Series', pattern: /(?:^|[^a-z0-9])(?:xbsx|xsx|xbox[\s._-]*series(?:[\s._-]*[xs])?)(?=$|[^a-z0-9])/i },
+  { key: 'xbox-one', label: 'Xbox One', pattern: /(?:^|[^a-z0-9])(?:xbox[\s._-]*one|xbo|xb1)(?=$|[^a-z0-9])/i },
+  { key: 'xbox-360', label: 'Xbox 360', pattern: /(?:^|[^a-z0-9])(?:x360|xbox[\s._-]*360)(?=$|[^a-z0-9])/i },
+  { key: 'xbox', label: 'Xbox', pattern: /(?:^|[^a-z0-9])xbox(?=$|[^a-z0-9])/i },
+
+  // Sega
+  { key: 'dreamcast', label: 'Dreamcast', pattern: /(?:^|[^a-z0-9])(?:dreamcast|\(dc\)|\[dc\])(?=$|[^a-z0-9])/i },
+  { key: 'saturn', label: 'Saturn', pattern: /(?:^|[^a-z0-9])(?:sega[\s._-]*saturn|saturn)(?=$|[^a-z0-9])/i },
+  { key: 'genesis', label: 'Genesis', pattern: /(?:^|[^a-z0-9])(?:genesis|megadrive|mega[\s._-]*drive)(?=$|[^a-z0-9])/i },
+
+  // Computer OS / PC
+  { key: 'linux', label: 'Linux', pattern: /(?:^|[^a-z0-9])linux(?=$|[^a-z0-9])/i },
+  { key: 'mac', label: 'macOS', pattern: /(?:^|[^a-z0-9])(?:macos|osx|mac[\s._-]*os)(?=$|[^a-z0-9])/i },
+  { key: 'pc', label: 'PC', pattern: /(?:^|[^a-z0-9])(?:pc|windows|win(?:32|64)?)(?=$|[^a-z0-9])/i },
+]
+
+const PC_SCENE_REPACKERS = new Set([
+  'elamigos',
+  'fitgirl',
+  'dodi',
+  'empress',
+  'codex',
+  'rune',
+  'flt',
+  'skidrow',
+  'plaza',
+  'cpy',
+  'gog',
+  'steam',
+  'goldberg',
+])
+
+const MULTI_REGION_RE = /[([]\s*(?:USA?|EUR?|Europe|JPN?|Japan|Asia|World|Global)(?:\s*,\s*(?:USA?|EUR?|Europe|JPN?|Japan|Asia|World|Global|Aus(?:tralia)?|Korea|KOR))+\s*[)\]]/i
+
+const LOCATIONS: { code: string; label: string; pattern: RegExp }[] = [
+  // Multi-region combinations in brackets
+  { code: 'usa-eur', label: 'USA / Europe', pattern: /[([]\s*(?:USA?|US)\s*,\s*(?:EUR?|Europe)\s*[)\]]/i },
+  { code: 'usa-jpn', label: 'USA / Japan', pattern: /[([]\s*(?:USA?|US)\s*,\s*(?:JPN?|Japan)\s*[)\]]/i },
+
+  // North America / USA
+  { code: 'usa', label: 'USA', pattern: /[([]\s*(?:USA?|US)\s*[)\]]|(?:^|[^a-z0-9])(?:usa|north[\s._-]*america)(?=$|[^a-z0-9])/i },
+
+  // Europe
+  { code: 'eur', label: 'Europe', pattern: /[([]\s*(?:EUR?|EU|Europe)\s*[)\]]|(?:^|[^a-z0-9])(?:eur|europe)(?=$|[^a-z0-9])/i },
+
+  // Japan
+  { code: 'jpn', label: 'Japan', pattern: /[([]\s*(?:JPN?|JP|Japan)\s*[)\]]|(?:^|[^a-z0-9])(?:jpn|japan)(?=$|[^a-z0-9])/i },
+
+  // World / Global
+  { code: 'world', label: 'World', pattern: /[([]\s*(?:World|Global)\s*[)\]]|(?:^|[^a-z0-9])(?:world|global)(?=$|[^a-z0-9])/i },
+
+  // Asia
+  { code: 'asia', label: 'Asia', pattern: /[([]\s*Asia\s*[)\]]|(?:^|[^a-z0-9])asia(?=$|[^a-z0-9])/i },
+
+  // Specific Countries
+  { code: 'uk', label: 'UK', pattern: /[([]\s*(?:UK|United[\s._-]*Kingdom)\s*[)\]]|(?:^|[^a-z0-9])united[\s._-]*kingdom(?=$|[^a-z0-9])/i },
+  { code: 'ger', label: 'Germany', pattern: /[([]\s*(?:GER|DE|German|Germany)\s*[)\]]|(?:^|[^a-z0-9])(?:ger|german|germany)(?=$|[^a-z0-9])/i },
+  { code: 'fra', label: 'France', pattern: /[([]\s*(?:FRA|FR|French|France)\s*[)\]]|(?:^|[^a-z0-9])(?:fra|french|france)(?=$|[^a-z0-9])/i },
+  { code: 'spa', label: 'Spain', pattern: /[([]\s*(?:SPA|ES|Spanish|Spain)\s*[)\]]|(?:^|[^a-z0-9])(?:spa|spanish|spain)(?=$|[^a-z0-9])/i },
+  { code: 'ita', label: 'Italy', pattern: /[([]\s*(?:ITA|IT|Italian|Italy)\s*[)\]]|(?:^|[^a-z0-9])(?:ita|italian|italy)(?=$|[^a-z0-9])/i },
+  { code: 'aus', label: 'Australia', pattern: /[([]\s*(?:AUS|AU|Australia)\s*[)\]]|(?:^|[^a-z0-9])(?:aus|australia)(?=$|[^a-z0-9])/i },
+  { code: 'kor', label: 'Korea', pattern: /[([]\s*(?:KOR|KR|Korea|Korean)\s*[)\]]|(?:^|[^a-z0-9])(?:kor|korea|korean)(?=$|[^a-z0-9])/i },
+  { code: 'bra', label: 'Brazil', pattern: /[([]\s*(?:BRA|BR|Brazil|Brazilian|PT-BR)\s*[)\]]|(?:^|[^a-z0-9])(?:bra|brazil|brazilian)(?=$|[^a-z0-9])/i },
+  { code: 'rus', label: 'Russia', pattern: /[([]\s*(?:RUS|RU|Russia|Russian)\s*[)\]]|(?:^|[^a-z0-9])(?:rus|russia|russian)(?=$|[^a-z0-9])/i },
+  { code: 'chn', label: 'China', pattern: /[([]\s*(?:CHN|CN|China|Chinese|ZH)\s*[)\]]|(?:^|[^a-z0-9])(?:chn|china|chinese)(?=$|[^a-z0-9])/i },
+]
+
+export function extractPlatform(
+  title: string,
+  sceneGroup?: string | null,
+  repackerKey?: string | null,
+): PlatformInfo | null {
+  for (const plat of PLATFORMS) {
+    if (plat.pattern.test(title)) return { key: plat.key, label: plat.label }
+  }
+  const group = (sceneGroup ?? '').toLowerCase()
+  const repacker = (repackerKey ?? '').toLowerCase()
+  if (PC_SCENE_REPACKERS.has(repacker) || PC_SCENE_REPACKERS.has(group)) {
+    return { key: 'pc', label: 'PC' }
+  }
+  return null
+}
+
+export function extractLocation(title: string, searchHint?: string): LocationInfo | null {
+  const hintTokens = new Set(
+    (searchHint || '')
+      .toLowerCase()
+      .split(/[^a-z0-9]+/)
+      .filter(Boolean),
+  )
+
+  // Check multi-region bracket first
+  if (MULTI_REGION_RE.test(title)) {
+    const specific = LOCATIONS.find((loc) => loc.pattern.test(title))
+    if (specific) return { code: specific.code, label: specific.label }
+    return { code: 'world', label: 'World' }
+  }
+
+  for (const loc of LOCATIONS) {
+    if (loc.pattern.test(title)) {
+      if (hintTokens.has(loc.code) || hintTokens.has(loc.label.toLowerCase())) {
+        continue
+      }
+      return { code: loc.code, label: loc.label }
+    }
+  }
+
+  // Check MULTi language tags, e.g. MULTi5, MULTi13, MULTi
+  const multiMatch = title.match(/(?:^|[^a-z0-9])multi(\d+)?(?=$|[^a-z0-9])/i)
+  if (multiMatch) {
+    return {
+      code: 'multi',
+      label: multiMatch[1] ? `MULTi${multiMatch[1]}` : 'MULTi',
+    }
+  }
+
+  return null
+}
+
+export function extractReleaseYear(title: string, searchHint?: string): string | null {
+  const hintTokens = new Set(
+    (searchHint || '')
+      .toLowerCase()
+      .split(/[^a-z0-9]+/)
+      .filter(Boolean),
+  )
+
+  // 1. In brackets or parentheses: (2023), [2018], (1998)
+  const bracketMatch = title.match(/[([]\s*(19[7-9]\d|20[0-3]\d)\s*[)\]]/)
+  if (bracketMatch?.[1]) {
+    const yr = bracketMatch[1]
+    if (!hintTokens.has(yr)) return yr
+  }
+
+  // 2. Standalone 4-digit year tokens (1970 - 2035)
+  const matches = [...title.matchAll(/(?:^|[^a-z0-9])(19[7-9]\d|20[0-3]\d)(?=$|[^a-z0-9])/gi)]
+  for (const match of matches) {
+    const yr = match[1]
+    if (!hintTokens.has(yr)) return yr
+  }
+
+  return null
+}
 
 const ROMAN: Record<string, string> = {
   i: '1',
@@ -342,6 +569,9 @@ export function parseReleaseTitle(title: string, searchHint?: string): ParsedGam
         ? { key: namedLeftover.toLowerCase(), label: namedLeftover }
         : STANDARD_EDITION
   const repacker = extractRepacker(title, group)
+  const platform = extractPlatform(title, group, repacker.key)
+  const location = extractLocation(title, searchHint)
+  const year = extractReleaseYear(title, searchHint)
 
   return {
     kind,
@@ -353,6 +583,11 @@ export function parseReleaseTitle(title: string, searchHint?: string): ParsedGam
     sceneGroup: group,
     repackerKey: repacker.key,
     repackerLabel: repacker.label,
+    platform: platform?.label ?? null,
+    platformKey: platform?.key ?? null,
+    location: location?.label ?? null,
+    locationCode: location?.code ?? null,
+    year,
     matchedQuery,
     rawTitle: title,
   }
@@ -512,8 +747,14 @@ export function groupReleasesByRepackerAndVersion(
       if (a.isOther !== b.isOther) return a.isOther ? 1 : -1
       if (a.key === 'unknown' && b.key !== 'unknown') return 1
       if (b.key === 'unknown' && a.key !== 'unknown') return -1
-      const aSize = Math.max(0, ...a.versions.flatMap((family) => family.releases.map((item) => item.release.size || 0)))
-      const bSize = Math.max(0, ...b.versions.flatMap((family) => family.releases.map((item) => item.release.size || 0)))
+      const aSize = Math.max(
+        0,
+        ...a.versions.flatMap((family) => family.releases.map((item) => item.release.size || 0)),
+      )
+      const bSize = Math.max(
+        0,
+        ...b.versions.flatMap((family) => family.releases.map((item) => item.release.size || 0)),
+      )
       if (aSize !== bSize) return bSize - aSize
       return a.title.localeCompare(b.title)
     })
@@ -684,24 +925,50 @@ export function collectEditionPackVersions(groups: EditionResultGroup[]): string
   return [...versions].sort((a, b) => compareVersions(a, b))
 }
 
+export function collectEditionPackPlatforms(
+  groups: EditionResultGroup[],
+): { key: string; label: string }[] {
+  const seen = new Map<string, string>()
+  for (const group of groups) {
+    for (const pack of group.packs) {
+      for (const item of [...pack.releases, ...pack.updates]) {
+        if (item.parsed.platformKey && item.parsed.platform) {
+          seen.set(item.parsed.platformKey, item.parsed.platform)
+        }
+      }
+    }
+  }
+  return [...seen.entries()].map(([key, label]) => ({ key, label })).sort((a, b) => a.label.localeCompare(b.label))
+}
+
 export function filterEditionGroups(
   groups: EditionResultGroup[],
   protocol: 'all' | 'usenet' | 'torrent',
   version: string,
+  platform: string = 'all',
 ): EditionResultGroup[] {
   const matchProtocol = (items: ClassifiedRelease[]) =>
     protocol === 'all'
       ? items
       : items.filter((item) => item.release.protocol?.toLowerCase() === protocol)
 
+  const matchPlatform = (items: ClassifiedRelease[]) =>
+    platform === 'all'
+      ? items
+      : items.filter((item) => (item.parsed.platformKey || 'unknown') === platform)
+
   return groups
     .map((group) => {
       const packs = group.packs
-        .map((pack) => ({
-          ...pack,
-          releases: matchProtocol(pack.releases),
-          updates: matchProtocol(pack.updates),
-        }))
+        .map((pack) => {
+          const filteredReleases = matchPlatform(matchProtocol(pack.releases))
+          const filteredUpdates = matchPlatform(matchProtocol(pack.updates))
+          return {
+            ...pack,
+            releases: filteredReleases,
+            updates: filteredUpdates,
+          }
+        })
         .filter((pack) => pack.releases.length + pack.updates.length > 0)
         .filter((pack) =>
           familyMatchesVersion(

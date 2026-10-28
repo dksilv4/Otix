@@ -105,8 +105,10 @@ class ConversationSettingsView(APIView):
             is_muted=input_serializer.validated_data.get("is_muted"),
             is_archived=input_serializer.validated_data.get("is_archived"),
         )
-        return Response({
-            "status": "ok",
-            "is_muted": participant.is_muted,
-            "is_archived": participant.is_archived,
-        })
+        return Response(
+            {
+                "status": "ok",
+                "is_muted": participant.is_muted,
+                "is_archived": participant.is_archived,
+            }
+        )

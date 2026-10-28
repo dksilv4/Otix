@@ -48,7 +48,9 @@ class UserHomeListCreateView(APIView):
         user = _resolve_user(request)
         if not user:
             return Response({"error": "User not found"}, status=status.HTTP_401_UNAUTHORIZED)
-        serializer = UserHomeCreateUpdateSerializer(data=request.data, context={"request": request, "user": user})
+        serializer = UserHomeCreateUpdateSerializer(
+            data=request.data, context={"request": request, "user": user}
+        )
         serializer.is_valid(raise_exception=True)
 
         is_default = serializer.validated_data.get("is_default", False)
@@ -108,9 +110,11 @@ class UserServerMachineListCreateView(APIView):
         if not user:
             return Response([], status=status.HTTP_401_UNAUTHORIZED)
 
-        queryset = UserServerMachine.objects.filter(user=user).prefetch_related(
-            "smb_nodes"
-        ).select_related("home", "hosted_node")
+        queryset = (
+            UserServerMachine.objects.filter(user=user)
+            .prefetch_related("smb_nodes")
+            .select_related("home", "hosted_node")
+        )
 
         home_id = request.query_params.get("home_id")
         if home_id:
@@ -180,12 +184,16 @@ class UserServerMachineDetectDrivesView(APIView):
     def post(self, request: Request, server_id: int | None = None) -> Response:
         user = _resolve_user(request)
         if not user:
-            return Response({"error": "User authentication required"}, status=status.HTTP_401_UNAUTHORIZED)
+            return Response(
+                {"error": "User authentication required"}, status=status.HTTP_401_UNAUTHORIZED
+            )
         server: UserServerMachine | None = None
         if server_id is not None:
             server = UserServerMachine.objects.filter(id=server_id, user=user).first()
             if not server:
-                return Response({"error": "Server machine not found"}, status=status.HTTP_404_NOT_FOUND)
+                return Response(
+                    {"error": "Server machine not found"}, status=status.HTTP_404_NOT_FOUND
+                )
 
         # Target node: from query param, request body, or server.hosted_node
         node_id = (
@@ -203,7 +211,9 @@ class UserServerMachineDetectDrivesView(APIView):
             if str(node_id) == "-1":
                 node = UserNode.objects.filter(user=user, is_local_desktop=True).first()
                 if not node:
-                    node = UserNode(user=user, name="This PC", local_url="http://127.0.0.1:8090", is_local=True)
+                    node = UserNode(
+                        user=user, name="This PC", local_url="http://127.0.0.1:8090", is_local=True
+                    )
             else:
                 node = UserNode.objects.get(id=node_id, user=user)
         except UserNode.DoesNotExist:
@@ -239,7 +249,7 @@ class UserServerMachineDetectDrivesView(APIView):
         raw_storage = hw_data.get("storage") or []
         detected_drives = []
         for idx, item in enumerate(raw_storage):
-            drive_name = item.get("drive") or f"Disk {idx+1}"
+            drive_name = item.get("drive") or f"Disk {idx + 1}"
             label = item.get("label") or drive_name
             fs = item.get("fileSystem") or item.get("file_system") or ""
             tot = int(item.get("totalBytes") or item.get("total_bytes") or 0)
@@ -248,7 +258,7 @@ class UserServerMachineDetectDrivesView(APIView):
 
             detected_drives.append(
                 {
-                    "id": f"drive-{idx+1}",
+                    "id": f"drive-{idx + 1}",
                     "drive": drive_name,
                     "label": label,
                     "file_system": fs,

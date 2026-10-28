@@ -2,8 +2,7 @@ import { useEffect, useId, useRef, useState } from 'react'
 import { ArrowDownToLine, Check, ChevronDown, Clock, Loader2, Play, Server, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useRequestMedia, type RequestMediaState } from '../../hooks/use-request-media'
-import { MediaRequestConfirmModal } from './media-request-confirm-modal'
-
+import { useOpenMediaRequestModal } from '../../hooks/use-open-media-request-modal'
 import { requestableInstances } from '../../utils/request'
 
 export interface RequestMediaButtonProps {
@@ -59,8 +58,7 @@ const RequestMediaButtonInner = ({
   const menuRef = useRef<HTMLDivElement>(null)
   const menuButtonRef = useRef<HTMLButtonElement>(null)
   const menuId = useId()
-  const [confirmOpen, setConfirmOpen] = useState(false)
-  const [targetInstanceId, setTargetInstanceId] = useState<string | undefined>(undefined)
+  const { openRequestModal } = useOpenMediaRequestModal()
 
   useEffect(() => {
     if (!menuOpen) return
@@ -83,8 +81,11 @@ const RequestMediaButtonInner = ({
   if (state.hidden || hideIfAvailable || state.loading) return null
 
   const openConfirm = (instanceId?: string) => {
-    setTargetInstanceId(instanceId)
-    setConfirmOpen(true)
+    openRequestModal({
+      state,
+      initialInstanceId: instanceId,
+      onWatch,
+    })
   }
 
   if (state.queueItem) {
@@ -192,33 +193,24 @@ const RequestMediaButtonInner = ({
         : `Request on ${target?.name || state.activeServerName}`
 
     return (
-      <>
-        <button
-          type="button"
-          onClick={() => openConfirm(target?.id)}
-          disabled={busy || !target}
-          className="inline-flex items-center gap-2 rounded-full h-10 px-4 sm:px-5 py-2 text-sm font-semibold bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg transition-all duration-200 active:scale-95 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-          title={buttonTitle}
-        >
-          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowDownToLine className="h-4 w-4" />}
-          <span>{busy ? 'Requesting…' : label}</span>
-        </button>
-        <MediaRequestConfirmModal
-          open={confirmOpen}
-          onClose={() => setConfirmOpen(false)}
-          state={state}
-          initialInstanceId={targetInstanceId}
-        />
-      </>
+      <button
+        type="button"
+        onClick={() => openConfirm(target?.id)}
+        disabled={busy || !target}
+        className="inline-flex items-center gap-2 rounded-full h-10 px-4 sm:px-5 py-2 text-sm font-semibold bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg transition-all duration-200 active:scale-95 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+        title={buttonTitle}
+      >
+        {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowDownToLine className="h-4 w-4" />}
+        <span>{busy ? 'Requesting…' : label}</span>
+      </button>
     )
   }
 
   return (
-    <>
-      <div
-        ref={menuRef}
-        className="relative inline-flex overflow-visible rounded-full shadow-lg"
-      >
+    <div
+      ref={menuRef}
+      className="relative inline-flex overflow-visible rounded-full shadow-lg"
+    >
         <button
           type="button"
           onClick={() => openConfirm(targets[0]?.id)}
@@ -274,14 +266,7 @@ const RequestMediaButtonInner = ({
           </div>
         )}
       </div>
-      <MediaRequestConfirmModal
-        open={confirmOpen}
-        onClose={() => setConfirmOpen(false)}
-        state={state}
-        initialInstanceId={targetInstanceId}
-      />
-    </>
-  )
-};
+    )
+  }
 
 

@@ -176,7 +176,9 @@ class ChatApiTests(TestCase):
         self.assertEqual(react_res.status_code, 200)
         self.assertTrue(react_res.data["added"])
         self.assertEqual(MessageReaction.objects.filter(message_id=msg_id).count(), 1)
-        self.assertEqual(MessageReaction.objects.filter(message_id=msg_id, user=self.bob).first().emoji, "👍")
+        self.assertEqual(
+            MessageReaction.objects.filter(message_id=msg_id, user=self.bob).first().emoji, "👍"
+        )
 
         # Bob switches reaction to ❤️ (should replace, not add a second reaction)
         react_swap = self.bob_client.post(
@@ -187,7 +189,9 @@ class ChatApiTests(TestCase):
         self.assertEqual(react_swap.status_code, 200)
         self.assertTrue(react_swap.data["added"])
         self.assertEqual(MessageReaction.objects.filter(message_id=msg_id).count(), 1)
-        self.assertEqual(MessageReaction.objects.filter(message_id=msg_id, user=self.bob).first().emoji, "❤️")
+        self.assertEqual(
+            MessageReaction.objects.filter(message_id=msg_id, user=self.bob).first().emoji, "❤️"
+        )
 
         # Bob toggles same reaction off
         react_remove = self.bob_client.post(

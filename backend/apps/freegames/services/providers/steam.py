@@ -231,7 +231,9 @@ class SteamFreeGamesProvider(BaseFreeGamesProvider):
         client: httpx.Client | None,
     ) -> FreeGameItem:
         title_lower = title.lower()
-        is_pack_name = "pack" in title_lower or "bundle" in title_lower or "collection" in title_lower
+        is_pack_name = (
+            "pack" in title_lower or "bundle" in title_lower or "collection" in title_lower
+        )
         is_dlc_name = any(
             w in title_lower
             for w in (" dlc", "dlc ", "expansion", "add-on", "addon", "season pass", "content pack")
@@ -295,7 +297,10 @@ class SteamFreeGamesProvider(BaseFreeGamesProvider):
             if not poster_url and capsule_img:
                 poster_url = capsule_img
 
-        raw_data: dict[str, Any] = {"kind": kind, "appId": int(item_id) if item_id.isdigit() else item_id}
+        raw_data: dict[str, Any] = {
+            "kind": kind,
+            "appId": int(item_id) if item_id.isdigit() else item_id,
+        }
         if details:
             raw_data["details"] = details
 

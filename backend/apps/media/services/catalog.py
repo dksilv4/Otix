@@ -206,7 +206,6 @@ def _asset_outranks(
     return candidate.pk < current.pk
 
 
-
 def _clean_asset_url(url: str | None) -> str | None:
     """Normalize local upload URLs to root-relative /uploads/<filename> to avoid Mixed Content."""
     from core.image_url import clean_image_url
@@ -285,9 +284,7 @@ def enrich_summaries(items: list[MediaItem], user: _User, context: str = "genera
         # Pre-load collection movies and sibling media items if not already prefetched
         movie_items = [it for it in items if getattr(it, "media_type", None) == "movie"]
         unloaded_movies = [
-            it
-            for it in movie_items
-            if "movie" not in getattr(it._state, "fields_cache", {})
+            it for it in movie_items if "movie" not in getattr(it._state, "fields_cache", {})
         ]
         if unloaded_movies:
             prefetch_related_objects(unloaded_movies, "movie__collection")

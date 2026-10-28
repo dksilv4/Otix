@@ -62,6 +62,22 @@ class PlexLibrariesView(APIView):
         return Response({"libraries": libraries})
 
 
+class PlexStreamableIdsView(APIView):
+    """GET /integrations/plex/streamable-ids — all catalog media IDs streamable by the user."""
+
+    def get(self, request):
+        if not getattr(request.user, "plex_id", None):
+            return Response({"media_ids": []})
+        from apps.integrations.models import UserPlexItem
+
+        media_ids = list(
+            UserPlexItem.objects.filter(user=request.user, media_item__isnull=False)
+            .values_list("media_item_id", flat=True)
+            .distinct()
+        )
+        return Response({"media_ids": [str(m) for m in media_ids]})
+
+
 class PlexConnectInfoView(APIView):
     """GET /integrations/plex/connect-info/{media_identifier}"""
 
@@ -118,9 +134,7 @@ class PlexContinueWatchingView(APIView):
             request.user, "plex_id", None
         ):
             return Response({"items": []})
-        return Response(
-            {"items": integrations_services.get_plex_continue_watching(request.user)}
-        )
+        return Response({"items": integrations_services.get_plex_continue_watching(request.user)})
 
 
 class PlexTimelineView(APIView):

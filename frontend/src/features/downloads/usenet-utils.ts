@@ -48,6 +48,67 @@ export function formatAgeDays(days?: number | null): string {
   return `${years}y ago`;
 }
 
+export interface UploadDateInfo {
+  dateStr: string;
+  relativeStr: string;
+  display: string;
+  fullTitle: string;
+}
+
+/** Format upload / publish date and relative age for a release. */
+export function formatUploadDate(
+  publishDate?: string | null,
+  ageDays?: number | null,
+): UploadDateInfo | null {
+  let date: Date | null = null;
+
+  if (publishDate) {
+    const d = new Date(publishDate);
+    if (!isNaN(d.getTime())) {
+      date = d;
+    }
+  }
+
+  if (!date && ageDays != null && !isNaN(ageDays)) {
+    date = new Date(Date.now() - ageDays * 86_400_000);
+  }
+
+  if (!date && (ageDays == null || isNaN(ageDays))) {
+    return null;
+  }
+
+  const dateStr = date
+    ? date.toLocaleDateString(undefined, {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+      })
+    : '';
+
+  const relativeStr = formatAgeDays(
+    ageDays != null && !isNaN(ageDays)
+      ? ageDays
+      : date
+        ? Math.max(0, Math.floor((Date.now() - date.getTime()) / 86_400_000))
+        : null,
+  );
+
+  const display = dateStr && relativeStr
+    ? `${dateStr} (${relativeStr})`
+    : (dateStr || relativeStr);
+
+  const fullTitle = date
+    ? `Uploaded on ${date.toLocaleDateString(undefined, {
+        weekday: 'short',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      })}`
+    : `Uploaded ${relativeStr}`;
+
+  return { dateStr, relativeStr, display, fullTitle };
+}
+
 /** Clean a dot-separated or underscore-separated scene title for clear readability. */
 export function cleanReleaseTitle(raw: string): string {
   if (!raw) return '';
@@ -63,13 +124,17 @@ export function normalizeProwlarrRelease(raw: unknown): ServerProwlarrRelease | 
   const title = String(item.title ?? '').trim()
   if (!title) return null
 
-  const downloadUrl = String(item.downloadUrl ?? item.download_url ?? '')
+  let downloadUrl = String(item.downloadUrl ?? item.download_url ?? item.magnetUrl ?? item.magnet_url ?? '')
+  const guid = String(item.guid ?? item.id ?? title)
+  if (!downloadUrl && guid.startsWith('magnet:')) {
+    downloadUrl = guid
+  }
   const infoUrl = item.infoUrl ?? item.info_url
   const publishDate = item.publishDate ?? item.publish_date
   const ageDays = item.ageDays ?? item.age_days
 
   return {
-    guid: String(item.guid ?? item.id ?? title),
+    guid,
     title,
     size: Number(item.size ?? 0) || 0,
     download_url: downloadUrl,
@@ -135,7 +200,8 @@ export function parseServiceAddress(rawInput: string, defaultPort?: number): Par
     return { host: '' };
   }
 
-  // 1. Auto-clean common typo commas between alphanumeric domain characters: "server,diogodasilva.com" -> "server.diogodasilva.com"
+  // 1. Auto-clean common typo commas between alphanumeric domain characters:
+  // "server,diogodasilva.com" -> "server.diogodasilva.com"
   const sanitized = trimmed.replace(/([a-zA-Z0-9_-]),([a-zA-Z0-9_-])/g, '$1.$2');
 
   const hasScheme = /^https?:\/\//i.test(sanitized);

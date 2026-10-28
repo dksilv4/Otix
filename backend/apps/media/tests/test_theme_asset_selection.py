@@ -219,4 +219,3 @@ class RatingComputationTests(TestCase):
         item.refresh_from_db()
         self.assertEqual(item.overall_rating, 85.0)
         self.assertEqual(item.overall_rating_source, "external")
-

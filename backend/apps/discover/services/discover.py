@@ -224,7 +224,9 @@ def trending_seasons(
     if not (genre and genre.lower() in catalog_service.TALK_SHOW_GENRE_SLUGS):
         qs = qs.exclude(
             Q(show__media_item__media_genres__genre__slug__in=catalog_service.TALK_SHOW_GENRE_SLUGS)
-            | Q(show__media_item__media_genres__genre__name__in=catalog_service.TALK_SHOW_GENRE_NAMES)
+            | Q(
+                show__media_item__media_genres__genre__name__in=catalog_service.TALK_SHOW_GENRE_NAMES
+            )
         )
     if language:
         qs = qs.filter(show__media_item__original_language=language)

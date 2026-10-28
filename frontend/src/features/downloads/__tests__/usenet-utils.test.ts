@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   extractReleaseBadges,
   formatAgeDays,
+  formatUploadDate,
   cleanReleaseTitle,
   sortReleasesByQuality,
   parseServiceAddress,
@@ -37,6 +38,28 @@ describe('Usenet Utilities', () => {
       expect(formatAgeDays(400)).toBe('1.1y ago');
       expect(formatAgeDays(null)).toBe('');
       expect(formatAgeDays(undefined)).toBe('');
+    });
+  });
+
+  describe('formatUploadDate', () => {
+    it('formats ISO publish date and relative age into readable upload string', () => {
+      const res = formatUploadDate('2024-05-18T10:15:00Z', 160);
+      expect(res).not.toBeNull();
+      expect(res?.display).toContain('May 18, 2024');
+      expect(res?.display).toContain('5mo ago');
+      expect(res?.fullTitle).toContain('Uploaded on');
+    });
+
+    it('derives date when only ageDays is provided', () => {
+      const res = formatUploadDate(null, 14);
+      expect(res).not.toBeNull();
+      expect(res?.display).toContain('14d ago');
+      expect(res?.fullTitle).toContain('Uploaded on');
+    });
+
+    it('returns null when neither publishDate nor ageDays is provided', () => {
+      expect(formatUploadDate(null, null)).toBeNull();
+      expect(formatUploadDate(undefined, undefined)).toBeNull();
     });
   });
 

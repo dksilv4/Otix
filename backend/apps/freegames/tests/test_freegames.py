@@ -261,7 +261,9 @@ class SteamFreeGamesProviderTests(TestCase):
         self.assertEqual(dlc_item.item_type, "pack")
         self.assertEqual(dlc_item.base_game_title, "Rotwood")
         self.assertEqual(dlc_item.base_game_id, "1801200")
-        self.assertEqual(dlc_item.poster_url, "https://cdn.akamai.steamstatic.com/steam/apps/2000000/header.jpg")
+        self.assertEqual(
+            dlc_item.poster_url, "https://cdn.akamai.steamstatic.com/steam/apps/2000000/header.jpg"
+        )
         self.assertEqual(dlc_item.claim_url, "https://store.steampowered.com/app/2000000")
 
         sub_item = by_id["987654"]

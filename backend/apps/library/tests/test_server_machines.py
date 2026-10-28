@@ -181,10 +181,14 @@ class ServerMachinesTestCase(APITestCase):
     def test_unauthenticated_access_is_rejected(self):
         self.client.logout()
         res_homes = self.client.get("/api/v1/library/homes")
-        self.assertIn(res_homes.status_code, (status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN))
+        self.assertIn(
+            res_homes.status_code, (status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN)
+        )
 
         res_machines = self.client.get("/api/v1/library/server-machines")
-        self.assertIn(res_machines.status_code, (status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN))
+        self.assertIn(
+            res_machines.status_code, (status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN)
+        )
 
     def test_cross_user_isolation_forbidden(self):
         other_user = User.objects.create_user(
@@ -202,11 +206,18 @@ class ServerMachinesTestCase(APITestCase):
         self.assertNotIn(self.home.id, home_ids)
 
         # Other user cannot fetch or patch primary user's home
-        self.assertEqual(self.client.get(f"/api/v1/library/homes/{self.home.id}").status_code, status.HTTP_404_NOT_FOUND)
-        self.assertEqual(self.client.patch(f"/api/v1/library/homes/{self.home.id}", {"name": "Hacked"}).status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(
+            self.client.get(f"/api/v1/library/homes/{self.home.id}").status_code,
+            status.HTTP_404_NOT_FOUND,
+        )
+        self.assertEqual(
+            self.client.patch(
+                f"/api/v1/library/homes/{self.home.id}", {"name": "Hacked"}
+            ).status_code,
+            status.HTTP_404_NOT_FOUND,
+        )
 
         # Other user cannot see primary user's server machines
         res_machines = self.client.get("/api/v1/library/server-machines")
         self.assertEqual(res_machines.status_code, status.HTTP_200_OK)
         self.assertEqual(len(res_machines.data), 0)
-

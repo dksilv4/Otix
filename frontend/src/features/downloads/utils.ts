@@ -117,6 +117,84 @@ export const findReleaseHistoryItem = (
   )
 }
 
+export const isRawDownloadId = (name?: string | null, nzoId?: string | null): boolean => {
+  if (!name) return true
+  const s = name.trim().toLowerCase()
+  if (!s) return true
+  if (nzoId && s === nzoId.trim().toLowerCase()) return true
+  return s.startsWith('sabnzbd_nzo_') || s.startsWith('nzo_')
+}
+
+export const resolveDownloadDisplayTitle = (
+  item: { title?: string | null; filename?: string | null; nzo_id?: string | null },
+  fallback = 'Usenet Download',
+): string => {
+  if (item.title && !isRawDownloadId(item.title, item.nzo_id)) {
+    return item.title
+  }
+  if (item.filename && !isRawDownloadId(item.filename, item.nzo_id)) {
+    return item.filename
+  }
+  return item.title || item.filename || item.nzo_id || fallback
+}
+
+export const formatRelativeTime = (isoString?: string | null): string => {
+  if (!isoString) return ''
+  const date = new Date(isoString)
+  if (isNaN(date.getTime())) return ''
+  const now = Date.now()
+  const diffSec = Math.floor((now - date.getTime()) / 1000)
+  if (diffSec < 60) return 'Just now'
+  const diffMin = Math.floor(diffSec / 60)
+  if (diffMin < 60) return `${diffMin}m ago`
+  const diffHours = Math.floor(diffMin / 60)
+  if (diffHours < 24) return `${diffHours}h ago`
+  const diffDays = Math.floor(diffHours / 24)
+  if (diffDays < 30) return `${diffDays}d ago`
+  return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+}
+
+export const statusBadgeConfig = (status: string): { label: string; className: string } => {
+  const s = (status || '').toLowerCase()
+  if (s === 'completed' || s === 'complete') {
+    return { label: 'Completed', className: 'bg-[var(--status-online)]/15 text-[var(--status-online)]' }
+  }
+  if (s === 'failed' || s === 'fail' || s === 'error') {
+    return { label: 'Failed', className: 'bg-destructive/10 text-destructive' }
+  }
+  if (s === 'cancelled' || s === 'canceled' || s === 'deleted') {
+    return { label: 'Cancelled', className: 'bg-[var(--dk-surface-ghost)] text-muted-foreground' }
+  }
+  if (s.includes('extract') || s.includes('repair') || s.includes('verif') || s.includes('unpack') || s.includes('post')) {
+    return { label: 'Processing', className: 'bg-primary/15 text-primary' }
+  }
+  if (s.includes('pause')) {
+    return { label: 'Paused', className: 'bg-[var(--status-warning)]/15 text-[var(--status-warning)]' }
+  }
+  return { label: status || 'Queued', className: 'bg-primary/15 text-primary' }
+}
+
+export const filterHistoryItems = (
+  items: ServerDownloadHistoryItem[],
+  statusFilter: 'all' | 'completed' | 'failed' | 'cancelled',
+  searchQuery: string,
+): ServerDownloadHistoryItem[] => {
+  return items.filter((item) => {
+    const s = (item.status || '').toLowerCase()
+    if (statusFilter === 'completed' && s !== 'completed' && s !== 'complete') return false
+    if (statusFilter === 'failed' && s !== 'failed' && s !== 'fail' && s !== 'error') return false
+    if (statusFilter === 'cancelled' && s !== 'cancelled' && s !== 'canceled' && s !== 'deleted') return false
+
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim()
+      const titleMatch = (item.title || '').toLowerCase().includes(q)
+      const nzoMatch = (item.nzo_id || '').toLowerCase().includes(q)
+      if (!titleMatch && !nzoMatch) return false
+    }
+    return true
+  })
+}
+
 export const kindLabel = (kind?: 'game' | 'update' | 'dlc' | 'other', version?: string | null) => {
   if (kind === 'update') {
     return {

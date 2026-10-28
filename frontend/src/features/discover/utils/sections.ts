@@ -11,7 +11,7 @@ export interface DiscoverSectionDefinition {
 export type DiscoverPreset = 'all' | 'gaming' | 'cinema' | 'minimal'
 export type DiscoverIntent = 'all' | 'movies' | 'shows' | 'games' | 'free_games' | 'streamable'
 
-export const DISCOVER_SECTIONS_STORAGE_KEY = 'otix:discover:sections:v4'
+export const DISCOVER_SECTIONS_STORAGE_KEY = 'otix:discover:sections:v5'
 
 export const DEFAULT_DISCOVER_SECTIONS: DiscoverSectionDefinition[] = [
   {
@@ -29,10 +29,10 @@ export const DEFAULT_DISCOVER_SECTIONS: DiscoverSectionDefinition[] = [
     defaultEnabled: true,
   },
   {
-    id: 'streamable_media',
-    label: 'Available to Stream',
-    description: 'Movies and TV series ready to watch from your personal media library',
-    category: 'curated',
+    id: 'player_activity',
+    label: 'Live Activity',
+    description: 'Live play sessions and active media playback across games, streams, and music',
+    category: 'social',
     defaultEnabled: true,
   },
   {
@@ -78,13 +78,6 @@ export const DEFAULT_DISCOVER_SECTIONS: DiscoverSectionDefinition[] = [
     defaultEnabled: true,
   },
   {
-    id: 'player_activity',
-    label: 'Player & Friend Activity',
-    description: 'Live play sessions and activity from friends and the community',
-    category: 'social',
-    defaultEnabled: true,
-  },
-  {
     id: 'genres_explore',
     label: 'Genre Explorer',
     description: 'Quick-access curated genre capsules across all media',
@@ -107,26 +100,26 @@ export const PRESET_CONFIGS: Record<DiscoverPreset, { label: string; description
     order: [
       'fan_spotlight',
       'continue_watching',
+      'player_activity',
       'decide_for_me',
       'trending_movies',
       'trending_shows',
       'trending_seasons',
       'free_games',
       'gaming_rails',
-      'player_activity',
       'genres_explore',
       'extended_catalog',
     ],
     enabled: [
       'fan_spotlight',
       'continue_watching',
+      'player_activity',
       'decide_for_me',
       'trending_movies',
       'trending_shows',
       'trending_seasons',
       'free_games',
       'gaming_rails',
-      'player_activity',
       'genres_explore',
       'extended_catalog',
     ],
@@ -164,26 +157,26 @@ export const PRESET_CONFIGS: Record<DiscoverPreset, { label: string; description
     order: [
       'fan_spotlight',
       'continue_watching',
+      'player_activity',
       'decide_for_me',
       'trending_movies',
       'trending_shows',
       'trending_seasons',
       'genres_explore',
       'extended_catalog',
-      'player_activity',
       'free_games',
       'gaming_rails',
     ],
     enabled: [
       'fan_spotlight',
       'continue_watching',
+      'player_activity',
       'decide_for_me',
       'trending_movies',
       'trending_shows',
       'trending_seasons',
       'genres_explore',
       'extended_catalog',
-      'player_activity',
     ],
   },
   minimal: {
@@ -192,17 +185,17 @@ export const PRESET_CONFIGS: Record<DiscoverPreset, { label: string; description
     order: [
       'fan_spotlight',
       'continue_watching',
+      'player_activity',
       'decide_for_me',
       'free_games',
       'trending_movies',
       'trending_shows',
       'trending_seasons',
       'gaming_rails',
-      'player_activity',
       'genres_explore',
       'extended_catalog',
     ],
-    enabled: ['fan_spotlight', 'continue_watching', 'decide_for_me', 'free_games'],
+    enabled: ['fan_spotlight', 'continue_watching', 'player_activity', 'decide_for_me', 'free_games'],
   },
 }
 

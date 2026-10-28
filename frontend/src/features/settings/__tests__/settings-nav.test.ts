@@ -23,6 +23,8 @@ describe('settings navigation IA', () => {
     expect(NAV_ITEMS.find((i) => i.id === 'about')?.group).toBe('preferences')
     expect(NAV_ITEMS.find((i) => i.id === 'about')?.label).toBe('About')
     expect(NAV_ITEMS.find((i) => i.id === 'connections')?.label).toBe('Connections')
+    expect(NAV_ITEMS.find((i) => i.id === 'node-connections')?.label).toBe('Node Connections')
+    expect(NAV_ITEMS.find((i) => i.id === 'node-connections')?.group).toBe('connections')
     expect(NAV_ITEMS.find((i) => i.id === 'nodes')?.label).toBe('Nodes')
     expect(NAV_ITEMS.find((i) => i.id === 'nodes')?.isPage).toBe(true)
     expect(NAV_ITEMS.find((i) => i.id === 'nodes')?.group).toBe('library')

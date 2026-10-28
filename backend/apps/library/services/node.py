@@ -143,15 +143,15 @@ def record_node_heartbeat(payload: dict) -> dict:
             return True
         if current.get("claim_code") and row.get("claim_code") == current.get("claim_code"):
             return True
-        if row.get("local_url") and current.get("local_url") and row.get("local_url") == current.get("local_url"):
+        if (
+            row.get("local_url")
+            and current.get("local_url")
+            and row.get("local_url") == current.get("local_url")
+        ):
             return True
         return False
 
-    nodes = [
-        row
-        for row in (cache.get(PENDING_CACHE_KEY) or [])
-        if not _is_same_node(row, node)
-    ]
+    nodes = [row for row in (cache.get(PENDING_CACHE_KEY) or []) if not _is_same_node(row, node)]
     nodes.append(node)
     cache.set(PENDING_CACHE_KEY, nodes, PENDING_TTL)
     return node
@@ -167,7 +167,7 @@ def apply_node_heartbeat(payload: dict) -> dict:
     claim_code = (payload.get("claim_code") or "").strip().upper()
     cached_claim = None
     if claim_code:
-        for cached in (cache.get(PENDING_CACHE_KEY) or []):
+        for cached in cache.get(PENDING_CACHE_KEY) or []:
             if (
                 str(cached.get("claim_code") or "").strip().upper() == claim_code
                 and cached.get("claimed")
@@ -181,7 +181,10 @@ def apply_node_heartbeat(payload: dict) -> dict:
         node["claimed"] = True
         node["auth_token"] = cached_claim.get("auth_token")
         node["claimed_by"] = cached_claim.get("claimed_by", "")
-        if not node.get("server_name") or node.get("server_name") in ("Otix Game Server", "Otix Node"):
+        if not node.get("server_name") or node.get("server_name") in (
+            "Otix Game Server",
+            "Otix Node",
+        ):
             node["server_name"] = cached_claim.get("server_name", node.get("server_name"))
         # Rendezvous claim delivered: prune from pending cache
         remaining = [
@@ -205,9 +208,14 @@ def apply_node_heartbeat(payload: dict) -> dict:
         query = Q()
         for url in urls:
             query |= (
-                Q(local_url=url) | Q(local_url=f"{url}/") | Q(remote_url=url) | Q(remote_url=f"{url}/")
+                Q(local_url=url)
+                | Q(local_url=f"{url}/")
+                | Q(remote_url=url)
+                | Q(remote_url=f"{url}/")
             )
-        UserGameServer.objects.filter(query, is_online=True).update(is_online=False, updated_at=timezone.now())
+        UserGameServer.objects.filter(query, is_online=True).update(
+            is_online=False, updated_at=timezone.now()
+        )
         return node
 
     # Genuinely claimed node: match existing servers by token or URL and update state
@@ -222,12 +230,10 @@ def apply_node_heartbeat(payload: dict) -> dict:
     matched_servers = list(UserGameServer.objects.filter(query).select_related("user"))
     if not matched_servers and bool(payload.get("claimed")):
         from django.contrib.auth import get_user_model
+
         User = get_user_model()
         claimed_username = (
-            payload.get("claimed_by")
-            or payload.get("username")
-            or node.get("claimed_by")
-            or ""
+            payload.get("claimed_by") or payload.get("username") or node.get("claimed_by") or ""
         ).strip()
         claimed_user = None
         if claimed_username:
@@ -274,7 +280,9 @@ def apply_node_heartbeat(payload: dict) -> dict:
         node_port = node.get("port")
         if node_port:
             expected_local = f"http://127.0.0.1:{node_port}"
-            if not server.local_url or ("127.0.0.1" in server.local_url or "localhost" in server.local_url):
+            if not server.local_url or (
+                "127.0.0.1" in server.local_url or "localhost" in server.local_url
+            ):
                 if server.local_url != expected_local:
                     server.local_url = expected_local
                     fields.append("local_url")
@@ -294,13 +302,21 @@ def apply_node_heartbeat(payload: dict) -> dict:
         node["server_name"] = server.name
 
         running_game = payload.get("running_game")
-        if running_game and isinstance(running_game, dict) and (running_game.get("title") or running_game.get("id")):
+        if (
+            running_game
+            and isinstance(running_game, dict)
+            and (running_game.get("title") or running_game.get("id"))
+        ):
             cache_key = f"user_running_game:{server.user_id}"
-            cache.set(cache_key, {
-                "running": True,
-                "game": running_game,
-                "games": [running_game],
-            }, timeout=90)
+            cache.set(
+                cache_key,
+                {
+                    "running": True,
+                    "game": running_game,
+                    "games": [running_game],
+                },
+                timeout=90,
+            )
     return node
 
 
@@ -376,9 +392,17 @@ def claim_node_by_pin(
     user_nodes_count = UserNode.objects.filter(user=user).count() + 1
     raw_name = (server_name or "").strip()
     announced_name = (target_node.get("server_name") if target_node else None) or ""
-    if raw_name and raw_name not in ("Otix Game Server", "Otix Node") and not raw_name.startswith("Node ID:"):
+    if (
+        raw_name
+        and raw_name not in ("Otix Game Server", "Otix Node")
+        and not raw_name.startswith("Node ID:")
+    ):
         resolved_name = raw_name
-    elif announced_name and announced_name not in ("Otix Game Server", "Otix Node") and not announced_name.startswith("Node ID:"):
+    elif (
+        announced_name
+        and announced_name not in ("Otix Game Server", "Otix Node")
+        and not announced_name.startswith("Node ID:")
+    ):
         resolved_name = announced_name
     elif raw_name:
         resolved_name = raw_name
@@ -502,23 +526,22 @@ def claim_node_direct(
     import secrets
 
     server_name = (
-        payload.get("server_name")
-        or payload.get("serverName")
-        or payload.get("name")
-        or ""
+        payload.get("server_name") or payload.get("serverName") or payload.get("name") or ""
     ).strip()
 
     auth_token = (
-        payload.get("auth_token")
-        or payload.get("authToken")
-        or secrets.token_hex(24)
+        payload.get("auth_token") or payload.get("authToken") or secrets.token_hex(24)
     ).strip()
 
     port = int(payload.get("port") or 8090)
     endpoints = payload.get("local_endpoints") or payload.get("localEndpoints") or []
 
     user_nodes_count = UserNode.objects.filter(user=user).count() + 1
-    if not server_name or server_name in ("Otix Game Server", "Otix Node") or server_name.startswith("Node ID:"):
+    if (
+        not server_name
+        or server_name in ("Otix Game Server", "Otix Node")
+        or server_name.startswith("Node ID:")
+    ):
         pending_matches = [
             n
             for n in list_pending_nodes()
@@ -526,7 +549,11 @@ def claim_node_direct(
             or any(ep and n.get("local_url") == ep for ep in endpoints)
         ]
         announced = pending_matches[0].get("server_name") if pending_matches else ""
-        if announced and announced not in ("Otix Game Server", "Otix Node") and not announced.startswith("Node ID:"):
+        if (
+            announced
+            and announced not in ("Otix Game Server", "Otix Node")
+            and not announced.startswith("Node ID:")
+        ):
             resolved_name = announced
         elif server_name:
             resolved_name = server_name
@@ -652,8 +679,6 @@ def unclaim_node(token: str = "", urls: list[str] | None = None, user=None) -> i
     return count
 
 
-
-
 def probe_node_reachability(server: UserGameServer) -> dict:
     """Test remote and local network connectivity to an Otix node."""
     if getattr(server, "is_local_desktop", False):
@@ -669,7 +694,9 @@ def probe_node_reachability(server: UserGameServer) -> dict:
             "status": "online" if is_online else "offline",
             "latency_ms": 1 if is_online else None,
             "tested_url": server.local_url or "otix://desktop",
-            "message": "Local desktop node is active." if is_online else "Local desktop node is inactive.",
+            "message": "Local desktop node is active."
+            if is_online
+            else "Local desktop node is inactive.",
         }
     headers = _auth_headers(server)
 
@@ -795,7 +822,11 @@ def _merge_game_server_into(keeper: UserGameServer, extra: UserGameServer) -> No
         fields.append("auth_token")
     if extra.name and keeper.name != extra.name:
         is_generic_extra = extra.name in ("This PC", "This Mac", "This computer")
-        has_custom_keeper = keeper.name and keeper.name not in ("This PC", "This Mac", "This computer")
+        has_custom_keeper = keeper.name and keeper.name not in (
+            "This PC",
+            "This Mac",
+            "This computer",
+        )
         if not (is_generic_extra and has_custom_keeper):
             keeper.name = extra.name
             fields.append("name")
@@ -858,7 +889,15 @@ def link_or_create_node(user, data: dict) -> tuple[UserNode, bool]:
         if not (incoming & existing):
             continue
         fields: list[str] = []
-        for field in ("name", "local_url", "remote_url", "auth_token", "is_active", "is_local", "is_local_desktop"):
+        for field in (
+            "name",
+            "local_url",
+            "remote_url",
+            "auth_token",
+            "is_active",
+            "is_local",
+            "is_local_desktop",
+        ):
             value = data.get(field)
             if value in (None, "") or getattr(server, field) == value:
                 continue
@@ -988,7 +1027,10 @@ def _format_node_error(exc: Exception | str) -> tuple[str, str]:
         return "Connection refused. Ensure the Otix node daemon is running.", "connection_refused"
 
     if is_ssl or "certificate verify failed" in err_lower or "ssl:" in err_lower:
-        return "TLS/SSL verification failed. Check the node certificate or secure URL configuration.", "ssl_error"
+        return (
+            "TLS/SSL verification failed. Check the node certificate or secure URL configuration.",
+            "ssl_error",
+        )
 
     if (
         is_dns
@@ -998,11 +1040,19 @@ def _format_node_error(exc: Exception | str) -> tuple[str, str]:
     ):
         return "Hostname resolution failed. Verify the configured node URL.", "dns_error"
 
-    if "bad gateway" in err_lower or "502" in err_lower or "503" in err_lower or "service unavailable" in err_lower:
+    if (
+        "bad gateway" in err_lower
+        or "502" in err_lower
+        or "503" in err_lower
+        or "service unavailable" in err_lower
+    ):
         return "Node is offline or unreachable.", "node_unreachable"
 
     if isinstance(exc, (httpx.ConnectError, httpx.NetworkError)):
-        return "Node is offline or unreachable. Ensure the Otix node is running and accessible.", "node_unreachable"
+        return (
+            "Node is offline or unreachable. Ensure the Otix node is running and accessible.",
+            "node_unreachable",
+        )
 
     clean = re.sub(r"\[Errno\s+\d+\]\s*", "", err_str).strip()
     clean = re.sub(r"^<[^:>]+Error:\s*(.*)>$", r"\1", clean).strip()
@@ -1206,9 +1256,7 @@ def usenet_proxy_request(
     json: dict | None = None,
     timeout: float = 6.0,
 ) -> tuple[int, dict | list]:
-    return server_proxy_request(
-        server, method, path, params=params, json=json, timeout=timeout
-    )
+    return server_proxy_request(server, method, path, params=params, json=json, timeout=timeout)
 
 
 def explorer_browse(server: UserGameServer, path: str | None = None) -> tuple[int, dict | list]:
@@ -1421,9 +1469,13 @@ def sabnzbd_resume_queue(server: UserGameServer) -> tuple[int, dict | list]:
     return usenet_proxy_request(server, "POST", "/api/v1/sabnzbd/resume", timeout=5.0)
 
 
-def scan_game_libraries(server: UserGameServer, params: dict | None = None) -> tuple[int, dict | list]:
+def scan_game_libraries(
+    server: UserGameServer, params: dict | None = None
+) -> tuple[int, dict | list]:
     """Ask the game server to re-index installer files after a download completes."""
-    is_waiting = bool(params and (params.get("wait") in ("1", "true", 1) or params.get("wait") is True))
+    is_waiting = bool(
+        params and (params.get("wait") in ("1", "true", 1) or params.get("wait") is True)
+    )
     timeout = 120.0 if is_waiting else 10.0
     return server_proxy_request(server, "POST", "/api/v1/scan", params=params, timeout=timeout)
 
@@ -1433,9 +1485,7 @@ def clear_scanned_game_libraries(server: UserGameServer) -> tuple[int, dict | li
     return usenet_proxy_request(server, "POST", "/api/v1/scan/clear", timeout=15.0)
 
 
-def node_get_sessions(
-    server: UserGameServer, limit: int = 100
-) -> tuple[int, dict | list]:
+def node_get_sessions(server: UserGameServer, limit: int = 100) -> tuple[int, dict | list]:
     """Fetch recorded gameplay sessions and performance metrics from the node."""
     params = {"limit": limit}
     return usenet_proxy_request(server, "GET", "/api/v1/games/sessions", params=params, timeout=6.0)
@@ -1732,7 +1782,9 @@ def desktop_get_settings(
     target_url = server.primary_url or server.local_url or ""
     if not server.is_online or not target_url or target_url.startswith("otix://"):
         return 200, cached if cached is not None else {}
-    status_code, data = usenet_proxy_request(server, "GET", "/api/v1/desktop/settings", params=params, timeout=10.0)
+    status_code, data = usenet_proxy_request(
+        server, "GET", "/api/v1/desktop/settings", params=params, timeout=10.0
+    )
     if status_code < 400 and isinstance(data, dict):
         if not data.get("hardware"):
             hw_code, hw_data = usenet_proxy_request(server, "GET", "/api/v1/hardware", timeout=6.0)
@@ -1771,11 +1823,21 @@ def node_replace_libraries(server: UserGameServer, payload: dict) -> tuple[int, 
     target_url = server.primary_url or server.local_url or ""
     if not server.is_online or not target_url or target_url.startswith("otix://"):
         queue_node_update(server.id, "libraries", payload)
-        return 200, {"status": "queued", "message": "Libraries saved and queued for sync", "queued": True}
-    status_code, data = usenet_proxy_request(server, "PUT", "/api/v1/libraries", json=payload, timeout=20.0)
+        return 200, {
+            "status": "queued",
+            "message": "Libraries saved and queued for sync",
+            "queued": True,
+        }
+    status_code, data = usenet_proxy_request(
+        server, "PUT", "/api/v1/libraries", json=payload, timeout=20.0
+    )
     if status_code >= 400:
         queue_node_update(server.id, "libraries", payload)
-        return 200, {"status": "queued", "message": "Node unreachable; changes saved and queued for sync", "queued": True}
+        return 200, {
+            "status": "queued",
+            "message": "Node unreachable; changes saved and queued for sync",
+            "queued": True,
+        }
     return status_code, data
 
 
@@ -1798,18 +1860,32 @@ def node_save_organize(server: UserGameServer, payload: dict) -> tuple[int, dict
     target_url = server.primary_url or server.local_url or ""
     if not server.is_online or not target_url or target_url.startswith("otix://"):
         queue_node_update(server.id, "organize", payload)
-        return 200, {"status": "queued", "message": "Organize settings saved and queued for sync", "queued": True}
-    status_code, data = usenet_proxy_request(server, "POST", "/api/v1/organize", json=payload, timeout=10.0)
+        return 200, {
+            "status": "queued",
+            "message": "Organize settings saved and queued for sync",
+            "queued": True,
+        }
+    status_code, data = usenet_proxy_request(
+        server, "POST", "/api/v1/organize", json=payload, timeout=10.0
+    )
     if status_code >= 400:
         queue_node_update(server.id, "organize", payload)
-        return 200, {"status": "queued", "message": "Node unreachable; changes saved and queued for sync", "queued": True}
+        return 200, {
+            "status": "queued",
+            "message": "Node unreachable; changes saved and queued for sync",
+            "queued": True,
+        }
     return status_code, data
 
 
 def node_preview_organize(server: UserGameServer, payload: dict) -> tuple[int, dict | list]:
     if not server.primary_url or server.primary_url.startswith("otix://"):
-        return 400, {"error": "Local desktop client node does not support server-side organization preview."}
-    status_code, data = usenet_proxy_request(server, "POST", "/api/v1/organize/preview", json=payload, timeout=180.0)
+        return 400, {
+            "error": "Local desktop client node does not support server-side organization preview."
+        }
+    status_code, data = usenet_proxy_request(
+        server, "POST", "/api/v1/organize/preview", json=payload, timeout=180.0
+    )
     if status_code >= 400:
         detail = ""
         if isinstance(data, dict):
@@ -1822,8 +1898,12 @@ def node_preview_organize(server: UserGameServer, payload: dict) -> tuple[int, d
 
 def node_execute_organize(server: UserGameServer, payload: dict) -> tuple[int, dict | list]:
     if not server.primary_url or server.primary_url.startswith("otix://"):
-        return 400, {"error": "Local desktop client node does not support server-side organization execution."}
-    return usenet_proxy_request(server, "POST", "/api/v1/organize/execute", json=payload, timeout=120.0)
+        return 400, {
+            "error": "Local desktop client node does not support server-side organization execution."
+        }
+    return usenet_proxy_request(
+        server, "POST", "/api/v1/organize/execute", json=payload, timeout=120.0
+    )
 
 
 def desktop_save_settings(server: UserGameServer, payload: dict) -> tuple[int, dict | list]:
@@ -1831,13 +1911,21 @@ def desktop_save_settings(server: UserGameServer, payload: dict) -> tuple[int, d
     target_url = server.primary_url or server.local_url or ""
     if not server.is_online or not target_url or target_url.startswith("otix://"):
         queue_node_update(server.id, "desktop_settings", payload)
-        return 200, {"status": "queued", "message": "Desktop settings saved and queued for sync", "queued": True}
+        return 200, {
+            "status": "queued",
+            "message": "Desktop settings saved and queued for sync",
+            "queued": True,
+        }
     status_code, data = usenet_proxy_request(
         server, "POST", "/api/v1/desktop/settings", json=payload, timeout=10.0
     )
     if status_code >= 400:
         queue_node_update(server.id, "desktop_settings", payload)
-        return 200, {"status": "queued", "message": "Node unreachable; changes saved and queued for sync", "queued": True}
+        return 200, {
+            "status": "queued",
+            "message": "Node unreachable; changes saved and queued for sync",
+            "queued": True,
+        }
     return status_code, data
 
 

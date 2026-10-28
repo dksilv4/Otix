@@ -41,9 +41,8 @@ class SectionPrivacyTests(TestCase):
         self.friend_client.credentials(HTTP_AUTHORIZATION=f"Token {self.friend_token.key}")
 
         from apps.social.models import FriendRequest
-        FriendRequest.objects.create(
-            sender=self.owner, receiver=self.friend, status="accepted"
-        )
+
+        FriendRequest.objects.create(sender=self.owner, receiver=self.friend, status="accepted")
 
         self.anon_client = APIClient()
 
@@ -52,9 +51,7 @@ class SectionPrivacyTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn("game_sessions", response.data["profile_sections"])
         self.assertIn("reviews", response.data["profile_sections"])
-        self.assertEqual(
-            response.data["section_visibility"]["game_sessions"], "private"
-        )
+        self.assertEqual(response.data["section_visibility"]["game_sessions"], "private")
 
     def test_visitor_and_anon_see_only_public_sections(self) -> None:
         # Visitor
@@ -155,13 +152,17 @@ class SectionPrivacyTests(TestCase):
         self.owner.save(update_fields=["hall_of_fame_media_ids"])
 
         # Owner gets resolved Top 5
-        res_owner = self.owner_client.get(f"/api/v1/users/{self.owner.username}/hall-of-fame?media_type=top_5")
+        res_owner = self.owner_client.get(
+            f"/api/v1/users/{self.owner.username}/hall-of-fame?media_type=top_5"
+        )
         self.assertEqual(res_owner.status_code, 200)
         self.assertEqual(len(res_owner.data), 1)
         self.assertEqual(res_owner.data[0]["title"], "The Matrix")
 
         # When public, visitor gets it too
-        res_vis = self.visitor_client.get(f"/api/v1/users/{self.owner.username}/hall-of-fame?media_type=top_5")
+        res_vis = self.visitor_client.get(
+            f"/api/v1/users/{self.owner.username}/hall-of-fame?media_type=top_5"
+        )
         self.assertEqual(res_vis.status_code, 200)
         self.assertEqual(len(res_vis.data), 1)
 
@@ -170,12 +171,16 @@ class SectionPrivacyTests(TestCase):
         self.owner.save(update_fields=["section_visibility"])
 
         # Friend gets it
-        res_friend = self.friend_client.get(f"/api/v1/users/{self.owner.username}/hall-of-fame?media_type=top_5")
+        res_friend = self.friend_client.get(
+            f"/api/v1/users/{self.owner.username}/hall-of-fame?media_type=top_5"
+        )
         self.assertEqual(res_friend.status_code, 200)
         self.assertEqual(len(res_friend.data), 1)
 
         # Visitor gets empty list
-        res_vis_f = self.visitor_client.get(f"/api/v1/users/{self.owner.username}/hall-of-fame?media_type=top_5")
+        res_vis_f = self.visitor_client.get(
+            f"/api/v1/users/{self.owner.username}/hall-of-fame?media_type=top_5"
+        )
         self.assertEqual(res_vis_f.status_code, 200)
         self.assertEqual(res_vis_f.data, [])
 
@@ -184,21 +189,29 @@ class SectionPrivacyTests(TestCase):
         self.owner.save(update_fields=["section_visibility"])
 
         # Friend gets empty list when private
-        res_friend_priv = self.friend_client.get(f"/api/v1/users/{self.owner.username}/hall-of-fame?media_type=top_5")
+        res_friend_priv = self.friend_client.get(
+            f"/api/v1/users/{self.owner.username}/hall-of-fame?media_type=top_5"
+        )
         self.assertEqual(res_friend_priv.data, [])
 
         # Visitor gets empty list
-        res_vis2 = self.visitor_client.get(f"/api/v1/users/{self.owner.username}/hall-of-fame?media_type=top_5")
+        res_vis2 = self.visitor_client.get(
+            f"/api/v1/users/{self.owner.username}/hall-of-fame?media_type=top_5"
+        )
         self.assertEqual(res_vis2.status_code, 200)
         self.assertEqual(res_vis2.data, [])
 
         # Owner still sees it
-        res_owner2 = self.owner_client.get(f"/api/v1/users/{self.owner.username}/hall-of-fame?media_type=top_5")
+        res_owner2 = self.owner_client.get(
+            f"/api/v1/users/{self.owner.username}/hall-of-fame?media_type=top_5"
+        )
         self.assertEqual(len(res_owner2.data), 1)
 
     def test_activity_heatmap_endpoint_and_privacy(self) -> None:
         # Public by default
-        res = self.visitor_client.get(f"/api/v1/users/{self.owner.username}/activity-heatmap?weeks=12")
+        res = self.visitor_client.get(
+            f"/api/v1/users/{self.owner.username}/activity-heatmap?weeks=12"
+        )
         self.assertEqual(res.status_code, 200)
         self.assertIn("dates", res.data)
         self.assertEqual(res.data["weeks"], 12)
@@ -208,7 +221,9 @@ class SectionPrivacyTests(TestCase):
         self.owner.save(update_fields=["section_visibility"])
 
         # Friend sees full dates
-        res_friend = self.friend_client.get(f"/api/v1/users/{self.owner.username}/activity-heatmap?weeks=12")
+        res_friend = self.friend_client.get(
+            f"/api/v1/users/{self.owner.username}/activity-heatmap?weeks=12"
+        )
         self.assertEqual(res_friend.status_code, 200)
         self.assertTrue(len(res_friend.data["dates"]) > 0)
 
@@ -222,7 +237,9 @@ class SectionPrivacyTests(TestCase):
         self.owner.save(update_fields=["section_visibility"])
 
         # Friend receives empty dates
-        res_friend_priv = self.friend_client.get(f"/api/v1/users/{self.owner.username}/activity-heatmap")
+        res_friend_priv = self.friend_client.get(
+            f"/api/v1/users/{self.owner.username}/activity-heatmap"
+        )
         self.assertEqual(res_friend_priv.data["dates"], [])
 
         # Visitor receives empty dates
@@ -231,7 +248,9 @@ class SectionPrivacyTests(TestCase):
         self.assertEqual(res_vis.data["dates"], [])
 
         # Owner sees full dates
-        res_owner = self.owner_client.get(f"/api/v1/users/{self.owner.username}/activity-heatmap?weeks=12")
+        res_owner = self.owner_client.get(
+            f"/api/v1/users/{self.owner.username}/activity-heatmap?weeks=12"
+        )
         self.assertEqual(res_owner.status_code, 200)
         self.assertTrue(len(res_owner.data["dates"]) > 0)
 

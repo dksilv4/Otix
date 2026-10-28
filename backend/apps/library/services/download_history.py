@@ -38,6 +38,19 @@ def normalize_download_status(raw: str | None) -> str:
     return status or GameServerDownload.STATUS_QUEUED
 
 
+def is_download_id(name: str | None, nzo_id: str | None = None) -> bool:
+    """Return True if name is empty, matches nzo_id, or starts with SABnzbd/nzb id prefix."""
+    if not name:
+        return True
+    s = str(name).strip()
+    if not s:
+        return True
+    if nzo_id and s.lower() == str(nzo_id).strip().lower():
+        return True
+    s_lower = s.lower()
+    return s_lower.startswith("sabnzbd_nzo_") or s_lower.startswith("nzo_")
+
+
 def _nzo_id_from_result(result: object) -> str:
     if isinstance(result, str):
         return result.strip()
@@ -119,6 +132,13 @@ def apply_queue_progress(server: UserGameServer, queue_data: object) -> None:
             continue
         active_ids.add(nzo_id)
         filename = str(item.get("filename") or "").strip() or nzo_id
+        existing = GameServerDownload.objects.filter(server=server, nzo_id=nzo_id).first()
+        title = filename
+        if is_download_id(filename, nzo_id):
+            if existing and existing.title and not is_download_id(existing.title, nzo_id):
+                title = existing.title
+            elif existing and existing.media_item and existing.media_item.title:
+                title = existing.media_item.title
         try:
             percentage = float(item.get("percentage") or 0)
         except (TypeError, ValueError):
@@ -136,7 +156,7 @@ def apply_queue_progress(server: UserGameServer, queue_data: object) -> None:
         ):
             status = GameServerDownload.STATUS_DOWNLOADING
         defaults = {
-            "title": filename[:1000],
+            "title": title[:1000],
             "status": status,
             "percentage": max(0.0, min(100.0, percentage)),
             "user": server.user,
@@ -194,6 +214,12 @@ def apply_history_slots(server: UserGameServer, history_data: object) -> None:
         existing = GameServerDownload.objects.filter(server=server, nzo_id=nzo_id).first()
         if existing and existing.status == GameServerDownload.STATUS_CANCELLED:
             continue
+        title = filename
+        if is_download_id(filename, nzo_id):
+            if existing and existing.title and not is_download_id(existing.title, nzo_id):
+                title = existing.title
+            elif existing and existing.media_item and existing.media_item.title:
+                title = existing.media_item.title
         status = normalize_download_status(str(item.get("status") or "Completed"))
         if status not in (
             GameServerDownload.STATUS_COMPLETED,
@@ -209,7 +235,7 @@ def apply_history_slots(server: UserGameServer, history_data: object) -> None:
         fail_message = str(item.get("fail_message") or "").strip() or None
         completed_at = _parse_completed_at(item.get("completed_at"))
         defaults = {
-            "title": filename[:1000],
+            "title": title[:1000],
             "status": status,
             "percentage": 100 if status == GameServerDownload.STATUS_COMPLETED else 0,
             "user": server.user,
@@ -236,10 +262,13 @@ def mark_download_cancelled(server: UserGameServer, nzo_id: str) -> None:
 
 
 def serialize_download(row: GameServerDownload) -> dict:
+    title = row.title
+    if is_download_id(title, row.nzo_id) and row.media_item and row.media_item.title:
+        title = row.media_item.title
     return {
         "id": row.id,
         "nzo_id": row.nzo_id,
-        "title": row.title,
+        "title": title,
         "protocol": row.protocol,
         "status": row.status,
         "percentage": row.percentage,
@@ -253,7 +282,44 @@ def serialize_download(row: GameServerDownload) -> dict:
 
 
 def list_download_history(server: UserGameServer, limit: int = 50) -> list[dict]:
-    rows = GameServerDownload.objects.filter(server=server).order_by("-created_at")[
-        : max(1, min(int(limit), 200))
-    ]
+    rows = (
+        GameServerDownload.objects.filter(server=server)
+        .select_related("media_item")
+        .order_by("-created_at")[: max(1, min(int(limit), 200))]
+    )
     return [serialize_download(row) for row in rows]
+
+
+def enrich_queue_items(server: UserGameServer, queue_data: object) -> None:
+    """Enrich live SABnzbd queue items with human-readable titles from database records."""
+    if not isinstance(queue_data, dict):
+        return
+    items = queue_data.get("items")
+    if not isinstance(items, list) or not items:
+        return
+    nzo_ids = [str(item.get("nzo_id") or "").strip() for item in items if isinstance(item, dict)]
+    nzo_ids = [nid for nid in nzo_ids if nid]
+    if not nzo_ids:
+        return
+    rows = {
+        row.nzo_id: row
+        for row in GameServerDownload.objects.filter(
+            server=server, nzo_id__in=nzo_ids
+        ).select_related("media_item")
+    }
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        nzo_id = str(item.get("nzo_id") or "").strip()
+        filename = str(item.get("filename") or "").strip()
+        row = rows.get(nzo_id)
+        if row:
+            best_title = row.title
+            if is_download_id(best_title, nzo_id) and row.media_item and row.media_item.title:
+                best_title = row.media_item.title
+            if best_title and not is_download_id(best_title, nzo_id):
+                item["title"] = best_title
+                if is_download_id(filename, nzo_id):
+                    item["filename"] = best_title
+        elif not item.get("title") and filename:
+            item["title"] = filename

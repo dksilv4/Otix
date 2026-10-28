@@ -35,7 +35,10 @@ class FriendshipRequiredError(PermissionDenied):
 def are_friends(user_a_id: int, user_b_id: int) -> bool:
     """Return True if user_a and user_b have an accepted friendship."""
     return FriendRequest.objects.filter(
-        (Q(sender_id=user_a_id, receiver_id=user_b_id) | Q(sender_id=user_b_id, receiver_id=user_a_id)),
+        (
+            Q(sender_id=user_a_id, receiver_id=user_b_id)
+            | Q(sender_id=user_b_id, receiver_id=user_a_id)
+        ),
         status="accepted",
     ).exists()
 
@@ -190,7 +193,9 @@ def send_message(
     if conv.type == "direct":
         partner_participant = conv.participants.exclude(user_id=sender_id).first()
         if partner_participant and not are_friends(sender_id, partner_participant.user_id):
-            raise FriendshipRequiredError("Cannot send message: you and this user are no longer friends.")
+            raise FriendshipRequiredError(
+                "Cannot send message: you and this user are no longer friends."
+            )
 
     stripped_content = content.strip() if content else ""
     if not stripped_content and not attachments_data and not metadata:
@@ -259,11 +264,7 @@ def edit_message(
     new_content: str,
 ) -> Message:
     """Edit an existing message sent by user_id."""
-    message = (
-        Message.objects.filter(id=message_id)
-        .select_related("conversation")
-        .first()
-    )
+    message = Message.objects.filter(id=message_id).select_related("conversation").first()
     if not message:
         raise NotFound("Message not found.")
 
@@ -303,11 +304,7 @@ def delete_message(
     user_id: int,
 ) -> Message:
     """Soft-delete a message sent by user_id."""
-    message = (
-        Message.objects.filter(id=message_id)
-        .select_related("conversation")
-        .first()
-    )
+    message = Message.objects.filter(id=message_id).select_related("conversation").first()
     if not message:
         raise NotFound("Message not found.")
 
@@ -339,11 +336,7 @@ def toggle_reaction(
     emoji: str,
 ) -> tuple[MessageReaction | None, bool]:
     """Add or remove an emoji reaction on a message."""
-    message = (
-        Message.objects.filter(id=message_id)
-        .select_related("conversation")
-        .first()
-    )
+    message = Message.objects.filter(id=message_id).select_related("conversation").first()
     if not message:
         raise NotFound("Message not found.")
 
@@ -475,13 +468,10 @@ def update_participant_settings(
     is_archived: bool | None = None,
 ) -> ConversationParticipant:
     """Update settings (muted, archived) for a participant in a conversation."""
-    participant = (
-        ConversationParticipant.objects.filter(
-            conversation_id=conversation_id,
-            user_id=user_id,
-        )
-        .first()
-    )
+    participant = ConversationParticipant.objects.filter(
+        conversation_id=conversation_id,
+        user_id=user_id,
+    ).first()
     if not participant:
         raise NotFound("Participant record not found.")
 

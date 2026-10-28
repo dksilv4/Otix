@@ -997,9 +997,7 @@ class GameMatcher:
             target_plats = {
                 PLATFORM_NORMALIZATION.get(p, p.lower()) for p in request.platforms if p
             }
-            cand_plats = {
-                PLATFORM_NORMALIZATION.get(p, p.lower()) for p in best.platforms if p
-            }
+            cand_plats = {PLATFORM_NORMALIZATION.get(p, p.lower()) for p in best.platforms if p}
             if target_plats and cand_plats and not (target_plats & cand_plats):
                 return None
 

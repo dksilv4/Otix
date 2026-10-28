@@ -64,7 +64,9 @@ def update_review_streak(user_id: int) -> dict:
     if streak.last_review_week == current_week_monday:
         return {"streak": streak.current_review_streak}
 
-    expected_monday = streak.last_review_week + timedelta(weeks=1) if streak.last_review_week else None
+    expected_monday = (
+        streak.last_review_week + timedelta(weeks=1) if streak.last_review_week else None
+    )
     if expected_monday and current_week_monday == expected_monday:
         streak.current_review_streak += 1
     else:
@@ -98,7 +100,9 @@ def update_workout_streak(user_id: int) -> dict:
         streak.current_workout_streak = 1
 
     streak.last_workout_date = today
-    streak.longest_workout_streak = max(streak.longest_workout_streak, streak.current_workout_streak)
+    streak.longest_workout_streak = max(
+        streak.longest_workout_streak, streak.current_workout_streak
+    )
 
     bonus_xp = WORKOUT_STREAK_MILESTONES.get(streak.current_workout_streak, 0)
     streak.save(

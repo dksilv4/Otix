@@ -169,13 +169,17 @@ class UserNodeSerializer(serializers.ModelSerializer):
     def get_home_id(self, obj: UserGameServer) -> int | None:
         if obj.home_id:
             return obj.home_id
-        parent = obj.hosted_server_machines.filter(home__isnull=False).select_related("home").first()
+        parent = (
+            obj.hosted_server_machines.filter(home__isnull=False).select_related("home").first()
+        )
         return parent.home_id if parent else None
 
     def get_home_name(self, obj: UserGameServer) -> str | None:
         if obj.home_id and obj.home:
             return obj.home.name
-        parent = obj.hosted_server_machines.filter(home__isnull=False).select_related("home").first()
+        parent = (
+            obj.hosted_server_machines.filter(home__isnull=False).select_related("home").first()
+        )
         return parent.home.name if parent and parent.home else None
 
     class Meta:

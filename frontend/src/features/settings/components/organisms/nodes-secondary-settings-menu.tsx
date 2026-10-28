@@ -451,7 +451,7 @@ export const NodesSecondarySettingsMenu = ({
         </>
       )}
 
-      {(activeTab === 'paths' || activeTab === 'organize') && (
+      {(activeTab === 'paths' || activeTab === 'organize' || activeTab === 'connections') && (
         <nav
           className={cn('flex flex-col gap-0.5 flex-1 overflow-y-auto pr-1 w-full', collapsed && 'items-center')}
           aria-label="Node selection"

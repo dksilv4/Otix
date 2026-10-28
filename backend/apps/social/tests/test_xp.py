@@ -161,13 +161,17 @@ class XpSystemTests(TestCase):
 
     def test_workout_awards_xp(self) -> None:
         initial_xp = self.user1.total_xp
-        create_workout(self.user1.id, "Pushups 3x10", [{"exercise_name": "Pushups", "sets": [10, 10, 10]}])
+        create_workout(
+            self.user1.id, "Pushups 3x10", [{"exercise_name": "Pushups", "sets": [10, 10, 10]}]
+        )
         self.user1.refresh_from_db()
         self.assertEqual(self.user1.total_xp, initial_xp + WORKOUT_COMPLETE)
 
     def test_list_creation_awards_xp(self) -> None:
         initial_xp = self.user1.total_xp
-        create_list(self.user1.id, name="My Sci-Fi Favorites", description="Best movies", is_public=True)
+        create_list(
+            self.user1.id, name="My Sci-Fi Favorites", description="Best movies", is_public=True
+        )
         self.user1.refresh_from_db()
         self.assertEqual(self.user1.total_xp, initial_xp + LIST_CREATE)
 

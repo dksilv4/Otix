@@ -91,7 +91,9 @@ class PlexWatchedSyncServiceTests(TestCase):
         self.assertEqual(res, {"total": 0, "matched": 0, "seeded": 0, "episodes": 0})
 
     def test_sync_watched_movie_seeds_and_marks_watched(self):
-        movie = MediaItem.objects.create(media_type="movie", title="Inception", slug="inception-2010")
+        movie = MediaItem.objects.create(
+            media_type="movie", title="Inception", slug="inception-2010"
+        )
         Movie.objects.create(media_item=movie)
         ExternalID.objects.create(
             content_type=ContentType.objects.get_for_model(MediaItem),
@@ -148,7 +150,9 @@ class PlexWatchedSyncServiceTests(TestCase):
             media_type="show",
         )
         season = Season.objects.create(show=show_sub, season_number=1, name="Season 1")
-        episode = Episode.objects.create(season=season, episode_number=1, name="Good News About Hell")
+        episode = Episode.objects.create(
+            season=season, episode_number=1, name="Good News About Hell"
+        )
 
         show_item = {
             "type": "show",
@@ -177,7 +181,9 @@ class PlexWatchedSyncServiceTests(TestCase):
             if "type=4" in url:
                 return 200, json.dumps({"MediaContainer": {"totalSize": 1, "Metadata": [ep_item]}})
             if "sections/2/all" in url:
-                return 200, json.dumps({"MediaContainer": {"totalSize": 1, "Metadata": [show_item]}})
+                return 200, json.dumps(
+                    {"MediaContainer": {"totalSize": 1, "Metadata": [show_item]}}
+                )
             return 200, json.dumps({"MediaContainer": {"Metadata": []}})
 
         with mock.patch(REQUEST, side_effect=fake_request):

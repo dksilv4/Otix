@@ -99,6 +99,7 @@ export interface ServerProwlarrRelease {
 export interface ServerSabnzbdQueueItem {
   nzo_id: string;
   filename: string;
+  title?: string;
   percentage: number;
   size_mb: number;
   size_left_mb: number;

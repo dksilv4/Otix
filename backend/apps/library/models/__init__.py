@@ -7,6 +7,7 @@ from apps.library.models.storage_share import StorageShare
 from apps.library.models.user_game_session import UserGameSession
 from apps.library.models.user_home import UserHome
 from apps.library.models.user_local_game import UserLocalGame
+from apps.library.models.user_media_request import MediaRequest, UserMediaRequest
 from apps.library.models.user_node import UserGameServer, UserNode
 from apps.library.models.user_node_connection import UserNodeConnection
 from apps.library.models.user_node_share import UserNodeShare
@@ -15,6 +16,7 @@ from apps.library.models.user_server_machine import UserServerMachine
 __all__ = [
     "GameMatchRecord",
     "GameServerDownload",
+    "MediaRequest",
     "NodeDownload",
     "NodeLibraryPath",
     "StorageShare",
@@ -22,6 +24,7 @@ __all__ = [
     "UserGameSession",
     "UserHome",
     "UserLocalGame",
+    "UserMediaRequest",
     "UserNode",
     "UserNodeConnection",
     "UserNodeShare",

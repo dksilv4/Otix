@@ -13,7 +13,9 @@ User = get_user_model()
 
 class StorageSharesAndMatchingTests(TestCase):
     def setUp(self):
-        self.user = User.objects.create_user(username="gamer1", email="gamer1@example.com", password="password123")
+        self.user = User.objects.create_user(
+            username="gamer1", email="gamer1@example.com", password="password123"
+        )
         self.client = APIClient()
         self.client.force_authenticate(user=self.user)
 

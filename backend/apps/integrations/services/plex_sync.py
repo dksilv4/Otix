@@ -237,7 +237,8 @@ def _upsert_item(user, server, library, item, media_type, media_item_id, guids) 
             "title": str(item.get("title") or "Untitled"),
             "year": item.get("year"),
             "thumb_url": item.get("thumb"),
-            "viewed": int(item.get("viewCount") or 0) > 0 or (
+            "viewed": int(item.get("viewCount") or 0) > 0
+            or (
                 media_type == "show"
                 and int(item.get("leafCount") or 0) > 0
                 and int(item.get("viewedLeafCount") or 0) == int(item.get("leafCount") or 0)

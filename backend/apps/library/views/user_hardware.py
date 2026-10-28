@@ -29,6 +29,7 @@ class UserHardwareView(APIView):
         is_friend = False
         if not is_owner and vis == "friends" and request.user.is_authenticated:
             from apps.social.services import get_friendship_status
+
             status = get_friendship_status(request.user.id, target_user.id)
             is_friend = status.get("status") == "friends"
 
@@ -60,9 +61,7 @@ class UserHardwareView(APIView):
         )
         if not latest_session:
             latest_session = (
-                UserGameSession.objects.filter(user=target_user)
-                .order_by("-start_time")
-                .first()
+                UserGameSession.objects.filter(user=target_user).order_by("-start_time").first()
             )
 
         hardware = (latest_session.hardware if latest_session else {}) or {}

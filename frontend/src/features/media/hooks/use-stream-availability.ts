@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useAuth } from '@auth/hooks/use-auth'
-import { useLibraryTab } from '@/features/library/library-queries'
+import { useLibraryTab, useStreamableMediaIds } from '@/features/library/library-queries'
 import { getPluginAPI } from '@/features/plugins/api'
 import type { MediaItemSummary } from '@/features/media/queries/media-queries'
 import { fetchPlexConnectInfoCached } from '../utils/plex-stream'
@@ -30,8 +30,13 @@ export const useStreamableCatalog = () => {
   }
   const isPlexConnected = Boolean(plexId)
 
-  // Avoid full catalog scanning: query only first page for streamable shelves
-  const { data, isLoading, isError } = useLibraryTab('plex', { limit: '24' })
+  // Query connected library items for streamable matching
+  const { data, isLoading, isError } = useLibraryTab('plex', { limit: '100' })
+
+  // Query all streamable catalog media IDs from connected Plex library
+  const streamableIdsQuery = useStreamableMediaIds({ enabled: isPlexConnected })
+  const streamableIdsData = streamableIdsQuery?.data
+  const idsLoading = Boolean(streamableIdsQuery?.isLoading)
 
   const items = useMemo<MediaItemSummary[]>(() => {
     if (!isPlexConnected || !data?.pages) return []
@@ -42,19 +47,24 @@ export const useStreamableCatalog = () => {
 
   const streamableIds = useMemo<Set<string>>(() => {
     const set = new Set<string>()
+    if (Array.isArray(streamableIdsData)) {
+      for (const id of streamableIdsData) {
+        if (id) set.add(String(id))
+      }
+    }
     for (const item of items) {
       if (item?.id) set.add(String(item.id))
       if (item?.slug) set.add(String(item.slug))
       if (item?.tmdbId) set.add(String(item.tmdbId))
     }
     return set
-  }, [items])
+  }, [streamableIdsData, items])
 
   return {
     isPlexConnected,
     items,
     streamableIds,
-    isLoading: isPlexConnected && isLoading,
+    isLoading: isPlexConnected && (isLoading || idsLoading),
     isError,
   }
 }

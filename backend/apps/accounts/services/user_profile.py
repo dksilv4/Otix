@@ -62,16 +62,16 @@ def build_user_profile(user: User, viewer) -> dict:
 
     user_sec_vis = dict(user.section_visibility or {})
     if "game_sessions" not in user_sec_vis:
-        user_sec_vis["game_sessions"] = "private" if getattr(user, "game_sessions_private", True) else "public"
+        user_sec_vis["game_sessions"] = (
+            "private" if getattr(user, "game_sessions_private", True) else "public"
+        )
 
     all_sections = list(user.profile_sections or [])
     if is_own_profile:
         returned_sections = all_sections
         returned_visibility = user_sec_vis
     else:
-        is_friend = bool(
-            friendship_status and friendship_status.get("status") == "friends"
-        )
+        is_friend = bool(friendship_status and friendship_status.get("status") == "friends")
         returned_sections = []
         for sec in all_sections:
             vis = user_sec_vis.get(sec, "public")
@@ -79,9 +79,7 @@ def build_user_profile(user: User, viewer) -> dict:
                 returned_sections.append(sec)
             elif vis == "friends" and is_friend:
                 returned_sections.append(sec)
-        returned_visibility = {
-            sec: user_sec_vis.get(sec, "public") for sec in returned_sections
-        }
+        returned_visibility = {sec: user_sec_vis.get(sec, "public") for sec in returned_sections}
 
     return {
         "id": user.id,

@@ -12,6 +12,8 @@ import {
   ArrowUpCircle,
   Pause,
   X,
+  Calendar,
+  Globe,
 } from 'lucide-react'
 import { DkDialog } from '@ui/molecules/dialog'
 import { cn, formatBytes } from '@/lib/utils'
@@ -28,16 +30,21 @@ import { useNodeProviders } from '../use-node-providers'
 import {
   cleanReleaseTitle,
   extractReleaseBadges,
-  formatAgeDays,
+  formatUploadDate,
   releaseDownloadUrl,
   isSabnzbdConfigured,
 } from '../usenet-utils'
 import {
+  collectEditionPackPlatforms,
   collectEditionPackVersions,
+  extractLocation,
+  extractPlatform,
+  extractReleaseYear,
   filterEditionGroups,
   groupResultsByEditionAndPack,
   type EditionResultGroup,
   type GamePack,
+  type ParsedGameRelease,
 } from '../release-parse'
 import {
   getProtocolBadgeInfo,
@@ -85,6 +92,7 @@ export const NodeGameSearchModal = ({
   const [activeQuery, setActiveQuery] = useState(initialQuery)
   const [protocolFilter, setProtocolFilter] = useState<ProtocolFilter>('all')
   const [versionFilter, setVersionFilter] = useState('all')
+  const [platformFilter, setPlatformFilter] = useState('all')
   const [pendingGuid, setPendingGuid] = useState<string | null>(null)
   const [queuedGuids, setQueuedGuids] = useState<Set<string>>(() => new Set())
   const [trackedNzoMap, setTrackedNzoMap] = useState<Map<string, string>>(() => new Map())
@@ -116,6 +124,7 @@ export const NodeGameSearchModal = ({
     if (!searchInput.trim()) return
     setProtocolFilter('all')
     setVersionFilter('all')
+    setPlatformFilter('all')
     setActiveQuery(searchInput.trim())
   }
 
@@ -280,11 +289,12 @@ export const NodeGameSearchModal = ({
     [releases, activeQuery],
   )
   const versionOptions = useMemo(() => collectEditionPackVersions(groups), [groups])
+  const platformOptions = useMemo(() => collectEditionPackPlatforms(groups), [groups])
   const usenetCount = releases.filter((r) => r.protocol?.toLowerCase() === 'usenet').length
   const torrentCount = releases.filter((r) => r.protocol?.toLowerCase() === 'torrent').length
   const visibleGroups = useMemo(
-    () => filterEditionGroups(groups, protocolFilter, versionFilter),
-    [groups, protocolFilter, versionFilter],
+    () => filterEditionGroups(groups, protocolFilter, versionFilter, platformFilter),
+    [groups, protocolFilter, versionFilter, platformFilter],
   )
 
   return (
@@ -419,6 +429,20 @@ export const NodeGameSearchModal = ({
                     ))}
                   </select>
                 )}
+                {platformOptions.length > 1 && (
+                  <select
+                    value={platformFilter}
+                    onChange={(e) => setPlatformFilter(e.target.value)}
+                    className="rounded-lg border border-[var(--dk-separator)] bg-[var(--dk-surface-field)] px-2 py-1 text-[11px] font-semibold text-foreground outline-none"
+                  >
+                    <option value="all">All platforms</option>
+                    {platformOptions.map((plat) => (
+                      <option key={plat.key} value={plat.key}>
+                        {plat.label}
+                      </option>
+                    ))}
+                  </select>
+                )}
               </div>
               <span className="text-[11px] text-muted-foreground">
                 {releases.length} result{releases.length === 1 ? '' : 's'}
@@ -428,7 +452,13 @@ export const NodeGameSearchModal = ({
             {visibleGroups.length === 0 ? (
               <EmptyState
                 icon={<Search className="h-7 w-7 text-muted-foreground/30" />}
-                title={versionFilter !== 'all' ? `No v${versionFilter} releases` : `No ${protocolFilter} releases`}
+                title={
+                  platformFilter !== 'all'
+                    ? `No ${platformOptions.find((p) => p.key === platformFilter)?.label || platformFilter} releases`
+                    : versionFilter !== 'all'
+                      ? `No v${versionFilter} releases`
+                      : `No ${protocolFilter} releases`
+                }
                 body="Switch back to All to see every indexer hit for this search."
               />
             ) : (
@@ -501,8 +531,6 @@ import {
   kindLabel,
   seederClass,
 } from '../utils'
-
-export { findReleaseQueueItem, findReleaseHistoryItem }
 
 const EditionBlock = ({
   group,
@@ -603,6 +631,7 @@ const PackBlock = ({
           <ReleaseRow
             key={item.release.guid}
             release={item.release}
+            parsed={item.parsed}
             version={item.parsed.version}
             isQueued={queuedGuids.has(item.release.guid)}
             isPending={pendingGuid === item.release.guid}
@@ -638,6 +667,7 @@ const PackBlock = ({
                 <ReleaseRow
                   key={item.release.guid}
                   release={item.release}
+                  parsed={item.parsed}
                   kind="update"
                   version={item.parsed.version}
                   indented
@@ -683,6 +713,7 @@ const EmptyState = ({
 
 const ReleaseRow = ({
   release,
+  parsed,
   kind,
   version,
   indented,
@@ -697,6 +728,7 @@ const ReleaseRow = ({
   onCancelQueue,
 }: {
   release: ServerProwlarrRelease
+  parsed?: ParsedGameRelease
   kind?: 'game' | 'update' | 'dlc' | 'other'
   version?: string | null
   indented?: boolean
@@ -711,6 +743,10 @@ const ReleaseRow = ({
   onCancelQueue?: () => void
 }) => {
   const badges = extractReleaseBadges(release.title)
+  const platform = parsed?.platform ?? extractPlatform(release.title)?.label
+  const location = parsed?.location ?? extractLocation(release.title)?.label
+  const year = parsed?.year ?? extractReleaseYear(release.title)
+  const uploadDateInfo = formatUploadDate(release.publish_date, release.age_days)
   const protocolBadge = getProtocolBadgeInfo(release.protocol)
   const cleaned = cleanReleaseTitle(release.title)
   const downloadUrl = releaseDownloadUrl(release)
@@ -760,6 +796,32 @@ const ReleaseRow = ({
           >
             {protocolBadge.label}
           </span>
+          {platform && (
+            <span
+              className="rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider bg-[var(--dk-surface-field)] text-foreground border border-[var(--dk-separator)]"
+              title={`Platform: ${platform}`}
+            >
+              {platform}
+            </span>
+          )}
+          {location && (
+            <span
+              className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider bg-[var(--dk-surface-ghost)] text-muted-foreground border border-[var(--dk-separator)]"
+              title={`Region: ${location}`}
+            >
+              <Globe className="h-2.5 w-2.5 shrink-0 opacity-70" />
+              {location}
+            </span>
+          )}
+          {year && (
+            <span
+              className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider bg-primary/15 text-primary border border-primary/25 shadow-xs"
+              title={`Release year: ${year}`}
+            >
+              <Calendar className="h-2.5 w-2.5 shrink-0" />
+              {year}
+            </span>
+          )}
           {badges.map((badge) => (
             <span
               key={badge.label}
@@ -792,12 +854,15 @@ const ReleaseRow = ({
               </span>
             </>
           )}
-          {release.age_days != null && (
+          {uploadDateInfo && (
             <>
               <span className="text-muted-foreground/40">·</span>
-              <span className="inline-flex items-center gap-1">
-                <Clock className="h-3 w-3" />
-                {formatAgeDays(release.age_days)}
+              <span
+                className="inline-flex items-center gap-1 tabular-nums text-muted-foreground hover:text-foreground transition-colors"
+                title={uploadDateInfo.fullTitle}
+              >
+                <Clock className="h-3 w-3 shrink-0 opacity-70" />
+                <span>{uploadDateInfo.display}</span>
               </span>
             </>
           )}

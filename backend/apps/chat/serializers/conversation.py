@@ -78,9 +78,7 @@ class ConversationSerializer(serializers.ModelSerializer):
                     Q(sender_id=user.id) | Q(receiver_id=user.id),
                     status="accepted",
                 ).values_list("sender_id", "receiver_id")
-                self.context["_friend_ids"] = {
-                    r if s == user.id else s for s, r in friend_pairs
-                }
+                self.context["_friend_ids"] = {r if s == user.id else s for s, r in friend_pairs}
         return self.context["_friend_ids"]
 
     def get_is_friend(self, obj: Conversation) -> bool:

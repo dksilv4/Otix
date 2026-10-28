@@ -473,7 +473,7 @@ export const SettingsLayout = () => {
     settingsPath === '/settings'
       ? DEFAULT_SETTINGS_SECTION
       : settingsPath.replace(/^\/settings\//, '').split('/')[0] || DEFAULT_SETTINGS_SECTION
-  const isNodeAware = ['nodes', 'library', 'downloads', 'game-servers', 'organize', 'paths', 'proposals'].includes(activeSection)
+  const isNodeAware = ['nodes', 'library', 'downloads', 'game-servers', 'organize', 'paths', 'proposals', 'connections', 'node-connections'].includes(activeSection)
 
   return (
     <SettingsSaveProvider>

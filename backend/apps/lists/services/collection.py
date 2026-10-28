@@ -90,7 +90,10 @@ def upsert_collection_from_tmdb(
         if norm_name:
             franchise, _ = Franchise.objects.get_or_create(
                 slug=slugify(norm_name)[:1000],
-                defaults={"name": name.replace(" Collection", "").replace(" collection", "").strip() or norm_name},
+                defaults={
+                    "name": name.replace(" Collection", "").replace(" collection", "").strip()
+                    or norm_name
+                },
             )
 
         collection = Collection.objects.create(

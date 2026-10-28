@@ -104,4 +104,5 @@ class ContinueItemSerializer(serializers.Serializer):
         if data.get("logo_url"):
             data["logo_url"] = clean_image_url(data["logo_url"])
         return data
+
     episode_context = serializers.CharField(read_only=True, allow_null=True)

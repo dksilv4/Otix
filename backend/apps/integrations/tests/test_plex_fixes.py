@@ -153,15 +153,19 @@ class PlexFixesTestCase(TestCase):
         with mock.patch("apps.integrations.services.plex._request") as mock_req:
             mock_req.return_value = (
                 200,
-                json.dumps({
-                    "MediaContainer": {
-                        "Metadata": [{
-                            "ratingKey": "999",
-                            "viewOffset": 2700000,  # Even if PMS returned friend's offset
-                            "duration": 7200000,
-                        }]
+                json.dumps(
+                    {
+                        "MediaContainer": {
+                            "Metadata": [
+                                {
+                                    "ratingKey": "999",
+                                    "viewOffset": 2700000,  # Even if PMS returned friend's offset
+                                    "duration": 7200000,
+                                }
+                            ]
+                        }
                     }
-                }),
+                ),
             )
             self.client.credentials(HTTP_AUTHORIZATION=f"Token {self.owner_token.key}")
             connect_res = self.client.get(f"/api/v1/integrations/plex/connect-info/{movie.id}")

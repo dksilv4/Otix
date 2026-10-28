@@ -44,4 +44,3 @@ def on_task_postrun(*args, **kwargs):
             close_redis_clients()
         except Exception:
             pass
-

@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { mediaQueries } from '../../queries/media-queries'
 import { useMediaParams } from '../../hooks/use-media-params'
 import { MediaDetailPluginButtons } from './plugin-detail-actions'
-import { DownloadGameButton } from '@/features/media/game/components/organisms/media-download-game-button'
+import { RequestGameButton } from '@/features/media/game/components/organisms/media-download-game-button'
 import { RequestMediaButton } from './media-request-button'
 import { useMediaDetailPluginActions } from '@/features/media/hooks/use-media-detail-plugin-actions'
 import { useRequestMedia } from '@/features/media/hooks/use-request-media'
@@ -89,7 +89,7 @@ export const MediaHeroLibraryActions = () => {
 
   return (
     <>
-      {mediaType === 'game' && <DownloadGameButton />}
+      {mediaType === 'game' && <RequestGameButton />}
 
       {/* Movies / Shows Request & Library actions */}
       {(mediaType === 'movie' || mediaType === 'show') && (

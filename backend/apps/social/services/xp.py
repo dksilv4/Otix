@@ -34,11 +34,11 @@ INTERACTION_LIKE_WATCHLIST_STARTED = 10
 GAMING_SECONDS_PER_XP = 60
 GAMING_XP_PER_MINUTE = 1
 GAMING_HEARTBEAT_INTERVAL_SECONDS = 300  # Periodic heartbeat ping interval
-GAMING_XP_PER_TICK = 5                   # Legacy alias (5 minutes = 5 XP)
-GAMING_COMPLETION_XP = 50                # Extra XP for completing a match/game while on Otix
-GAMING_WIN_XP = 50                       # Extra XP for match victory
-GAMING_MIN_KDR_MULTIPLIER = 1.0          # Minimum KDR multiplier floor
-GAMING_MAX_KDR_MULTIPLIER = 4.0          # Maximum KDR multiplier cap
+GAMING_XP_PER_TICK = 5  # Legacy alias (5 minutes = 5 XP)
+GAMING_COMPLETION_XP = 50  # Extra XP for completing a match/game while on Otix
+GAMING_WIN_XP = 50  # Extra XP for match victory
+GAMING_MIN_KDR_MULTIPLIER = 1.0  # Minimum KDR multiplier floor
+GAMING_MAX_KDR_MULTIPLIER = 4.0  # Maximum KDR multiplier cap
 
 # Activities & Checks
 WORKOUT_COMPLETE = 100

@@ -1,3 +1,5 @@
+import type { MediaItemSummary } from '@media/queries/media-queries'
+
 const TITLE_MAP: Record<string, string> = {
   'movie-trending': 'Trending Movies',
   'show-trending': 'Trending Shows',
@@ -32,4 +34,23 @@ export const getRailTitle = (mediaType: string, listType: string, platform?: str
   }
   const formatWord = (s: string) => s.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
   return `${formatWord(listType)} ${formatWord(mediaType)}s`
+}
+
+export const isMediaItemStreamable = (
+  item: MediaItemSummary,
+  streamableIds: Set<string>,
+): boolean => {
+  if (!item || !streamableIds.size) return false
+  if (item.id && streamableIds.has(String(item.id))) return true
+  if (item.slug && streamableIds.has(String(item.slug))) return true
+  if (item.tmdbId && streamableIds.has(String(item.tmdbId))) return true
+  return false
+}
+
+export const filterStreamableItems = (
+  items: MediaItemSummary[],
+  streamableIds: Set<string>,
+): MediaItemSummary[] => {
+  if (!Array.isArray(items) || !streamableIds.size) return []
+  return items.filter((item) => isMediaItemStreamable(item, streamableIds))
 }

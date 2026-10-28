@@ -36,6 +36,9 @@ vi.mock('@/features/downloads/use-server-downloads', () => ({
 
 vi.mock('@/features/downloads/use-server-usenet', () => ({
   useServerUsenetConfig: () => ({ data: mockUsenetConfig, isLoading: false }),
+  useNodeUsenetConfig: () => ({ data: mockUsenetConfig, isLoading: false }),
+  useServerUsenetHistory: () => ({ data: [], isLoading: false }),
+  useNodeUsenetHistory: () => ({ data: [], isLoading: false }),
   useSaveServerSabnzbdConfig: () => ({ mutateAsync: saveSabnzbd, isPending: false }),
   useTestSabnzbd: () => ({ mutateAsync: testSabnzbd, isPending: false }),
   useSaveServerProwlarrConfig: () => ({ mutateAsync: saveProwlarr, isPending: false }),

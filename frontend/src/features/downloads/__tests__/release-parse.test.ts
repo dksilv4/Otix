@@ -2,12 +2,17 @@ import { describe, expect, it } from 'vitest'
 import {
   classifyReleaseKind,
   compareVersions,
+  extractLocation,
+  extractPlatform,
   extractReleaseVersion,
+  extractReleaseYear,
+  filterEditionGroups,
   groupReleasesByEdition,
   groupReleasesByGame,
   groupReleasesByRepackerAndVersion,
   parseReleaseTitle,
   groupResultsByEditionAndPack,
+  collectEditionPackPlatforms,
   releaseMatchesSearchHint,
 } from '../release-parse'
 import type { ServerProwlarrRelease } from '../usenet-types'
@@ -290,5 +295,105 @@ describe('groupResultsByEditionAndPack', () => {
     expect(pack.version).toBeNull()
     expect(pack.releases.map((r) => r.release.guid)).toEqual(['ln3-initial'])
     expect(pack.updates.map((u) => u.release.guid)).toEqual(['ln3-u2', 'ln3-u1'])
+  })
+})
+
+describe('extractPlatform', () => {
+  it('parses Nintendo platforms accurately', () => {
+    expect(extractPlatform('Super.Mario.Odyssey.NSW-BigBlue')?.label).toBe('Nintendo Switch')
+    expect(extractPlatform('The.Legend.of.Zelda.Tears.of.the.Kingdom.Switch')?.key).toBe('switch')
+    expect(extractPlatform('Pokemon.Emerald.(USA).GBA')?.label).toBe('Game Boy Advance')
+    expect(extractPlatform('Mario.Kart.DS.NDS')?.label).toBe('Nintendo DS')
+    expect(extractPlatform('Super.Mario.64.N64')?.label).toBe('Nintendo 64')
+    expect(extractPlatform('Super.Metroid.SNES')?.label).toBe('SNES')
+    expect(extractPlatform('Super.Mario.Bros.3.NES')?.label).toBe('NES')
+    expect(extractPlatform('Super.Smash.Bros.Melee.GameCube')?.label).toBe('GameCube')
+    expect(extractPlatform('Super.Mario.Galaxy.Wii')?.label).toBe('Wii')
+  })
+
+  it('parses PlayStation and Xbox platforms accurately', () => {
+    expect(extractPlatform('Demon.Souls.PS5-GRP')?.label).toBe('PS5')
+    expect(extractPlatform('Bloodborne.PS4-GRP')?.label).toBe('PS4')
+    expect(extractPlatform('Metal.Gear.Solid.4.PS3')?.label).toBe('PS3')
+    expect(extractPlatform('Final.Fantasy.X.PS2')?.label).toBe('PS2')
+    expect(extractPlatform('Crash.Bandicoot.PS1')?.label).toBe('PS1')
+    expect(extractPlatform('Halo.Infinite.Xbox.Series')?.label).toBe('Xbox Series')
+    expect(extractPlatform('Forza.Horizon.5.X360')?.label).toBe('Xbox 360')
+    expect(extractPlatform('Gears.of.War.Xbox.One')?.label).toBe('Xbox One')
+  })
+
+  it('parses PC and infers PC for trusted PC scene repackers', () => {
+    expect(extractPlatform('Cyberpunk.2077.PC')?.label).toBe('PC')
+    expect(extractPlatform('The.Witcher.3.WIN64')?.label).toBe('PC')
+    expect(extractPlatform('Elden.Ring-FitGirl.Repack', null, 'fitgirl')?.label).toBe('PC')
+    expect(extractPlatform('Hades.II-RUNE', 'RUNE', 'rune')?.label).toBe('PC')
+    expect(extractPlatform('Baldurs.Gate.3-GOG', null, 'gog')?.label).toBe('PC')
+  })
+})
+
+describe('extractLocation', () => {
+  it('parses country and region codes from brackets and parentheticals', () => {
+    expect(extractLocation('Pokemon.Emerald.(USA).GBA')?.label).toBe('USA')
+    expect(extractLocation('The.Legend.of.Zelda.[Europe].NSW')?.label).toBe('Europe')
+    expect(extractLocation('Persona.5.Royal.(Japan).PS4')?.label).toBe('Japan')
+    expect(extractLocation('Super.Mario.Bros.(World).NES')?.label).toBe('World')
+    expect(extractLocation('Final.Fantasy.VII.(Asia).PS1')?.label).toBe('Asia')
+    expect(extractLocation('Pokemon.HeartGold.(Germany).NDS')?.label).toBe('Germany')
+    expect(extractLocation('Animal.Crossing.(France).3DS')?.label).toBe('France')
+    expect(extractLocation('Castlevania.(Spain).GBA')?.label).toBe('Spain')
+  })
+
+  it('parses multi-region tags and MULTi language packs', () => {
+    expect(extractLocation('Zelda.Ocarina.of.Time.(USA, Europe).N64')?.label).toBe('USA / Europe')
+    expect(extractLocation('Cyberpunk.2077.MULTi13-FitGirl')?.label).toBe('MULTi13')
+    expect(extractLocation('Hades.II.MULTi-ElAmigos')?.label).toBe('MULTi')
+  })
+
+  it('does not falsely extract location if it is part of the searched game title', () => {
+    expect(extractLocation('Captain.America.Super.Soldier', 'Captain America')).toBeNull()
+  })
+})
+
+describe('extractReleaseYear', () => {
+  it('extracts release year from parentheses or brackets', () => {
+    expect(extractReleaseYear('Resident.Evil.4.(2023).PC')).toBe('2023')
+    expect(extractReleaseYear('Doom.[1993].iso')).toBe('1993')
+  })
+
+  it('extracts standalone release year', () => {
+    expect(extractReleaseYear('God.of.War.2018-CPY', 'God of War')).toBe('2018')
+    expect(extractReleaseYear('Spider-Man.2018.v1.0', 'Spider-Man')).toBe('2018')
+    expect(extractReleaseYear('Elden.Ring.2022.MULTi', 'Elden Ring')).toBe('2022')
+  })
+
+  it('does not treat game title numbers like Cyberpunk 2077 or 1942 as release years', () => {
+    expect(extractReleaseYear('Cyberpunk.2077.v2.0-GOG.iso', 'Cyberpunk 2077')).toBeNull()
+    expect(extractReleaseYear('1942.The.Joint.Strike', '1942')).toBeNull()
+  })
+})
+
+describe('Platform and Location in parseReleaseTitle and filterEditionGroups', () => {
+  it('populates platform, location, and year in ParsedGameRelease', () => {
+    const parsed = parseReleaseTitle('Pokemon.Emerald.(USA).2004.GBA', 'Pokemon Emerald')
+    expect(parsed.platform).toBe('Game Boy Advance')
+    expect(parsed.platformKey).toBe('gba')
+    expect(parsed.location).toBe('USA')
+    expect(parsed.locationCode).toBe('usa')
+    expect(parsed.year).toBe('2004')
+  })
+
+  it('collects platforms and filters edition groups by platform', () => {
+    const pcRelease = release('Celeste.PC.v1.4-GOG', { guid: 'pc-1' })
+    const switchRelease = release('Celeste.NSW.v1.4-GRP', { guid: 'sw-1' })
+    const groups = groupResultsByEditionAndPack([pcRelease, switchRelease], 'Celeste')
+
+    const platforms = collectEditionPackPlatforms(groups)
+    expect(platforms.map((p) => p.key).sort()).toEqual(['pc', 'switch'])
+
+    const pcFiltered = filterEditionGroups(groups, 'all', 'all', 'pc')
+    expect(pcFiltered[0].packs[0].releases.map((r) => r.release.guid)).toEqual(['pc-1'])
+
+    const switchFiltered = filterEditionGroups(groups, 'all', 'all', 'switch')
+    expect(switchFiltered[0].packs[0].releases.map((r) => r.release.guid)).toEqual(['sw-1'])
   })
 })

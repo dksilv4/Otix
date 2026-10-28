@@ -9,3 +9,20 @@ export const formatSeasonBadgeText = (releaseDate?: string | null): string => {
   if (days >= -14) return 'New Season · Just Landed'
   return `New Season · ${month} ${year}`
 }
+
+export const resolveMediaCardRatingPosition = (opts: {
+  hasActivityTag: boolean
+  isAdult?: boolean
+  newSeasonReleased?: boolean
+}): string => {
+  const { hasActivityTag, isAdult, newSeasonReleased } = opts
+  if (hasActivityTag) {
+    if (newSeasonReleased) return 'top-10 right-11'
+    if (isAdult) return 'top-8 right-11'
+    return 'top-3 right-11'
+  }
+  if (newSeasonReleased) return 'top-10 right-3'
+  if (isAdult) return 'top-8 right-2.5'
+  return 'top-2.5 right-2.5'
+}
+

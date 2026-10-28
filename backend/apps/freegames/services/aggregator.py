@@ -113,7 +113,9 @@ class FreeGamesAggregator:
                 ) or self._usable_logo_url(item.logo_url)
 
             # DLCs and packs must preserve their own title, never overwritten by base game title!
-            title = item.title if is_dlc_or_pack else ((media_data or {}).get("title") or item.title)
+            title = (
+                item.title if is_dlc_or_pack else ((media_data or {}).get("title") or item.title)
+            )
             base_game_title = item.base_game_title or (
                 (media_data or {}).get("title") if is_dlc_or_pack and media_data else None
             )
@@ -187,13 +189,29 @@ class FreeGamesAggregator:
                     is_match = True
                 elif media_slug and matched_slug == media_slug:
                     is_match = True
-                elif steam_app_id and item.get("external_id") and str(item.get("external_id")) == str(steam_app_id):
+                elif (
+                    steam_app_id
+                    and item.get("external_id")
+                    and str(item.get("external_id")) == str(steam_app_id)
+                ):
                     is_match = True
-                elif steam_app_id and item.get("base_game_id") and str(item.get("base_game_id")) == str(steam_app_id):
+                elif (
+                    steam_app_id
+                    and item.get("base_game_id")
+                    and str(item.get("base_game_id")) == str(steam_app_id)
+                ):
                     is_match = True
-                elif comp_key and item.get("base_game_title") and _comparison_key(item.get("base_game_title")) == comp_key:
+                elif (
+                    comp_key
+                    and item.get("base_game_title")
+                    and _comparison_key(item.get("base_game_title")) == comp_key
+                ):
                     is_match = True
-                elif comp_key and item.get("title") and _comparison_key(item.get("title")) == comp_key:
+                elif (
+                    comp_key
+                    and item.get("title")
+                    and _comparison_key(item.get("title")) == comp_key
+                ):
                     is_match = True
 
                 if is_match:
@@ -492,9 +510,7 @@ class FreeGamesAggregator:
                 logger.debug("Free game GOG cross-reference failed for id %s", item.external_id)
 
         target_title = (
-            item.base_game_title
-            if is_dlc_or_pack and item.base_game_title
-            else item.title
+            item.base_game_title if is_dlc_or_pack and item.base_game_title else item.title
         )
         if igdb_id is None and target_title:
             for variant in self._title_search_variants(target_title):

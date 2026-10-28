@@ -156,10 +156,12 @@ class UserUpdateSerializer(serializers.ModelSerializer):
         return self._validate_safe_profile_url(value, "background_url")
 
     def update(self, instance: User, validated_data: dict) -> User:
-        if "section_visibility" in validated_data and isinstance(validated_data["section_visibility"], dict):
+        if "section_visibility" in validated_data and isinstance(
+            validated_data["section_visibility"], dict
+        ):
             sec_vis = validated_data["section_visibility"]
             if "game_sessions" in sec_vis:
-                instance.game_sessions_private = (sec_vis["game_sessions"] != "public")
+                instance.game_sessions_private = sec_vis["game_sessions"] != "public"
         return super().update(instance, validated_data)
 
     def _validate_safe_profile_url(self, value: str | None, field_name: str) -> str | None:

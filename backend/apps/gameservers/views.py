@@ -79,7 +79,9 @@ class GameServerListCreateView(APIView):
         if server_type:
             qs = qs.filter(server_type=server_type)
 
-        qs = qs.select_related("owner", "media_item", "server_machine").prefetch_related("shares", "invites")
+        qs = qs.select_related("owner", "media_item", "server_machine").prefetch_related(
+            "shares", "invites"
+        )
         serializer = DedicatedGameServerSerializer(qs, many=True, context={"request": request})
         return Response(serializer.data)
 
@@ -171,11 +173,16 @@ class GameServerQueryView(APIView):
 
     def post(self, request: Request, server_id: int) -> Response:
         server = _get_accessible_server(server_id, request.user)
-        client_result = request.data.get("client_result") if isinstance(request.data, dict) else None
+        client_result = (
+            request.data.get("client_result") if isinstance(request.data, dict) else None
+        )
         if client_result and isinstance(client_result, dict):
             server.status = client_result.get("status", "offline")
             if server.status == "online":
-                if "current_players" in client_result and client_result["current_players"] is not None:
+                if (
+                    "current_players" in client_result
+                    and client_result["current_players"] is not None
+                ):
                     try:
                         server.current_players = int(client_result["current_players"])
                     except (ValueError, TypeError):
@@ -185,7 +192,9 @@ class GameServerQueryView(APIView):
                         server.max_players = int(client_result["max_players"])
                     except (ValueError, TypeError):
                         pass
-                if "player_list" in client_result and isinstance(client_result["player_list"], list):
+                if "player_list" in client_result and isinstance(
+                    client_result["player_list"], list
+                ):
                     server.player_list = [str(p) for p in client_result["player_list"] if p]
                 if "current_map" in client_result and client_result["current_map"]:
                     server.current_map = str(client_result["current_map"])[:100]

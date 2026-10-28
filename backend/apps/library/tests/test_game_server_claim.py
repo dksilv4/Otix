@@ -219,5 +219,3 @@ class GameServerClaimTests(TestCase):
         self.assertTrue(next_data.get("claimed"))
         self.assertEqual(next_data.get("auth_token"), assigned_token)
         self.assertEqual(next_data.get("username"), "owner")
-
-

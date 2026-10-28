@@ -66,9 +66,7 @@ class MessageDetailView(APIView):
     ``DELETE /api/v1/chat/conversations/{id}/messages/{msg_id}`` -- soft delete.
     """
 
-    def patch(
-        self, request: Request, conversation_id: uuid.UUID, message_id: int
-    ) -> Response:
+    def patch(self, request: Request, conversation_id: uuid.UUID, message_id: int) -> Response:
         input_serializer = MessageEditInputSerializer(data=request.data)
         input_serializer.is_valid(raise_exception=True)
 
@@ -79,9 +77,7 @@ class MessageDetailView(APIView):
         )
         return Response(MessageSerializer(message).data)
 
-    def delete(
-        self, request: Request, conversation_id: uuid.UUID, message_id: int
-    ) -> Response:
+    def delete(self, request: Request, conversation_id: uuid.UUID, message_id: int) -> Response:
         message = services.delete_message(
             message_id=message_id,
             user_id=request.user.id,
@@ -92,9 +88,7 @@ class MessageDetailView(APIView):
 class MessageReactionView(APIView):
     """``POST /api/v1/chat/conversations/{id}/messages/{msg_id}/reactions`` -- toggle reaction."""
 
-    def post(
-        self, request: Request, conversation_id: uuid.UUID, message_id: int
-    ) -> Response:
+    def post(self, request: Request, conversation_id: uuid.UUID, message_id: int) -> Response:
         input_serializer = MessageReactionInputSerializer(data=request.data)
         input_serializer.is_valid(raise_exception=True)
 
@@ -105,9 +99,11 @@ class MessageReactionView(APIView):
             emoji=emoji,
         )
         reactions = MessageReaction.objects.filter(message_id=message_id)
-        return Response({
-            "status": "ok",
-            "added": added,
-            "emoji": emoji,
-            "reactions": MessageReactionSerializer(reactions, many=True).data,
-        })
+        return Response(
+            {
+                "status": "ok",
+                "added": added,
+                "emoji": emoji,
+                "reactions": MessageReactionSerializer(reactions, many=True).data,
+            }
+        )
