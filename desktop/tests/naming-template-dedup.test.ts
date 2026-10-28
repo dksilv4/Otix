@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { applyNamingTemplate, validateNamingTemplate, parseReleaseName } from '../game/parser';
+import { resolveSidecarPlatform } from '../downloads/organizer';
 
 describe('naming-template-dedup', () => {
   it('deduplicates duplicate [{platform}] tags in template', () => {
@@ -67,8 +68,7 @@ describe('naming-template-dedup', () => {
     expect(target).toBe('Grand Theft Auto V (2013) [PC] [1.0]');
   });
 
-  it('resolveSidecarPlatform prioritizes PC even when Xbox is first in platforms array', async () => {
-    const { resolveSidecarPlatform } = await import('../downloads/organizer');
+  it('resolveSidecarPlatform prioritizes PC even when Xbox is first in platforms array', () => {
     const sc = {
       title: 'Baldur\'s Gate 3',
       platforms: [
@@ -80,8 +80,7 @@ describe('naming-template-dedup', () => {
     expect(resolveSidecarPlatform(sc)).toBe('PC');
   });
 
-  it('resolveSidecarPlatform prioritizes PC when PlayStation 3 is first in platforms array', async () => {
-    const { resolveSidecarPlatform } = await import('../downloads/organizer');
+  it('resolveSidecarPlatform prioritizes PC when PlayStation 3 is first in platforms array', () => {
     const sc = {
       title: 'Grand Theft Auto V',
       platforms: [
@@ -93,8 +92,7 @@ describe('naming-template-dedup', () => {
     expect(resolveSidecarPlatform(sc)).toBe('PC');
   });
 
-  it('resolveSidecarPlatform handles string array format and prioritizes PC', async () => {
-    const { resolveSidecarPlatform } = await import('../downloads/organizer');
+  it('resolveSidecarPlatform handles string array format and prioritizes PC', () => {
     const sc = {
       title: 'The Elder Scrolls V: Skyrim',
       platforms: ['playstation-3', 'xbox-360', 'windows'],

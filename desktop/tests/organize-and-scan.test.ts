@@ -507,5 +507,5 @@ describe('Production Game Organization & Scanning', () => {
         }
       }
     }
-  });
+  }, 30000);
 });

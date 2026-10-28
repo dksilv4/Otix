@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { ChevronRight, CornerLeftUp, Folder, FolderPlus, HardDrive, Network, RefreshCw, X } from 'lucide-react'
 import { DkDialog } from '@ui/molecules/dialog'
 import { DkButton } from '@ui/atoms/button'
-import { useToast } from '@ui/molecules/toast'
+import { useOptionalToast } from '@ui/molecules/toast'
 import { cn, formatBytes } from '@/lib/utils'
 import { useGameServers } from '@/features/downloads/use-server-downloads'
 import { useCreateServerFolder, useServerExplorer } from '@/features/downloads/use-server-explorer'
@@ -28,12 +28,7 @@ export const FolderPickerModal = ({
   onClose: () => void
   isExiting?: boolean
 }) => {
-  let toast: (opts: any) => void = () => {}
-  try {
-    toast = useToast().toast
-  } catch {
-    // Graceful fallback when rendered without DkToastProvider (e.g. in test harness)
-  }
+  const { toast } = useOptionalToast()
   const { data: servers = [] } = useGameServers()
   const remoteServers = useMemo(
     () => servers.filter((s) => !isLocalDesktopNode(s) && Number(s.id) > 0),
@@ -56,9 +51,7 @@ export const FolderPickerModal = ({
     serverId,
     currentPath,
   )
-  const createFolderMutation = typeof useCreateServerFolder === 'function'
-    ? useCreateServerFolder(serverId)
-    : ({ mutateAsync: async () => ({ path: '' }) } as any)
+  const createFolderMutation = useCreateServerFolder(serverId)
   const browseData = useMemo(
     () => (rawBrowseData ? normalizeExplorerBrowse(rawBrowseData) : undefined),
     [rawBrowseData],

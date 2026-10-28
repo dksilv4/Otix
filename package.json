@@ -18,6 +18,8 @@
     "prod:down": "make prod-down",
     "test:desktop": "npm test --prefix desktop",
     "test:frontend": "npm test --prefix frontend",
+    "clean": "node -e \"const fs=require('fs'); ['dist', 'desktop/release', 'desktop/dist', 'frontend/dist', 'node/dist'].forEach(d => { try { fs.rmSync(d, {recursive: true, force: true}); } catch(e){} });\"",
+    "clean:dist": "node -e \"const fs=require('fs'); if (fs.existsSync('dist')) fs.rmSync('dist', {recursive: true, force: true});\"",
     "node:local": "powershell -ExecutionPolicy Bypass -File ./scripts/start_node_local.ps1",
     "node:prod": "powershell -ExecutionPolicy Bypass -File ./scripts/start_node_prod.ps1"
   },

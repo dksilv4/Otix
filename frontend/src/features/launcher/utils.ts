@@ -40,14 +40,8 @@ export const toDisplayGame = (g: LocalGame): DisplayGame => {
   }
 }
 
-export const getErrorMessage = (err: unknown, fallback = 'An error occurred.'): string => {
-  return err instanceof Error ? err.message : typeof err === 'string' ? err : fallback
-}
-
-export const formatBytes = (bytes: number): string => {
-  const gb = bytes / (1024 * 1024 * 1024)
-  return gb >= 1 ? `${gb.toFixed(0)} GB` : `${(bytes / (1024 * 1024)).toFixed(0)} MB`
-}
+export { getErrorMessage } from '@/lib/utils/format-error'
+export { formatBytes } from '@/lib/utils/format-bytes'
 
 export const driveLetter = (drive: string): string => {
   return drive.endsWith('\\') || drive.endsWith('/') ? drive.slice(0, -1) : drive

@@ -282,17 +282,48 @@ def external_ids_for(
 def enrich_summaries(items: list[MediaItem], user: _User, context: str = "general") -> None:
     """Attach image urls, external ids and per-user interaction state to items."""
     if items:
-        prefetch_related_objects(items, "assets")
-        coll_media_items: list[MediaItem] = []
+        # Pre-load collection movies and sibling media items if not already prefetched
+        movie_items = [it for it in items if getattr(it, "media_type", None) == "movie"]
+        unloaded_movies = [
+            it
+            for it in movie_items
+            if "movie" not in getattr(it._state, "fields_cache", {})
+        ]
+        if unloaded_movies:
+            prefetch_related_objects(unloaded_movies, "movie__collection")
+
+        collections = [
+            it.movie.collection
+            for it in movie_items
+            if hasattr(it, "movie") and it.movie and getattr(it.movie, "collection", None)
+        ]
+        unloaded_collections = [
+            c
+            for c in collections
+            if not hasattr(c, "_prefetched_objects_cache")
+            or "movies" not in c._prefetched_objects_cache
+        ]
+        if unloaded_collections:
+            prefetch_related_objects(unloaded_collections, "movies__media_item")
+
+        items_by_id = {it.id: it for it in items}
+        coll_media_items_map: dict[int, MediaItem] = {}
         for item in items:
             movie = getattr(item, "movie", None)
             collection = getattr(movie, "collection", None) if movie else None
             if collection:
                 for cm in collection.movies.all():
-                    if getattr(cm, "media_item", None):
-                        coll_media_items.append(cm.media_item)
+                    m_item = getattr(cm, "media_item", None)
+                    if m_item:
+                        actual = items_by_id.get(m_item.id, m_item)
+                        coll_media_items_map[m_item.id] = actual
+
+        coll_media_items = list(coll_media_items_map.values())
+        items_to_prefetch = list(items) + [
+            it for it in coll_media_items if it.id not in items_by_id
+        ]
+        prefetch_related_objects(items_to_prefetch, "assets")
         if coll_media_items:
-            prefetch_related_objects(coll_media_items, "assets")
             attach_media_urls(coll_media_items, context)
     attach_media_urls(items, context)
     ext_map = external_ids_for(items)
@@ -411,7 +442,13 @@ def list_media(
     if media_type:
         qs = qs.filter(media_type=media_type)
         if media_type == "movie":
-            qs = qs.select_related("movie")
+            qs = qs.select_related("movie__collection").prefetch_related(
+                "movie__collection__movies__media_item"
+            )
+    else:
+        qs = qs.select_related("movie__collection").prefetch_related(
+            "movie__collection__movies__media_item"
+        )
     if genre:
         # Comma-separated slugs/ids OR together — multi-select means "any of these".
         genre_tokens = [part.strip() for part in str(genre).split(",") if part.strip()]
@@ -562,6 +599,7 @@ def media_detail_queryset(media_id: int) -> MediaItem | None:
             "movie__collection__movies__media_item",
             "movie__collection__movies__media_item__assets",
             "external_ratings",
+            "external_ids",
         )
         .filter(pk=media_id)
         .first()

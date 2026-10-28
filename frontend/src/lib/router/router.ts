@@ -1,4 +1,4 @@
-import { createRouter, createRootRoute, createRoute } from "@tanstack/react-router"
+import { createRouter, createRootRoute, createRoute, redirect } from "@tanstack/react-router"
 import type { QueryClient } from "@tanstack/react-query"
 import { NotFoundPage } from "@/components/not-found"
 import { RootLayout } from "@/features/_config/components/layout/root-layout"

@@ -25,7 +25,6 @@ export const usePlexSyncPrompt = () => {
   })
 
   const promptedRef = useRef(false)
-  const pendingCheckRef = useRef(false)
 
   const openPrompt = useCallback((promptMode: PlexSyncPromptMode) => {
     setMode(promptMode)

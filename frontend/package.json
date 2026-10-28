@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "build:check": "tsc -b && vite build",
-    "package:dist": "npm run build && node -e \"const fs=require('fs'); fs.cpSync('dist', '../dist/frontend', {recursive: true, force: true})\" && tar -czf ../otix-frontend-dist.tar.gz -C dist .",
+    "package:dist": "npm run build && node -e \"const fs=require('fs'); fs.mkdirSync('../dist/frontend', {recursive: true}); fs.cpSync('dist', '../dist/frontend', {recursive: true, force: true});\"",
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest run",

@@ -1,16 +1,7 @@
 import type { UpdateStatus } from '@/lib/desktop/api'
 
-/**
- * Format bytes into readable string (e.g. 14.2 MB)
- */
-export const formatBytes = (bytes: number): string => {
-  if (!bytes || bytes <= 0) return '0 B'
-  const units = ['B', 'KB', 'MB', 'GB']
-  const i = Math.floor(Math.log(bytes) / Math.log(1024))
-  const clampedI = Math.min(i, units.length - 1)
-  const val = bytes / Math.pow(1024, clampedI)
-  return `${val.toFixed(clampedI > 0 ? 1 : 0)} ${units[clampedI]}`
-}
+import { formatBytes } from '@/lib/utils/format-bytes'
+export { formatBytes }
 
 /**
  * Format download transfer rate (e.g. 2.4 MB/s)

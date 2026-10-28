@@ -61,7 +61,7 @@ describe('indexer search wiring', () => {
 
   it('matches downloader active queue items and completed history to releases', async () => {
     const { findReleaseQueueItem, findReleaseHistoryItem } = await import(
-      '../molecules/node-game-search-modal'
+      '../utils'
     )
 
     const release: ServerProwlarrRelease = {

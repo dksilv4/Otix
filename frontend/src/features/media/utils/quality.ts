@@ -67,7 +67,8 @@ export interface BuildQualityOptionsParams {
   source?: string
 }
 
-export const buildQualityOptions = (params?: BuildQualityOptionsParams): StreamQualityOption[] => {
+export const buildQualityOptions = (params?: BuildQualityOptionsParams | BuildQualityOptionsParams['hlsLevels']): StreamQualityOption[] => {
+  const normalizedParams: BuildQualityOptionsParams | undefined = Array.isArray(params) ? { hlsLevels: params } : params
   const options: StreamQualityOption[] = [
     {
       id: 'auto',
@@ -77,7 +78,7 @@ export const buildQualityOptions = (params?: BuildQualityOptionsParams): StreamQ
     },
   ]
 
-  if (params?.hasDirectPlay) {
+  if (normalizedParams?.hasDirectPlay) {
     options.push({
       id: 'original',
       label: 'Original',
@@ -86,7 +87,7 @@ export const buildQualityOptions = (params?: BuildQualityOptionsParams): StreamQ
     })
   }
 
-  const hlsLevels = params?.hlsLevels
+  const hlsLevels = normalizedParams?.hlsLevels
 
   if (hlsLevels && hlsLevels.length > 1) {
     const levelOptions: StreamQualityOption[] = hlsLevels.map((level, index) => {

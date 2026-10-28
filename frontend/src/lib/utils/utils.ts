@@ -29,13 +29,7 @@ export function formatTime(ms: number): string {
   return formatDuration(ms)
 }
 
-export function formatBytes(bytes: number | null): string {
-  if (bytes === null || bytes === undefined || bytes === 0) return '0 B'
-  const k = 1024
-  const sizes = ['B', 'KB', 'MB', 'GB', 'TB'] as const
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i]
-}
+export { formatBytes, formatFileSize } from './format-bytes'
 
 /**
  * Formats installed physical RAM capacity to standard manufactured tiers (e.g. 8 GB, 16 GB, 32 GB, 64 GB),

@@ -44,7 +44,7 @@ echo "==> [4/5] Checking for Otix Node companion binary..."
 if command -v go >/dev/null 2>&1; then
   echo "    Building embedded Otix Node companion..."
   mkdir -p "${DESKTOP_DIR}/bin"
-  (cd "${REPO_ROOT}/node" && CGO_ENABLED=0 go build -ldflags="-s -w" -o "${DESKTOP_DIR}/bin/otix-node" ./main.go)
+  (cd "${REPO_ROOT}/node" && CGO_ENABLED=0 go build -ldflags="-s -w" -o "${DESKTOP_DIR}/bin/otix-node" .)
   chmod +x "${DESKTOP_DIR}/bin/otix-node"
 elif [[ -f "${DESKTOP_DIR}/bin/otix-node" ]]; then
   echo "    Using pre-existing ${DESKTOP_DIR}/bin/otix-node binary."
@@ -80,5 +80,5 @@ fi
 echo ""
 echo "=========================================================="
 echo "  🎉 Otix Desktop Packaging Complete! Artifacts in:        "
-echo "     ${DESKTOP_DIR}/release                               "
+echo "     ${REPO_ROOT}/dist/desktop                            "
 echo "=========================================================="

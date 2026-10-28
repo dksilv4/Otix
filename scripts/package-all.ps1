@@ -16,17 +16,23 @@ Write-Host "==========================================================" -Foregro
 Write-Host "       Otix Complete Windows Binary Packaging Suite       " -ForegroundColor Cyan
 Write-Host "==========================================================" -ForegroundColor Cyan
 
-# 1. Package Otix Node (Windows executable & zip)
+# 1. Package Otix Frontend Web Bundle
 Write-Host ""
-Write-Host ">>> STEP 1: Building Otix Node Windows Executable & Zip..." -ForegroundColor Yellow
+Write-Host ">>> STEP 1: Packaging Otix Frontend Distribution..." -ForegroundColor Yellow
+$frontendDir = Join-Path $repoRoot "frontend"
+npm --prefix $frontendDir run package:dist
+
+# 2. Package Otix Node (Windows executable & zip)
+Write-Host ""
+Write-Host ">>> STEP 2: Building Otix Node Windows Executable & Zip..." -ForegroundColor Yellow
 $nodeBuildScript = Join-Path $repoRoot "node\scripts\build-windows.ps1"
 if (Test-Path $nodeBuildScript) {
     & $nodeBuildScript -PackageZip
 }
 
-# 2. Package Otix Desktop (Electron Client)
+# 3. Package Otix Desktop (Electron Client)
 Write-Host ""
-Write-Host ">>> STEP 2: Packaging Otix Desktop Client..." -ForegroundColor Yellow
+Write-Host ">>> STEP 3: Packaging Otix Desktop Client..." -ForegroundColor Yellow
 $desktopBuildScript = Join-Path $scriptDir "package-desktop.ps1"
 if ($DirOnly) {
     & $desktopBuildScript -DirOnly
@@ -38,6 +44,7 @@ Write-Host ""
 Write-Host "==========================================================" -ForegroundColor Green
 Write-Host "  All Otix Binaries Successfully Packaged!" -ForegroundColor Green
 Write-Host "==========================================================" -ForegroundColor Green
-Write-Host "  • Otix Desktop Releases: $repoRoot\desktop\release" -ForegroundColor Gray
-Write-Host "  • Otix Node Binaries:    $repoRoot\node\dist" -ForegroundColor Gray
+Write-Host "  • Otix Desktop Releases: $(Join-Path $repoRoot 'dist\desktop')" -ForegroundColor Gray
+Write-Host "  • Otix Frontend Bundle:  $(Join-Path $repoRoot 'dist\frontend')" -ForegroundColor Gray
+Write-Host "  • Otix Node Binaries:    $(Join-Path $repoRoot 'dist\node')" -ForegroundColor Gray
 Write-Host "==========================================================" -ForegroundColor Green

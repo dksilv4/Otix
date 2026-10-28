@@ -30,8 +30,12 @@ desktop/bin/otix-node.exe
 /extensions/**/*.db-wal
 .claude/settings.local.json
 
-# Build output
+# Build output and centralized distribution
+/dist/
 /desktop/release/
+/desktop/dist/
+/frontend/dist/
+/node/dist/
 otix-frontend-dist.tar.gz
 *.tar.gz
 

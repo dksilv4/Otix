@@ -102,19 +102,44 @@ export class NodeDaemonManager {
     // 2. Local desktop/bin directory (repo or dev)
     candidates.push(path.join(__dirname, '..', 'bin', binaryName));
 
-    // 3. Built node/dist output directory
-    const repoDist = path.join(__dirname, '..', '..', 'node', 'dist');
-    candidates.push(path.join(repoDist, binaryName));
+    // 3. Centralized root dist/node output directory
+    const rootDistCandidates = [
+      path.join(__dirname, '..', '..', 'dist', 'node'),
+      path.join(__dirname, '..', 'dist', 'node'),
+    ];
 
-    if (process.platform === 'darwin') {
-      candidates.push(path.join(repoDist, 'otix-node-darwin-universal'));
-      candidates.push(path.join(repoDist, `otix-node-darwin-${process.arch}`));
-      candidates.push(path.join(repoDist, 'Otix Node.app', 'Contents', 'MacOS', 'otix-node'));
-    } else if (process.platform === 'win32') {
-      candidates.push(path.join(repoDist, 'otix-node-windows-amd64.exe'));
-    } else {
-      candidates.push(path.join(repoDist, `otix-node-linux-${process.arch}`));
-      candidates.push(path.join(repoDist, 'otix-node-linux-amd64'));
+    for (const rootDist of rootDistCandidates) {
+      candidates.push(path.join(rootDist, binaryName));
+      if (process.platform === 'darwin') {
+        candidates.push(path.join(rootDist, 'otix-node-darwin-universal'));
+        candidates.push(path.join(rootDist, `otix-node-darwin-${process.arch}`));
+        candidates.push(path.join(rootDist, 'Otix Node.app', 'Contents', 'MacOS', 'otix-node'));
+      } else if (process.platform === 'win32') {
+        candidates.push(path.join(rootDist, 'otix-node-windows-amd64.exe'));
+      } else {
+        candidates.push(path.join(rootDist, `otix-node-linux-${process.arch}`));
+        candidates.push(path.join(rootDist, 'otix-node-linux-amd64'));
+      }
+    }
+
+    // 4. Built node/dist output directory (legacy fallback)
+    const repoDistCandidates = [
+      path.join(__dirname, '..', '..', 'node', 'dist'),
+      path.join(__dirname, '..', 'node', 'dist'),
+    ];
+
+    for (const repoDist of repoDistCandidates) {
+      candidates.push(path.join(repoDist, binaryName));
+      if (process.platform === 'darwin') {
+        candidates.push(path.join(repoDist, 'otix-node-darwin-universal'));
+        candidates.push(path.join(repoDist, `otix-node-darwin-${process.arch}`));
+        candidates.push(path.join(repoDist, 'Otix Node.app', 'Contents', 'MacOS', 'otix-node'));
+      } else if (process.platform === 'win32') {
+        candidates.push(path.join(repoDist, 'otix-node-windows-amd64.exe'));
+      } else {
+        candidates.push(path.join(repoDist, `otix-node-linux-${process.arch}`));
+        candidates.push(path.join(repoDist, 'otix-node-linux-amd64'));
+      }
     }
 
     for (const candidate of candidates) {
@@ -367,20 +392,20 @@ export class NodeDaemonManager {
         try {
           execSync(`taskkill /pid ${pid} /T /F`);
           finish();
+          return;
         } catch {
-          proc.kill();
+          // Fall back to SIGTERM and 2.5s SIGKILL timeout
+        }
+      }
+
+      proc.kill('SIGTERM');
+      // Force kill after 2.5 seconds if still hanging
+      setTimeout(() => {
+        if (!resolved) {
+          try { proc.kill('SIGKILL'); } catch {}
           finish();
         }
-      } else {
-        proc.kill('SIGTERM');
-        // Force kill after 2.5 seconds if still hanging
-        setTimeout(() => {
-          if (!resolved) {
-            try { proc.kill('SIGKILL'); } catch {}
-            finish();
-          }
-        }, 2500);
-      }
+      }, 2500);
     });
 
     console.log('[node-daemon] Embedded Otix Node stopped.');

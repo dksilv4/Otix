@@ -24,13 +24,7 @@ export const formatTimeRemaining = (dateStr: string | null | undefined): string 
   return 'Ending soon'
 }
 
-export const formatDate = (dateStr: string | null | undefined): string => {
-  if (!dateStr) return ''
-  return new Date(dateStr).toLocaleDateString(undefined, {
-    month: 'short',
-    day: 'numeric',
-  })
-}
+export { formatMonthDay as formatDate } from '@/lib/utils/format-date'
 
 /** Returns true when the game ends within 48 hours. */
 export const isEndingSoon = (dateStr: string | null | undefined): boolean => {

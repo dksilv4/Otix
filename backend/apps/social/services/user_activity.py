@@ -129,15 +129,93 @@ def get_user_activity(user_id: int, limit: int = 20) -> list[dict]:
 
 def get_friends_activity(user_id: int, friends, limit: int = 20) -> list[dict]:
     """Aggregated activity across accepted friends, newest first."""
+    if not friends:
+        return []
+
+    friend_map = {friend.id: friend for friend in friends}
+    friend_ids = list(friend_map.keys())
+
     all_events: list[dict] = []
-    for friend in friends:
-        for event in get_user_activity(friend.id, limit=limit):
-            event["user"] = {
-                "id": friend.id,
-                "username": friend.username,
-                "avatar_url": friend.avatar_url,
+
+    # 1. Bulk reviews
+    reviews = (
+        Review.objects.filter(user_id__in=friend_ids, content__isnull=False, is_private=False)
+        .select_related("user", "media_item")
+        .prefetch_related("media_item__assets")
+        .order_by("-created_at", "-id")[:limit]
+    )
+    for review in reviews:
+        friend = friend_map.get(review.user_id) or review.user
+        all_events.append(
+            {
+                "type": "review",
+                "timestamp": review.created_at.isoformat(),
+                "summary": f"Reviewed {review.media_item.title}",
+                "score": None,
+                "content": review.content[:200] if review.content else None,
+                "media_item": _media_slice(review.media_item),
+                "user": {
+                    "id": friend.id,
+                    "username": friend.username,
+                    "avatar_url": getattr(friend, "avatar_url", None),
+                },
             }
-            all_events.append(event)
+        )
+
+    # 2. Bulk media interactions
+    interactions = (
+        UserMediaInteraction.objects.filter(user_id__in=friend_ids)
+        .select_related("user", "media_item")
+        .prefetch_related("media_item__assets")
+        .order_by("-created_at", "-id")[:limit]
+    )
+    for interaction in interactions:
+        friend = friend_map.get(interaction.user_id) or interaction.user
+        action = interaction.interaction_type
+        past_tense = _PAST_TENSE.get(action, action.capitalize())
+        all_events.append(
+            {
+                "type": "interaction",
+                "timestamp": interaction.created_at.isoformat(),
+                "summary": f"{past_tense} {interaction.media_item.title}",
+                "interaction_type": action,
+                "media_item": _media_slice(interaction.media_item),
+                "user": {
+                    "id": friend.id,
+                    "username": friend.username,
+                    "avatar_url": getattr(friend, "avatar_url", None),
+                },
+            }
+        )
+
+    # 3. Bulk episode interactions
+    episodes = (
+        UserEpisodeInteraction.objects.filter(user_id__in=friend_ids)
+        .select_related("user", "episode__season__show__media_item")
+        .prefetch_related("episode__season__show__media_item__assets")
+        .order_by("-created_at", "-id")[:limit]
+    )
+    for interaction in episodes:
+        friend = friend_map.get(interaction.user_id) or interaction.user
+        episode = interaction.episode
+        season = episode.season
+        media = season.show.media_item
+        all_events.append(
+            {
+                "type": "episode_watched",
+                "timestamp": interaction.created_at.isoformat(),
+                "summary": (
+                    f"Watched S{season.season_number}E{episode.episode_number} of {media.title}"
+                ),
+                "media_item": _media_slice(media),
+                "user": {
+                    "id": friend.id,
+                    "username": friend.username,
+                    "avatar_url": getattr(friend, "avatar_url", None),
+                },
+            }
+        )
+
     all_events.sort(key=lambda e: e["timestamp"], reverse=True)
     return all_events[:limit]
 

@@ -19,16 +19,10 @@ export const reviewScoreColor = (score: number): { text: string; glow: string } 
   return { text: 'dk-review-section__score-value--red', glow: 'dk-review-section__glow--red' }
 }
 
+import { formatDate as formatDateUnified } from '@/lib/utils/format-date'
+
 export const formatDate = (dateStr: string): string => {
-  const d = new Date(dateStr)
-  const now = new Date()
-  const diff = now.getTime() - d.getTime()
-  const days = Math.floor(diff / (1000 * 60 * 60 * 24))
-  if (days < 1) return 'Today'
-  if (days < 2) return 'Yesterday'
-  if (days < 7) return `${days}d ago`
-  if (days < 365) return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+  return formatDateUnified(dateStr, { relative: true })
 }
 
 export const formatRemaining = (ms: number): string => {

@@ -22,7 +22,7 @@ mkdir -p "${PLIST_DIR}"
 
 echo "==> Building Otix Node native binary..."
 TARGET_BIN="${INSTALL_DIR}/otix-node"
-CGO_ENABLED=0 go build -ldflags="-s -w" -o "${TARGET_BIN}" "${NODE_DIR}/main.go"
+CGO_ENABLED=0 go build -ldflags="-s -w" -o "${TARGET_BIN}" "${NODE_DIR}"
 chmod +x "${TARGET_BIN}"
 echo "    Installed binary: ${TARGET_BIN}"
 

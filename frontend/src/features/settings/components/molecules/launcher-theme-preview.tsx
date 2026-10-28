@@ -230,7 +230,6 @@ const PlayStationMiniPreview = () => {
       <div className="flex items-center justify-between px-0.5 relative z-10">
         <span className="text-[5px] font-black uppercase tracking-widest text-white/50">OTIX HOME</span>
         <div className="flex items-center gap-1">
-          <div className="w-2 h-2 rounded-full bg-blue-500 border border-white/20" />
           <span className="text-[5px] font-bold text-white/70">12:30</span>
         </div>
       </div>
@@ -488,7 +487,6 @@ const ForgeMiniPreview = () => {
             <div className="text-neutral-500 px-1 py-0.2">Library</div>
           </div>
         </div>
-        <div className="w-2 h-2 rounded-full bg-cyan-600" />
       </div>
 
       {/* Main Storefront Area */}

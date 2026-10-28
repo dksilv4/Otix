@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, useRef, type ReactNode } from 'react'
+import { createContext, useState, useCallback, useRef, type ReactNode } from 'react'
 
 export interface ModalInstance {
   id: string
@@ -13,7 +13,7 @@ interface ModalContextValue {
   closeAll: () => void
 }
 
-const ModalContext = createContext<ModalContextValue>({
+export const ModalContext = createContext<ModalContextValue>({
   modals: [],
   openModal: () => () => {},
   closeModal: () => {},
@@ -65,6 +65,4 @@ export const ModalProvider = ({ children }: { children: ReactNode }) => {
   )
 };
 
-export const useModal = () => {
-  return useContext(ModalContext)
-}
+export { useModal } from './hooks/use-modal'

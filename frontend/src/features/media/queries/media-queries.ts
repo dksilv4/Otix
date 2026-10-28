@@ -86,6 +86,8 @@ export interface MediaItemDetail {
   title: string
   slug: string
   overview: string | null
+  description?: string | null
+  synopsis?: string | null
   freePromotions?: FreePromotionItem[]
   posterUrl: string | null
   textlessPosterUrl: string | null
@@ -164,6 +166,8 @@ export interface MediaItemDetail {
     id: string
     name: string
     overview: string | null
+  description?: string | null
+  synopsis?: string | null
     posterUrl: string | null
     backdropUrl: string | null
     movies: Array<{
@@ -222,6 +226,8 @@ export interface SeasonSummary {
   seasonNumber: number
   name: string | null
   overview: string | null
+  description?: string | null
+  synopsis?: string | null
   posterUrl: string | null
   airDate: string | null
 }

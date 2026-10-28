@@ -3,15 +3,16 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 NODE_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
-DIST_DIR="${NODE_DIR}/dist"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+DIST_DIR="${REPO_ROOT}/dist/node"
 
 mkdir -p "${DIST_DIR}"
 
 echo "==> Building Otix Node for macOS (Apple Silicon arm64)..."
-(cd "${NODE_DIR}" && CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w" -o "${DIST_DIR}/otix-node-darwin-arm64" "./main.go")
+(cd "${NODE_DIR}" && CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w" -o "${DIST_DIR}/otix-node-darwin-arm64" ".")
 
 echo "==> Building Otix Node for macOS (Intel amd64)..."
-(cd "${NODE_DIR}" && CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w" -o "${DIST_DIR}/otix-node-darwin-amd64" "./main.go")
+(cd "${NODE_DIR}" && CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w" -o "${DIST_DIR}/otix-node-darwin-amd64" ".")
 
 BIN_SRC="${DIST_DIR}/otix-node-darwin-arm64"
 if command -v lipo >/dev/null 2>&1; then

@@ -38,6 +38,9 @@ var (
 	procTranslateMessage           = modUser32.NewProc("TranslateMessage")
 	procDispatchMessageW           = modUser32.NewProc("DispatchMessageW")
 	procPostMessageW               = modUser32.NewProc("PostMessageW")
+	procPostThreadMessageW         = modUser32.NewProc("PostThreadMessageW")
+	procPostQuitMessage            = modUser32.NewProc("PostQuitMessage")
+	procGetCurrentThreadId         = modKernel32.NewProc("GetCurrentThreadId")
 	procInvalidateRect             = modUser32.NewProc("InvalidateRect")
 	procBeginPaint                 = modUser32.NewProc("BeginPaint")
 	procEndPaint                   = modUser32.NewProc("EndPaint")
@@ -81,6 +84,8 @@ const (
 	modShift   = 0x0004
 
 	wmDestroy = 0x0002
+	wmClose   = 0x0010
+	wmQuit    = 0x0012
 	wmPaint   = 0x000F
 	wmHotKey  = 0x0312
 	wmUser    = 0x0400
@@ -180,7 +185,9 @@ type OverlayManager struct {
 	lastW        int32
 	lastH        int32
 	gameHwnd     uintptr
+	threadID     uintptr
 	stopChan     chan struct{}
+	stopOnce     sync.Once
 }
 
 var globalOverlayManager *OverlayManager
@@ -297,7 +304,12 @@ func wndProc(hwnd, msg, wParam, lParam uintptr) uintptr {
 		}
 		return 0
 
+	case wmClose:
+		procDestroyWindow.Call(hwnd)
+		return 0
+
 	case wmDestroy:
+		procPostQuitMessage.Call(0)
 		return 0
 	}
 
@@ -552,6 +564,11 @@ func (om *OverlayManager) runWin32Thread() {
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
 
+	tid, _, _ := procGetCurrentThreadId.Call()
+	om.mu.Lock()
+	om.threadID = tid
+	om.mu.Unlock()
+
 	// Try acquiring named mutex to ensure only ONE instance manages the Win32 overlay on the host
 	mutexName, _ := syscall.UTF16PtrFromString("Local\\OtixGameOverlayInstanceMutex")
 	hMutex, _, _ := procCreateMutexW.Call(0, 0, uintptr(unsafe.Pointer(mutexName)))
@@ -691,6 +708,16 @@ func (om *OverlayManager) runWin32Thread() {
 	for id := uintptr(1); id <= 8; id++ {
 		procUnregisterHotKey.Call(hwnd, id)
 	}
+	if hwnd != 0 {
+		procDestroyWindow.Call(hwnd)
+	}
+	om.mu.Lock()
+	om.hwnd = 0
+	if om.hMutex != 0 {
+		procCloseHandle.Call(om.hMutex)
+		om.hMutex = 0
+	}
+	om.mu.Unlock()
 }
 
 // GetAvailableMonitors enumerates all attached physical display monitors.
@@ -1248,15 +1275,24 @@ func (om *OverlayManager) SetCorner(corner string) {
 
 // Stop terminates the overlay.
 func (om *OverlayManager) Stop() {
-	close(om.stopChan)
-	om.mu.Lock()
-	defer om.mu.Unlock()
-	if om.hwnd != 0 {
-		procDestroyWindow.Call(om.hwnd)
+	om.stopOnce.Do(func() {
+		close(om.stopChan)
+		om.mu.Lock()
+		hwnd := om.hwnd
+		threadID := om.threadID
+		hMutex := om.hMutex
 		om.hwnd = 0
-	}
-	if om.hMutex != 0 {
-		procCloseHandle.Call(om.hMutex)
 		om.hMutex = 0
-	}
+		om.mu.Unlock()
+
+		if hwnd != 0 {
+			procPostMessageW.Call(hwnd, wmClose, 0, 0)
+		}
+		if threadID != 0 {
+			procPostThreadMessageW.Call(threadID, wmQuit, 0, 0)
+		}
+		if hMutex != 0 {
+			procCloseHandle.Call(hMutex)
+		}
+	})
 }

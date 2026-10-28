@@ -1,14 +1,10 @@
+import { formatDate as formatDateUnified } from '@/lib/utils/format-date'
 import type { PersonCredit, PersonDetail, EpisodeInfo } from './types'
 
 // ── Date formatting ───────────────────────────────
 
-export function formatDate(dateStr?: string | null): string {
-  if (!dateStr) return ''
-  return new Date(dateStr).toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  })
+export const formatDate = (dateStr?: string | null): string => {
+  return formatDateUnified(dateStr, { monthFormat: 'long' })
 }
 
 export function isUpcoming(dateStr: string): boolean {

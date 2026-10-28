@@ -284,13 +284,12 @@ class MediaDetailView(APIView):
         if item is None:
             raise NotFound(MEDIA_ITEM_NOT_FOUND)
         context = catalog_service.request_context(request)
-        catalog_service.enrich_summaries([item], request.user, context)
         rehydrated = _enqueue_detail_rehydrate(item)
         if rehydrated:
             refreshed = catalog_service.media_detail_queryset(pk)
             if refreshed is not None:
                 item = refreshed
-                catalog_service.enrich_summaries([item], request.user, context)
+        catalog_service.enrich_summaries([item], request.user, context)
 
         # Automated hydration: if a game has 0 characters and 0 credits, trigger background task
         # Use prefetched collections instead of calling .count() which triggers extra SQL queries

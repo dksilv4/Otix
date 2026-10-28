@@ -447,37 +447,115 @@ func yearFromSidecar(sc *otixmeta.Sidecar, rawName string) string {
 }
 
 func isNoise(filename, fullPath string) bool {
-
-	lowerName := strings.ToLower(filename)
-
-	for _, p := range noiseExecutablePatterns {
-
-		if strings.Contains(lowerName, p) {
-
-			return true
-
-		}
-
+	if filename == "" || fullPath == "" {
+		return false
 	}
 
-	parts := strings.FieldsFunc(strings.ToLower(fullPath), func(r rune) bool {
-
-		return r == '/' || r == '\\'
-
-	})
-
-	for _, part := range parts {
-
-		if noiseDirectoryNames[part] {
-
+	lowerName := strings.ToLower(filename)
+	for _, p := range noiseExecutablePatterns {
+		if strings.Contains(lowerName, p) {
 			return true
+		}
+	}
 
+	cleanPath := filepath.Clean(fullPath)
+	checkPath := cleanPath
+
+	tempCandidates := []string{os.TempDir()}
+	if t := os.Getenv("TEMP"); t != "" {
+		tempCandidates = append(tempCandidates, t)
+	}
+	if t := os.Getenv("TMP"); t != "" {
+		tempCandidates = append(tempCandidates, t)
+	}
+
+	for _, td := range tempCandidates {
+		if td == "" {
+			continue
+		}
+		cleanTemp := strings.ToLower(filepath.Clean(td))
+		cleanFull := strings.ToLower(checkPath)
+		if strings.HasPrefix(cleanFull, cleanTemp) {
+			trimmed := checkPath[len(cleanTemp):]
+			trimmed = strings.TrimPrefix(trimmed, "/")
+			trimmed = strings.TrimPrefix(trimmed, "\\")
+			checkPath = trimmed
+			break
+		} else if rel, err := filepath.Rel(cleanTemp, cleanFull); err == nil && !strings.HasPrefix(rel, "..") {
+			checkPath = rel
+			break
+		}
+	}
+
+	parts := strings.FieldsFunc(checkPath, func(r rune) bool {
+		return r == '/' || r == '\\'
+	})
+	if len(parts) <= 1 {
+		return false
+	}
+
+	// Remove trailing filename from directory segments
+	dirs := parts[:len(parts)-1]
+
+	// Determine starting index of directories that are inside the game root.
+	// Any directory preceding a known game library collection (e.g. Games, Torrents, Downloads)
+	// or user profile / OS root cannot be an interior noise directory.
+	startIdx := 0
+
+	for i := len(dirs) - 1; i >= 0; i-- {
+		lowerDir := strings.ToLower(dirs[i])
+		if noiseDirectoryNames[lowerDir] {
+			continue // noise subdirectories (temp, tmp, redist, etc.) are not collection roots
+		}
+		if collectionDirectoryNames[lowerDir] {
+			// Found collection folder. The game directory is at i+1.
+			// Interior game subdirectories start at i+2.
+			if i+2 <= len(dirs) {
+				startIdx = i + 2
+			} else {
+				startIdx = len(dirs)
+			}
+			break
+		}
+	}
+
+	if startIdx == 0 {
+		maxInteriorDepth := 3
+		if len(dirs) > maxInteriorDepth {
+			startIdx = len(dirs) - maxInteriorDepth
+		}
+	}
+
+	for i := startIdx; i < len(dirs); i++ {
+		lowerPart := strings.ToLower(dirs[i])
+
+		// Skip user profile folders (e.g. C:\Users\temp, /home/temp)
+		if i >= 1 {
+			parentLower := strings.ToLower(dirs[i-1])
+			if parentLower == "users" || parentLower == "home" {
+				continue
+			}
 		}
 
+		// Skip OS temp directories (e.g. AppData\Local\Temp or Windows\Temp)
+		if (lowerPart == "temp" || lowerPart == "tmp") &&
+			((i >= 2 && strings.ToLower(dirs[i-1]) == "local" && strings.ToLower(dirs[i-2]) == "appdata") ||
+				(i >= 1 && strings.ToLower(dirs[i-1]) == "windows")) {
+			continue
+		}
+
+		// Skip system directories
+		if lowerPart == "windows" || lowerPart == "program files" || lowerPart == "program files (x86)" ||
+			lowerPart == "appdata" || lowerPart == "local" || lowerPart == "users" {
+			continue
+		}
+
+		if noiseDirectoryNames[lowerPart] {
+			return true
+		}
 	}
 
 	return false
-
 }
 
 func isGameExeName(name, fullPath string) bool {

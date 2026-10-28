@@ -19,7 +19,7 @@ interface SettingsSaveContextType {
 
 const SettingsSaveContext = createContext<SettingsSaveContextType | undefined>(undefined)
 
-export function SettingsSaveProvider({ children }: { children: ReactNode }) {
+export const SettingsSaveProvider = ({ children }: { children: ReactNode }) => {
   const [registry, setRegistry] = useState<Record<string, SettingsSaveConfig>>({})
   const [legacyConfig, setLegacyConfig] = useState<SettingsSaveConfig | null>(null)
 

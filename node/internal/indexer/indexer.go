@@ -724,6 +724,21 @@ func (si *StorageIndexer) AttachWatcher(w *Watcher) {
 	si.syncWatcherPathsLocked()
 }
 
+// Close cleanly stops the watcher and closes the database store.
+func (si *StorageIndexer) Close() error {
+	si.mu.Lock()
+	defer si.mu.Unlock()
+	if si.watcher != nil {
+		_ = si.watcher.Close()
+		si.watcher = nil
+	}
+	if si.store != nil {
+		_ = si.store.Close()
+		si.store = nil
+	}
+	return nil
+}
+
 func (si *StorageIndexer) syncWatcherPathsLocked() {
 	if si.watcher == nil {
 		return

@@ -142,6 +142,7 @@ type GameTracker struct {
 	runningGames map[string]*RunningGame
 	activeGameID string
 	stopChan     chan struct{}
+	stopOnce     sync.Once
 	nodeName     string
 	nodePort     int
 
@@ -192,10 +193,12 @@ func (gt *GameTracker) Start() {
 
 // Stop terminates background scanning and stops active tracking cleanly.
 func (gt *GameTracker) Stop() {
-	close(gt.stopChan)
-	gt.mu.Lock()
-	gt.stopActiveSessionLocked()
-	gt.mu.Unlock()
+	gt.stopOnce.Do(func() {
+		close(gt.stopChan)
+		gt.mu.Lock()
+		gt.stopActiveSessionLocked()
+		gt.mu.Unlock()
+	})
 }
 
 func (gt *GameTracker) scanLoop() {
@@ -221,14 +224,18 @@ func (gt *GameTracker) focusLoop() {
 		case <-gt.stopChan:
 			return
 		case <-ticker.C:
+			gt.mu.RLock()
+			idle := len(gt.runningGames) == 0 && gt.activeGameID == ""
+			gt.mu.RUnlock()
+			if idle {
+				continue
+			}
 			gt.updateActiveGame()
 		}
 	}
 }
 
 func (gt *GameTracker) updateActiveGame() {
-	fgPid := getForegroundProcessPID()
-
 	gt.mu.Lock()
 	defer gt.mu.Unlock()
 
@@ -236,6 +243,8 @@ func (gt *GameTracker) updateActiveGame() {
 		gt.activeGameID = ""
 		return
 	}
+
+	fgPid := getForegroundProcessPID()
 
 	// 1. Check if the foreground window directly belongs to one of our running games
 	var fgGame *RunningGame

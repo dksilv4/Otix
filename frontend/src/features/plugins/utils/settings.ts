@@ -66,17 +66,7 @@ export const providerManagedKeys = (plugin: PluginInfo | null): string[] => {
     .map(([key]) => key)
 }
 
-export const formatBytes = (bytes?: number | null): string => {
-  if (bytes == null || isNaN(bytes) || bytes < 0) return ''
-  const units = ['B', 'KB', 'MB', 'GB', 'TB']
-  let i = 0
-  let n = bytes
-  while (n >= 1024 && i < units.length - 1) {
-    n /= 1024
-    i++
-  }
-  return `${n >= 10 || i === 0 ? n.toFixed(0) : n.toFixed(1)} ${units[i]}`
-}
+export { formatBytes } from '@/lib/utils/format-bytes'
 
 export const parseGenres = (raw: string | null): string[] => {
   if (!raw) return []

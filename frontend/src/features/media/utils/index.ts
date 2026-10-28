@@ -44,12 +44,7 @@ export function formatYear(dateStr?: string | null): string {
   return dateStr.slice(0, 4)
 }
 
-export function formatDate(dateStr?: string | null): string | null {
-  if (!dateStr) return null
-  const d = new Date(dateStr)
-  if (Number.isNaN(d.getTime())) return null
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
-}
+export { formatDate } from '@/lib/utils/format-date'
 
 export function seoDescription(overview?: string | null, title?: string): string {
   if (overview) return overview.length > 200 ? overview.slice(0, 197) + '...' : overview
@@ -91,25 +86,14 @@ export function languageName(code: string): string {
   }
 }
 
-export function formatMs(ms: number | null | undefined): string {
-  if (ms == null || ms <= 0) return '—'
-  const totalSec = Math.round(ms / 1000)
-  const m = Math.floor(totalSec / 60)
-  const s = totalSec % 60
-  return `${m}:${s.toString().padStart(2, '0')}`
-}
+export { formatMs } from '@/lib/utils/format-ms'
 
 export function formatNumber(n?: number): string {
   if (n == null) return ''
   return new Intl.NumberFormat('en-US').format(n)
 }
 
-export function formatPlaytime(minutes: number): string {
-  if (minutes < 60) return `${minutes}m`
-  const hours = minutes / 60
-  if (hours < 1) return `${Math.round(hours * 10) / 10}h`
-  return `${Math.round(hours)}h`
-}
+export { formatPlaytime } from '@/lib/utils/format-playtime'
 
 export function formatMinutesToHours(minutes: number): string {
   const h = Math.floor(minutes / 60)
@@ -119,12 +103,7 @@ export function formatMinutesToHours(minutes: number): string {
   return `${m}m`
 }
 
-export function formatDaysAgo(unixTimestamp: number): string {
-  const days = Math.floor((Date.now() / 1000 - unixTimestamp) / 86400)
-  if (days <= 0) return "Today"
-  if (days === 1) return "1 day ago"
-  return `${days} days ago`
-}
+export { formatDaysAgo } from '@/lib/utils/format-days-ago'
 
 export function formatCurrency(amount?: number): string {
   if (!amount) return ''

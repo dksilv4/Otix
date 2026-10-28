@@ -1,11 +1,4 @@
-export const extractModalMessage = (err: unknown): string => {
-  if (err && typeof err === 'object' && 'response' in err) {
-    const resp = (err as { response?: { data?: { detail?: string } } }).response
-    if (resp?.data?.detail) return resp.data.detail
-  }
-  if (err instanceof Error) return err.message
-  return 'Something went wrong. Please try again.'
-}
+export { extractModalMessage } from '@/lib/utils/format-error'
 
 export const cleanEpicCode = (input: string): string => {
   const trimmed = input.trim()

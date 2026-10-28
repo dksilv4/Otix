@@ -2,12 +2,7 @@ import type { GameMatchRecord } from '../types/node-paths'
 
 export type MatchFilterTab = 'needs_review' | 'unmatched' | 'matched' | 'all'
 
-export const formatFileSize = (bytes: number): string => {
-  if (!bytes || bytes <= 0) return '0 B'
-  const units = ['B', 'KB', 'MB', 'GB', 'TB']
-  const i = Math.floor(Math.log(bytes) / Math.log(1024))
-  return `${(bytes / Math.pow(1024, i)).toFixed(1)} ${units[i]}`
-}
+export { formatFileSize } from '@/lib/utils/format-bytes'
 
 export const getConfidenceBadge = (confidence: number) => {
   const pct = Math.round(confidence * 100)

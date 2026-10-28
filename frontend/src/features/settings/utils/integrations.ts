@@ -32,14 +32,7 @@ export const personaStateLabel = (state: number | null): string => {
   return PERSONA_STATES[state] ?? 'Unknown'
 }
 
-export const extractIntegrationMessage = (err: unknown): string => {
-  if (err && typeof err === 'object' && 'response' in err) {
-    const resp = (err as { response?: { data?: { detail?: string } } }).response
-    if (resp?.data?.detail) return resp.data.detail
-  }
-  if (err instanceof Error) return err.message
-  return 'Something went wrong. Please try again.'
-}
+export { extractIntegrationMessage } from '@/lib/utils/format-error'
 
 export const openBoundModal = (
   openModal: (component: ReactNode) => () => void,
@@ -49,15 +42,4 @@ export const openBoundModal = (
   closeRef.current = openModal(render(() => closeRef.current()))
 }
 
-export const formatDaysAgo = (unixTimestamp: number): string => {
-  const seconds = Math.floor(Date.now() / 1000 - unixTimestamp)
-  if (isNaN(seconds) || seconds < 0) return 'today'
-  if (seconds < 60) return 'just now'
-  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`
-  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`
-  const days = Math.floor(seconds / 86400)
-  if (days === 1) return 'yesterday'
-  if (days < 30) return `${days}d ago`
-  if (days < 365) return `${Math.floor(days / 30)}mo ago`
-  return `${Math.floor(days / 365)}y ago`
-}
+export { formatDaysAgo } from '@/lib/utils/format-days-ago'

@@ -240,11 +240,17 @@ describe('Desktop Auto-Updater IPC', () => {
         verifySignature: true,
       } as any);
 
-      await new Promise((r) => setTimeout(r, 120));
+      let status: any;
+      for (let i = 0; i < 30; i++) {
+        await new Promise((r) => setTimeout(r, 100));
+        status = await (ipcMain as any)._invoke('updater:get-status');
+        if (status?.status === 'error' && status?.error?.includes('signature verification failed')) {
+          break;
+        }
+      }
 
       // On macOS/Win, the unsigned mock file fails code signature verification and is unlinked
       // On platforms where signature tool detects unsigned file:
-      const status = await (ipcMain as any)._invoke('updater:get-status');
       if (process.platform === 'darwin' || process.platform === 'win32') {
         expect(status.status).toBe('error');
         expect(status.error).toContain('signature verification failed');

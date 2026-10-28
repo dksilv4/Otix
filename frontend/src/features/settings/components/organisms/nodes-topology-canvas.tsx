@@ -855,9 +855,8 @@ export const NodesTopologyCanvas = ({
 
       {/* Connecting Mode Banner */}
       {connectingFrom && (
-        <div className="absolute top-44 left-1/2 -translate-x-1/2 z-30 pointer-events-auto p-3 rounded-2xl bg-primary/15 border border-primary/30 backdrop-blur-2xl flex items-center justify-between gap-3 text-xs shadow-xl animate-in fade-in duration-150">
+        <div className="absolute top-44 left-1/2 -translate-x-1/2 z-30 pointer-events-auto p-3 rounded-2xl bg-primary/15 border border-primary/20 backdrop-blur-2xl flex items-center justify-between gap-3 text-xs shadow-xl animate-in fade-in duration-150">
           <div className="flex items-center gap-2">
-            <span className="h-2 w-2 rounded-full bg-primary animate-ping" />
             <span className="font-semibold text-foreground">
               Connecting from &quot;{connectingFrom.name}&quot;
             </span>

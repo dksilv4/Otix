@@ -11,7 +11,7 @@ RUN go mod download
 
 # Copy source code and build statically linked binary
 COPY . .
-RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /otix-node main.go
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /otix-node .
 
 # Final Lightweight Runtime Stage
 FROM alpine:3.21

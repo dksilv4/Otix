@@ -62,17 +62,5 @@ export const resetTabPreferences = (): void => {
   }
 }
 
-export const formatDaysAgo = (unixTimestamp: number): string => {
-  const days = Math.floor((Date.now() / 1000 - unixTimestamp) / 86400)
-  if (days <= 0) return "Today"
-  if (days === 1) return "1d ago"
-  if (days <= 14) return `${days}d ago`
-  return ""
-}
-
-export const formatPlaytime = (minutes: number): string => {
-  if (minutes < 60) return `${minutes}m`
-  const hours = minutes / 60
-  if (hours < 1) return `${Math.round(hours * 10) / 10}h`
-  return `${Math.round(hours)}h`
-}
+export { formatDaysAgo } from '@/lib/utils/format-days-ago'
+export { formatPlaytime } from '@/lib/utils/format-playtime'

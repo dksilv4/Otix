@@ -55,7 +55,7 @@ export const LauncherPlayButton = ({ onOpenInstaller }: LauncherPlayButtonProps)
     (rg) =>
       rg.game.id === g.id ||
       (Boolean(rg.game.exePath && g.exePath) &&
-        rg.game.exePath.toLowerCase() === g.exePath.toLowerCase()) ||
+        (rg.game.exePath ?? "").toLowerCase() === (g.exePath ?? "").toLowerCase()) ||
       (Boolean(rg.game.title && g.title) &&
         rg.game.title.toLowerCase() === g.title.toLowerCase()),
   )

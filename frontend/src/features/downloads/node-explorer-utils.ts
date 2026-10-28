@@ -65,7 +65,7 @@ export function normalizeExplorerBrowse(raw: unknown): NodeExplorerBrowseResult 
   const permissionMessage = pickValue(data, 'permissionMessage', 'permission_message') as string | undefined
 
   const shortcuts = rawShortcuts.map(normalizeExplorerShortcut)
-  let drives = rawDrives.map(normalizeExplorerDrive)
+  const drives = rawDrives.map(normalizeExplorerDrive)
 
   // Fallback: If no explicit drives array was sent, extract drives from shortcuts
   if (drives.length === 0 && shortcuts.length > 0) {

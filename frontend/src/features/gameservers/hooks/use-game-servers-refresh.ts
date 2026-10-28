@@ -24,7 +24,9 @@ export function useGameServersRefresh(
   const isMountedRef = useRef(true)
   const isRefreshingRef = useRef(false)
   const serversRef = useRef(servers)
-  serversRef.current = servers
+  useEffect(() => {
+    serversRef.current = servers
+  }, [servers])
 
   const initialRefreshedRef = useRef(false)
 

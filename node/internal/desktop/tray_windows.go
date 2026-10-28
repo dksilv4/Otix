@@ -49,6 +49,9 @@ var (
 	procCreateWindowExW         = modUser32.NewProc("CreateWindowExW")
 	procDestroyWindow           = modUser32.NewProc("DestroyWindow")
 	procPostMessageW            = modUser32.NewProc("PostMessageW")
+	procPostThreadMessageW      = modUser32.NewProc("PostThreadMessageW")
+	procPostQuitMessage         = modUser32.NewProc("PostQuitMessage")
+	procGetCurrentThreadId      = modKernel32.NewProc("GetCurrentThreadId")
 	procGetMessageW             = modUser32.NewProc("GetMessageW")
 	procTranslateMessage        = modUser32.NewProc("TranslateMessage")
 	procDispatchMessageW        = modUser32.NewProc("DispatchMessageW")
@@ -80,6 +83,8 @@ const (
 	wmUser          = 0x0400
 	wmTrayCallback  = wmUser + 100
 	wmDestroy       = 0x0002
+	wmClose         = 0x0010
+	wmQuit          = 0x0012
 
 	wmLButtonUp     = 0x0202
 	wmLButtonDblClk = 0x0203
@@ -173,7 +178,9 @@ type TrayManager struct {
 	indexer      *indexer.StorageIndexer
 	hwnd         uintptr
 	hIcon        uintptr
+	threadID     uintptr
 	stopChan     chan struct{}
+	stopOnce     sync.Once
 	running      bool
 }
 
@@ -220,22 +227,33 @@ func (tm *TrayManager) Start() {
 
 // Stop cleanly deletes the tray icon from the Windows taskbar and closes the message window.
 func (tm *TrayManager) Stop() {
-	tm.mu.Lock()
-	defer tm.mu.Unlock()
-	if !tm.running {
-		return
-	}
-	tm.running = false
-	close(tm.stopChan)
+	tm.stopOnce.Do(func() {
+		tm.mu.Lock()
+		if !tm.running {
+			tm.mu.Unlock()
+			return
+		}
+		tm.running = false
+		close(tm.stopChan)
 
-	if tm.hwnd != 0 {
-		tm.removeTrayIcon()
-		procPostMessageW.Call(tm.hwnd, wmDestroy, 0, 0)
-	}
-	if tm.hIcon != 0 {
-		procDestroyIcon.Call(tm.hIcon)
+		hwnd := tm.hwnd
+		threadID := tm.threadID
+		hIcon := tm.hIcon
+		tm.hwnd = 0
 		tm.hIcon = 0
-	}
+		tm.mu.Unlock()
+
+		if hwnd != 0 {
+			tm.removeTrayIcon()
+			procPostMessageW.Call(hwnd, wmClose, 0, 0)
+		}
+		if threadID != 0 {
+			procPostThreadMessageW.Call(threadID, wmQuit, 0, 0)
+		}
+		if hIcon != 0 {
+			procDestroyIcon.Call(hIcon)
+		}
+	})
 }
 
 // UpdateTooltip refreshes the taskbar tray tooltip with latest node status and server name.
@@ -251,6 +269,11 @@ func (tm *TrayManager) UpdateTooltip() {
 func (tm *TrayManager) runTrayThread() {
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
+
+	tid, _, _ := procGetCurrentThreadId.Call()
+	tm.mu.Lock()
+	tm.threadID = tid
+	tm.mu.Unlock()
 
 	// Ensure tray thread attaches to the interactive "Default" desktop
 	desktopDefault, _ := syscall.UTF16PtrFromString("Default")
@@ -315,6 +338,12 @@ func (tm *TrayManager) runTrayThread() {
 	}
 
 	tm.removeTrayIcon()
+	tm.mu.Lock()
+	if tm.hwnd != 0 {
+		procDestroyWindow.Call(tm.hwnd)
+		tm.hwnd = 0
+	}
+	tm.mu.Unlock()
 }
 
 func (tm *TrayManager) loadOrGenerateIcon(hInst uintptr) uintptr {
@@ -486,6 +515,14 @@ func trayWndProc(hwnd, msg, wParam, lParam uintptr) uintptr {
 			}
 			return 0
 		}
+
+	case wmClose:
+		procDestroyWindow.Call(hwnd)
+		return 0
+
+	case wmDestroy:
+		procPostQuitMessage.Call(0)
+		return 0
 
 	default:
 		if wmTaskbarCreated != 0 && uint32(msg) == wmTaskbarCreated {

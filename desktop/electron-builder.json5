@@ -5,7 +5,7 @@
   "copyright": "Copyright © 2026 Otix",
   "afterPack": "./scripts/after-pack.js",
   "directories": {
-    "output": "release",
+    "output": "../dist/desktop",
     "buildResources": "assets"
   },
   "files": [

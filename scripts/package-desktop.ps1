@@ -50,7 +50,7 @@ if (Get-Command go -ErrorAction SilentlyContinue) {
         $env:CGO_ENABLED = "0"
         $env:GOOS = "windows"
         $env:GOARCH = "amd64"
-        go build -ldflags="-s -w" -o (Join-Path $desktopDir "bin\otix-node.exe") .\main.go
+        go build -ldflags="-s -w" -o (Join-Path $desktopDir "bin\otix-node.exe") .
     } finally {
         Pop-Location
     }
@@ -76,5 +76,5 @@ try {
 Write-Host ""
 Write-Host "==========================================================" -ForegroundColor Green
 Write-Host "  Otix Desktop Windows Packaging Complete!" -ForegroundColor Green
-Write-Host "  Artifacts available in: $desktopDir\release" -ForegroundColor Gray
+Write-Host "  Artifacts available in: $(Join-Path $repoRoot 'dist\desktop')" -ForegroundColor Gray
 Write-Host "==========================================================" -ForegroundColor Green

@@ -1,6 +1,11 @@
-import type { Variants } from 'framer-motion'
 import { motion } from 'framer-motion'
-import { GLASS_STYLE } from '../../constants/activity-panel-constants'
+import {
+  GLASS_STYLE,
+  sectionVariants,
+  staggerVariants,
+} from '../../constants/activity-panel-constants'
+
+export { sectionVariants, staggerVariants }
 
 /** Glass-morphism wrapper container for individual activity panel sections. */
 export const ActivityModuleSection = ({ children, className = '' }: { children: React.ReactNode; className?: string }) => {
@@ -12,26 +17,3 @@ export const ActivityModuleSection = ({ children, className = '' }: { children: 
     </motion.div>
   )
 };
-
-export const sectionVariants: Variants = {
-  hidden: { opacity: 0, y: -8, scale: 0.98 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    scale: 1,
-    transition: { duration: 0.25, ease: [0.16, 1, 0.3, 1] },
-  },
-  exit: {
-    opacity: 0,
-    y: -6,
-    scale: 0.98,
-    transition: { duration: 0.15, ease: [0.16, 1, 0.3, 1] },
-  },
-}
-
-export const staggerVariants: Variants = {
-  hidden: {},
-  visible: {
-    transition: { staggerChildren: 0.04, delayChildren: 0.05 },
-  },
-}

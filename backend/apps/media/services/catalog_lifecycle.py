@@ -188,6 +188,12 @@ def canonical_external_id(media: MediaItem) -> str | None:
     provider = CANONICAL_PROVIDER.get(media.media_type)
     if not provider:
         return None
+    prefetched = getattr(media, "_prefetched_objects_cache", {}).get("external_ids")
+    if prefetched is not None:
+        for ext in prefetched:
+            if ext.provider == provider and (ext.media_type == media.media_type or not ext.media_type):
+                return ext.external_id
+        return None
     ct = ContentType.objects.get_for_model(MediaItem)
     return (
         ExternalID.objects.filter(

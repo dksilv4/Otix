@@ -3,14 +3,8 @@ import {
   Search,
   Check,
   X,
-  Sparkles,
   RefreshCw,
-  FolderOpen,
-  HardDrive,
-  Disc,
   Gamepad2,
-  AlertCircle,
-  Package,
 } from 'lucide-react'
 import { DkDialog } from '@ui/molecules/dialog'
 import { DkButton } from '@ui/atoms/button'
@@ -20,7 +14,7 @@ import {
   useConfirmMatch,
   useUnmatchRecord,
 } from '../../hooks/use-node-paths'
-import type { GameMatchRecord, GameMatchCandidate } from '../../types/node-paths'
+import type { GameMatchRecord } from '../../types/node-paths'
 import {
   type MatchFilterTab,
   formatFileSize,

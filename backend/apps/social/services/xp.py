@@ -99,8 +99,8 @@ def calculate_xp_rank_and_percentile(user: User) -> tuple[int | None, float | No
     ahead = user_model.objects.filter(is_active=True, total_xp__gt=user.total_xp).count()
     rank = ahead + 1
 
-    # Users with less or equal XP
-    behind_or_equal = user_model.objects.filter(is_active=True, total_xp__lte=user.total_xp).count()
+    # Users with less or equal XP (derived without redundant sequential table scan)
+    behind_or_equal = total_users - ahead
     percentile = round((behind_or_equal / total_users) * 100.0, 1)
 
     return rank, percentile

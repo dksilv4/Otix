@@ -1,102 +1,75 @@
-# Project: Otix Core Platform & UI/UX Elevation
+# Project: Otix Full-Stack Performance Audit, Scientific Benchmarking & Architectural Consolidation
 
 ## Architecture
-Otix is an open-source cross-platform entertainment hub comprising:
-- **Frontend**: Vite + React 18 + TypeScript + Tailwind CSS + TanStack Router & Query. Soft glassmorphic visual language, borderless cards/surfaces, semantic tokens (`bg-primary`, `var(--dk-surface-*)`).
-- **Desktop**: Electron main process (`desktop/main.ts`), preload IPC bridge (`desktop/preload.ts`), node daemon engine (`desktop/node-daemon.ts`), auto-updater (`desktop/ipc/updater.ts`).
-- **Backend**: Django REST Framework + uv/python. Integrations with Plex, Jellyfin, Steam, IGDB, TMDB, TVDB, Fanart, OMDB.
-- **Data Flow**:
-  - Media & Carousel browsing → TanStack Query → Django `/discover/*` & `/media/*`.
-  - Playback → Unified Media Player modal (`useMediaStreamPlayer`) supporting HTML5/HLS (Plex/Jellyfin/Direct) and YouTube Trailer Iframe.
-  - Library management → Django `/library/*` + local game detection + drag/drop custom order in local storage.
-  - Desktop daemon → IPC bidirectional stream between NodeDaemonManager and React renderer.
+- **Frontend (`frontend/`):** React 18/19, Vite 5, TypeScript, Tailwind CSS, TanStack Query, Radix UI primitives. Automated `apiClient` interceptors with snake_case ↔ camelCase bidirectional translation.
+- **Backend (`backend/`):** Django 5.2, Django REST Framework 3.16, SQLite (`:memory:` for testing) / PostgreSQL + pgvector, Celery, Redis. REST API output contract strictly in snake_case.
+- **Desktop (`desktop/`):** Electron 35/42, TypeScript, Node.js IPC bridge with `contextBridge.exposeInMainWorld`, Electron-Builder packaging.
+- **Node Companion Daemon (`node/`):** Go 1.24+, local HTTP server on loopback, pure-Go SQLite persistence, system tray, game process tracker, and file organizer.
+- **Unified Build & Packaging Topology:** Centralized distribution under repository root `dist/`:
+  - `dist/desktop/` (Electron installer, portable executable, desktop bundle)
+  - `dist/frontend/` (Production Vite web bundle)
+  - `dist/node/` (Compiled Go companion daemon binaries and archives)
 
 ## Feature Inventory
 | # | Feature | Description | Milestone | Source |
 |---|---------|-------------|-----------|--------|
-| F1 | Discover 3D Carousel Math & Perspective | Add container perspective (1400px, preserve-3d) on `#discover-fan-slides`, 3D `rotateY`/`translateZ` in `calculateCardTransform`, eliminate GPU re-rasterization blur | M1 | ORIGINAL_REQUEST §R1 |
-| F2 | Personalized "New Seasons" Shelf | Pass user context to `trending_seasons`, join `UserMediaInteraction` / `UserEpisodeInteraction` to prioritize user's continue-watching/watchlist shows | M1 | ORIGINAL_REQUEST §R1 |
-| F3 | Profile XP Shimmer Bar & Level Tiers | Extract `UserXpProgressionBar`, tokenize `LEVEL_TIERS` to CSS tokens, implement multi-layer fluid shimmer animation, eliminate inline border styles | M1 | ORIGINAL_REQUEST §R1 |
-| F4 | Friends Social Interface Redesign | Audit & eliminate all lingering `border-[var(--dk-separator)]` strokes from Friends cards, requests, and dropdowns using soft glassmorphism | M1 | ORIGINAL_REQUEST §R1 |
-| F5 | Pages Redesign & Route Decoupling | Decouple `/downloads` (in-app queue) from `/download` (installer landing); skin Docs, Welcome, Downloads, and Download pages in soft glassmorphism | M1 | ORIGINAL_REQUEST §R1 |
-| F6 | Unified Borderless Glassmorphic Player | Unify `MediaStreamPlayerModal` (HTML5/HLS) and `TrailerVideoModal` (YouTube) into a single cohesive player component with dual-engine support | M2 | ORIGINAL_REQUEST §R2 |
-| F7 | Player Layout: Auto-Resizing & Docked Controls | Dynamic video container aspect ratio auto-resizing, external docked playback controls pod with viewport space detection, borderless full-width theater mode | M2 | ORIGINAL_REQUEST §R2 |
-| F8 | YouTube Embed Origin & Electron Fix | Fix origin parameter handling in Electron (`app://otix`) & add `onBeforeSendHeaders` referer spoofing in `desktop/main.ts` to prevent Error 150/101 | M2 | ORIGINAL_REQUEST §R2 |
-| F9 | Media Detail Page AI Quick-Glance Modal | Lightweight AI preview modal with media metadata, synopsis, cast highlights, and instant 1-click Stream CTA without navigating away | M2 | ORIGINAL_REQUEST §R2 |
-| F10 | Stream Availability & Latency Optimization | Replace full-catalog `useLibraryTab('plex')` scan in `useStreamAvailability` with targeted direct lookups and optimized Plex show queries | M2 | ORIGINAL_REQUEST §R2 |
-| F11 | Library Overview Tab Overhaul | Actionable reels (continue watching, watchlist, favorites) and 4-pod interactive stats card without dashed separator borders | M3 | ORIGINAL_REQUEST §R3 |
-| F12 | In-Tab Header Loading Spinner | Suppress full-page opaque router loader; render subtle micro-spinner inside active tab pill with gentle content fade | M3 | ORIGINAL_REQUEST §R3 |
-| F13 | Library Tab Position Customization & Persistence | Tab Settings modal with drag/drop reordering, toggle visibility, and localStorage persistence (`otix:library-tabs:order`) | M3 | ORIGINAL_REQUEST §R3 |
-| F14 | Media Card Context Menu Smooth Scrolling | Add settle delay (150ms) to ignore deceleration scroll events on smooth shelves, integrate AI Quick-Glance action | M3 | ORIGINAL_REQUEST §R3 |
-| F15 | Desktop Node Daemon Immediate IPC Push | Implement lifecycle state machine (`stopped`, `starting`, `running`, `error`), push on `setWebContents`, process spawn, and port confirmation | M4 | ORIGINAL_REQUEST §R4 |
-| F16 | Desktop Update Pre-Install Tamper Verification | SHA-512 cryptographic hash check against release manifest + OS-level digital signature verification before installer execution | M4 | ORIGINAL_REQUEST §R4 |
-| F17 | TypeScript & Automated Test Suites Verification | Verify clean `tsc --noEmit`, resolve failing frontend Vitest tests, fix desktop test fetch mock, resolve backend media test failures | M5 | ORIGINAL_REQUEST §Acceptance |
+| F1 | Multi-Tier Baseline Diagnostic Report | Comprehensive report documenting baseline execution times, memory, query counts, IPC frequency across all 4 tiers | M1 | ORIGINAL_REQUEST §R1 |
+| F2 | Automated Scientific Benchmark Harnesses | Automated micro-benchmark scripts measuring latency, queries, allocations for frontend utilities, backend endpoints, and daemons | M1 | ORIGINAL_REQUEST §R1, Acceptance Criteria |
+| F3 | Go Daemon Windows Compilation Fix | Fix `main.go:94` `syscall.Handle` conversion and `challenger_m3_test.go` Unix build tag to ensure clean compilation on Windows | M2 | Survey 3, ORIGINAL_REQUEST §R4 |
+| F4 | Go Daemon Organizer Windows Temp Fix | Fix path segment filtering in `internal/organize/organize.go` to avoid false-positive noise classification of `AppData\Local\Temp` | M2 | Survey 3, ORIGINAL_REQUEST §R4 |
+| F5 | Go Daemon Lifecycle & Idle Optimization | Implement `Server.Stop()` cleanup hooks to stop background goroutines and eliminate 300ms idle Win32 polling overhead | M2 | Survey 3, ORIGINAL_REQUEST §R4 |
+| F6 | Desktop Vitest & IPC Hardening | Resolve 3 failing desktop Vitest tests (`node-daemon-adversarial.test.ts` SIGTERM parameter and `updater.test.ts` fixture), optimize IPC bridge | M2 | Survey 1, ORIGINAL_REQUEST §R4 |
+| F7 | Frontend Utility Benchmarking & Consolidation | Scientifically benchmark and deduplicate utilities: consolidate 9 `formatBytes`/`formatFileSize` functions and duplicate date/time formatters into `src/lib/utils/` | M3 | Survey 1, ORIGINAL_REQUEST §R2 |
+| F8 | Frontend Custom Hook Optimization | Audit and optimize custom hooks (`use-media-stream-player`, `use-claimed-free-games`, etc.) to eliminate unnecessary re-renders and memory leaks | M3 | Survey 1, ORIGINAL_REQUEST §R2 |
+| F9 | Frontend Architectural Rule Compliance | Convert non-arrow component (`SettingsSaveProvider`), extract hooks from provider files, move non-component helpers out of `.tsx` files | M3 | Survey 1, ORIGINAL_REQUEST §R2 |
+| F10 | Frontend Theming & Design System Enforcement | Replace hardcoded colors with semantic CSS tokens, eliminate arbitrary dots/bubbles before text, align custom overlays with modal framework | M3 | Survey 1, ORIGINAL_REQUEST §R2 |
+| F11 | Frontend ESLint Fixes | Resolve 31 ESLint errors (4 conditional hooks in path picker modals, render-time ref mutation in `use-game-servers-refresh.ts`, unused variables) | M3 | Survey 1, ORIGINAL_REQUEST §R2 |
+| F12 | Backend Query Optimization: `/friends/activity` | Replace $1 + 3N$ friend activity loop with batched `__in` queries to reduce DB query count and latency | M4 | Survey 2, ORIGINAL_REQUEST §R3 |
+| F13 | Backend Query Optimization: `/media` & Catalog | Add `movie__collection` and collection movie prefetching in `list_media` to resolve N+1 queries in `enrich_summaries` | M4 | Survey 2, ORIGINAL_REQUEST §R3 |
+| F14 | Backend Serialization Optimization | Eliminate redundant queries in `MediaItemDetailSerializer.get_game` and avoid duplicate re-queries on rehydration | M4 | Survey 2, ORIGINAL_REQUEST §R3 |
+| F15 | Backend Query Optimization: `/chat/conversations` | Batch unread count computation and constrain message prefetching to eliminate unbounded memory loads and N+1 queries | M4 | Survey 2, ORIGINAL_REQUEST §R3 |
+| F16 | Backend Indexing & Ranking Optimization | Add index on `accounts.User.total_xp` and streamline ranking calculation queries | M4 | Survey 2, ORIGINAL_REQUEST §R3 |
+| F17 | Backend Snake_Case Contract Guarantee | Ensure 100% API contract fidelity and pure snake_case response serialization for `apiClient` compatibility | M4 | Survey 2, ORIGINAL_REQUEST §R3 |
+| F18 | Centralized Root Build Configuration | Reconfigure root `package.json`, `desktop/electron-builder.json5`, and packaging scripts to target `dist/desktop`, `dist/frontend`, `dist/node` | M5 | Survey 3, ORIGINAL_REQUEST §R5 |
+| F19 | Build Pipeline Documentation & Clean Root | Document centralized build pipeline topology; verify zero scripts in root directory and clean `.gitignore` | M5 | Survey 3, ORIGINAL_REQUEST §R5 |
+| F20 | Full-Stack Regression Verification & Gate | Run complete test suites (Frontend Vitest, Desktop Vitest, Django tests, Go daemon tests), typechecks (`tsc --noEmit`), and adversarial benchmarks | M6 | ORIGINAL_REQUEST §Acceptance Criteria |
 
 ## Milestones
 | # | Name | Scope | Dependencies | Status |
 |---|------|-------|-------------|--------|
-| M1 | Borderless Glassmorphic UI/UX Redesign | Features F1, F2, F3, F4, F5 (Discover carousel & shelf, Profile XP shimmer & Friends, Docs/Welcome/Downloads) | None | DONE |
-| M2 | Media Detail Page & Video Player Unification | Features F6, F7, F8, F9, F10 (Unified player, auto-aspect, docked controls, YouTube fix, AI quick glance, stream latency) | None | DONE |
-| M3 | Library Experience & Context Controls | Features F11, F12, F13, F14 (Overview overhaul, in-tab spinner, tab reorder persistence, context menu) | None | DONE |
-| M4 | Desktop Engine, Node IPC & Security | Features F15, F16 (Daemon status immediate IPC push, update tamper verification) | None | DONE |
-| M5 | Final Milestone: Full Verification & Automated Tests | Feature F17 (TypeScript clean, 100% frontend tests pass, 100% desktop tests pass, backend media tests pass) | M1, M2, M3, M4 | DONE |
+| M1 | Baseline Diagnostic & Benchmark Suite | Full-stack baseline profiling across 4 tiers; automated benchmark scripts; diagnostic report | None | DONE |
+| M2 | Desktop & Go Companion Daemon Efficiency | Windows build & test fixes in `node/`; daemon lifecycle & idle optimization; desktop test fixes & IPC streamlining | M1 | DONE |
+| M3 | Frontend Consolidation & Rule Compliance | Utility deduplication with micro-benchmarks; hook optimization; ESLint fixes; component purity & semantic theme tokens | M1 | DONE |
+| M4 | Backend REST Optimization & Query Hardening | Fix N+1 queries in activity, media, chat, and xp; optimize serializers; preserve snake_case contract | M1 | IN_PROGRESS |
+| M5 | Centralized Root Build & Distribution (`dist/`) | Consolidate outputs into `dist/desktop/`, `dist/frontend/`, `dist/node/`; update packaging scripts; document topology | M2, M3, M4 | DONE |
+| M6 | Regression Verification, Adversarial Hardening & Audit | 100% test pass across all 4 tiers; typechecks; linter checks; adversarial benchmark confirmation; audit verification | M5 | PLANNED |
 
 ## Interface Contracts
+### Frontend ↔ Backend (REST API via `apiClient`)
+- Backend MUST emit pure `snake_case` JSON.
+- Frontend `apiClient` (`frontend/src/lib/api/client.ts`) converts request params/body from `camelCase` to `snake_case` and response keys from `snake_case` to `camelCase`.
+- Endpoint URLs must not rely on `APPEND_SLASH` (`APPEND_SLASH = False` in Django settings).
+- Pagination envelope: `{ count: number, next: string | null, previous: string | null, results: T[] }`.
 
-### M1: Discover & User APIs
-- `GET /api/v1/discover/season/trending`:
-  - Accepts authenticated `request.user`
-  - Computes `user_show_ids` from `UserMediaInteraction` (`status in ['watching', 'started', 'watchlist']`) and `UserEpisodeInteraction`
-  - Adds `affinity_rank = 0` for user shows, `1` for general shows in `_sort_key`
-- `UserXpProgressionBar`:
-  - Props: `{ currentXp: number, level: number, tier: UserLevelTier, className?: string }`
-  - Zero inline borders; fluid shimmer CSS animation via CSS variable gradient.
+### Desktop ↔ Node Companion Daemon (HTTP & IPC)
+- Electron discovers daemon via binary paths in priority order: production bundled path, local repo root `dist/node/`, and development fallback.
+- Health check: `GET http://127.0.0.1:<port>/api/health` with `X-Otix-Node-Key` token header.
+- Daemon graceful shutdown: SIGTERM or POST `/api/shutdown`.
 
-### M2: Unified Video Player & Electron Security
-- `UnifiedMediaPlayerModal`:
-  - Session interface: `UnifiedPlayerSession` with `mode: 'stream' | 'trailer'`
-  - Auto-resizing aspect ratio container: `style={{ aspectRatio, maxHeight }}`
-  - Docked controls capsule below canvas when `window.innerHeight >= videoHeight + 140px`
-  - Backward-compatible wrapper `TrailerVideoModal` proxying props to `UnifiedMediaPlayerModal`
-- `desktop/main.ts`:
-  - `sess.webRequest.onBeforeSendHeaders` intercepting `*://*.youtube.com/*`, `*://*.youtube-nocookie.com/*`
-  - Sets `Referer: https://www.youtube.com/` and `Origin: https://www.youtube.com`
-- `GET /api/v1/integrations/plex/connect-info/:id`:
-  - Direct targeted lookups; avoids `allLeaves` traversal for show availability checks
-
-### M3: Library & Tab Customization
-- `otix:library-tabs:order`:
-  - JSON string array `string[]` of tab IDs in display order
-  - Helper functions: `readTabOrder()`, `writeTabOrder(order: string[])` in `features/library/utils.ts`
-- Tab Bar Loading:
-  - `loadingTabId?: string | null` prop on `TabBar`
-  - Micro-spinner `<Loader2 className="h-3 w-3 animate-spin text-primary" />` inside tab capsule
-  - `pendingComponent: () => null` on library child routes
-
-### M4: Desktop Daemon IPC & Update Verification
-- `desktop/preload-api.ts`:
-  - `NodeDaemonStatus`: `{ state: 'stopped' | 'starting' | 'running' | 'error' | 'stopping', running: boolean, starting: boolean, port: number, url: string, pid: number | null, error?: string | null }`
-  - IPC channel: `node-daemon:status-changed`
-- `desktop/ipc/updater.ts`:
-  - `verifyUpdatePackage(filePath: string, expectedSha512: string): Promise<boolean>`
-  - `verifyExecutableSignature(filePath: string): Promise<{ valid: boolean, reason?: string }>`
+### Build & Packaging Distribution
+- All final distribution outputs MUST reside under root `dist/`:
+  - `dist/desktop/`: Windows installer executable (`Otix-Setup-*.exe`), portable executable (`Otix-*.exe`), unpackaged app.
+  - `dist/frontend/`: Static Vite production distribution assets (`index.html`, `assets/*`).
+  - `dist/node/`: Compiled Go companion daemon binaries (`otix-node-windows-*.exe`, archives).
+- No scripts in repository root directory.
 
 ## Code Layout
-- Frontend UI / Features:
-  - Discover: `frontend/src/features/discover/`
-  - Media & Player: `frontend/src/features/media/`
-  - Library: `frontend/src/features/library/`
-  - User & Profile: `frontend/src/features/user/`
-  - Friends: `frontend/src/features/friends/`
-  - Docs & Welcome: `frontend/src/features/docs/`, `frontend/src/features/welcome/`
-  - Downloads: `frontend/src/features/downloads/`, `frontend/src/features/download-page/`
-  - Modals & Context: `frontend/src/lib/modals/`, `frontend/src/features/_config/context-menu/`
-- Desktop:
-  - Main & Electron: `desktop/main.ts`, `desktop/preload.ts`, `desktop/preload-api.ts`
-  - Daemon: `desktop/node-daemon.ts`, `desktop/ipc/node-daemon.ts`
-  - Updater: `desktop/ipc/updater.ts`, `desktop/tests/updater.test.ts`
-- Backend:
-  - Discover: `backend/apps/discover/`
-  - Media & Interactions: `backend/apps/media/`
-  - Integrations (Plex): `backend/apps/integrations/`
-  - Library: `backend/apps/library/`
+- `frontend/src/lib/utils/`: Shared cross-feature utilities.
+- `frontend/src/features/<feature>/utils/`: Feature-specific utilities.
+- `frontend/src/features/<feature>/hooks/`: Feature-specific custom hooks.
+- `backend/apps/<app>/services/`: Domain business logic and query orchestration.
+- `backend/apps/<app>/serializers/`: DRF serializers (snake_case output).
+- `desktop/src/main/`: Electron main process logic.
+- `node/cmd/` & `node/internal/`: Go companion daemon packages.
+- `scripts/`: Central automation and packaging scripts (Powershell and Bash).
+- `dist/`: Central root distribution directory for all package outputs.

@@ -29,11 +29,4 @@ export const revokeOtherSessions = async (): Promise<number> => {
   return match ? parseInt(match[1], 10) : 0
 }
 
-export const extractAccountErrorMessage = (err: unknown): string => {
-  if (err && typeof err === 'object' && 'response' in err) {
-    const resp = (err as { response?: { data?: { detail?: string } } }).response
-    if (resp?.data?.detail) return resp.data.detail
-  }
-  if (err instanceof Error) return err.message
-  return 'Something went wrong. Please try again.'
-}
+export { extractAccountErrorMessage } from '@/lib/utils/format-error'

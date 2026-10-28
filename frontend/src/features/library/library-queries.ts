@@ -7,6 +7,7 @@ import { getLocalGamesCache, setScannedGames } from "@/features/launcher/data/st
 import { libraryKeys } from "./library-keys"
 
 export interface LibraryResponse {
+  total?: number
   items: Array<{
     id: string
     mediaType: string
@@ -474,4 +475,4 @@ export const useYoutubeLibrary = () => {
     getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
     staleTime: 1000 * 60 * 2,
   })
-}
+}

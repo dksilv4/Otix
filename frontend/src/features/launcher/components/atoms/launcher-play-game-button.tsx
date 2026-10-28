@@ -19,7 +19,7 @@ export const PlayGameButton = ({ game }: Props) => {
     (rg) =>
       rg.game.id === game.id ||
       (Boolean(rg.game.exePath && game.exePath) &&
-        rg.game.exePath.toLowerCase() === game.exePath.toLowerCase()) ||
+        (rg.game.exePath ?? "").toLowerCase() === (game.exePath ?? "").toLowerCase()) ||
       (Boolean(rg.game.title && game.title) &&
         rg.game.title.toLowerCase() === game.title.toLowerCase()),
   )

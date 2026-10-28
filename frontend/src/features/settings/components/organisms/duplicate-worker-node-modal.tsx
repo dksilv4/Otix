@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Copy, Server, Sparkles, Loader2, Home as HomeIcon, FolderTree } from 'lucide-react'
+import { Copy, Sparkles } from 'lucide-react'
 import { DkDialog } from '@ui/molecules/dialog'
 import { DkButton } from '@ui/atoms/button'
 import { DkInput } from '@ui/atoms/input'

@@ -6,6 +6,7 @@ export interface ResolvedMediaTarget {
   mediaType: ContextMenuMediaType
   title: string
   posterUrl?: string
+  backdropUrl?: string
   year?: string
   tmdbId?: string
 }
@@ -15,6 +16,7 @@ export interface ResolvedGameTarget {
   gameId: string
   title: string
   posterUrl?: string
+  backdropUrl?: string
   year?: string
 }
 
@@ -37,6 +39,7 @@ export interface ResolvedSeasonTarget {
   seasonNumber: number
   name: string
   posterUrl?: string
+  backdropUrl?: string
   isWatched?: boolean
 }
 

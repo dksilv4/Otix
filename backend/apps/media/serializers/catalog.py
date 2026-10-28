@@ -646,17 +646,25 @@ class MediaItemDetailSerializer(serializers.Serializer):
             return None
         steam_id = getattr(obj, "steam_app_id", None)
         if steam_id is None:
-            steam_str = (
-                ExternalID.objects.filter(
-                    content_type=ContentType.objects.get_for_model(MediaItem),
-                    object_id=obj.pk,
-                    provider="steam",
-                    media_type="game",
+            prefetched = getattr(obj, "_prefetched_objects_cache", {}).get("external_ids")
+            if prefetched is not None:
+                for ext in prefetched:
+                    if ext.provider == "steam" and (ext.media_type == "game" or not ext.media_type):
+                        steam_str = ext.external_id
+                        steam_id = int(steam_str) if steam_str and steam_str.isdigit() else None
+                        break
+            if steam_id is None:
+                steam_str = (
+                    ExternalID.objects.filter(
+                        content_type=ContentType.objects.get_for_model(MediaItem),
+                        object_id=obj.pk,
+                        provider="steam",
+                        media_type="game",
+                    )
+                    .values_list("external_id", flat=True)
+                    .first()
                 )
-                .values_list("external_id", flat=True)
-                .first()
-            )
-            steam_id = int(steam_str) if steam_str and steam_str.isdigit() else None
+                steam_id = int(steam_str) if steam_str and steam_str.isdigit() else None
         return {
             "release_status": game.release_status,
             "website": game.website,

@@ -298,6 +298,7 @@ export interface RemoteDownloadOptions {
 // ── Desktop API interface ────────────────────────────────────────────
 
 export interface DesktopAPI {
+  hydrateMatchedGames?: () => Promise<{ updated: number; failed: number; total: number }>;
   readonly platform: string | undefined
   openExternal?: (url: string) => Promise<void>
   smartOrganizePreview?: (dir: string, template?: string) => Promise<unknown[]>

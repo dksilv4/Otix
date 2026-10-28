@@ -1,6 +1,6 @@
-import { createContext, useContext, useState, type ReactNode } from 'react'
+import { createContext, useState, type ReactNode } from 'react'
 
-interface PanelContextValue {
+export interface PanelContextValue {
   isUserMenuOpen: boolean
   setUserMenuOpen: (open: boolean) => void
   isChatOpen: boolean
@@ -9,7 +9,7 @@ interface PanelContextValue {
 
 export const PanelContext = createContext<PanelContextValue | null>(null)
 
-const defaultPanelContext: PanelContextValue = {
+export const defaultPanelContext: PanelContextValue = {
   isUserMenuOpen: false,
   setUserMenuOpen: () => {},
   isChatOpen: false,
@@ -34,7 +34,4 @@ export const PanelProvider = ({ children }: { children: ReactNode }) => {
   )
 };
 
-export const usePanelContext = (): PanelContextValue => {
-  const ctx = useContext(PanelContext)
-  return ctx ?? defaultPanelContext
-}
+export { usePanelContext } from '../hooks/use-panel-context'

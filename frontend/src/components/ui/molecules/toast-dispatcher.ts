@@ -62,3 +62,14 @@ export function useToast() {
   if (!ctx) throw new Error('useToast must be inside DkToastProvider')
   return ctx
 }
+
+const fallbackToastContext: ToastContextValue = {
+  toast: (t: Omit<Toast, 'id'>) => {
+    showToast(t)
+  },
+}
+
+export function useOptionalToast(): ToastContextValue {
+  const ctx = useContext(ToastContext)
+  return ctx ?? fallbackToastContext
+}

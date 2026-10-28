@@ -1,6 +1,4 @@
-import { FeatureStatusTags } from '@ui/atoms/feature-status-tag'
-
 /** Status chips for Otix nodes. */
-export const NodesFeatureTags = ({ className }: { className?: string }) => {
+export const NodesFeatureTags = ({ className: _className }: { className?: string } = {}) => {
   return null
 };

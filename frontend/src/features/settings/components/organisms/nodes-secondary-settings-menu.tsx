@@ -16,8 +16,6 @@ import {
   AlertTriangle,
   PanelLeftClose,
   PanelLeftOpen,
-  FolderOpen,
-  Sparkles,
   Wand2,
   Globe,
 } from 'lucide-react'

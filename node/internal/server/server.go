@@ -58,6 +58,7 @@ type Server struct {
 	trayMgr      *desktop.TrayManager
 	startTime    time.Time
 	router       *chi.Mux
+	stopOnce     sync.Once
 }
 
 func NewServer(cfg *config.AppConfig, claimMgr *claim.ClaimManager) *Server {
@@ -162,6 +163,36 @@ func (s *Server) announceHeartbeat() {
 	if s.hbRunner != nil {
 		s.hbRunner.TriggerNow()
 	}
+}
+
+// Stop cleanly shuts down all background loops and closes storage/DB handles.
+func (s *Server) Stop() {
+	s.stopOnce.Do(func() {
+		if s.gamesTracker != nil {
+			s.gamesTracker.Stop()
+		}
+		if s.overlayMgr != nil {
+			s.overlayMgr.Stop()
+		}
+		if s.trayMgr != nil {
+			s.trayMgr.Stop()
+		}
+		if s.indexer != nil {
+			_ = s.indexer.Close()
+		}
+		if s.hbRunner != nil {
+			s.hbRunner.Stop()
+		}
+		if s.dealsMonitor != nil {
+			s.dealsMonitor.Stop()
+		}
+	})
+}
+
+// Close is an alias for Stop implementing io.Closer.
+func (s *Server) Close() error {
+	s.Stop()
+	return nil
 }
 
 type serverContextKey string

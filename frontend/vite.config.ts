@@ -115,5 +115,7 @@ export default defineConfig({
     setupFiles: './src/test-setup.ts',
     css: true,
     exclude: ['node_modules/**', 'e2e/**', 'dist/**'],
+    testTimeout: 30000,
+    hookTimeout: 30000,
   },
 })

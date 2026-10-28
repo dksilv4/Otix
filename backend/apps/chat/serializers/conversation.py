@@ -106,6 +106,9 @@ class ConversationSerializer(serializers.ModelSerializer):
         return MessageSerializer(latest).data if latest else None
 
     def get_unread_count(self, obj: Conversation) -> int:
+        if hasattr(obj, "unread_count") and obj.unread_count is not None:
+            return obj.unread_count
+
         user = self._get_request_user()
         if not user:
             return 0
@@ -117,10 +120,23 @@ class ConversationSerializer(serializers.ModelSerializer):
                 break
 
         last_id = caller_part.last_read_message_id if caller_part else None
+
+        prefetched_msgs = getattr(obj, "_prefetched_objects_cache", {}).get("messages")
+        if prefetched_msgs is not None:
+            count = 0
+            for m in prefetched_msgs:
+                if m.sender_id != user.id:
+                    if not last_id or m.id > last_id:
+                        count += 1
+            obj.unread_count = count
+            return count
+
         qs = Message.objects.filter(conversation=obj).exclude(sender_id=user.id)
         if last_id:
             qs = qs.filter(id__gt=last_id)
-        return qs.count()
+        count = qs.count()
+        obj.unread_count = count
+        return count
 
 
 class ConversationCreateInputSerializer(serializers.Serializer):

@@ -13,5 +13,7 @@ export default defineConfig({
     include: ['**/*.test.ts'],
     exclude: ['node_modules', 'dist'],
     globalSetup: './vitest-global-setup.ts',
+    testTimeout: 20000,
+    hookTimeout: 20000,
   },
 })

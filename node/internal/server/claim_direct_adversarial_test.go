@@ -11,7 +11,7 @@ import (
 // TestClaimDirectAdversarialLoopbackSecurity thoroughly attacks the loopback security check
 // on /api/v1/claim/direct with spoofed headers, external IPs, LAN IPs, IPv6 variants, and malformed strings.
 func TestClaimDirectAdversarialLoopbackSecurity(t *testing.T) {
-	srv, _, _ := setupTestServer()
+	srv, _, _ := setupTestServer(t)
 
 	payload, err := json.Marshal(map[string]string{
 		"auth_token":  "adversarial_token_12345",
@@ -146,7 +146,7 @@ func TestClaimDirectAdversarialLoopbackSecurity(t *testing.T) {
 
 	for _, tc := range loopbackCases {
 		t.Run("GenuineLoopback_"+tc.name, func(t *testing.T) {
-			testSrv, _, _ := setupTestServer()
+			testSrv, _, _ := setupTestServer(t)
 			req := httptest.NewRequest("POST", "/api/v1/claim/direct", bytes.NewReader(payload))
 			req.RemoteAddr = tc.remoteAddr
 			req.Header.Set("Content-Type", "application/json")
@@ -199,7 +199,7 @@ func TestClaimUnclaimAdversarialLoopbackSecurity(t *testing.T) {
 
 	for _, tc := range spoofedHeaders {
 		t.Run(tc.name, func(t *testing.T) {
-			srv, cfg, cm := setupTestServer()
+			srv, cfg, cm := setupTestServer(t)
 			cfg.Server.AuthToken = "super_secret_auth_token"
 			cfg.Server.Claimed = true
 			_ = cm.ConfirmDirect("super_secret_auth_token", "My Node", "owner")
@@ -224,7 +224,7 @@ func TestClaimUnclaimAdversarialLoopbackSecurity(t *testing.T) {
 // is on loopback (e.g. an attacker connecting through a local reverse proxy on 127.0.0.1),
 // proxy forwarding headers indicating external origin cause direct claim and unclaim to be rejected.
 func TestLoopbackWithReverseProxyHeadersRejected(t *testing.T) {
-	srv, _, _ := setupTestServer()
+	srv, _, _ := setupTestServer(t)
 
 	payload, err := json.Marshal(map[string]string{
 		"auth_token":  "direct_auth_token_proxy_test",
@@ -268,7 +268,7 @@ func TestLoopbackWithReverseProxyHeadersRejected(t *testing.T) {
 // TestClaimBackendLoopbackSecurity verifies that /api/v1/claim/backend cannot be invoked
 // from remote IPs using spoofed loopback headers without a valid auth token.
 func TestClaimBackendLoopbackSecurity(t *testing.T) {
-	srv, cfg, cm := setupTestServer()
+	srv, cfg, cm := setupTestServer(t)
 	cfg.Server.AuthToken = "backend_test_auth_token"
 	cfg.Server.Claimed = true
 	_ = cm.ConfirmDirect("backend_test_auth_token", "My Node", "owner")

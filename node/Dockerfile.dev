@@ -14,4 +14,4 @@ EXPOSE 8090
 ENV PORT=8090
 ENV CONFIG_PATH="/app/config.yaml"
 
-CMD ["go", "run", "main.go"]
+CMD ["go", "run", "."]

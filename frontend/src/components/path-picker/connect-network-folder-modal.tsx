@@ -16,7 +16,7 @@ import {
 } from 'lucide-react'
 import { DkDialog } from '@ui/molecules/dialog'
 import { DkButton } from '@ui/atoms/button'
-import { useToast } from '@ui/molecules/toast'
+import { useOptionalToast } from '@ui/molecules/toast'
 import { cn } from '@/lib/utils'
 import { useGameServers } from '@/features/downloads/use-server-downloads'
 import { useConnectServerShare } from '@/features/downloads/use-server-explorer'
@@ -42,12 +42,7 @@ export const ConnectNetworkFolderModal = ({
   serverId,
   onConnected,
 }: ConnectNetworkFolderModalProps) => {
-  let toast: (opts: any) => void = () => {}
-  try {
-    toast = useToast().toast
-  } catch {
-    // Graceful fallback when rendered without DkToastProvider (e.g. in test harness)
-  }
+  const { toast } = useOptionalToast()
 
   // Queries
   const { data: servers = [] } = useGameServers()
@@ -60,9 +55,7 @@ export const ConnectNetworkFolderModal = ({
   const activeHome = homes.find((h) => h.id === nodeHomeId)
 
   // Mutations
-  const connectShareMutation = typeof useConnectServerShare === 'function'
-    ? useConnectServerShare(serverId)
-    : ({ mutateAsync: async () => {} } as any)
+  const connectShareMutation = useConnectServerShare(serverId)
   const assignHomeMutation = useAssignNodeHome()
   const createHomeMutation = useCreateHome()
   const createServerMachineMutation = useCreateServerMachine()

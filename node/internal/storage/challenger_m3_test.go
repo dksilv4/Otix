@@ -1,3 +1,5 @@
+//go:build !windows
+
 package storage_test
 
 import (

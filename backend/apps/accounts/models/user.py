@@ -185,7 +185,7 @@ class User(TimestampedModel, AbstractBaseUser, PermissionsMixin):
     is_private = models.BooleanField(default=False)
     show_adult_content = models.BooleanField(default=False)
     is_bot = models.BooleanField(default=False)
-    total_xp = models.BigIntegerField(default=0)
+    total_xp = models.BigIntegerField(default=0, db_index=True)
     daily_mood_checkins_enabled = models.BooleanField(default=True)
     onboarding_completed = models.BooleanField(default=False)
     integration_visibility = models.JSONField(default=dict, blank=True)

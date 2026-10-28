@@ -30,6 +30,7 @@ type DealsMonitor struct {
 	lastChecked  time.Time
 	httpClient   *http.Client
 	stopChan     chan struct{}
+	stopOnce     sync.Once
 }
 
 func NewDealsMonitor() *DealsMonitor {
@@ -46,7 +47,9 @@ func NewDealsMonitor() *DealsMonitor {
 }
 
 func (dm *DealsMonitor) Stop() {
-	close(dm.stopChan)
+	dm.stopOnce.Do(func() {
+		close(dm.stopChan)
+	})
 }
 
 func (dm *DealsMonitor) startLoop() {

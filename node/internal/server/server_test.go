@@ -18,7 +18,7 @@ import (
 	"github.com/dksilv4/otix/node/internal/server"
 )
 
-func setupTestServer() (*server.Server, *config.AppConfig, *claim.ClaimManager) {
+func setupTestServer(t ...*testing.T) (*server.Server, *config.AppConfig, *claim.ClaimManager) {
 	tmpDir, _ := os.MkdirTemp("", "otix_server_test")
 	cfg := config.DefaultConfig()
 	cfg.SetConfigPath(filepath.Join(tmpDir, "config.yaml"))
@@ -26,11 +26,17 @@ func setupTestServer() (*server.Server, *config.AppConfig, *claim.ClaimManager) 
 	cfg.Server.Claimed = false
 	cm := claim.NewClaimManager(cfg)
 	srv := server.NewServer(cfg, cm)
+	if len(t) > 0 && t[0] != nil {
+		t[0].Cleanup(func() {
+			srv.Stop()
+			_ = os.RemoveAll(tmpDir)
+		})
+	}
 	return srv, cfg, cm
 }
 
 func TestPingEndpoint(t *testing.T) {
-	srv, _, _ := setupTestServer()
+	srv, _, _ := setupTestServer(t)
 
 	req := httptest.NewRequest("GET", "/api/v1/ping", nil)
 	w := httptest.NewRecorder()
@@ -51,7 +57,7 @@ func TestPingEndpoint(t *testing.T) {
 }
 
 func TestClaimFlowEndpoints(t *testing.T) {
-	srv, cfg, cm := setupTestServer()
+	srv, cfg, cm := setupTestServer(t)
 
 	// 1. Get Claim Status
 	reqStatus := httptest.NewRequest("GET", "/api/v1/claim/status", nil)
@@ -105,7 +111,7 @@ func TestClaimFlowEndpoints(t *testing.T) {
 }
 
 func TestClaimDirectLoopbackRestriction(t *testing.T) {
-	srv, _, _ := setupTestServer()
+	srv, _, _ := setupTestServer(t)
 
 	payload, _ := json.Marshal(map[string]string{
 		"auth_token":  "token_secret_123",
@@ -139,7 +145,7 @@ func TestClaimDirectLoopbackRestriction(t *testing.T) {
 }
 
 func TestClaimDirectEndpointSuccessAndPersistence(t *testing.T) {
-	srv, cfg, cm := setupTestServer()
+	srv, cfg, cm := setupTestServer(t)
 
 	configDir := t.TempDir()
 	configPath := filepath.Join(configDir, "config.yaml")
@@ -214,7 +220,7 @@ func TestClaimDirectEndpointSuccessAndPersistence(t *testing.T) {
 }
 
 func TestClaimDirectIPv6AndValidationErrors(t *testing.T) {
-	srv, _, _ := setupTestServer()
+	srv, _, _ := setupTestServer(t)
 
 	// 1. IPv6 Loopback should succeed
 	payloadIPv6, _ := json.Marshal(map[string]string{
@@ -300,7 +306,7 @@ func TestClaimLoginDirect(t *testing.T) {
 	}))
 	defer mockBackend.Close()
 
-	srv, cfg, cm := setupTestServer()
+	srv, cfg, cm := setupTestServer(t)
 
 	// 1. Invalid credentials should fail
 	badBody, _ := json.Marshal(map[string]string{
@@ -341,7 +347,7 @@ func TestClaimLoginDirect(t *testing.T) {
 
 
 func TestWebUIOnboardingRender(t *testing.T) {
-	srv, _, _ := setupTestServer()
+	srv, _, _ := setupTestServer(t)
 
 	req := httptest.NewRequest("GET", "/", nil)
 	w := httptest.NewRecorder()
@@ -364,7 +370,7 @@ func TestWebUIOnboardingRender(t *testing.T) {
 }
 
 func TestWebUIClaimedDashboardRender(t *testing.T) {
-	srv, _, cm := setupTestServer()
+	srv, _, cm := setupTestServer(t)
 
 	code := cm.CurrentCode()
 	if err := cm.Confirm(code, "test_secret_tok_9999", "Home Gaming Box", "dksilv4"); err != nil {
@@ -392,7 +398,7 @@ func TestWebUIClaimedDashboardRender(t *testing.T) {
 }
 
 func TestOtixWriteAndSettings(t *testing.T) {
-	srv, cfg, _ := setupTestServer()
+	srv, cfg, _ := setupTestServer(t)
 	gameRoot := t.TempDir()
 	exePath := filepath.Join(gameRoot, "Game.exe")
 	if err := os.WriteFile(exePath, []byte("MZ"), 0o644); err != nil {
@@ -467,7 +473,7 @@ func TestOtixWriteAndSettings(t *testing.T) {
 }
 
 func TestProwlarrUsenetConfigAndTestConnection(t *testing.T) {
-	srv, cfg, _ := setupTestServer()
+	srv, cfg, _ := setupTestServer(t)
 
 	// 1. Test test-prowlarr with empty API key
 	reqTestEmpty := httptest.NewRequest("POST", "/api/v1/usenet/test-prowlarr", bytes.NewReader([]byte(`{"host":"127.0.0.1","port":9696,"api_key":""}`)))
@@ -550,7 +556,7 @@ func TestProwlarrUsenetConfigAndTestConnection(t *testing.T) {
 }
 
 func TestServerStatusAndUnclaim(t *testing.T) {
-	srv, cfg, cm := setupTestServer()
+	srv, cfg, cm := setupTestServer(t)
 	code := cm.CurrentCode()
 	_ = cm.Confirm(code, "my-auth-token", "My Box", "alice")
 
@@ -595,7 +601,7 @@ func TestServerStatusAndUnclaim(t *testing.T) {
 }
 
 func TestLibrariesAndFilesEndpoints(t *testing.T) {
-	srv, cfg, _ := setupTestServer()
+	srv, cfg, _ := setupTestServer(t)
 	cfg.Server.AuthToken = "token123"
 
 	tmpDir := t.TempDir()
@@ -676,7 +682,7 @@ func TestLibrariesAndFilesEndpoints(t *testing.T) {
 }
 
 func TestExplorerEndpoints(t *testing.T) {
-	srv, cfg, _ := setupTestServer()
+	srv, cfg, _ := setupTestServer(t)
 	cfg.Server.AuthToken = "token123"
 
 	tmpDir := t.TempDir()
@@ -728,7 +734,7 @@ func TestExplorerEndpoints(t *testing.T) {
 }
 
 func TestCloudSavesEndpoints(t *testing.T) {
-	srv, cfg, _ := setupTestServer()
+	srv, cfg, _ := setupTestServer(t)
 	cfg.Server.AuthToken = "token123"
 
 	// 1. Upload save file via multipart form
@@ -773,7 +779,7 @@ func TestCloudSavesEndpoints(t *testing.T) {
 }
 
 func TestDesktopAndOrganizeEndpoints(t *testing.T) {
-	srv, cfg, _ := setupTestServer()
+	srv, cfg, _ := setupTestServer(t)
 	cfg.Server.AuthToken = "token123"
 
 	// 1. GET /api/v1/desktop/settings
@@ -814,7 +820,7 @@ func TestDesktopAndOrganizeEndpoints(t *testing.T) {
 }
 
 func TestPluginsAndProvidersEndpoints(t *testing.T) {
-	srv, cfg, _ := setupTestServer()
+	srv, cfg, _ := setupTestServer(t)
 	cfg.Server.AuthToken = "token123"
 
 	// 1. GET /api/v1/plugins/deals
@@ -881,7 +887,7 @@ func TestPluginsAndProvidersEndpoints(t *testing.T) {
 }
 
 func TestGamesAndOverlayEndpoints(t *testing.T) {
-	srv, _, _ := setupTestServer()
+	srv, _, _ := setupTestServer(t)
 
 	// 1. GET /api/v1/games/running
 	reqRunning := httptest.NewRequest("GET", "/api/v1/games/running", nil)
@@ -956,7 +962,7 @@ func TestGamesAndOverlayEndpoints(t *testing.T) {
 
 
 func TestScanStatusAndProgressSSE(t *testing.T) {
-	srv, _, _ := setupTestServer()
+	srv, _, _ := setupTestServer(t)
 
 	// 1. GET /api/v1/scan/status
 	reqStatus := httptest.NewRequest("GET", "/api/v1/scan/status", nil)

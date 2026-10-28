@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { Search, Gamepad2, Disc, CheckCircle2, AlertCircle, HardDrive, Loader2, Sparkles } from 'lucide-react'
+import { Search, Gamepad2, Disc, Loader2, Sparkles } from 'lucide-react'
 import { DkDialog } from '@ui/molecules/dialog'
 import { DkButton } from '@ui/atoms/button'
 import {

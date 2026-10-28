@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from "react"
+import React, { createContext, useState, useEffect, useCallback, useMemo } from "react"
 
 export type LauncherThemeId =
   | "classic"
@@ -139,7 +139,7 @@ interface LauncherThemeContextType {
   availableThemes: LauncherThemeMeta[]
 }
 
-const LauncherThemeContext = createContext<LauncherThemeContextType | null>(null)
+export const LauncherThemeContext = createContext<LauncherThemeContextType | null>(null)
 
 export const LauncherThemeProvider = ({ children }: { children: React.ReactNode }) => {
   const [currentTheme, setCurrentThemeState] = useState<LauncherThemeId>(() => {
@@ -216,10 +216,4 @@ export const LauncherThemeProvider = ({ children }: { children: React.ReactNode 
   return <LauncherThemeContext.Provider value={value}>{children}</LauncherThemeContext.Provider>
 };
 
-export const useLauncherTheme = () => {
-  const ctx = useContext(LauncherThemeContext)
-  if (!ctx) {
-    throw new Error("useLauncherTheme must be used within a LauncherThemeProvider")
-  }
-  return ctx
-}
+export { useLauncherTheme } from '../hooks/use-launcher-theme'

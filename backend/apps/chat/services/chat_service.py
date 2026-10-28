@@ -125,6 +125,8 @@ def list_conversations_for_user(user_id: int, limit: int | None = None):
             "participants__user",
             "messages",
             "messages__sender",
+            "messages__attachments",
+            "messages__reactions",
         )
         .order_by("-updated_at")
     )

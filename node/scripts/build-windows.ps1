@@ -11,10 +11,10 @@
     The version string to embed in the binary (default: "0.1.0").
 
 .PARAMETER OutputName
-    The name of the executable to produce in node\dist\ (default: "otix-node-windows-amd64.exe").
+    The name of the executable to produce in dist\node\ (default: "otix-node-windows-amd64.exe").
 
 .PARAMETER PackageZip
-    When specified, creates a production distribution zip package in node\dist\.
+    When specified, creates a production distribution zip package in dist\node\.
 
 .PARAMETER SyncRootExe
     When specified (or by default), copies the compiled executable to node\otix-node.exe.
@@ -32,7 +32,7 @@ $ErrorActionPreference = "Stop"
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $nodeDir = Split-Path -Parent $scriptDir
 $repoRoot = Split-Path -Parent $nodeDir
-$distDir = Join-Path $nodeDir "dist"
+$distDir = Join-Path $repoRoot "dist\node"
 $buildTime = (Get-Date).ToString("yyyy-MM-dd")
 
 if (-not (Test-Path $distDir)) {
@@ -102,6 +102,11 @@ if ($hasNativeGo) {
     Write-Host "==> Building using native Go..." -ForegroundColor Green
     Push-Location $nodeDir
     try {
+        $gopath = (go env GOPATH).Trim()
+        $goBinDir = Join-Path $gopath "bin"
+        if ($env:PATH -notlike "*$goBinDir*") {
+            $env:PATH = "$goBinDir;$env:PATH"
+        }
         $hasGoVersionInfo = (Get-Command goversioninfo -ErrorAction SilentlyContinue) -ne $null
         if (-not $hasGoVersionInfo) {
             Write-Host "    Installing goversioninfo tool..." -ForegroundColor Yellow
@@ -113,7 +118,7 @@ if ($hasNativeGo) {
         $env:CGO_ENABLED = "0"
         $env:GOOS = "windows"
         $env:GOARCH = "amd64"
-        go build -ldflags=$ldflags -o $targetOutFile .
+        go build "-ldflags=$ldflags" -o $targetOutFile .
     }
     finally {
         Pop-Location
@@ -122,7 +127,7 @@ if ($hasNativeGo) {
     Write-Host "==> Building using Docker container (golang:1.24-alpine)..." -ForegroundColor Green
     $guiFlag = if ($NoConsole) { "-H=windowsgui" } else { "" }
     $dockerLdflags = "-s -w $guiFlag -X main.Version=$Version -X main.BuildTime=$buildTime".Trim()
-    $dockerCmd = "go install github.com/josephspurrier/goversioninfo/cmd/goversioninfo@latest && goversioninfo -platform-specific=true && CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -ldflags='$dockerLdflags' -o /repo/node/dist/$OutputName ."
+    $dockerCmd = "go install github.com/josephspurrier/goversioninfo/cmd/goversioninfo@latest && goversioninfo -platform-specific=true && CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -ldflags='$dockerLdflags' -o /repo/dist/node/$OutputName ."
     
     docker run --rm `
         -v "${repoRoot}:/repo" `

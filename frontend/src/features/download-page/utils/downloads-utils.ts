@@ -28,20 +28,14 @@ export const detectUserPlatform = (userAgent?: string): 'windows' | 'macos' | 'l
 }
 
 /**
- * Format raw bytes into human readable format (MB, GB, KB)
+ * Format raw byte size for display in download cards (e.g. 512 KB, 120.2 MB, 2.00 GB, 0 MB)
  */
 export const formatFileSize = (bytes?: number): string => {
   if (!bytes || bytes <= 0) return '0 MB'
-  const megabytes = bytes / (1024 * 1024)
-  if (megabytes < 1) {
-    const kilobytes = bytes / 1024
-    return `${kilobytes.toFixed(0)} KB`
-  }
-  if (megabytes >= 1024) {
-    const gigabytes = megabytes / 1024
-    return `${gigabytes.toFixed(2)} GB`
-  }
-  return `${megabytes.toFixed(1)} MB`
+  const mb = bytes / (1024 * 1024)
+  if (mb < 1) return `${(bytes / 1024).toFixed(0)} KB`
+  if (mb >= 1024) return `${(mb / 1024).toFixed(2)} GB`
+  return `${mb.toFixed(1)} MB`
 }
 
 /**

@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useMemo, useEffect, useCallback, type ReactNode } from 'react'
+import { createContext, useState, useMemo, useEffect, useCallback, type ReactNode } from 'react'
 import {
   type NodesViewMode,
   type NodesActiveTab,
@@ -31,7 +31,7 @@ export interface NodesViewContextValue {
   setOnlineCount: (count: number) => void
 }
 
-const NodesViewContext = createContext<NodesViewContextValue | null>(null)
+export const NodesViewContext = createContext<NodesViewContextValue | null>(null)
 
 export interface NodesViewProviderProps {
   children: ReactNode
@@ -125,7 +125,7 @@ export const NodesViewProvider = ({ children }: NodesViewProviderProps) => {
   return <NodesViewContext.Provider value={value}>{children}</NodesViewContext.Provider>
 }
 
-const defaultFallbackValue: NodesViewContextValue = {
+export const defaultFallbackValue: NodesViewContextValue = {
   viewMode: 'map',
   setViewMode: () => {},
   activeTab: 'infrastructure',
@@ -145,7 +145,4 @@ const defaultFallbackValue: NodesViewContextValue = {
   setOnlineCount: () => {},
 }
 
-export const useNodesView = (): NodesViewContextValue => {
-  const ctx = useContext(NodesViewContext)
-  return ctx || defaultFallbackValue
-}
+export { useNodesView } from '../hooks/use-nodes-view'

@@ -91,7 +91,7 @@ func main() {
 		lc := net.ListenConfig{
 			Control: func(network, address string, c syscall.RawConn) error {
 				return c.Control(func(fd uintptr) {
-					_ = syscall.SetsockoptInt(int(fd), syscall.SOL_SOCKET, syscall.SO_REUSEADDR, 1)
+					_ = setReuseAddr(fd)
 				})
 			},
 		}
@@ -112,6 +112,7 @@ func main() {
 	claimMgr := claim.NewClaimManager(cfg)
 	hbRunner := heartbeat.NewHeartbeatRunner(cfg, claimMgr)
 	srv := server.NewServer(cfg, claimMgr)
+	defer srv.Stop()
 	srv.SetHeartbeatRunner(hbRunner)
 	hbRunner.SetRunningGameProvider(func() interface{} {
 		return srv.GamesTracker().GetRunningGame()
