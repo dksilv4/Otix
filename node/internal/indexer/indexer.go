@@ -64,7 +64,6 @@ var NoiseDirectoryNames = map[string]bool{
 	"shows": true, "tv shows": true, "tv": true, "television": true, "series": true,
 	"music": true, "songs": true, "audiobooks": true, "podcasts": true,
 	"incomplete": true, "incompleted": true,
-	"torrent": true, "torrents": true,
 }
 
 var InstallerHeaderSignatures = []string{
@@ -1035,7 +1034,7 @@ func (si *StorageIndexer) ScanAllWithDeep(deep bool) []HostedFile {
 				if path != libPath {
 					rel := RelativeLibraryPath(path, libPath)
 					parts := strings.Split(rel, "/")
-					if len(parts) > 4 {
+					if len(parts) > 7 {
 						return filepath.SkipDir
 					}
 				}

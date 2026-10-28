@@ -300,6 +300,10 @@ export function useScanNode(nodeId?: number) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: nodeKeys.games() })
     },
+    onError: () => {
+      queryClient.invalidateQueries({ queryKey: ['game-servers'] })
+      queryClient.invalidateQueries({ queryKey: ['library', 'servers'] })
+    },
   })
 }
 

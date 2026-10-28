@@ -6,6 +6,7 @@ import { Scan, Gamepad2, ChevronRight } from 'lucide-react'
 import { getDesktopAPI, hasDesktopAPI } from '@/lib/desktop/api'
 import { fetchIsoPaths } from '@/features/launcher/data/storage'
 import { useToast } from '@ui/molecules/toast'
+import { formatScanError } from '@/lib/utils/scan-errors'
 
 export const LauncherScanWidget = ({ id }: { id?: string }) => {
   const navigate = useNavigate()
@@ -31,7 +32,12 @@ export const LauncherScanWidget = ({ id }: { id?: string }) => {
       }
     } catch (err) {
       console.error('Scan failed:', err)
-      toast({ title: 'Scan Failed', variant: 'error' })
+      const { message } = formatScanError(err)
+      toast({
+        title: 'Scan Failed',
+        description: message,
+        variant: 'error',
+      })
     } finally {
       setScanning(false)
     }
@@ -41,15 +47,16 @@ export const LauncherScanWidget = ({ id }: { id?: string }) => {
   const goToLibrary = useCallback(() => navigate({ to: '/launcher/library' }), [navigate])
 
   return (
-    <div id={id} className="flex-1 rounded-2xl bg-[var(--dk-surface-ghost)] border border-[var(--dk-separator)] p-4 flex flex-col justify-between">
+    <div id={id} className="flex-1 rounded-2xl bg-[var(--dk-surface-ghost)] border border-white/[0.04] p-4 flex flex-col justify-between">
       <div className="flex items-start justify-between gap-4">
         <div>
           <h3 className="text-xs font-bold text-foreground mb-1 flex items-center gap-1.5">
-            <Gamepad2 size={13} className="text-pink-400"/>
+            <Gamepad2 size={13} className="text-primary"/>
             Scan and Manage Local Library
           </h3>
           <p className="text-[11px] text-muted-foreground max-w-md">
-            Add installation folders in Settings and run a scanner to match local executables, track achievements, and launch games natively.
+            Add installation folders in Settings and run a scanner to match local executables,
+            track achievements, and launch games natively.
           </p>
         </div>
         <ChevronRight size={16} className="text-muted-foreground shrink-0 mt-0.5"/>
@@ -78,4 +85,4 @@ export const LauncherScanWidget = ({ id }: { id?: string }) => {
       </div>
     </div>
   )
-};
+}

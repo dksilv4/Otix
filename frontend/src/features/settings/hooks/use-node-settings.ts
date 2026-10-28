@@ -110,6 +110,7 @@ export function useReplaceNodeLibraries(serverId: number | null | undefined) {
 }
 
 export function useScanNodeLibraries(serverId: number | null | undefined) {
+  const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async () => {
       if (!serverId) throw new Error('No Otix node selected')
@@ -125,6 +126,10 @@ export function useScanNodeLibraries(serverId: number | null | undefined) {
       }
       const { data } = await apiClient.post(`/library/servers/${serverId}/scan`)
       return data
+    },
+    onError: () => {
+      void queryClient.invalidateQueries({ queryKey: ['game-servers'] })
+      void queryClient.invalidateQueries({ queryKey: ['library', 'servers'] })
     },
   })
 }

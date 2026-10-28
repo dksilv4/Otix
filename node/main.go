@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"net"
 	"net/http"
 	"os"
 	"os/exec"
@@ -80,6 +81,34 @@ func main() {
 		cfg.Server.Port = 8090
 	}
 
+	// Try binding to configured port with SO_REUSEADDR; fallback up to 10 ports if busy
+	var listener net.Listener
+	addr := fmt.Sprintf("%s:%d", cfg.Server.Host, cfg.Server.Port)
+
+	for attempt := 0; attempt < 10; attempt++ {
+		candidatePort := cfg.Server.Port + attempt
+		testAddr := fmt.Sprintf("%s:%d", cfg.Server.Host, candidatePort)
+		lc := net.ListenConfig{
+			Control: func(network, address string, c syscall.RawConn) error {
+				return c.Control(func(fd uintptr) {
+					_ = syscall.SetsockoptInt(int(fd), syscall.SOL_SOCKET, syscall.SO_REUSEADDR, 1)
+				})
+			},
+		}
+		l, err := lc.Listen(context.Background(), "tcp", testAddr)
+		if err == nil {
+			listener = l
+			cfg.Server.Port = candidatePort
+			addr = testAddr
+			break
+		}
+	}
+	if listener == nil {
+		fmt.Fprintf(os.Stderr, "Server failed: could not bind to %s or next 10 ports\n", addr)
+		os.Exit(1)
+	}
+	defer listener.Close()
+
 	claimMgr := claim.NewClaimManager(cfg)
 	hbRunner := heartbeat.NewHeartbeatRunner(cfg, claimMgr)
 	srv := server.NewServer(cfg, claimMgr)
@@ -90,7 +119,6 @@ func main() {
 	hbRunner.Start()
 	defer hbRunner.Stop()
 
-	addr := fmt.Sprintf("%s:%d", cfg.Server.Host, cfg.Server.Port)
 	httpServer := &http.Server{
 		Addr:         addr,
 		Handler:      srv.Router(),
@@ -124,7 +152,7 @@ func main() {
 			}()
 		}
 
-		if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		if err := httpServer.Serve(listener); err != nil && err != http.ErrServerClosed {
 			fmt.Fprintf(os.Stderr, "Server failed: %v\n", err)
 			os.Exit(1)
 		}

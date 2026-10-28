@@ -116,25 +116,19 @@ var (
 	}
 
 	noiseDirectoryNames = map[string]bool{
-
 		"_commonredist": true, "commonredist": true, "redist": true, "_redist": true,
-
 		"support": true, "directx": true, "vcredist": true, "vc_redist": true,
-
 		"prerequisites": true, "prereq": true, "engine": true, "crashreports": true,
-
 		"mono": true, "dependencies": true, ".git": true, "__macosx": true,
-
 		"content": true, "assets": true, "textures": true, "sounds": true, "audio": true,
-
-		"video": true, "movies": true, "shaders": true, "levels": true, "maps": true,
-
-		"res": true, "resources": true, "localization": true, "languages": true,
-
-		"locale": true, "save": true, "saves": true, "cache": true,
-
-		"runtimetools": true, "md5": true, "emulators": true, "node_modules": true,
-
+		"sound": true, "music": true, "video": true, "movies": true, "shaders": true,
+		"levels": true, "maps": true, "res": true, "resources": true,
+		"localization": true, "languages": true, "locale": true, "save": true, "saves": true,
+		"cache": true, "runtimetools": true, "md5": true, "emulators": true, "node_modules": true,
+		"data": true, "gamedata": true, "streamingassets": true, "plugins": true,
+		"mods": true, "generated": true, "public": true, "scripts": true,
+		"paks": true, "pak": true, "bundles": true, "cooked": true, "cookedpc": true,
+		"logs": true, "log": true, "temp": true, "tmp": true,
 		"$recycle.bin": true, "system volume information": true,
 	}
 
@@ -143,6 +137,27 @@ var (
 		"x64": true, "x86": true, "win64": true, "win32": true,
 		"system": true, "shipping": true, "retail": true, "game": true,
 		"release": true, "app": true, "build": true,
+	}
+
+	collectionDirectoryNames = map[string]bool{
+		"downloads": true, "download": true, "torrents": true, "torrent": true,
+		"unsorted": true, "incoming": true, "completed": true, "staging": true,
+		"games": true, "my games": true, "pc": true, "pc games": true,
+		"repacks": true, "repack": true, "installers": true, "installer": true,
+		"updates": true, "update": true, "patches": true, "patch": true,
+		"dlc": true, "dlcs": true, "cracks": true, "crack": true,
+		"updates & cracks": true, "updates and cracks": true, "updates & dlc": true,
+		"cracked": true, "portable": true, "todo": true,
+		"old_hard_drive_backup": true, "backup": true, "backups": true,
+		"roms": true, "rom": true, "emulation": true, "emulators": true,
+		"extracted": true, "unpacked": true, "temp": true, "tmp": true,
+		"steam": true, "steamapps": true, "common": true, "userdata": true,
+		"gog games": true, "gog galaxy": true, "gog installers": true,
+		"epic games": true, "launcher": true, "portal": true,
+		"ea games": true, "origin": true, "origin games": true,
+		"ubisoft": true, "ubisoft game launcher": true,
+		"battle.net": true, "xboxgames": true, "xbox": true,
+		"library": true, "noise": true,
 	}
 
 	romExtensions = map[string]string{
@@ -256,6 +271,44 @@ var crackNameRegex = regexp.MustCompile(`(?i)(?:^|[\s._\-\[(])(?:crack\s*fix|cra
 
 func isCrackName(name string) bool {
 	return crackNameRegex.MatchString(name) || strings.Contains(strings.ToLower(name), "+crack")
+}
+
+func isCollectionFolder(name string) bool {
+	clean := strings.ToLower(strings.TrimSpace(name))
+	if collectionDirectoryNames[clean] {
+		return true
+	}
+	if strings.Contains(clean, "updates & cracks") || strings.Contains(clean, "updates and cracks") ||
+		strings.Contains(clean, "updates & dlc") || strings.Contains(clean, "updates and dlc") {
+		return true
+	}
+	return false
+}
+
+func isGenericContainerName(name string) bool {
+	lower := strings.ToLower(strings.TrimSpace(name))
+	if lower == "crack" || lower == "cracks" || lower == "updates" || lower == "update" || lower == "dlc" || lower == "dlcs" {
+		return true
+	}
+	return isCollectionFolder(lower)
+}
+
+func resolveGameParentDir(filePath, baseDir string) string {
+	curr := filepath.Dir(filePath)
+	cleanBase := filepath.Clean(baseDir)
+	for curr != "" && curr != "." && filepath.Clean(curr) != cleanBase {
+		baseName := filepath.Base(curr)
+		lower := strings.ToLower(baseName)
+		if !knownGameSubdirs[lower] && !isGenericContainerName(lower) && !isCollectionFolder(lower) {
+			return baseName
+		}
+		parent := filepath.Dir(curr)
+		if parent == curr || parent == "." || filepath.Clean(parent) == cleanBase {
+			break
+		}
+		curr = parent
+	}
+	return filepath.Base(filepath.Dir(filePath))
 }
 
 func sanitizePathTitle(title string) string {
@@ -539,40 +592,28 @@ func PreviewOrganization(dir string, template string, sample bool) ([]PreviewIte
 
 	targetPaths := make(map[string]bool)
 
-	// Scan directory up to depth 4
+	const maxOrganizeScanDepth = 12
 
+	// Scan directory recursively up to maxOrganizeScanDepth
 	_ = filepath.WalkDir(cleanDir, func(path string, d fs.DirEntry, err error) error {
-
 		if err != nil {
-
 			return nil
-
 		}
 
 		if d.IsDir() {
-
 			nameLower := strings.ToLower(d.Name())
-
 			if noiseDirectoryNames[nameLower] || strings.HasPrefix(nameLower, "$") || strings.HasPrefix(nameLower, ".") {
-
 				return filepath.SkipDir
-
 			}
 
-			if nameLower == "updates" || nameLower == "dlc" || nameLower == "support" || nameLower == "_commonredist" {
-
+			if nameLower == "updates" || nameLower == "dlc" || nameLower == "support" || nameLower == "_commonredist" || isCollectionFolder(nameLower) {
 				return nil
-
 			}
 
 			// If directory within cleanDir, check if it's a container folder package
-
 			rel, _ := safeRel(cleanDir, path)
-
-			if rel != "." && strings.Count(rel, string(filepath.Separator)) <= 4 {
-
+			if rel != "." && strings.Count(rel, string(filepath.Separator)) <= maxOrganizeScanDepth {
 				// Read immediate children of this subfolder
-
 				children, rErr := os.ReadDir(path)
 
 				if rErr == nil && len(children) > 0 {
@@ -715,15 +756,13 @@ func PreviewOrganization(dir string, template string, sample bool) ([]PreviewIte
 						}
 					}
 
-					isGenericContainer := folderLower == "crack" || folderLower == "cracks" || folderLower == "updates" || folderLower == "dlc"
+					isGenericContainer := isGenericContainerName(folderLower) || isCollectionFolder(d.Name())
 					if isGenericContainer {
 						return nil
 					}
 
 					isCrackFolder := (hasCrackDll && (strings.Contains(folderLower, "crack") || strings.Contains(folderLower, "codex") || strings.Contains(folderLower, "rune") || isElAmigos)) ||
 						isCrackName(folderLower) || folderLower == "onlinefix" || folderLower == "nocd"
-
-					isTopLevel := strings.Count(rel, string(filepath.Separator)) == 0
 
 					var nonNoiseSubdirs []os.DirEntry
 					var nonNoiseFiles []os.DirEntry
@@ -743,15 +782,15 @@ func PreviewOrganization(dir string, template string, sample bool) ([]PreviewIte
 					actualPath := path
 					actualName := d.Name()
 
-					// Unwrap single-child redundant wrapper folders directly under the main directory
-					if isTopLevel && len(nonNoiseSubdirs) == 1 && len(nonNoiseFiles) == 0 && !hasSetup {
+					// Unwrap single-child redundant wrapper folders
+					if len(nonNoiseSubdirs) == 1 && len(nonNoiseFiles) == 0 && !hasSetup && !isCrackFolder {
 						singleChild := nonNoiseSubdirs[0]
 						childLower := strings.ToLower(singleChild.Name())
 						genericFolderNames := map[string]bool{
 							"bin": true, "x64": true, "win64": true, "win32": true, "data": true,
 							"content": true, "engine": true, "system": true, "updates": true, "dlc": true, "crack": true,
 						}
-						if !genericFolderNames[childLower] {
+						if !genericFolderNames[childLower] && !isCollectionFolder(childLower) {
 							childPath := filepath.Join(path, singleChild.Name())
 							if scanForGameExe(childPath) {
 								actualPath = childPath
@@ -761,8 +800,8 @@ func PreviewOrganization(dir string, template string, sample bool) ([]PreviewIte
 						}
 					}
 
-					// If top level and no direct game exe, scan subdirectories (bin/, x64/, system/) up to 2 levels deep
-					if isTopLevel && !hasGameExe && !isGenericContainer {
+					// If no direct game exe, scan subdirectories (bin/, x64/, system/) up to 2 levels deep
+					if !hasGameExe && !isGenericContainer && !knownGameSubdirs[folderLower] {
 						hasGameExe = scanForGameExe(actualPath)
 					}
 
@@ -773,8 +812,13 @@ func PreviewOrganization(dir string, template string, sample bool) ([]PreviewIte
 					}
 					isLinked := sc != nil && (sc.MediaID != "" || sc.Title != "")
 
-					isPcPackage := (hasSetup && hasBin) || hasCrackDll || (hasGameExe && !isConsolePackage)
-					isPackage := isLinked || isCrackFolder || (hasSetup && hasBin) || isConsolePackage || (isTopLevel && (hasGameExe || hasIso)) || (hasGameExe && (len(children) >= 3 || hasCrackDll))
+					isPcPackage := (hasSetup && hasBin) || hasCrackDll || (hasGameExe && !isConsolePackage) || hasIso
+					isPackage := !isGenericContainer && !knownGameSubdirs[folderLower] && (isLinked ||
+						isCrackFolder ||
+						(hasSetup && hasBin) ||
+						isConsolePackage ||
+						hasIso ||
+						(hasGameExe && (len(nonNoiseSubdirs) > 0 || len(children) >= 2 || hasCrackDll)))
 
 					if isPackage {
 						var release ParsedRelease
@@ -938,11 +982,8 @@ func PreviewOrganization(dir string, template string, sample bool) ([]PreviewIte
 			}
 
 			// Limit scan depth
-
-			if strings.Count(rel, string(filepath.Separator)) > 4 {
-
+			if strings.Count(rel, string(filepath.Separator)) > maxOrganizeScanDepth {
 				return filepath.SkipDir
-
 			}
 
 			return nil
@@ -1058,35 +1099,17 @@ func PreviewOrganization(dir string, template string, sample bool) ([]PreviewIte
 
 		parentDirRaw := filepath.Base(filepath.Dir(path))
 
-		parentDir := parentDirRaw
-
-		if strings.EqualFold(parentDir, "updates") || strings.EqualFold(parentDir, "dlc") || strings.EqualFold(parentDir, "crack") {
-
-			grandparentDir := filepath.Base(filepath.Dir(filepath.Dir(path)))
-
-			if grandparentDir != "." && grandparentDir != "" && !strings.HasPrefix(grandparentDir, "..") {
-
-				parentDir = grandparentDir
-
-			}
-
-		}
+		parentDir := resolveGameParentDir(path, cleanDir)
 
 		if parentDir != "." && parentDir != "" && !strings.HasPrefix(parentDir, "..") {
-
 			pRel := ParseReleaseName(parentDir)
-
 			isGenericTitle := release.Title == "" || release.Title == "1" || len(release.Title) <= 3 ||
-
 				strings.EqualFold(release.Title, "exe") || strings.EqualFold(release.Title, "bin") ||
-
 				strings.EqualFold(release.Title, "patch") || strings.EqualFold(release.Title, "update") ||
-
 				strings.EqualFold(release.Title, "setup") || strings.EqualFold(release.Title, "installer") ||
-
 				strings.HasPrefix(strings.ToLower(release.Title), "elamigos")
 
-			if pRel.Title != "" && (isGenericTitle || strings.EqualFold(parentDirRaw, "updates") || strings.EqualFold(parentDirRaw, "dlc") || strings.EqualFold(parentDirRaw, "crack")) {
+			if pRel.Title != "" && (isGenericTitle || strings.EqualFold(parentDirRaw, "updates") || strings.EqualFold(parentDirRaw, "dlc") || strings.EqualFold(parentDirRaw, "crack") || strings.EqualFold(parentDirRaw, "patches")) {
 
 				release.Title = pRel.Title
 
@@ -1513,45 +1536,35 @@ func ExecuteOrganization(items []ExecuteItem, deleteEmptyFolders ...bool) ([]Exe
 
 }
 
-func cleanEmptyDirsUp(dir string, maxLevels int) {
-	cleanEmptySubdirs(dir)
-	curr := dir
-	for i := 0; i < maxLevels; i++ {
-		entries, err := os.ReadDir(curr)
-		if err == nil && len(entries) == 0 {
-			clean := filepath.Clean(curr)
-			vol := filepath.VolumeName(clean)
-			if clean != vol && clean != "/" && clean != "\\" && clean != "." {
-				_ = os.Remove(curr)
-			}
-			parent := filepath.Dir(curr)
-			if parent == curr || parent == "." || parent == vol || parent == "/" || parent == "\\" {
-				break
-			}
-			curr = parent
-		} else {
-			break
-		}
+func isProtectedVolumeOrRoot(p string) bool {
+	clean := filepath.Clean(p)
+	vol := filepath.VolumeName(clean)
+	if clean == vol || clean == "/" || clean == "\\" || clean == "." {
+		return true
 	}
+	parts := strings.Split(filepath.ToSlash(clean), "/")
+	if len(parts) <= 3 && len(parts) >= 2 && (parts[1] == "Volumes" || parts[1] == "mnt" || parts[1] == "media") {
+		return true
+	}
+	return false
 }
 
-func cleanEmptySubdirs(dir string) {
-	entries, err := os.ReadDir(dir)
-	if err != nil {
-		return
-	}
-	for _, entry := range entries {
-		if entry.IsDir() {
-			cleanEmptySubdirs(filepath.Join(dir, entry.Name()))
+func cleanEmptyDirsUp(dir string, maxLevels int) {
+	curr := filepath.Clean(dir)
+	for i := 0; i < maxLevels; i++ {
+		if isProtectedVolumeOrRoot(curr) {
+			break
 		}
-	}
-	recheck, err := os.ReadDir(dir)
-	if err == nil && len(recheck) == 0 {
-		clean := filepath.Clean(dir)
-		vol := filepath.VolumeName(clean)
-		if clean != vol && clean != "/" && clean != "\\" && clean != "." {
-			_ = os.Remove(dir)
+		entries, err := os.ReadDir(curr)
+		if err != nil || len(entries) > 0 {
+			break
 		}
+		_ = os.Remove(curr)
+		parent := filepath.Dir(curr)
+		if parent == curr || isProtectedVolumeOrRoot(parent) {
+			break
+		}
+		curr = parent
 	}
 }
 

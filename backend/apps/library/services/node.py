@@ -1,6 +1,10 @@
 """Node service operations: connectivity probes, health checks, and metrics sync."""
 
+import errno
 import os
+import re
+import socket
+import ssl
 import time
 from datetime import timedelta
 from pathlib import Path
@@ -31,18 +35,18 @@ def contact_urls(stored_url: str) -> list[str]:
     and on ``host.docker.internal`` so a host-entered localhost URL still
     probes the published node.
     """
-    base = (stored_url or "").rstrip("/")
+    base = (stored_url or "").strip().rstrip("/")
     if not base or base.startswith("otix://"):
         return []
-    parsed = urlparse(base)
-    host = (parsed.hostname or "").lower()
-    is_local = (
-        host in _LOOPBACK_HOSTS
-        or host.startswith("192.168.")
-        or host.startswith("10.")
-        or host.startswith("172.")
-    )
-    if not is_local:
+    if "://" not in base and not base.startswith("/"):
+        base = f"http://{base}"
+    try:
+        parsed = urlparse(base)
+        host = (parsed.hostname or "").lower()
+        port = parsed.port
+    except Exception:
+        return []
+    if host not in _LOOPBACK_HOSTS:
         return [base]
     extras: list[str] = []
     docker_host = (os.environ.get("OTIX_SERVER_DOCKER_HOST") or "").strip()
@@ -53,13 +57,18 @@ def contact_urls(stored_url: str) -> list[str]:
         extras.append("host.docker.internal")
     rewritten: list[str] = []
     for extra in extras:
-        netloc = f"{extra}:{parsed.port}" if parsed.port else extra
-        candidate = urlunparse(parsed._replace(netloc=netloc)).rstrip("/")
-        if candidate not in rewritten and candidate != base:
-            rewritten.append(candidate)
+        netloc = f"{extra}:{port}" if port else extra
+        try:
+            candidate = urlunparse(parsed._replace(netloc=netloc)).rstrip("/")
+            if candidate not in rewritten and candidate != base:
+                rewritten.append(candidate)
+        except Exception:
+            continue
     # Docker-reachable hosts first: 127.0.0.1 or LAN host IPs inside the API container cannot
     # reliably reach the Mac/Windows host directly, so trying rewritten (host.docker.internal)
     # first avoids 502 connection timeouts on Radarr/Sonarr/downloads polls.
+    if is_docker and host in _LOOPBACK_HOSTS and rewritten:
+        return rewritten
     return [*rewritten, base]
 
 
@@ -211,6 +220,46 @@ def apply_node_heartbeat(payload: dict) -> dict:
         query |= Q(auth_token=token)
     now = timezone.now()
     matched_servers = list(UserGameServer.objects.filter(query).select_related("user"))
+    if not matched_servers and bool(payload.get("claimed")):
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        claimed_username = (
+            payload.get("claimed_by")
+            or payload.get("username")
+            or node.get("claimed_by")
+            or ""
+        ).strip()
+        claimed_user = None
+        if claimed_username:
+            claimed_user = User.objects.filter(username__iexact=claimed_username).first()
+        if not claimed_user:
+            claimed_user = User.objects.filter(username__iexact="admin").first()
+        if not claimed_user:
+            active_users = list(User.objects.filter(is_active=True).order_by("id"))
+            if len(active_users) == 1:
+                claimed_user = active_users[0]
+
+        if claimed_user:
+            port = int(node.get("port") or payload.get("port") or 8090)
+            server_name = (node.get("server_name") or "Local Otix Node").strip()
+            local_url = node.get("local_url") or f"http://127.0.0.1:{port}"
+            is_local = "127.0.0.1" in local_url or "localhost" in local_url or port == 8090
+            server = UserGameServer.objects.create(
+                user=claimed_user,
+                name=server_name,
+                local_url=local_url,
+                remote_url=node.get("advertised_url") or "",
+                auth_token=token,
+                is_online=True,
+                is_local=is_local,
+                is_local_desktop=False,
+                last_seen_at=now,
+            )
+            matched_servers = [server]
+        else:
+            node["claimed"] = False
+            node["auth_token"] = ""
+            node["claimed_by"] = ""
     for server in matched_servers:
         fields = ["is_online", "last_seen_at", "updated_at"]
         server.is_online = True
@@ -222,6 +271,20 @@ def apply_node_heartbeat(payload: dict) -> dict:
         if name and server.name != name:
             server.name = name
             fields.append("name")
+        node_port = node.get("port")
+        if node_port:
+            expected_local = f"http://127.0.0.1:{node_port}"
+            if not server.local_url or ("127.0.0.1" in server.local_url or "localhost" in server.local_url):
+                if server.local_url != expected_local:
+                    server.local_url = expected_local
+                    fields.append("local_url")
+        elif not server.local_url:
+            server.local_url = node.get("local_url") or "http://127.0.0.1:8090"
+            fields.append("local_url")
+        new_remote_url = node.get("advertised_url") or ""
+        if new_remote_url and server.remote_url != new_remote_url:
+            server.remote_url = new_remote_url
+            fields.append("remote_url")
         server.save(update_fields=fields)
 
         # Reflect server user & name on the returned node announcement
@@ -813,10 +876,150 @@ def _auth_headers(server: UserGameServer) -> dict[str, str]:
     return {"Authorization": f"Bearer {server.auth_token}"}
 
 
-def _mark_offline(server: UserGameServer, error: str) -> dict:
+_ERRNO_NET_UNREACHABLE = {
+    101,  # Linux ENETUNREACH
+    113,  # Linux EHOSTUNREACH
+    51,  # Darwin ENETUNREACH
+    65,  # Darwin EHOSTUNREACH
+    10051,  # Windows WSAENETUNREACH
+    10065,  # Windows WSAEHOSTUNREACH
+    getattr(errno, "ENETUNREACH", 101),
+    getattr(errno, "EHOSTUNREACH", 113),
+}
+
+_ERRNO_CONN_REFUSED = {
+    111,  # Linux ECONNREFUSED
+    61,  # Darwin ECONNREFUSED
+    10061,  # Windows WSAECONNREFUSED
+    getattr(errno, "ECONNREFUSED", 111),
+}
+
+_ERRNO_TIMEOUT = {
+    110,  # Linux ETIMEDOUT
+    60,  # Darwin ETIMEDOUT
+    10060,  # Windows WSAETIMEDOUT
+    getattr(errno, "ETIMEDOUT", 110),
+}
+
+
+def _extract_errno(exc: Exception | str) -> int | None:
+    if not isinstance(exc, Exception):
+        if isinstance(exc, str):
+            m = re.search(r"\[errno\s+(\d+)\]", exc, re.IGNORECASE)
+            if m:
+                try:
+                    return int(m.group(1))
+                except ValueError:
+                    return None
+        return None
+
+    curr: Exception | None = exc
+    depth = 0
+    while curr is not None and depth < 6:
+        val = getattr(curr, "errno", None)
+        if val is not None:
+            return val
+        if curr.args:
+            for arg in curr.args:
+                if isinstance(arg, Exception) and getattr(arg, "errno", None) is not None:
+                    return arg.errno
+                if isinstance(arg, int):
+                    return arg
+        curr = getattr(curr, "__cause__", None) or getattr(curr, "__context__", None)
+        depth += 1
+
+    m = re.search(r"\[errno\s+(\d+)\]", str(exc), re.IGNORECASE)
+    if m:
+        try:
+            return int(m.group(1))
+        except ValueError:
+            pass
+    return None
+
+
+def _format_node_error(exc: Exception | str) -> tuple[str, str]:
+    """Convert raw OS / HTTP socket errors into clean diagnostic messages and codes."""
+    if not exc or exc == "Server URL not configured":
+        return "Server URL not configured.", "not_configured"
+
+    errno_val = _extract_errno(exc)
+    err_str = str(exc)
+    err_lower = err_str.lower()
+
+    is_dns = False
+    is_ssl = False
+    curr: Exception | None = exc if isinstance(exc, Exception) else None
+    depth = 0
+    while curr is not None and depth < 6:
+        if isinstance(curr, socket.gaierror):
+            is_dns = True
+            break
+        if isinstance(curr, ssl.SSLError):
+            is_ssl = True
+            break
+        curr = getattr(curr, "__cause__", None) or getattr(curr, "__context__", None)
+        depth += 1
+
+    if (
+        isinstance(exc, httpx.TimeoutException)
+        or (errno_val is not None and errno_val in _ERRNO_TIMEOUT)
+        or "timed out" in err_lower
+        or "timeout" in err_lower
+    ):
+        return "Connection timed out. Node did not respond.", "timeout"
+
+    if (
+        (errno_val is not None and errno_val in _ERRNO_NET_UNREACHABLE)
+        or "network is unreachable" in err_lower
+        or "no route to host" in err_lower
+        or "enetunreach" in err_lower
+        or "ehostunreach" in err_lower
+    ):
+        return (
+            "Network is unreachable. Ensure the node is online and the network route is available.",
+            "network_unreachable",
+        )
+
+    if (
+        (errno_val is not None and errno_val in _ERRNO_CONN_REFUSED)
+        or "connection refused" in err_lower
+        or "econnrefused" in err_lower
+    ):
+        return "Connection refused. Ensure the Otix node daemon is running.", "connection_refused"
+
+    if is_ssl or "certificate verify failed" in err_lower or "ssl:" in err_lower:
+        return "TLS/SSL verification failed. Check the node certificate or secure URL configuration.", "ssl_error"
+
+    if (
+        is_dns
+        or "name or service not known" in err_lower
+        or "getaddrinfo failed" in err_lower
+        or "nodename nor servname provided" in err_lower
+    ):
+        return "Hostname resolution failed. Verify the configured node URL.", "dns_error"
+
+    if "bad gateway" in err_lower or "502" in err_lower or "503" in err_lower or "service unavailable" in err_lower:
+        return "Node is offline or unreachable.", "node_unreachable"
+
+    if isinstance(exc, (httpx.ConnectError, httpx.NetworkError)):
+        return "Node is offline or unreachable. Ensure the Otix node is running and accessible.", "node_unreachable"
+
+    clean = re.sub(r"\[Errno\s+\d+\]\s*", "", err_str).strip()
+    clean = re.sub(r"^<[^:>]+Error:\s*(.*)>$", r"\1", clean).strip()
+    if clean and clean != err_str:
+        return clean, "node_unreachable"
+    return "Node is offline or unreachable.", "node_unreachable"
+
+
+def _mark_offline(server: UserGameServer, error: Exception | str) -> dict:
     server.is_online = False
-    server.save(update_fields=["is_online", "updated_at"])
-    return {"online": False, "error": error}
+    if getattr(server, "pk", None):
+        try:
+            server.save(update_fields=["is_online", "updated_at"])
+        except Exception:
+            pass
+    clean_error, _ = _format_node_error(error)
+    return {"online": False, "error": clean_error}
 
 
 def ping_node_sync(server: UserNode) -> dict:
@@ -829,40 +1032,23 @@ def ping_node_sync(server: UserNode) -> dict:
             server.save(update_fields=["is_online", "updated_at"])
         return {"online": is_online, "latency_ms": 0}
 
-    targets: list[str] = []
-    if getattr(server, "is_local", False):
-        if server.local_url:
-            targets.extend(contact_urls(server.local_url))
-        if server.remote_url:
-            targets.extend(contact_urls(server.remote_url))
-    else:
-        if server.primary_url:
-            targets.extend(contact_urls(server.primary_url))
-        if server.local_url and server.local_url != server.primary_url:
-            targets.extend(contact_urls(server.local_url))
-
-    seen_t: set[str] = set()
-    deduped_targets: list[str] = []
-    for t in targets:
-        if t not in seen_t:
-            seen_t.add(t)
-            deduped_targets.append(t)
-    targets = deduped_targets
+    targets = _proxy_candidate_targets(server)
 
     if not targets:
         return _mark_offline(server, "No node URL provided")
 
     headers = _auth_headers(server)
     start_t = time.perf_counter()
-    last_error = "No node URL provided"
+    last_error: Exception | str = "No node URL provided"
     resp = None
     try:
         with httpx.Client(timeout=3.0) as client:
             for target_url in targets:
+                target_base = target_url.rstrip("/")
                 try:
-                    resp = client.get(f"{target_url}/api/v1/status", headers=headers)
+                    resp = client.get(f"{target_base}/api/v1/status", headers=headers)
                 except Exception as exc:
-                    last_error = str(exc)
+                    last_error = exc
                     continue
                 latency_ms = int((time.perf_counter() - start_t) * 1000)
                 if resp.status_code == 200:
@@ -890,12 +1076,50 @@ def ping_node_sync(server: UserNode) -> dict:
                     return _mark_offline(server, "Unauthorized (invalid auth token)")
                 last_error = f"HTTP {resp.status_code}"
     except Exception as exc:
-        return _mark_offline(server, str(exc))
+        return _mark_offline(server, exc)
 
     return _mark_offline(server, last_error)
 
 
 ping_server_sync = ping_node_sync
+
+
+def _proxy_candidate_targets(server: UserGameServer) -> list[str]:
+    """Resolve candidate targets for proxying to an otix node.
+
+    Includes primary_url, candidate fallbacks (local_url, remote_url),
+    and Docker host / loopback rewrites where applicable.
+    """
+    cands: list[str] = []
+    for raw in (server.primary_url, server.local_url, server.remote_url):
+        clean = (raw or "").strip()
+        if clean and clean not in cands:
+            cands.append(clean)
+    if getattr(server, "is_local", False):
+        detected_port: int | None = None
+        for cand in cands:
+            try:
+                cand_base = cand if "://" in cand else f"http://{cand}"
+                p = urlparse(cand_base).port
+                if p:
+                    detected_port = p
+                    break
+            except Exception:
+                pass
+        if detected_port and detected_port != 8090:
+            loopback_custom = f"http://127.0.0.1:{detected_port}"
+            if loopback_custom not in cands:
+                cands.append(loopback_custom)
+        if "http://127.0.0.1:8090" not in cands:
+            cands.append("http://127.0.0.1:8090")
+
+    targets: list[str] = []
+    for cand in cands:
+        for u in contact_urls(cand or ""):
+            if u and u not in targets:
+                targets.append(u)
+
+    return targets
 
 
 def server_proxy_request(
@@ -907,35 +1131,84 @@ def server_proxy_request(
     timeout: float = 6.0,
 ) -> tuple[int, dict | list]:
     """Generic helper to proxy requests to connected otix-server node."""
-    targets = contact_urls(server.primary_url)
+    targets = _proxy_candidate_targets(server)
     if not targets:
-        return 400, {"error": "Server URL not configured"}
+        return 400, {
+            "detail": "Server URL not configured",
+            "error": "Server URL not configured",
+            "code": "not_configured",
+        }
 
     headers = _auth_headers(server)
+    clean_path = path if path.startswith("/") else f"/{path}"
+    # Bound TCP connect timeout so unreachable / black-holed IPs fail over rapidly
+    # without holding up the entire fallback pipeline
+    connect_timeout = min(timeout, 3.5)
+    req_timeout = httpx.Timeout(timeout, connect=connect_timeout)
+
     last_error: Exception | str = "Server URL not configured"
     for target_url in targets:
+        target_base = target_url.rstrip("/")
         try:
-            with httpx.Client(timeout=timeout) as client:
+            with httpx.Client(timeout=req_timeout) as client:
                 resp = client.request(
                     method=method,
-                    url=f"{target_url}{path}",
+                    url=f"{target_base}{clean_path}",
                     params=params,
                     json=json,
                     headers=headers,
                 )
+                if resp.status_code in (502, 503, 504):
+                    last_error = f"HTTP {resp.status_code}"
+                    continue
+
                 try:
                     data = resp.json()
                 except Exception:
                     data = {"detail": resp.text}
+                if resp.status_code < 500 and resp.status_code != 401 and not server.is_online:
+                    try:
+                        server.is_online = True
+                        if getattr(server, "pk", None):
+                            server.save(update_fields=["is_online", "updated_at"])
+                    except Exception:
+                        pass
                 return resp.status_code, data
         except Exception as exc:
             last_error = exc
             continue
-    return 502, {"detail": f"Failed to contact game server node: {last_error}"}
+
+    # All candidate endpoints failed to connect or returned gateway errors (502/503/504)
+    if getattr(server, "pk", None):
+        try:
+            if server.is_online:
+                server.is_online = False
+                server.save(update_fields=["is_online", "updated_at"])
+        except Exception:
+            pass
+    else:
+        server.is_online = False
+
+    clean_message, error_code = _format_node_error(last_error)
+    return 502, {
+        "detail": f"Failed to contact game server node: {clean_message}",
+        "error": error_code,
+        "code": "node_unreachable",
+    }
 
 
 # Backward-compatible alias
-usenet_proxy_request = server_proxy_request
+def usenet_proxy_request(
+    server: UserGameServer,
+    method: str,
+    path: str,
+    params: dict | None = None,
+    json: dict | None = None,
+    timeout: float = 6.0,
+) -> tuple[int, dict | list]:
+    return server_proxy_request(
+        server, method, path, params=params, json=json, timeout=timeout
+    )
 
 
 def explorer_browse(server: UserGameServer, path: str | None = None) -> tuple[int, dict | list]:
@@ -1150,7 +1423,9 @@ def sabnzbd_resume_queue(server: UserGameServer) -> tuple[int, dict | list]:
 
 def scan_game_libraries(server: UserGameServer, params: dict | None = None) -> tuple[int, dict | list]:
     """Ask the game server to re-index installer files after a download completes."""
-    return usenet_proxy_request(server, "POST", "/api/v1/scan", params=params, timeout=120.0)
+    is_waiting = bool(params and (params.get("wait") in ("1", "true", 1) or params.get("wait") is True))
+    timeout = 120.0 if is_waiting else 10.0
+    return server_proxy_request(server, "POST", "/api/v1/scan", params=params, timeout=timeout)
 
 
 def clear_scanned_game_libraries(server: UserGameServer) -> tuple[int, dict | list]:
@@ -1534,7 +1809,7 @@ def node_save_organize(server: UserGameServer, payload: dict) -> tuple[int, dict
 def node_preview_organize(server: UserGameServer, payload: dict) -> tuple[int, dict | list]:
     if not server.primary_url or server.primary_url.startswith("otix://"):
         return 400, {"error": "Local desktop client node does not support server-side organization preview."}
-    status_code, data = usenet_proxy_request(server, "POST", "/api/v1/organize/preview", json=payload, timeout=15.0)
+    status_code, data = usenet_proxy_request(server, "POST", "/api/v1/organize/preview", json=payload, timeout=180.0)
     if status_code >= 400:
         detail = ""
         if isinstance(data, dict):
@@ -1548,7 +1823,7 @@ def node_preview_organize(server: UserGameServer, payload: dict) -> tuple[int, d
 def node_execute_organize(server: UserGameServer, payload: dict) -> tuple[int, dict | list]:
     if not server.primary_url or server.primary_url.startswith("otix://"):
         return 400, {"error": "Local desktop client node does not support server-side organization execution."}
-    return usenet_proxy_request(server, "POST", "/api/v1/organize/execute", json=payload, timeout=30.0)
+    return usenet_proxy_request(server, "POST", "/api/v1/organize/execute", json=payload, timeout=120.0)
 
 
 def desktop_save_settings(server: UserGameServer, payload: dict) -> tuple[int, dict | list]:

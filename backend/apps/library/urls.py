@@ -9,16 +9,6 @@ are declared before the generic ``<tab>`` so ``installed``/``plex``/``steam``/
 from django.urls import path, register_converter
 
 from apps.library.converters import SignedIntConverter
-from apps.library.views.storage_shares import (
-    GameMatchCenterView,
-    GameMatchConfirmView,
-    GameMatchUnmatchView,
-    NodeLibraryPathDetailView,
-    NodeLibraryPathsView,
-    NodeManifestIngestView,
-    StorageShareDetailView,
-    StorageSharesView,
-)
 from apps.library.views import (
     DesktopNodeHeartbeatView,
     EpicLibraryView,
@@ -114,6 +104,16 @@ from apps.library.views import (
     UserServerMachineDetectDrivesView,
     UserServerMachineListCreateView,
     YoutubeLibraryView,
+)
+from apps.library.views.storage_shares import (
+    GameMatchCenterView,
+    GameMatchConfirmView,
+    GameMatchUnmatchView,
+    NodeLibraryPathDetailView,
+    NodeLibraryPathsView,
+    NodeManifestIngestView,
+    StorageShareDetailView,
+    StorageSharesView,
 )
 from apps.library.views.user_hardware import UserHardwareView
 

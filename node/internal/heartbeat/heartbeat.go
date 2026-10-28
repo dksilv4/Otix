@@ -67,6 +67,7 @@ type HeartbeatPayload struct {
 	AuthToken      string      `json:"auth_token"`
 	ClaimCode      string      `json:"claim_code,omitempty"`
 	Claimed        bool        `json:"claimed"`
+	ClaimedBy      string      `json:"claimed_by,omitempty"`
 	RunningGame    interface{} `json:"running_game,omitempty"`
 }
 
@@ -123,13 +124,14 @@ func (h *HeartbeatRunner) SendOnce() (time.Duration, error) {
 	payload := HeartbeatPayload{
 		ServerName: h.cfg.Server.Name,
 		LocalEndpoints: []string{
-			fmt.Sprintf("http://%s:%d", localIP, port),
 			fmt.Sprintf("http://127.0.0.1:%d", port),
+			fmt.Sprintf("http://%s:%d", localIP, port),
 		},
 		Port:      port,
 		AuthToken: h.cfg.Server.AuthToken,
 		ClaimCode: h.claimMgr.CurrentCode(),
 		Claimed:   h.claimMgr.IsClaimed(),
+		ClaimedBy: h.cfg.Server.ClaimedBy,
 	}
 	if h.runningGameProvider != nil {
 		payload.RunningGame = h.runningGameProvider()

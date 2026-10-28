@@ -53,6 +53,7 @@ import {
   useClaimGameServer,
 } from '../../utils/paths'
 import { cn } from '@/lib/utils'
+import { formatScanError } from '@/lib/utils/scan-errors'
 
 export interface SettingsPathsSectionProps {
   onScanComplete?: () => void
@@ -1026,7 +1027,11 @@ export const SettingsPathsSection = ({
             } else if (data?.phase === 'completed' || data?.phase === 'idle' || data?.phase === 'complete') {
               break
             }
-          } catch {
+          } catch (pollErr: any) {
+            const { isUnreachable } = formatScanError(pollErr)
+            if (isUnreachable || (pollErr?.response?.status && pollErr.response.status >= 500)) {
+              throw pollErr
+            }
             break
           }
         }
@@ -1117,12 +1122,17 @@ export const SettingsPathsSection = ({
       await loadSummary()
     } catch (err: any) {
       console.error('Library scan failed:', err)
-      scanProgress.errorScan('Library scan failed')
+      const { message, isUnreachable } = formatScanError(err)
+      scanProgress.errorScan(isUnreachable ? 'Node unreachable' : 'Library scan failed')
       toast({
         title: 'Scan Failed',
-        description: err?.response?.data?.detail || err?.message || 'Failed to scan paths.',
+        description: message,
         variant: 'error',
       })
+      if (remoteNodeId || isUnreachable) {
+        queryClient.invalidateQueries({ queryKey: ['game-servers'] })
+        queryClient.invalidateQueries({ queryKey: ['library', 'servers'] })
+      }
     } finally {
       setIsScanning(false)
       setIsSyncingOtix(false)
@@ -1164,18 +1174,18 @@ export const SettingsPathsSection = ({
         description: 'Indexed hosted files were cleared. Files on disk were not deleted.',
         variant: 'success',
       })
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Clear scan list failed:', err)
-      const detail =
-        err?.response?.data?.detail ||
-        err?.response?.data?.error ||
-        err?.message ||
-        'Could not clear the indexed file list.'
+      const { message, isUnreachable } = formatScanError(err)
       toast({
         title: 'Clear failed',
-        description: String(detail),
+        description: message,
         variant: 'error',
       })
+      if (remoteNodeId || isUnreachable) {
+        queryClient.invalidateQueries({ queryKey: ['game-servers'] })
+        queryClient.invalidateQueries({ queryKey: ['library', 'servers'] })
+      }
     } finally {
       setIsClearingScan(false)
     }

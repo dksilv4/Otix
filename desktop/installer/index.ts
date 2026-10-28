@@ -585,33 +585,33 @@ export async function previewOrganization(
   return items;
 }
 
-// Clean empty directories recursively
-async function cleanEmptyDirs(dir: string, rootDir: string) {
-  if (dir === rootDir) {
-    try {
-      const entries = await fs.readdir(dir, { withFileTypes: true });
-      for (const entry of entries) {
-        if (entry.isDirectory()) {
-          await cleanEmptyDirs(path.join(dir, entry.name), rootDir);
-        }
-      }
-    } catch {}
-    return;
+// Clean empty directories up from moved item parent without recursive downward crawl
+function isProtectedVolumeOrRoot(p: string): boolean {
+  const norm = path.resolve(p);
+  const root = path.parse(norm).root;
+  if (norm === root || norm === '.' || norm === '/' || norm === '\\') return true;
+  const parts = norm.split(path.sep).filter(Boolean);
+  if (parts.length <= 2 && (parts[0] === 'Volumes' || parts[0] === 'mnt' || parts[0] === 'media')) {
+    return true;
   }
+  return false;
+}
 
-  try {
-    const entries = await fs.readdir(dir, { withFileTypes: true });
-    for (const entry of entries) {
-      if (entry.isDirectory()) {
-        await cleanEmptyDirs(path.join(dir, entry.name), rootDir);
-      }
+async function cleanEmptyDirsUp(dir: string, maxLevels = 4) {
+  let curr = path.resolve(dir);
+  for (let i = 0; i < maxLevels; i++) {
+    if (isProtectedVolumeOrRoot(curr)) break;
+    try {
+      const entries = await fs.readdir(curr);
+      if (entries.length > 0) break;
+      await fs.rmdir(curr);
+      const parent = path.dirname(curr);
+      if (parent === curr || isProtectedVolumeOrRoot(parent)) break;
+      curr = parent;
+    } catch {
+      break;
     }
-
-    const remaining = await fs.readdir(dir);
-    if (remaining.length === 0) {
-      await fs.rmdir(dir);
-    }
-  } catch {}
+  }
 }
 
 // Execute the movements
@@ -726,26 +726,21 @@ export async function executeOrganization(
     }
   }
 
-  // Clean empty folders recursively inside root parent directories of moved files
+  // Clean empty folders up from moved files
   if (deleteEmptyFolders) {
-    const roots = new Set<string>();
+    const parents = new Set<string>();
     for (const item of items) {
       const src = item.sourcePath || item.source_path || '';
       if (src) {
-        const parent = path.dirname(src);
-        roots.add(parent);
+        parents.add(path.dirname(path.resolve(src)));
       }
     }
 
-    for (const root of roots) {
+    for (const parent of parents) {
       try {
-        await cleanEmptyDirs(root, root);
-        const remaining = await fs.readdir(root).catch(() => ['non-empty']);
-        if (remaining.length === 0) {
-          await fs.rmdir(root).catch(() => {});
-        }
+        await cleanEmptyDirsUp(parent, 4);
       } catch (cleanErr) {
-        console.warn(`Failed to clean empty directories under ${root}:`, cleanErr);
+        console.warn(`Failed to clean empty directories under ${parent}:`, cleanErr);
       }
     }
   }

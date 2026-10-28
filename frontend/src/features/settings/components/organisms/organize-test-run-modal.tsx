@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, useCallback, useContext } from 'react'
+import { useEffect, useState, useMemo, useCallback, useContext, useRef } from 'react'
 import { QueryClientContext } from '@tanstack/react-query'
 import {
   AlertCircle,
@@ -28,6 +28,8 @@ import {
   type PreviewItem,
   type TestRunFilterTab,
   type DirectoryGroup,
+  type OrganizeProgress,
+  chunkArray,
   calculatePreviewMetrics,
   filterPreviewItems,
   groupPreviewItemsByDirectory,
@@ -488,6 +490,8 @@ export const OrganizeTestRunModal = ({
   const [items, setItems] = useState<PreviewItem[]>([])
   const [filterTab, setFilterTab] = useState<TestRunFilterTab>('all')
   const [searchQuery, setSearchQuery] = useState('')
+  const [progress, setProgress] = useState<OrganizeProgress | null>(null)
+  const abortExecutionRef = useRef(false)
 
   const fetchRealPreview = useCallback(
     async (folderPath?: string, preserveExecuted = false) => {
@@ -511,6 +515,7 @@ export const OrganizeTestRunModal = ({
                 directory: folderToScan,
                 template,
               },
+              { timeout: 180_000 }
             )
             if (Array.isArray(res?.data)) {
               loadedItems = res.data
@@ -640,72 +645,140 @@ export const OrganizeTestRunModal = ({
     actionableItems.length > 0 &&
     (Boolean(nodeId && nodeId > 0) || Boolean(getOrganizerApi()?.executeOrganization))
 
+  const handleStopExecute = useCallback(() => {
+    abortExecutionRef.current = true
+  }, [])
+
   const handleExecute = useCallback(async () => {
     if (actionableItems.length === 0) return
     setExecuting(true)
     setExecutionError(null)
+    setExecutedCount(null)
+    abortExecutionRef.current = false
     const desktopApi = getOrganizerApi()
-    try {
-      let succeededCount = 0
-      let failedErrors: string[] = []
 
-      if (nodeId && nodeId > 0) {
-        const payload = {
-          items: actionableItems.map((i) => ({
+    const total = actionableItems.length
+    let totalSucceeded = 0
+    const failedErrors: string[] = []
+    const batches = chunkArray(actionableItems, 5)
+
+    setProgress({
+      total,
+      current: 0,
+      percent: 0,
+      currentName: 'Preparing items to organize...',
+      succeeded: 0,
+      failed: 0,
+    })
+
+    try {
+      for (let bIdx = 0; bIdx < batches.length; bIdx++) {
+        if (abortExecutionRef.current) {
+          break
+        }
+
+        const batch = batches[bIdx]
+        const isLastBatch = bIdx === batches.length - 1
+        const cleanEmpty = isLastBatch ? deleteEmptyFolders : false
+        const currentName =
+          batch.length === 1
+            ? batch[0].sourceFilename
+            : `${batch[0].sourceFilename} (+${batch.length - 1} more)`
+
+        setProgress({
+          total,
+          current: totalSucceeded + failedErrors.length,
+          percent: Math.round(((totalSucceeded + failedErrors.length) / total) * 100),
+          currentName: `Moving: ${currentName}`,
+          succeeded: totalSucceeded,
+          failed: failedErrors.length,
+        })
+
+        if (nodeId && nodeId > 0) {
+          const payload = {
+            items: batch.map((i) => ({
+              sourcePath: i.sourcePath,
+              targetPath: i.targetPath,
+              source_path: i.sourcePath,
+              target_path: i.targetPath,
+            })),
+            deleteEmptyFolders: cleanEmpty,
+            delete_empty_folders: cleanEmpty,
+          }
+          try {
+            const res = await apiClient.post<any>(
+              `/library/servers/${nodeId}/organize/execute`,
+              payload,
+              { timeout: 120_000 },
+            )
+            const results = res?.data?.results || res?.data
+            if (Array.isArray(results)) {
+              results.forEach((r: any) => {
+                if (r.success !== false) {
+                  totalSucceeded++
+                } else if (r.error) {
+                  failedErrors.push(r.error)
+                }
+              })
+            } else {
+              totalSucceeded += batch.length
+            }
+          } catch (netErr: any) {
+            if (!desktopApi?.executeOrganization) {
+              const msg =
+                netErr?.response?.data?.error ||
+                netErr?.response?.data?.detail ||
+                netErr?.message ||
+                'Failed to execute organization movements.'
+              failedErrors.push(msg)
+              break
+            }
+          }
+        } else if (desktopApi?.executeOrganization) {
+          const payloadItems = batch.map((i) => ({
             sourcePath: i.sourcePath,
             targetPath: i.targetPath,
             source_path: i.sourcePath,
             target_path: i.targetPath,
-          })),
-          deleteEmptyFolders,
-          delete_empty_folders: deleteEmptyFolders,
-        }
-        try {
-          const res = await apiClient.post<any>(`/library/servers/${nodeId}/organize/execute`, payload)
-          const results = res?.data?.results || res?.data
-          if (Array.isArray(results)) {
-            const successes = results.filter((r: any) => r.success !== false)
-            succeededCount = successes.length
-            const failures = results.filter((r: any) => r.success === false && r.error)
-            if (failures.length > 0) {
-              failedErrors = failures.map((f: any) => f.error)
-            }
+          }))
+          const desktopResults = await desktopApi.executeOrganization(payloadItems, cleanEmpty)
+          if (Array.isArray(desktopResults)) {
+            desktopResults.forEach((r: any) => {
+              if (r.success) {
+                totalSucceeded++
+              } else if (r.error) {
+                failedErrors.push(r.error)
+              }
+            })
           } else {
-            succeededCount = actionableItems.length
-          }
-        } catch (netErr: any) {
-          if (!desktopApi?.executeOrganization) {
-            const msg = netErr?.response?.data?.error || netErr?.message || 'Failed to execute organization movements.'
-            setExecutionError(msg)
-            return
+            totalSucceeded += batch.length
           }
         }
+
+        // Live mark moved batch items as already_organized in items state
+        const movedSources = new Set(batch.map((b) => b.sourcePath.toLowerCase()))
+        setItems((prevItems) =>
+          prevItems.map((item) =>
+            movedSources.has(item.sourcePath.toLowerCase())
+              ? { ...item, status: 'already_organized' as const }
+              : item,
+          ),
+        )
+
+        setProgress({
+          total,
+          current: Math.min(total, totalSucceeded + failedErrors.length),
+          percent: Math.min(100, Math.round(((totalSucceeded + failedErrors.length) / total) * 100)),
+          currentName: `Moved: ${currentName}`,
+          succeeded: totalSucceeded,
+          failed: failedErrors.length,
+        })
       }
 
-      if (succeededCount === 0 && desktopApi?.executeOrganization) {
-        const payloadItems = actionableItems.map((i) => ({
-          sourcePath: i.sourcePath,
-          targetPath: i.targetPath,
-          source_path: i.sourcePath,
-          target_path: i.targetPath,
-        }))
-        const desktopResults = await desktopApi.executeOrganization(payloadItems, deleteEmptyFolders)
-        if (Array.isArray(desktopResults)) {
-          const successes = desktopResults.filter((r: any) => r.success)
-          succeededCount = successes.length
-          const failures = desktopResults.filter((r: any) => !r.success && r.error)
-          if (failures.length > 0) {
-            failedErrors = failures.map((f: any) => f.error)
-          }
-        } else {
-          succeededCount = actionableItems.length
-        }
-      }
-
-      if (failedErrors.length > 0 && succeededCount === 0) {
+      if (failedErrors.length > 0 && totalSucceeded === 0) {
         setExecutionError(failedErrors[0])
       } else {
-        setExecutedCount(succeededCount)
+        setExecutedCount(totalSucceeded)
         void fetchRealPreview(selectedFolder, true)
         queryClient?.invalidateQueries({ queryKey: ['server-games'] })
         queryClient?.invalidateQueries({ queryKey: ['node-games'] })
@@ -722,8 +795,9 @@ export const OrganizeTestRunModal = ({
       setExecutionError(err?.message || 'An unexpected error occurred while executing organization.')
     } finally {
       setExecuting(false)
+      setProgress(null)
     }
-  }, [nodeId, actionableItems, selectedFolder, fetchRealPreview, deleteEmptyFolders])
+  }, [nodeId, actionableItems, selectedFolder, fetchRealPreview, deleteEmptyFolders, queryClient])
 
   if (!open) return null
 
@@ -929,6 +1003,51 @@ export const OrganizeTestRunModal = ({
           </div>
         </div>
 
+        {/* Progress Bar Banner */}
+        {executing && progress && (
+          <div className="p-3 sm:p-3.5 rounded-2xl bg-[var(--dk-surface-ghost)] border border-primary/20 space-y-2.5 transition-all">
+            <div className="flex items-center justify-between text-xs">
+              <div className="flex items-center gap-2 min-w-0">
+                <Loader2 size={13} className="animate-spin text-primary shrink-0" />
+                <span className="font-semibold text-foreground truncate">
+                  Organizing items ({progress.current} of {progress.total})
+                </span>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                {progress.failed > 0 && (
+                  <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-destructive/15 text-destructive font-medium">
+                    {progress.failed} failed
+                  </span>
+                )}
+                <span className="font-mono text-xs font-bold text-primary">
+                  {progress.percent}%
+                </span>
+              </div>
+            </div>
+
+            {/* Progress Bar Track */}
+            <div className="w-full h-2 rounded-full bg-white/[0.06] overflow-hidden p-0.5">
+              <div
+                className="h-full rounded-full bg-primary transition-all duration-300 ease-out"
+                style={{ width: `${Math.max(2, Math.min(100, progress.percent))}%` }}
+              />
+            </div>
+
+            {/* Current moving file breadcrumb / indicator */}
+            {progress.currentName && (
+              <div className="flex items-center justify-between gap-2 text-[11px] text-muted-foreground min-w-0">
+                <div className="flex items-center gap-1.5 min-w-0 font-mono truncate">
+                  <ArrowRight size={11} className="text-primary shrink-0" />
+                  <span className="truncate">{progress.currentName}</span>
+                </div>
+                <span className="text-[10px] text-muted-foreground/70 font-mono shrink-0">
+                  {progress.succeeded} organized
+                </span>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Success execution banner */}
         {executedCount !== null && (
           <div className="p-2.5 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-between gap-2">
@@ -1133,16 +1252,21 @@ export const OrganizeTestRunModal = ({
               <DkButton
                 size="sm"
                 variant="primary"
-                onClick={handleExecute}
-                disabled={executing || loading}
-                className="cursor-pointer h-8 text-xs"
+                onClick={executing ? handleStopExecute : handleExecute}
+                disabled={loading}
+                className="cursor-pointer h-8 text-xs gap-1.5"
               >
                 {executing ? (
-                  <Loader2 size={12} className="mr-1.5 animate-spin" />
+                  <>
+                    <Loader2 size={12} className="animate-spin shrink-0" />
+                    <span>Stop ({progress?.percent ?? 0}%)</span>
+                  </>
                 ) : (
-                  <Play size={12} className="mr-1.5" />
+                  <>
+                    <Play size={12} className="shrink-0" />
+                    <span>Execute ({actionableItems.length})</span>
+                  </>
                 )}
-                <span>Execute ({actionableItems.length})</span>
               </DkButton>
             )}
             <DkButton

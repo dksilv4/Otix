@@ -38,6 +38,24 @@ export interface PreviewItem {
 
 export type TestRunFilterTab = 'all' | 'actionable' | 'organized' | 'packages' | 'subdirectories'
 
+export interface OrganizeProgress {
+  total: number
+  current: number
+  percent: number
+  currentName: string
+  succeeded: number
+  failed: number
+}
+
+export const chunkArray = <T,>(array: T[], size: number): T[][] => {
+  if (!array || array.length === 0 || size <= 0) return []
+  const chunks: T[][] = []
+  for (let i = 0; i < array.length; i += size) {
+    chunks.push(array.slice(i, i + size))
+  }
+  return chunks
+}
+
 export interface PreviewMetrics {
   total: number
   matched: number

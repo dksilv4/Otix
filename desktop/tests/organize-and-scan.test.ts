@@ -432,4 +432,80 @@ describe('Production Game Organization & Scanning', () => {
     const normExpected = path.join(testDir, 'PC', 'Elden Ring', 'Updates', 'elden_ring_update_1.13.exe').replace(/\\/g, '/');
     expect(normTarget).toBe(normExpected);
   });
+
+  it('scans deeply nested directories recursively without swallowing collection folders', async () => {
+    const testDir = path.join(tempDir, 'DeepRecursiveCollectionTest');
+
+    // 1. Nested collection: Downloads/Torrents/PC/Unsorted
+    const unsortedDir = path.join(testDir, 'Downloads', 'Torrents', 'PC', 'Unsorted');
+    const balatroDir = path.join(unsortedDir, 'Balatro');
+    await fs.mkdir(balatroDir, { recursive: true });
+    await fs.writeFile(path.join(balatroDir, 'Balatro.exe'), 'exe');
+    await fs.writeFile(path.join(balatroDir, 'steam_api64.dll'), 'dll');
+    await fs.writeFile(path.join(balatroDir, 'steam_emu.ini'), 'ini');
+
+    // 2. Deep Steam game: Steam/steamapps/common/Cyberpunk 2077/bin/x64/Cyberpunk2077.exe
+    const cyberpunkDir = path.join(testDir, 'Steam', 'steamapps', 'common', 'Cyberpunk 2077');
+    const cyberpunkBin = path.join(cyberpunkDir, 'bin', 'x64');
+    await fs.mkdir(cyberpunkBin, { recursive: true });
+    await fs.writeFile(path.join(cyberpunkBin, 'Cyberpunk2077.exe'), 'exe');
+    await fs.writeFile(path.join(cyberpunkBin, 'steam_api64.dll'), 'dll');
+
+    // 3. Collection folder: Downloads/Updates & Cracks
+    const updatesDir = path.join(testDir, 'Downloads', 'Updates & Cracks');
+    await fs.mkdir(updatesDir, { recursive: true });
+    await fs.writeFile(path.join(updatesDir, 'Cyberpunk 2077 update 2.12 - 2.13.exe'), 'update');
+    await fs.writeFile(path.join(updatesDir, 'Elden Ring update 1.12.3 - 1.13.0.exe'), 'update');
+
+    const preview = await smartOrganizePreview(testDir, '{Title} [{Platform}]/{OriginalName}.{ext}');
+
+    // Ensure collection directories are never treated as packages
+    const badCollections = ['Downloads', 'Torrents', 'PC', 'Unsorted', 'Steam', 'steamapps', 'common', 'Updates & Cracks'];
+    for (const p of preview) {
+      for (const bad of badCollections) {
+        if (p.sourceFilename.toLowerCase() === bad.toLowerCase() && p.type === 'container_package') {
+          throw new Error(`Collection folder '${bad}' was swallowed as a package`);
+        }
+      }
+    }
+
+    // Balatro at depth 5 must be discovered as a container package
+    const balatroItem = preview.find((p) => p.sourceFilename === 'Balatro');
+    expect(balatroItem).toBeDefined();
+    expect(balatroItem?.type).toBe('container_package');
+
+    // Cyberpunk 2077 at depth 6 must be discovered as a container package
+    const cyberpunkItem = preview.find((p) => p.sourceFilename === 'Cyberpunk 2077');
+    expect(cyberpunkItem).toBeDefined();
+    expect(cyberpunkItem?.type).toBe('container_package');
+
+    // Updates inside Updates & Cracks must be discovered as updates
+    const cpUpdate = preview.find((p) => p.sourceFilename.includes('Cyberpunk 2077 update'));
+    const erUpdate = preview.find((p) => p.sourceFilename.includes('Elden Ring update'));
+    expect(cpUpdate).toBeDefined();
+    expect(cpUpdate?.type).toBe('update');
+    expect(erUpdate).toBeDefined();
+    expect(erUpdate?.type).toBe('update');
+  });
+
+  it('scans real test_games_library recursively without swallowing collection folders', async () => {
+    const libPath = path.resolve(__dirname, '../../test_games_library');
+    try {
+      await fs.stat(libPath);
+    } catch {
+      return;
+    }
+
+    const preview = await smartOrganizePreview(libPath, '{Title} [{Platform}]/{OriginalName}.{ext}');
+    expect(preview.length).toBeGreaterThan(50);
+
+    const badCollections = ['Downloads', 'Torrents', 'Games', 'Unsorted', 'Steam', 'steamapps', 'common', 'ROMs', 'GOG Installers'];
+    for (const p of preview) {
+      for (const bad of badCollections) {
+        if (p.sourceFilename.toLowerCase() === bad.toLowerCase() && p.type === 'container_package') {
+          throw new Error(`Collection folder '${bad}' was swallowed as a package`);
+        }
+      }
+    }
+  });
 });

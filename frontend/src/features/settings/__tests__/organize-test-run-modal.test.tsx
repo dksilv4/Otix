@@ -285,6 +285,56 @@ describe('OrganizeTestRunModal', () => {
     })
   })
 
+  it('displays progress bar when executing movements in batches', async () => {
+    const user = userEvent.setup()
+    let resolveExecute: (val: any) => void = () => {}
+    const mockExecuteOrganization = vi.fn().mockImplementation(() => {
+      return new Promise((resolve) => {
+        resolveExecute = resolve
+      })
+    })
+
+    ;(window as any).desktopAPI = {
+      smartOrganizePreview: vi.fn().mockResolvedValue([
+        {
+          sourcePath: 'D:\\Games\\Game1.iso',
+          sourceFilename: 'Game1.iso',
+          type: 'iso',
+          matched: true,
+          extracted: { Title: 'Game 1' },
+          targetPath: 'D:\\Games\\Library\\Game 1\\Game1.iso',
+          status: 'rename_and_move',
+        },
+      ]),
+      executeOrganization: mockExecuteOrganization,
+    }
+
+    render(
+      <OrganizeTestRunModal
+        open={true}
+        onOpenChange={onOpenChange}
+        template="{Title}/{OriginalName}.{ext}"
+        isoDirectory="D:\\Games"
+      />,
+    )
+
+    await waitFor(() => {
+      expect(screen.getByText('Execute (1)')).toBeInTheDocument()
+    })
+
+    await user.click(screen.getByText('Execute (1)'))
+
+    // While execute is pending, progress bar banner must be visible
+    expect(screen.getByText(/Organizing items/)).toBeInTheDocument()
+
+    // Resolve the move
+    resolveExecute([{ sourcePath: 'D:\\Games\\Game1.iso', targetPath: 'D:\\Games\\Library\\Game 1\\Game1.iso', success: true }])
+
+    await waitFor(() => {
+      expect(screen.getByText(/Successfully organized 1 game artifacts/)).toBeInTheDocument()
+    })
+  })
+
   it('displays source subdirectories, target subdirectories, and package subdirectories when applicable', async () => {
     ;(window as any).desktopAPI = {
       smartOrganizePreview: vi.fn().mockResolvedValue([

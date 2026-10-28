@@ -541,3 +541,27 @@ func TestStorageIndexerScanningROMsAndArchives(t *testing.T) {
 	}
 }
 
+func TestScanAllTestGamesLibrary(t *testing.T) {
+	libPath := filepath.Join("..", "..", "..", "test_games_library")
+	if _, err := os.Stat(libPath); os.IsNotExist(err) {
+		t.Skip("test_games_library not found")
+	}
+
+	lib := config.LibraryConfig{
+		Name: "TestGamesLib",
+		Path: libPath,
+		Kind: "game",
+		AllowedExtensions: []string{
+			".iso", ".img", ".exe", ".msi", ".dmg", ".pkg", ".app",
+			".zip", ".7z", ".rar", ".chd", ".rvz", ".nsp", ".xci",
+		},
+	}
+	idx := indexer.NewStorageIndexer([]config.LibraryConfig{lib})
+	indexed := idx.ScanAll()
+	t.Logf("Total games indexed from test_games_library: %d", len(indexed))
+	if len(indexed) < 50 {
+		t.Errorf("Expected at least 50 games indexed, got %d", len(indexed))
+	}
+}
+
+

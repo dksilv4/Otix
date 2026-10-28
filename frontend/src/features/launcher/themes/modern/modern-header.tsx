@@ -13,6 +13,7 @@ import {
 import { useRunningGame } from "@/features/launcher/hooks/use-running-game"
 import { getDesktopAPI, hasDesktopAPI, type DiskInfo } from "@/lib/desktop/api"
 import { useToast } from "@ui/molecules/toast"
+import { formatScanError } from "@/lib/utils/scan-errors"
 import { GameSessionStatusIndicator } from "@/features/launcher/components/atoms/game-session-status-indicator"
 
 interface ModernHeaderProps {
@@ -72,9 +73,10 @@ export const ModernHeader = ({
       })
     } catch (err) {
       console.error(err)
+      const { message } = formatScanError(err)
       toast({
         title: "Scan Error",
-        description: "Could not scan folders.",
+        description: message,
         variant: "error",
       })
     } finally {

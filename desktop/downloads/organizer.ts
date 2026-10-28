@@ -135,6 +135,25 @@ const KNOWN_GAME_SUBDIRS = new Set([
   'system', 'shipping', 'retail', 'game', 'release', 'app', 'build',
 ]);
 
+const COLLECTION_DIRS = new Set([
+  'downloads', 'download', 'torrents', 'torrent', 'unsorted', 'incoming', 'completed', 'staging',
+  'games', 'my games', 'pc', 'pc games', 'repacks', 'repack', 'installers', 'installer',
+  'updates', 'update', 'patches', 'patch', 'dlc', 'dlcs', 'cracks', 'crack',
+  'updates & cracks', 'updates and cracks', 'updates & dlc', 'updates and dlc',
+  'cracked', 'portable', 'todo', 'old_hard_drive_backup', 'backup', 'backups',
+  'roms', 'rom', 'emulation', 'emulators', 'extracted', 'unpacked', 'temp', 'tmp',
+  'steam', 'steamapps', 'common', 'userdata', 'gog games', 'gog galaxy', 'gog installers',
+  'epic games', 'launcher', 'portal', 'ea games', 'origin', 'origin games',
+  'ubisoft', 'ubisoft game launcher', 'battle.net', 'xboxgames', 'xbox', 'library', 'noise',
+]);
+
+function isCollectionDirectory(name: string): boolean {
+  const nl = name.trim().toLowerCase();
+  if (COLLECTION_DIRS.has(nl)) return true;
+  if (nl.includes('updates & cracks') || nl.includes('updates and cracks') || nl.includes('updates & dlc') || nl.includes('updates and dlc')) return true;
+  return false;
+}
+
 // ── Content discovery ────────────────────────────────────────────────────────
 
 function isNoiseExecutableName(nameLower: string): boolean {
@@ -236,7 +255,7 @@ async function scanForGameExecutable(dirPath: string): Promise<boolean> {
  */
 export async function findDownloadedContent(
   dirPath: string,
-  maxDepth = 5,
+  maxDepth = 12,
   includeAllFiles = false,
 ): Promise<DownloadedContent[]> {
   const results: DownloadedContent[] = [];
@@ -272,17 +291,18 @@ export async function findDownloadedContent(
       const hasSetup = childFiles.some((f) => /^(?:setup|installer).*\.exe$/i.test(f));
       const hasBins = childFiles.some((f) => /\.(bin|cab|doi)$/i.test(f));
       const hasCrackDll = childFiles.some((f) => /^(?:steam_api64?\.dll|steam_emu\.ini)$/i.test(f));
+      const hasDirectExe = childFiles.some((f) => isGameExecutableName(f));
       const isPs5 = childNames.some((f) => /^ppsa\d{5}/i.test(f)) || folderLower.includes('.ps5') || folderLower.includes('-ps5') || folderLower.includes('[ps5]');
       const isPs3 = childNames.some((f) => /^(?:ps3_game|ps3_disc\.sfb)$/i.test(f));
       const isPs4 = (childNames.some((f) => /^sce_sys$/i.test(f)) || folderLower.includes('.ps4') || folderLower.includes('-ps4') || folderLower.includes('[ps4]')) && !isPs5;
       const isConsoleFolder = !hasSetup && !hasCrackDll && (isPs5 || isPs3 || isPs4);
       const consolePlatform = isConsoleFolder ? (isPs5 ? 'PS5' : isPs3 ? 'PS3' : isPs4 ? 'PS4' : undefined) : undefined;
-      const isCrackFolder =
-        hasCrackDll ||
+      const isExplicitCrackName =
         /(?:^|[\s._\-\[(])(?:crack\s*fix|crackfix|crack\s*only|crack|cracked|online\s*fix|onlinefix|no\s*cd|nocd)(?:[\s._\-\])]|$)|\+crack/i.test(folderLower) ||
         /^(?:codex|rune|flt|skidrow|empress|goldberg)$/i.test(folderLower);
+      const isCrackFolder = isExplicitCrackName || (!hasDirectExe && hasCrackDll);
 
-      if (isCrackFolder || (hasSetup && hasBins) || isConsoleFolder) {
+      if (!isCollectionDirectory(folderLower) && (isCrackFolder || (hasSetup && hasBins) || isConsoleFolder)) {
         let integrity: ArchiveDiagnosis | undefined;
         if (hasBins || folderLower.includes('elamigos') || folderLower.includes('fitgirl')) {
           integrity = await diagnoseArchiveIntegrity(currentDir);
@@ -322,7 +342,7 @@ export async function findDownloadedContent(
             const subIsPs4 = (subNames.some((f) => /^sce_sys$/i.test(f)) || nameLower.includes('.ps4') || nameLower.includes('-ps4') || nameLower.includes('[ps4]')) && !subIsPs5;
             const subIsConsole = !subSetup && !subCrackDll && (subIsPs5 || subIsPs3 || subIsPs4);
             const subConsolePlatform = subIsConsole ? (subIsPs5 ? 'PS5' : subIsPs3 ? 'PS3' : subIsPs4 ? 'PS4' : undefined) : undefined;
-            const isGenericContainer = nameLower === 'crack' || nameLower === 'cracks' || nameLower === 'updates' || nameLower === 'dlc';
+            const isGenericContainer = nameLower === 'crack' || nameLower === 'cracks' || nameLower === 'updates' || nameLower === 'dlc' || isCollectionDirectory(nameLower);
             if (isGenericContainer) {
               if (depth < maxDepth) {
                 childDirs.push(fullPath);
@@ -330,8 +350,7 @@ export async function findDownloadedContent(
               continue;
             }
 
-            const subIsCrack =
-              subCrackDll ||
+            const subIsExplicitCrack =
               /crack(?:fix|\.fix|-fix|\s*only)?/i.test(nameLower) ||
               /^(?:codex|rune|flt|skidrow|empress|goldberg)$/i.test(nameLower);
 
@@ -362,7 +381,7 @@ export async function findDownloadedContent(
               const singleChild = nonNoiseSubdirs[0];
               const singleChildLower = singleChild.name.toLowerCase();
               const isGenericFolder = ['bin', 'x64', 'win64', 'win32', 'data', 'content', 'engine', 'system', 'updates', 'dlc', 'crack'].includes(singleChildLower);
-              if (!isGenericFolder) {
+              if (!isGenericFolder && !isCollectionDirectory(singleChildLower)) {
                 const childPath = path.join(fullPath, singleChild.name);
                 if (await scanForGameExecutable(childPath)) {
                   packagePath = childPath;
@@ -372,17 +391,23 @@ export async function findDownloadedContent(
               }
             }
 
-            if (!hasGameExe && depth === 1 && !isGenericContainer) {
+            if (!hasGameExe && !isGenericContainer && !KNOWN_GAME_SUBDIRS.has(nameLower)) {
               hasGameExe = await scanForGameExecutable(packagePath);
             }
 
-            const isGameFolder = hasGameExe;
+            const subIsCrack = subIsExplicitCrack || (!hasGameExe && subCrackDll);
+            const isGameFolder = hasGameExe && !isCollectionDirectory(packageName) && (nonNoiseSubdirs.length > 0 || subFiles.length >= 2 || subCrackDll);
             if (
-              subIsConsole ||
-              subIsCrack ||
-              (subSetup && subBins) ||
-              hasOtix ||
-              (depth === 1 && (subHasIso || isGameFolder))
+              !isGenericContainer &&
+              !KNOWN_GAME_SUBDIRS.has(nameLower) &&
+              (
+                subIsConsole ||
+                subIsCrack ||
+                (subSetup && subBins) ||
+                hasOtix ||
+                subHasIso ||
+                isGameFolder
+              )
             ) {
               let integrity: ArchiveDiagnosis | undefined;
               if (subBins || nameLower.includes('elamigos') || nameLower.includes('fitgirl')) {
@@ -468,7 +493,7 @@ export async function findDownloadedContent(
             !nameLower.includes('redist')
           ) {
             hasExe = true;
-            if (depth === 1 && includeAllFiles) {
+            if ((depth === 1 || isCollectionDirectory(folderLower)) && includeAllFiles) {
               results.push({ path: fullPath, name: entry.name, type: 'pc_game' });
             }
           } else if (includeAllFiles) {
@@ -494,7 +519,7 @@ export async function findDownloadedContent(
       }
 
       // If a subfolder contains game executables, mark as PC game folder if not already captured
-      if (depth > 1 && hasExe) {
+      if (depth > 1 && hasExe && !isCollectionDirectory(folderLower)) {
         if (!results.some((r) => r.path.toLowerCase() === currentDir.toLowerCase())) {
           const currentSubdirs = entries
             .filter((e) => e.isDirectory() && !SKIP_DIRS.has(e.name.toLowerCase()))
@@ -586,7 +611,7 @@ export async function smartOrganizePreview(
   }
   let content: DownloadedContent[] = [];
   try {
-    content = await findDownloadedContent(directory, 5, true);
+    content = await findDownloadedContent(directory, 12, true);
   } catch (err: any) {
     if (err?.code === 'ENOENT' || err?.message?.includes('Folder does not exist')) {
       return [];
@@ -885,7 +910,7 @@ export async function batchOrganizeDirectory(
   }
 
   // Find all content
-  const content = await findDownloadedContent(directory, 5);
+  const content = await findDownloadedContent(directory, 12);
   if (content.length === 0) {
     result.errors.push('No game files found in directory');
     return result;

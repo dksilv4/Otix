@@ -179,3 +179,31 @@ class GameServerHeartbeatTests(TestCase):
         cached = cache.get(PENDING_CACHE_KEY) or []
         self.assertFalse(any(r.get("auth_token") == token for r in cached))
 
+    def test_claimed_heartbeat_restores_user_server_when_database_row_missing(self):
+        """When an already claimed node announces heartbeat with a known username, it restores UserGameServer."""
+        self.assertEqual(UserGameServer.objects.filter(user=self.user).count(), 0)
+
+        resp = self.client.post(
+            "/api/v1/servers/heartbeat",
+            {
+                "server_name": "Restored Node",
+                "local_endpoints": ["http://127.0.0.1:8090"],
+                "port": 8090,
+                "auth_token": "token_restored_123",
+                "claimed": True,
+                "claimed_by": self.user.username,
+            },
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertTrue(data.get("claimed"))
+        self.assertEqual(data.get("username"), self.user.username)
+
+        servers = list(UserGameServer.objects.filter(user=self.user))
+        self.assertEqual(len(servers), 1)
+        self.assertEqual(servers[0].name, "Restored Node")
+        self.assertTrue(servers[0].is_online)
+        self.assertEqual(servers[0].auth_token, "token_restored_123")
+
+

@@ -1485,6 +1485,8 @@ class GameServerScanView(APIView):
             phase = str(data.get("phase") or "idle").lower()
             data["is_scanning"] = phase in ("scanning", "running")
             return Response(data, status=status_code)
+        if status_code >= 400:
+            return Response(data, status=status_code)
         return Response({"phase": "idle", "percentage": 0.0, "is_scanning": False, "files_scanned": 0, "total_files": 0})
 
     def post(self, request: Request, server_id: int) -> Response:

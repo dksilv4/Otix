@@ -3,17 +3,13 @@
 from __future__ import annotations
 
 import logging
-import re
 from typing import Any
 
-from django.db import transaction
 from django.db.models import Q
 from django.utils import timezone
 
-from apps.library.models import GameMatchRecord, NodeLibraryPath, StorageShare, UserNode
+from apps.library.models import GameMatchRecord, StorageShare, UserNode
 from apps.library.services.server_catalog import (
-    folder_titles_from_path,
-    is_addon_title,
     title_keys_for_file,
 )
 from apps.media.models import MediaItem

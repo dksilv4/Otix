@@ -246,6 +246,70 @@ describe('SettingsPathsSection', () => {
     })
   })
 
+  it('handles remote node 502 unreachable scan error gracefully with clear toast', async () => {
+    const user = userEvent.setup()
+    const { apiClient } = await import('@/lib/api/client')
+    vi.mocked(apiClient.post).mockRejectedValueOnce({
+      response: {
+        status: 502,
+        data: {
+          detail:
+            'Failed to contact game server node: Network is unreachable. Ensure the node is online and the network route is available.',
+          error: 'network_unreachable',
+          code: 'node_unreachable',
+        },
+      },
+    })
+    renderSection({ nodeId: 42 })
+
+    const scanBtn = screen.getByRole('button', { name: /scan now/i })
+    await user.click(scanBtn)
+
+    await waitFor(() => {
+      expect(mockToast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'Scan Failed',
+          description:
+            'Failed to contact game server node: Network is unreachable. Ensure the node is online and the network route is available.',
+          variant: 'error',
+        }),
+      )
+    })
+  })
+
+  it('handles remote node network drop during scan polling with error toast and state reset', async () => {
+    const user = userEvent.setup()
+    const { apiClient } = await import('@/lib/api/client')
+    vi.mocked(apiClient.post).mockResolvedValueOnce({
+      data: { status: 'scanning' },
+      status: 200,
+      headers: {},
+      config: {} as any,
+    })
+    vi.mocked(apiClient.get).mockImplementation(async (url: string) => {
+      if (url.includes('/scan')) {
+        throw {
+          code: 'ERR_NETWORK',
+          message: 'Network Error',
+        }
+      }
+      return { data: [], status: 200, headers: {}, config: {} as any }
+    })
+    renderSection({ nodeId: 42 })
+
+    const scanBtn = screen.getByRole('button', { name: /scan now/i })
+    await user.click(scanBtn)
+
+    await waitFor(() => {
+      expect(mockToast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'Scan Failed',
+          variant: 'error',
+        }),
+      )
+    })
+  })
+
   it('removes a scan path when clicking remove and shows toast', async () => {
     const user = userEvent.setup()
     renderSection()
