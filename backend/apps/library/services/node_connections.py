@@ -98,12 +98,23 @@ def _section_configured(section: Any) -> bool:
     return bool(api_key) and not _is_secret_placeholder(api_key)
 
 
+def _g4u_configured(section: Any) -> bool:
+    if not isinstance(section, dict):
+        return False
+    if section.get("configured") or section.get("has_api_key") or section.get("hasApiKey"):
+        return True
+    api_key = section.get("api_key") or section.get("apiKey")
+    return bool(api_key) and not _is_secret_placeholder(api_key)
+
+
 def _payload_configured(kind: str, payload: dict | None) -> bool:
     if not isinstance(payload, dict) or not payload:
         return False
     if kind == "usenet":
-        return _section_configured(payload.get("sabnzbd")) or _section_configured(
-            payload.get("prowlarr")
+        return (
+            _section_configured(payload.get("sabnzbd"))
+            or _section_configured(payload.get("prowlarr"))
+            or _g4u_configured(payload.get("g4u"))
         )
     return _section_configured(payload) or bool(payload.get("instances"))
 
@@ -148,6 +159,7 @@ def configured_map(user) -> dict[str, bool]:
     return {
         "sabnzbd": _section_configured(usenet.get("sabnzbd")),
         "prowlarr": _section_configured(usenet.get("prowlarr")),
+        "g4u": _g4u_configured(usenet.get("g4u")),
         "radarr": _payload_configured("radarr", stored_connection(user, "radarr")),
         "sonarr": _payload_configured("sonarr", stored_connection(user, "sonarr")),
     }

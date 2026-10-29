@@ -2,6 +2,7 @@ import { useState } from 'react'
 import {
   DownloadCloud,
   Film,
+  Gamepad2,
   Pause,
   Play,
   Search,
@@ -16,6 +17,8 @@ import { useModal } from '@/lib/modals'
 import type { GameServer } from '@/features/downloads/use-server-downloads'
 import { ServerSabnzbdSettingsModal } from '@/features/downloads/molecules/server-sabnzbd-settings-modal'
 import { ServerProwlarrSettingsModal } from '@/features/downloads/molecules/server-prowlarr-settings-modal'
+import { ServerG4USettingsModal } from '@/features/downloads/molecules/server-g4u-settings-modal'
+import { ServerJDownloaderSettingsModal } from '@/features/downloads/molecules/server-jdownloader-settings-modal'
 import { ProwlarrIndexersPanel } from '@/features/downloads/molecules/prowlarr-indexers-panel'
 import { ServerRadarrSettingsModal } from '@/features/downloads/molecules/server-radarr-settings-modal'
 import { ServerSonarrSettingsModal } from '@/features/downloads/molecules/server-sonarr-settings-modal'
@@ -35,10 +38,12 @@ import {
   useProwlarrIndexers,
   useSyncProwlarrIndexers,
 } from '@/features/downloads/use-server-usenet'
+import { useNodeJDownloaderConfig } from '@/features/downloads/hooks/use-node-jdownloader'
 import {
   normalizeProwlarrIndexers,
   isProwlarrConfigured as checkProwlarrConfigured,
   isSabnzbdConfigured as checkSabnzbdConfigured,
+  isG4UConfigured as checkG4UConfigured,
 } from '@/features/downloads/usenet-utils'
 import { useServerProviders } from '@/features/downloads/use-server-providers'
 import type { ProwlarrIndexerItem } from '@/features/downloads/usenet-types'
@@ -84,6 +89,7 @@ export const NodeConnectionsGroup = ({
 
   const { data: usenetConfig } = useServerUsenetConfig(server.id)
   const { data: providers } = useServerProviders(server.id)
+  const { data: jdConfig } = useNodeJDownloaderConfig(server.id)
   const { data: radarrConfig } = useServerRadarrConfig(server.id)
   const { data: sonarrConfig } = useServerSonarrConfig(server.id)
   const { data: radarrMovies = [] } = useServerRadarrMovies(radarrLiveId)
@@ -117,6 +123,26 @@ export const NodeConnectionsGroup = ({
         (p) => p.name?.toLowerCase() === 'prowlarr' && ((p as any).connected || p.configured)
       )
     ) || checkProwlarrConfigured(usenetConfig?.prowlarr)
+  const isG4UConfigured = Boolean(
+    providers?.indexers?.some(
+      (p) => p.name?.toLowerCase() === 'g4u' && ((p as any).connected || p.configured)
+    ) ||
+    providers?.indexer_providers?.some(
+      (p) => p.name?.toLowerCase() === 'g4u' && ((p as any).connected || p.configured)
+    ) ||
+    providers?.search_providers?.some(
+      (p) => p.name?.toLowerCase() === 'g4u' && ((p as any).connected || p.configured)
+    ) ||
+    checkG4UConfigured(usenetConfig?.g4u)
+  )
+  const isJDownloaderConfigured = Boolean(
+    providers?.downloaders?.some(
+      (p) => p.name?.toLowerCase() === 'jdownloader' && ((p as any).connected || p.configured)
+    ) ||
+    jdConfig?.enabled ||
+    jdConfig?.email ||
+    (jdConfig?.directHost && jdConfig?.directPort)
+  )
   const isRadarrConfigured = Boolean(
     radarrConfig?.host &&
     Boolean(radarrConfig?.apiKey || radarrConfig?.api_key || radarrConfig?.configured)
@@ -131,9 +157,19 @@ export const NodeConnectionsGroup = ({
       <ServerSabnzbdSettingsModal serverId={server.id} serverName={server.name} onClose={onClose} />
     ))
   }
+  const openJDownloaderModal = () => {
+    openBoundModal(openModal, (onClose) => (
+      <ServerJDownloaderSettingsModal serverId={server.id} serverName={server.name} onClose={onClose} />
+    ))
+  }
   const openProwlarrModal = () => {
     openBoundModal(openModal, (onClose) => (
       <ServerProwlarrSettingsModal serverId={server.id} serverName={server.name} onClose={onClose} />
+    ))
+  }
+  const openG4UModal = () => {
+    openBoundModal(openModal, (onClose) => (
+      <ServerG4USettingsModal serverId={server.id} serverName={server.name} onClose={onClose} />
     ))
   }
   const openRadarrModal = () => {
@@ -191,6 +227,19 @@ export const NodeConnectionsGroup = ({
       onConnect: openSabnzbdModal,
     },
     {
+      id: 'jdownloader',
+      name: 'JDownloader 2',
+      keywords: 'jdownloader jd2 direct download ddl cyberlocker rapidgator mega cloud',
+      isConnected: isJDownloaderConfigured,
+      description: isJDownloaderConfigured
+        ? `Configured on ${server.name} (Direct / Cyberlocker Downloader)`
+        : 'Connect JDownloader 2 via MyJDownloader cloud or local loopback for direct downloads.',
+      brandColor: NODE_SERVICE_COLORS.jdownloader,
+      brandBg: NODE_SERVICE_BG.jdownloader,
+      icon: DownloadCloud,
+      onConnect: openJDownloaderModal,
+    },
+    {
       id: 'prowlarr',
       name: 'Prowlarr',
       keywords: 'prowlarr indexer provider search usenet torrent sync tracker',
@@ -202,6 +251,19 @@ export const NodeConnectionsGroup = ({
       brandBg: NODE_SERVICE_BG.prowlarr,
       icon: Search,
       onConnect: openProwlarrModal,
+    },
+    {
+      id: 'g4u',
+      name: 'g4u.to',
+      keywords: 'g4u g4u.to games4you indexer usenet pc games releases updates newznab',
+      isConnected: isG4UConfigured,
+      description: isG4UConfigured
+        ? `Configured on ${server.name} (PC Games Indexer)`
+        : 'Connect g4u.to for direct PC games Usenet searching and updates.',
+      brandColor: NODE_SERVICE_COLORS.g4u,
+      brandBg: NODE_SERVICE_BG.g4u,
+      icon: Gamepad2,
+      onConnect: openG4UModal,
     },
     {
       id: 'radarr',
@@ -288,6 +350,27 @@ export const NodeConnectionsGroup = ({
               </>
             )}
 
+            {item.id === 'jdownloader' && (
+              <>
+                {isJDownloaderConfigured && (
+                  <IntegrationStats
+                    items={[
+                      { label: 'mode', value: jdConfig?.email ? 'MyJDownloader Cloud' : 'Direct Loopback' },
+                      { label: 'device / host', value: jdConfig?.deviceName || jdConfig?.directHost || 'Connected' },
+                      { label: 'path', value: jdConfig?.downloadPath || 'Default' },
+                    ]}
+                  />
+                )}
+                <IntegrationAction
+                  label="JDownloader 2 Settings"
+                  description="Configure MyJDownloader credentials, direct host, or download paths"
+                  buttonLabel="Configure JDownloader"
+                  buttonIcon={DownloadCloud}
+                  onPress={openJDownloaderModal}
+                />
+              </>
+            )}
+
             {item.id === 'prowlarr' && (
               <>
                 {isProwlarrConfigured && (
@@ -349,6 +432,27 @@ export const NodeConnectionsGroup = ({
                     />
                   </>
                 )}
+              </>
+            )}
+
+            {item.id === 'g4u' && (
+              <>
+                {isG4UConfigured && (
+                  <IntegrationStats
+                    items={[
+                      { label: 'category', value: 'PC / Games (4050)' },
+                      { label: 'protocol', value: 'Usenet' },
+                      { label: 'api endpoint', value: usenetConfig?.g4u?.url || 'https://g4u.to/api/' },
+                    ]}
+                  />
+                )}
+                <IntegrationAction
+                  label="g4u.to Settings"
+                  description="Configure API URL, API key, and view SABnzbd RSS feed instructions"
+                  buttonLabel="Configure g4u.to"
+                  buttonIcon={Gamepad2}
+                  onPress={openG4UModal}
+                />
               </>
             )}
 
@@ -524,6 +628,27 @@ export const NodeConnectionsGroup = ({
                 </>
               )}
 
+              {item.id === 'jdownloader' && (
+                <>
+                  {isJDownloaderConfigured && (
+                    <IntegrationStats
+                      items={[
+                        { label: 'mode', value: jdConfig?.email ? 'MyJDownloader Cloud' : 'Direct Loopback' },
+                        { label: 'device / host', value: jdConfig?.deviceName || jdConfig?.directHost || 'Connected' },
+                        { label: 'path', value: jdConfig?.downloadPath || 'Default' },
+                      ]}
+                    />
+                  )}
+                  <IntegrationAction
+                    label="JDownloader 2 Settings"
+                    description="Configure MyJDownloader credentials, direct host, or download paths"
+                    buttonLabel="Configure JDownloader"
+                    buttonIcon={DownloadCloud}
+                    onPress={openJDownloaderModal}
+                  />
+                </>
+              )}
+
               {item.id === 'prowlarr' && (
                 <>
                   {isProwlarrConfigured && (
@@ -585,6 +710,27 @@ export const NodeConnectionsGroup = ({
                       />
                     </>
                   )}
+                </>
+              )}
+
+              {item.id === 'g4u' && (
+                <>
+                  {isG4UConfigured && (
+                    <IntegrationStats
+                      items={[
+                        { label: 'category', value: 'PC / Games (4050)' },
+                        { label: 'protocol', value: 'Usenet' },
+                        { label: 'api endpoint', value: usenetConfig?.g4u?.url || 'https://g4u.to/api/' },
+                      ]}
+                    />
+                  )}
+                  <IntegrationAction
+                    label="g4u.to Settings"
+                    description="Configure API URL, API key, and view SABnzbd RSS feed instructions"
+                    buttonLabel="Configure g4u.to"
+                    buttonIcon={Gamepad2}
+                    onPress={openG4UModal}
+                  />
                 </>
               )}
 

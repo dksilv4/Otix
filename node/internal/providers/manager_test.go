@@ -22,6 +22,9 @@ func TestInferDownloadProtocol(t *testing.T) {
 		{"https://tracker.example/download.torrent?key=abc", "torrent"},
 		{"https://nzbplanet.net/getnzb/123.nzb", "usenet"},
 		{"https://indexer.example/api?t=get", "usenet"},
+		{"https://1fichier.com/?abcdef12345", "direct"},
+		{"https://rapidgator.net/file/123456/game.part1.rar", "direct"},
+		{"https://example.com/container.dlc", "direct"},
 		{"", "usenet"},
 	}
 
@@ -34,8 +37,14 @@ func TestInferDownloadProtocol(t *testing.T) {
 }
 
 func TestProviderManager(t *testing.T) {
-	// Mock server for SABnzbd and Prowlarr
+	// Mock server for SABnzbd, Prowlarr, and JDownloader
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.Contains(r.URL.Path, "linkgrabberv2") || strings.Contains(r.URL.Path, "getStorageInfos") {
+			w.WriteHeader(http.StatusOK)
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{"id": 555, "status": "ok"})
+			return
+		}
+
 		apiKey := r.Header.Get("X-Api-Key")
 		if apiKey == "" {
 			apiKey = r.URL.Query().Get("apikey")
@@ -46,8 +55,13 @@ func TestProviderManager(t *testing.T) {
 			return
 		}
 
-		if strings.Contains(r.URL.Path, "status") || r.URL.Query().Get("mode") == "version" {
+		if strings.Contains(r.URL.Path, "status") || r.URL.Query().Get("mode") == "version" || strings.Contains(r.URL.Path, "getStorageInfos") {
 			_ = json.NewEncoder(w).Encode(map[string]interface{}{"status": "ok", "version": "1.0"})
+			return
+		}
+
+		if strings.Contains(r.URL.Path, "linkgrabberv2/addLinks") {
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{"id": 555})
 			return
 		}
 
@@ -83,16 +97,26 @@ func TestProviderManager(t *testing.T) {
 	cfg.Usenet.Prowlarr.Port = port
 	cfg.Usenet.Prowlarr.APIKey = "test-key"
 
+	cfg.Usenet.G4U.URL = srv.URL + "/api/"
+	cfg.Usenet.G4U.APIKey = "test-key"
+
+	cfg.JDownloader.Enabled = true
+	cfg.JDownloader.DirectHost = host
+	cfg.JDownloader.DirectPort = port
+
 	pm := NewProviderManager(cfg)
 
 	// 1. ListProviders
 	providers := pm.ListProviders()
 	downloaders, ok := providers["downloaders"].([]ProviderInfo)
-	if !ok || len(downloaders) == 0 {
-		t.Fatalf("expected downloaders list, got %v", providers["downloaders"])
+	if !ok || len(downloaders) < 2 {
+		t.Fatalf("expected at least 2 downloaders, got %v", providers["downloaders"])
 	}
 	if !downloaders[0].Configured || !downloaders[0].Connected {
 		t.Errorf("expected sabnzbd configured and connected, got %+v", downloaders[0])
+	}
+	if !downloaders[1].Configured || !downloaders[1].Connected {
+		t.Errorf("expected jdownloader configured and connected, got %+v", downloaders[1])
 	}
 
 	searchProviders, ok := providers["search_providers"].([]ProviderInfo)
@@ -109,9 +133,19 @@ func TestProviderManager(t *testing.T) {
 		t.Fatalf("TestProvider sabnzbd failed: err=%v, res=%v", err, res)
 	}
 
+	resJD, err := pm.TestProvider("downloader", "jdownloader")
+	if err != nil || resJD["ok"] != true {
+		t.Fatalf("TestProvider jdownloader failed: err=%v, res=%v", err, resJD)
+	}
+
 	resProw, err := pm.TestProvider("indexer", "prowlarr")
 	if err != nil || resProw["ok"] != true {
 		t.Fatalf("TestProvider prowlarr failed: err=%v, res=%v", err, resProw)
+	}
+
+	resG4U, err := pm.TestProvider("indexer", "g4u")
+	if err != nil || resG4U["ok"] != true {
+		t.Fatalf("TestProvider g4u failed: err=%v, res=%v", err, resG4U)
 	}
 
 	// Unknown provider
@@ -130,6 +164,12 @@ func TestProviderManager(t *testing.T) {
 	nzoID, err := pm.AddDownload("https://nzb.example/file.nzb", "My Game", "games", "usenet")
 	if err != nil || nzoID != "nzo-prov-1" {
 		t.Fatalf("AddDownload usenet failed: err=%v, nzoID=%s", err, nzoID)
+	}
+
+	// Direct download via JDownloader
+	jdID, err := pm.AddDownload("https://1fichier.com/?123456", "Direct Game", "games", "direct")
+	if err != nil || jdID != "queued-direct" {
+		t.Fatalf("AddDownload direct failed: err=%v, jdID=%s", err, jdID)
 	}
 
 	// Torrent download (not supported on node)

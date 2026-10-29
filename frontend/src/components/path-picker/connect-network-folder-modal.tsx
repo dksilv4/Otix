@@ -650,7 +650,7 @@ export const ConnectNetworkFolderModal = ({
                   <input
                     type="text"
                     required
-                    placeholder="\\192.168.1.100\games or smb://SERVER8/Games"
+                    placeholder="\\192.168.1.58\Games, smb://192.168.1.58/Games, or /Volumes/Games"
                     value={url}
                     onChange={(e) => {
                       setUrl(e.target.value)
@@ -660,7 +660,7 @@ export const ConnectNetworkFolderModal = ({
                   />
                 </div>
                 <p className="text-[10px] text-muted-foreground/70">
-                  Tip: If using hostnames like <code className="font-mono">\SERVER8\Games</code>, use the server&apos;s IP address (e.g. <code className="font-mono">\\192.168.1.50\Games</code>) if NetBIOS resolution fails.
+                  Tip: Enter a Samba URL (e.g. <code className="font-mono">smb://192.168.1.58/Games</code>), UNC path (<code className="font-mono">\\192.168.1.58\Games</code>), or volume path (<code className="font-mono">/Volumes/Games</code>). On macOS, network shares automatically connect and mount into <code className="font-mono">/Volumes/[Share]</code>.
                 </p>
               </div>
 
@@ -735,9 +735,10 @@ export const ConnectNetworkFolderModal = ({
                     How to fix this:
                   </p>
                   <ul className="list-disc pl-4 space-y-0.5">
-                    <li>Try replacing the server name with its local IP address (e.g. <code className="font-mono">\\192.168.1.100\Games</code>).</li>
+                    <li>Try replacing the server name with its local IP address (e.g. <code className="font-mono">\\192.168.1.58\Games</code> or <code className="font-mono">smb://192.168.1.58/Games</code>).</li>
                     <li>Ensure the server machine is powered on and connected to the same network.</li>
                     <li>Verify that Samba / File Sharing is enabled on the server machine.</li>
+                    <li>On macOS, network shares mount into <code className="font-mono">/Volumes/[Share]</code>. Verify credentials if the share requires authentication.</li>
                   </ul>
                 </div>
               )}

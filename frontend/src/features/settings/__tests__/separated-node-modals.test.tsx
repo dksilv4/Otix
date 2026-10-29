@@ -250,24 +250,50 @@ describe('Separated Node Modals', () => {
   })
 
   describe('Home Environment Modals', () => {
-    it('renders CreateHomeModal and creates a home location', async () => {
+    it('renders CreateHomeModal and creates a home location with detected network', async () => {
       const user = userEvent.setup()
       const handleClose = vi.fn()
+
+      // Mock window.otix.network.detectCurrent
+      ;(window as any).otix = {
+        network: {
+          detectCurrent: vi.fn().mockResolvedValue({
+            ssid: 'Home_5GHz',
+            bssid: 'aa:bb:cc:11:22:33',
+            gatewayIp: '192.168.1.1',
+            gatewayMac: 'aa:bb:cc:dd:ee:ff',
+            localIp: '192.168.1.10',
+            isWifi: true,
+          }),
+        },
+      }
 
       mockCreateHome.mockResolvedValueOnce({ id: 2, name: 'Secondary Homelab' })
 
       render(<CreateHomeModal open={true} onOpenChange={handleClose} />)
 
       expect(screen.getByText('New Home Location')).toBeInTheDocument()
+      expect(screen.getByText(/Network Hardware Profile/i)).toBeInTheDocument()
 
       const nameInput = screen.getByPlaceholderText(/e\.g\. main residence/i)
       await user.type(nameInput, 'Secondary Homelab')
+
+      // Click Detect Current
+      const detectBtn = screen.getByRole('button', { name: /detect current/i })
+      await user.click(detectBtn)
+
+      expect(screen.getByDisplayValue('Home_5GHz')).toBeInTheDocument()
+      expect(screen.getByDisplayValue('aa:bb:cc:dd:ee:ff')).toBeInTheDocument()
+      expect(screen.getByDisplayValue('192.168.1.0/24')).toBeInTheDocument()
 
       await user.click(screen.getByRole('button', { name: /create home/i }))
 
       expect(mockCreateHome).toHaveBeenCalledWith(
         expect.objectContaining({
           name: 'Secondary Homelab',
+          wifiSsid: 'Home_5GHz',
+          gatewayMac: 'aa:bb:cc:dd:ee:ff',
+          subnetCidr: '192.168.1.0/24',
         }),
       )
     })

@@ -258,7 +258,8 @@ export function formatExplorerDate(isoDate?: string | null): string {
 
 /**
  * Normalize network share path inputs, converting single-slash, forward-slash,
- * or bare hostname prefixes into standard Windows UNC (`\\server\share`).
+ * or bare hostname prefixes into standard UNC (`\\server\share`), while preserving
+ * URL schemes (`smb://`, `cifs://`), Windows drive letters, and macOS `/Volumes/...` paths.
  */
 export function normalizeShareURLInput(rawUrl: string): string {
   const trimmed = rawUrl.trim();
@@ -266,7 +267,9 @@ export function normalizeShareURLInput(rawUrl: string): string {
   if (
     /^[a-zA-Z]:/i.test(trimmed) ||
     trimmed.toLowerCase().startsWith('smb://') ||
-    trimmed.toLowerCase().startsWith('cifs://')
+    trimmed.toLowerCase().startsWith('cifs://') ||
+    trimmed.startsWith('/Volumes') ||
+    trimmed.startsWith('/volumes')
   ) {
     return trimmed;
   }

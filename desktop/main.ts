@@ -87,6 +87,7 @@ import { NodeDaemonManager } from './node-daemon';
 import { registerNodeDaemonIPC } from './ipc/node-daemon';
 import { registerAppInstallerIPC } from './ipc/app-installer';
 import { registerGameServersIPC } from './ipc/game-servers';
+import { registerNetworkIPC } from './ipc/network';
 import { setDefaultAutoSelectFamily } from 'node:net';
 
 // Node 24's happy-eyeballs (autoSelectFamily) intermittently ETIMEDOUTs
@@ -1133,6 +1134,7 @@ app.on('ready', async () => {
   // Register modular IPC handlers (safe — registration doesn't touch DB)
   registerDownloadsIPC();
   registerGameServersIPC();
+  registerNetworkIPC();
   nodeDaemon = new NodeDaemonManager(app.getPath('userData'), process.resourcesPath);
   registerNodeDaemonIPC(nodeDaemon);
   registerScannerIPC(gameDetector, nodeDaemon);

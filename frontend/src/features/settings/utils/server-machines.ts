@@ -49,6 +49,56 @@ export const calculateTotalCapacity = (drives: ServerDriveConfig[]): { totalByte
   return { totalBytes, freeBytes, usedBytes }
 }
 
+export interface DesktopDetectedNetwork {
+  ssid: string
+  bssid: string
+  gatewayIp: string
+  gatewayMac: string
+  localIp: string
+  isWifi: boolean
+}
+
+export interface DesktopHomeVerificationResult {
+  status: 'verified_home' | 'duplicate_ssid_foreign' | 'roaming_away' | 'offline'
+  details: {
+    currentSsid?: string
+    currentBssid?: string
+    currentGatewayMac?: string
+    hardwareMatched: boolean
+    serverPingOk: boolean
+    reason: string
+  }
+}
+
+export const detectDesktopCurrentNetwork = async (): Promise<DesktopDetectedNetwork | null> => {
+  if (typeof window !== 'undefined' && (window as any).otix?.network?.detectCurrent) {
+    try {
+      const res = await (window as any).otix.network.detectCurrent()
+      return res
+    } catch {
+      return null
+    }
+  }
+  return null
+}
+
+export const verifyDesktopHomeNetwork = async (profile: {
+  wifiSsid?: string
+  gatewayMac?: string
+  bssid?: string
+  localServerUrl?: string
+}): Promise<DesktopHomeVerificationResult | null> => {
+  if (typeof window !== 'undefined' && (window as any).otix?.network?.verifyHome) {
+    try {
+      const res = await (window as any).otix.network.verifyHome(profile)
+      return res
+    } catch {
+      return null
+    }
+  }
+  return null
+}
+
 export const createDefaultDriveConfig = (index: number): ServerDriveConfig => ({
   id: `drive-${index}`,
   drive: `/mnt/disk${index}`,

@@ -2,9 +2,10 @@ package explorer
 
 import (
 	"os"
-	"strings"
+	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 )
 
@@ -249,4 +250,101 @@ func TestConnectShareValidation(t *testing.T) {
 	if !foundInDrives {
 		t.Errorf("expected connected share %q to appear in GetSystemDrives", res.Path)
 	}
+}
+
+func TestParseShareTarget(t *testing.T) {
+	// 1. Windows UNC
+	p1 := parseShareTarget(`\\192.168.1.58\Games\SubFolder`, ConnectShareRequest{})
+	if p1.Host != "192.168.1.58" || p1.ShareName != "Games" || p1.SubPath != "SubFolder" {
+		t.Errorf("unexpected p1: %+v", p1)
+	}
+
+	// 2. Forward slash UNC
+	p2 := parseShareTarget(`//192.168.1.58/Games`, ConnectShareRequest{})
+	if p2.Host != "192.168.1.58" || p2.ShareName != "Games" || p2.SubPath != "" {
+		t.Errorf("unexpected p2: %+v", p2)
+	}
+
+	// 3. SMB URL with credentials and workgroup
+	p3 := parseShareTarget(`smb://WORKGROUP;dk:mypassword@192.168.1.58/Games/ROMs`, ConnectShareRequest{})
+	if p3.Host != "192.168.1.58" || p3.ShareName != "Games" || p3.SubPath != "ROMs" ||
+		p3.Username != "dk" || p3.Password != "mypassword" || p3.Workgroup != "WORKGROUP" {
+		t.Errorf("unexpected p3: %+v", p3)
+	}
+
+	// 4. macOS /Volumes/ path
+	p4 := parseShareTarget(`/Volumes/Games/Half-Life`, ConnectShareRequest{})
+	if !p4.IsLocalVolume || p4.ShareName != "Games" || p4.SubPath != "Half-Life" {
+		t.Errorf("unexpected p4: %+v", p4)
+	}
+
+	// 5. Host only with separate ShareName
+	p5 := parseShareTarget(`192.168.1.58`, ConnectShareRequest{ShareName: "Downloads"})
+	if p5.Host != "192.168.1.58" || p5.ShareName != "Downloads" {
+		t.Errorf("unexpected p5: %+v", p5)
+	}
+}
+
+func TestSanitizeAndResolvePathDarwin(t *testing.T) {
+	if runtime.GOOS != "darwin" {
+		t.Skip("skipping macOS path resolution test on non-darwin")
+	}
+
+	// When UNC is passed on macOS, it resolves to /Volumes/<Share>
+	res, err := SanitizeAndResolvePath(`\\192.168.1.58\NonExistentShare\SubDir`, "")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	expected := filepath.Join("/Volumes", "NonExistentShare", "SubDir")
+	if res != expected {
+		t.Errorf("expected %q, got %q", expected, res)
+	}
+
+	// When smb:// is passed on macOS, it resolves to /Volumes/<Share>
+	resSMB, err := SanitizeAndResolvePath(`smb://192.168.1.58/NonExistentShare`, "")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	expectedSMB := filepath.Join("/Volumes", "NonExistentShare")
+	if resSMB != expectedSMB {
+		t.Errorf("expected %q, got %q", expectedSMB, resSMB)
+	}
+}
+
+func TestConnectShareDarwinMounted(t *testing.T) {
+	if runtime.GOOS != "darwin" {
+		t.Skip("skipping macOS connect share test on non-darwin")
+	}
+	if !dirExists("/Volumes/Games") {
+		t.Skip("/Volumes/Games is not mounted, skipping live test")
+	}
+
+	res, err := ConnectShare(ConnectShareRequest{URL: `\\192.168.1.58\Games`})
+	if err != nil {
+		t.Fatalf("ConnectShare failed: %v", err)
+	}
+	if res.Path != "/Volumes/Games" {
+		t.Errorf("expected path /Volumes/Games, got %q", res.Path)
+	}
+	if res.Status != "connected" {
+		t.Errorf("expected status 'connected', got %q", res.Status)
+	}
+}
+
+func TestConnectShareDarwinUnmounted(t *testing.T) {
+	if runtime.GOOS != "darwin" {
+		t.Skip("skipping macOS connect share test on non-darwin")
+	}
+
+	res, err := ConnectShare(ConnectShareRequest{URL: `\\192.168.1.58\Emulators`})
+	if err != nil {
+		t.Fatalf("ConnectShare failed: %v", err)
+	}
+	if res.Path != "/Volumes/Emulators" {
+		t.Errorf("expected path /Volumes/Emulators, got %q", res.Path)
+	}
+	if res.Status != "connected" {
+		t.Errorf("expected status 'connected', got %q", res.Status)
+	}
+	defer exec.Command("diskutil", "unmount", "/Volumes/Emulators").Run()
 }

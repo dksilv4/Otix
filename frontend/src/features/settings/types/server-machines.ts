@@ -18,6 +18,10 @@ export interface UserHome {
   description?: string
   isDefault: boolean
   subnetCidr?: string
+  wifiSsid?: string
+  gatewayMac?: string
+  bssid?: string
+  localServerUrl?: string
   nodesCount: number
   serverMachinesCount: number
   createdAt: string

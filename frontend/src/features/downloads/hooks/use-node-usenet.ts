@@ -112,6 +112,43 @@ export function useTestProwlarr(nodeId?: number) {
   });
 }
 
+/** Hook to update g4u.to settings on the node. */
+export function useSaveNodeG4UConfig(nodeId?: number) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (payload: { url?: string; api_key?: string; enabled?: boolean }) => {
+      if (!isValidNodeId(nodeId)) throw new Error('No valid node selected');
+      const { data } = await apiClient.post(
+        `/library/servers/${nodeId}/usenet/config`,
+        { g4u: payload }
+      );
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: usenetKeys.config(nodeId) });
+    },
+  });
+}
+
+export const useSaveServerG4UConfig = useSaveNodeG4UConfig;
+
+/** Hook to test connectivity to g4u.to. */
+export function useTestG4U(nodeId?: number) {
+  return useMutation({
+    mutationFn: async (payload?: {
+      url?: string;
+      api_key?: string;
+    } | void) => {
+      if (!isValidNodeId(nodeId)) throw new Error('No valid node selected');
+      const { data } = await apiClient.post<ConnectionTestResult>(
+        `/library/servers/${nodeId}/usenet/test-g4u`,
+        payload || {}
+      );
+      return data;
+    },
+  });
+}
+
 const NUMERAL_PAIRS: [RegExp, string][] = [
   [/\b3\b/g, 'III'],
   [/\biii\b/gi, '3'],
@@ -142,17 +179,19 @@ export function getAlternateNumeralQuery(query: string): string | null {
   return null;
 }
 
-/** Hook to search indexers via Prowlarr on the node. */
+/** Hook to search indexers via Prowlarr and g4u on the node. */
 export function useNodeUsenetSearch(nodeId?: number, query?: string) {
   return useQuery<ServerProwlarrRelease[]>({
     queryKey: usenetKeys.search(nodeId, query),
     queryFn: async () => {
-      const q = query?.trim();
-      if (!isValidNodeId(nodeId) || !q) return [];
+      const q = (query ?? '').trim();
+      if (!isValidNodeId(nodeId)) return [];
       const queries = [q];
-      const alt = getAlternateNumeralQuery(q);
-      if (alt && alt.toLowerCase() !== q.toLowerCase()) {
-        queries.push(alt);
+      if (q) {
+        const alt = getAlternateNumeralQuery(q);
+        if (alt && alt.toLowerCase() !== q.toLowerCase()) {
+          queries.push(alt);
+        }
       }
 
       const results = await Promise.all(
@@ -182,7 +221,7 @@ export function useNodeUsenetSearch(nodeId?: number, query?: string) {
       }
       return combined;
     },
-    enabled: isValidNodeId(nodeId) && !!query?.trim(),
+    enabled: isValidNodeId(nodeId) && query !== undefined,
     retry: false,
     staleTime: 60_000,
   });

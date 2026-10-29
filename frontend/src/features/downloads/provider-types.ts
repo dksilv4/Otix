@@ -76,3 +76,18 @@ export interface AddDownloadPayload {
   download_url: string;
   category?: string | null;
 }
+
+export interface ServerJDownloaderConfig {
+  enabled: boolean;
+  email?: string;
+  password?: string;
+  deviceName?: string;
+  deviceId?: string;
+  directHost?: string;
+  directPort?: number;
+  downloadPath?: string;
+  linkedLibraryPath?: string;
+  pathMappings?: Array<{ remotePath: string; hostPath: string }>;
+  configured?: boolean;
+  hasPassword?: boolean;
+}

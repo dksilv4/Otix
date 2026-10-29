@@ -19,6 +19,10 @@ class UserHomeSerializer(serializers.ModelSerializer):
             "description",
             "is_default",
             "subnet_cidr",
+            "wifi_ssid",
+            "gateway_mac",
+            "bssid",
+            "local_server_url",
             "nodes_count",
             "server_machines_count",
             "created_at",
@@ -38,7 +42,16 @@ class UserHomeCreateUpdateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = UserHome
-        fields = ["name", "description", "is_default", "subnet_cidr"]
+        fields = [
+            "name",
+            "description",
+            "is_default",
+            "subnet_cidr",
+            "wifi_ssid",
+            "gateway_mac",
+            "bssid",
+            "local_server_url",
+        ]
 
 
 class UserServerMachineSerializer(serializers.ModelSerializer):

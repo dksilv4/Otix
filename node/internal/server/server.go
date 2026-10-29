@@ -32,6 +32,7 @@ import (
 	"github.com/dksilv4/otix/node/internal/hardware"
 	"github.com/dksilv4/otix/node/internal/heartbeat"
 	"github.com/dksilv4/otix/node/internal/indexer"
+	"github.com/dksilv4/otix/node/internal/jdownloader"
 	"github.com/dksilv4/otix/node/internal/organize"
 	"github.com/dksilv4/otix/node/internal/otixmeta"
 	"github.com/dksilv4/otix/node/internal/plugins"
@@ -1659,12 +1660,14 @@ func (s *Server) setupRoutes() {
 			jsonResponse(w, http.StatusOK, map[string]string{"status": "deleted", "download_id": id})
 		})
 
-		// ── Usenet Aliases (SABnzbd & Prowlarr) ────────────────────────────────
+		// ── Usenet Aliases (SABnzbd & Prowlarr & g4u) ────────────────────────
 		authed.Get("/api/v1/usenet/config", func(w http.ResponseWriter, r *http.Request) {
 			sab := s.cfg.Usenet.Sabnzbd
 			prow := s.cfg.Usenet.Prowlarr
+			g4u := s.cfg.Usenet.G4U
 			sabConfigured := sab.Host != "" && sab.APIKey != ""
 			prowConfigured := prow.Host != "" && prow.APIKey != ""
+			g4uConfigured := g4u.APIKey != ""
 
 			type enrichedSabnzbd struct {
 				config.SabnzbdConfig
@@ -1680,10 +1683,18 @@ func (s *Server) setupRoutes() {
 				HasApiKey    bool   `json:"hasApiKey"`
 				ProviderType string `json:"provider_type"`
 			}
+			type enrichedG4U struct {
+				config.G4UConfig
+				Configured   bool   `json:"configured"`
+				HasAPIKey    bool   `json:"has_api_key"`
+				HasApiKey    bool   `json:"hasApiKey"`
+				ProviderType string `json:"provider_type"`
+			}
 			resp := struct {
 				Enabled  bool             `json:"enabled"`
 				Sabnzbd  enrichedSabnzbd  `json:"sabnzbd"`
 				Prowlarr enrichedProwlarr `json:"prowlarr"`
+				G4U      enrichedG4U      `json:"g4u"`
 			}{
 				Enabled: s.cfg.Usenet.Enabled,
 				Sabnzbd: enrichedSabnzbd{
@@ -1699,6 +1710,13 @@ func (s *Server) setupRoutes() {
 					HasAPIKey:      prow.APIKey != "",
 					HasApiKey:      prow.APIKey != "",
 					ProviderType:   "indexer-provider",
+				},
+				G4U: enrichedG4U{
+					G4UConfig:    g4u,
+					Configured:   g4uConfigured,
+					HasAPIKey:    g4u.APIKey != "",
+					HasApiKey:    g4u.APIKey != "",
+					ProviderType: "indexer-provider",
 				},
 			}
 			jsonResponse(w, http.StatusOK, resp)
@@ -1758,6 +1776,30 @@ func (s *Server) setupRoutes() {
 					s.cfg.Usenet.Prowlarr = prow
 				}
 			}
+			if g4uRaw, ok := raw["g4u"]; ok {
+				var g4u config.G4UConfig
+				if err := json.Unmarshal(g4uRaw, &g4u); err == nil {
+					var rawMap map[string]interface{}
+					if json.Unmarshal(g4uRaw, &rawMap) == nil {
+						if k, ok := rawMap["apiKey"].(string); ok && k != "" && g4u.APIKey == "" {
+							g4u.APIKey = k
+						}
+						if u, ok := rawMap["url"].(string); ok && u != "" {
+							g4u.URL = u
+						}
+						if en, ok := rawMap["enabled"].(bool); ok {
+							g4u.Enabled = en
+						}
+					}
+					if g4u.APIKey == "" && s.cfg.Usenet.G4U.APIKey != "" {
+						g4u.APIKey = s.cfg.Usenet.G4U.APIKey
+					}
+					if g4u.URL == "" {
+						g4u.URL = "https://g4u.to/api/"
+					}
+					s.cfg.Usenet.G4U = g4u
+				}
+			}
 			if enRaw, ok := raw["enabled"]; ok {
 				var en bool
 				if err := json.Unmarshal(enRaw, &en); err == nil {
@@ -1765,7 +1807,8 @@ func (s *Server) setupRoutes() {
 				}
 			} else {
 				s.cfg.Usenet.Enabled = (s.cfg.Usenet.Sabnzbd.Host != "" && s.cfg.Usenet.Sabnzbd.APIKey != "") ||
-					(s.cfg.Usenet.Prowlarr.Host != "" && s.cfg.Usenet.Prowlarr.APIKey != "")
+					(s.cfg.Usenet.Prowlarr.Host != "" && s.cfg.Usenet.Prowlarr.APIKey != "") ||
+					(s.cfg.Usenet.G4U.APIKey != "")
 			}
 			_ = s.cfg.Save("")
 			jsonResponse(w, http.StatusOK, map[string]string{"status": "saved"})
@@ -1847,15 +1890,156 @@ func (s *Server) setupRoutes() {
 			jsonResponse(w, http.StatusOK, map[string]interface{}{"ok": ok, "message": msg})
 		})
 
+		authed.Post("/api/v1/usenet/test-g4u", func(w http.ResponseWriter, r *http.Request) {
+			g4uCfg := s.cfg.Usenet.G4U
+			var req struct {
+				URL    string `json:"url"`
+				APIKey string `json:"api_key"`
+				ApiKey string `json:"apiKey"`
+			}
+			if err := json.NewDecoder(r.Body).Decode(&req); err == nil {
+				if req.URL != "" {
+					g4uCfg.URL = req.URL
+				}
+				key := req.APIKey
+				if key == "" {
+					key = req.ApiKey
+				}
+				if key != "" {
+					g4uCfg.APIKey = key
+				}
+			}
+			client := usenet.NewG4UClient(g4uCfg)
+			ok, msg := client.TestConnection()
+			jsonResponse(w, http.StatusOK, map[string]interface{}{"ok": ok, "message": msg})
+		})
+
+		// ── JDownloader Routes ──────────────────────────────────────────────
+		authed.Get("/api/v1/jdownloader/config", func(w http.ResponseWriter, r *http.Request) {
+			jd := s.cfg.JDownloader
+			configured := jd.Enabled || jd.Email != "" || (jd.DirectHost != "" && jd.DirectPort > 0)
+			resp := struct {
+				config.JDownloaderConfig
+				Configured       bool   `json:"configured"`
+				HasPassword      bool   `json:"has_password"`
+				HasPasswordCamel bool   `json:"hasPassword"`
+				ProviderType     string `json:"provider_type"`
+			}{
+				JDownloaderConfig: jd,
+				Configured:        configured,
+				HasPassword:       jd.Password != "",
+				HasPasswordCamel:  jd.Password != "",
+				ProviderType:      "downloader-provider",
+			}
+			jsonResponse(w, http.StatusOK, resp)
+		})
+
+		authed.Post("/api/v1/jdownloader/config", func(w http.ResponseWriter, r *http.Request) {
+			var rawMap map[string]interface{}
+			bodyBytes, err := io.ReadAll(r.Body)
+			if err != nil {
+				http.Error(w, `{"error":"Invalid request payload"}`, http.StatusBadRequest)
+				return
+			}
+			if err := json.Unmarshal(bodyBytes, &rawMap); err != nil {
+				http.Error(w, `{"error":"Invalid request payload"}`, http.StatusBadRequest)
+				return
+			}
+
+			var jd config.JDownloaderConfig
+			_ = json.Unmarshal(bodyBytes, &jd)
+
+			// Support camelCase overrides
+			if email, ok := rawMap["email"].(string); ok && email != "" {
+				jd.Email = email
+			}
+			if pass, ok := rawMap["password"].(string); ok && pass != "" {
+				jd.Password = pass
+			} else if jd.Password == "" && s.cfg.JDownloader.Password != "" {
+				jd.Password = s.cfg.JDownloader.Password
+			}
+			if devName, ok := rawMap["deviceName"].(string); ok && devName != "" {
+				jd.DeviceName = devName
+			}
+			if devID, ok := rawMap["deviceId"].(string); ok && devID != "" {
+				jd.DeviceID = devID
+			}
+			if dHost, ok := rawMap["directHost"].(string); ok && dHost != "" {
+				jd.DirectHost = dHost
+			}
+			if dPort, ok := rawMap["directPort"].(float64); ok && dPort > 0 {
+				jd.DirectPort = int(dPort)
+			}
+			if dlPath, ok := rawMap["downloadPath"].(string); ok && dlPath != "" {
+				jd.DownloadPath = dlPath
+			}
+			if en, ok := rawMap["enabled"].(bool); ok {
+				jd.Enabled = en
+			} else {
+				jd.Enabled = jd.Email != "" || (jd.DirectHost != "" && jd.DirectPort > 0)
+			}
+
+			s.cfg.JDownloader = jd
+			_ = s.cfg.Save("")
+			jsonResponse(w, http.StatusOK, map[string]string{"status": "saved"})
+		})
+
+		authed.Post("/api/v1/jdownloader/test", func(w http.ResponseWriter, r *http.Request) {
+			jdCfg := s.cfg.JDownloader
+			var req struct {
+				Email      string `json:"email"`
+				Password   string `json:"password"`
+				DeviceName string `json:"device_name"`
+				DeviceID   string `json:"device_id"`
+				DirectHost string `json:"direct_host"`
+				DirectPort int    `json:"direct_port"`
+			}
+			if err := json.NewDecoder(r.Body).Decode(&req); err == nil {
+				if req.Email != "" {
+					jdCfg.Email = req.Email
+				}
+				if req.Password != "" {
+					jdCfg.Password = req.Password
+				}
+				if req.DeviceName != "" {
+					jdCfg.DeviceName = req.DeviceName
+				}
+				if req.DeviceID != "" {
+					jdCfg.DeviceID = req.DeviceID
+				}
+				if req.DirectHost != "" {
+					jdCfg.DirectHost = req.DirectHost
+				}
+				if req.DirectPort > 0 {
+					jdCfg.DirectPort = req.DirectPort
+				}
+			}
+			client := jdownloader.NewClient(jdCfg)
+			ok, msg := client.TestConnection()
+			jsonResponse(w, http.StatusOK, map[string]interface{}{"ok": ok, "message": msg})
+		})
+
 		authed.Get("/api/v1/usenet/search", func(w http.ResponseWriter, r *http.Request) {
 			q := r.URL.Query().Get("query")
-			client := usenet.NewProwlarrClient(s.cfg.Usenet.Prowlarr)
-			releases, err := client.Search(q, nil)
+			releases, err := s.providersMgr.Search(q, nil)
 			if err != nil {
 				http.Error(w, fmt.Sprintf(`{"detail":%q}`, err.Error()), http.StatusBadRequest)
 				return
 			}
 			jsonResponse(w, http.StatusOK, releases)
+		})
+
+		authed.Get("/api/v1/g4u/nzb/{id}", func(w http.ResponseWriter, r *http.Request) {
+			id := chi.URLParam(r, "id")
+			client := usenet.NewG4UClient(s.cfg.Usenet.G4U)
+			nzbBytes, err := client.GetNZB(id)
+			if err != nil {
+				http.Error(w, fmt.Sprintf(`{"detail":%q}`, err.Error()), http.StatusBadRequest)
+				return
+			}
+			w.Header().Set("Content-Type", "application/x-nzb")
+			w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s.nzb"`, id))
+			_, _ = w.Write(nzbBytes)
 		})
 
 		authed.Post("/api/v1/usenet/download", func(w http.ResponseWriter, r *http.Request) {

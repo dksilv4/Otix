@@ -33,6 +33,8 @@ from apps.library.views import (
     GameServerExplorerSetPathView,
     GameServerFilesView,
     GameServerInstancesImportView,
+    GameServerJDownloaderConfigView,
+    GameServerJDownloaderTestView,
     GameServerLibrariesView,
     GameServerListCreateView,
     GameServerOrganizeExecuteView,
@@ -77,6 +79,7 @@ from apps.library.views import (
     GameServerUsenetHistoryView,
     GameServerUsenetQueueView,
     GameServerUsenetSearchView,
+    GameServerUsenetTestG4UView,
     GameServerUsenetTestProwlarrView,
     GameServerUsenetTestSabnzbdView,
     GOGLibraryView,
@@ -356,6 +359,11 @@ urlpatterns = [
         name="library-server-usenet-test-prowlarr",
     ),
     path(
+        "servers/<sint:server_id>/usenet/test-g4u",
+        GameServerUsenetTestG4UView.as_view(),
+        name="library-server-usenet-test-g4u",
+    ),
+    path(
         "servers/<sint:server_id>/usenet/search",
         GameServerUsenetSearchView.as_view(),
         name="library-server-usenet-search",
@@ -513,6 +521,17 @@ urlpatterns = [
         "servers/<sint:server_id>/sonarr/history",
         GameServerSonarrHistoryView.as_view(),
         name="library-server-sonarr-history",
+    ),
+    # JDownloader routes
+    path(
+        "servers/<sint:server_id>/jdownloader/config",
+        GameServerJDownloaderConfigView.as_view(),
+        name="library-server-jdownloader-config",
+    ),
+    path(
+        "servers/<sint:server_id>/jdownloader/test",
+        GameServerJDownloaderTestView.as_view(),
+        name="library-server-jdownloader-test",
     ),
     path(
         "servers/<sint:server_id>/desktop",

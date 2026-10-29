@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import {
   Search,
+  Download,
   DownloadCloud,
   Loader2,
   CheckCircle2,
@@ -33,6 +34,7 @@ import {
   formatUploadDate,
   releaseDownloadUrl,
   isSabnzbdConfigured,
+  isUpdateRelease,
 } from '../usenet-utils'
 import {
   collectEditionPackPlatforms,
@@ -91,6 +93,7 @@ export const NodeGameSearchModal = ({
   const [searchInput, setSearchInput] = useState(initialQuery)
   const [activeQuery, setActiveQuery] = useState(initialQuery)
   const [protocolFilter, setProtocolFilter] = useState<ProtocolFilter>('all')
+  const [typeFilter, setTypeFilter] = useState<'all' | 'releases' | 'updates'>('all')
   const [versionFilter, setVersionFilter] = useState('all')
   const [platformFilter, setPlatformFilter] = useState('all')
   const [pendingGuid, setPendingGuid] = useState<string | null>(null)
@@ -121,11 +124,20 @@ export const NodeGameSearchModal = ({
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!searchInput.trim()) return
     setProtocolFilter('all')
+    setTypeFilter('all')
     setVersionFilter('all')
     setPlatformFilter('all')
     setActiveQuery(searchInput.trim())
+  }
+
+  const handleClearSearch = () => {
+    setSearchInput('')
+    setProtocolFilter('all')
+    setTypeFilter('all')
+    setVersionFilter('all')
+    setPlatformFilter('all')
+    setActiveQuery('')
   }
 
   const [updatePrompt, setUpdatePrompt] = useState<{
@@ -292,10 +304,47 @@ export const NodeGameSearchModal = ({
   const platformOptions = useMemo(() => collectEditionPackPlatforms(groups), [groups])
   const usenetCount = releases.filter((r) => r.protocol?.toLowerCase() === 'usenet').length
   const torrentCount = releases.filter((r) => r.protocol?.toLowerCase() === 'torrent').length
-  const visibleGroups = useMemo(
-    () => filterEditionGroups(groups, protocolFilter, versionFilter, platformFilter),
-    [groups, protocolFilter, versionFilter, platformFilter],
+  const updateCount = useMemo(
+    () => releases.filter((r) => isUpdateRelease(r)).length,
+    [releases],
   )
+  const visibleGroups = useMemo(() => {
+    const filtered = filterEditionGroups(groups, protocolFilter, versionFilter, platformFilter)
+    if (typeFilter === 'all') return filtered
+    return filtered
+      .map((group) => {
+        const filteredPacks = group.packs
+          .map((pack) => {
+            const isBaseUpdate = isUpdateRelease(pack.base.release)
+            const filteredUpdates = pack.updates.filter((u) => isUpdateRelease(u.release))
+            if (typeFilter === 'updates') {
+              if (isBaseUpdate) return pack
+              if (filteredUpdates.length > 0) {
+                return {
+                  ...pack,
+                  base: filteredUpdates[0],
+                  updates: filteredUpdates.slice(1),
+                }
+              }
+              return null
+            } else {
+              if (isBaseUpdate) return null
+              return {
+                ...pack,
+                updates: pack.updates.filter((u) => !isUpdateRelease(u.release)),
+              }
+            }
+          })
+          .filter((p): p is GamePack => p !== null)
+
+        if (filteredPacks.length === 0) return null
+        return {
+          ...group,
+          packs: filteredPacks,
+        }
+      })
+      .filter((g): g is EditionResultGroup => g !== null)
+  }, [groups, protocolFilter, versionFilter, platformFilter, typeFilter])
 
   return (
     <DkDialog
@@ -304,7 +353,7 @@ export const NodeGameSearchModal = ({
         if (!open) onClose()
       }}
       title="Indexer results"
-      description={`Search Prowlarr indexers on ${effectiveName} and queue a release to the node.`}
+      description={`Search configured indexers (Prowlarr, g4u.to) on ${effectiveName} and queue a release to the node.`}
       className="flex max-h-[min(88vh,860px)] min-h-0 w-full max-w-3xl flex-col overflow-hidden"
     >
       <form onSubmit={handleSearch} className="flex shrink-0 gap-2">
@@ -312,17 +361,26 @@ export const NodeGameSearchModal = ({
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/60" />
           <input
             type="text"
-            required
             autoFocus
-            placeholder="Search a game title…"
+            placeholder="Search a game title or leave empty for newest releases…"
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
-            className="w-full rounded-xl border border-[var(--dk-separator)] bg-[var(--dk-surface-field)] py-2.5 pl-9 pr-4 text-sm text-foreground outline-none placeholder:text-muted-foreground/50 transition-colors focus:border-primary"
+            className="w-full rounded-xl border border-[var(--dk-separator)] bg-[var(--dk-surface-field)] py-2.5 pl-9 pr-9 text-sm text-foreground outline-none placeholder:text-muted-foreground/50 transition-colors focus:border-primary"
           />
+          {searchInput && (
+            <button
+              type="button"
+              onClick={handleClearSearch}
+              title="Clear search"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
         </div>
         <button
           type="submit"
-          disabled={searching || !searchInput.trim()}
+          disabled={searching}
           className="inline-flex shrink-0 items-center gap-1.5 rounded-xl bg-primary px-4 py-2.5 text-xs font-bold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 disabled:opacity-50"
         >
           {searching ? (
@@ -359,17 +417,17 @@ export const NodeGameSearchModal = ({
       )}
 
       <div className="mt-4 flex min-h-0 flex-1 flex-col">
-        {!activeQuery ? (
+        {!activeQuery && releases.length === 0 && !searching ? (
           <EmptyState
             icon={<Sparkles className="h-8 w-8 text-primary/50" />}
             title="Search your indexers"
-            body="Type a game name to search Prowlarr across your configured Usenet and torrent indexers."
+            body="Type a game name to search your configured indexers (Prowlarr, g4u.to), or browse newest releases."
           />
         ) : searching ? (
           <EmptyState
             icon={<Loader2 className="h-7 w-7 animate-spin text-primary" />}
-            title={`Searching for “${activeQuery}”`}
-            body="Querying Prowlarr and waiting on your indexers."
+            title={activeQuery ? `Searching for “${activeQuery}”` : 'Loading newest releases & updates'}
+            body="Querying configured indexers."
           />
         ) : error ? (
           <EmptyState
@@ -378,18 +436,24 @@ export const NodeGameSearchModal = ({
             body={
               (error as { response?: { data?: { detail?: string } } })?.response?.data?.detail ||
               error.message ||
-              'Make sure Prowlarr is running and configured with an API key.'
+              'Make sure your indexers (Prowlarr, g4u.to) are running and configured.'
             }
             tone="error"
           />
         ) : groups.length === 0 ? (
           <EmptyState
             icon={<Search className="h-8 w-8 text-muted-foreground/30" />}
-            title={`No releases for “${activeQuery}”`}
-            body="Try a different spelling, or check that the right indexers are enabled in Prowlarr."
+            title={activeQuery ? `No releases for “${activeQuery}”` : 'No releases found'}
+            body="Try a different spelling, or check that indexers are enabled in Prowlarr or g4u.to."
           />
         ) : (
           <>
+            {!activeQuery && (
+              <div className="mb-2 flex items-center gap-1.5 px-1 py-0.5 text-xs text-muted-foreground">
+                <Sparkles className="h-3.5 w-3.5 text-primary" />
+                <span>Newest PC game releases & updates from configured indexers</span>
+              </div>
+            )}
             <div className="relative z-10 flex shrink-0 flex-wrap items-center justify-between gap-2 bg-[var(--dk-surface-base)] pb-3">
               <div className="flex flex-wrap items-center gap-1.5">
                 {(['all', 'usenet', 'torrent'] as const).map((filter) => {
@@ -411,6 +475,31 @@ export const NodeGameSearchModal = ({
                       )}
                     >
                       {filter === 'all' ? 'All' : filter}
+                      <span className="ml-1 tabular-nums opacity-70">{count}</span>
+                    </button>
+                  )
+                })}
+                {(['all', 'releases', 'updates'] as const).map((filter) => {
+                  const count =
+                    filter === 'all'
+                      ? releases.length
+                      : filter === 'updates'
+                        ? updateCount
+                        : releases.length - updateCount
+                  if (filter !== 'all' && count === 0) return null
+                  const active = typeFilter === filter
+                  return (
+                    <button
+                      key={filter}
+                      type="button"
+                      onClick={() => setTypeFilter(filter)}
+                      className={cn(
+                        'rounded-lg px-2.5 py-1 text-[11px] font-semibold capitalize transition-colors',
+                        active && 'bg-primary text-primary-foreground',
+                        !active && 'text-muted-foreground hover:bg-[var(--dk-surface-ghost-hover)] hover:text-foreground',
+                      )}
+                    >
+                      {filter}
                       <span className="ml-1 tabular-nums opacity-70">{count}</span>
                     </button>
                   )
@@ -756,7 +845,10 @@ const ReleaseRow = ({
   )
   const canQueue = !blockReason
   const protocol = (release.protocol || '').toLowerCase()
-  const kindBadge = kindLabel(kind, version)
+  const isUpdate = isUpdateRelease(release) || kind === 'update' || release.guid.startsWith('e')
+  const kindBadge = isUpdate
+    ? { label: 'Update', className: 'bg-amber-500/15 text-amber-500 border-amber-500/25' }
+    : kindLabel(kind, version)
 
   const pct = Math.min(100, Math.max(0, queueItem?.percentage ?? 0))
   const queueStatus = (queueItem?.status || 'Downloading').toLowerCase()
@@ -943,23 +1035,37 @@ const ReleaseRow = ({
             </span>
           </div>
         ) : (
-          <button
-            type="button"
-            onClick={onQueue}
-            disabled={disabled || !canQueue}
-            title={canQueue ? 'Queue this release on the node' : blockReason || 'Cannot queue this release'}
-            className={cn(
-              'inline-flex items-center gap-1.5 rounded-xl px-3.5 py-1.5 text-xs font-bold text-primary-foreground shadow-sm transition-colors disabled:opacity-50',
-              protocol === 'torrent' ? 'bg-red-500 hover:bg-red-400' : 'bg-primary hover:bg-primary/90',
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={onQueue}
+              disabled={disabled || !canQueue}
+              title={canQueue ? 'Queue this release on the node' : blockReason || 'Cannot queue this release'}
+              className={cn(
+                'inline-flex items-center gap-1.5 rounded-xl px-3.5 py-1.5 text-xs font-bold text-primary-foreground shadow-sm transition-colors disabled:opacity-50',
+                protocol === 'torrent' ? 'bg-red-500 hover:bg-red-400' : 'bg-primary hover:bg-primary/90',
+              )}
+            >
+              {isPending ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <DownloadCloud className="h-3.5 w-3.5" />
+              )}
+              {isPending ? 'Queuing…' : 'Download'}
+            </button>
+            {downloadUrl && (
+              <a
+                href={downloadUrl}
+                download
+                target="_blank"
+                rel="noreferrer"
+                title="Download .nzb file directly"
+                className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-white/[0.06] bg-[var(--dk-surface-ghost)] text-muted-foreground hover:bg-[var(--dk-surface-ghost-hover)] hover:text-foreground transition-colors"
+              >
+                <Download className="h-3.5 w-3.5" />
+              </a>
             )}
-          >
-            {isPending ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            ) : (
-              <DownloadCloud className="h-3.5 w-3.5" />
-            )}
-            {isPending ? 'Queuing…' : 'Download'}
-          </button>
+          </div>
         )}
       </div>
     </div>

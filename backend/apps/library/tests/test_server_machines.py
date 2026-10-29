@@ -46,11 +46,22 @@ class ServerMachinesTestCase(APITestCase):
 
         create_res = self.client.post(
             "/api/v1/library/homes",
-            {"name": "Offsite Cabin", "description": "Remote vacation cabin"},
+            {
+                "name": "Offsite Cabin",
+                "description": "Remote vacation cabin",
+                "wifi_ssid": "Cabin_5GHz",
+                "gateway_mac": "aa:bb:cc:dd:ee:ff",
+                "bssid": "11:22:33:44:55:66",
+                "local_server_url": "http://192.168.10.50:8090",
+            },
             format="json",
         )
         self.assertEqual(create_res.status_code, status.HTTP_201_CREATED)
         self.assertEqual(create_res.data["name"], "Offsite Cabin")
+        self.assertEqual(create_res.data["wifi_ssid"], "Cabin_5GHz")
+        self.assertEqual(create_res.data["gateway_mac"], "aa:bb:cc:dd:ee:ff")
+        self.assertEqual(create_res.data["bssid"], "11:22:33:44:55:66")
+        self.assertEqual(create_res.data["local_server_url"], "http://192.168.10.50:8090")
         self.assertEqual(UserHome.objects.filter(user=self.user).count(), 2)
 
     def test_create_and_update_server_machine(self):

@@ -555,6 +555,71 @@ func TestProwlarrUsenetConfigAndTestConnection(t *testing.T) {
 	}
 }
 
+func TestG4UUsenetConfigAndTestConnection(t *testing.T) {
+	srv, cfg, _ := setupTestServer(t)
+
+	// 1. Test test-g4u with empty API key
+	reqTestEmpty := httptest.NewRequest("POST", "/api/v1/usenet/test-g4u", bytes.NewReader([]byte(`{"url":"https://g4u.to/api/","api_key":""}`)))
+	reqTestEmpty.Header.Set("Content-Type", "application/json")
+	wTestEmpty := httptest.NewRecorder()
+	srv.Router().ServeHTTP(wTestEmpty, reqTestEmpty)
+	if wTestEmpty.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", wTestEmpty.Code)
+	}
+	var resEmpty map[string]interface{}
+	_ = json.Unmarshal(wTestEmpty.Body.Bytes(), &resEmpty)
+	if resEmpty["ok"] == true || resEmpty["message"] != "g4u API key is required" {
+		t.Fatalf("expected failure with required key, got %v", resEmpty)
+	}
+
+	// 2. Test saving g4u config
+	savePayload := map[string]any{
+		"g4u": map[string]any{
+			"url":     "https://g4u.to/api/",
+			"apiKey":  "my_secret_g4u_key",
+			"enabled": true,
+		},
+	}
+	body, _ := json.Marshal(savePayload)
+	reqSave := httptest.NewRequest("POST", "/api/v1/usenet/config", bytes.NewReader(body))
+	reqSave.Header.Set("Content-Type", "application/json")
+	wSave := httptest.NewRecorder()
+	srv.Router().ServeHTTP(wSave, reqSave)
+	if wSave.Code != http.StatusOK {
+		t.Fatalf("save failed with %d: %s", wSave.Code, wSave.Body.String())
+	}
+
+	if cfg.Usenet.G4U.APIKey != "my_secret_g4u_key" {
+		t.Fatalf("expected apiKey my_secret_g4u_key, got %s", cfg.Usenet.G4U.APIKey)
+	}
+	if !cfg.Usenet.G4U.Enabled {
+		t.Fatalf("expected enabled=true")
+	}
+
+	// 3. Test GET /api/v1/usenet/config returns configured, has_api_key, and provider_type
+	reqGet := httptest.NewRequest("GET", "/api/v1/usenet/config", nil)
+	wGet := httptest.NewRecorder()
+	srv.Router().ServeHTTP(wGet, reqGet)
+	if wGet.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", wGet.Code)
+	}
+	var resGet map[string]interface{}
+	_ = json.Unmarshal(wGet.Body.Bytes(), &resGet)
+	g4uMap, ok := resGet["g4u"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("expected g4u map in response, got %v", resGet)
+	}
+	if g4uMap["configured"] != true {
+		t.Fatalf("expected g4u configured=true, got %v", g4uMap["configured"])
+	}
+	if g4uMap["has_api_key"] != true {
+		t.Fatalf("expected g4u has_api_key=true, got %v", g4uMap["has_api_key"])
+	}
+	if g4uMap["provider_type"] != "indexer-provider" {
+		t.Fatalf("expected g4u provider_type=indexer-provider, got %v", g4uMap["provider_type"])
+	}
+}
+
 func TestServerStatusAndUnclaim(t *testing.T) {
 	srv, cfg, cm := setupTestServer(t)
 	code := cm.CurrentCode()

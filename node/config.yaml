@@ -1,9 +1,10 @@
 server:
     name: Local Node
-    port: 8090
+    port: 8091
     host: 0.0.0.0
     auth_token: 4b8c39a3446b1bf87bb8019441c54573445bf3c1946012ab
     registry_url: http://127.0.0.1:8000/api
+    disable_tray: false
     enable_upnp: false
     enable_heartbeat: true
     downloads_path: /Users/dk/Library/Application Support/Otix/storage/downloads
@@ -12,21 +13,8 @@ server:
     write_otix_after_scan: true
     download_otix_images: false
 game_libraries:
-    - name: Games
-      path: \\SERVER\Games
-      kind: iso
-      allowed_extensions:
-        - .iso
-        - .img
-        - .chd
-        - .rvz
-        - .nkit
-        - .cso
-        - .cue
-        - .wbfs
-        - .gcm
-    - name: Games
-      path: D:\Games
+    - name: Downloads
+      path: /Users/dk/Downloads
       kind: game
       allowed_extensions:
         - .iso
@@ -43,8 +31,8 @@ game_libraries:
         - .rvz
         - .nsp
         - .xci
-    - name: common
-      path: D:\SteamLibrary\steamapps\common
+    - name: Games
+      path: /Volumes/Games
       kind: game
       allowed_extensions:
         - .iso
@@ -89,6 +77,21 @@ usenet:
         categories:
             - 1000
             - 4000
+    g4u:
+        enabled: false
+        url: https://g4u.to/api/
+        api_key: ""
+jdownloader:
+    enabled: false
+    email: ""
+    password: ""
+    device_name: ""
+    device_id: ""
+    direct_host: 127.0.0.1
+    direct_port: 10025
+    download_path: ""
+    linked_library_path: ""
+    path_mappings: []
 radarr:
     enabled: true
     host: server.diogodasilva.com
@@ -144,7 +147,7 @@ desktop:
     always_on_top: false
     start_minimized: false
     games_download_path: ""
-    games_install_path: D:\Games
+    games_install_path: ""
     scan_on_launch: true
 organize:
     post_process_enabled: true
@@ -154,4 +157,5 @@ organize:
     allow_hypervisor: false
     auto_organize_enabled: false
     naming_template: '{Title} ({Year}) [{Platform}]/{OriginalName}.{ext}'
-    iso_download_path: \\SERVER\Games
+    iso_download_path: ""
+    delete_empty_folders: true

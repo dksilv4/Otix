@@ -18,6 +18,10 @@ class UserHome(TimestampedModel):
     description = models.TextField(blank=True, default="")
     is_default = models.BooleanField(default=False)
     subnet_cidr = models.CharField(max_length=64, blank=True, default="")
+    wifi_ssid = models.CharField(max_length=255, blank=True, default="")
+    gateway_mac = models.CharField(max_length=64, blank=True, default="")
+    bssid = models.CharField(max_length=64, blank=True, default="")
+    local_server_url = models.CharField(max_length=512, blank=True, default="")
 
     class Meta(TimestampedModel.Meta):
         db_table = "user_homes"

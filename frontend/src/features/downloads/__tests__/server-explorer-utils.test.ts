@@ -243,9 +243,11 @@ describe('Server File Explorer Utilities', () => {
       expect(normalizeShareURLInput('cifs://SERVER8/Games')).toBe('cifs://SERVER8/Games');
     });
 
-    it('preserves standard local drive paths', () => {
+    it('preserves standard local drive paths and macOS /Volumes paths', () => {
       expect(normalizeShareURLInput('C:\\Games')).toBe('C:\\Games');
       expect(normalizeShareURLInput('D:/Games')).toBe('D:/Games');
+      expect(normalizeShareURLInput('/Volumes/Games')).toBe('/Volumes/Games');
+      expect(normalizeShareURLInput('/Volumes/Games/ROMs')).toBe('/Volumes/Games/ROMs');
     });
 
     it('handles empty input gracefully', () => {

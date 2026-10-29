@@ -8,9 +8,16 @@ import type { GameServer } from '@/features/downloads/use-server-downloads'
 
 let mockGameServers: GameServer[] = []
 let mockUsenetConfig: Record<string, unknown> | null = null
+let mockJdConfig: Record<string, unknown> | null = null
 let mockRadarrConfig: Record<string, unknown> | null = null
 let mockSonarrConfig: Record<string, unknown> | null = null
 let mockProviders: Record<string, unknown> | null = null
+
+vi.mock('@/features/downloads/hooks/use-node-jdownloader', () => ({
+  useNodeJDownloaderConfig: () => ({ data: mockJdConfig, isLoading: false }),
+  useSaveNodeJDownloaderConfig: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useTestJDownloader: () => ({ mutateAsync: vi.fn(), isPending: false }),
+}))
 
 vi.mock('@/features/downloads/use-server-downloads', () => ({
   useGameServers: () => ({ data: mockGameServers, isLoading: false }),
@@ -42,15 +49,24 @@ vi.mock('@/features/downloads/use-server-arr', () => ({
 
 vi.mock('@/features/downloads/use-server-usenet', () => ({
   useServerUsenetConfig: () => ({ data: mockUsenetConfig, isLoading: false }),
+  useNodeUsenetConfig: () => ({ data: mockUsenetConfig, isLoading: false }),
+  useServerUsenetHistory: () => ({ data: [], isLoading: false }),
+  useNodeUsenetHistory: () => ({ data: [], isLoading: false }),
   useServerUsenetQueue: () => ({ data: null, isLoading: false, refetch: vi.fn() }),
+  useNodeUsenetQueue: () => ({ data: null, isLoading: false, refetch: vi.fn() }),
   usePauseSabnzbdQueue: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useResumeSabnzbdQueue: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useProwlarrIndexers: () => ({ data: [], isLoading: false, refetch: vi.fn() }),
   useSyncProwlarrIndexers: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useSaveServerSabnzbdConfig: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useSaveNodeSabnzbdConfig: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useTestSabnzbd: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useSaveServerProwlarrConfig: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useSaveNodeProwlarrConfig: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useTestProwlarr: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useSaveServerG4UConfig: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useSaveNodeG4UConfig: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useTestG4U: () => ({ mutateAsync: vi.fn(), isPending: false }),
 }))
 
 vi.mock('@/features/downloads/use-server-providers', () => ({
@@ -63,6 +79,7 @@ describe('NodeConnectionsGroup', () => {
     vi.clearAllMocks()
     mockGameServers = [defaultServer]
     mockUsenetConfig = null
+    mockJdConfig = null
     mockRadarrConfig = null
     mockSonarrConfig = null
     mockProviders = null
@@ -90,14 +107,46 @@ describe('NodeConnectionsGroup', () => {
     isOnline: true,
   }
 
-  it('renders integration cards including SABnzbd, Prowlarr, Radarr, and Sonarr', () => {
+  it('renders integration cards including SABnzbd, JDownloader 2, Prowlarr, g4u.to, Radarr, and Sonarr', () => {
     renderGroup(defaultServer)
 
     expect(screen.getByText('Home Server')).toBeInTheDocument()
     expect(screen.getByText('SABnzbd')).toBeInTheDocument()
+    expect(screen.getByText('JDownloader 2')).toBeInTheDocument()
     expect(screen.getByText('Prowlarr')).toBeInTheDocument()
+    expect(screen.getByText('g4u.to')).toBeInTheDocument()
     expect(screen.getByText('Radarr')).toBeInTheDocument()
     expect(screen.getByText('Sonarr')).toBeInTheDocument()
+  })
+
+  it('opens JDownloader modal via modal framework for connected node', async () => {
+    const user = userEvent.setup()
+    renderGroup(defaultServer)
+
+    const card = screen.getByText('JDownloader 2').closest('.rounded-2xl') as HTMLElement
+    const connectBtn = within(card).getByRole('button', { name: /connect/i })
+    await user.click(connectBtn)
+
+    await waitFor(() => {
+      expect(screen.getByRole('dialog')).toBeInTheDocument()
+      expect(within(screen.getByRole('dialog')).getByRole('heading', { name: 'JDownloader 2' })).toBeInTheDocument()
+      expect(within(screen.getByRole('dialog')).getByText(/On Home Server/i)).toBeInTheDocument()
+    })
+  })
+
+  it('opens g4u.to modal via modal framework for connected node', async () => {
+    const user = userEvent.setup()
+    renderGroup(defaultServer)
+
+    const card = screen.getByText('g4u.to').closest('.rounded-2xl') as HTMLElement
+    const connectBtn = within(card).getByRole('button', { name: /connect/i })
+    await user.click(connectBtn)
+
+    await waitFor(() => {
+      expect(screen.getByRole('dialog')).toBeInTheDocument()
+      expect(within(screen.getByRole('dialog')).getByRole('heading', { name: 'g4u.to' })).toBeInTheDocument()
+      expect(within(screen.getByRole('dialog')).getByText(/On Home Server/i)).toBeInTheDocument()
+    })
   })
 
   it('opens SABnzbd modal via modal framework for connected node', async () => {

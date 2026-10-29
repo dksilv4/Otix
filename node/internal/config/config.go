@@ -106,6 +106,19 @@ type SabnzbdConfig struct {
 	PathMappings      []DownloadPathMapping `yaml:"path_mappings" json:"path_mappings"`
 }
 
+type JDownloaderConfig struct {
+	Enabled           bool                  `yaml:"enabled" json:"enabled"`
+	Email             string                `yaml:"email" json:"email"`
+	Password          string                `yaml:"password" json:"password"`
+	DeviceName        string                `yaml:"device_name" json:"device_name"`
+	DeviceID          string                `yaml:"device_id" json:"device_id"`
+	DirectHost        string                `yaml:"direct_host" json:"direct_host"`
+	DirectPort        int                   `yaml:"direct_port" json:"direct_port"`
+	DownloadPath      string                `yaml:"download_path" json:"download_path"`
+	LinkedLibraryPath string                `yaml:"linked_library_path" json:"linked_library_path"`
+	PathMappings      []DownloadPathMapping `yaml:"path_mappings" json:"path_mappings"`
+}
+
 type ProwlarrConfig struct {
 	Host       string `yaml:"host" json:"host"`
 	Port       int    `yaml:"port" json:"port"`
@@ -115,10 +128,17 @@ type ProwlarrConfig struct {
 	Categories []int  `yaml:"categories" json:"categories"`
 }
 
+type G4UConfig struct {
+	Enabled bool   `yaml:"enabled" json:"enabled"`
+	URL     string `yaml:"url" json:"url"`
+	APIKey  string `yaml:"api_key" json:"api_key"`
+}
+
 type UsenetConfig struct {
 	Enabled  bool           `yaml:"enabled" json:"enabled"`
 	Sabnzbd  SabnzbdConfig  `yaml:"sabnzbd" json:"sabnzbd"`
 	Prowlarr ProwlarrConfig `yaml:"prowlarr" json:"prowlarr"`
+	G4U      G4UConfig      `yaml:"g4u" json:"g4u"`
 }
 
 type RadarrInstance struct {
@@ -267,11 +287,12 @@ type OrganizeSettings struct {
 }
 
 type AppConfig struct {
-	Server        ServerSettings   `yaml:"server" json:"server"`
-	GameLibraries []LibraryConfig  `yaml:"game_libraries" json:"game_libraries"`
-	Saves         SavesConfig      `yaml:"saves" json:"saves"`
-	Usenet        UsenetConfig     `yaml:"usenet" json:"usenet"`
-	Radarr        RadarrConfig     `yaml:"radarr" json:"radarr"`
+	Server        ServerSettings    `yaml:"server" json:"server"`
+	GameLibraries []LibraryConfig   `yaml:"game_libraries" json:"game_libraries"`
+	Saves         SavesConfig       `yaml:"saves" json:"saves"`
+	Usenet        UsenetConfig      `yaml:"usenet" json:"usenet"`
+	JDownloader   JDownloaderConfig `yaml:"jdownloader" json:"jdownloader"`
+	Radarr        RadarrConfig      `yaml:"radarr" json:"radarr"`
 	Sonarr        SonarrConfig     `yaml:"sonarr" json:"sonarr"`
 	Desktop       DesktopSettings  `yaml:"desktop" json:"desktop"`
 	Organize      OrganizeSettings `yaml:"organize" json:"organize"`
@@ -419,6 +440,15 @@ func DefaultConfig() *AppConfig {
 				Port:       9696,
 				Categories: []int{1000, 4000},
 			},
+			G4U: G4UConfig{
+				Enabled: false,
+				URL:     "https://g4u.to/api/",
+			},
+		},
+		JDownloader: JDownloaderConfig{
+			Enabled:    false,
+			DirectHost: "127.0.0.1",
+			DirectPort: 10025,
 		},
 		Radarr: RadarrConfig{
 			Host:                "127.0.0.1",

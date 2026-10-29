@@ -23,7 +23,10 @@ export * from './arr-types';
 export * from './hooks';
 
 export * from './molecules/node-sabnzbd-settings-modal';
+export * from './molecules/node-jdownloader-settings-modal';
+export * from './molecules/node-jdownloader-card';
 export * from './molecules/node-prowlarr-settings-modal';
+export * from './molecules/node-g4u-settings-modal';
 export * from './molecules/node-radarr-settings-modal';
 export * from './molecules/node-sonarr-settings-modal';
 export * from './molecules/node-game-search-modal';
@@ -32,7 +35,9 @@ export * from './molecules/node-file-explorer';
 export * from './molecules/node-file-explorer-modal';
 
 export * from './molecules/server-sabnzbd-settings-modal';
+export * from './molecules/server-jdownloader-settings-modal';
 export * from './molecules/server-prowlarr-settings-modal';
+export * from './molecules/server-g4u-settings-modal';
 export * from './molecules/server-radarr-settings-modal';
 export * from './molecules/server-sonarr-settings-modal';
 export * from './molecules/server-game-search-modal';

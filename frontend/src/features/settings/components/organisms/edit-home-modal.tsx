@@ -1,5 +1,10 @@
-import { useState, useEffect } from 'react'
-import { Loader2, Trash2 } from 'lucide-react'
+import { useState, useEffect, useCallback } from 'react'
+import {
+  Loader2,
+  Trash2,
+  Wifi,
+  ShieldCheck,
+} from 'lucide-react'
 import { DkDialog } from '@ui/molecules/dialog'
 import { DkButton } from '@ui/atoms/button'
 import { DkInput } from '@ui/atoms/input'
@@ -7,6 +12,11 @@ import { DkSwitch } from '@ui/atoms/switch'
 import { useToast } from '@ui/molecules/toast'
 import type { UserHome } from '../../types/server-machines'
 import { useUpdateHome, useDeleteHome } from '../../hooks/use-server-machines'
+import {
+  detectDesktopCurrentNetwork,
+  verifyDesktopHomeNetwork,
+  type DesktopHomeVerificationResult,
+} from '../../utils/server-machines'
 
 export interface EditHomeModalProps {
   open: boolean
@@ -30,17 +40,89 @@ export const EditHomeModal = ({
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [subnetCidr, setSubnetCidr] = useState('')
+  const [wifiSsid, setWifiSsid] = useState('')
+  const [gatewayMac, setGatewayMac] = useState('')
+  const [bssid, setBssid] = useState('')
+  const [localServerUrl, setLocalServerUrl] = useState('')
   const [isDefault, setIsDefault] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [isDetecting, setIsDetecting] = useState(false)
+  const [verificationResult, setVerificationResult] = useState<DesktopHomeVerificationResult | null>(null)
+
+  const checkNetworkStatus = useCallback(async (currentHome: UserHome) => {
+    if (!currentHome.wifiSsid && !currentHome.localServerUrl) {
+      setVerificationResult(null)
+      return
+    }
+    const res = await verifyDesktopHomeNetwork({
+      wifiSsid: currentHome.wifiSsid,
+      gatewayMac: currentHome.gatewayMac,
+      bssid: currentHome.bssid,
+      localServerUrl: currentHome.localServerUrl,
+    })
+    setVerificationResult(res)
+  }, [])
 
   useEffect(() => {
     if (home) {
       setName(home.name)
       setDescription(home.description || '')
       setSubnetCidr(home.subnetCidr || '')
+      setWifiSsid(home.wifiSsid || '')
+      setGatewayMac(home.gatewayMac || '')
+      setBssid(home.bssid || '')
+      setLocalServerUrl(home.localServerUrl || '')
       setIsDefault(home.isDefault)
+      void checkNetworkStatus(home)
     }
-  }, [home, open])
+  }, [home, open, checkNetworkStatus])
+
+  const handleDetectNetwork = async () => {
+    setIsDetecting(true)
+    try {
+      const net = await detectDesktopCurrentNetwork()
+      if (!net) {
+        toast({
+          title: 'Auto-detection Unavailable',
+          description: 'Network detection is only available inside the Otix Desktop app.',
+          variant: 'destructive',
+        })
+        return
+      }
+
+      if (net.ssid) setWifiSsid(net.ssid)
+      if (net.gatewayMac) setGatewayMac(net.gatewayMac)
+      if (net.bssid) setBssid(net.bssid)
+      if (net.gatewayIp && !subnetCidr) {
+        const parts = net.gatewayIp.split('.')
+        if (parts.length === 4) {
+          setSubnetCidr(`${parts[0]}.${parts[1]}.${parts[2]}.0/24`)
+        }
+      }
+
+      const verified = await verifyDesktopHomeNetwork({
+        wifiSsid: net.ssid,
+        gatewayMac: net.gatewayMac,
+        bssid: net.bssid,
+        localServerUrl: localServerUrl.trim() || undefined,
+      })
+      setVerificationResult(verified)
+
+      toast({
+        title: 'Current Network Captured',
+        description: `Captured Wi-Fi ${net.ssid || 'Network'} and Router MAC ${net.gatewayMac || ''}.`,
+        variant: 'default',
+      })
+    } catch {
+      toast({
+        title: 'Detection Failed',
+        description: 'Failed to inspect current network adapter.',
+        variant: 'destructive',
+      })
+    } finally {
+      setIsDetecting(false)
+    }
+  }
 
   if (!home) return null
 
@@ -62,6 +144,10 @@ export const EditHomeModal = ({
         name: name.trim(),
         description: description.trim(),
         subnetCidr: subnetCidr.trim(),
+        wifiSsid: wifiSsid.trim(),
+        gatewayMac: gatewayMac.trim(),
+        bssid: bssid.trim(),
+        localServerUrl: localServerUrl.trim(),
         isDefault,
       })
       toast({
@@ -130,10 +216,9 @@ export const EditHomeModal = ({
         description="Update network IP subnet and settings for this physical location."
       >
         <div className="space-y-4 pt-3">
-          {/* Status Light Bar */}
+          {/* Status Bar */}
           <div className="p-3 rounded-xl bg-white/[0.03] border border-white/[0.04] flex items-center justify-between gap-3">
             <div className="flex items-center gap-2 min-w-0">
-              <span className="h-2.5 w-2.5 rounded-full shrink-0 bg-primary animate-pulse" />
               <p className="text-xs font-semibold text-foreground truncate">
                 Home Environment Active
                 {isDefault && (
@@ -143,9 +228,29 @@ export const EditHomeModal = ({
                 )}
               </p>
             </div>
-            <span className="text-[10px] text-muted-foreground font-mono">
-              {subnetCidr || 'Local Network'}
-            </span>
+            {verificationResult ? (
+              <span
+                className={`text-[10px] font-medium px-2 py-0.5 rounded-md ${
+                  verificationResult.status === 'verified_home'
+                    ? 'bg-primary/20 text-primary'
+                    : verificationResult.status === 'duplicate_ssid_foreign'
+                    ? 'bg-destructive/20 text-destructive'
+                    : 'bg-muted/40 text-muted-foreground'
+                }`}
+              >
+                {verificationResult.status === 'verified_home'
+                  ? 'Home Verified'
+                  : verificationResult.status === 'duplicate_ssid_foreign'
+                  ? 'Foreign Network (SSID Collision)'
+                  : verificationResult.status === 'offline'
+                  ? 'Offline'
+                  : 'Roaming / Remote'}
+              </span>
+            ) : (
+              <span className="text-[10px] text-muted-foreground font-mono">
+                {subnetCidr || 'Local Network'}
+              </span>
+            )}
           </div>
 
           <div>
@@ -179,6 +284,73 @@ export const EditHomeModal = ({
               onChange={(e) => setSubnetCidr(e.target.value)}
               placeholder="e.g. 192.168.1.0/24"
             />
+          </div>
+
+          {/* Home Network Profile (Hardware Verification) */}
+          <div className="p-3.5 rounded-xl bg-white/[0.03] border border-white/[0.04] space-y-3">
+            <div className="flex items-center justify-between gap-2">
+              <div>
+                <p className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                  <ShieldCheck className="h-3.5 w-3.5 text-primary" />
+                  Network Hardware Profile
+                </p>
+                <p className="text-[11px] text-muted-foreground">
+                  Differentiates home network from foreign locations sharing the same Wi-Fi name.
+                </p>
+              </div>
+              <DkButton
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={handleDetectNetwork}
+                disabled={isDetecting}
+                className="text-[11px] h-7 px-2.5 gap-1 shrink-0"
+              >
+                {isDetecting ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  <Wifi className="h-3 w-3" />
+                )}
+                Detect Current
+              </DkButton>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+              <div>
+                <label className="block text-[11px] font-medium text-muted-foreground mb-1">
+                  Home Wi-Fi (SSID)
+                </label>
+                <DkInput
+                  value={wifiSsid}
+                  onChange={(e) => setWifiSsid(e.target.value)}
+                  placeholder="e.g. Home_5GHz"
+                  className="text-xs h-8"
+                />
+              </div>
+              <div>
+                <label className="block text-[11px] font-medium text-muted-foreground mb-1">
+                  Router MAC (Hardware)
+                </label>
+                <DkInput
+                  value={gatewayMac}
+                  onChange={(e) => setGatewayMac(e.target.value)}
+                  placeholder="e.g. aa:bb:cc:dd:ee:ff"
+                  className="text-xs h-8 font-mono"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-medium text-muted-foreground mb-1">
+                Local Server URL (Challenge Ping)
+              </label>
+              <DkInput
+                value={localServerUrl}
+                onChange={(e) => setLocalServerUrl(e.target.value)}
+                placeholder="e.g. http://192.168.1.100:8090"
+                className="text-xs h-8 font-mono"
+              />
+            </div>
           </div>
 
           <div className="flex items-center justify-between p-3 rounded-xl bg-white/[0.03] border border-white/[0.04]">

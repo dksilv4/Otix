@@ -29,7 +29,16 @@ export const useUserHomes = (options?: { enabled?: boolean }) => {
 export const useCreateHome = () => {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: async (payload: { name: string; description?: string; isDefault?: boolean; subnetCidr?: string }) => {
+    mutationFn: async (payload: {
+      name: string
+      description?: string
+      isDefault?: boolean
+      subnetCidr?: string
+      wifiSsid?: string
+      gatewayMac?: string
+      bssid?: string
+      localServerUrl?: string
+    }) => {
       const res = await apiClient.post<UserHome>('/library/homes', payload)
       return res.data
     },

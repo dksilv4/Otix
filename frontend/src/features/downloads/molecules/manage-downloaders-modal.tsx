@@ -5,6 +5,7 @@ import { Link2 } from 'lucide-react'
 import { isLocalDesktopNode } from '@/features/settings/local-desktop-node'
 import { useSettingsNode } from '@/features/settings/context/settings-node-context'
 import { NodeDownloaderCard } from './node-downloader-card'
+import { NodeJDownloaderCard } from './node-jdownloader-card'
 import { ImportNodeInstancesButton } from './import-node-instances-modal'
 
 export interface ManageDownloadersModalProps {
@@ -34,7 +35,7 @@ export const ManageDownloadersModal = ({
         if (!next) onClose()
       }}
       title="Manage Downloaders"
-      description="SABnzbd runs on each Otix node. Configure every instance below."
+      description="Configure download clients (SABnzbd & JDownloader) for each Otix node below."
       className="max-w-4xl"
     >
       <div className="space-y-4 max-h-[72vh] overflow-y-auto pr-1 pt-1 pb-1">
@@ -44,9 +45,11 @@ export const ManageDownloadersModal = ({
               <Link2 className="h-5 w-5" />
             </div>
             <div>
-              <h4 className="text-sm font-semibold text-white">Downloader client management</h4>
-              <p className="text-xs text-white/70 mt-0.5 leading-relaxed">
-                Each Otix node has its own SABnzbd instance. Open <strong>Connections</strong> for Prowlarr, Radarr, and Sonarr.
+              <h4 className="text-sm font-semibold text-foreground">Downloader client management</h4>
+              <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
+                Otix nodes support both <strong>SABnzbd</strong> (Usenet) and{' '}
+                <strong>JDownloader 2</strong> (Direct / Cyberlockers). Open <strong>Connections</strong>{' '}
+                for Prowlarr, Radarr, and Sonarr.
               </p>
             </div>
           </div>
@@ -56,22 +59,25 @@ export const ManageDownloadersModal = ({
         </div>
 
         {instances.length > 0 ? (
-          <div className="space-y-3">
+          <div className="space-y-4">
             <div className="flex items-center justify-end px-1">
               <ImportNodeInstancesButton />
             </div>
             {instances.map((server) => (
               <div key={server.id} className="space-y-2">
-                <p className="px-1 text-[10px] font-semibold uppercase tracking-widest text-white/40">
+                <p className="px-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
                   {server.name}
                 </p>
-                <NodeDownloaderCard server={server} />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <NodeDownloaderCard server={server} />
+                  <NodeJDownloaderCard server={server} />
+                </div>
               </div>
             ))}
           </div>
         ) : (
-          <p className="text-xs text-white/50 text-center py-6">
-            Connect an Otix node to configure SABnzbd.
+          <p className="text-xs text-muted-foreground text-center py-6">
+            Connect an Otix node to configure downloaders.
           </p>
         )}
       </div>

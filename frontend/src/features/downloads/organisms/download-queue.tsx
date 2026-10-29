@@ -22,6 +22,7 @@ import { DownloadCard } from '../molecules/download-card';
 import { RemoteDownloadCard } from '../molecules/remote-download-card';
 import { ServerFileExplorerModal } from '../molecules/server-file-explorer-modal';
 import { ServerSabnzbdSettingsModal } from '../molecules/server-sabnzbd-settings-modal';
+import { ServerJDownloaderSettingsModal } from '../molecules/server-jdownloader-settings-modal';
 import { ServerGameSearchModal } from '../molecules/server-game-search-modal';
 import { DownloadHistoryPanel } from '../molecules/download-history-panel';
 import { DownloadRequestsPanel } from '../molecules/download-requests-panel';
@@ -192,6 +193,23 @@ export const DownloadQueuePage = () => {
               >
                 <Sliders className="h-3.5 w-3.5" />
                 <span className="hidden sm:inline">SABnzbd Settings</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const close = openModal(
+                    <ServerJDownloaderSettingsModal
+                      serverId={activeServerId}
+                      serverName={activeServer?.name}
+                      onClose={() => close()}
+                    />,
+                  );
+                }}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-muted/60 hover:bg-muted text-foreground text-xs font-semibold transition-colors"
+                title="Configure JDownloader 2"
+              >
+                <DownloadCloud className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">JDownloader Settings</span>
               </button>
             </>
           )}

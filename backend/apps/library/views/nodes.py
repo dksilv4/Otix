@@ -66,6 +66,9 @@ from apps.library.services.node import (
     explorer_create_folder,
     explorer_request_permission,
     explorer_set_download_path,
+    jdownloader_get_config,
+    jdownloader_save_config,
+    jdownloader_test,
     link_or_create_game_server,
     list_pending_nodes,
     list_pending_nodes_for,
@@ -114,6 +117,7 @@ from apps.library.services.node import (
     usenet_get_queue,
     usenet_save_config,
     usenet_search,
+    usenet_test_g4u,
     usenet_test_prowlarr,
     usenet_test_sabnzbd,
 )
@@ -1282,6 +1286,17 @@ class GameServerUsenetTestProwlarrView(APIView):
         return Response(data, status=status_code)
 
 
+class GameServerUsenetTestG4UView(APIView):
+    """Test the server's g4u.to connection."""
+
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def post(self, request: Request, server_id: int) -> Response:
+        server = _get_server_or_404(request, server_id)
+        status_code, data = usenet_test_g4u(server, request.data)
+        return Response(data, status=status_code)
+
+
 class GameServerUsenetSearchView(APIView):
     """Search Prowlarr indexers for games."""
 
@@ -1381,6 +1396,35 @@ class GameServerProviderTestView(APIView):
     def post(self, request: Request, server_id: int, provider_type: str, name: str) -> Response:
         server = _get_server_or_404(request, server_id)
         status_code, data = provider_test(server, provider_type, name)
+        return Response(data, status=status_code)
+
+
+class GameServerJDownloaderConfigView(APIView):
+    """``GET /api/v1/library/servers/{server_id}/jdownloader/config`` — get JDownloader config.
+    ``POST /api/v1/library/servers/{server_id}/jdownloader/config`` — save JDownloader config.
+    """
+
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get(self, request: Request, server_id: int) -> Response:
+        server = _get_server_or_404(request, server_id)
+        status_code, data = jdownloader_get_config(server)
+        return Response(data, status=status_code)
+
+    def post(self, request: Request, server_id: int) -> Response:
+        server = _get_server_or_404(request, server_id)
+        status_code, data = jdownloader_save_config(server, request.data)
+        return Response(data, status=status_code)
+
+
+class GameServerJDownloaderTestView(APIView):
+    """``POST /api/v1/library/servers/{server_id}/jdownloader/test`` — test JDownloader connectivity."""
+
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def post(self, request: Request, server_id: int) -> Response:
+        server = _get_server_or_404(request, server_id)
+        status_code, data = jdownloader_test(server, request.data)
         return Response(data, status=status_code)
 
 

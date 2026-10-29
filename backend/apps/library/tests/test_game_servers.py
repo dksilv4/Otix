@@ -462,6 +462,16 @@ class GameServersApiTests(TestCase):
         self.assertEqual(len(res.json()), 1)
         self.assertEqual(res.json()[0]["title"], "Elden Ring Deluxe")
 
+        # 8. Test g4u test connection endpoint
+        mock_resp.json.return_value = {"ok": True, "message": "Connected to g4u successfully"}
+        res = self.client.post(
+            f"/api/v1/library/servers/{server.id}/usenet/test-g4u",
+            {"url": "https://g4u.to/api/", "api_key": "test_key"},
+            format="json",
+        )
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.json()["ok"], True)
+
     @mock.patch("apps.library.services.game_server.httpx.Client")
     def test_usenet_download_is_persisted_and_history_syncs(self, mock_client_cls):
         from apps.library.models import GameServerDownload

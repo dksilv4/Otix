@@ -77,10 +77,24 @@ export interface ServerProwlarrConfig {
   providerType?: string;
 }
 
+export interface ServerG4UConfig {
+  enabled?: boolean;
+  url?: string;
+  api_key?: string;
+  apiKey?: string;
+  configured?: boolean;
+  has_api_key?: boolean;
+  hasApiKey?: boolean;
+  connected?: boolean;
+  provider_type?: string;
+  providerType?: string;
+}
+
 export interface ServerUsenetConfig {
   enabled: boolean;
   sabnzbd: ServerSabnzbdConfig;
   prowlarr: ServerProwlarrConfig;
+  g4u?: ServerG4UConfig;
 }
 
 export interface ServerProwlarrRelease {

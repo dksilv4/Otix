@@ -371,6 +371,13 @@ contextBridge.exposeInMainWorld('desktopAPI', {
     },
   },
 
+  // ── Network & Home Verification ──
+  network: {
+    detectCurrent: () => ipcRenderer.invoke('network:detect-current'),
+    probeServer: (url: string, timeoutMs?: number) => ipcRenderer.invoke('network:probe-server', url, timeoutMs),
+    verifyHome: (profile: any) => ipcRenderer.invoke('network:verify-home', profile),
+  },
+
   // ── Plugin game matching ──
   scanAllPlugins: () => ipcRenderer.invoke('scanner:scan-all-plugins'),
   scanPlugin: (pluginId: string) => ipcRenderer.invoke('scanner:scan-plugin', pluginId),

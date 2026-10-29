@@ -45,6 +45,40 @@ export interface LocalGame {
   sources?: (string | Record<string, unknown>)[];
 }
 
+export interface CurrentNetworkInfo {
+  ssid: string;
+  bssid: string;
+  gatewayIp: string;
+  gatewayMac: string;
+  localIp: string;
+  isWifi: boolean;
+}
+
+export interface HomeNetworkProfile {
+  wifiSsid?: string;
+  gatewayMac?: string;
+  bssid?: string;
+  localServerUrl?: string;
+}
+
+export type HomeVerificationStatus =
+  | 'verified_home'
+  | 'duplicate_ssid_foreign'
+  | 'roaming_away'
+  | 'offline';
+
+export interface HomeVerificationResult {
+  status: HomeVerificationStatus;
+  details: {
+    currentSsid?: string;
+    currentBssid?: string;
+    currentGatewayMac?: string;
+    hardwareMatched: boolean;
+    serverPingOk: boolean;
+    reason: string;
+  };
+}
+
 export interface MountResult {
   driveLetter: string;
   setupPath?: string;
@@ -735,6 +769,13 @@ export interface IDesktopAPI {
     stop: () => Promise<NodeDaemonStatus>;
     restart: (port?: number) => Promise<NodeDaemonStatus>;
     onStatusChanged: (callback: (status: NodeDaemonStatus) => void) => () => void;
+  };
+
+  // ── Network & Home Verification ──
+  network: {
+    detectCurrent: () => Promise<CurrentNetworkInfo>;
+    probeServer: (url: string, timeoutMs?: number) => Promise<boolean>;
+    verifyHome: (profile: HomeNetworkProfile) => Promise<HomeVerificationResult>;
   };
 
   // ── Plugin game matching ──

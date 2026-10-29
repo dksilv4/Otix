@@ -2,6 +2,7 @@
 
 import type {
   ProwlarrIndexerItem,
+  ServerG4UConfig,
   ServerProwlarrConfig,
   ServerProwlarrRelease,
   ServerSabnzbdConfig,
@@ -34,6 +35,18 @@ export function extractReleaseBadges(title: string): ReleaseBadge[] {
     }
   }
   return badges;
+}
+
+/** Check whether a release is an update/patch/DLC (e.g. g4u guid prefix 'e' or title keyword). */
+export function isUpdateRelease(release: Partial<ServerProwlarrRelease>): boolean {
+  if (release.guid?.startsWith('e')) return true;
+  const title = (release.title || '').toLowerCase();
+  return (
+    /\bupdate\b/i.test(title) ||
+    /\bpatch\b/i.test(title) ||
+    /\bhotfix\b/i.test(title) ||
+    /\bdlc\b/i.test(title)
+  );
 }
 
 /** Format age in days to compact human string. */
@@ -331,5 +344,27 @@ export function isSabnzbdConfigured(
   const key = sabnzbd.apiKey || sabnzbd.api_key;
   const flag = sabnzbd.configured || sabnzbd.hasApiKey || sabnzbd.has_api_key;
   return Boolean(key || flag);
+}
+
+/** Check if g4u.to has credentials/flags configured. */
+export function isG4UConfigured(
+  g4u?: Partial<ServerG4UConfig> | null
+): boolean {
+  if (!g4u) return false;
+  const key = g4u.apiKey || g4u.api_key;
+  const flag = g4u.configured || g4u.hasApiKey || g4u.has_api_key;
+  return Boolean(key || flag);
+}
+
+/** Build g4u.to RSS feed subscription URL for SABnzbd or RSS readers. */
+export function buildG4URSSUrl(baseUrl?: string, apiKey?: string): string {
+  const raw = (baseUrl || 'https://g4u.to/api/').trim();
+  let base = raw.replace(/\/+$/, '');
+  if (!base.startsWith('http://') && !base.startsWith('https://')) {
+    base = `https://${base}`;
+  }
+  const normalized = base.endsWith('/api') ? `${base}/` : `${base}/api/`;
+  const key = (apiKey || 'DEIN-KEY').trim();
+  return `${normalized}?t=search&limit=50&apikey=${encodeURIComponent(key)}`;
 }
 

@@ -256,15 +256,62 @@ func GetSystemDrives() []ExplorerDrive {
 			if entries, err := os.ReadDir("/Volumes"); err == nil {
 				for _, entry := range entries {
 					volPath := filepath.Join("/Volumes", entry.Name())
+					// Skip symlink pointing back to root filesystem
+					if target, err := filepath.EvalSymlinks(volPath); err == nil && target == "/" {
+						continue
+					}
+					isNet := isMacNetworkMount(volPath, entry.Name())
 					ed := ExplorerDrive{
-						Name: entry.Name(),
-						Path: volPath,
+						Name:      entry.Name(),
+						Path:      volPath,
+						IsNetwork: isNet,
 					}
 					if free, total, err := GetDiskUsage(volPath); err == nil {
 						ed.FreeBytes = &free
 						ed.TotalBytes = &total
 					}
 					drives = append(drives, ed)
+				}
+			}
+		}
+
+		// Also detect any direct network mounts outside /Volumes (e.g. /Games)
+		if out, err := exec.Command("mount").Output(); err == nil {
+			lines := strings.Split(string(out), "\n")
+			for _, line := range lines {
+				lowerLine := strings.ToLower(line)
+				if (strings.Contains(lowerLine, "smbfs") ||
+					strings.Contains(lowerLine, "nfs") ||
+					strings.Contains(lowerLine, "cifs")) && strings.Contains(line, " on ") {
+					parts := strings.Split(line, " on ")
+					if len(parts) >= 2 {
+						mountRight := parts[1]
+						idx := strings.Index(mountRight, " (")
+						if idx != -1 {
+							mPath := strings.TrimSpace(mountRight[:idx])
+							if !strings.HasPrefix(mPath, "/Volumes") && mPath != "/" && !strings.HasPrefix(mPath, "/System") && dirExists(mPath) {
+								alreadyIn := false
+								for _, d := range drives {
+									if strings.EqualFold(d.Path, mPath) {
+										alreadyIn = true
+										break
+									}
+								}
+								if !alreadyIn {
+									ed := ExplorerDrive{
+										Name:      filepath.Base(mPath),
+										Path:      mPath,
+										IsNetwork: true,
+									}
+									if free, total, err := GetDiskUsage(mPath); err == nil {
+										ed.FreeBytes = &free
+										ed.TotalBytes = &total
+									}
+									drives = append(drives, ed)
+								}
+							}
+						}
+					}
 				}
 			}
 		}
@@ -295,6 +342,47 @@ func GetSystemDrives() []ExplorerDrive {
 				}
 			}
 		}
+
+		// Also detect any direct network mounts outside /Volumes (e.g. /Games)
+		if out, err := exec.Command("mount").Output(); err == nil {
+			lines := strings.Split(string(out), "\n")
+			for _, line := range lines {
+				lowerLine := strings.ToLower(line)
+				if (strings.Contains(lowerLine, "smbfs") ||
+					strings.Contains(lowerLine, "nfs") ||
+					strings.Contains(lowerLine, "cifs")) && strings.Contains(line, " on ") {
+					parts := strings.Split(line, " on ")
+					if len(parts) >= 2 {
+						mountRight := parts[1]
+						idx := strings.Index(mountRight, " (")
+						if idx != -1 {
+							mPath := strings.TrimSpace(mountRight[:idx])
+							if !strings.HasPrefix(mPath, "/Volumes") && mPath != "/" && !strings.HasPrefix(mPath, "/System") && dirExists(mPath) {
+								alreadyIn := false
+								for _, d := range drives {
+									if strings.EqualFold(d.Path, mPath) {
+										alreadyIn = true
+										break
+									}
+								}
+								if !alreadyIn {
+									ed := ExplorerDrive{
+										Name:      filepath.Base(mPath),
+										Path:      mPath,
+										IsNetwork: true,
+									}
+									if free, total, err := GetDiskUsage(mPath); err == nil {
+										ed.FreeBytes = &free
+										ed.TotalBytes = &total
+									}
+									drives = append(drives, ed)
+								}
+							}
+						}
+					}
+				}
+			}
+		}
 	}
 
 	// Include connected network shares
@@ -316,6 +404,205 @@ func GetSystemDrives() []ExplorerDrive {
 	}
 
 	return drives
+}
+
+func isMacNetworkMount(volPath, name string) bool {
+	for _, ns := range GetConnectedNetworkShares() {
+		if strings.EqualFold(ns.Path, volPath) || strings.EqualFold(ns.Name, name) {
+			return true
+		}
+	}
+	cmd := exec.Command("mount")
+	if out, err := cmd.Output(); err == nil {
+		lines := strings.Split(string(out), "\n")
+		for _, line := range lines {
+			if strings.Contains(line, " on "+volPath+" ") || strings.Contains(line, " on "+volPath+"(") {
+				lower := strings.ToLower(line)
+				if strings.Contains(lower, "smbfs") ||
+					strings.Contains(lower, "nfs") ||
+					strings.Contains(lower, "cifs") ||
+					strings.Contains(lower, "afp") {
+					return true
+				}
+			}
+		}
+	}
+	return false
+}
+
+func findMacMountPoint(shareName string) string {
+	volPath := filepath.Join("/Volumes", shareName)
+	if dirExists(volPath) {
+		return volPath
+	}
+
+	// Try case-insensitive or suffixed matches in /Volumes (e.g. "Games-1", "Games 1")
+	if entries, err := os.ReadDir("/Volumes"); err == nil {
+		lowerShare := strings.ToLower(shareName)
+		for _, e := range entries {
+			if strings.EqualFold(e.Name(), shareName) {
+				return filepath.Join("/Volumes", e.Name())
+			}
+		}
+		for _, e := range entries {
+			lowerName := strings.ToLower(e.Name())
+			if strings.HasPrefix(lowerName, lowerShare+"-") || strings.HasPrefix(lowerName, lowerShare+" ") {
+				return filepath.Join("/Volumes", e.Name())
+			}
+		}
+	}
+
+	// Check if mounted directly at root level (e.g. /Games)
+	rootPath := filepath.Join("/", shareName)
+	if dirExists(rootPath) {
+		return rootPath
+	}
+
+	// Inspect `mount` command output for any network filesystem mount (e.g. /Games or /Volumes/Games)
+	cmd := exec.Command("mount")
+	if out, err := cmd.Output(); err == nil {
+		lines := strings.Split(string(out), "\n")
+		lowerShare := strings.ToLower(shareName)
+		for _, line := range lines {
+			lowerLine := strings.ToLower(line)
+			if (strings.Contains(lowerLine, "smbfs") ||
+				strings.Contains(lowerLine, "nfs") ||
+				strings.Contains(lowerLine, "cifs") ||
+				strings.Contains(lowerLine, "afp")) && strings.Contains(line, " on ") {
+				parts := strings.Split(line, " on ")
+				if len(parts) >= 2 {
+					mountRight := parts[1]
+					idx := strings.Index(mountRight, " (")
+					if idx != -1 {
+						mPath := strings.TrimSpace(mountRight[:idx])
+						if strings.EqualFold(filepath.Base(mPath), shareName) ||
+							strings.Contains(strings.ToLower(parts[0]), "/"+lowerShare) ||
+							strings.Contains(strings.ToLower(mPath), "/"+lowerShare) {
+							if dirExists(mPath) {
+								return mPath
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+	return volPath
+}
+
+func escapeAppleScript(s string) string {
+	s = strings.ReplaceAll(s, "\\", "\\\\")
+	s = strings.ReplaceAll(s, "\"", "\\\"")
+	return s
+}
+
+type parsedShareTarget struct {
+	Host          string
+	ShareName     string
+	SubPath       string
+	Username      string
+	Password      string
+	Workgroup     string
+	IsLocalDir    bool
+	IsLocalVolume bool
+	LocalPath     string
+}
+
+func parseShareTarget(raw string, req ConnectShareRequest) parsedShareTarget {
+	cleaned := strings.TrimSpace(raw)
+	res := parsedShareTarget{
+		Username:  strings.TrimSpace(req.Username),
+		Password:  req.Password,
+		Workgroup: strings.TrimSpace(req.Workgroup),
+	}
+
+	if cleaned == "" {
+		if req.ShareName != "" {
+			res.ShareName = strings.TrimSpace(req.ShareName)
+		}
+		return res
+	}
+
+	// 1. Existing local directory (e.g. temp directories used in tests or local drives)
+	if filepath.IsAbs(cleaned) && dirExists(cleaned) && !strings.HasPrefix(cleaned, "/Volumes") {
+		res.IsLocalDir = true
+		res.LocalPath = filepath.Clean(cleaned)
+		res.ShareName = filepath.Base(res.LocalPath)
+		return res
+	}
+
+	// 2. Direct /Volumes/ path on macOS
+	if strings.HasPrefix(cleaned, "/Volumes") {
+		res.IsLocalVolume = true
+		res.LocalPath = filepath.Clean(cleaned)
+		trimmed := strings.TrimPrefix(cleaned, "/Volumes")
+		trimmed = strings.TrimPrefix(trimmed, "/")
+		parts := strings.Split(trimmed, "/")
+		if len(parts) > 0 && parts[0] != "" {
+			res.ShareName = parts[0]
+		}
+		if len(parts) > 1 {
+			res.SubPath = filepath.Join(parts[1:]...)
+		}
+		return res
+	}
+
+	// 3. smb:// or cifs:// URLs
+	lower := strings.ToLower(cleaned)
+	rest := cleaned
+	if strings.HasPrefix(lower, "smb://") {
+		rest = cleaned[6:]
+	} else if strings.HasPrefix(lower, "cifs://") {
+		rest = cleaned[7:]
+	}
+
+	// 4. Extract credentials if present: [domain;][user[:password]@]host/share
+	if strings.Contains(rest, "@") {
+		atIdx := strings.LastIndex(rest, "@")
+		credPart := rest[:atIdx]
+		rest = rest[atIdx+1:]
+
+		if strings.Contains(credPart, ";") {
+			scIdx := strings.Index(credPart, ";")
+			if res.Workgroup == "" {
+				res.Workgroup = credPart[:scIdx]
+			}
+			credPart = credPart[scIdx+1:]
+		}
+		if strings.Contains(credPart, ":") {
+			cIdx := strings.Index(credPart, ":")
+			if res.Username == "" {
+				res.Username = credPart[:cIdx]
+			}
+			if res.Password == "" {
+				res.Password = credPart[cIdx+1:]
+			}
+		} else {
+			if res.Username == "" {
+				res.Username = credPart
+			}
+		}
+	}
+
+	// 5. Normalize slashes: convert \ to /
+	norm := strings.ReplaceAll(rest, "\\", "/")
+	norm = strings.Trim(norm, "/")
+
+	parts := strings.Split(norm, "/")
+	if len(parts) > 0 && parts[0] != "" {
+		res.Host = parts[0]
+	}
+	if len(parts) > 1 && parts[1] != "" {
+		res.ShareName = parts[1]
+		if len(parts) > 2 {
+			res.SubPath = strings.Join(parts[2:], "/")
+		}
+	} else if req.ShareName != "" {
+		res.ShareName = strings.TrimSpace(req.ShareName)
+	}
+
+	return res
 }
 
 func SanitizeAndResolvePath(rawPath, baseDir string) (string, error) {
@@ -347,20 +634,28 @@ func SanitizeAndResolvePath(rawPath, baseDir string) (string, error) {
 	lower := strings.ToLower(cleaned)
 	if strings.HasPrefix(lower, "smb://") || strings.HasPrefix(lower, "cifs://") {
 		trimmed := cleaned[6:]
+		if strings.HasPrefix(lower, "cifs://") {
+			trimmed = cleaned[7:]
+		}
 		trimmed = strings.TrimPrefix(trimmed, "/")
 		if runtime.GOOS == "windows" {
 			unc := "\\\\" + strings.ReplaceAll(trimmed, "/", "\\")
 			return filepath.Clean(unc), nil
 		}
+		// Split away credentials if any
+		if strings.Contains(trimmed, "@") {
+			trimmed = trimmed[strings.LastIndex(trimmed, "@")+1:]
+		}
 		parts := strings.Split(trimmed, "/")
 		if len(parts) >= 2 {
 			shareName := parts[1]
-			if runtime.GOOS == "darwin" && dirExists(filepath.Join("/Volumes", shareName)) {
-				sub := filepath.Join("/Volumes", shareName)
+			if runtime.GOOS == "darwin" {
+				mountPoint := findMacMountPoint(shareName)
+				sub := mountPoint
 				if len(parts) > 2 {
 					sub = filepath.Join(sub, filepath.Join(parts[2:]...))
 				}
-				return sub, nil
+				return filepath.Clean(sub), nil
 			}
 		}
 		return "/" + trimmed, nil
@@ -374,6 +669,20 @@ func SanitizeAndResolvePath(rawPath, baseDir string) (string, error) {
 				unc = unc[1:]
 			}
 			return filepath.Clean(unc), nil
+		}
+		if runtime.GOOS == "darwin" {
+			norm := strings.ReplaceAll(cleaned, "\\", "/")
+			stripped := strings.TrimLeft(norm, "/")
+			parts := strings.Split(stripped, "/")
+			if len(parts) >= 2 && parts[0] != "" {
+				shareName := parts[1]
+				mountPoint := findMacMountPoint(shareName)
+				sub := mountPoint
+				if len(parts) > 2 {
+					sub = filepath.Join(sub, filepath.Join(parts[2:]...))
+				}
+				return filepath.Clean(sub), nil
+			}
 		}
 		return filepath.Clean(cleaned), nil
 	}
@@ -427,7 +736,127 @@ func ConnectShare(req ConnectShareRequest) (*ConnectShareResult, error) {
 		return nil, fmt.Errorf("network share URL or path is required")
 	}
 
-	// Normalization for network share connection
+	parsed := parseShareTarget(raw, req)
+
+	if runtime.GOOS == "darwin" {
+		return connectShareDarwin(parsed, req)
+	} else if runtime.GOOS == "windows" {
+		return connectShareWindows(parsed, req, raw)
+	}
+	return connectShareGeneric(parsed, req, raw)
+}
+
+func connectShareDarwin(parsed parsedShareTarget, req ConnectShareRequest) (*ConnectShareResult, error) {
+	if parsed.IsLocalDir {
+		if _, statErr := os.Stat(parsed.LocalPath); statErr != nil {
+			return nil, fmt.Errorf("local directory does not exist: %s (%w)", parsed.LocalPath, statErr)
+		}
+		entries, _ := os.ReadDir(parsed.LocalPath)
+		ed := ExplorerDrive{
+			Name:      filepath.Base(parsed.LocalPath),
+			Path:      parsed.LocalPath,
+			IsNetwork: true,
+		}
+		if free, total, err := GetDiskUsage(parsed.LocalPath); err == nil {
+			ed.FreeBytes = &free
+			ed.TotalBytes = &total
+		}
+		AddConnectedNetworkShare(ed)
+		return &ConnectShareResult{
+			Status:  "connected",
+			Path:    parsed.LocalPath,
+			Message: fmt.Sprintf("Successfully connected to %s (%d items)", parsed.LocalPath, len(entries)),
+		}, nil
+	}
+
+	shareName := parsed.ShareName
+	if shareName == "" && parsed.IsLocalVolume {
+		shareName = filepath.Base(parsed.LocalPath)
+	}
+	if shareName == "" {
+		return nil, fmt.Errorf("network share name is required")
+	}
+
+	mountPoint := findMacMountPoint(shareName)
+	isMounted := false
+	if dirExists(mountPoint) {
+		if _, err := os.ReadDir(mountPoint); err == nil {
+			isMounted = true
+		}
+	}
+	if !isMounted && parsed.IsLocalVolume && dirExists(parsed.LocalPath) {
+		isMounted = true
+		mountPoint = parsed.LocalPath
+	}
+
+	if !isMounted {
+		if parsed.Host == "" {
+			return nil, fmt.Errorf("server host is required to connect to share %s (or mount directly in /Volumes/%s)", shareName, shareName)
+		}
+
+		smbURL := fmt.Sprintf("smb://%s/%s", parsed.Host, shareName)
+		var authClause string
+		if parsed.Username != "" {
+			userArg := parsed.Username
+			if parsed.Workgroup != "" && !strings.Contains(userArg, ";") && !strings.Contains(userArg, "\\") {
+				userArg = parsed.Workgroup + ";" + userArg
+			}
+			if parsed.Password != "" {
+				authClause = fmt.Sprintf("as user name %q with password %q", escapeAppleScript(userArg), escapeAppleScript(parsed.Password))
+			} else {
+				authClause = fmt.Sprintf("as user name %q", escapeAppleScript(userArg))
+			}
+		}
+
+		script := fmt.Sprintf("with timeout of 15 seconds\nmount volume %q %s\nend timeout", smbURL, authClause)
+		cmd := exec.Command("osascript", "-e", script)
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			mountPoint = findMacMountPoint(shareName)
+			if !dirExists(mountPoint) {
+				cleanOut := strings.TrimSpace(string(out))
+				if cleanOut != "" {
+					return nil, fmt.Errorf("failed to connect to network share on macOS: %s", cleanOut)
+				}
+				return nil, fmt.Errorf("failed to mount %s on macOS: %w", smbURL, err)
+			}
+		}
+
+		mountPoint = findMacMountPoint(shareName)
+	}
+
+	targetPath := mountPoint
+	if parsed.SubPath != "" {
+		targetPath = filepath.Join(mountPoint, parsed.SubPath)
+	}
+
+	entries, err := os.ReadDir(targetPath)
+	if err != nil {
+		if _, statErr := os.Stat(targetPath); statErr != nil {
+			return nil, fmt.Errorf("could not access network share %s: %w", targetPath, err)
+		}
+	}
+
+	ed := ExplorerDrive{
+		Name:      shareName,
+		Path:      mountPoint,
+		IsNetwork: true,
+	}
+	if free, total, err := GetDiskUsage(mountPoint); err == nil {
+		ed.FreeBytes = &free
+		ed.TotalBytes = &total
+	}
+	AddConnectedNetworkShare(ed)
+
+	return &ConnectShareResult{
+		Status:  "connected",
+		Path:    targetPath,
+		Message: fmt.Sprintf("Successfully connected to %s (%d items)", targetPath, len(entries)),
+	}, nil
+}
+
+func connectShareWindows(parsed parsedShareTarget, req ConnectShareRequest, raw string) (*ConnectShareResult, error) {
+	// Normalization for Windows UNC share connection
 	lower := strings.ToLower(raw)
 	if strings.HasPrefix(lower, "smb://") {
 		raw = raw[6:]
@@ -436,13 +865,10 @@ func ConnectShare(req ConnectShareRequest) (*ConnectShareResult, error) {
 	}
 	raw = strings.TrimSpace(raw)
 
-	if runtime.GOOS == "windows" {
-		// If not a local drive path like C:\...
-		if len(raw) < 2 || raw[1] != ':' {
-			norm := strings.ReplaceAll(raw, "/", "\\")
-			stripped := strings.TrimLeft(norm, "\\")
-			raw = `\\` + stripped
-		}
+	if len(raw) < 2 || raw[1] != ':' {
+		norm := strings.ReplaceAll(raw, "/", "\\")
+		stripped := strings.TrimLeft(norm, "\\")
+		raw = `\\` + stripped
 	}
 
 	targetPath, err := SanitizeAndResolvePath(raw, "")
@@ -450,44 +876,41 @@ func ConnectShare(req ConnectShareRequest) (*ConnectShareResult, error) {
 		return nil, fmt.Errorf("invalid network share path: %w", err)
 	}
 
-	if runtime.GOOS == "windows" {
-		if req.Username != "" {
-			userArg := req.Username
-			if req.Workgroup != "" && !strings.Contains(req.Username, "\\") && !strings.Contains(req.Username, "@") {
-				userArg = req.Workgroup + "\\" + req.Username
-			}
-			var cmd *exec.Cmd
-			if req.Password != "" {
-				cmd = exec.Command("net", "use", targetPath, req.Password, "/user:"+userArg, "/persistent:no")
-			} else {
-				cmd = exec.Command("net", "use", targetPath, "/user:"+userArg, "/persistent:no")
-			}
-			out, err := cmd.CombinedOutput()
-			if err != nil {
-				if _, statErr := os.Stat(targetPath); statErr != nil {
-					cleanOut := strings.TrimSpace(string(out))
-					if cleanOut != "" {
-						return nil, fmt.Errorf("authentication failed: %s", cleanOut)
-					}
-					return nil, fmt.Errorf("failed to connect to network share: %w", err)
-				}
-			}
+	if req.Username != "" {
+		userArg := req.Username
+		if req.Workgroup != "" && !strings.Contains(req.Username, "\\") && !strings.Contains(req.Username, "@") {
+			userArg = req.Workgroup + "\\" + req.Username
+		}
+		var cmd *exec.Cmd
+		if req.Password != "" {
+			cmd = exec.Command("net", "use", targetPath, req.Password, "/user:"+userArg, "/persistent:no")
 		} else {
+			cmd = exec.Command("net", "use", targetPath, "/user:"+userArg, "/persistent:no")
+		}
+		out, err := cmd.CombinedOutput()
+		if err != nil {
 			if _, statErr := os.Stat(targetPath); statErr != nil {
-				cmd := exec.Command("net", "use", targetPath, "/persistent:no")
-				out, _ := cmd.CombinedOutput()
-				if _, statErr2 := os.Stat(targetPath); statErr2 != nil {
-					cleanOut := strings.TrimSpace(string(out))
-					if cleanOut != "" {
-						return nil, fmt.Errorf("could not connect to %s: %s", targetPath, cleanOut)
-					}
-					return nil, fmt.Errorf("could not access network share %s: %w", targetPath, statErr2)
+				cleanOut := strings.TrimSpace(string(out))
+				if cleanOut != "" {
+					return nil, fmt.Errorf("authentication failed: %s", cleanOut)
 				}
+				return nil, fmt.Errorf("failed to connect to network share: %w", err)
+			}
+		}
+	} else {
+		if _, statErr := os.Stat(targetPath); statErr != nil {
+			cmd := exec.Command("net", "use", targetPath, "/persistent:no")
+			out, _ := cmd.CombinedOutput()
+			if _, statErr2 := os.Stat(targetPath); statErr2 != nil {
+				cleanOut := strings.TrimSpace(string(out))
+				if cleanOut != "" {
+					return nil, fmt.Errorf("could not connect to %s: %s", targetPath, cleanOut)
+				}
+				return nil, fmt.Errorf("could not access network share %s: %w", targetPath, statErr2)
 			}
 		}
 	}
 
-	// Verify access
 	entries, err := os.ReadDir(targetPath)
 	if err != nil {
 		if _, statErr := os.Stat(targetPath); statErr != nil {
@@ -495,7 +918,37 @@ func ConnectShare(req ConnectShareRequest) (*ConnectShareResult, error) {
 		}
 	}
 
-	// Register connected network share so it appears in Drives list
+	ed := ExplorerDrive{
+		Name:      targetPath,
+		Path:      targetPath,
+		IsNetwork: true,
+	}
+	if free, total, err := GetDiskUsage(targetPath); err == nil {
+		ed.FreeBytes = &free
+		ed.TotalBytes = &total
+	}
+	AddConnectedNetworkShare(ed)
+
+	return &ConnectShareResult{
+		Status:  "connected",
+		Path:    targetPath,
+		Message: fmt.Sprintf("Successfully connected to %s (%d items)", targetPath, len(entries)),
+	}, nil
+}
+
+func connectShareGeneric(parsed parsedShareTarget, req ConnectShareRequest, raw string) (*ConnectShareResult, error) {
+	targetPath, err := SanitizeAndResolvePath(raw, "")
+	if err != nil {
+		return nil, fmt.Errorf("invalid network share path: %w", err)
+	}
+
+	entries, err := os.ReadDir(targetPath)
+	if err != nil {
+		if _, statErr := os.Stat(targetPath); statErr != nil {
+			return nil, fmt.Errorf("could not access network share %s: %w", targetPath, err)
+		}
+	}
+
 	ed := ExplorerDrive{
 		Name:      targetPath,
 		Path:      targetPath,

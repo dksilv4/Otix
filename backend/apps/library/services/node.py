@@ -1342,6 +1342,10 @@ def usenet_test_prowlarr(server: UserGameServer, payload: dict) -> tuple[int, di
     return usenet_proxy_request(server, "POST", "/api/v1/usenet/test-prowlarr", json=payload)
 
 
+def usenet_test_g4u(server: UserGameServer, payload: dict) -> tuple[int, dict | list]:
+    return usenet_proxy_request(server, "POST", "/api/v1/usenet/test-g4u", json=payload)
+
+
 def usenet_search(server: UserGameServer, query: str) -> tuple[int, dict | list]:
     return usenet_proxy_request(
         server, "GET", "/api/v1/usenet/search", params={"query": query}, timeout=60.0
@@ -1436,6 +1440,27 @@ def downloads_cancel(
     params = {"downloader": downloader} if downloader else None
     return usenet_proxy_request(
         server, "DELETE", f"/api/v1/downloads/queue/{download_id}", params=params, timeout=5.0
+    )
+
+
+def jdownloader_get_config(server: UserGameServer) -> tuple[int, dict | list]:
+    """Fetch JDownloader configuration from the node."""
+    return usenet_proxy_request(server, "GET", "/api/v1/jdownloader/config", timeout=10.0)
+
+
+def jdownloader_save_config(server: UserGameServer, payload: dict) -> tuple[int, dict | list]:
+    """Save JDownloader configuration on the node."""
+    return usenet_proxy_request(
+        server, "POST", "/api/v1/jdownloader/config", json=payload, timeout=10.0
+    )
+
+
+def jdownloader_test(
+    server: UserGameServer, payload: dict | None = None
+) -> tuple[int, dict | list]:
+    """Test connectivity to JDownloader (Direct HTTP or MyJDownloader cloud)."""
+    return usenet_proxy_request(
+        server, "POST", "/api/v1/jdownloader/test", json=payload or {}, timeout=15.0
     )
 
 
