@@ -415,7 +415,7 @@ func DefaultConfig() *AppConfig {
 			Port:               8090,
 			Host:               "0.0.0.0",
 			AuthToken:          "",
-			RegistryURL:        "http://127.0.0.1:8000/api",
+			RegistryURL:        "https://otix.app/api",
 			EnableUPnP:         false,
 			EnableHeartbeat:    true,
 			DownloadsPath:      filepath.Join(storageBase, "downloads"),

@@ -1,0 +1,3140 @@
+[
+  {
+    "name": "1 [PC]",
+    "path": "/Volumes/Games/1 [PC]",
+    "rel": "1 [PC]",
+    "parent": "",
+    "is_file": false,
+    "dir_files": [],
+    "dir_subdirs": [],
+    "has_otix": false,
+    "otix_media_id": null,
+    "otix_title": null,
+    "otix_platform": null,
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "AI Limit",
+    "path": "/Volumes/Games/AI Limit [PC]/AI Limit",
+    "rel": "AI Limit [PC]/AI Limit",
+    "parent": "AI Limit [PC]",
+    "is_file": false,
+    "dir_files": [
+      ".smbdeleteAAAb8b84.4",
+      ".smbdeleteBAAb8b84.4",
+      ".smbdeleteCAAb8b84.4"
+    ],
+    "dir_subdirs": [],
+    "has_otix": false,
+    "otix_media_id": null,
+    "otix_title": null,
+    "otix_platform": null,
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "Baldurs Gate 3",
+    "path": "/Volumes/Games/AI Limit [PC]/Baldurs Gate 3",
+    "rel": "AI Limit [PC]/Baldurs Gate 3",
+    "parent": "AI Limit [PC]",
+    "is_file": false,
+    "dir_files": [
+      "Baldurs Gate 3.iso",
+      ".DS_Store",
+      ".otix"
+    ],
+    "dir_subdirs": [
+      "Updates"
+    ],
+    "has_otix": true,
+    "otix_media_id": "675",
+    "otix_title": "Baldur's Gate III",
+    "otix_platform": "Google Stadia",
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "Black.Myth.Wukong-voices38.iso",
+    "path": "/Volumes/Games/AI Limit [PC]/Black Myth Wukong/Black.Myth.Wukong-voices38.iso",
+    "rel": "AI Limit [PC]/Black Myth Wukong/Black.Myth.Wukong-voices38.iso",
+    "parent": "AI Limit [PC]/Black Myth Wukong",
+    "is_file": true,
+    "dir_files": [],
+    "dir_subdirs": [],
+    "has_otix": false,
+    "otix_media_id": null,
+    "otix_title": null,
+    "otix_platform": null,
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "Clair Obscur Expedition 33",
+    "path": "/Volumes/Games/AI Limit [PC]/Clair Obscur Expedition 33",
+    "rel": "AI Limit [PC]/Clair Obscur Expedition 33",
+    "parent": "AI Limit [PC]",
+    "is_file": false,
+    "dir_files": [
+      "Clair Obscur Expedition 33.iso",
+      ".otix"
+    ],
+    "dir_subdirs": [
+      "Updates"
+    ],
+    "has_otix": true,
+    "otix_media_id": "393",
+    "otix_title": "Clair Obscur: Expedition 33",
+    "otix_platform": "Xbox Series X|S",
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "Black.Myth.Wukong.CRACKFIX-voices38",
+    "path": "/Volumes/Games/AI Limit [PC]/Crack/Black.Myth.Wukong.CRACKFIX-voices38",
+    "rel": "AI Limit [PC]/Crack/Black.Myth.Wukong.CRACKFIX-voices38",
+    "parent": "AI Limit [PC]/Crack",
+    "is_file": false,
+    "dir_files": [
+      "voices38.nfo"
+    ],
+    "dir_subdirs": [
+      "voices38"
+    ],
+    "has_otix": false,
+    "otix_media_id": null,
+    "otix_title": null,
+    "otix_platform": null,
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "Hogwarts_Legacy_-_small_DLC_unlocker_+_CrackFix_Win11_24H2",
+    "path": "/Volumes/Games/AI Limit [PC]/Crack/Hogwarts_Legacy_-_small_DLC_unlocker_+_CrackFix_Win11_24H2",
+    "rel": "AI Limit [PC]/Crack/Hogwarts_Legacy_-_small_DLC_unlocker_+_CrackFix_Win11_24H2",
+    "parent": "AI Limit [PC]/Crack",
+    "is_file": false,
+    "dir_files": [
+      "g4u.to - games 4 you.url"
+    ],
+    "dir_subdirs": [
+      "Hogwarts Legacy - small DLC unlocker + CrackFix Win11 24H2"
+    ],
+    "has_otix": false,
+    "otix_media_id": null,
+    "otix_title": null,
+    "otix_platform": null,
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "Cyberpunk 2077",
+    "path": "/Volumes/Games/AI Limit [PC]/Cyberpunk 2077",
+    "rel": "AI Limit [PC]/Cyberpunk 2077",
+    "parent": "AI Limit [PC]",
+    "is_file": false,
+    "dir_files": [
+      "folder.jpg",
+      "desktop.ini",
+      "icon.ico"
+    ],
+    "dir_subdirs": [
+      "Cyberpunk 2077 Ultimate Edition"
+    ],
+    "has_otix": false,
+    "otix_media_id": null,
+    "otix_title": null,
+    "otix_platform": null,
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "Cyberpunk 2077 (2077)",
+    "path": "/Volumes/Games/AI Limit [PC]/Cyberpunk 2077 (2077)",
+    "rel": "AI Limit [PC]/Cyberpunk 2077 (2077)",
+    "parent": "AI Limit [PC]",
+    "is_file": false,
+    "dir_files": [
+      "Cyberpunk 2077.iso",
+      ".otix"
+    ],
+    "dir_subdirs": [],
+    "has_otix": true,
+    "otix_media_id": "1476",
+    "otix_title": "Cyberpunk 2077",
+    "otix_platform": "Google Stadia",
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "DOOM Eternal",
+    "path": "/Volumes/Games/AI Limit [PC]/DOOM Eternal",
+    "rel": "AI Limit [PC]/DOOM Eternal",
+    "parent": "AI Limit [PC]",
+    "is_file": false,
+    "dir_files": [
+      "DOOM Eternal.iso",
+      ".otix"
+    ],
+    "dir_subdirs": [
+      "Updates"
+    ],
+    "has_otix": true,
+    "otix_media_id": "117309",
+    "otix_title": "Doom: Eternal - Deluxe Edition",
+    "otix_platform": "Xbox Series X|S",
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "Dead or Alive 6 Deluxe Edition",
+    "path": "/Volumes/Games/AI Limit [PC]/Dead or Alive 6 Deluxe Edition",
+    "rel": "AI Limit [PC]/Dead or Alive 6 Deluxe Edition",
+    "parent": "AI Limit [PC]",
+    "is_file": false,
+    "dir_files": [
+      "Dead or Alive 6 Deluxe Edition.iso",
+      ".otix"
+    ],
+    "dir_subdirs": [],
+    "has_otix": true,
+    "otix_media_id": "3313",
+    "otix_title": "Dead or Alive 6",
+    "otix_platform": "PlayStation 4",
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "Deus Ex",
+    "path": "/Volumes/Games/AI Limit [PC]/Deus Ex",
+    "rel": "AI Limit [PC]/Deus Ex",
+    "parent": "AI Limit [PC]",
+    "is_file": false,
+    "dir_files": [
+      "folder.jpg",
+      "desktop.ini",
+      "icon.ico"
+    ],
+    "dir_subdirs": [
+      "Deus Ex Mankind Divided 1.19.801.0"
+    ],
+    "has_otix": false,
+    "otix_media_id": null,
+    "otix_title": null,
+    "otix_platform": null,
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "Deus Ex Mankind Divided",
+    "path": "/Volumes/Games/AI Limit [PC]/Deus Ex Mankind Divided",
+    "rel": "AI Limit [PC]/Deus Ex Mankind Divided",
+    "parent": "AI Limit [PC]",
+    "is_file": false,
+    "dir_files": [
+      "Deus Ex Mankind Divided.iso",
+      ".otix"
+    ],
+    "dir_subdirs": [],
+    "has_otix": true,
+    "otix_media_id": "117364",
+    "otix_title": "Deus Ex: Mankind Divided",
+    "otix_platform": "PlayStation 4",
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "Dispatch",
+    "path": "/Volumes/Games/AI Limit [PC]/Dispatch",
+    "rel": "AI Limit [PC]/Dispatch",
+    "parent": "AI Limit [PC]",
+    "is_file": false,
+    "dir_files": [
+      "Dispatch.iso",
+      ".otix",
+      "desktop.ini",
+      "folder.jpg",
+      "icon.ico",
+      "v1.0.16598"
+    ],
+    "dir_subdirs": [],
+    "has_otix": true,
+    "otix_media_id": "15558",
+    "otix_title": "Alien Breed Evolution",
+    "otix_platform": "PlayStation 3",
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "Dyson Sphere Program",
+    "path": "/Volumes/Games/AI Limit [PC]/Dyson Sphere Program",
+    "rel": "AI Limit [PC]/Dyson Sphere Program",
+    "parent": "AI Limit [PC]",
+    "is_file": false,
+    "dir_files": [
+      "DSPGAME.exe",
+      "UnityPlayer.dll",
+      "WinPixEventRuntime.dll",
+      "folder.jpg",
+      "desktop.ini",
+      "icon.ico",
+      ".otix"
+    ],
+    "dir_subdirs": [
+      "Configs",
+      "DSPGAME_Data",
+      "Icarus",
+      "Locale",
+      "MonoBleedingEdge",
+      "Updates",
+      "Verta"
+    ],
+    "has_otix": true,
+    "otix_media_id": "2561",
+    "otix_title": "Dyson Sphere Program",
+    "otix_platform": "PC (Windows)",
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "Elden Ring Deluxe Edition",
+    "path": "/Volumes/Games/AI Limit [PC]/Elden Ring Deluxe Edition",
+    "rel": "AI Limit [PC]/Elden Ring Deluxe Edition",
+    "parent": "AI Limit [PC]",
+    "is_file": false,
+    "dir_files": [
+      ".otix",
+      "Elden Ring Deluxe Edition.iso"
+    ],
+    "dir_subdirs": [],
+    "has_otix": true,
+    "otix_media_id": "674",
+    "otix_title": "Elden Ring",
+    "otix_platform": "Xbox Series X|S",
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "FOUNDRY",
+    "path": "/Volumes/Games/AI Limit [PC]/FOUNDRY",
+    "rel": "AI Limit [PC]/FOUNDRY",
+    "parent": "AI Limit [PC]",
+    "is_file": false,
+    "dir_files": [
+      "dowser.exe",
+      "Foundry.exe",
+      "launcher-installer-windows_2025.5.exe",
+      ".otix",
+      "launcher-settings.json",
+      "steam_appid.txt",
+      "ThirdPartyLicenses.txt",
+      "UnityCrashHandler64.exe",
+      "UnityPlayer.dll"
+    ],
+    "dir_subdirs": [
+      "foundry_Data",
+      "launcher-assets",
+      "Licenses",
+      "MonoBleedingEdge",
+      "RuntimeTools"
+    ],
+    "has_otix": true,
+    "otix_media_id": "6064",
+    "otix_title": "Foundry",
+    "otix_platform": "PC (Windows)",
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "Final Fantasy VII Rebirth",
+    "path": "/Volumes/Games/AI Limit [PC]/Final Fantasy VII Rebirth",
+    "rel": "AI Limit [PC]/Final Fantasy VII Rebirth",
+    "parent": "AI Limit [PC]",
+    "is_file": false,
+    "dir_files": [
+      "Final Fantasy VII Rebirth.iso",
+      ".otix"
+    ],
+    "dir_subdirs": [
+      "Updates"
+    ],
+    "has_otix": true,
+    "otix_media_id": "117226",
+    "otix_title": "Final Fantasy VII Rebirth",
+    "otix_platform": "Xbox Series X|S",
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "Five Hearts Under One Roof",
+    "path": "/Volumes/Games/AI Limit [PC]/Five Hearts Under One Roof",
+    "rel": "AI Limit [PC]/Five Hearts Under One Roof",
+    "parent": "AI Limit [PC]",
+    "is_file": false,
+    "dir_files": [
+      ".otix",
+      "Five Hearts Under One Roof.iso"
+    ],
+    "dir_subdirs": [],
+    "has_otix": true,
+    "otix_media_id": "117225",
+    "otix_title": "Five Hearts Under One Roof",
+    "otix_platform": "PlayStation 4",
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "Five Hearts Under One Roof 2",
+    "path": "/Volumes/Games/AI Limit [PC]/Five Hearts Under One Roof 2",
+    "rel": "AI Limit [PC]/Five Hearts Under One Roof 2",
+    "parent": "AI Limit [PC]",
+    "is_file": false,
+    "dir_files": [
+      ".otix",
+      "Five Hearts Under One Roof 2.iso"
+    ],
+    "dir_subdirs": [],
+    "has_otix": true,
+    "otix_media_id": "117237",
+    "otix_title": "Five Hearts Under One Roof 2",
+    "otix_platform": "Xbox Series X|S",
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "God of War",
+    "path": "/Volumes/Games/AI Limit [PC]/God of War",
+    "rel": "AI Limit [PC]/God of War",
+    "parent": "AI Limit [PC]",
+    "is_file": false,
+    "dir_files": [
+      "God of War.iso",
+      ".otix"
+    ],
+    "dir_subdirs": [],
+    "has_otix": true,
+    "otix_media_id": "15409",
+    "otix_title": "God of War",
+    "otix_platform": "PlayStation 2",
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "God of War Ragnarok",
+    "path": "/Volumes/Games/AI Limit [PC]/God of War Ragnarok",
+    "rel": "AI Limit [PC]/God of War Ragnarok",
+    "parent": "AI Limit [PC]",
+    "is_file": false,
+    "dir_files": [
+      ".otix",
+      "God of War Ragnarok.iso"
+    ],
+    "dir_subdirs": [
+      "Updates"
+    ],
+    "has_otix": true,
+    "otix_media_id": "3043",
+    "otix_title": "God of War Ragnar\u00f6k",
+    "otix_platform": "PlayStation 4",
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "Hades II",
+    "path": "/Volumes/Games/AI Limit [PC]/Hades II",
+    "rel": "AI Limit [PC]/Hades II",
+    "parent": "AI Limit [PC]",
+    "is_file": false,
+    "dir_files": [
+      "Hades II.iso",
+      ".otix"
+    ],
+    "dir_subdirs": [],
+    "has_otix": true,
+    "otix_media_id": "3072",
+    "otix_title": "Hades II",
+    "otix_platform": "Xbox Series X|S",
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "High On Life",
+    "path": "/Volumes/Games/AI Limit [PC]/High On Life",
+    "rel": "AI Limit [PC]/High On Life",
+    "parent": "AI Limit [PC]",
+    "is_file": false,
+    "dir_files": [
+      "High On Life.iso",
+      ".otix"
+    ],
+    "dir_subdirs": [],
+    "has_otix": true,
+    "otix_media_id": "1787",
+    "otix_title": "High on Life",
+    "otix_platform": "Xbox Series X|S",
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "High On Life 2",
+    "path": "/Volumes/Games/AI Limit [PC]/High On Life 2",
+    "rel": "AI Limit [PC]/High On Life 2",
+    "parent": "AI Limit [PC]",
+    "is_file": false,
+    "dir_files": [
+      "High On Life 2.iso",
+      ".otix"
+    ],
+    "dir_subdirs": [
+      "Updates"
+    ],
+    "has_otix": true,
+    "otix_media_id": "117228",
+    "otix_title": "High on Life 2",
+    "otix_platform": "Xbox Series X|S",
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "High_On_Life_High_On_Knife-Razor1911.iso",
+    "path": "/Volumes/Games/AI Limit [PC]/High On Life High On Knife/High_On_Life_High_On_Knife-Razor1911.iso",
+    "rel": "AI Limit [PC]/High On Life High On Knife/High_On_Life_High_On_Knife-Razor1911.iso",
+    "parent": "AI Limit [PC]/High On Life High On Knife",
+    "is_file": true,
+    "dir_files": [],
+    "dir_subdirs": [],
+    "has_otix": false,
+    "otix_media_id": null,
+    "otix_title": null,
+    "otix_platform": null,
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "Hogwarts Legacy Deluxe Edition",
+    "path": "/Volumes/Games/AI Limit [PC]/Hogwarts Legacy Deluxe Edition",
+    "rel": "AI Limit [PC]/Hogwarts Legacy Deluxe Edition",
+    "parent": "AI Limit [PC]",
+    "is_file": false,
+    "dir_files": [
+      "Hogwarts Legacy Deluxe Edition.iso",
+      ".otix"
+    ],
+    "dir_subdirs": [],
+    "has_otix": true,
+    "otix_media_id": "1872",
+    "otix_title": "Hogwarts Legacy",
+    "otix_platform": "Xbox Series X|S",
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "Invincible VS",
+    "path": "/Volumes/Games/AI Limit [PC]/Invincible VS",
+    "rel": "AI Limit [PC]/Invincible VS",
+    "parent": "AI Limit [PC]",
+    "is_file": false,
+    "dir_files": [
+      "Invincible VS.iso",
+      ".otix"
+    ],
+    "dir_subdirs": [],
+    "has_otix": true,
+    "otix_media_id": "117375",
+    "otix_title": "Invincible Vs.: Deluxe Edition",
+    "otix_platform": "Xbox Series X|S",
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "Kiborg",
+    "path": "/Volumes/Games/AI Limit [PC]/Kiborg",
+    "rel": "AI Limit [PC]/Kiborg",
+    "parent": "AI Limit [PC]",
+    "is_file": false,
+    "dir_files": [
+      "Kiborg.iso",
+      ".otix"
+    ],
+    "dir_subdirs": [
+      "Updates"
+    ],
+    "has_otix": true,
+    "otix_media_id": "117229",
+    "otix_title": "Kiborg",
+    "otix_platform": "Xbox Series X|S",
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "Kingdom Come Deliverance II",
+    "path": "/Volumes/Games/AI Limit [PC]/Kingdom Come Deliverance II",
+    "rel": "AI Limit [PC]/Kingdom Come Deliverance II",
+    "parent": "AI Limit [PC]",
+    "is_file": false,
+    "dir_files": [
+      "Kingdom Come Deliverance II.iso",
+      ".otix"
+    ],
+    "dir_subdirs": [],
+    "has_otix": true,
+    "otix_media_id": "771",
+    "otix_title": "Kingdom Come: Deliverance II",
+    "otix_platform": "Xbox Series X|S",
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "Kingdom Hearts III and Re Mind",
+    "path": "/Volumes/Games/AI Limit [PC]/Kingdom Hearts III and Re Mind",
+    "rel": "AI Limit [PC]/Kingdom Hearts III and Re Mind",
+    "parent": "AI Limit [PC]",
+    "is_file": false,
+    "dir_files": [
+      "Kingdom Hearts III and Re-Mind.iso"
+    ],
+    "dir_subdirs": [],
+    "has_otix": false,
+    "otix_media_id": null,
+    "otix_title": null,
+    "otix_platform": null,
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "Launcher",
+    "path": "/Volumes/Games/AI Limit [PC]/Launcher",
+    "rel": "AI Limit [PC]/Launcher",
+    "parent": "AI Limit [PC]",
+    "is_file": false,
+    "dir_files": [
+      "Launcher.exe",
+      ".otix"
+    ],
+    "dir_subdirs": [],
+    "has_otix": true,
+    "otix_media_id": "117230",
+    "otix_title": "Launcher",
+    "otix_platform": "Plug & Play",
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "Lies of P",
+    "path": "/Volumes/Games/AI Limit [PC]/Lies of P",
+    "rel": "AI Limit [PC]/Lies of P",
+    "parent": "AI Limit [PC]",
+    "is_file": false,
+    "dir_files": [
+      "Lies of P.iso",
+      ".otix"
+    ],
+    "dir_subdirs": [],
+    "has_otix": true,
+    "otix_media_id": "1472",
+    "otix_title": "Lies of P",
+    "otix_platform": "Xbox Series X|S",
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "Lords of the Fallen 2023 (2023)",
+    "path": "/Volumes/Games/AI Limit [PC]/Lords of the Fallen 2023 (2023)",
+    "rel": "AI Limit [PC]/Lords of the Fallen 2023 (2023)",
+    "parent": "AI Limit [PC]",
+    "is_file": false,
+    "dir_files": [
+      "Lords of the Fallen 2023.iso",
+      ".otix"
+    ],
+    "dir_subdirs": [],
+    "has_otix": true,
+    "otix_media_id": "15859",
+    "otix_title": "Lords of the Fallen",
+    "otix_platform": "Xbox Series X|S",
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "Marvels SpiderMan 2",
+    "path": "/Volumes/Games/AI Limit [PC]/Marvels SpiderMan 2",
+    "rel": "AI Limit [PC]/Marvels SpiderMan 2",
+    "parent": "AI Limit [PC]",
+    "is_file": false,
+    "dir_files": [
+      "autorun.inf",
+      "elamigos-1.bin",
+      ".otix",
+      "elamigos-2.bin",
+      "elamigos-3.bin",
+      "setup.exe",
+      "Spider-Man2_0.ico"
+    ],
+    "dir_subdirs": [],
+    "has_otix": true,
+    "otix_media_id": "5468",
+    "otix_title": "Marvel's Spider-Man 2",
+    "otix_platform": "PC (Windows)",
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "Marvels SpiderMan Miles Morales",
+    "path": "/Volumes/Games/AI Limit [PC]/Marvels SpiderMan Miles Morales",
+    "rel": "AI Limit [PC]/Marvels SpiderMan Miles Morales",
+    "parent": "AI Limit [PC]",
+    "is_file": false,
+    "dir_files": [
+      "Marvels SpiderMan Miles Morales.iso",
+      ".otix"
+    ],
+    "dir_subdirs": [],
+    "has_otix": true,
+    "otix_media_id": "117341",
+    "otix_title": "Marvel's Spider-Man: Miles Morales",
+    "otix_platform": "PlayStation 4",
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "Marvels SpiderMan Remastered",
+    "path": "/Volumes/Games/AI Limit [PC]/Marvels SpiderMan Remastered",
+    "rel": "AI Limit [PC]/Marvels SpiderMan Remastered",
+    "parent": "AI Limit [PC]",
+    "is_file": false,
+    "dir_files": [
+      ".otix",
+      "Marvels SpiderMan Remastered.iso"
+    ],
+    "dir_subdirs": [],
+    "has_otix": true,
+    "otix_media_id": "117385",
+    "otix_title": "Marvel's Spider-Man Remastered",
+    "otix_platform": "PC (Windows)",
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "Need for Speed Most Wanted (Black Edition)",
+    "path": "/Volumes/Games/AI Limit [PC]/Need for Speed Most Wanted (Black Edition)",
+    "rel": "AI Limit [PC]/Need for Speed Most Wanted (Black Edition)",
+    "parent": "AI Limit [PC]",
+    "is_file": false,
+    "dir_files": [
+      ".otix",
+      "server.cfg",
+      "server.dll",
+      "speed.exe",
+      "speed_ico.ico",
+      "00000000.256",
+      "d3d9.dll",
+      "d3d9.ini",
+      "d3d9.log",
+      "dinput8.dll"
+    ],
+    "dir_subdirs": [
+      "NextGenGraphics",
+      "Need for Speed Most Wanted (Black Edition)",
+      "CARS",
+      "CREDITS",
+      "FRONTEND",
+      "GLOBAL",
+      "LANGUAGES",
+      "MEMCARD",
+      "MOVIES",
+      "NIS"
+    ],
+    "has_otix": true,
+    "otix_media_id": "117235",
+    "otix_title": "Need for Speed: Most Wanted - Black Edition",
+    "otix_platform": "Xbox",
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "Pragmata",
+    "path": "/Volumes/Games/AI Limit [PC]/Pragmata",
+    "rel": "AI Limit [PC]/Pragmata",
+    "parent": "AI Limit [PC]",
+    "is_file": false,
+    "dir_files": [
+      "Pragmata.iso",
+      ".otix"
+    ],
+    "dir_subdirs": [],
+    "has_otix": true,
+    "otix_media_id": "1477",
+    "otix_title": "Pragmata",
+    "otix_platform": "Xbox Series X|S",
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "Red Dead Redemption",
+    "path": "/Volumes/Games/AI Limit [PC]/Red Dead Redemption",
+    "rel": "AI Limit [PC]/Red Dead Redemption",
+    "parent": "AI Limit [PC]",
+    "is_file": false,
+    "dir_files": [
+      "Red Dead Redemption.iso",
+      ".otix"
+    ],
+    "dir_subdirs": [],
+    "has_otix": true,
+    "otix_media_id": "116932",
+    "otix_title": "Red Dead Redemption",
+    "otix_platform": "PlayStation 3",
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "Red_Dead_Redemption_2_Ultimate_Edition-Razor1911.iso",
+    "path": "/Volumes/Games/AI Limit [PC]/Red Dead Redemption 2 Ultimate Edition/Red_Dead_Redemption_2_Ultimate_Edition-Razor1911.iso",
+    "rel": "AI Limit [PC]/Red Dead Redemption 2 Ultimate Edition/Red_Dead_Redemption_2_Ultimate_Edition-Razor1911.iso",
+    "parent": "AI Limit [PC]/Red Dead Redemption 2 Ultimate Edition",
+    "is_file": true,
+    "dir_files": [],
+    "dir_subdirs": [],
+    "has_otix": false,
+    "otix_media_id": null,
+    "otix_title": null,
+    "otix_platform": null,
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "Remnant II",
+    "path": "/Volumes/Games/AI Limit [PC]/Remnant II",
+    "rel": "AI Limit [PC]/Remnant II",
+    "parent": "AI Limit [PC]",
+    "is_file": false,
+    "dir_files": [
+      "Remnant II.iso",
+      ".otix"
+    ],
+    "dir_subdirs": [
+      "Updates"
+    ],
+    "has_otix": true,
+    "otix_media_id": "117224",
+    "otix_title": "Remnant II",
+    "otix_platform": "Xbox Series X|S",
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "RuneScape Dragonwilds",
+    "path": "/Volumes/Games/AI Limit [PC]/RuneScape Dragonwilds",
+    "rel": "AI Limit [PC]/RuneScape Dragonwilds",
+    "parent": "AI Limit [PC]",
+    "is_file": false,
+    "dir_files": [
+      "g4u.to - games 4 you.url",
+      "RuneScape Dragonwilds update 240163 - 243922.exe",
+      "elamigos-1.bin",
+      "RuneScape Dragonwilds.iso"
+    ],
+    "dir_subdirs": [],
+    "has_otix": false,
+    "otix_media_id": null,
+    "otix_title": null,
+    "otix_platform": null,
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "RuneScapeDragonwilds Fix Repair Steam",
+    "path": "/Volumes/Games/AI Limit [PC]/RuneScapeDragonwilds Fix Repair Steam",
+    "rel": "AI Limit [PC]/RuneScapeDragonwilds Fix Repair Steam",
+    "parent": "AI Limit [PC]",
+    "is_file": false,
+    "dir_files": [
+      "RuneScapeDragonwilds_Fix_Repair_Steam_Generic.rar"
+    ],
+    "dir_subdirs": [],
+    "has_otix": false,
+    "otix_media_id": null,
+    "otix_title": null,
+    "otix_platform": null,
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "Satisfactory",
+    "path": "/Volumes/Games/AI Limit [PC]/Satisfactory",
+    "rel": "AI Limit [PC]/Satisfactory",
+    "parent": "AI Limit [PC]",
+    "is_file": false,
+    "dir_files": [
+      "Satisfactory.iso",
+      ".otix"
+    ],
+    "dir_subdirs": [
+      "Updates"
+    ],
+    "has_otix": true,
+    "otix_media_id": "876",
+    "otix_title": "Satisfactory",
+    "otix_platform": "Xbox Series X|S",
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "Sifu Deluxe Edition",
+    "path": "/Volumes/Games/AI Limit [PC]/Sifu Deluxe Edition",
+    "rel": "AI Limit [PC]/Sifu Deluxe Edition",
+    "parent": "AI Limit [PC]",
+    "is_file": false,
+    "dir_files": [
+      "Sifu Deluxe Edition.iso",
+      ".otix"
+    ],
+    "dir_subdirs": [],
+    "has_otix": true,
+    "otix_media_id": "3221",
+    "otix_title": "Sifu",
+    "otix_platform": "Xbox Series X|S",
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "Split Fiction",
+    "path": "/Volumes/Games/AI Limit [PC]/Split Fiction",
+    "rel": "AI Limit [PC]/Split Fiction",
+    "parent": "AI Limit [PC]",
+    "is_file": false,
+    "dir_files": [
+      "Split Fiction.iso",
+      ".otix"
+    ],
+    "dir_subdirs": [
+      "Updates"
+    ],
+    "has_otix": true,
+    "otix_media_id": "785",
+    "otix_title": "Split Fiction",
+    "otix_platform": "Xbox Series X|S",
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "Stellar.Blade-voices38.iso",
+    "path": "/Volumes/Games/AI Limit [PC]/Stellar Blade/Stellar.Blade-voices38.iso",
+    "rel": "AI Limit [PC]/Stellar Blade/Stellar.Blade-voices38.iso",
+    "parent": "AI Limit [PC]/Stellar Blade",
+    "is_file": true,
+    "dir_files": [],
+    "dir_subdirs": [],
+    "has_otix": false,
+    "otix_media_id": null,
+    "otix_title": null,
+    "otix_platform": null,
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "Summers Heartbeat Deluxe Edition I KnoW",
+    "path": "/Volumes/Games/AI Limit [PC]/Summers Heartbeat Deluxe Edition I KnoW",
+    "rel": "AI Limit [PC]/Summers Heartbeat Deluxe Edition I KnoW",
+    "parent": "AI Limit [PC]",
+    "is_file": false,
+    "dir_files": [
+      "Summers.Heartbeat.Deluxe.Edition-I KnoW.iso"
+    ],
+    "dir_subdirs": [],
+    "has_otix": false,
+    "otix_media_id": null,
+    "otix_title": null,
+    "otix_platform": null,
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "Tainted Grail The Fall of Avalon",
+    "path": "/Volumes/Games/AI Limit [PC]/Tainted Grail The Fall of Avalon",
+    "rel": "AI Limit [PC]/Tainted Grail The Fall of Avalon",
+    "parent": "AI Limit [PC]",
+    "is_file": false,
+    "dir_files": [
+      "Tainted Grail The Fall of Avalon.iso",
+      ".otix"
+    ],
+    "dir_subdirs": [
+      "Updates"
+    ],
+    "has_otix": true,
+    "otix_media_id": "1473",
+    "otix_title": "Tainted Grail: The Fall of Avalon",
+    "otix_platform": "Xbox Series X|S",
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "The Alters",
+    "path": "/Volumes/Games/AI Limit [PC]/The Alters",
+    "rel": "AI Limit [PC]/The Alters",
+    "parent": "AI Limit [PC]",
+    "is_file": false,
+    "dir_files": [
+      "The Alters.iso",
+      ".otix"
+    ],
+    "dir_subdirs": [],
+    "has_otix": true,
+    "otix_media_id": "117227",
+    "otix_title": "The Alters",
+    "otix_platform": "Xbox Series X|S",
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "The Elder Scrolls IV Oblivion Remastered",
+    "path": "/Volumes/Games/AI Limit [PC]/The Elder Scrolls IV Oblivion Remastered",
+    "rel": "AI Limit [PC]/The Elder Scrolls IV Oblivion Remastered",
+    "parent": "AI Limit [PC]",
+    "is_file": false,
+    "dir_files": [
+      "The Elder Scrolls IV Oblivion Remastered.iso",
+      ".otix"
+    ],
+    "dir_subdirs": [],
+    "has_otix": true,
+    "otix_media_id": "117233",
+    "otix_title": "The Elder Scrolls IV: Oblivion Remastered",
+    "otix_platform": "Xbox Series X|S",
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "The Last of Us Part I",
+    "path": "/Volumes/Games/AI Limit [PC]/The Last of Us Part I",
+    "rel": "AI Limit [PC]/The Last of Us Part I",
+    "parent": "AI Limit [PC]",
+    "is_file": false,
+    "dir_files": [
+      "The Last of Us Part I.iso",
+      ".otix",
+      ".DS_Store",
+      "desktop.ini",
+      "folder.jpg",
+      "icon.ico"
+    ],
+    "dir_subdirs": [
+      "Updates",
+      "The Last of Us Part I"
+    ],
+    "has_otix": true,
+    "otix_media_id": "117232",
+    "otix_title": "The Last of Us Part I",
+    "otix_platform": "PC (Windows)",
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "The Last of Us Part II Remastered",
+    "path": "/Volumes/Games/AI Limit [PC]/The Last of Us Part II Remastered",
+    "rel": "AI Limit [PC]/The Last of Us Part II Remastered",
+    "parent": "AI Limit [PC]",
+    "is_file": false,
+    "dir_files": [
+      "autorun.inf",
+      "launcher_00.ico",
+      "setup.exe",
+      "elamigos-1.bin",
+      ".otix"
+    ],
+    "dir_subdirs": [
+      "Crack",
+      "Updates"
+    ],
+    "has_otix": true,
+    "otix_media_id": "117236",
+    "otix_title": "The Last of Us Part II Remastered",
+    "otix_platform": "PC (Windows)",
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "The Universim.iso",
+    "path": "/Volumes/Games/AI Limit [PC]/The Universim/The Universim.iso",
+    "rel": "AI Limit [PC]/The Universim/The Universim.iso",
+    "parent": "AI Limit [PC]/The Universim",
+    "is_file": true,
+    "dir_files": [],
+    "dir_subdirs": [],
+    "has_otix": false,
+    "otix_media_id": null,
+    "otix_title": null,
+    "otix_platform": null,
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "The_Universim_v47416_MULTi8_ElAmigos",
+    "path": "/Volumes/Games/AI Limit [PC]/The Universim/The_Universim_v47416_MULTi8_ElAmigos",
+    "rel": "AI Limit [PC]/The Universim/The_Universim_v47416_MULTi8_ElAmigos",
+    "parent": "AI Limit [PC]/The Universim",
+    "is_file": false,
+    "dir_files": [],
+    "dir_subdirs": [
+      "The Universim v47416"
+    ],
+    "has_otix": false,
+    "otix_media_id": null,
+    "otix_title": null,
+    "otix_platform": null,
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "desktop.ini",
+    "path": "/Volumes/Games/AI Limit [PC]/The Universim/desktop.ini",
+    "rel": "AI Limit [PC]/The Universim/desktop.ini",
+    "parent": "AI Limit [PC]/The Universim",
+    "is_file": true,
+    "dir_files": [],
+    "dir_subdirs": [],
+    "has_otix": false,
+    "otix_media_id": null,
+    "otix_title": null,
+    "otix_platform": null,
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "folder.jpg",
+    "path": "/Volumes/Games/AI Limit [PC]/The Universim/folder.jpg",
+    "rel": "AI Limit [PC]/The Universim/folder.jpg",
+    "parent": "AI Limit [PC]/The Universim",
+    "is_file": true,
+    "dir_files": [],
+    "dir_subdirs": [],
+    "has_otix": false,
+    "otix_media_id": null,
+    "otix_title": null,
+    "otix_platform": null,
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "icon.ico",
+    "path": "/Volumes/Games/AI Limit [PC]/The Universim/icon.ico",
+    "rel": "AI Limit [PC]/The Universim/icon.ico",
+    "parent": "AI Limit [PC]/The Universim",
+    "is_file": true,
+    "dir_files": [],
+    "dir_subdirs": [],
+    "has_otix": false,
+    "otix_media_id": null,
+    "otix_title": null,
+    "otix_platform": null,
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "Tomb Raider IV VI Remastered",
+    "path": "/Volumes/Games/AI Limit [PC]/Tomb Raider IV VI Remastered",
+    "rel": "AI Limit [PC]/Tomb Raider IV VI Remastered",
+    "parent": "AI Limit [PC]",
+    "is_file": false,
+    "dir_files": [
+      "Tomb Raider IV-VI Remastered.iso",
+      ".otix"
+    ],
+    "dir_subdirs": [],
+    "has_otix": true,
+    "otix_media_id": "117346",
+    "otix_title": "Tomb Raider IV\u2022V\u2022VI Remastered",
+    "otix_platform": "Xbox Series X|S",
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "Transport Fever 3",
+    "path": "/Volumes/Games/AI Limit [PC]/Transport Fever 3",
+    "rel": "AI Limit [PC]/Transport Fever 3",
+    "parent": "AI Limit [PC]",
+    "is_file": false,
+    "dir_files": [
+      "Transport Fever 3.iso",
+      ".otix"
+    ],
+    "dir_subdirs": [],
+    "has_otix": true,
+    "otix_media_id": "790",
+    "otix_title": "Transport Fever 3",
+    "otix_platform": "Xbox Series X|S",
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "Valheim",
+    "path": "/Volumes/Games/AI Limit [PC]/Valheim",
+    "rel": "AI Limit [PC]/Valheim",
+    "parent": "AI Limit [PC]",
+    "is_file": false,
+    "dir_files": [
+      "g4u.to - games 4 you.url",
+      "Valheim update 1.0.12 - 1.0.15.exe",
+      "Valheim update 1.0.15 - 1.0.16.exe",
+      "Valheim update 1.0.7 - 1.0.12.exe",
+      "Valheim.iso",
+      ".otix"
+    ],
+    "dir_subdirs": [],
+    "has_otix": true,
+    "otix_media_id": "11894",
+    "otix_title": "Valheim",
+    "otix_platform": "Xbox Series X|S",
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "Warhammer 40,000 Space Marine 2 1 Year Anniversary Edition Bonuses",
+    "path": "/Volumes/Games/AI Limit [PC]/Warhammer 40,000 Space Marine 2 1 Year Anniversary Edition Bonuses",
+    "rel": "AI Limit [PC]/Warhammer 40,000 Space Marine 2 1 Year Anniversary Edition Bonuses",
+    "parent": "AI Limit [PC]",
+    "is_file": false,
+    "dir_files": [
+      "fg-optional-4K-texture-pack.bin",
+      "fg-optional-french-vo.bin",
+      "fg-optional-chinese-vo.bin",
+      "fg-optional-spanish-vo.bin",
+      "fg-optional-russian-vo.bin",
+      "fg-optional-japanese-vo.bin",
+      "fg-optional-german-vo.bin",
+      "fg-optional-bonus-content.bin",
+      "fg-01.bin",
+      "fg-02.bin"
+    ],
+    "dir_subdirs": [
+      "MD5"
+    ],
+    "has_otix": false,
+    "otix_media_id": null,
+    "otix_title": null,
+    "otix_platform": null,
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "Baldur's Gate 3 - Digital Deluxe Edition",
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Baldur's Gate 3 - Digital Deluxe Edition",
+    "rel": "Baldur's Gate 3 Digital [PC]/Baldur's Gate 3 - Digital Deluxe Edition",
+    "parent": "Baldur's Gate 3 Digital [PC]",
+    "is_file": false,
+    "dir_files": [
+      "folder.jpg",
+      "desktop.ini",
+      "icon.ico"
+    ],
+    "dir_subdirs": [
+      "Baldurs Gate 3"
+    ],
+    "has_otix": false,
+    "otix_media_id": null,
+    "otix_title": null,
+    "otix_platform": null,
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "Black.Myth.Wukong-voices38",
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Black Myth - Wukong/Black.Myth.Wukong-voices38",
+    "rel": "Baldur's Gate 3 Digital [PC]/Black Myth - Wukong/Black.Myth.Wukong-voices38",
+    "parent": "Baldur's Gate 3 Digital [PC]/Black Myth - Wukong",
+    "is_file": false,
+    "dir_files": [
+      ".otix",
+      "voices38.nfo"
+    ],
+    "dir_subdirs": [],
+    "has_otix": true,
+    "otix_media_id": "3556",
+    "otix_title": "Black Myth: Wukong",
+    "otix_platform": "Xbox Series X|S",
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "Dead.Cells.PS5-DUPLEX",
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Black Myth - Wukong/Dead.Cells.PS5-DUPLEX",
+    "rel": "Baldur's Gate 3 Digital [PC]/Black Myth - Wukong/Dead.Cells.PS5-DUPLEX",
+    "parent": "Baldur's Gate 3 Digital [PC]/Black Myth - Wukong",
+    "is_file": false,
+    "dir_files": [
+      "duplex.nfo",
+      "duplex-dead.cells.ps5.sfv",
+      ".DS_Store"
+    ],
+    "dir_subdirs": [],
+    "has_otix": false,
+    "otix_media_id": null,
+    "otix_title": null,
+    "otix_platform": null,
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "Digimon_Story_Time_Stranger_Update_v1.2.2_NSW-VENOM",
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Black Myth - Wukong/Digimon_Story_Time_Stranger_Update_v1.2.2_NSW-VENOM",
+    "rel": "Baldur's Gate 3 Digital [PC]/Black Myth - Wukong/Digimon_Story_Time_Stranger_Update_v1.2.2_NSW-VENOM",
+    "parent": "Baldur's Gate 3 Digital [PC]/Black Myth - Wukong",
+    "is_file": false,
+    "dir_files": [
+      "v-digimon_story_time_stranger_v262144.nsp.hdf",
+      "v-digimon_story_time_stranger_v262144.nfo",
+      "v-digimon_story_time_stranger_v262144.sfv"
+    ],
+    "dir_subdirs": [],
+    "has_otix": false,
+    "otix_media_id": null,
+    "otix_title": null,
+    "otix_platform": null,
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "Five.Hearts.Under.One.Roof..MULTi13-ElAmigos",
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Black Myth - Wukong/Five.Hearts.Under.One.Roof..MULTi13-ElAmigos",
+    "rel": "Baldur's Gate 3 Digital [PC]/Black Myth - Wukong/Five.Hearts.Under.One.Roof..MULTi13-ElAmigos",
+    "parent": "Baldur's Gate 3 Digital [PC]/Black Myth - Wukong",
+    "is_file": false,
+    "dir_files": [
+      ".otix"
+    ],
+    "dir_subdirs": [],
+    "has_otix": true,
+    "otix_media_id": "29636",
+    "otix_title": "Five Hearts Under One Roof",
+    "otix_platform": "PlayStation 4",
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "Five.Hearts.Under.One.Roof.2.MULTi10-ElAmigos",
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Black Myth - Wukong/Five.Hearts.Under.One.Roof.2.MULTi10-ElAmigos",
+    "rel": "Baldur's Gate 3 Digital [PC]/Black Myth - Wukong/Five.Hearts.Under.One.Roof.2.MULTi10-ElAmigos",
+    "parent": "Baldur's Gate 3 Digital [PC]/Black Myth - Wukong",
+    "is_file": false,
+    "dir_files": [
+      ".otix",
+      "g4u.to - games 4 you.url"
+    ],
+    "dir_subdirs": [],
+    "has_otix": true,
+    "otix_media_id": "29632",
+    "otix_title": "Five Hearts Under One Roof 2",
+    "otix_platform": "Linux",
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "Hollow.Knight.Silksong.PS5-DUPLEX",
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Black Myth - Wukong/Hollow.Knight.Silksong.PS5-DUPLEX",
+    "rel": "Baldur's Gate 3 Digital [PC]/Black Myth - Wukong/Hollow.Knight.Silksong.PS5-DUPLEX",
+    "parent": "Baldur's Gate 3 Digital [PC]/Black Myth - Wukong",
+    "is_file": false,
+    "dir_files": [
+      "duplex.nfo",
+      "duplex-hollow.knight.silksong.ps5.sfv"
+    ],
+    "dir_subdirs": [],
+    "has_otix": false,
+    "otix_media_id": null,
+    "otix_title": null,
+    "otix_platform": null,
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "Kingdom Come Deliverance II v1.5.0 ElAmigos",
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Black Myth - Wukong/Kingdom Come Deliverance II v1.5.0 ElAmigos",
+    "rel": "Baldur's Gate 3 Digital [PC]/Black Myth - Wukong/Kingdom Come Deliverance II v1.5.0 ElAmigos",
+    "parent": "Baldur's Gate 3 Digital [PC]/Black Myth - Wukong",
+    "is_file": false,
+    "dir_files": [
+      ".otix"
+    ],
+    "dir_subdirs": [],
+    "has_otix": true,
+    "otix_media_id": "4157",
+    "otix_title": "Kingdom Come: Deliverance II",
+    "otix_platform": "Xbox Series X|S",
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "Kingdom Hearts III and Re-Mind (build 13.06.2024)-ElAmigos",
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Black Myth - Wukong/Kingdom Hearts III and Re-Mind (build 13.06.2024)-ElAmigos",
+    "rel": "Baldur's Gate 3 Digital [PC]/Black Myth - Wukong/Kingdom Hearts III and Re-Mind (build 13.06.2024)-ElAmigos",
+    "parent": "Baldur's Gate 3 Digital [PC]/Black Myth - Wukong",
+    "is_file": false,
+    "dir_files": [
+      "g4u.to - games 4 you.url"
+    ],
+    "dir_subdirs": [],
+    "has_otix": false,
+    "otix_media_id": null,
+    "otix_title": null,
+    "otix_platform": null,
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "Kingdom.Hearts.III.DLC.Unlocker.PS4-DUPLEX",
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Black Myth - Wukong/Kingdom.Hearts.III.DLC.Unlocker.PS4-DUPLEX",
+    "rel": "Baldur's Gate 3 Digital [PC]/Black Myth - Wukong/Kingdom.Hearts.III.DLC.Unlocker.PS4-DUPLEX",
+    "parent": "Baldur's Gate 3 Digital [PC]/Black Myth - Wukong",
+    "is_file": false,
+    "dir_files": [
+      "duplex.nfo",
+      "duplex-kingdom.hearts.iii.dlc.unlocker.ps4.sfv"
+    ],
+    "dir_subdirs": [],
+    "has_otix": false,
+    "otix_media_id": null,
+    "otix_title": null,
+    "otix_platform": null,
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "Kingdom.Hearts.III.Update.v1.10.PS4-DUPLEX",
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Black Myth - Wukong/Kingdom.Hearts.III.Update.v1.10.PS4-DUPLEX",
+    "rel": "Baldur's Gate 3 Digital [PC]/Black Myth - Wukong/Kingdom.Hearts.III.Update.v1.10.PS4-DUPLEX",
+    "parent": "Baldur's Gate 3 Digital [PC]/Black Myth - Wukong",
+    "is_file": false,
+    "dir_files": [
+      "duplex.nfo",
+      "duplex-kingdom.hearts.iii.update.v1.10.ps4.sfv"
+    ],
+    "dir_subdirs": [],
+    "has_otix": false,
+    "otix_media_id": null,
+    "otix_title": null,
+    "otix_platform": null,
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "Rayman.30th.Anniversary.Edition.PS5-DUPLEX",
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Black Myth - Wukong/Rayman.30th.Anniversary.Edition.PS5-DUPLEX",
+    "rel": "Baldur's Gate 3 Digital [PC]/Black Myth - Wukong/Rayman.30th.Anniversary.Edition.PS5-DUPLEX",
+    "parent": "Baldur's Gate 3 Digital [PC]/Black Myth - Wukong",
+    "is_file": false,
+    "dir_files": [
+      "duplex.nfo",
+      "duplex-rayman.30th.anniversary.edition.ps5.sfv",
+      ".DS_Store"
+    ],
+    "dir_subdirs": [
+      "PPSA33016-app0"
+    ],
+    "has_otix": false,
+    "otix_media_id": null,
+    "otix_title": null,
+    "otix_platform": null,
+    "has_param_json": true,
+    "ps5_title_id": "PPSA33016",
+    "ps5_title_name": "Rayman 30th Anniversary Edition"
+  },
+  {
+    "name": "Summers.Heartbeat.Deluxe.Edition-I KnoW",
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Black Myth - Wukong/Summers.Heartbeat.Deluxe.Edition-I KnoW",
+    "rel": "Baldur's Gate 3 Digital [PC]/Black Myth - Wukong/Summers.Heartbeat.Deluxe.Edition-I KnoW",
+    "parent": "Baldur's Gate 3 Digital [PC]/Black Myth - Wukong",
+    "is_file": false,
+    "dir_files": [
+      "iknow.nfo"
+    ],
+    "dir_subdirs": [],
+    "has_otix": false,
+    "otix_media_id": null,
+    "otix_title": null,
+    "otix_platform": null,
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "Super_Mario_Galaxy_NSW-VENOM",
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Black Myth - Wukong/Super_Mario_Galaxy_NSW-VENOM",
+    "rel": "Baldur's Gate 3 Digital [PC]/Black Myth - Wukong/Super_Mario_Galaxy_NSW-VENOM",
+    "parent": "Baldur's Gate 3 Digital [PC]/Black Myth - Wukong",
+    "is_file": false,
+    "dir_files": [
+      "v-super_mario_galaxy.nfo",
+      "v-super_mario_galaxy.sfv",
+      "v-super_mario_galaxy.nsp.hdf",
+      "v-super_mario_galaxy_v131072.nsp.hdf"
+    ],
+    "dir_subdirs": [],
+    "has_otix": false,
+    "otix_media_id": null,
+    "otix_title": null,
+    "otix_platform": null,
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "Tomb_Raider_I-III_Remastered_Starring_Lara_Croft_Update_v1.1.4_NSW-VENOM",
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Black Myth - Wukong/Tomb_Raider_I-III_Remastered_Starring_Lara_Croft_Update_v1.1.4_NSW-VENOM",
+    "rel": "Baldur's Gate 3 Digital [PC]/Black Myth - Wukong/Tomb_Raider_I-III_Remastered_Starring_Lara_Croft_Update_v1.1.4_NSW-VENOM",
+    "parent": "Baldur's Gate 3 Digital [PC]/Black Myth - Wukong",
+    "is_file": false,
+    "dir_files": [
+      "v-tomb_raider_v851968.sfv",
+      "v-tomb_raider_v851968.nfo",
+      "v-tomb_raider_v851968.nsp.hdf"
+    ],
+    "dir_subdirs": [],
+    "has_otix": false,
+    "otix_media_id": null,
+    "otix_title": null,
+    "otix_platform": null,
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "Transport.Fever.3.Deluxe.Edition.v40408.MULTi13-ElAmigos",
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Black Myth - Wukong/Transport.Fever.3.Deluxe.Edition.v40408.MULTi13-ElAmigos",
+    "rel": "Baldur's Gate 3 Digital [PC]/Black Myth - Wukong/Transport.Fever.3.Deluxe.Edition.v40408.MULTi13-ElAmigos",
+    "parent": "Baldur's Gate 3 Digital [PC]/Black Myth - Wukong",
+    "is_file": false,
+    "dir_files": [
+      "g4u.to - games 4 you.url",
+      ".otix"
+    ],
+    "dir_subdirs": [],
+    "has_otix": true,
+    "otix_media_id": "4341",
+    "otix_title": "Transport Fever 3",
+    "otix_platform": "Xbox Series X|S",
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "Valheim.v1.0.7.MULTi14-ElAmigos",
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Black Myth - Wukong/Valheim.v1.0.7.MULTi14-ElAmigos",
+    "rel": "Baldur's Gate 3 Digital [PC]/Black Myth - Wukong/Valheim.v1.0.7.MULTi14-ElAmigos",
+    "parent": "Baldur's Gate 3 Digital [PC]/Black Myth - Wukong",
+    "is_file": false,
+    "dir_files": [
+      "g4u.to - games 4 you.url",
+      ".otix"
+    ],
+    "dir_subdirs": [],
+    "has_otix": true,
+    "otix_media_id": "3307",
+    "otix_title": "Valheim",
+    "otix_platform": "Xbox Series X|S",
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "Clair Obscur - Expedition 33",
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Clair Obscur - Expedition 33",
+    "rel": "Baldur's Gate 3 Digital [PC]/Clair Obscur - Expedition 33",
+    "parent": "Baldur's Gate 3 Digital [PC]",
+    "is_file": false,
+    "dir_files": [
+      "folder.jpg",
+      "desktop.ini",
+      "icon.ico",
+      ".otix"
+    ],
+    "dir_subdirs": [],
+    "has_otix": true,
+    "otix_media_id": "4182",
+    "otix_title": "Clair Obscur: Expedition 33",
+    "otix_platform": "Xbox Series X|S",
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "Doom - Eternal Deluxe Edition",
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Doom - Eternal Deluxe Edition",
+    "rel": "Baldur's Gate 3 Digital [PC]/Doom - Eternal Deluxe Edition",
+    "parent": "Baldur's Gate 3 Digital [PC]",
+    "is_file": false,
+    "dir_files": [
+      "folder.jpg",
+      "desktop.ini",
+      "icon.ico"
+    ],
+    "dir_subdirs": [
+      "DOOM Eternal"
+    ],
+    "has_otix": false,
+    "otix_media_id": null,
+    "otix_title": null,
+    "otix_platform": null,
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "Elden Ring - Collector's Edition",
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Elden Ring - Collector's Edition",
+    "rel": "Baldur's Gate 3 Digital [PC]/Elden Ring - Collector's Edition",
+    "parent": "Baldur's Gate 3 Digital [PC]",
+    "is_file": false,
+    "dir_files": [
+      "icon.ico",
+      "folder.jpg",
+      "desktop.ini"
+    ],
+    "dir_subdirs": [
+      "Elden Ring Deluxe Edition v1.12.0"
+    ],
+    "has_otix": false,
+    "otix_media_id": null,
+    "otix_title": null,
+    "otix_platform": null,
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "Final.Fantasy.VII.Rebirth.Deluxe.Edition.MULTi11-ElAmigos",
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Final Fantasy VII Rebirth/Final.Fantasy.VII.Rebirth.Deluxe.Edition.MULTi11-ElAmigos",
+    "rel": "Baldur's Gate 3 Digital [PC]/Final Fantasy VII Rebirth/Final.Fantasy.VII.Rebirth.Deluxe.Edition.MULTi11-ElAmigos",
+    "parent": "Baldur's Gate 3 Digital [PC]/Final Fantasy VII Rebirth",
+    "is_file": false,
+    "dir_files": [
+      "g4u.to - games 4 you.url"
+    ],
+    "dir_subdirs": [
+      "Final Fantasy VII Rebirth"
+    ],
+    "has_otix": false,
+    "otix_media_id": null,
+    "otix_title": null,
+    "otix_platform": null,
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "Final_Fantasy_VII_Rebirth_update_1.003_ElAmigos",
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Final Fantasy VII Rebirth/Final_Fantasy_VII_Rebirth_update_1.003_ElAmigos",
+    "rel": "Baldur's Gate 3 Digital [PC]/Final Fantasy VII Rebirth/Final_Fantasy_VII_Rebirth_update_1.003_ElAmigos",
+    "parent": "Baldur's Gate 3 Digital [PC]/Final Fantasy VII Rebirth",
+    "is_file": false,
+    "dir_files": [
+      "g4u.to - games 4 you.url"
+    ],
+    "dir_subdirs": [],
+    "has_otix": false,
+    "otix_media_id": null,
+    "otix_title": null,
+    "otix_platform": null,
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "desktop.ini",
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Final Fantasy VII Rebirth/desktop.ini",
+    "rel": "Baldur's Gate 3 Digital [PC]/Final Fantasy VII Rebirth/desktop.ini",
+    "parent": "Baldur's Gate 3 Digital [PC]/Final Fantasy VII Rebirth",
+    "is_file": true,
+    "dir_files": [],
+    "dir_subdirs": [],
+    "has_otix": false,
+    "otix_media_id": null,
+    "otix_title": null,
+    "otix_platform": null,
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "folder.jpg",
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Final Fantasy VII Rebirth/folder.jpg",
+    "rel": "Baldur's Gate 3 Digital [PC]/Final Fantasy VII Rebirth/folder.jpg",
+    "parent": "Baldur's Gate 3 Digital [PC]/Final Fantasy VII Rebirth",
+    "is_file": true,
+    "dir_files": [],
+    "dir_subdirs": [],
+    "has_otix": false,
+    "otix_media_id": null,
+    "otix_title": null,
+    "otix_platform": null,
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "icon.ico",
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Final Fantasy VII Rebirth/icon.ico",
+    "rel": "Baldur's Gate 3 Digital [PC]/Final Fantasy VII Rebirth/icon.ico",
+    "parent": "Baldur's Gate 3 Digital [PC]/Final Fantasy VII Rebirth",
+    "is_file": true,
+    "dir_files": [],
+    "dir_subdirs": [],
+    "has_otix": false,
+    "otix_media_id": null,
+    "otix_title": null,
+    "otix_platform": null,
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "Hades II v1.132940-ElAmigos",
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Hades II/Hades II v1.132940-ElAmigos",
+    "rel": "Baldur's Gate 3 Digital [PC]/Hades II/Hades II v1.132940-ElAmigos",
+    "parent": "Baldur's Gate 3 Digital [PC]/Hades II",
+    "is_file": false,
+    "dir_files": [
+      ".otix"
+    ],
+    "dir_subdirs": [],
+    "has_otix": true,
+    "otix_media_id": "3914",
+    "otix_title": "Hades II",
+    "otix_platform": "Xbox Series X|S",
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "desktop.ini",
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Hades II/desktop.ini",
+    "rel": "Baldur's Gate 3 Digital [PC]/Hades II/desktop.ini",
+    "parent": "Baldur's Gate 3 Digital [PC]/Hades II",
+    "is_file": true,
+    "dir_files": [],
+    "dir_subdirs": [],
+    "has_otix": false,
+    "otix_media_id": null,
+    "otix_title": null,
+    "otix_platform": null,
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "folder.jpg",
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Hades II/folder.jpg",
+    "rel": "Baldur's Gate 3 Digital [PC]/Hades II/folder.jpg",
+    "parent": "Baldur's Gate 3 Digital [PC]/Hades II",
+    "is_file": true,
+    "dir_files": [],
+    "dir_subdirs": [],
+    "has_otix": false,
+    "otix_media_id": null,
+    "otix_title": null,
+    "otix_platform": null,
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "icon.ico",
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Hades II/icon.ico",
+    "rel": "Baldur's Gate 3 Digital [PC]/Hades II/icon.ico",
+    "parent": "Baldur's Gate 3 Digital [PC]/Hades II",
+    "is_file": true,
+    "dir_files": [],
+    "dir_subdirs": [],
+    "has_otix": false,
+    "otix_media_id": null,
+    "otix_title": null,
+    "otix_platform": null,
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "High On Life (build 03.10.2023)",
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/High on Life 2/High On Life (build 03.10.2023)",
+    "rel": "Baldur's Gate 3 Digital [PC]/High on Life 2/High On Life (build 03.10.2023)",
+    "parent": "Baldur's Gate 3 Digital [PC]/High on Life 2",
+    "is_file": false,
+    "dir_files": [
+      ".otix"
+    ],
+    "dir_subdirs": [],
+    "has_otix": true,
+    "otix_media_id": "4372",
+    "otix_title": "High on Life 2",
+    "otix_platform": "Xbox Series X|S",
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "High.On.Life.2.MULTi7-ElAmigos",
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/High on Life 2/High.On.Life.2.MULTi7-ElAmigos",
+    "rel": "Baldur's Gate 3 Digital [PC]/High on Life 2/High.On.Life.2.MULTi7-ElAmigos",
+    "parent": "Baldur's Gate 3 Digital [PC]/High on Life 2",
+    "is_file": false,
+    "dir_files": [
+      ".otix"
+    ],
+    "dir_subdirs": [],
+    "has_otix": true,
+    "otix_media_id": "4372",
+    "otix_title": "High on Life 2",
+    "otix_platform": "Xbox Series X|S",
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "High_On_Life_High_On_Knife-Razor1911",
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/High on Life 2/High_On_Life_High_On_Knife-Razor1911",
+    "rel": "Baldur's Gate 3 Digital [PC]/High on Life 2/High_On_Life_High_On_Knife-Razor1911",
+    "parent": "Baldur's Gate 3 Digital [PC]/High on Life 2",
+    "is_file": false,
+    "dir_files": [
+      "g4u.to - games 4 you.url"
+    ],
+    "dir_subdirs": [
+      "High_On_Life_High_On_Knife-Razor1911"
+    ],
+    "has_otix": false,
+    "otix_media_id": null,
+    "otix_title": null,
+    "otix_platform": null,
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "desktop.ini",
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/High on Life 2/desktop.ini",
+    "rel": "Baldur's Gate 3 Digital [PC]/High on Life 2/desktop.ini",
+    "parent": "Baldur's Gate 3 Digital [PC]/High on Life 2",
+    "is_file": true,
+    "dir_files": [],
+    "dir_subdirs": [],
+    "has_otix": false,
+    "otix_media_id": null,
+    "otix_title": null,
+    "otix_platform": null,
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "folder.jpg",
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/High on Life 2/folder.jpg",
+    "rel": "Baldur's Gate 3 Digital [PC]/High on Life 2/folder.jpg",
+    "parent": "Baldur's Gate 3 Digital [PC]/High on Life 2",
+    "is_file": true,
+    "dir_files": [],
+    "dir_subdirs": [],
+    "has_otix": false,
+    "otix_media_id": null,
+    "otix_title": null,
+    "otix_platform": null,
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "icon.ico",
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/High on Life 2/icon.ico",
+    "rel": "Baldur's Gate 3 Digital [PC]/High on Life 2/icon.ico",
+    "parent": "Baldur's Gate 3 Digital [PC]/High on Life 2",
+    "is_file": true,
+    "dir_files": [],
+    "dir_subdirs": [],
+    "has_otix": false,
+    "otix_media_id": null,
+    "otix_title": null,
+    "otix_platform": null,
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "Hogwarts_Legacy_Deluxe_Edition_MULTi11-ElAmigos",
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Hogwarts Legacy - Deluxe Edition/Hogwarts_Legacy_Deluxe_Edition_MULTi11-ElAmigos",
+    "rel": "Baldur's Gate 3 Digital [PC]/Hogwarts Legacy - Deluxe Edition/Hogwarts_Legacy_Deluxe_Edition_MULTi11-ElAmigos",
+    "parent": "Baldur's Gate 3 Digital [PC]/Hogwarts Legacy - Deluxe Edition",
+    "is_file": false,
+    "dir_files": [
+      ".otix"
+    ],
+    "dir_subdirs": [],
+    "has_otix": true,
+    "otix_media_id": "29658",
+    "otix_title": "Hogwarts Legacy: Deluxe Edition",
+    "otix_platform": "Xbox Series X|S",
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "desktop.ini",
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Hogwarts Legacy - Deluxe Edition/desktop.ini",
+    "rel": "Baldur's Gate 3 Digital [PC]/Hogwarts Legacy - Deluxe Edition/desktop.ini",
+    "parent": "Baldur's Gate 3 Digital [PC]/Hogwarts Legacy - Deluxe Edition",
+    "is_file": true,
+    "dir_files": [],
+    "dir_subdirs": [],
+    "has_otix": false,
+    "otix_media_id": null,
+    "otix_title": null,
+    "otix_platform": null,
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "folder.jpg",
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Hogwarts Legacy - Deluxe Edition/folder.jpg",
+    "rel": "Baldur's Gate 3 Digital [PC]/Hogwarts Legacy - Deluxe Edition/folder.jpg",
+    "parent": "Baldur's Gate 3 Digital [PC]/Hogwarts Legacy - Deluxe Edition",
+    "is_file": true,
+    "dir_files": [],
+    "dir_subdirs": [],
+    "has_otix": false,
+    "otix_media_id": null,
+    "otix_title": null,
+    "otix_platform": null,
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "icon.ico",
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Hogwarts Legacy - Deluxe Edition/icon.ico",
+    "rel": "Baldur's Gate 3 Digital [PC]/Hogwarts Legacy - Deluxe Edition/icon.ico",
+    "parent": "Baldur's Gate 3 Digital [PC]/Hogwarts Legacy - Deluxe Edition",
+    "is_file": true,
+    "dir_files": [],
+    "dir_subdirs": [],
+    "has_otix": false,
+    "otix_media_id": null,
+    "otix_title": null,
+    "otix_platform": null,
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "Invincible.VS.MULTi6-ElAmigos",
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Invincible Vs - Deluxe Edition/Invincible.VS.MULTi6-ElAmigos",
+    "rel": "Baldur's Gate 3 Digital [PC]/Invincible Vs - Deluxe Edition/Invincible.VS.MULTi6-ElAmigos",
+    "parent": "Baldur's Gate 3 Digital [PC]/Invincible Vs - Deluxe Edition",
+    "is_file": false,
+    "dir_files": [
+      ".otix"
+    ],
+    "dir_subdirs": [],
+    "has_otix": true,
+    "otix_media_id": "29661",
+    "otix_title": "Invincible Vs.: Deluxe Edition",
+    "otix_platform": "Xbox Series X|S",
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "desktop.ini",
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Invincible Vs - Deluxe Edition/desktop.ini",
+    "rel": "Baldur's Gate 3 Digital [PC]/Invincible Vs - Deluxe Edition/desktop.ini",
+    "parent": "Baldur's Gate 3 Digital [PC]/Invincible Vs - Deluxe Edition",
+    "is_file": true,
+    "dir_files": [],
+    "dir_subdirs": [],
+    "has_otix": false,
+    "otix_media_id": null,
+    "otix_title": null,
+    "otix_platform": null,
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "folder.jpg",
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Invincible Vs - Deluxe Edition/folder.jpg",
+    "rel": "Baldur's Gate 3 Digital [PC]/Invincible Vs - Deluxe Edition/folder.jpg",
+    "parent": "Baldur's Gate 3 Digital [PC]/Invincible Vs - Deluxe Edition",
+    "is_file": true,
+    "dir_files": [],
+    "dir_subdirs": [],
+    "has_otix": false,
+    "otix_media_id": null,
+    "otix_title": null,
+    "otix_platform": null,
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "icon.ico",
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Invincible Vs - Deluxe Edition/icon.ico",
+    "rel": "Baldur's Gate 3 Digital [PC]/Invincible Vs - Deluxe Edition/icon.ico",
+    "parent": "Baldur's Gate 3 Digital [PC]/Invincible Vs - Deluxe Edition",
+    "is_file": true,
+    "dir_files": [],
+    "dir_subdirs": [],
+    "has_otix": false,
+    "otix_media_id": null,
+    "otix_title": null,
+    "otix_platform": null,
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "Kiborg",
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Kiborg",
+    "rel": "Baldur's Gate 3 Digital [PC]/Kiborg",
+    "parent": "Baldur's Gate 3 Digital [PC]",
+    "is_file": false,
+    "dir_files": [
+      "folder.jpg",
+      "desktop.ini",
+      ".DS_Store"
+    ],
+    "dir_subdirs": [
+      "Kiborg"
+    ],
+    "has_otix": false,
+    "otix_media_id": null,
+    "otix_title": null,
+    "otix_platform": null,
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "Lords of the Fallen II",
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Lords of the Fallen II",
+    "rel": "Baldur's Gate 3 Digital [PC]/Lords of the Fallen II",
+    "parent": "Baldur's Gate 3 Digital [PC]",
+    "is_file": false,
+    "dir_files": [
+      "folder.jpg",
+      "desktop.ini",
+      "icon.ico"
+    ],
+    "dir_subdirs": [
+      "Lords of the Fallen"
+    ],
+    "has_otix": false,
+    "otix_media_id": null,
+    "otix_title": null,
+    "otix_platform": null,
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "Pragmata-ElAmigos",
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Pragmata - Deluxe Edition/Pragmata-ElAmigos",
+    "rel": "Baldur's Gate 3 Digital [PC]/Pragmata - Deluxe Edition/Pragmata-ElAmigos",
+    "parent": "Baldur's Gate 3 Digital [PC]/Pragmata - Deluxe Edition",
+    "is_file": false,
+    "dir_files": [
+      ".otix"
+    ],
+    "dir_subdirs": [],
+    "has_otix": true,
+    "otix_media_id": "29685",
+    "otix_title": "Pragmata: Deluxe Edition",
+    "otix_platform": "Xbox Series X|S",
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "desktop.ini",
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Pragmata - Deluxe Edition/desktop.ini",
+    "rel": "Baldur's Gate 3 Digital [PC]/Pragmata - Deluxe Edition/desktop.ini",
+    "parent": "Baldur's Gate 3 Digital [PC]/Pragmata - Deluxe Edition",
+    "is_file": true,
+    "dir_files": [],
+    "dir_subdirs": [],
+    "has_otix": false,
+    "otix_media_id": null,
+    "otix_title": null,
+    "otix_platform": null,
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "folder.jpg",
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Pragmata - Deluxe Edition/folder.jpg",
+    "rel": "Baldur's Gate 3 Digital [PC]/Pragmata - Deluxe Edition/folder.jpg",
+    "parent": "Baldur's Gate 3 Digital [PC]/Pragmata - Deluxe Edition",
+    "is_file": true,
+    "dir_files": [],
+    "dir_subdirs": [],
+    "has_otix": false,
+    "otix_media_id": null,
+    "otix_title": null,
+    "otix_platform": null,
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "icon.ico",
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Pragmata - Deluxe Edition/icon.ico",
+    "rel": "Baldur's Gate 3 Digital [PC]/Pragmata - Deluxe Edition/icon.ico",
+    "parent": "Baldur's Gate 3 Digital [PC]/Pragmata - Deluxe Edition",
+    "is_file": true,
+    "dir_files": [],
+    "dir_subdirs": [],
+    "has_otix": false,
+    "otix_media_id": null,
+    "otix_title": null,
+    "otix_platform": null,
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "Remnant_II_update_444.163_-_453.438_ElAmigos",
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Remnant II/Remnant_II_update_444.163_-_453.438_ElAmigos",
+    "rel": "Baldur's Gate 3 Digital [PC]/Remnant II/Remnant_II_update_444.163_-_453.438_ElAmigos",
+    "parent": "Baldur's Gate 3 Digital [PC]/Remnant II",
+    "is_file": false,
+    "dir_files": [
+      "g4u.to - games 4 you.url"
+    ],
+    "dir_subdirs": [],
+    "has_otix": false,
+    "otix_media_id": null,
+    "otix_title": null,
+    "otix_platform": null,
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "Remnant_II_v444.163_.Ultimate.Edition.MULTi10-ElAmigos",
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Remnant II/Remnant_II_v444.163_.Ultimate.Edition.MULTi10-ElAmigos",
+    "rel": "Baldur's Gate 3 Digital [PC]/Remnant II/Remnant_II_v444.163_.Ultimate.Edition.MULTi10-ElAmigos",
+    "parent": "Baldur's Gate 3 Digital [PC]/Remnant II",
+    "is_file": false,
+    "dir_files": [
+      "g4u.to - games 4 you.url"
+    ],
+    "dir_subdirs": [
+      "Remnant II v444.163"
+    ],
+    "has_otix": false,
+    "otix_media_id": null,
+    "otix_title": null,
+    "otix_platform": null,
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "desktop.ini",
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Remnant II/desktop.ini",
+    "rel": "Baldur's Gate 3 Digital [PC]/Remnant II/desktop.ini",
+    "parent": "Baldur's Gate 3 Digital [PC]/Remnant II",
+    "is_file": true,
+    "dir_files": [],
+    "dir_subdirs": [],
+    "has_otix": false,
+    "otix_media_id": null,
+    "otix_title": null,
+    "otix_platform": null,
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "folder.jpg",
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Remnant II/folder.jpg",
+    "rel": "Baldur's Gate 3 Digital [PC]/Remnant II/folder.jpg",
+    "parent": "Baldur's Gate 3 Digital [PC]/Remnant II",
+    "is_file": true,
+    "dir_files": [],
+    "dir_subdirs": [],
+    "has_otix": false,
+    "otix_media_id": null,
+    "otix_title": null,
+    "otix_platform": null,
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "icon.ico",
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Remnant II/icon.ico",
+    "rel": "Baldur's Gate 3 Digital [PC]/Remnant II/icon.ico",
+    "parent": "Baldur's Gate 3 Digital [PC]/Remnant II",
+    "is_file": true,
+    "dir_files": [],
+    "dir_subdirs": [],
+    "has_otix": false,
+    "otix_media_id": null,
+    "otix_title": null,
+    "otix_platform": null,
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "RuneScape - Dragonwilds",
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/RuneScape - Dragonwilds",
+    "rel": "Baldur's Gate 3 Digital [PC]/RuneScape - Dragonwilds",
+    "parent": "Baldur's Gate 3 Digital [PC]",
+    "is_file": false,
+    "dir_files": [
+      "folder.jpg",
+      "desktop.ini",
+      "icon.ico"
+    ],
+    "dir_subdirs": [
+      "Dragonwilds"
+    ],
+    "has_otix": false,
+    "otix_media_id": null,
+    "otix_title": null,
+    "otix_platform": null,
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "Satisfactory",
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Satisfactory",
+    "rel": "Baldur's Gate 3 Digital [PC]/Satisfactory",
+    "parent": "Baldur's Gate 3 Digital [PC]",
+    "is_file": false,
+    "dir_files": [
+      "folder.jpg",
+      "desktop.ini",
+      "icon.ico"
+    ],
+    "dir_subdirs": [
+      "Satisfactory (build 365306)"
+    ],
+    "has_otix": false,
+    "otix_media_id": null,
+    "otix_title": null,
+    "otix_platform": null,
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "Split Fiction",
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Split Fiction",
+    "rel": "Baldur's Gate 3 Digital [PC]/Split Fiction",
+    "parent": "Baldur's Gate 3 Digital [PC]",
+    "is_file": false,
+    "dir_files": [
+      "folder.jpg",
+      "desktop.ini",
+      "icon.ico",
+      ".DS_Store"
+    ],
+    "dir_subdirs": [
+      "Split Fiction"
+    ],
+    "has_otix": false,
+    "otix_media_id": null,
+    "otix_title": null,
+    "otix_platform": null,
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "Tainted Grail - The Fall of Avalon",
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Tainted Grail - The Fall of Avalon",
+    "rel": "Baldur's Gate 3 Digital [PC]/Tainted Grail - The Fall of Avalon",
+    "parent": "Baldur's Gate 3 Digital [PC]",
+    "is_file": false,
+    "dir_files": [
+      "folder.jpg",
+      "desktop.ini",
+      "icon.ico"
+    ],
+    "dir_subdirs": [
+      "Tainted  Grail The Fall of Avalon"
+    ],
+    "has_otix": false,
+    "otix_media_id": null,
+    "otix_title": null,
+    "otix_platform": null,
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "The Alters",
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/The Alters",
+    "rel": "Baldur's Gate 3 Digital [PC]/The Alters",
+    "parent": "Baldur's Gate 3 Digital [PC]",
+    "is_file": false,
+    "dir_files": [
+      "folder.jpg",
+      "desktop.ini",
+      "icon.ico"
+    ],
+    "dir_subdirs": [
+      "The Alters"
+    ],
+    "has_otix": false,
+    "otix_media_id": null,
+    "otix_title": null,
+    "otix_platform": null,
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "The.Elder.Scrolls.IV.Oblivion.Remastered.Deluxe.Edition.MULTi9-ElAmigos",
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/The Elder Scrolls IV - Oblivion Remastered/The.Elder.Scrolls.IV.Oblivion.Remastered.Deluxe.Edition.MULTi9-ElAmigos",
+    "rel": "Baldur's Gate 3 Digital [PC]/The Elder Scrolls IV - Oblivion Remastered/The.Elder.Scrolls.IV.Oblivion.Remastered.Deluxe.Edition.MULTi9-ElAmigos",
+    "parent": "Baldur's Gate 3 Digital [PC]/The Elder Scrolls IV - Oblivion Remastered",
+    "is_file": false,
+    "dir_files": [
+      "g4u.to - games 4 you.url"
+    ],
+    "dir_subdirs": [
+      "The Elder Scrolls IV Oblivion Remastered"
+    ],
+    "has_otix": false,
+    "otix_media_id": null,
+    "otix_title": null,
+    "otix_platform": null,
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "desktop.ini",
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/The Elder Scrolls IV - Oblivion Remastered/desktop.ini",
+    "rel": "Baldur's Gate 3 Digital [PC]/The Elder Scrolls IV - Oblivion Remastered/desktop.ini",
+    "parent": "Baldur's Gate 3 Digital [PC]/The Elder Scrolls IV - Oblivion Remastered",
+    "is_file": true,
+    "dir_files": [],
+    "dir_subdirs": [],
+    "has_otix": false,
+    "otix_media_id": null,
+    "otix_title": null,
+    "otix_platform": null,
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "folder.jpg",
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/The Elder Scrolls IV - Oblivion Remastered/folder.jpg",
+    "rel": "Baldur's Gate 3 Digital [PC]/The Elder Scrolls IV - Oblivion Remastered/folder.jpg",
+    "parent": "Baldur's Gate 3 Digital [PC]/The Elder Scrolls IV - Oblivion Remastered",
+    "is_file": true,
+    "dir_files": [],
+    "dir_subdirs": [],
+    "has_otix": false,
+    "otix_media_id": null,
+    "otix_title": null,
+    "otix_platform": null,
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "icon.ico",
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/The Elder Scrolls IV - Oblivion Remastered/icon.ico",
+    "rel": "Baldur's Gate 3 Digital [PC]/The Elder Scrolls IV - Oblivion Remastered/icon.ico",
+    "parent": "Baldur's Gate 3 Digital [PC]/The Elder Scrolls IV - Oblivion Remastered",
+    "is_file": true,
+    "dir_files": [],
+    "dir_subdirs": [],
+    "has_otix": false,
+    "otix_media_id": null,
+    "otix_title": null,
+    "otix_platform": null,
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "Cyberpunk 2077 [PC]",
+    "path": "/Volumes/Games/Cyberpunk 2077 [PC]",
+    "rel": "Cyberpunk 2077 [PC]",
+    "parent": "",
+    "is_file": false,
+    "dir_files": [],
+    "dir_subdirs": [
+      "Updates"
+    ],
+    "has_otix": false,
+    "otix_media_id": null,
+    "otix_title": null,
+    "otix_platform": null,
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "Dead or Alive 6 Digital [PC]",
+    "path": "/Volumes/Games/Dead or Alive 6 Digital [PC]",
+    "rel": "Dead or Alive 6 Digital [PC]",
+    "parent": "",
+    "is_file": false,
+    "dir_files": [
+      "folder.jpg",
+      "desktop.ini",
+      "icon.ico"
+    ],
+    "dir_subdirs": [
+      "Dead or Alive 6 Deluxe Edition"
+    ],
+    "has_otix": false,
+    "otix_media_id": null,
+    "otix_title": null,
+    "otix_platform": null,
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "Elden Ring [PC]",
+    "path": "/Volumes/Games/Elden Ring [PC]",
+    "rel": "Elden Ring [PC]",
+    "parent": "",
+    "is_file": false,
+    "dir_files": [],
+    "dir_subdirs": [
+      "Updates"
+    ],
+    "has_otix": false,
+    "otix_media_id": null,
+    "otix_title": null,
+    "otix_platform": null,
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "God of War Ragnaro\u0308k [PC]",
+    "path": "/Volumes/Games/God of War Ragnaro\u0308k [PC]",
+    "rel": "God of War Ragnaro\u0308k [PC]",
+    "parent": "",
+    "is_file": false,
+    "dir_files": [
+      "folder.jpg",
+      "desktop.ini",
+      "icon.ico",
+      ".DS_Store"
+    ],
+    "dir_subdirs": [
+      "Gof of War",
+      "God of War - Ragnarok"
+    ],
+    "has_otix": false,
+    "otix_media_id": null,
+    "otix_title": null,
+    "otix_platform": null,
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "God of War [PC]",
+    "path": "/Volumes/Games/God of War [PC]",
+    "rel": "God of War [PC]",
+    "parent": "",
+    "is_file": false,
+    "dir_files": [],
+    "dir_subdirs": [
+      "Updates"
+    ],
+    "has_otix": false,
+    "otix_media_id": null,
+    "otix_title": null,
+    "otix_platform": null,
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "Kingdom Hearts III DUPLEX [PS4]",
+    "path": "/Volumes/Games/Kingdom Hearts III DUPLEX [PS4]",
+    "rel": "Kingdom Hearts III DUPLEX [PS4]",
+    "parent": "",
+    "is_file": false,
+    "dir_files": [
+      "Kingdom.Hearts.III.Update.v1.10.PS4-DUPLEX.pkg"
+    ],
+    "dir_subdirs": [],
+    "has_otix": false,
+    "otix_media_id": null,
+    "otix_title": null,
+    "otix_platform": null,
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "Kingdom Hearts III Dawn Till Dusk Keyblade DLC [PS4]",
+    "path": "/Volumes/Games/Kingdom Hearts III Dawn Till Dusk Keyblade DLC [PS4]",
+    "rel": "Kingdom Hearts III Dawn Till Dusk Keyblade DLC [PS4]",
+    "parent": "",
+    "is_file": false,
+    "dir_files": [
+      "Kingdom.Hearts.III.Dawn.Till.Dusk.Keyblade.DLC.PS4-DUPLEX.pkg"
+    ],
+    "dir_subdirs": [],
+    "has_otix": false,
+    "otix_media_id": null,
+    "otix_title": null,
+    "otix_platform": null,
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "Kingdom Hearts III Midnight Blue Keyblade DLC [PS4]",
+    "path": "/Volumes/Games/Kingdom Hearts III Midnight Blue Keyblade DLC [PS4]",
+    "rel": "Kingdom Hearts III Midnight Blue Keyblade DLC [PS4]",
+    "parent": "",
+    "is_file": false,
+    "dir_files": [
+      "Kingdom.Hearts.III.Midnight.Blue.Keyblade.DLC.PS4-DUPLEX.pkg"
+    ],
+    "dir_subdirs": [],
+    "has_otix": false,
+    "otix_media_id": null,
+    "otix_title": null,
+    "otix_platform": null,
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "Kingdom Hearts III Re Mind DLC [PS4]",
+    "path": "/Volumes/Games/Kingdom Hearts III Re Mind DLC [PS4]",
+    "rel": "Kingdom Hearts III Re Mind DLC [PS4]",
+    "parent": "",
+    "is_file": false,
+    "dir_files": [
+      "Kingdom.Hearts.III.Re.Mind.DLC.PS4-DUPLEX.pkg"
+    ],
+    "dir_subdirs": [],
+    "has_otix": false,
+    "otix_media_id": null,
+    "otix_title": null,
+    "otix_platform": null,
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "Kingdom Hearts III Starlight Keyblade DLC [PS4]",
+    "path": "/Volumes/Games/Kingdom Hearts III Starlight Keyblade DLC [PS4]",
+    "rel": "Kingdom Hearts III Starlight Keyblade DLC [PS4]",
+    "parent": "",
+    "is_file": false,
+    "dir_files": [
+      "Kingdom.Hearts.III.Starlight.Keyblade.DLC.PS4-DUPLEX.pkg"
+    ],
+    "dir_subdirs": [],
+    "has_otix": false,
+    "otix_media_id": null,
+    "otix_title": null,
+    "otix_platform": null,
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "Lies of P H1 [PC]",
+    "path": "/Volumes/Games/Lies of P H1 [PC]",
+    "rel": "Lies of P H1 [PC]",
+    "parent": "",
+    "is_file": false,
+    "dir_files": [
+      "g4u.to - games 4 you.url"
+    ],
+    "dir_subdirs": [
+      "Lies of P v1.5.0.0 H1"
+    ],
+    "has_otix": false,
+    "otix_media_id": null,
+    "otix_title": null,
+    "otix_platform": null,
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "Lords of the Fallen 2023 [PC]",
+    "path": "/Volumes/Games/Lords of the Fallen 2023 [PC]",
+    "rel": "Lords of the Fallen 2023 [PC]",
+    "parent": "",
+    "is_file": false,
+    "dir_files": [],
+    "dir_subdirs": [
+      "Updates"
+    ],
+    "has_otix": false,
+    "otix_media_id": null,
+    "otix_title": null,
+    "otix_platform": null,
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "Marvel's Spider Man Miles Morales [PC]",
+    "path": "/Volumes/Games/Marvel's Spider Man Miles Morales [PC]",
+    "rel": "Marvel's Spider Man Miles Morales [PC]",
+    "parent": "",
+    "is_file": false,
+    "dir_files": [
+      "folder.jpg",
+      "desktop.ini",
+      "icon.ico"
+    ],
+    "dir_subdirs": [
+      "Marvel's Spider Man Miles Morales",
+      "Marvel's Spider Man Remastered",
+      "Updates"
+    ],
+    "has_otix": false,
+    "otix_media_id": null,
+    "otix_title": null,
+    "otix_platform": null,
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "Marvel's Spider Man Remastered [PC]",
+    "path": "/Volumes/Games/Marvel's Spider Man Remastered [PC]",
+    "rel": "Marvel's Spider Man Remastered [PC]",
+    "parent": "",
+    "is_file": false,
+    "dir_files": [],
+    "dir_subdirs": [
+      "Updates"
+    ],
+    "has_otix": false,
+    "otix_media_id": null,
+    "otix_title": null,
+    "otix_platform": null,
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "Metroid Prime 4 Beyond HR [Switch]",
+    "path": "/Volumes/Games/Metroid Prime 4 Beyond HR [Switch]",
+    "rel": "Metroid Prime 4 Beyond HR [Switch]",
+    "parent": "",
+    "is_file": false,
+    "dir_files": [
+      "Metroid Prime 4 Beyond NSW-HR.xci"
+    ],
+    "dir_subdirs": [],
+    "has_otix": false,
+    "otix_media_id": null,
+    "otix_title": null,
+    "otix_platform": null,
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "1 ",
+    "path": "/Volumes/Games/PC/1 ",
+    "rel": "PC/1 ",
+    "parent": "PC",
+    "is_file": false,
+    "dir_files": [],
+    "dir_subdirs": [
+      "Updates"
+    ],
+    "has_otix": false,
+    "otix_media_id": null,
+    "otix_title": null,
+    "otix_platform": null,
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "AI Limit",
+    "path": "/Volumes/Games/PC/AI Limit",
+    "rel": "PC/AI Limit",
+    "parent": "PC",
+    "is_file": false,
+    "dir_files": [
+      ".DS_Store",
+      ".otix",
+      "AI Limit.iso"
+    ],
+    "dir_subdirs": [
+      "AI Limit"
+    ],
+    "has_otix": true,
+    "otix_media_id": "2858",
+    "otix_title": "AI Limit",
+    "otix_platform": "PC (Windows)",
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "Balatro",
+    "path": "/Volumes/Games/PC/Balatro",
+    "rel": "PC/Balatro",
+    "parent": "PC",
+    "is_file": false,
+    "dir_files": [
+      ".otix",
+      "Balatro.exe",
+      "OpenAL32.dll",
+      "SDL2.dll",
+      "https.dll"
+    ],
+    "dir_subdirs": [],
+    "has_otix": true,
+    "otix_media_id": "117356",
+    "otix_title": "Balatro: Special Edition",
+    "otix_platform": "Xbox Series X|S",
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "Balatro - Special Edition",
+    "path": "/Volumes/Games/PC/Balatro - Special Edition",
+    "rel": "PC/Balatro - Special Edition",
+    "parent": "PC",
+    "is_file": false,
+    "dir_files": [
+      "Balatro.exe",
+      "https.dll",
+      "license.txt",
+      "love.dll",
+      "lua51.dll",
+      "luasteam.dll",
+      "mpg123.dll",
+      "msvcp120.dll",
+      "msvcr120.dll",
+      "OpenAL32.dll"
+    ],
+    "dir_subdirs": [],
+    "has_otix": true,
+    "otix_media_id": "117356",
+    "otix_title": "Balatro: Special Edition",
+    "otix_platform": "Xbox Series X|S",
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "Baldur's Gate III",
+    "path": "/Volumes/Games/PC/Baldur's Gate III",
+    "rel": "PC/Baldur's Gate III",
+    "parent": "PC",
+    "is_file": false,
+    "dir_files": [
+      ".DS_Store",
+      ".otix",
+      "Baldurs Gate 3.iso"
+    ],
+    "dir_subdirs": [],
+    "has_otix": true,
+    "otix_media_id": "675",
+    "otix_title": "Baldur's Gate III",
+    "otix_platform": "Google Stadia",
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "Black.Myth.Wukong-voices38.iso",
+    "path": "/Volumes/Games/PC/Black Myth - Wukong/Black.Myth.Wukong-voices38.iso",
+    "rel": "PC/Black Myth - Wukong/Black.Myth.Wukong-voices38.iso",
+    "parent": "PC/Black Myth - Wukong",
+    "is_file": true,
+    "dir_files": [],
+    "dir_subdirs": [],
+    "has_otix": false,
+    "otix_media_id": null,
+    "otix_title": null,
+    "otix_platform": null,
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "Blade and Sorcery VR",
+    "path": "/Volumes/Games/PC/Blade and Sorcery VR",
+    "rel": "PC/Blade and Sorcery VR",
+    "parent": "PC",
+    "is_file": false,
+    "dir_files": [
+      "Blade and Sorcery VR.iso"
+    ],
+    "dir_subdirs": [],
+    "has_otix": false,
+    "otix_media_id": null,
+    "otix_title": null,
+    "otix_platform": null,
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "Call of Duty - Black Ops II",
+    "path": "/Volumes/Games/PC/Call of Duty - Black Ops II",
+    "rel": "PC/Call of Duty - Black Ops II",
+    "parent": "PC",
+    "is_file": false,
+    "dir_files": [
+      "Call Of Duty Black Ops 2.rar",
+      ".otix"
+    ],
+    "dir_subdirs": [],
+    "has_otix": true,
+    "otix_media_id": "15484",
+    "otix_title": "Call of Duty: Black Ops II",
+    "otix_platform": "PlayStation 3",
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "Red_Dead_Redemption_2_Ultimate_Edition_DLC_Unlocker-Razor1911",
+    "path": "/Volumes/Games/PC/Red Dead Redemption/Red_Dead_Redemption_2_Ultimate_Edition_DLC_Unlocker-Razor1911",
+    "rel": "PC/Red Dead Redemption/Red_Dead_Redemption_2_Ultimate_Edition_DLC_Unlocker-Razor1911",
+    "parent": "PC/Red Dead Redemption",
+    "is_file": false,
+    "dir_files": [],
+    "dir_subdirs": [
+      "Red_Dead_Redemption_2_Ultimate_Edition_DLC_Unlocker-Razor1911"
+    ],
+    "has_otix": false,
+    "otix_media_id": null,
+    "otix_title": null,
+    "otix_platform": null,
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "desktop.ini",
+    "path": "/Volumes/Games/PC/Red Dead Redemption/desktop.ini",
+    "rel": "PC/Red Dead Redemption/desktop.ini",
+    "parent": "PC/Red Dead Redemption",
+    "is_file": true,
+    "dir_files": [],
+    "dir_subdirs": [],
+    "has_otix": false,
+    "otix_media_id": null,
+    "otix_title": null,
+    "otix_platform": null,
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "folder.jpg",
+    "path": "/Volumes/Games/PC/Red Dead Redemption/folder.jpg",
+    "rel": "PC/Red Dead Redemption/folder.jpg",
+    "parent": "PC/Red Dead Redemption",
+    "is_file": true,
+    "dir_files": [],
+    "dir_subdirs": [],
+    "has_otix": false,
+    "otix_media_id": null,
+    "otix_title": null,
+    "otix_platform": null,
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "icon.ico",
+    "path": "/Volumes/Games/PC/Red Dead Redemption/icon.ico",
+    "rel": "PC/Red Dead Redemption/icon.ico",
+    "parent": "PC/Red Dead Redemption",
+    "is_file": true,
+    "dir_files": [],
+    "dir_subdirs": [],
+    "has_otix": false,
+    "otix_media_id": null,
+    "otix_title": null,
+    "otix_platform": null,
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "Red Dead Redemption 2 [PC]",
+    "path": "/Volumes/Games/Red Dead Redemption 2 [PC]",
+    "rel": "Red Dead Redemption 2 [PC]",
+    "parent": "",
+    "is_file": false,
+    "dir_files": [
+      "g4u.to - games 4 you.url"
+    ],
+    "dir_subdirs": [
+      "Red_Dead_Redemption_2_Ultimate_Edition-Razor1911"
+    ],
+    "has_otix": false,
+    "otix_media_id": null,
+    "otix_title": null,
+    "otix_platform": null,
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "Red Dead Redemption [PC]",
+    "path": "/Volumes/Games/Red Dead Redemption [PC]",
+    "rel": "Red Dead Redemption [PC]",
+    "parent": "",
+    "is_file": false,
+    "dir_files": [
+      "g4u.to - games 4 you.url"
+    ],
+    "dir_subdirs": [
+      "Red Dead Redemption"
+    ],
+    "has_otix": false,
+    "otix_media_id": null,
+    "otix_title": null,
+    "otix_platform": null,
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "Sifu [PC]",
+    "path": "/Volumes/Games/Sifu [PC]",
+    "rel": "Sifu [PC]",
+    "parent": "",
+    "is_file": false,
+    "dir_files": [
+      "folder.jpg",
+      "desktop.ini",
+      ".DS_Store"
+    ],
+    "dir_subdirs": [
+      "Sifu (Deluxe Edition)"
+    ],
+    "has_otix": false,
+    "otix_media_id": null,
+    "otix_title": null,
+    "otix_platform": null,
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "Stellar Blade Digital [PC]",
+    "path": "/Volumes/Games/Stellar Blade Digital [PC]",
+    "rel": "Stellar Blade Digital [PC]",
+    "parent": "",
+    "is_file": false,
+    "dir_files": [
+      "folder.jpg",
+      "desktop.ini",
+      "icon.ico"
+    ],
+    "dir_subdirs": [
+      "Stellar.Blade-voices38"
+    ],
+    "has_otix": false,
+    "otix_media_id": null,
+    "otix_title": null,
+    "otix_platform": null,
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "Lies of P - Complete Edition",
+    "path": "/Volumes/Games/Switch/Lies of P - Complete Edition",
+    "rel": "Switch/Lies of P - Complete Edition",
+    "parent": "Switch",
+    "is_file": false,
+    "dir_files": [
+      "folder.jpg",
+      "desktop.ini",
+      "icon.ico"
+    ],
+    "dir_subdirs": [],
+    "has_otix": false,
+    "otix_media_id": null,
+    "otix_title": null,
+    "otix_platform": null,
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "TODO",
+    "path": "/Volumes/Games/TODO",
+    "rel": "TODO",
+    "parent": "",
+    "is_file": false,
+    "dir_files": [],
+    "dir_subdirs": [],
+    "has_otix": false,
+    "otix_media_id": null,
+    "otix_title": null,
+    "otix_platform": null,
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "The Legend Of Zelda Tears Of The Kingdom NSW [Switch]",
+    "path": "/Volumes/Games/The Legend Of Zelda Tears Of The Kingdom NSW [Switch]",
+    "rel": "The Legend Of Zelda Tears Of The Kingdom NSW [Switch]",
+    "parent": "",
+    "is_file": false,
+    "dir_files": [
+      "The_Legend_Of_Zelda_Tears_Of_The_Kingdom_NSW-NiiNTENDO.xci"
+    ],
+    "dir_subdirs": [],
+    "has_otix": false,
+    "otix_media_id": null,
+    "otix_title": null,
+    "otix_platform": null,
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  },
+  {
+    "name": "app0 [PS5]",
+    "path": "/Volumes/Games/app0 [PS5]",
+    "rel": "app0 [PS5]",
+    "parent": "",
+    "is_file": false,
+    "dir_files": [
+      "PPSA15552.complete.txt",
+      "Dead.Cells.PS5-DUPLEX.pak",
+      "ampr_emu.index",
+      "eboot.bin"
+    ],
+    "dir_subdirs": [
+      "sce_sys",
+      "sce_module",
+      "Media",
+      "fakelib",
+      "_DUPLEX_"
+    ],
+    "has_otix": false,
+    "otix_media_id": null,
+    "otix_title": null,
+    "otix_platform": null,
+    "has_param_json": true,
+    "ps5_title_id": "PPSA12544",
+    "ps5_title_name": "Hollow Knight: Silksong"
+  },
+  {
+    "name": "g4u to games 4 you url [PC]",
+    "path": "/Volumes/Games/g4u to games 4 you url [PC]",
+    "rel": "g4u to games 4 you url [PC]",
+    "parent": "",
+    "is_file": false,
+    "dir_files": [
+      "g4u.to - games 4 you.url"
+    ],
+    "dir_subdirs": [],
+    "has_otix": false,
+    "otix_media_id": null,
+    "otix_title": null,
+    "otix_platform": null,
+    "has_param_json": false,
+    "ps5_title_id": "",
+    "ps5_title_name": ""
+  }
+]

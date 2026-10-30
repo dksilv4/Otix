@@ -10,6 +10,7 @@ import {
   type MatchCacheEntry,
 } from '../downloads';
 import { GameDetector } from '../game/detector';
+import { cleanGameTitle } from '../game/parser';
 
 let _orchestrator: GameScanOrchestrator | null = null;
 let _pluginManager: PluginManager | null = null;
@@ -127,17 +128,47 @@ export function registerScannerIPC(gameDetector: GameDetector | null, nodeDaemon
         });
       });
 
-      const games: LocalGame[] = (nodeFiles || []).map((f: any) => ({
-        id: f.id || `node_${f.filename}`,
-        title: f.game_title || f.filename,
-        exePath: f.filepath,
-        installDir: f.filepath ? f.filepath.substring(0, Math.max(f.filepath.lastIndexOf('/'), f.filepath.lastIndexOf('\\'))) : '',
-        platform: f.format_category === 'iso' ? 'iso' : (f.format_category === 'rom' ? 'rom' : 'pc'),
-        isDlc: f.format_category === 'dlc' || f.format_category === 'update',
-        otixMediaId: f.otix_media_id,
-        otixMediaTitle: f.otix_title,
-        otixConfidence: f.otix_confidence,
-      }));
+      const scannedForMatch: ScannedGame[] = (nodeFiles || []).map((f: any) => {
+        const id = f.id || `node_${f.filename}`;
+        const rawTitle = f.game_title || f.filename;
+        const cleaned = cleanGameTitle(rawTitle) || rawTitle;
+        const plat = f.format_category === 'iso' ? 'iso' : (f.format_category === 'rom' ? 'rom' : 'pc');
+        return {
+          id,
+          title: cleaned,
+          platform: plat,
+          installPath: f.filepath ? f.filepath.substring(0, Math.max(f.filepath.lastIndexOf('/'), f.filepath.lastIndexOf('\\'))) : '',
+          exePath: f.filepath || '',
+          isDlc: f.format_category === 'dlc' || f.format_category === 'update',
+        };
+      });
+
+      if (_orchestrator && scannedForMatch.length > 0) {
+        event.sender.send('scanner:progress', { currentDir: 'Matching games against Otix catalog...', progress: 92 });
+        try {
+          await _orchestrator.matchGames(scannedForMatch, 'local');
+        } catch (matchErr) {
+          console.warn('[scanner:scan-paths] Match games error:', matchErr);
+        }
+      }
+
+      const games: LocalGame[] = (nodeFiles || []).map((f: any) => {
+        const id = f.id || `node_${f.filename}`;
+        const plat = f.format_category === 'iso' ? 'iso' : (f.format_category === 'rom' ? 'rom' : 'pc');
+        const match = gameService.getGameMatch(plat, id) || gameService.getGameMatch('local', id);
+        return {
+          id,
+          title: f.game_title || f.filename,
+          exePath: f.filepath,
+          installDir: f.filepath ? f.filepath.substring(0, Math.max(f.filepath.lastIndexOf('/'), f.filepath.lastIndexOf('\\'))) : '',
+          platform: plat,
+          isDlc: f.format_category === 'dlc' || f.format_category === 'update',
+          otixMediaId: match?.otixMediaId || f.otix_media_id,
+          otixMediaTitle: match?.otixTitle || f.otix_title,
+          otixConfidence: match?.otixConfidence ?? f.otix_confidence,
+          posterUrl: match?.otixPosterUrl,
+        };
+      });
 
       gameDetector?.setLibrary(games);
       gameDetector?.startPeriodicScan();

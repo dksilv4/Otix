@@ -171,6 +171,9 @@ export const isItemFolder = (item: PreviewItem): boolean => {
 }
 
 export const isActionableItem = (item: PreviewItem): boolean => {
+  if (item.matched !== true) {
+    return false
+  }
   return (
     item.status === 'rename_and_move' ||
     item.status === 'container_package' ||

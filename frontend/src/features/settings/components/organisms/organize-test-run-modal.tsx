@@ -11,6 +11,7 @@ import {
   FolderOpen,
   FolderTree,
   File,
+  Gamepad2,
   Info,
   Loader2,
   Play,
@@ -24,6 +25,7 @@ import { DkButton } from '@ui/atoms/button'
 import { DkDropdown } from '@ui/atoms/dropdown'
 import { apiClient } from '@/lib/api/client'
 import { cn } from '@/lib/utils'
+import { MatchReviewCenterModal } from './match-review-center-modal'
 import {
   type PreviewItem,
   type TestRunFilterTab,
@@ -491,6 +493,7 @@ export const OrganizeTestRunModal = ({
   const [filterTab, setFilterTab] = useState<TestRunFilterTab>('all')
   const [searchQuery, setSearchQuery] = useState('')
   const [progress, setProgress] = useState<OrganizeProgress | null>(null)
+  const [matchReviewOpen, setMatchReviewOpen] = useState(false)
   const abortExecutionRef = useRef(false)
 
   const fetchRealPreview = useCallback(
@@ -551,12 +554,20 @@ export const OrganizeTestRunModal = ({
           setItems([])
         }
       } catch (err: any) {
-        const rawMessage =
+        let rawMessage =
           err?.response?.data?.error ||
           err?.response?.data?.detail ||
           err?.message ||
           ''
-        const cleanMessage = rawMessage
+        if (typeof err?.response?.data === 'string') {
+          try {
+            const parsed = JSON.parse(err.response.data)
+            rawMessage = parsed.error || parsed.detail || parsed.message || err.response.data
+          } catch {
+            rawMessage = err.response.data
+          }
+        }
+        const cleanMessage = String(rawMessage)
           .replace(/Error invoking remote method '[^']+':\s*/gi, '')
           .replace(/^Error:\s*/gi, '')
           .trim()
@@ -635,6 +646,10 @@ export const OrganizeTestRunModal = ({
     [items, selectedFolder],
   )
   const actionableItems = useMemo(() => items.filter(isActionableItem), [items])
+  const unmatchedItems = useMemo(
+    () => items.filter((item) => !item.matched && item.status !== 'already_organized'),
+    [items],
+  )
 
   const directoryGroups = useMemo(
     () => groupPreviewItemsByDirectory(filteredList, selectedFolder),
@@ -661,6 +676,7 @@ export const OrganizeTestRunModal = ({
     let totalSucceeded = 0
     const failedErrors: string[] = []
     const batches = chunkArray(actionableItems, 5)
+    let fallbackToDesktop = false
 
     setProgress({
       total,
@@ -694,16 +710,17 @@ export const OrganizeTestRunModal = ({
           failed: failedErrors.length,
         })
 
-        if (nodeId && nodeId > 0) {
+        const payloadItems = batch.map((i) => ({
+          sourcePath: i.sourcePath,
+          targetPath: i.targetPath,
+        }))
+
+        let executedBatch = false
+
+        if (!fallbackToDesktop && nodeId && nodeId > 0) {
           const payload = {
-            items: batch.map((i) => ({
-              sourcePath: i.sourcePath,
-              targetPath: i.targetPath,
-              source_path: i.sourcePath,
-              target_path: i.targetPath,
-            })),
+            items: payloadItems,
             deleteEmptyFolders: cleanEmpty,
-            delete_empty_folders: cleanEmpty,
           }
           try {
             const res = await apiClient.post<any>(
@@ -723,47 +740,82 @@ export const OrganizeTestRunModal = ({
             } else {
               totalSucceeded += batch.length
             }
+            executedBatch = true
           } catch (netErr: any) {
-            if (!desktopApi?.executeOrganization) {
-              const msg =
-                netErr?.response?.data?.error ||
-                netErr?.response?.data?.detail ||
-                netErr?.message ||
-                'Failed to execute organization movements.'
+            const errData = netErr?.response?.data
+            const rawErr = (
+              typeof errData === 'string'
+                ? errData
+                : errData?.error || errData?.detail || netErr?.message || ''
+            ).toLowerCase()
+            const status = netErr?.response?.status
+
+            const isNetworkUnreachable =
+              status === 500 ||
+              status === 502 ||
+              status === 503 ||
+              status === 504 ||
+              status === 400 ||
+              rawErr.includes('network_unreachable') ||
+              rawErr.includes('node_unreachable') ||
+              rawErr.includes('node_offline') ||
+              rawErr.includes('connection_refused') ||
+              rawErr.includes('econnrefused') ||
+              rawErr.includes('timeout') ||
+              rawErr.includes('does not support server-side') ||
+              netErr?.code === 'ECONNREFUSED' ||
+              netErr?.code === 'ERR_NETWORK'
+
+            if (desktopApi?.executeOrganization) {
+              fallbackToDesktop = true
+            } else {
+              const msg = isNetworkUnreachable
+                ? 'Node server is offline or unreachable. Please ensure the node daemon is running.'
+                : errData?.error ||
+                  errData?.detail ||
+                  netErr?.message ||
+                  'Failed to execute organization movements on node server.'
               failedErrors.push(msg)
               break
             }
           }
-        } else if (desktopApi?.executeOrganization) {
-          const payloadItems = batch.map((i) => ({
-            sourcePath: i.sourcePath,
-            targetPath: i.targetPath,
-            source_path: i.sourcePath,
-            target_path: i.targetPath,
-          }))
-          const desktopResults = await desktopApi.executeOrganization(payloadItems, cleanEmpty)
-          if (Array.isArray(desktopResults)) {
-            desktopResults.forEach((r: any) => {
-              if (r.success) {
-                totalSucceeded++
-              } else if (r.error) {
-                failedErrors.push(r.error)
-              }
-            })
-          } else {
-            totalSucceeded += batch.length
+        }
+
+        if (!executedBatch && desktopApi?.executeOrganization) {
+          try {
+            const desktopResults = await desktopApi.executeOrganization(payloadItems, cleanEmpty)
+            if (Array.isArray(desktopResults)) {
+              desktopResults.forEach((r: any) => {
+                if (r.success) {
+                  totalSucceeded++
+                } else if (r.error) {
+                  failedErrors.push(r.error)
+                }
+              })
+            } else {
+              totalSucceeded += batch.length
+            }
+            executedBatch = true
+          } catch (ipcErr: any) {
+            failedErrors.push(ipcErr?.message || 'Local desktop organization failed.')
+            break
           }
+        } else if (!executedBatch && !desktopApi?.executeOrganization && (!nodeId || nodeId <= 0)) {
+          failedErrors.push('No organizer execution engine available.')
+          break
         }
 
         // Live mark moved batch items as already_organized in items state
-        const movedSources = new Set(batch.map((b) => b.sourcePath.toLowerCase()))
-        setItems((prevItems) =>
-          prevItems.map((item) =>
-            movedSources.has(item.sourcePath.toLowerCase())
-              ? { ...item, status: 'already_organized' as const }
-              : item,
-          ),
-        )
+        if (executedBatch) {
+          const movedSources = new Set(batch.map((b) => b.sourcePath.toLowerCase()))
+          setItems((prevItems) =>
+            prevItems.map((item) =>
+              movedSources.has(item.sourcePath.toLowerCase())
+                ? { ...item, status: 'already_organized' as const }
+                : item,
+            ),
+          )
+        }
 
         setProgress({
           total,
@@ -778,6 +830,9 @@ export const OrganizeTestRunModal = ({
       if (failedErrors.length > 0 && totalSucceeded === 0) {
         setExecutionError(failedErrors[0])
       } else {
+        if (failedErrors.length > 0) {
+          setExecutionError(`Organized ${totalSucceeded} game artifacts, but some operations failed: ${failedErrors[0]}`)
+        }
         setExecutedCount(totalSucceeded)
         void fetchRealPreview(selectedFolder, true)
         queryClient?.invalidateQueries({ queryKey: ['server-games'] })
@@ -802,7 +857,8 @@ export const OrganizeTestRunModal = ({
   if (!open) return null
 
   return (
-    <DkDialog
+    <>
+      <DkDialog
       open={open}
       onOpenChange={onOpenChange}
       title="Organize Test Run"
@@ -1086,6 +1142,32 @@ export const OrganizeTestRunModal = ({
           </div>
         )}
 
+        {/* Unmatched games banner (Radarr / Sonarr style) */}
+        {unmatchedItems.length > 0 && (
+          <div className="p-3 sm:p-3.5 rounded-2xl bg-primary/10 border border-white/[0.06] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-start sm:items-center gap-2.5 text-xs min-w-0">
+              <AlertCircle size={16} className="text-primary shrink-0 mt-0.5 sm:mt-0" />
+              <div className="space-y-0.5 min-w-0">
+                <p className="font-semibold text-foreground truncate">
+                  {unmatchedItems.length} {unmatchedItems.length === 1 ? 'game requires' : 'games require'} matching before organizing
+                </p>
+                <p className="text-muted-foreground text-[11px] leading-relaxed">
+                  Only matched games can be organized into your library. Unmatched games cannot be moved or renamed until resolved.
+                </p>
+              </div>
+            </div>
+            <DkButton
+              size="sm"
+              variant="primary"
+              onClick={() => setMatchReviewOpen(true)}
+              className="text-xs h-7.5 px-3 shrink-0 cursor-pointer self-start sm:self-auto gap-1.5"
+            >
+              <Gamepad2 size={12} className="shrink-0" />
+              <span>Review & Match Games</span>
+            </DkButton>
+          </div>
+        )}
+
         {/* 4. Scrollable Live Preview Stream (Clean directory sections) */}
         <div className="flex-1 min-h-[300px] overflow-y-auto pr-1 space-y-2.5">
           {loading ? (
@@ -1281,5 +1363,17 @@ export const OrganizeTestRunModal = ({
         </div>
       </div>
     </DkDialog>
+      {matchReviewOpen && (
+        <MatchReviewCenterModal
+          open={matchReviewOpen}
+          onOpenChange={(nextOpen) => {
+            setMatchReviewOpen(nextOpen)
+            if (!nextOpen && selectedFolder) {
+              void fetchRealPreview(selectedFolder, true)
+            }
+          }}
+        />
+      )}
+    </>
   )
 }

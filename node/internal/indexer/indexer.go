@@ -426,11 +426,13 @@ func ComputeHeadHash(filepath string) string {
 }
 
 var (
-	reCamel       = regexp.MustCompile(`([a-z])([A-Z])`)
-	reAcronym     = regexp.MustCompile(`([A-Z]+)([A-Z][a-z])`)
-	reLetterDigit = regexp.MustCompile(`([a-uw-zA-UW-Z])([0-9]+)`)
-	reDigitLetter = regexp.MustCompile(`([0-9]+)([a-zA-Z])`)
-	rePreTags     = regexp.MustCompile(`(?i)\bmac\s*os\b|\bmacos\b`)
+	reCamel          = regexp.MustCompile(`([a-z])([A-Z])`)
+	reAcronym        = regexp.MustCompile(`([A-Z]+)([A-Z][a-z])`)
+	reLetterDigit    = regexp.MustCompile(`([a-uw-zA-UW-Z])([0-9]+)`)
+	reDigitLetter    = regexp.MustCompile(`([0-9]+)([a-zA-Z])`)
+	rePreTags        = regexp.MustCompile(`(?i)\bmac\s*os\b|\bmacos\b`)
+	reVersionPattern = regexp.MustCompile(`(?i)\bv\d+(?:\.\d+)+(?:[a-z]\d*)?\b|\bbuild\s*\d+\b`)
+	reTitleIdTag     = regexp.MustCompile(`(?i)\[[0-9a-f]{16}\]|\[?[a-z]{4}\d{5}\]?|\[(?:UPD|DLC|v\d+)\]`)
 )
 
 func CleanTitleFromFilename(filename string) string {
@@ -439,6 +441,12 @@ func CleanTitleFromFilename(filename string) string {
 	if StripExtensions[strings.ToLower(ext)] {
 		base = strings.TrimSuffix(filename, ext)
 	}
+
+	// Remove title IDs and update flags
+	base = reTitleIdTag.ReplaceAllString(base, " ")
+
+	// Remove version tags (v1.0.4, build 1234)
+	base = reVersionPattern.ReplaceAllString(base, " ")
 
 	// Remove macOS before CamelCase splitting turns it into mac OS
 	base = rePreTags.ReplaceAllString(base, " ")
@@ -451,8 +459,11 @@ func CleanTitleFromFilename(filename string) string {
 
 	tags := []string{
 		"repack", "fitgirl", "dodi", "gog", "iso", "codex", "skidrow",
-		"elamigos", "flt", "rune", "setup", "v1.0", "v1.1", "v1.2",
+		"elamigos", "flt", "rune", "tenoke", "goldberg", "razor1911", "fairlight",
+		"hoodlum", "empress", "cpy", "reloaded", "prophet", "plaza", "tinyiso",
+		"chronos", "tiki", "kaos", "darck", "xatab", "selax", "setup",
 		"x64", "x86", "multi10", "multi12", "direct play", "macos", "mac", "osx",
+		"crackfix", "onlinefix", "proper", "earlyaccess",
 	}
 
 	lower := strings.ToLower(base)

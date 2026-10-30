@@ -322,7 +322,7 @@ export const DiscoverHero = ({ className }: DiscoverHeroProps) => {
                           activity={{
                             status: 'available',
                             mediaType: (activeItem.mediaType as 'movie' | 'show') || 'movie',
-                            tmdbId: activeItem.tmdbId,
+                            tmdbId: activeItem.tmdbId || undefined,
                             title: activeItem.title,
                             nodeName: providerLabel || 'Stream',
                             isOwned: true,

@@ -2,6 +2,7 @@ import { app, BrowserWindow, ipcMain, dialog } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
 import { exec, execSync, spawn } from 'child_process';
+import { getApiBaseUrl } from '../config';
 
 export interface SetupInstallerInfo {
   version: string;
@@ -152,7 +153,7 @@ export function registerAppInstallerIPC(installerWindow: BrowserWindow): void {
   }));
   safeHandle('plugin:set-auth-token', async () => {});
   safeHandle('plugin:set-api-base-url', async () => {});
-  safeHandle('plugin:get-api-base-url', async () => 'http://127.0.0.1:8000');
+  safeHandle('plugin:get-api-base-url', async () => getApiBaseUrl());
   safeHandle('plugin:get-status', async () => ({}));
   safeHandle('plugin:list', async () => []);
   safeHandle('plugin:discover', async () => []);

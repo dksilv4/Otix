@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from rest_framework import permissions, status
+from rest_framework.exceptions import NotFound, ValidationError
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -19,6 +20,7 @@ from apps.library.services.game_matching import (
     sync_node_manifest,
     unmatch_record,
 )
+from apps.media.models import MediaItem
 
 
 class StorageSharesView(APIView):
@@ -43,7 +45,10 @@ class StorageShareDetailView(APIView):
     permission_classes = (permissions.IsAuthenticated,)
 
     def get_object(self, request: Request, pk: int) -> StorageShare:
-        return StorageShare.objects.get(id=pk, user=request.user)
+        try:
+            return StorageShare.objects.get(id=pk, user=request.user)
+        except (StorageShare.DoesNotExist, ValueError) as err:
+            raise NotFound("Storage share not found") from err
 
     def get(self, request: Request, pk: int) -> Response:
         share = self.get_object(request, pk)
@@ -68,7 +73,10 @@ class NodeLibraryPathsView(APIView):
     permission_classes = (permissions.IsAuthenticated,)
 
     def get_node(self, request: Request, node_id: int) -> UserNode:
-        return UserNode.objects.get(id=node_id, user=request.user)
+        try:
+            return UserNode.objects.get(id=node_id, user=request.user)
+        except (UserNode.DoesNotExist, ValueError) as err:
+            raise NotFound(f"Node {node_id} not found") from err
 
     def get(self, request: Request, node_id: int) -> Response:
         node = self.get_node(request, node_id)
@@ -119,7 +127,10 @@ class NodeLibraryPathDetailView(APIView):
     permission_classes = (permissions.IsAuthenticated,)
 
     def delete(self, request: Request, node_id: int, path_id: int) -> Response:
-        lp = NodeLibraryPath.objects.get(id=path_id, node__id=node_id, node__user=request.user)
+        try:
+            lp = NodeLibraryPath.objects.get(id=path_id, node__id=node_id, node__user=request.user)
+        except (NodeLibraryPath.DoesNotExist, ValueError) as err:
+            raise NotFound("Node library path not found") from err
         lp.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -130,7 +141,10 @@ class NodeManifestIngestView(APIView):
     permission_classes = (permissions.IsAuthenticated,)
 
     def post(self, request: Request, node_id: int) -> Response:
-        node = UserNode.objects.get(id=node_id, user=request.user)
+        try:
+            node = UserNode.objects.get(id=node_id, user=request.user)
+        except (UserNode.DoesNotExist, ValueError) as err:
+            raise NotFound(f"Node {node_id} not found") from err
         files = request.data.get("files") or []
         if not isinstance(files, list):
             return Response({"error": "Expected 'files' array"}, status=status.HTTP_400_BAD_REQUEST)
@@ -168,7 +182,12 @@ class GameMatchConfirmView(APIView):
     def post(self, request: Request, record_id: int) -> Response:
         serializer = ConfirmMatchPayloadSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        record = confirm_match(request.user, record_id, serializer.validated_data["media_item_id"])
+        try:
+            record = confirm_match(request.user, record_id, serializer.validated_data["media_item_id"])
+        except GameMatchRecord.DoesNotExist as err:
+            raise NotFound("Game match record not found") from err
+        except (MediaItem.DoesNotExist, ValueError) as err:
+            raise ValidationError("Target media item not found or invalid") from err
         return Response(GameMatchRecordSerializer(record).data)
 
 
@@ -178,5 +197,8 @@ class GameMatchUnmatchView(APIView):
     permission_classes = (permissions.IsAuthenticated,)
 
     def post(self, request: Request, record_id: int) -> Response:
-        record = unmatch_record(request.user, record_id)
+        try:
+            record = unmatch_record(request.user, record_id)
+        except GameMatchRecord.DoesNotExist as err:
+            raise NotFound("Game match record not found") from err
         return Response(GameMatchRecordSerializer(record).data)

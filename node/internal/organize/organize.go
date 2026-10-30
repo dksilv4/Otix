@@ -15,6 +15,10 @@ import (
 
 	"regexp"
 
+	"sort"
+
+	"strconv"
+
 	"strings"
 
 	"sync"
@@ -158,6 +162,11 @@ var (
 		"ubisoft": true, "ubisoft game launcher": true,
 		"battle.net": true, "xboxgames": true, "xbox": true,
 		"library": true, "noise": true,
+		"ps5": true, "ps4": true, "ps3": true, "ps2": true, "ps1": true, "psx": true,
+		"playstation": true, "playstation 4": true, "playstation 5": true,
+		"switch": true, "nswitch": true, "nintendo switch": true,
+		"wii": true, "wii u": true, "gamecube": true, "3ds": true, "nds": true,
+		"xbox 360": true, "xbox one": true, "xbox series": true,
 	}
 
 	romExtensions = map[string]string{
@@ -317,6 +326,144 @@ func sanitizePathTitle(title string) string {
 	return strings.TrimSpace(cleaned)
 }
 
+var updateRangeRegex = regexp.MustCompile(`(?i)(?:update|patch|v)?\s*v?([0-9]+(?:\.[0-9]+)*|\d{2}[._-]\d{2}[._-]\d{4}|\d{4,8})\s*(?:-|to|_to_|\s-\s)\s*v?([0-9]+(?:\.[0-9]+)*|\d{2}[._-]\d{2}[._-]\d{4}|\d{4,8})`)
+
+type PatchRange struct {
+	Filename string
+	From     string
+	To       string
+}
+
+func parseDateOrSemVerParts(s string) []int {
+	clean := strings.TrimPrefix(strings.TrimSpace(strings.ToLower(s)), "v")
+	dateRegex := regexp.MustCompile(`^(\d{2})[._-](\d{2})[._-](\d{4})$`)
+	if m := dateRegex.FindStringSubmatch(clean); len(m) == 4 {
+		d, _ := strconv.Atoi(m[1])
+		mth, _ := strconv.Atoi(m[2])
+		y, _ := strconv.Atoi(m[3])
+		return []int{y, mth, d}
+	}
+	chunks := regexp.MustCompile(`[._-]`).Split(clean, -1)
+	var parts []int
+	for _, c := range chunks {
+		if val, err := strconv.Atoi(c); err == nil {
+			parts = append(parts, val)
+		}
+	}
+	return parts
+}
+
+func compareVersionStrings(v1, v2 string) int {
+	if v1 == v2 {
+		return 0
+	}
+	p1 := parseDateOrSemVerParts(v1)
+	p2 := parseDateOrSemVerParts(v2)
+	minLen := len(p1)
+	if len(p2) < minLen {
+		minLen = len(p2)
+	}
+	for i := 0; i < minLen; i++ {
+		if p1[i] < p2[i] {
+			return -1
+		}
+		if p1[i] > p2[i] {
+			return 1
+		}
+	}
+	if len(p1) < len(p2) {
+		return -1
+	}
+	if len(p1) > len(p2) {
+		return 1
+	}
+	if len(p1) > 0 {
+		return 0
+	}
+	return strings.Compare(v1, v2)
+}
+
+func parseUpdateRange(filename string) (from, to string, ok bool) {
+	clean := strings.TrimSuffix(filename, filepath.Ext(filename))
+	m := updateRangeRegex.FindStringSubmatch(clean)
+	if len(m) >= 3 {
+		return m[1], m[2], true
+	}
+	return "", "", false
+}
+
+func checkUpdateChain(dirPath string, baseVersion string) (anomalies []string, reachableVer string, targetVer string) {
+	var candidateFiles []string
+	if entries, err := os.ReadDir(dirPath); err == nil {
+		for _, e := range entries {
+			if !e.IsDir() {
+				candidateFiles = append(candidateFiles, e.Name())
+			} else if strings.Contains(strings.ToLower(e.Name()), "update") {
+				candidateFiles = append(candidateFiles, e.Name())
+				if subEntries, subErr := os.ReadDir(filepath.Join(dirPath, e.Name())); subErr == nil {
+					for _, se := range subEntries {
+						if !se.IsDir() {
+							candidateFiles = append(candidateFiles, se.Name())
+						}
+					}
+				}
+			}
+		}
+	}
+
+	seenRanges := make(map[string]bool)
+	var patches []PatchRange
+	for _, f := range candidateFiles {
+		from, to, ok := parseUpdateRange(f)
+		if ok {
+			key := from + "->" + to
+			if !seenRanges[key] {
+				seenRanges[key] = true
+				patches = append(patches, PatchRange{Filename: f, From: from, To: to})
+			}
+		}
+	}
+
+	if len(patches) == 0 {
+		return nil, baseVersion, baseVersion
+	}
+
+	sort.Slice(patches, func(i, j int) bool {
+		cmp := compareVersionStrings(patches[i].From, patches[j].From)
+		if cmp != 0 {
+			return cmp < 0
+		}
+		return compareVersionStrings(patches[i].To, patches[j].To) < 0
+	})
+
+	targetVer = patches[len(patches)-1].To
+	reachableVer = baseVersion
+	chainBroken := false
+
+	for i := 0; i < len(patches); i++ {
+		curr := patches[i]
+		if i == 0 {
+			if baseVersion != "" && compareVersionStrings(baseVersion, curr.From) < 0 {
+				anomalies = append(anomalies, fmt.Sprintf("Broken update chain: base game is v%s, but earliest available update '%s' requires v%s", baseVersion, curr.Filename, curr.From))
+				chainBroken = true
+			} else {
+				reachableVer = curr.To
+			}
+		} else {
+			prev := patches[i-1]
+			cmp := compareVersionStrings(prev.To, curr.From)
+			if cmp < 0 {
+				anomalies = append(anomalies, fmt.Sprintf("Broken update chain: missing update between v%s and v%s (patch '%s' requires v%s but previous update only reaches v%s)", prev.To, curr.From, curr.Filename, curr.From, prev.To))
+				chainBroken = true
+			} else if !chainBroken && cmp == 0 {
+				reachableVer = curr.To
+			}
+		}
+	}
+
+	return anomalies, reachableVer, targetVer
+}
+
 func getFolderTemplate(template string) string {
 	if template == "" {
 		return "{Title} [{Platform}]"
@@ -337,7 +484,7 @@ func getFolderTemplate(template string) string {
 }
 
 func findOtixSidecar(dir string) (*otixmeta.Sidecar, string) {
-	if sc, err := otixmeta.Read(dir); err == nil && sc != nil && (sc.MediaID != "" || sc.Title != "") {
+	if sc, err := otixmeta.Read(dir); err == nil && sc != nil && (sc.MediaID != "" || sc.Title != "" || sc.TitleID != "") {
 		return sc, otixmeta.Path(dir)
 	}
 	entries, err := os.ReadDir(dir)
@@ -361,7 +508,7 @@ func findOtixSidecar(dir string) (*otixmeta.Sidecar, string) {
 	// and organized as that single child, putting other games inside it!
 	if len(nonNoiseSubdirs) == 1 {
 		subPath := filepath.Join(dir, nonNoiseSubdirs[0].Name())
-		if sc, err := otixmeta.Read(subPath); err == nil && sc != nil && (sc.MediaID != "" || sc.Title != "") {
+		if sc, err := otixmeta.Read(subPath); err == nil && sc != nil && (sc.MediaID != "" || sc.Title != "" || sc.TitleID != "") {
 			return sc, otixmeta.Path(subPath)
 		}
 	}
@@ -369,6 +516,12 @@ func findOtixSidecar(dir string) (*otixmeta.Sidecar, string) {
 }
 
 func platformFromSidecar(sc *otixmeta.Sidecar, fallback string) string {
+	if fallback == "PS5" {
+		return "PS5"
+	}
+	if sc != nil && strings.HasPrefix(strings.ToUpper(sc.TitleID), "PPSA") {
+		return "PS5"
+	}
 	if sc != nil && len(sc.Platforms) > 0 {
 		// 1. Prioritize PC if present anywhere in platforms
 		for _, p := range sc.Platforms {
@@ -636,6 +789,49 @@ func scanForGameExe(dirPath string) bool {
 	return false
 }
 
+func parsePS5ParamJSON(paramJsonPath string) (string, string) {
+	data, err := os.ReadFile(paramJsonPath)
+	if err != nil {
+		return "", ""
+	}
+	var raw struct {
+		TitleID             string                 `json:"titleId"`
+		LocalizedParameters map[string]interface{} `json:"localizedParameters"`
+	}
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return "", ""
+	}
+	titleId := strings.TrimSpace(raw.TitleID)
+	titleName := ""
+
+	if raw.LocalizedParameters != nil {
+		defaultLang := "en-GB"
+		if dl, ok := raw.LocalizedParameters["defaultLanguage"].(string); ok && dl != "" {
+			defaultLang = dl
+		}
+		candidates := []string{defaultLang, "en-GB", "en-US", "en", "default"}
+		for _, lang := range candidates {
+			if entry, ok := raw.LocalizedParameters[lang].(map[string]interface{}); ok {
+				if tn, ok := entry["titleName"].(string); ok && strings.TrimSpace(tn) != "" {
+					titleName = strings.TrimSpace(tn)
+					break
+				}
+			}
+		}
+		if titleName == "" {
+			for _, v := range raw.LocalizedParameters {
+				if entry, ok := v.(map[string]interface{}); ok {
+					if tn, ok := entry["titleName"].(string); ok && strings.TrimSpace(tn) != "" {
+						titleName = strings.TrimSpace(tn)
+						break
+					}
+				}
+			}
+		}
+	}
+	return titleId, titleName
+}
+
 func PreviewOrganization(dir string, template string, sample bool) ([]PreviewItem, error) {
 
 	if template == "" {
@@ -708,6 +904,10 @@ func PreviewOrganization(dir string, template string, sample bool) ([]PreviewIte
 
 					consolePlatform := ""
 
+					ps5TitleId := ""
+
+					ps5TitleName := ""
+
 					var anomalies []string
 
 					folderLower := strings.ToLower(d.Name())
@@ -759,6 +959,64 @@ func PreviewOrganization(dir string, template string, sample bool) ([]PreviewIte
 							isConsolePackage = true
 
 							consolePlatform = "PS4"
+
+							paramJsonPath := filepath.Join(path, c.Name(), "param.json")
+
+							if _, pErr := os.Stat(paramJsonPath); pErr == nil {
+
+								consolePlatform = "PS5"
+
+								if tId, tName := parsePS5ParamJSON(paramJsonPath); tId != "" || tName != "" {
+
+									if tId != "" {
+
+										ps5TitleId = tId
+
+									}
+
+									if tName != "" {
+
+										ps5TitleName = tName
+
+									}
+
+								}
+
+							}
+
+						}
+
+						if strings.HasPrefix(cName, "ppsa") || strings.Contains(cName, "ps5") {
+
+							isConsolePackage = true
+
+							consolePlatform = "PS5"
+
+							if c.IsDir() {
+
+								subParam := filepath.Join(path, c.Name(), "sce_sys", "param.json")
+
+								if _, pErr := os.Stat(subParam); pErr == nil {
+
+									if tId, tName := parsePS5ParamJSON(subParam); tId != "" || tName != "" {
+
+										if tId != "" {
+
+											ps5TitleId = tId
+
+										}
+
+										if tName != "" {
+
+											ps5TitleName = tName
+
+										}
+
+									}
+
+								}
+
+							}
 
 						}
 
@@ -914,11 +1172,16 @@ func PreviewOrganization(dir string, template string, sample bool) ([]PreviewIte
 							if y == "" && actualName != d.Name() {
 								y = yearFromSidecar(sc, d.Name())
 							}
+							tId := sc.TitleID
+							if tId == "" {
+								tId = ps5TitleId
+							}
 							release = ParsedRelease{
 								Title:      t,
 								CleanTitle: t,
 								Platform:   plat,
 								Year:       y,
+								TitleId:    tId,
 								RawName:    actualName,
 							}
 						} else {
@@ -941,10 +1204,61 @@ func PreviewOrganization(dir string, template string, sample bool) ([]PreviewIte
 							} else if isPcPackage {
 								release.Platform = "PC"
 							}
+							if consolePlatform == "PS5" {
+								if ps5TitleId != "" {
+									release.TitleId = ps5TitleId
+								}
+								if ps5TitleName != "" {
+									release.Title = ps5TitleName
+									release.CleanTitle = CleanGameTitle(ps5TitleName)
+								} else if strings.EqualFold(release.Title, "app0") || strings.HasPrefix(strings.ToLower(release.Title), "app0") {
+									paramPath := filepath.Join(actualPath, "sce_sys", "param.json")
+									if tId, tName := parsePS5ParamJSON(paramPath); tId != "" || tName != "" {
+										if tId != "" {
+											release.TitleId = tId
+										}
+										if tName != "" {
+											release.Title = tName
+											release.CleanTitle = CleanGameTitle(tName)
+										}
+									}
+								}
+							}
+						}
+
+						if sc != nil {
+							if release.ReleaseGroup == "" && sc.ReleaseGroup != "" {
+								release.ReleaseGroup = sc.ReleaseGroup
+							}
+							if release.Version == "" && sc.GameVersion != "" {
+								release.Version = sc.GameVersion
+							}
+							if release.Edition == "" && sc.Edition != "" {
+								release.Edition = sc.Edition
+							}
+							if release.TitleId == "" && sc.TitleID != "" {
+								release.TitleId = sc.TitleID
+							}
 						}
 
 						if strings.TrimSpace(release.Title) == "" {
 							return nil
+						}
+
+						chainAnomalies, reachableVer, targetVer := checkUpdateChain(actualPath, release.Version)
+						if len(chainAnomalies) == 0 && targetVer == release.Version && actualPath != path {
+							pAnomalies, pReachable, pTarget := checkUpdateChain(path, release.Version)
+							if len(pAnomalies) > 0 || pTarget != release.Version {
+								chainAnomalies = pAnomalies
+								reachableVer = pReachable
+								targetVer = pTarget
+							}
+						}
+						if len(chainAnomalies) > 0 {
+							anomalies = append(anomalies, chainAnomalies...)
+							if health == "HEALTHY" {
+								health = "WARNING"
+							}
 						}
 
 						folderTemplate := getFolderTemplate(template)
@@ -1015,7 +1329,7 @@ func PreviewOrganization(dir string, template string, sample bool) ([]PreviewIte
 
 							Type: "folder_package",
 
-							Matched: true,
+							Matched: isLinked || sample,
 
 							Extracted: func() map[string]string {
 								ext := map[string]string{
@@ -1025,6 +1339,16 @@ func PreviewOrganization(dir string, template string, sample bool) ([]PreviewIte
 									"ReleaseGroup": release.ReleaseGroup,
 									"Edition":      release.Edition,
 									"Version":      release.Version,
+								}
+								if reachableVer != "" {
+									ext["ReachableVersion"] = reachableVer
+								}
+								if targetVer != "" {
+									ext["TargetVersion"] = targetVer
+								}
+								if release.TitleId != "" {
+									ext["TitleId"] = release.TitleId
+									ext["ps_id"] = release.TitleId
 								}
 								if isLinked && sc.MediaID != "" {
 									ext["MediaID"] = sc.MediaID
@@ -1262,6 +1586,23 @@ func PreviewOrganization(dir string, template string, sample bool) ([]PreviewIte
 
 		}
 
+		fileSc, _ := findOtixSidecar(path)
+		if fileSc != nil {
+			if release.ReleaseGroup == "" && fileSc.ReleaseGroup != "" {
+				release.ReleaseGroup = fileSc.ReleaseGroup
+			}
+			if release.Version == "" && fileSc.GameVersion != "" {
+				release.Version = fileSc.GameVersion
+			}
+			if release.Edition == "" && fileSc.Edition != "" {
+				release.Edition = fileSc.Edition
+			}
+			if release.TitleId == "" && fileSc.TitleID != "" {
+				release.TitleId = fileSc.TitleID
+			}
+		}
+		fileMatched := sample || (fileSc != nil && (fileSc.MediaID != "" || fileSc.Title != ""))
+
 		items = append(items, PreviewItem{
 
 			SourcePath: path,
@@ -1270,7 +1611,7 @@ func PreviewOrganization(dir string, template string, sample bool) ([]PreviewIte
 
 			Type: itemType,
 
-			Matched: true,
+			Matched: fileMatched,
 
 			Extracted: map[string]string{
 
@@ -1456,6 +1797,77 @@ func computeFoldersToCreate(targetPath, baseDir string) []string {
 
 }
 
+func syncPS5Sidecar(targetDir string) {
+	candidatePaths := []string{
+		filepath.Join(targetDir, "sce_sys", "param.json"),
+	}
+	if entries, err := os.ReadDir(targetDir); err == nil {
+		for _, e := range entries {
+			if e.IsDir() {
+				candidatePaths = append(candidatePaths, filepath.Join(targetDir, e.Name(), "sce_sys", "param.json"))
+			}
+		}
+	}
+	for _, p := range candidatePaths {
+		if _, err := os.Stat(p); err == nil {
+			tId, tName := parsePS5ParamJSON(p)
+			if tId != "" {
+				sc, _ := otixmeta.Read(targetDir)
+				if sc == nil {
+					sc = &otixmeta.Sidecar{
+						Version:   1,
+						TitleID:   tId,
+						Title:     tName,
+						Platforms: []map[string]any{{"name": "PlayStation 5", "slug": "playstation-5"}},
+					}
+				} else {
+					sc.TitleID = tId
+					if sc.Title == "" && tName != "" {
+						sc.Title = tName
+					}
+				}
+				_ = otixmeta.Write(targetDir, sc)
+				break
+			}
+		}
+	}
+}
+
+func syncSidecarMetadata(src, dst string) {
+	origName := filepath.Base(src)
+	rel := ParseReleaseName(origName)
+	sc, _ := otixmeta.Read(dst)
+	if sc == nil {
+		sc = &otixmeta.Sidecar{
+			Version: 1,
+		}
+	}
+	updated := false
+	if sc.OriginalName == "" && origName != filepath.Base(dst) {
+		sc.OriginalName = origName
+		updated = true
+	}
+	if sc.ReleaseGroup == "" && rel.ReleaseGroup != "" {
+		sc.ReleaseGroup = rel.ReleaseGroup
+		updated = true
+	}
+	if sc.GameVersion == "" && rel.Version != "" {
+		sc.GameVersion = rel.Version
+		updated = true
+	}
+	if sc.Edition == "" && rel.Edition != "" {
+		sc.Edition = rel.Edition
+		updated = true
+	}
+	if sc.Title == "" && rel.Title != "" {
+		sc.Title = rel.Title
+		updated = true
+	}
+	if updated {
+		_ = otixmeta.Write(dst, sc)
+	}
+}
+
 func ExecuteOrganization(items []ExecuteItem, deleteEmptyFolders ...bool) ([]ExecuteResult, error) {
 
 	var results []ExecuteResult
@@ -1578,6 +1990,8 @@ func ExecuteOrganization(items []ExecuteItem, deleteEmptyFolders ...bool) ([]Exe
 		if fi, statErr := os.Stat(dst); statErr == nil && fi.IsDir() {
 
 			healRepackDir(dst)
+			syncPS5Sidecar(dst)
+			syncSidecarMetadata(src, dst)
 
 		}
 

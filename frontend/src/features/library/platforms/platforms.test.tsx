@@ -51,6 +51,7 @@ vi.mock("../library-queries", () => ({
   usePlexStatus: vi.fn(),
   usePlexLibraryScan: vi.fn(),
   streamPlexSync: vi.fn().mockResolvedValue({ total: 0, matched: 0, seeded: 0 }),
+  useStreamableMediaIds: vi.fn(() => ({ data: new Set(), isLoading: false })),
 }))
 
 // Mock Player Provider

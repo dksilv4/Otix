@@ -31,8 +31,6 @@ export interface NodeJDownloaderSettingsModalProps {
   onClose: () => void;
 }
 
-export type ServerJDownloaderSettingsModalProps = NodeJDownloaderSettingsModalProps;
-
 interface JDownloaderFormProps {
   config?: ServerJDownloaderConfig;
   targetNodeId: number;
@@ -90,15 +88,18 @@ const JDownloaderForm = ({
     }
   }, [config]);
 
-  useResetConnectionTest(setTestResult, [
-    email,
-    password,
-    deviceName,
-    deviceId,
-    directHost,
-    directPort,
-    mode,
-  ]);
+  useResetConnectionTest(
+    [
+      email,
+      password,
+      deviceName,
+      deviceId,
+      directHost,
+      directPort,
+      mode,
+    ],
+    () => setTestResult(null),
+  );
 
   const handleTest = async () => {
     try {

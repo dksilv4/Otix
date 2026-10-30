@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from django.core.exceptions import ValidationError as DjangoValidationError
+from django.db import IntegrityError
 from rest_framework import status
 from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
 from rest_framework.response import Response
@@ -132,22 +133,13 @@ class MatchStreamView(MatchBatchView):
 
 
 class MatchScanView(APIView):
-    """``POST /media/match/scan`` — legacy SSE scan (deferred)."""
+    """``POST /media/match/scan`` — resolve scanned/local titles to the catalog."""
 
     def post(self, request) -> Response:
         games = request.data.get("games") if isinstance(request.data, dict) else None
         if not isinstance(games, list):
             raise ValidationError("games list is required")
-        matches = [_empty_match(g) for g in games]
-        return Response(
-            {
-                "matches": matches,
-                "total": len(matches),
-                "matched": 0,
-                "unmatched": len(matches),
-                "errored": 0,
-            }
-        )
+        return Response(import_service.match_games_payload(games))
 
 
 class MatchConfirmView(APIView):
@@ -353,6 +345,6 @@ class SyncLocalGamesView(APIView):
             raise ValidationError("games list is required")
         try:
             result = services.sync_local_games(request.user, games)
-        except DjangoValidationError as exc:
+        except (DjangoValidationError, IntegrityError, ValueError) as exc:
             raise ValidationError(str(exc)) from None
         return Response(result, status=status.HTTP_200_OK)

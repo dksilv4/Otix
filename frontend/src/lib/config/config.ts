@@ -16,7 +16,10 @@ function resolveApiBaseUrl(): string {
   // In development, desktop connects to the local dev backend.
   // In production (packaged release app), desktop connects to the production API.
   if (isDesktop()) {
-    return import.meta.env?.DEV ? 'http://127.0.0.1:8000/api/v1' : 'https://otix.app/api/v1'
+    if (import.meta.env?.VITE_LOCAL_BACKEND === 'true') {
+      return 'http://127.0.0.1:8000/api/v1'
+    }
+    return 'https://otix.app/api/v1'
   }
   return '/api/v1'
 }

@@ -1,0 +1,1136 @@
+[
+  {
+    "path": "/Volumes/Games/1 [PC]",
+    "rel": "1 [PC]",
+    "is_file": false,
+    "name": "1 [PC]",
+    "parent": ""
+  },
+  {
+    "path": "/Volumes/Games/AI Limit [PC]/AI Limit",
+    "rel": "AI Limit [PC]/AI Limit",
+    "is_file": false,
+    "name": "AI Limit",
+    "parent": "AI Limit [PC]"
+  },
+  {
+    "path": "/Volumes/Games/AI Limit [PC]/Baldurs Gate 3",
+    "rel": "AI Limit [PC]/Baldurs Gate 3",
+    "is_file": false,
+    "name": "Baldurs Gate 3",
+    "parent": "AI Limit [PC]"
+  },
+  {
+    "path": "/Volumes/Games/AI Limit [PC]/Black Myth Wukong/Black.Myth.Wukong-voices38.iso",
+    "rel": "AI Limit [PC]/Black Myth Wukong/Black.Myth.Wukong-voices38.iso",
+    "is_file": true,
+    "name": "Black.Myth.Wukong-voices38.iso",
+    "parent": "AI Limit [PC]/Black Myth Wukong"
+  },
+  {
+    "path": "/Volumes/Games/AI Limit [PC]/Clair Obscur Expedition 33",
+    "rel": "AI Limit [PC]/Clair Obscur Expedition 33",
+    "is_file": false,
+    "name": "Clair Obscur Expedition 33",
+    "parent": "AI Limit [PC]"
+  },
+  {
+    "path": "/Volumes/Games/AI Limit [PC]/Crack/Black.Myth.Wukong.CRACKFIX-voices38",
+    "rel": "AI Limit [PC]/Crack/Black.Myth.Wukong.CRACKFIX-voices38",
+    "is_file": false,
+    "name": "Black.Myth.Wukong.CRACKFIX-voices38",
+    "parent": "AI Limit [PC]/Crack"
+  },
+  {
+    "path": "/Volumes/Games/AI Limit [PC]/Crack/Hogwarts_Legacy_-_small_DLC_unlocker_+_CrackFix_Win11_24H2",
+    "rel": "AI Limit [PC]/Crack/Hogwarts_Legacy_-_small_DLC_unlocker_+_CrackFix_Win11_24H2",
+    "is_file": false,
+    "name": "Hogwarts_Legacy_-_small_DLC_unlocker_+_CrackFix_Win11_24H2",
+    "parent": "AI Limit [PC]/Crack"
+  },
+  {
+    "path": "/Volumes/Games/AI Limit [PC]/Cyberpunk 2077",
+    "rel": "AI Limit [PC]/Cyberpunk 2077",
+    "is_file": false,
+    "name": "Cyberpunk 2077",
+    "parent": "AI Limit [PC]"
+  },
+  {
+    "path": "/Volumes/Games/AI Limit [PC]/Cyberpunk 2077 (2077)",
+    "rel": "AI Limit [PC]/Cyberpunk 2077 (2077)",
+    "is_file": false,
+    "name": "Cyberpunk 2077 (2077)",
+    "parent": "AI Limit [PC]"
+  },
+  {
+    "path": "/Volumes/Games/AI Limit [PC]/DOOM Eternal",
+    "rel": "AI Limit [PC]/DOOM Eternal",
+    "is_file": false,
+    "name": "DOOM Eternal",
+    "parent": "AI Limit [PC]"
+  },
+  {
+    "path": "/Volumes/Games/AI Limit [PC]/Dead or Alive 6 Deluxe Edition",
+    "rel": "AI Limit [PC]/Dead or Alive 6 Deluxe Edition",
+    "is_file": false,
+    "name": "Dead or Alive 6 Deluxe Edition",
+    "parent": "AI Limit [PC]"
+  },
+  {
+    "path": "/Volumes/Games/AI Limit [PC]/Deus Ex",
+    "rel": "AI Limit [PC]/Deus Ex",
+    "is_file": false,
+    "name": "Deus Ex",
+    "parent": "AI Limit [PC]"
+  },
+  {
+    "path": "/Volumes/Games/AI Limit [PC]/Deus Ex Mankind Divided",
+    "rel": "AI Limit [PC]/Deus Ex Mankind Divided",
+    "is_file": false,
+    "name": "Deus Ex Mankind Divided",
+    "parent": "AI Limit [PC]"
+  },
+  {
+    "path": "/Volumes/Games/AI Limit [PC]/Dispatch",
+    "rel": "AI Limit [PC]/Dispatch",
+    "is_file": false,
+    "name": "Dispatch",
+    "parent": "AI Limit [PC]"
+  },
+  {
+    "path": "/Volumes/Games/AI Limit [PC]/Dyson Sphere Program",
+    "rel": "AI Limit [PC]/Dyson Sphere Program",
+    "is_file": false,
+    "name": "Dyson Sphere Program",
+    "parent": "AI Limit [PC]"
+  },
+  {
+    "path": "/Volumes/Games/AI Limit [PC]/Elden Ring Deluxe Edition",
+    "rel": "AI Limit [PC]/Elden Ring Deluxe Edition",
+    "is_file": false,
+    "name": "Elden Ring Deluxe Edition",
+    "parent": "AI Limit [PC]"
+  },
+  {
+    "path": "/Volumes/Games/AI Limit [PC]/FOUNDRY",
+    "rel": "AI Limit [PC]/FOUNDRY",
+    "is_file": false,
+    "name": "FOUNDRY",
+    "parent": "AI Limit [PC]"
+  },
+  {
+    "path": "/Volumes/Games/AI Limit [PC]/Final Fantasy VII Rebirth",
+    "rel": "AI Limit [PC]/Final Fantasy VII Rebirth",
+    "is_file": false,
+    "name": "Final Fantasy VII Rebirth",
+    "parent": "AI Limit [PC]"
+  },
+  {
+    "path": "/Volumes/Games/AI Limit [PC]/Five Hearts Under One Roof",
+    "rel": "AI Limit [PC]/Five Hearts Under One Roof",
+    "is_file": false,
+    "name": "Five Hearts Under One Roof",
+    "parent": "AI Limit [PC]"
+  },
+  {
+    "path": "/Volumes/Games/AI Limit [PC]/Five Hearts Under One Roof 2",
+    "rel": "AI Limit [PC]/Five Hearts Under One Roof 2",
+    "is_file": false,
+    "name": "Five Hearts Under One Roof 2",
+    "parent": "AI Limit [PC]"
+  },
+  {
+    "path": "/Volumes/Games/AI Limit [PC]/God of War",
+    "rel": "AI Limit [PC]/God of War",
+    "is_file": false,
+    "name": "God of War",
+    "parent": "AI Limit [PC]"
+  },
+  {
+    "path": "/Volumes/Games/AI Limit [PC]/God of War Ragnarok",
+    "rel": "AI Limit [PC]/God of War Ragnarok",
+    "is_file": false,
+    "name": "God of War Ragnarok",
+    "parent": "AI Limit [PC]"
+  },
+  {
+    "path": "/Volumes/Games/AI Limit [PC]/Hades II",
+    "rel": "AI Limit [PC]/Hades II",
+    "is_file": false,
+    "name": "Hades II",
+    "parent": "AI Limit [PC]"
+  },
+  {
+    "path": "/Volumes/Games/AI Limit [PC]/High On Life",
+    "rel": "AI Limit [PC]/High On Life",
+    "is_file": false,
+    "name": "High On Life",
+    "parent": "AI Limit [PC]"
+  },
+  {
+    "path": "/Volumes/Games/AI Limit [PC]/High On Life 2",
+    "rel": "AI Limit [PC]/High On Life 2",
+    "is_file": false,
+    "name": "High On Life 2",
+    "parent": "AI Limit [PC]"
+  },
+  {
+    "path": "/Volumes/Games/AI Limit [PC]/High On Life High On Knife/High_On_Life_High_On_Knife-Razor1911.iso",
+    "rel": "AI Limit [PC]/High On Life High On Knife/High_On_Life_High_On_Knife-Razor1911.iso",
+    "is_file": true,
+    "name": "High_On_Life_High_On_Knife-Razor1911.iso",
+    "parent": "AI Limit [PC]/High On Life High On Knife"
+  },
+  {
+    "path": "/Volumes/Games/AI Limit [PC]/Hogwarts Legacy Deluxe Edition",
+    "rel": "AI Limit [PC]/Hogwarts Legacy Deluxe Edition",
+    "is_file": false,
+    "name": "Hogwarts Legacy Deluxe Edition",
+    "parent": "AI Limit [PC]"
+  },
+  {
+    "path": "/Volumes/Games/AI Limit [PC]/Invincible VS",
+    "rel": "AI Limit [PC]/Invincible VS",
+    "is_file": false,
+    "name": "Invincible VS",
+    "parent": "AI Limit [PC]"
+  },
+  {
+    "path": "/Volumes/Games/AI Limit [PC]/Kiborg",
+    "rel": "AI Limit [PC]/Kiborg",
+    "is_file": false,
+    "name": "Kiborg",
+    "parent": "AI Limit [PC]"
+  },
+  {
+    "path": "/Volumes/Games/AI Limit [PC]/Kingdom Come Deliverance II",
+    "rel": "AI Limit [PC]/Kingdom Come Deliverance II",
+    "is_file": false,
+    "name": "Kingdom Come Deliverance II",
+    "parent": "AI Limit [PC]"
+  },
+  {
+    "path": "/Volumes/Games/AI Limit [PC]/Kingdom Hearts III and Re Mind",
+    "rel": "AI Limit [PC]/Kingdom Hearts III and Re Mind",
+    "is_file": false,
+    "name": "Kingdom Hearts III and Re Mind",
+    "parent": "AI Limit [PC]"
+  },
+  {
+    "path": "/Volumes/Games/AI Limit [PC]/Launcher",
+    "rel": "AI Limit [PC]/Launcher",
+    "is_file": false,
+    "name": "Launcher",
+    "parent": "AI Limit [PC]"
+  },
+  {
+    "path": "/Volumes/Games/AI Limit [PC]/Lies of P",
+    "rel": "AI Limit [PC]/Lies of P",
+    "is_file": false,
+    "name": "Lies of P",
+    "parent": "AI Limit [PC]"
+  },
+  {
+    "path": "/Volumes/Games/AI Limit [PC]/Lords of the Fallen 2023 (2023)",
+    "rel": "AI Limit [PC]/Lords of the Fallen 2023 (2023)",
+    "is_file": false,
+    "name": "Lords of the Fallen 2023 (2023)",
+    "parent": "AI Limit [PC]"
+  },
+  {
+    "path": "/Volumes/Games/AI Limit [PC]/Marvels SpiderMan 2",
+    "rel": "AI Limit [PC]/Marvels SpiderMan 2",
+    "is_file": false,
+    "name": "Marvels SpiderMan 2",
+    "parent": "AI Limit [PC]"
+  },
+  {
+    "path": "/Volumes/Games/AI Limit [PC]/Marvels SpiderMan Miles Morales",
+    "rel": "AI Limit [PC]/Marvels SpiderMan Miles Morales",
+    "is_file": false,
+    "name": "Marvels SpiderMan Miles Morales",
+    "parent": "AI Limit [PC]"
+  },
+  {
+    "path": "/Volumes/Games/AI Limit [PC]/Marvels SpiderMan Remastered",
+    "rel": "AI Limit [PC]/Marvels SpiderMan Remastered",
+    "is_file": false,
+    "name": "Marvels SpiderMan Remastered",
+    "parent": "AI Limit [PC]"
+  },
+  {
+    "path": "/Volumes/Games/AI Limit [PC]/Need for Speed Most Wanted (Black Edition)",
+    "rel": "AI Limit [PC]/Need for Speed Most Wanted (Black Edition)",
+    "is_file": false,
+    "name": "Need for Speed Most Wanted (Black Edition)",
+    "parent": "AI Limit [PC]"
+  },
+  {
+    "path": "/Volumes/Games/AI Limit [PC]/Pragmata",
+    "rel": "AI Limit [PC]/Pragmata",
+    "is_file": false,
+    "name": "Pragmata",
+    "parent": "AI Limit [PC]"
+  },
+  {
+    "path": "/Volumes/Games/AI Limit [PC]/Red Dead Redemption",
+    "rel": "AI Limit [PC]/Red Dead Redemption",
+    "is_file": false,
+    "name": "Red Dead Redemption",
+    "parent": "AI Limit [PC]"
+  },
+  {
+    "path": "/Volumes/Games/AI Limit [PC]/Red Dead Redemption 2 Ultimate Edition/Red_Dead_Redemption_2_Ultimate_Edition-Razor1911.iso",
+    "rel": "AI Limit [PC]/Red Dead Redemption 2 Ultimate Edition/Red_Dead_Redemption_2_Ultimate_Edition-Razor1911.iso",
+    "is_file": true,
+    "name": "Red_Dead_Redemption_2_Ultimate_Edition-Razor1911.iso",
+    "parent": "AI Limit [PC]/Red Dead Redemption 2 Ultimate Edition"
+  },
+  {
+    "path": "/Volumes/Games/AI Limit [PC]/Remnant II",
+    "rel": "AI Limit [PC]/Remnant II",
+    "is_file": false,
+    "name": "Remnant II",
+    "parent": "AI Limit [PC]"
+  },
+  {
+    "path": "/Volumes/Games/AI Limit [PC]/RuneScape Dragonwilds",
+    "rel": "AI Limit [PC]/RuneScape Dragonwilds",
+    "is_file": false,
+    "name": "RuneScape Dragonwilds",
+    "parent": "AI Limit [PC]"
+  },
+  {
+    "path": "/Volumes/Games/AI Limit [PC]/RuneScapeDragonwilds Fix Repair Steam",
+    "rel": "AI Limit [PC]/RuneScapeDragonwilds Fix Repair Steam",
+    "is_file": false,
+    "name": "RuneScapeDragonwilds Fix Repair Steam",
+    "parent": "AI Limit [PC]"
+  },
+  {
+    "path": "/Volumes/Games/AI Limit [PC]/Satisfactory",
+    "rel": "AI Limit [PC]/Satisfactory",
+    "is_file": false,
+    "name": "Satisfactory",
+    "parent": "AI Limit [PC]"
+  },
+  {
+    "path": "/Volumes/Games/AI Limit [PC]/Sifu Deluxe Edition",
+    "rel": "AI Limit [PC]/Sifu Deluxe Edition",
+    "is_file": false,
+    "name": "Sifu Deluxe Edition",
+    "parent": "AI Limit [PC]"
+  },
+  {
+    "path": "/Volumes/Games/AI Limit [PC]/Split Fiction",
+    "rel": "AI Limit [PC]/Split Fiction",
+    "is_file": false,
+    "name": "Split Fiction",
+    "parent": "AI Limit [PC]"
+  },
+  {
+    "path": "/Volumes/Games/AI Limit [PC]/Stellar Blade/Stellar.Blade-voices38.iso",
+    "rel": "AI Limit [PC]/Stellar Blade/Stellar.Blade-voices38.iso",
+    "is_file": true,
+    "name": "Stellar.Blade-voices38.iso",
+    "parent": "AI Limit [PC]/Stellar Blade"
+  },
+  {
+    "path": "/Volumes/Games/AI Limit [PC]/Summers Heartbeat Deluxe Edition I KnoW",
+    "rel": "AI Limit [PC]/Summers Heartbeat Deluxe Edition I KnoW",
+    "is_file": false,
+    "name": "Summers Heartbeat Deluxe Edition I KnoW",
+    "parent": "AI Limit [PC]"
+  },
+  {
+    "path": "/Volumes/Games/AI Limit [PC]/Tainted Grail The Fall of Avalon",
+    "rel": "AI Limit [PC]/Tainted Grail The Fall of Avalon",
+    "is_file": false,
+    "name": "Tainted Grail The Fall of Avalon",
+    "parent": "AI Limit [PC]"
+  },
+  {
+    "path": "/Volumes/Games/AI Limit [PC]/The Alters",
+    "rel": "AI Limit [PC]/The Alters",
+    "is_file": false,
+    "name": "The Alters",
+    "parent": "AI Limit [PC]"
+  },
+  {
+    "path": "/Volumes/Games/AI Limit [PC]/The Elder Scrolls IV Oblivion Remastered",
+    "rel": "AI Limit [PC]/The Elder Scrolls IV Oblivion Remastered",
+    "is_file": false,
+    "name": "The Elder Scrolls IV Oblivion Remastered",
+    "parent": "AI Limit [PC]"
+  },
+  {
+    "path": "/Volumes/Games/AI Limit [PC]/The Last of Us Part I",
+    "rel": "AI Limit [PC]/The Last of Us Part I",
+    "is_file": false,
+    "name": "The Last of Us Part I",
+    "parent": "AI Limit [PC]"
+  },
+  {
+    "path": "/Volumes/Games/AI Limit [PC]/The Last of Us Part II Remastered",
+    "rel": "AI Limit [PC]/The Last of Us Part II Remastered",
+    "is_file": false,
+    "name": "The Last of Us Part II Remastered",
+    "parent": "AI Limit [PC]"
+  },
+  {
+    "path": "/Volumes/Games/AI Limit [PC]/The Universim/The Universim.iso",
+    "rel": "AI Limit [PC]/The Universim/The Universim.iso",
+    "is_file": true,
+    "name": "The Universim.iso",
+    "parent": "AI Limit [PC]/The Universim"
+  },
+  {
+    "path": "/Volumes/Games/AI Limit [PC]/The Universim/The_Universim_v47416_MULTi8_ElAmigos",
+    "rel": "AI Limit [PC]/The Universim/The_Universim_v47416_MULTi8_ElAmigos",
+    "is_file": false,
+    "name": "The_Universim_v47416_MULTi8_ElAmigos",
+    "parent": "AI Limit [PC]/The Universim"
+  },
+  {
+    "path": "/Volumes/Games/AI Limit [PC]/The Universim/desktop.ini",
+    "rel": "AI Limit [PC]/The Universim/desktop.ini",
+    "is_file": true,
+    "name": "desktop.ini",
+    "parent": "AI Limit [PC]/The Universim"
+  },
+  {
+    "path": "/Volumes/Games/AI Limit [PC]/The Universim/folder.jpg",
+    "rel": "AI Limit [PC]/The Universim/folder.jpg",
+    "is_file": true,
+    "name": "folder.jpg",
+    "parent": "AI Limit [PC]/The Universim"
+  },
+  {
+    "path": "/Volumes/Games/AI Limit [PC]/The Universim/icon.ico",
+    "rel": "AI Limit [PC]/The Universim/icon.ico",
+    "is_file": true,
+    "name": "icon.ico",
+    "parent": "AI Limit [PC]/The Universim"
+  },
+  {
+    "path": "/Volumes/Games/AI Limit [PC]/Tomb Raider IV VI Remastered",
+    "rel": "AI Limit [PC]/Tomb Raider IV VI Remastered",
+    "is_file": false,
+    "name": "Tomb Raider IV VI Remastered",
+    "parent": "AI Limit [PC]"
+  },
+  {
+    "path": "/Volumes/Games/AI Limit [PC]/Transport Fever 3",
+    "rel": "AI Limit [PC]/Transport Fever 3",
+    "is_file": false,
+    "name": "Transport Fever 3",
+    "parent": "AI Limit [PC]"
+  },
+  {
+    "path": "/Volumes/Games/AI Limit [PC]/Valheim",
+    "rel": "AI Limit [PC]/Valheim",
+    "is_file": false,
+    "name": "Valheim",
+    "parent": "AI Limit [PC]"
+  },
+  {
+    "path": "/Volumes/Games/AI Limit [PC]/Warhammer 40,000 Space Marine 2 1 Year Anniversary Edition Bonuses",
+    "rel": "AI Limit [PC]/Warhammer 40,000 Space Marine 2 1 Year Anniversary Edition Bonuses",
+    "is_file": false,
+    "name": "Warhammer 40,000 Space Marine 2 1 Year Anniversary Edition Bonuses",
+    "parent": "AI Limit [PC]"
+  },
+  {
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Baldur's Gate 3 - Digital Deluxe Edition",
+    "rel": "Baldur's Gate 3 Digital [PC]/Baldur's Gate 3 - Digital Deluxe Edition",
+    "is_file": false,
+    "name": "Baldur's Gate 3 - Digital Deluxe Edition",
+    "parent": "Baldur's Gate 3 Digital [PC]"
+  },
+  {
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Black Myth - Wukong/Black.Myth.Wukong-voices38",
+    "rel": "Baldur's Gate 3 Digital [PC]/Black Myth - Wukong/Black.Myth.Wukong-voices38",
+    "is_file": false,
+    "name": "Black.Myth.Wukong-voices38",
+    "parent": "Baldur's Gate 3 Digital [PC]/Black Myth - Wukong"
+  },
+  {
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Black Myth - Wukong/Dead.Cells.PS5-DUPLEX",
+    "rel": "Baldur's Gate 3 Digital [PC]/Black Myth - Wukong/Dead.Cells.PS5-DUPLEX",
+    "is_file": false,
+    "name": "Dead.Cells.PS5-DUPLEX",
+    "parent": "Baldur's Gate 3 Digital [PC]/Black Myth - Wukong"
+  },
+  {
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Black Myth - Wukong/Digimon_Story_Time_Stranger_Update_v1.2.2_NSW-VENOM",
+    "rel": "Baldur's Gate 3 Digital [PC]/Black Myth - Wukong/Digimon_Story_Time_Stranger_Update_v1.2.2_NSW-VENOM",
+    "is_file": false,
+    "name": "Digimon_Story_Time_Stranger_Update_v1.2.2_NSW-VENOM",
+    "parent": "Baldur's Gate 3 Digital [PC]/Black Myth - Wukong"
+  },
+  {
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Black Myth - Wukong/Five.Hearts.Under.One.Roof..MULTi13-ElAmigos",
+    "rel": "Baldur's Gate 3 Digital [PC]/Black Myth - Wukong/Five.Hearts.Under.One.Roof..MULTi13-ElAmigos",
+    "is_file": false,
+    "name": "Five.Hearts.Under.One.Roof..MULTi13-ElAmigos",
+    "parent": "Baldur's Gate 3 Digital [PC]/Black Myth - Wukong"
+  },
+  {
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Black Myth - Wukong/Five.Hearts.Under.One.Roof.2.MULTi10-ElAmigos",
+    "rel": "Baldur's Gate 3 Digital [PC]/Black Myth - Wukong/Five.Hearts.Under.One.Roof.2.MULTi10-ElAmigos",
+    "is_file": false,
+    "name": "Five.Hearts.Under.One.Roof.2.MULTi10-ElAmigos",
+    "parent": "Baldur's Gate 3 Digital [PC]/Black Myth - Wukong"
+  },
+  {
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Black Myth - Wukong/Hollow.Knight.Silksong.PS5-DUPLEX",
+    "rel": "Baldur's Gate 3 Digital [PC]/Black Myth - Wukong/Hollow.Knight.Silksong.PS5-DUPLEX",
+    "is_file": false,
+    "name": "Hollow.Knight.Silksong.PS5-DUPLEX",
+    "parent": "Baldur's Gate 3 Digital [PC]/Black Myth - Wukong"
+  },
+  {
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Black Myth - Wukong/Kingdom Come Deliverance II v1.5.0 ElAmigos",
+    "rel": "Baldur's Gate 3 Digital [PC]/Black Myth - Wukong/Kingdom Come Deliverance II v1.5.0 ElAmigos",
+    "is_file": false,
+    "name": "Kingdom Come Deliverance II v1.5.0 ElAmigos",
+    "parent": "Baldur's Gate 3 Digital [PC]/Black Myth - Wukong"
+  },
+  {
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Black Myth - Wukong/Kingdom Hearts III and Re-Mind (build 13.06.2024)-ElAmigos",
+    "rel": "Baldur's Gate 3 Digital [PC]/Black Myth - Wukong/Kingdom Hearts III and Re-Mind (build 13.06.2024)-ElAmigos",
+    "is_file": false,
+    "name": "Kingdom Hearts III and Re-Mind (build 13.06.2024)-ElAmigos",
+    "parent": "Baldur's Gate 3 Digital [PC]/Black Myth - Wukong"
+  },
+  {
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Black Myth - Wukong/Kingdom.Hearts.III.DLC.Unlocker.PS4-DUPLEX",
+    "rel": "Baldur's Gate 3 Digital [PC]/Black Myth - Wukong/Kingdom.Hearts.III.DLC.Unlocker.PS4-DUPLEX",
+    "is_file": false,
+    "name": "Kingdom.Hearts.III.DLC.Unlocker.PS4-DUPLEX",
+    "parent": "Baldur's Gate 3 Digital [PC]/Black Myth - Wukong"
+  },
+  {
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Black Myth - Wukong/Kingdom.Hearts.III.Update.v1.10.PS4-DUPLEX",
+    "rel": "Baldur's Gate 3 Digital [PC]/Black Myth - Wukong/Kingdom.Hearts.III.Update.v1.10.PS4-DUPLEX",
+    "is_file": false,
+    "name": "Kingdom.Hearts.III.Update.v1.10.PS4-DUPLEX",
+    "parent": "Baldur's Gate 3 Digital [PC]/Black Myth - Wukong"
+  },
+  {
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Black Myth - Wukong/Rayman.30th.Anniversary.Edition.PS5-DUPLEX",
+    "rel": "Baldur's Gate 3 Digital [PC]/Black Myth - Wukong/Rayman.30th.Anniversary.Edition.PS5-DUPLEX",
+    "is_file": false,
+    "name": "Rayman.30th.Anniversary.Edition.PS5-DUPLEX",
+    "parent": "Baldur's Gate 3 Digital [PC]/Black Myth - Wukong"
+  },
+  {
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Black Myth - Wukong/Summers.Heartbeat.Deluxe.Edition-I KnoW",
+    "rel": "Baldur's Gate 3 Digital [PC]/Black Myth - Wukong/Summers.Heartbeat.Deluxe.Edition-I KnoW",
+    "is_file": false,
+    "name": "Summers.Heartbeat.Deluxe.Edition-I KnoW",
+    "parent": "Baldur's Gate 3 Digital [PC]/Black Myth - Wukong"
+  },
+  {
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Black Myth - Wukong/Super_Mario_Galaxy_NSW-VENOM",
+    "rel": "Baldur's Gate 3 Digital [PC]/Black Myth - Wukong/Super_Mario_Galaxy_NSW-VENOM",
+    "is_file": false,
+    "name": "Super_Mario_Galaxy_NSW-VENOM",
+    "parent": "Baldur's Gate 3 Digital [PC]/Black Myth - Wukong"
+  },
+  {
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Black Myth - Wukong/Tomb_Raider_I-III_Remastered_Starring_Lara_Croft_Update_v1.1.4_NSW-VENOM",
+    "rel": "Baldur's Gate 3 Digital [PC]/Black Myth - Wukong/Tomb_Raider_I-III_Remastered_Starring_Lara_Croft_Update_v1.1.4_NSW-VENOM",
+    "is_file": false,
+    "name": "Tomb_Raider_I-III_Remastered_Starring_Lara_Croft_Update_v1.1.4_NSW-VENOM",
+    "parent": "Baldur's Gate 3 Digital [PC]/Black Myth - Wukong"
+  },
+  {
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Black Myth - Wukong/Transport.Fever.3.Deluxe.Edition.v40408.MULTi13-ElAmigos",
+    "rel": "Baldur's Gate 3 Digital [PC]/Black Myth - Wukong/Transport.Fever.3.Deluxe.Edition.v40408.MULTi13-ElAmigos",
+    "is_file": false,
+    "name": "Transport.Fever.3.Deluxe.Edition.v40408.MULTi13-ElAmigos",
+    "parent": "Baldur's Gate 3 Digital [PC]/Black Myth - Wukong"
+  },
+  {
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Black Myth - Wukong/Valheim.v1.0.7.MULTi14-ElAmigos",
+    "rel": "Baldur's Gate 3 Digital [PC]/Black Myth - Wukong/Valheim.v1.0.7.MULTi14-ElAmigos",
+    "is_file": false,
+    "name": "Valheim.v1.0.7.MULTi14-ElAmigos",
+    "parent": "Baldur's Gate 3 Digital [PC]/Black Myth - Wukong"
+  },
+  {
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Clair Obscur - Expedition 33",
+    "rel": "Baldur's Gate 3 Digital [PC]/Clair Obscur - Expedition 33",
+    "is_file": false,
+    "name": "Clair Obscur - Expedition 33",
+    "parent": "Baldur's Gate 3 Digital [PC]"
+  },
+  {
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Doom - Eternal Deluxe Edition",
+    "rel": "Baldur's Gate 3 Digital [PC]/Doom - Eternal Deluxe Edition",
+    "is_file": false,
+    "name": "Doom - Eternal Deluxe Edition",
+    "parent": "Baldur's Gate 3 Digital [PC]"
+  },
+  {
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Elden Ring - Collector's Edition",
+    "rel": "Baldur's Gate 3 Digital [PC]/Elden Ring - Collector's Edition",
+    "is_file": false,
+    "name": "Elden Ring - Collector's Edition",
+    "parent": "Baldur's Gate 3 Digital [PC]"
+  },
+  {
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Final Fantasy VII Rebirth/Final.Fantasy.VII.Rebirth.Deluxe.Edition.MULTi11-ElAmigos",
+    "rel": "Baldur's Gate 3 Digital [PC]/Final Fantasy VII Rebirth/Final.Fantasy.VII.Rebirth.Deluxe.Edition.MULTi11-ElAmigos",
+    "is_file": false,
+    "name": "Final.Fantasy.VII.Rebirth.Deluxe.Edition.MULTi11-ElAmigos",
+    "parent": "Baldur's Gate 3 Digital [PC]/Final Fantasy VII Rebirth"
+  },
+  {
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Final Fantasy VII Rebirth/Final_Fantasy_VII_Rebirth_update_1.003_ElAmigos",
+    "rel": "Baldur's Gate 3 Digital [PC]/Final Fantasy VII Rebirth/Final_Fantasy_VII_Rebirth_update_1.003_ElAmigos",
+    "is_file": false,
+    "name": "Final_Fantasy_VII_Rebirth_update_1.003_ElAmigos",
+    "parent": "Baldur's Gate 3 Digital [PC]/Final Fantasy VII Rebirth"
+  },
+  {
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Final Fantasy VII Rebirth/desktop.ini",
+    "rel": "Baldur's Gate 3 Digital [PC]/Final Fantasy VII Rebirth/desktop.ini",
+    "is_file": true,
+    "name": "desktop.ini",
+    "parent": "Baldur's Gate 3 Digital [PC]/Final Fantasy VII Rebirth"
+  },
+  {
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Final Fantasy VII Rebirth/folder.jpg",
+    "rel": "Baldur's Gate 3 Digital [PC]/Final Fantasy VII Rebirth/folder.jpg",
+    "is_file": true,
+    "name": "folder.jpg",
+    "parent": "Baldur's Gate 3 Digital [PC]/Final Fantasy VII Rebirth"
+  },
+  {
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Final Fantasy VII Rebirth/icon.ico",
+    "rel": "Baldur's Gate 3 Digital [PC]/Final Fantasy VII Rebirth/icon.ico",
+    "is_file": true,
+    "name": "icon.ico",
+    "parent": "Baldur's Gate 3 Digital [PC]/Final Fantasy VII Rebirth"
+  },
+  {
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Hades II/Hades II v1.132940-ElAmigos",
+    "rel": "Baldur's Gate 3 Digital [PC]/Hades II/Hades II v1.132940-ElAmigos",
+    "is_file": false,
+    "name": "Hades II v1.132940-ElAmigos",
+    "parent": "Baldur's Gate 3 Digital [PC]/Hades II"
+  },
+  {
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Hades II/desktop.ini",
+    "rel": "Baldur's Gate 3 Digital [PC]/Hades II/desktop.ini",
+    "is_file": true,
+    "name": "desktop.ini",
+    "parent": "Baldur's Gate 3 Digital [PC]/Hades II"
+  },
+  {
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Hades II/folder.jpg",
+    "rel": "Baldur's Gate 3 Digital [PC]/Hades II/folder.jpg",
+    "is_file": true,
+    "name": "folder.jpg",
+    "parent": "Baldur's Gate 3 Digital [PC]/Hades II"
+  },
+  {
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Hades II/icon.ico",
+    "rel": "Baldur's Gate 3 Digital [PC]/Hades II/icon.ico",
+    "is_file": true,
+    "name": "icon.ico",
+    "parent": "Baldur's Gate 3 Digital [PC]/Hades II"
+  },
+  {
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/High on Life 2/High On Life (build 03.10.2023)",
+    "rel": "Baldur's Gate 3 Digital [PC]/High on Life 2/High On Life (build 03.10.2023)",
+    "is_file": false,
+    "name": "High On Life (build 03.10.2023)",
+    "parent": "Baldur's Gate 3 Digital [PC]/High on Life 2"
+  },
+  {
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/High on Life 2/High.On.Life.2.MULTi7-ElAmigos",
+    "rel": "Baldur's Gate 3 Digital [PC]/High on Life 2/High.On.Life.2.MULTi7-ElAmigos",
+    "is_file": false,
+    "name": "High.On.Life.2.MULTi7-ElAmigos",
+    "parent": "Baldur's Gate 3 Digital [PC]/High on Life 2"
+  },
+  {
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/High on Life 2/High_On_Life_High_On_Knife-Razor1911",
+    "rel": "Baldur's Gate 3 Digital [PC]/High on Life 2/High_On_Life_High_On_Knife-Razor1911",
+    "is_file": false,
+    "name": "High_On_Life_High_On_Knife-Razor1911",
+    "parent": "Baldur's Gate 3 Digital [PC]/High on Life 2"
+  },
+  {
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/High on Life 2/desktop.ini",
+    "rel": "Baldur's Gate 3 Digital [PC]/High on Life 2/desktop.ini",
+    "is_file": true,
+    "name": "desktop.ini",
+    "parent": "Baldur's Gate 3 Digital [PC]/High on Life 2"
+  },
+  {
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/High on Life 2/folder.jpg",
+    "rel": "Baldur's Gate 3 Digital [PC]/High on Life 2/folder.jpg",
+    "is_file": true,
+    "name": "folder.jpg",
+    "parent": "Baldur's Gate 3 Digital [PC]/High on Life 2"
+  },
+  {
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/High on Life 2/icon.ico",
+    "rel": "Baldur's Gate 3 Digital [PC]/High on Life 2/icon.ico",
+    "is_file": true,
+    "name": "icon.ico",
+    "parent": "Baldur's Gate 3 Digital [PC]/High on Life 2"
+  },
+  {
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Hogwarts Legacy - Deluxe Edition/Hogwarts_Legacy_Deluxe_Edition_MULTi11-ElAmigos",
+    "rel": "Baldur's Gate 3 Digital [PC]/Hogwarts Legacy - Deluxe Edition/Hogwarts_Legacy_Deluxe_Edition_MULTi11-ElAmigos",
+    "is_file": false,
+    "name": "Hogwarts_Legacy_Deluxe_Edition_MULTi11-ElAmigos",
+    "parent": "Baldur's Gate 3 Digital [PC]/Hogwarts Legacy - Deluxe Edition"
+  },
+  {
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Hogwarts Legacy - Deluxe Edition/desktop.ini",
+    "rel": "Baldur's Gate 3 Digital [PC]/Hogwarts Legacy - Deluxe Edition/desktop.ini",
+    "is_file": true,
+    "name": "desktop.ini",
+    "parent": "Baldur's Gate 3 Digital [PC]/Hogwarts Legacy - Deluxe Edition"
+  },
+  {
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Hogwarts Legacy - Deluxe Edition/folder.jpg",
+    "rel": "Baldur's Gate 3 Digital [PC]/Hogwarts Legacy - Deluxe Edition/folder.jpg",
+    "is_file": true,
+    "name": "folder.jpg",
+    "parent": "Baldur's Gate 3 Digital [PC]/Hogwarts Legacy - Deluxe Edition"
+  },
+  {
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Hogwarts Legacy - Deluxe Edition/icon.ico",
+    "rel": "Baldur's Gate 3 Digital [PC]/Hogwarts Legacy - Deluxe Edition/icon.ico",
+    "is_file": true,
+    "name": "icon.ico",
+    "parent": "Baldur's Gate 3 Digital [PC]/Hogwarts Legacy - Deluxe Edition"
+  },
+  {
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Invincible Vs - Deluxe Edition/Invincible.VS.MULTi6-ElAmigos",
+    "rel": "Baldur's Gate 3 Digital [PC]/Invincible Vs - Deluxe Edition/Invincible.VS.MULTi6-ElAmigos",
+    "is_file": false,
+    "name": "Invincible.VS.MULTi6-ElAmigos",
+    "parent": "Baldur's Gate 3 Digital [PC]/Invincible Vs - Deluxe Edition"
+  },
+  {
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Invincible Vs - Deluxe Edition/desktop.ini",
+    "rel": "Baldur's Gate 3 Digital [PC]/Invincible Vs - Deluxe Edition/desktop.ini",
+    "is_file": true,
+    "name": "desktop.ini",
+    "parent": "Baldur's Gate 3 Digital [PC]/Invincible Vs - Deluxe Edition"
+  },
+  {
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Invincible Vs - Deluxe Edition/folder.jpg",
+    "rel": "Baldur's Gate 3 Digital [PC]/Invincible Vs - Deluxe Edition/folder.jpg",
+    "is_file": true,
+    "name": "folder.jpg",
+    "parent": "Baldur's Gate 3 Digital [PC]/Invincible Vs - Deluxe Edition"
+  },
+  {
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Invincible Vs - Deluxe Edition/icon.ico",
+    "rel": "Baldur's Gate 3 Digital [PC]/Invincible Vs - Deluxe Edition/icon.ico",
+    "is_file": true,
+    "name": "icon.ico",
+    "parent": "Baldur's Gate 3 Digital [PC]/Invincible Vs - Deluxe Edition"
+  },
+  {
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Kiborg",
+    "rel": "Baldur's Gate 3 Digital [PC]/Kiborg",
+    "is_file": false,
+    "name": "Kiborg",
+    "parent": "Baldur's Gate 3 Digital [PC]"
+  },
+  {
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Lords of the Fallen II",
+    "rel": "Baldur's Gate 3 Digital [PC]/Lords of the Fallen II",
+    "is_file": false,
+    "name": "Lords of the Fallen II",
+    "parent": "Baldur's Gate 3 Digital [PC]"
+  },
+  {
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Pragmata - Deluxe Edition/Pragmata-ElAmigos",
+    "rel": "Baldur's Gate 3 Digital [PC]/Pragmata - Deluxe Edition/Pragmata-ElAmigos",
+    "is_file": false,
+    "name": "Pragmata-ElAmigos",
+    "parent": "Baldur's Gate 3 Digital [PC]/Pragmata - Deluxe Edition"
+  },
+  {
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Pragmata - Deluxe Edition/desktop.ini",
+    "rel": "Baldur's Gate 3 Digital [PC]/Pragmata - Deluxe Edition/desktop.ini",
+    "is_file": true,
+    "name": "desktop.ini",
+    "parent": "Baldur's Gate 3 Digital [PC]/Pragmata - Deluxe Edition"
+  },
+  {
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Pragmata - Deluxe Edition/folder.jpg",
+    "rel": "Baldur's Gate 3 Digital [PC]/Pragmata - Deluxe Edition/folder.jpg",
+    "is_file": true,
+    "name": "folder.jpg",
+    "parent": "Baldur's Gate 3 Digital [PC]/Pragmata - Deluxe Edition"
+  },
+  {
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Pragmata - Deluxe Edition/icon.ico",
+    "rel": "Baldur's Gate 3 Digital [PC]/Pragmata - Deluxe Edition/icon.ico",
+    "is_file": true,
+    "name": "icon.ico",
+    "parent": "Baldur's Gate 3 Digital [PC]/Pragmata - Deluxe Edition"
+  },
+  {
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Remnant II/Remnant_II_update_444.163_-_453.438_ElAmigos",
+    "rel": "Baldur's Gate 3 Digital [PC]/Remnant II/Remnant_II_update_444.163_-_453.438_ElAmigos",
+    "is_file": false,
+    "name": "Remnant_II_update_444.163_-_453.438_ElAmigos",
+    "parent": "Baldur's Gate 3 Digital [PC]/Remnant II"
+  },
+  {
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Remnant II/Remnant_II_v444.163_.Ultimate.Edition.MULTi10-ElAmigos",
+    "rel": "Baldur's Gate 3 Digital [PC]/Remnant II/Remnant_II_v444.163_.Ultimate.Edition.MULTi10-ElAmigos",
+    "is_file": false,
+    "name": "Remnant_II_v444.163_.Ultimate.Edition.MULTi10-ElAmigos",
+    "parent": "Baldur's Gate 3 Digital [PC]/Remnant II"
+  },
+  {
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Remnant II/desktop.ini",
+    "rel": "Baldur's Gate 3 Digital [PC]/Remnant II/desktop.ini",
+    "is_file": true,
+    "name": "desktop.ini",
+    "parent": "Baldur's Gate 3 Digital [PC]/Remnant II"
+  },
+  {
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Remnant II/folder.jpg",
+    "rel": "Baldur's Gate 3 Digital [PC]/Remnant II/folder.jpg",
+    "is_file": true,
+    "name": "folder.jpg",
+    "parent": "Baldur's Gate 3 Digital [PC]/Remnant II"
+  },
+  {
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Remnant II/icon.ico",
+    "rel": "Baldur's Gate 3 Digital [PC]/Remnant II/icon.ico",
+    "is_file": true,
+    "name": "icon.ico",
+    "parent": "Baldur's Gate 3 Digital [PC]/Remnant II"
+  },
+  {
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/RuneScape - Dragonwilds",
+    "rel": "Baldur's Gate 3 Digital [PC]/RuneScape - Dragonwilds",
+    "is_file": false,
+    "name": "RuneScape - Dragonwilds",
+    "parent": "Baldur's Gate 3 Digital [PC]"
+  },
+  {
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Satisfactory",
+    "rel": "Baldur's Gate 3 Digital [PC]/Satisfactory",
+    "is_file": false,
+    "name": "Satisfactory",
+    "parent": "Baldur's Gate 3 Digital [PC]"
+  },
+  {
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Split Fiction",
+    "rel": "Baldur's Gate 3 Digital [PC]/Split Fiction",
+    "is_file": false,
+    "name": "Split Fiction",
+    "parent": "Baldur's Gate 3 Digital [PC]"
+  },
+  {
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Tainted Grail - The Fall of Avalon",
+    "rel": "Baldur's Gate 3 Digital [PC]/Tainted Grail - The Fall of Avalon",
+    "is_file": false,
+    "name": "Tainted Grail - The Fall of Avalon",
+    "parent": "Baldur's Gate 3 Digital [PC]"
+  },
+  {
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/The Alters",
+    "rel": "Baldur's Gate 3 Digital [PC]/The Alters",
+    "is_file": false,
+    "name": "The Alters",
+    "parent": "Baldur's Gate 3 Digital [PC]"
+  },
+  {
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/The Elder Scrolls IV - Oblivion Remastered/The.Elder.Scrolls.IV.Oblivion.Remastered.Deluxe.Edition.MULTi9-ElAmigos",
+    "rel": "Baldur's Gate 3 Digital [PC]/The Elder Scrolls IV - Oblivion Remastered/The.Elder.Scrolls.IV.Oblivion.Remastered.Deluxe.Edition.MULTi9-ElAmigos",
+    "is_file": false,
+    "name": "The.Elder.Scrolls.IV.Oblivion.Remastered.Deluxe.Edition.MULTi9-ElAmigos",
+    "parent": "Baldur's Gate 3 Digital [PC]/The Elder Scrolls IV - Oblivion Remastered"
+  },
+  {
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/The Elder Scrolls IV - Oblivion Remastered/desktop.ini",
+    "rel": "Baldur's Gate 3 Digital [PC]/The Elder Scrolls IV - Oblivion Remastered/desktop.ini",
+    "is_file": true,
+    "name": "desktop.ini",
+    "parent": "Baldur's Gate 3 Digital [PC]/The Elder Scrolls IV - Oblivion Remastered"
+  },
+  {
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/The Elder Scrolls IV - Oblivion Remastered/folder.jpg",
+    "rel": "Baldur's Gate 3 Digital [PC]/The Elder Scrolls IV - Oblivion Remastered/folder.jpg",
+    "is_file": true,
+    "name": "folder.jpg",
+    "parent": "Baldur's Gate 3 Digital [PC]/The Elder Scrolls IV - Oblivion Remastered"
+  },
+  {
+    "path": "/Volumes/Games/Baldur's Gate 3 Digital [PC]/The Elder Scrolls IV - Oblivion Remastered/icon.ico",
+    "rel": "Baldur's Gate 3 Digital [PC]/The Elder Scrolls IV - Oblivion Remastered/icon.ico",
+    "is_file": true,
+    "name": "icon.ico",
+    "parent": "Baldur's Gate 3 Digital [PC]/The Elder Scrolls IV - Oblivion Remastered"
+  },
+  {
+    "path": "/Volumes/Games/Cyberpunk 2077 [PC]",
+    "rel": "Cyberpunk 2077 [PC]",
+    "is_file": false,
+    "name": "Cyberpunk 2077 [PC]",
+    "parent": ""
+  },
+  {
+    "path": "/Volumes/Games/Dead or Alive 6 Digital [PC]",
+    "rel": "Dead or Alive 6 Digital [PC]",
+    "is_file": false,
+    "name": "Dead or Alive 6 Digital [PC]",
+    "parent": ""
+  },
+  {
+    "path": "/Volumes/Games/Elden Ring [PC]",
+    "rel": "Elden Ring [PC]",
+    "is_file": false,
+    "name": "Elden Ring [PC]",
+    "parent": ""
+  },
+  {
+    "path": "/Volumes/Games/God of War Ragnaro\u0308k [PC]",
+    "rel": "God of War Ragnaro\u0308k [PC]",
+    "is_file": false,
+    "name": "God of War Ragnaro\u0308k [PC]",
+    "parent": ""
+  },
+  {
+    "path": "/Volumes/Games/God of War [PC]",
+    "rel": "God of War [PC]",
+    "is_file": false,
+    "name": "God of War [PC]",
+    "parent": ""
+  },
+  {
+    "path": "/Volumes/Games/Kingdom Hearts III DUPLEX [PS4]",
+    "rel": "Kingdom Hearts III DUPLEX [PS4]",
+    "is_file": false,
+    "name": "Kingdom Hearts III DUPLEX [PS4]",
+    "parent": ""
+  },
+  {
+    "path": "/Volumes/Games/Kingdom Hearts III Dawn Till Dusk Keyblade DLC [PS4]",
+    "rel": "Kingdom Hearts III Dawn Till Dusk Keyblade DLC [PS4]",
+    "is_file": false,
+    "name": "Kingdom Hearts III Dawn Till Dusk Keyblade DLC [PS4]",
+    "parent": ""
+  },
+  {
+    "path": "/Volumes/Games/Kingdom Hearts III Midnight Blue Keyblade DLC [PS4]",
+    "rel": "Kingdom Hearts III Midnight Blue Keyblade DLC [PS4]",
+    "is_file": false,
+    "name": "Kingdom Hearts III Midnight Blue Keyblade DLC [PS4]",
+    "parent": ""
+  },
+  {
+    "path": "/Volumes/Games/Kingdom Hearts III Re Mind DLC [PS4]",
+    "rel": "Kingdom Hearts III Re Mind DLC [PS4]",
+    "is_file": false,
+    "name": "Kingdom Hearts III Re Mind DLC [PS4]",
+    "parent": ""
+  },
+  {
+    "path": "/Volumes/Games/Kingdom Hearts III Starlight Keyblade DLC [PS4]",
+    "rel": "Kingdom Hearts III Starlight Keyblade DLC [PS4]",
+    "is_file": false,
+    "name": "Kingdom Hearts III Starlight Keyblade DLC [PS4]",
+    "parent": ""
+  },
+  {
+    "path": "/Volumes/Games/Lies of P H1 [PC]",
+    "rel": "Lies of P H1 [PC]",
+    "is_file": false,
+    "name": "Lies of P H1 [PC]",
+    "parent": ""
+  },
+  {
+    "path": "/Volumes/Games/Lords of the Fallen 2023 [PC]",
+    "rel": "Lords of the Fallen 2023 [PC]",
+    "is_file": false,
+    "name": "Lords of the Fallen 2023 [PC]",
+    "parent": ""
+  },
+  {
+    "path": "/Volumes/Games/Marvel's Spider Man Miles Morales [PC]",
+    "rel": "Marvel's Spider Man Miles Morales [PC]",
+    "is_file": false,
+    "name": "Marvel's Spider Man Miles Morales [PC]",
+    "parent": ""
+  },
+  {
+    "path": "/Volumes/Games/Marvel's Spider Man Remastered [PC]",
+    "rel": "Marvel's Spider Man Remastered [PC]",
+    "is_file": false,
+    "name": "Marvel's Spider Man Remastered [PC]",
+    "parent": ""
+  },
+  {
+    "path": "/Volumes/Games/Metroid Prime 4 Beyond HR [Switch]",
+    "rel": "Metroid Prime 4 Beyond HR [Switch]",
+    "is_file": false,
+    "name": "Metroid Prime 4 Beyond HR [Switch]",
+    "parent": ""
+  },
+  {
+    "path": "/Volumes/Games/PC/1 ",
+    "rel": "PC/1 ",
+    "is_file": false,
+    "name": "1 ",
+    "parent": "PC"
+  },
+  {
+    "path": "/Volumes/Games/PC/AI Limit",
+    "rel": "PC/AI Limit",
+    "is_file": false,
+    "name": "AI Limit",
+    "parent": "PC"
+  },
+  {
+    "path": "/Volumes/Games/PC/Balatro",
+    "rel": "PC/Balatro",
+    "is_file": false,
+    "name": "Balatro",
+    "parent": "PC"
+  },
+  {
+    "path": "/Volumes/Games/PC/Balatro - Special Edition",
+    "rel": "PC/Balatro - Special Edition",
+    "is_file": false,
+    "name": "Balatro - Special Edition",
+    "parent": "PC"
+  },
+  {
+    "path": "/Volumes/Games/PC/Baldur's Gate III",
+    "rel": "PC/Baldur's Gate III",
+    "is_file": false,
+    "name": "Baldur's Gate III",
+    "parent": "PC"
+  },
+  {
+    "path": "/Volumes/Games/PC/Black Myth - Wukong/Black.Myth.Wukong-voices38.iso",
+    "rel": "PC/Black Myth - Wukong/Black.Myth.Wukong-voices38.iso",
+    "is_file": true,
+    "name": "Black.Myth.Wukong-voices38.iso",
+    "parent": "PC/Black Myth - Wukong"
+  },
+  {
+    "path": "/Volumes/Games/PC/Blade and Sorcery VR",
+    "rel": "PC/Blade and Sorcery VR",
+    "is_file": false,
+    "name": "Blade and Sorcery VR",
+    "parent": "PC"
+  },
+  {
+    "path": "/Volumes/Games/PC/Call of Duty - Black Ops II",
+    "rel": "PC/Call of Duty - Black Ops II",
+    "is_file": false,
+    "name": "Call of Duty - Black Ops II",
+    "parent": "PC"
+  },
+  {
+    "path": "/Volumes/Games/PC/Red Dead Redemption/Red_Dead_Redemption_2_Ultimate_Edition_DLC_Unlocker-Razor1911",
+    "rel": "PC/Red Dead Redemption/Red_Dead_Redemption_2_Ultimate_Edition_DLC_Unlocker-Razor1911",
+    "is_file": false,
+    "name": "Red_Dead_Redemption_2_Ultimate_Edition_DLC_Unlocker-Razor1911",
+    "parent": "PC/Red Dead Redemption"
+  },
+  {
+    "path": "/Volumes/Games/PC/Red Dead Redemption/desktop.ini",
+    "rel": "PC/Red Dead Redemption/desktop.ini",
+    "is_file": true,
+    "name": "desktop.ini",
+    "parent": "PC/Red Dead Redemption"
+  },
+  {
+    "path": "/Volumes/Games/PC/Red Dead Redemption/folder.jpg",
+    "rel": "PC/Red Dead Redemption/folder.jpg",
+    "is_file": true,
+    "name": "folder.jpg",
+    "parent": "PC/Red Dead Redemption"
+  },
+  {
+    "path": "/Volumes/Games/PC/Red Dead Redemption/icon.ico",
+    "rel": "PC/Red Dead Redemption/icon.ico",
+    "is_file": true,
+    "name": "icon.ico",
+    "parent": "PC/Red Dead Redemption"
+  },
+  {
+    "path": "/Volumes/Games/Red Dead Redemption 2 [PC]",
+    "rel": "Red Dead Redemption 2 [PC]",
+    "is_file": false,
+    "name": "Red Dead Redemption 2 [PC]",
+    "parent": ""
+  },
+  {
+    "path": "/Volumes/Games/Red Dead Redemption [PC]",
+    "rel": "Red Dead Redemption [PC]",
+    "is_file": false,
+    "name": "Red Dead Redemption [PC]",
+    "parent": ""
+  },
+  {
+    "path": "/Volumes/Games/Sifu [PC]",
+    "rel": "Sifu [PC]",
+    "is_file": false,
+    "name": "Sifu [PC]",
+    "parent": ""
+  },
+  {
+    "path": "/Volumes/Games/Stellar Blade Digital [PC]",
+    "rel": "Stellar Blade Digital [PC]",
+    "is_file": false,
+    "name": "Stellar Blade Digital [PC]",
+    "parent": ""
+  },
+  {
+    "path": "/Volumes/Games/Switch/Lies of P - Complete Edition",
+    "rel": "Switch/Lies of P - Complete Edition",
+    "is_file": false,
+    "name": "Lies of P - Complete Edition",
+    "parent": "Switch"
+  },
+  {
+    "path": "/Volumes/Games/TODO",
+    "rel": "TODO",
+    "is_file": false,
+    "name": "TODO",
+    "parent": ""
+  },
+  {
+    "path": "/Volumes/Games/The Legend Of Zelda Tears Of The Kingdom NSW [Switch]",
+    "rel": "The Legend Of Zelda Tears Of The Kingdom NSW [Switch]",
+    "is_file": false,
+    "name": "The Legend Of Zelda Tears Of The Kingdom NSW [Switch]",
+    "parent": ""
+  },
+  {
+    "path": "/Volumes/Games/app0 [PS5]",
+    "rel": "app0 [PS5]",
+    "is_file": false,
+    "name": "app0 [PS5]",
+    "parent": ""
+  },
+  {
+    "path": "/Volumes/Games/g4u to games 4 you url [PC]",
+    "rel": "g4u to games 4 you url [PC]",
+    "is_file": false,
+    "name": "g4u to games 4 you url [PC]",
+    "parent": ""
+  }
+]

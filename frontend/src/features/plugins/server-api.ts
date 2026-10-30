@@ -17,7 +17,7 @@ import type { PluginAPI } from '@/features/plugins/api'
 import type { PluginInfo, PluginManifest, PluginSettingsTab, PluginStatus } from '@/features/plugins/types/plugins'
 
 const BASE_URL = isDesktop()
-  ? import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000/api/v1'
+  ? import.meta.env.VITE_API_BASE_URL || (import.meta.env?.VITE_LOCAL_BACKEND === 'true' ? 'http://127.0.0.1:8000/api/v1' : 'https://otix.app/api/v1')
   : import.meta.env.VITE_API_BASE_URL || '/api/v1'
 
 const http = axios.create({

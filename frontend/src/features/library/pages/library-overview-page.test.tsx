@@ -25,6 +25,10 @@ vi.mock("@/lib/providers/auth", () => ({
     user: { username: "testuser", steamId: "steam123" },
     isAuthenticated: true,
   }),
+  useOptionalAuth: () => ({
+    user: { username: "testuser", steamId: "steam123" },
+    isAuthenticated: true,
+  }),
 }))
 
 // Mock library queries
@@ -47,6 +51,7 @@ vi.mock("../library-queries", () => ({
     },
     isLoading: false,
   }),
+  useStreamableMediaIds: vi.fn(() => ({ data: new Set(), isLoading: false })),
 }))
 
 // Mock user queries

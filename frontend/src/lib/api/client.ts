@@ -156,38 +156,55 @@ apiClient.interceptors.response.use(
   },
   async (error: AxiosError) => {
     // Transform error response data too
-    if (
-      error.response?.data &&
-      error.response.headers &&
-      getContentType(error.response.headers as Record<string, unknown>).includes('application/json')
-    ) {
-      const data = convertKeysToCamelCase(error.response.data) as { detail?: unknown }
-      error.response.data = data
-      // Normalize FastAPI 422 validation errors: detail is an array of
-      // {type, loc, msg, input} — flatten to a single string so React can render it.
-      if (Array.isArray(data.detail)) {
-        data.detail = data.detail
-          .map((e: { loc?: string[]; msg?: string }) => {
-            const field = e.loc ? e.loc[e.loc.length - 1] : ''
-            return field ? `${field}: ${e.msg}` : e.msg
-          })
-          .join('; ')
-      } else if (!data.detail && typeof data === 'object') {
-        // Normalize Django REST Framework validation errors (e.g. { avatarUrl: ['...'] })
-        const messages: string[] = []
-        for (const [key, val] of Object.entries(data)) {
-          if (Array.isArray(val)) {
-            const list = val.filter((item): item is string => typeof item === 'string')
-            if (list.length > 0) {
-              messages.push(key === 'nonFieldErrors' ? list.join(', ') : `${key}: ${list.join(', ')}`)
-            }
-          } else if (typeof val === 'string') {
-            messages.push(key === 'nonFieldErrors' ? val : `${key}: ${val}`)
+    if (error.response?.data) {
+      if (typeof error.response.data === 'string') {
+        const trimmed = error.response.data.trim()
+        if (
+          (trimmed.startsWith('{') && trimmed.endsWith('}')) ||
+          (trimmed.startsWith('[') && trimmed.endsWith(']'))
+        ) {
+          try {
+            error.response.data = JSON.parse(trimmed)
+          } catch {
+            // retain raw string
           }
         }
-        if (messages.length > 0) {
-          data.detail = messages.join('; ')
+      }
+
+      if (
+        typeof error.response.data === 'object' &&
+        error.response.data !== null
+      ) {
+        const data = convertKeysToCamelCase(error.response.data) as { detail?: unknown }
+        error.response.data = data
+        // Normalize FastAPI 422 validation errors: detail is an array of
+        // {type, loc, msg, input} — flatten to a single string so React can render it.
+        if (Array.isArray(data.detail)) {
+          data.detail = data.detail
+            .map((e: { loc?: string[]; msg?: string }) => {
+              const field = e.loc ? e.loc[e.loc.length - 1] : ''
+              return field ? `${field}: ${e.msg}` : e.msg
+            })
+            .join('; ')
+        } else if (!data.detail && typeof data === 'object') {
+          // Normalize Django REST Framework validation errors (e.g. { avatarUrl: ['...'] })
+          const messages: string[] = []
+          for (const [key, val] of Object.entries(data)) {
+            if (Array.isArray(val)) {
+              const list = val.filter((item): item is string => typeof item === 'string')
+              if (list.length > 0) {
+                messages.push(key === 'nonFieldErrors' ? list.join(', ') : `${key}: ${list.join(', ')}`)
+              }
+            } else if (typeof val === 'string') {
+              messages.push(key === 'nonFieldErrors' ? val : `${key}: ${val}`)
+            }
+          }
+          if (messages.length > 0) {
+            data.detail = messages.join('; ')
+          }
         }
+      } else if (typeof error.response.data === 'string' && error.response.data) {
+        error.response.data = { detail: error.response.data, error: error.response.data }
       }
     }
 

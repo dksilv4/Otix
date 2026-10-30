@@ -66,10 +66,9 @@ vi.mock('../launchers', () => ({
   scanAllLaunchers: () => Promise.resolve([]),
 }));
 
-// Mock http module to avoid real connections and simulate SSE events
-vi.mock('http', () => {
+const { mockRequest } = vi.hoisted(() => {
   const EE = require('events').EventEmitter;
-  const mockRequest = (_url: any, _options: any) => {
+  const mockRequest = (url: any, options: any) => {
     const req = new EE();
     (req as any).write = () => {};
     (req as any).end = () => {};
@@ -98,12 +97,20 @@ vi.mock('http', () => {
     return req;
   };
 
-  return {
-    default: { request: mockRequest, get: () => {} },
-    request: mockRequest,
-    get: () => {},
-  };
+  return { mockRequest };
 });
+
+vi.mock('http', () => ({
+  default: { request: mockRequest, get: () => {} },
+  request: mockRequest,
+  get: () => {},
+}));
+
+vi.mock('https', () => ({
+  default: { request: mockRequest, get: () => {} },
+  request: mockRequest,
+  get: () => {},
+}));
 
 // Import after mocks
 import { GameScanOrchestrator } from '../orchestrator';
@@ -278,5 +285,30 @@ describe('GameScanOrchestrator', () => {
 
     expect(result.errors).toBeDefined();
     expect(result.errors![0]).toContain('not registered');
+  });
+
+  it('should default to production https endpoint and match games via HTTPS', async () => {
+    const mockPluginManager = {
+      getPluginsForSlot: vi.fn().mockReturnValue([
+        { pluginId: 'otix-epic', label: 'Epic Games' },
+      ]),
+      callPluginData: vi.fn().mockResolvedValue([
+        {
+          id: 'Jaguar',
+          title: 'Rocket League',
+          platform: 'epic',
+          externalIds: [{ source: 'epic', id: 'Jaguar' }],
+        },
+      ]),
+    };
+
+    // Notice: no setApiBaseUrl called! Defaults to https://otix.app
+    const orchestrator = new GameScanOrchestrator(mockPluginManager as any);
+    const result = await orchestrator.scanPlugin({ pluginId: 'otix-epic', mediaType: 'game' });
+
+    expect(result.totalGames).toBe(1);
+    const match = getGameMatch('epic', 'Jaguar');
+    expect(match).toBeDefined();
+    expect(match?.otixMediaId).toBe('otix_rl');
   });
 });

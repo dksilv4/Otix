@@ -44,7 +44,14 @@ vi.mock('../db', () => ({
   }),
 }));
 
-import { findDownloadedContent, smartOrganizePreview, applyNamingTemplate } from '../downloads/organizer';
+import {
+  findDownloadedContent,
+  smartOrganizePreview,
+  applyNamingTemplate,
+  checkUpdateChain,
+  compareVersionStrings,
+  parseUpdateRange,
+} from '../downloads/organizer';
 import { executeOrganization } from '../installer';
 import { updateGamePathInDb } from '../downloads';
 
@@ -508,4 +515,60 @@ describe('Production Game Organization & Scanning', () => {
       }
     }
   }, 30000);
+
+  it('correctly compares version strings including semver, date-based, and build numbers', () => {
+    expect(compareVersionStrings('1.0.7', '1.0.12')).toBe(-1);
+    expect(compareVersionStrings('1.0.15', '1.0.12')).toBe(1);
+    expect(compareVersionStrings('1.0.12', '1.0.12')).toBe(0);
+    expect(compareVersionStrings('v1.0.7', '1.0.7')).toBe(0);
+    expect(compareVersionStrings('240163', '243922')).toBe(-1);
+    expect(compareVersionStrings('12.05.2023', '18.06.2023')).toBe(-1);
+  });
+
+  it('detects continuous and broken update chains with missing intermediate deltas', async () => {
+    const gameDir = path.join(tempDir, 'Valheim.v1.0.7.MULTi14-ElAmigos');
+    await fs.mkdir(gameDir, { recursive: true });
+    await fs.writeFile(path.join(gameDir, 'setup.exe'), 'dummy');
+    await fs.writeFile(path.join(gameDir, 'elamigos-1.bin'), 'dummy');
+    await fs.writeFile(path.join(gameDir, 'Valheim update 1.0.7 - 1.0.12.exe'), 'dummy');
+    await fs.writeFile(path.join(gameDir, 'Valheim update 1.0.12 - 1.0.15.exe'), 'dummy');
+    await fs.writeFile(path.join(gameDir, 'Valheim update 1.0.15 - 1.0.16.exe'), 'dummy');
+
+    // Continuous chain
+    const healthyChain = await checkUpdateChain(gameDir, '1.0.7');
+    expect(healthyChain.anomalies.length).toBe(0);
+    expect(healthyChain.reachableVersion).toBe('1.0.16');
+    expect(healthyChain.targetVersion).toBe('1.0.16');
+
+    // Remove intermediate delta 1.0.12 -> 1.0.15
+    await fs.unlink(path.join(gameDir, 'Valheim update 1.0.12 - 1.0.15.exe'));
+
+    const brokenChain = await checkUpdateChain(gameDir, '1.0.7');
+    expect(brokenChain.anomalies.length).toBe(1);
+    expect(brokenChain.anomalies[0]).toContain('missing update between v1.0.12 and v1.0.15');
+    expect(brokenChain.reachableVersion).toBe('1.0.12');
+    expect(brokenChain.targetVersion).toBe('1.0.16');
+
+    // Test preview integration
+    const preview = await smartOrganizePreview(tempDir, '{Title} [{Platform}]');
+    const valheimItem = preview.find((p) => p.sourceFilename.includes('Valheim'));
+    expect(valheimItem).toBeDefined();
+    expect(valheimItem?.health).toBe('WARNING');
+    expect(valheimItem?.extracted.ReachableVersion).toBe('1.0.12');
+    expect(valheimItem?.extracted.TargetVersion).toBe('1.0.16');
+    expect(valheimItem?.anomalies?.some((a) => a.includes('missing update between v1.0.12 and v1.0.15'))).toBe(true);
+  });
+
+  it('detects base game version mismatch when earliest patch requires higher version', async () => {
+    const gameDir = path.join(tempDir, 'Game.v1.0.0-Group');
+    await fs.mkdir(gameDir, { recursive: true });
+    await fs.writeFile(path.join(gameDir, 'setup.exe'), 'dummy');
+    await fs.writeFile(path.join(gameDir, 'setup-1.bin'), 'dummy');
+    await fs.writeFile(path.join(gameDir, 'Game update 1.0.7 - 1.0.12.exe'), 'dummy');
+
+    const result = await checkUpdateChain(gameDir, '1.0.0');
+    expect(result.anomalies.length).toBe(1);
+    expect(result.anomalies[0]).toContain('base game is v1.0.0, but earliest available update');
+    expect(result.anomalies[0]).toContain('requires v1.0.7');
+  });
 });

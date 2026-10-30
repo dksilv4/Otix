@@ -26,8 +26,13 @@ type Sidecar struct {
 	Version      int                  `json:"version"`
 	MediaID      string               `json:"mediaId,omitempty"`
 	IgdbID       string               `json:"igdbId,omitempty"`
+	TitleID      string               `json:"titleId,omitempty"`
 	Title        string               `json:"title,omitempty"`
 	Slug         string               `json:"slug,omitempty"`
+	ReleaseGroup string               `json:"releaseGroup,omitempty"`
+	GameVersion  string               `json:"gameVersion,omitempty"`
+	Edition      string               `json:"edition,omitempty"`
+	OriginalName string               `json:"originalName,omitempty"`
 	Confidence   float64              `json:"confidence,omitempty"`
 	MatchSource  string               `json:"matchSource,omitempty"`
 	MatchedAt    string               `json:"matchedAt,omitempty"`

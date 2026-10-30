@@ -933,11 +933,53 @@ function classifyArtifact(filename, fullPath, isDir = false, childFiles = []) {
     }
 
     // Console Disc Game Packages (PS3 / PS4 / PS5)
-    const isPs5 = (lowerChildren.some((f) => f.startsWith('ppsa') || f.includes('ps5')) || lower.includes('ps5') || lower.includes('ppsa')) && !hasGameExe;
+    let ps5TitleId = '';
+    let ps5TitleName = '';
+    const paramCandidates = [
+      path.join(fullPath, 'sce_sys', 'param.json')
+    ];
+    for (const c of childFiles) {
+      paramCandidates.push(path.join(fullPath, c, 'sce_sys', 'param.json'));
+    }
+    for (const p of paramCandidates) {
+      if (fs.existsSync(p)) {
+        try {
+          const pj = JSON.parse(fs.readFileSync(p, 'utf8'));
+          if (pj.titleId) ps5TitleId = pj.titleId;
+          const loc = pj.localizedParameters || {};
+          for (const lang of ['en-GB', 'en-US', 'defaultLanguage', 'en']) {
+            if (loc[lang] && loc[lang].titleName) {
+              ps5TitleName = loc[lang].titleName;
+              break;
+            }
+          }
+          if (!ps5TitleName) {
+            for (const k in loc) {
+              if (loc[k] && loc[k].titleName) {
+                ps5TitleName = loc[k].titleName;
+                break;
+              }
+            }
+          }
+          if (ps5TitleId || ps5TitleName) break;
+        } catch (e) {}
+      }
+    }
+
+    const hasPs5Indicator = Boolean(ps5TitleId || ps5TitleName) || lowerChildren.some((f) => f.startsWith('ppsa') || f.includes('ps5')) || lower.includes('ps5') || lower.includes('ppsa');
+    const isPs5 = hasPs5Indicator && !hasGameExe;
     const isPs3 = lowerChildren.some((f) => f === 'ps3_game' || f === 'ps3_disc.sfb' || f === 'param.sfo' || f === 'eboot.bin') && (lower.includes('bcus') || lower.includes('bles') || lower.includes('blus') || lower.includes('ps3') || lowerChildren.includes('ps3_game'));
     const isPs4 = (lowerChildren.some((f) => f === 'sce_sys') || lower.includes('cusa') || lower.includes('ps4')) && !hasGameExe && !isPs5;
     if (isPs5) {
-      return { category: 'folder_console', platform: 'PS5', isPrimary: true, isDir: true, isPackage: true };
+      return { 
+        category: 'folder_console', 
+        platform: 'PS5', 
+        isPrimary: true, 
+        isDir: true, 
+        isPackage: true,
+        titleId: ps5TitleId,
+        titleName: ps5TitleName
+      };
     }
     if (isPs3) {
       return { category: 'folder_console', platform: 'PS3', isPrimary: true, isDir: true, isPackage: true };
@@ -1230,6 +1272,22 @@ function runSimulation(rootDir, options = {}) {
 
     if (classification.platform) {
       release.platform = classification.platform;
+    }
+    if (classification.titleId) {
+      release.titleId = classification.titleId;
+    }
+    if (classification.titleName) {
+      release.title = classification.titleName;
+      release.cleanTitle = cleanGameTitle(classification.titleName);
+    } else if (classification.platform === 'PS5' && (/^app\d+$/i.test(release.title) || /^app\d+/i.test(release.cleanTitle))) {
+      const pak = item.childFiles ? item.childFiles.find(f => /\.pak$/i.test(f) && /ps5/i.test(f)) : null;
+      if (pak) {
+        const inf = cleanGameTitle(pak);
+        if (inf) {
+          release.title = inf;
+          release.cleanTitle = inf;
+        }
+      }
     }
 
     // If release title is empty or generic, infer parent game from parent directory path

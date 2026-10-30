@@ -30,7 +30,7 @@ export type CamelCaseKeys<T> =
 // ── Client ───────────────────────────────────────────────────────────
 
 const BASE_URL = isDesktop()
-  ? (import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000')
+  ? (import.meta.env.VITE_API_BASE_URL || (import.meta.env?.VITE_LOCAL_BACKEND === 'true' ? 'http://127.0.0.1:8000' : 'https://otix.app'))
   : (import.meta.env.VITE_API_BASE_URL || '')
 
 // Build the typed client, then monkey-patch fetch for camelCase conversion

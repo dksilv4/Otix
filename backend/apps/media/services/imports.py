@@ -207,6 +207,23 @@ def sync_local_games(user: AbstractBaseUser, games: list[dict]) -> dict:
     user_local_games = UserLocalGame.objects.filter(user=user)
     existing_by_key = {_local_key(g.title, g.platform): g for g in user_local_games}
     incoming_keys: set[str] = set()
+
+    # Pre-validate foreign keys against MediaItem to prevent IntegrityError
+    candidate_media_ids: set[int] = set()
+    for g in games:
+        for k in ("otix_media_id", "match_suggestion_media_id"):
+            val = g.get(k)
+            if val is not None:
+                try:
+                    candidate_media_ids.add(int(val))
+                except (ValueError, TypeError):
+                    pass
+    valid_media_ids: set[int] = set()
+    if candidate_media_ids:
+        valid_media_ids = set(
+            MediaItem.objects.filter(id__in=candidate_media_ids).values_list("id", flat=True)
+        )
+
     upserted = 0
     for game in games:
         title = (game.get("title") or "").strip()
@@ -215,8 +232,21 @@ def sync_local_games(user: AbstractBaseUser, games: list[dict]) -> dict:
             continue
         key = _local_key(title, platform)
         incoming_keys.add(key)
-        otix_media_id = game.get("otix_media_id")
-        match_suggestion_id = game.get("match_suggestion_media_id")
+
+        raw_otix_id = game.get("otix_media_id")
+        raw_match_id = game.get("match_suggestion_media_id")
+        try:
+            parsed_otix_id = int(raw_otix_id) if raw_otix_id is not None else None
+        except (ValueError, TypeError):
+            parsed_otix_id = None
+        try:
+            parsed_match_id = int(raw_match_id) if raw_match_id is not None else None
+        except (ValueError, TypeError):
+            parsed_match_id = None
+
+        otix_media_id = parsed_otix_id if parsed_otix_id in valid_media_ids else None
+        match_suggestion_id = parsed_match_id if parsed_match_id in valid_media_ids else None
+
         existing = existing_by_key.get(key)
         if existing is None:
             UserLocalGame.objects.create(
@@ -239,8 +269,11 @@ def sync_local_games(user: AbstractBaseUser, games: list[dict]) -> dict:
             if changed:
                 existing.save()
         if otix_media_id:
-            set_interaction(user, int(otix_media_id), "owned")
-            _enqueue_local_game_mirror(int(otix_media_id))
+            try:
+                set_interaction(user, otix_media_id, "owned")
+                _enqueue_local_game_mirror(otix_media_id)
+            except Exception:
+                logger.exception("Failed to set owned interaction for media_id=%s", otix_media_id)
     deleted = 0
     for key, existing in list(existing_by_key.items()):
         if key not in incoming_keys:

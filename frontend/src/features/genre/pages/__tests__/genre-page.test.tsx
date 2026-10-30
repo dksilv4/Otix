@@ -31,6 +31,7 @@ vi.mock('@/features/auth/hooks/use-auth', () => ({
   useAuth: () => ({
     user: { id: '1', country: 'US', preferredLanguages: ['en'] },
   }),
+  useOptionalAuth: () => ({ isAuthenticated: true, user: { id: '1' } }),
 }))
 
 vi.mock('@/lib/api/client', () => ({

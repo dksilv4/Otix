@@ -145,6 +145,9 @@ const COLLECTION_DIRS = new Set([
   'steam', 'steamapps', 'common', 'userdata', 'gog games', 'gog galaxy', 'gog installers',
   'epic games', 'launcher', 'portal', 'ea games', 'origin', 'origin games',
   'ubisoft', 'ubisoft game launcher', 'battle.net', 'xboxgames', 'xbox', 'library', 'noise',
+  'ps5', 'ps4', 'ps3', 'ps2', 'ps1', 'psx', 'playstation', 'playstation 4', 'playstation 5',
+  'switch', 'nswitch', 'nintendo switch', 'wii', 'wii u', 'gamecube', '3ds', 'nds',
+  'xbox 360', 'xbox one', 'xbox series',
 ]);
 
 function isCollectionDirectory(name: string): boolean {
@@ -292,7 +295,22 @@ export async function findDownloadedContent(
       const hasBins = childFiles.some((f) => /\.(bin|cab|doi)$/i.test(f));
       const hasCrackDll = childFiles.some((f) => /^(?:steam_api64?\.dll|steam_emu\.ini)$/i.test(f));
       const hasDirectExe = childFiles.some((f) => isGameExecutableName(f));
-      const isPs5 = childNames.some((f) => /^ppsa\d{5}/i.test(f)) || folderLower.includes('.ps5') || folderLower.includes('-ps5') || folderLower.includes('[ps5]');
+      let ps5TitleId: string | undefined;
+      let ps5TitleName: string | undefined;
+      try {
+        const paramJsonPath = path.join(currentDir, 'sce_sys', 'param.json');
+        const pj = JSON.parse(await fs.readFile(paramJsonPath, 'utf8'));
+        if (pj.titleId) ps5TitleId = pj.titleId;
+        const loc = pj.localizedParameters || {};
+        for (const lang of ['en-GB', 'en-US', 'defaultLanguage', 'en']) {
+          if (loc[lang]?.titleName) {
+            ps5TitleName = loc[lang].titleName;
+            break;
+          }
+        }
+      } catch {}
+
+      const isPs5 = Boolean(ps5TitleId || ps5TitleName) || childNames.some((f) => /^ppsa\d{5}/i.test(f)) || folderLower.includes('.ps5') || folderLower.includes('-ps5') || folderLower.includes('[ps5]');
       const isPs3 = childNames.some((f) => /^(?:ps3_game|ps3_disc\.sfb)$/i.test(f));
       const isPs4 = (childNames.some((f) => /^sce_sys$/i.test(f)) || folderLower.includes('.ps4') || folderLower.includes('-ps4') || folderLower.includes('[ps4]')) && !isPs5;
       const isConsoleFolder = !hasSetup && !hasCrackDll && (isPs5 || isPs3 || isPs4);
@@ -337,7 +355,21 @@ export async function findDownloadedContent(
             const subSetup = subFiles.some((f) => /^(?:setup|installer).*\.exe$/i.test(f));
             const subBins = subFiles.some((f) => /\.(bin|cab|doi)$/i.test(f));
             const subCrackDll = subFiles.some((f) => /^(?:steam_api64?\.dll|steam_emu\.ini)$/i.test(f));
-            const subIsPs5 = subNames.some((f) => /^ppsa\d{5}/i.test(f)) || nameLower.includes('.ps5') || nameLower.includes('-ps5') || nameLower.includes('[ps5]');
+            let subPs5TitleId: string | undefined;
+            let subPs5TitleName: string | undefined;
+            try {
+              const subParam = path.join(fullPath, 'sce_sys', 'param.json');
+              const pj = JSON.parse(await fs.readFile(subParam, 'utf8'));
+              if (pj.titleId) subPs5TitleId = pj.titleId;
+              const loc = pj.localizedParameters || {};
+              for (const lang of ['en-GB', 'en-US', 'defaultLanguage', 'en']) {
+                if (loc[lang]?.titleName) {
+                  subPs5TitleName = loc[lang].titleName;
+                  break;
+                }
+              }
+            } catch {}
+            const subIsPs5 = Boolean(subPs5TitleId || subPs5TitleName) || subNames.some((f) => /^ppsa\d{5}/i.test(f)) || nameLower.includes('.ps5') || nameLower.includes('-ps5') || nameLower.includes('[ps5]');
             const subIsPs3 = subNames.some((f) => /^(?:ps3_game|ps3_disc\.sfb)$/i.test(f));
             const subIsPs4 = (subNames.some((f) => /^sce_sys$/i.test(f)) || nameLower.includes('.ps4') || nameLower.includes('-ps4') || nameLower.includes('[ps4]')) && !subIsPs5;
             const subIsConsole = !subSetup && !subCrackDll && (subIsPs5 || subIsPs3 || subIsPs4);
@@ -597,6 +629,141 @@ export function resolveSidecarPlatform(sc: any, fallback: string = 'PC'): string
   return fallback;
 }
 
+export const UPDATE_RANGE_REGEX = /(?:update|patch|v)?\s*v?([0-9]+(?:\.[0-9]+)*|\d{2}[._-]\d{2}[._-]\d{4}|\d{4,8})\s*(?:-|to|_to_|\s-\s)\s*v?([0-9]+(?:\.[0-9]+)*|\d{2}[._-]\d{2}[._-]\d{4}|\d{4,8})/i;
+
+export interface PatchRange {
+  filename: string;
+  from: string;
+  to: string;
+}
+
+export function parseDateOrSemVerParts(s: string): number[] {
+  const clean = s.trim().toLowerCase().replace(/^v/, '');
+  const dateMatch = clean.match(/^(\d{2})[._-](\d{2})[._-](\d{4})$/);
+  if (dateMatch) {
+    const d = parseInt(dateMatch[1], 10);
+    const m = parseInt(dateMatch[2], 10);
+    const y = parseInt(dateMatch[3], 10);
+    return [y, m, d];
+  }
+  const chunks = clean.split(/[._-]/);
+  const parts: number[] = [];
+  for (const c of chunks) {
+    const n = parseInt(c, 10);
+    if (!isNaN(n)) {
+      parts.push(n);
+    }
+  }
+  return parts;
+}
+
+export function compareVersionStrings(v1: string, v2: string): number {
+  if (v1 === v2) return 0;
+  const p1 = parseDateOrSemVerParts(v1);
+  const p2 = parseDateOrSemVerParts(v2);
+  const minLen = Math.min(p1.length, p2.length);
+  for (let i = 0; i < minLen; i++) {
+    if (p1[i] < p2[i]) return -1;
+    if (p1[i] > p2[i]) return 1;
+  }
+  if (p1.length < p2.length) return -1;
+  if (p1.length > p2.length) return 1;
+  if (p1.length > 0) return 0;
+  return v1.localeCompare(v2);
+}
+
+export function parseUpdateRange(filename: string): { from: string; to: string } | null {
+  const ext = path.extname(filename);
+  const clean = ext ? filename.slice(0, -ext.length) : filename;
+  const m = clean.match(UPDATE_RANGE_REGEX);
+  if (m && m[1] && m[2]) {
+    return { from: m[1], to: m[2] };
+  }
+  return null;
+}
+
+export async function checkUpdateChain(
+  dirPath: string,
+  baseVersion?: string
+): Promise<{ anomalies: string[]; reachableVersion?: string; targetVersion?: string }> {
+  const candidateFiles: string[] = [];
+  try {
+    const entries = await fs.readdir(dirPath, { withFileTypes: true });
+    for (const e of entries) {
+      if (!e.isDirectory()) {
+        candidateFiles.push(e.name);
+      } else if (e.name.toLowerCase().includes('update')) {
+        candidateFiles.push(e.name);
+        try {
+          const subEntries = await fs.readdir(path.join(dirPath, e.name), { withFileTypes: true });
+          for (const se of subEntries) {
+            if (!se.isDirectory()) {
+              candidateFiles.push(se.name);
+            }
+          }
+        } catch {}
+      }
+    }
+  } catch {
+    return { anomalies: [], reachableVersion: baseVersion, targetVersion: baseVersion };
+  }
+
+  const seenRanges = new Set<string>();
+  const patches: PatchRange[] = [];
+  for (const f of candidateFiles) {
+    const r = parseUpdateRange(f);
+    if (r) {
+      const key = `${r.from}->${r.to}`;
+      if (!seenRanges.has(key)) {
+        seenRanges.add(key);
+        patches.push({ filename: f, from: r.from, to: r.to });
+      }
+    }
+  }
+
+  if (patches.length === 0) {
+    return { anomalies: [], reachableVersion: baseVersion, targetVersion: baseVersion };
+  }
+
+  patches.sort((a, b) => {
+    const cmp = compareVersionStrings(a.from, b.from);
+    if (cmp !== 0) return cmp;
+    return compareVersionStrings(a.to, b.to);
+  });
+
+  const targetVer = patches[patches.length - 1].to;
+  let reachableVer = baseVersion || '';
+  let chainBroken = false;
+  const anomalies: string[] = [];
+
+  for (let i = 0; i < patches.length; i++) {
+    const curr = patches[i];
+    if (i === 0) {
+      if (baseVersion && compareVersionStrings(baseVersion, curr.from) < 0) {
+        anomalies.push(
+          `Broken update chain: base game is v${baseVersion}, but earliest available update '${curr.filename}' requires v${curr.from}`
+        );
+        chainBroken = true;
+      } else {
+        reachableVer = curr.to;
+      }
+    } else {
+      const prev = patches[i - 1];
+      const cmp = compareVersionStrings(prev.to, curr.from);
+      if (cmp < 0) {
+        anomalies.push(
+          `Broken update chain: missing update between v${prev.to} and v${curr.from} (patch '${curr.filename}' requires v${curr.from} but previous update only reaches v${prev.to})`
+        );
+        chainBroken = true;
+      } else if (!chainBroken && cmp === 0) {
+        reachableVer = curr.to;
+      }
+    }
+  }
+
+  return { anomalies, reachableVersion: reachableVer, targetVersion: targetVer };
+}
+
 /**
  * Smart-preview a directory using parseReleaseName + naming template.
  * Returns OrganizationPreviewItem[] compatible with executeOrganization.
@@ -686,6 +853,7 @@ export async function smartOrganizePreview(
       type: item.type,
     };
 
+    let hasSidecar = false;
     if (item.type === 'pc_game') {
       try {
         let otixPath = path.join(item.path, '.otix');
@@ -707,6 +875,9 @@ export async function smartOrganizePreview(
         }
         const otixRaw = await fs.readFile(otixPath, 'utf8');
         const sc = JSON.parse(otixRaw);
+        if (sc) {
+          hasSidecar = Boolean(sc.title || sc.media_id || sc.mediaId || sc.id);
+        }
         if (sc.title) {
           const otixTitle = cleanGameTitle(sc.title);
           if (otixTitle) {
@@ -714,6 +885,18 @@ export async function smartOrganizePreview(
             release.title = otixTitle;
             release.cleanTitle = otixTitle;
           }
+        }
+        if (sc.releaseGroup || sc.release_group) {
+          if (!release.group) release.group = sc.releaseGroup || sc.release_group;
+        }
+        if (sc.gameVersion || sc.version) {
+          if (!release.version) release.version = sc.gameVersion || sc.version;
+        }
+        if (sc.edition) {
+          if (!release.edition) release.edition = sc.edition;
+        }
+        if (sc.titleId || sc.title_id) {
+          if (!release.titleId) release.titleId = sc.titleId || sc.title_id;
         }
         const sidecarPlat = resolveSidecarPlatform(sc, release.platform || 'PC');
         if (item.platform) {
@@ -723,6 +906,33 @@ export async function smartOrganizePreview(
           release.platform = 'PC';
         }
       } catch {}
+    } else {
+      try {
+        await fs.access(`${item.path}.otix`);
+        hasSidecar = true;
+      } catch {
+        try {
+          await fs.access(`${item.path}.otixmeta`);
+          hasSidecar = true;
+        } catch {}
+      }
+    }
+
+    let isMatched = hasSidecar;
+    if (!isMatched) {
+      try {
+        const row = getDb().prepare(`
+          SELECT otix_media_id FROM game_matches
+          WHERE (source_game_id = ? OR source_game_id = ? OR lower(otix_title) = lower(?))
+          AND otix_media_id IS NOT NULL AND otix_media_id != ''
+          LIMIT 1
+        `).get(item.name, `node_${item.name}`, cleanTitle) as { otix_media_id?: string } | undefined;
+        if (row?.otix_media_id) {
+          isMatched = true;
+        }
+      } catch {
+        // Table may not exist yet in unit tests
+      }
     }
 
     const safeTitle = sanitizePathSegment(cleanTitle);
@@ -831,11 +1041,28 @@ export async function smartOrganizePreview(
         ? relTargetDir.split(path.sep).join('/')
         : undefined;
 
+    let itemAnomalies: string[] = item.integrity?.anomalies.map((a) => a.message) || [];
+    let itemHealth: string | undefined = item.integrity?.health;
+    let reachableVersion: string | undefined;
+    let targetVersion: string | undefined;
+
+    if (item.type === 'pc_game') {
+      const chainResult = await checkUpdateChain(item.path, release.version);
+      if (chainResult.anomalies.length > 0) {
+        itemAnomalies = [...itemAnomalies, ...chainResult.anomalies];
+        if (!itemHealth || itemHealth === 'HEALTHY' || itemHealth === 'GENERIC') {
+          itemHealth = 'WARNING';
+        }
+      }
+      reachableVersion = chainResult.reachableVersion;
+      targetVersion = chainResult.targetVersion;
+    }
+
     items.push({
       sourcePath: item.path,
       sourceFilename: item.name,
       type: mappedType,
-      matched: true,
+      matched: isMatched,
       extracted: {
         Title: release.title,
         Year: release.year ?? '',
@@ -843,13 +1070,16 @@ export async function smartOrganizePreview(
         ReleaseGroup: release.group ?? '',
         Edition: release.edition ?? '',
         Version: release.version ?? '',
+        ...(reachableVersion ? { ReachableVersion: reachableVersion } : {}),
+        ...(targetVersion ? { TargetVersion: targetVersion } : {}),
+        ...((release as any).titleId ? { TitleId: (release as any).titleId, ps_id: (release as any).titleId } : {}),
       },
       targetPath: targetRaw,
       status,
       foldersToCreate,
-      anomalies: item.integrity?.anomalies.map((a) => a.message),
+      anomalies: itemAnomalies.length > 0 ? itemAnomalies : undefined,
       suggestedRenames: item.integrity?.suggestedRenames,
-      health: item.integrity?.health,
+      health: itemHealth,
       sourceSubdirectory,
       targetSubdirectory,
       subdirectories: item.subdirectories,

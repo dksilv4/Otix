@@ -315,23 +315,31 @@ export const NodeGameSearchModal = ({
       .map((group) => {
         const filteredPacks = group.packs
           .map((pack) => {
-            const isBaseUpdate = isUpdateRelease(pack.base.release)
-            const filteredUpdates = pack.updates.filter((u) => isUpdateRelease(u.release))
             if (typeFilter === 'updates') {
-              if (isBaseUpdate) return pack
-              if (filteredUpdates.length > 0) {
+              const updateReleases = pack.releases.filter((r) => isUpdateRelease(r.release))
+              const updateUpdates = pack.updates.filter((u) => isUpdateRelease(u.release))
+              const totalUpdates = updateReleases.length + updateUpdates.length
+              if (totalUpdates === 0) return null
+              if (updateReleases.length > 0) {
                 return {
                   ...pack,
-                  base: filteredUpdates[0],
-                  updates: filteredUpdates.slice(1),
+                  releases: updateReleases,
+                  updates: updateUpdates,
                 }
               }
-              return null
-            } else {
-              if (isBaseUpdate) return null
               return {
                 ...pack,
-                updates: pack.updates.filter((u) => !isUpdateRelease(u.release)),
+                releases: [updateUpdates[0]],
+                updates: updateUpdates.slice(1),
+              }
+            } else {
+              const baseReleases = pack.releases.filter((r) => !isUpdateRelease(r.release))
+              const baseUpdates = pack.updates.filter((u) => !isUpdateRelease(u.release))
+              if (baseReleases.length === 0 && baseUpdates.length === 0) return null
+              return {
+                ...pack,
+                releases: baseReleases,
+                updates: baseUpdates,
               }
             }
           })

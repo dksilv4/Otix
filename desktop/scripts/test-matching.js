@@ -9,7 +9,7 @@ const path = require('path')
 const os = require('os')
 
 const DB_PATH = path.join(os.homedir(), 'AppData/Roaming/desktop/databases/downloads.db')
-const API_BASE = process.env.API_BASE || 'http://localhost:8000/api/v1'
+const API_BASE = process.env.API_BASE || 'https://otix.app/api/v1'
 
 function fetch(url, opts) {
   return new Promise((resolve, reject) => {

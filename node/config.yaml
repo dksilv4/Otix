@@ -3,7 +3,7 @@ server:
     port: 8091
     host: 0.0.0.0
     auth_token: 4b8c39a3446b1bf87bb8019441c54573445bf3c1946012ab
-    registry_url: http://127.0.0.1:8000/api
+    registry_url: https://otix.app/api
     disable_tray: false
     enable_upnp: false
     enable_heartbeat: true

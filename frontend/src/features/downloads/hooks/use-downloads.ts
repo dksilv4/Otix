@@ -11,7 +11,7 @@ import type { NZBResult, DownloadConfig, Download, WishlistTrackingEntry, Hyperv
 
 // ── Config ──
 
-export function useDownloadConfig(userId: string | undefined) {
+export function useDownloadConfig(userId: string | undefined = undefined) {
   const [config, setConfig] = useState<DownloadConfig | null>(null);
   const [loading, setLoading] = useState(false);
 

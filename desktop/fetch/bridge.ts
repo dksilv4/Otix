@@ -11,6 +11,7 @@
 // Transport/stream/key I/O is injectable so the lifecycle is testable headless.
 
 import * as os from 'node:os'
+import { getApiBaseUrl } from '../config'
 import { FetchClientStore } from './store'
 import { createProxyFetchWorker } from './index'
 import { usableCapability } from './providers'
@@ -117,7 +118,7 @@ export class FetchWorkerBridge {
       this.token = token
       // Worker holds an empty URL until first credentials; give it a concrete
       // default so setCredentials before start still carries a valid base.
-      this.worker.setCredentials(url || 'http://127.0.0.1:8000', token)
+      this.worker.setCredentials(url || getApiBaseUrl(), token)
     }
     this._sync()
   }

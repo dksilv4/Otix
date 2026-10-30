@@ -1,0 +1,279 @@
+/Volumes/Games/ (Ground Truth / Target Architecture)
+│
+├── 🎮 PS5 (3 Titles)
+│   ├── 📁 Hollow Knight: Silksong [PS5] [PPSA12544]/
+│   │   ├── eboot.bin (PS5 Executable)
+│   │   ├── sce_sys/ (param.json, icon0.png, pic0.png, snd0.at9.wav)
+│   │   ├── Media/ (assets)
+│   │   ├── sce_module/ (prx modules)
+│   │   ├── ampr_emu.index
+│   │   ├── fakelib/
+│   │   ├── _DUPLEX_/
+│   │   └── .otix (with titleId: PPSA12544)
+│   ├── 📁 Rayman 30th Anniversary Edition [PS5] [PPSA33016]/
+│   │   ├── PPSA33016-app0/ (eboot.bin, sce_sys/param.json, sce_module/, assets/)
+│   │   ├── duplex-rayman.30th.anniversary.edition.ps5.sfv
+│   │   ├── duplex.nfo
+│   │   └── .otix (with titleId: PPSA33016)
+│   └── 📁 Dead Cells [PS5] [PPSA15554]/
+│       ├── Dead.Cells.PS5-DUPLEX.pak
+│       ├── PPSA15552.complete.txt
+│       ├── duplex-dead.cells.ps5.sfv
+│       ├── duplex.nfo
+│       └── .otix (with titleId: PPSA15554)
+│
+├── 🎮 Switch (5 Titles)
+│   ├── 📁 The Legend of Zelda: Tears of the Kingdom [Switch]/
+│   │   ├── The_Legend_Of_Zelda_Tears_Of_The_Kingdom_NSW-NiiNTENDO.xci
+│   │   └── .otix
+│   ├── 📁 Metroid Prime 4: Beyond [Switch]/
+│   │   ├── Metroid Prime 4 Beyond NSW-HR.xci
+│   │   └── .otix
+│   ├── 📁 Super Mario Galaxy [Switch]/
+│   │   ├── v-super_mario_galaxy.nsp.hdf
+│   │   ├── Updates/v-super_mario_galaxy_v131072.nsp.hdf
+│   │   ├── v-super_mario_galaxy.nfo
+│   │   ├── v-super_mario_galaxy.sfv
+│   │   └── .otix
+│   ├── 📁 Digimon Story: Time Stranger [Switch]/
+│   │   ├── Updates/v-digimon_story_time_stranger_v262144.nsp.hdf
+│   │   ├── v-digimon_story_time_stranger_v262144.nfo
+│   │   └── .otix
+│   └── 📁 Tomb Raider I-III Remastered Starring Lara Croft [Switch]/
+│       ├── Updates/v-tomb_raider_v851968.nsp.hdf
+│       ├── v-tomb_raider_v851968.nfo
+│       └── .otix
+│
+├── 🎮 PS4 (1 Titles)
+│   └── 📁 Kingdom Hearts III [PS4]/
+│       ├── Updates/Kingdom.Hearts.III.Update.v1.10.PS4-DUPLEX.pkg
+│       ├── DLC/Kingdom.Hearts.III.Dawn.Till.Dusk.Keyblade.DLC.PS4-DUPLEX.pkg
+│       ├── DLC/Kingdom.Hearts.III.Midnight.Blue.Keyblade.DLC.PS4-DUPLEX.pkg
+│       ├── DLC/Kingdom.Hearts.III.Re.Mind.DLC.PS4-DUPLEX.pkg
+│       ├── DLC/Kingdom.Hearts.III.Starlight.Keyblade.DLC.PS4-DUPLEX.pkg
+│       ├── DLC/Kingdom.Hearts.III.DLC.Unlocker.PS4-DUPLEX/
+│       └── .otix
+│
+├── 🎮 PC (55 Titles)
+│   ├── 📁 AI Limit [PC]/
+│   │   ├── AI Limit.iso
+│   │   └── .otix
+│   ├── 📁 Balatro [PC]/
+│   │   ├── Balatro.exe
+│   │   └── .otix
+│   ├── 📁 Balatro - Special Edition [PC]/
+│   │   ├── Balatro.exe
+│   │   ├── engine data... (folder package)
+│   │   └── .otix
+│   ├── 📁 Baldur's Gate 3 [PC]/
+│   │   ├── Baldurs Gate 3.iso
+│   │   ├── Updates/Baldurs Gate 3 update 4 1 1 5009956 4 1 1 5849914 ElAmigos.bin
+│   │   ├── .otix
+│   │   ├── folder.jpg
+│   │   └── icon.ico
+│   ├── 📁 Black Myth: Wukong [PC]/
+│   │   ├── Black.Myth.Wukong-voices38.iso
+│   │   ├── Crack/Black.Myth.Wukong.CRACKFIX-voices38/
+│   │   └── .otix
+│   ├── 📁 Blade and Sorcery VR [PC]/
+│   │   ├── Blade and Sorcery VR.iso
+│   │   └── .otix
+│   ├── 📁 Call of Duty: Black Ops II [PC]/
+│   │   ├── Call of Duty - Black Ops II.iso
+│   │   └── .otix
+│   ├── 📁 Clair Obscur: Expedition 33 [PC]/
+│   │   ├── Clair Obscur Expedition 33.iso
+│   │   ├── Updates/
+│   │   └── .otix
+│   ├── 📁 Cyberpunk 2077 [PC]/
+│   │   ├── Cyberpunk 2077.iso
+│   │   ├── Updates/Cyberpunk 2077 update 2.12 - 2.13.exe
+│   │   ├── .otix
+│   │   ├── folder.jpg
+│   │   └── icon.ico
+│   ├── 📁 Dead or Alive 6 [PC]/
+│   │   ├── Dead or Alive 6 Deluxe Edition.iso
+│   │   ├── .otix
+│   │   ├── folder.jpg
+│   │   └── icon.ico
+│   ├── 📁 Deus Ex: Mankind Divided [PC]/
+│   │   ├── Deus Ex Mankind Divided.iso
+│   │   └── .otix
+│   ├── 📁 Dispatch [PC]/
+│   │   ├── Dispatch.iso
+│   │   └── .otix
+│   ├── 📁 Doom: Eternal [PC]/
+│   │   ├── Doom - Eternal Deluxe Edition.iso
+│   │   ├── Updates/
+│   │   └── .otix
+│   ├── 📁 Dyson Sphere Program [PC]/
+│   │   ├── DSPGAME.exe
+│   │   ├── DSPGAME_Data/
+│   │   ├── Updates/
+│   │   └── .otix
+│   ├── 📁 Elden Ring [PC]/
+│   │   ├── Elden Ring Deluxe Edition.iso
+│   │   ├── Updates/Elden Ring update 1.12.3 - 1.13.0.exe
+│   │   ├── .otix
+│   │   ├── folder.jpg
+│   │   └── icon.ico
+│   ├── 📁 Final Fantasy VII Rebirth [PC]/
+│   │   ├── Final Fantasy VII Rebirth.iso
+│   │   ├── Updates/
+│   │   └── .otix
+│   ├── 📁 Five Hearts Under One Roof [PC]/
+│   │   ├── Five Hearts Under One Roof.iso
+│   │   └── .otix
+│   ├── 📁 Five Hearts Under One Roof 2 [PC]/
+│   │   ├── Five Hearts Under One Roof 2.iso
+│   │   └── .otix
+│   ├── 📁 FOUNDRY [PC]/
+│   │   ├── Foundry.exe
+│   │   ├── Foundry_Data/
+│   │   └── .otix
+│   ├── 📁 God of War [PC]/
+│   │   ├── God of War.iso
+│   │   ├── Updates/
+│   │   └── .otix
+│   ├── 📁 God of War Ragnarök [PC]/
+│   │   ├── God of War Ragnarok.iso
+│   │   ├── Updates/
+│   │   ├── .otix
+│   │   ├── folder.jpg
+│   │   └── icon.ico
+│   ├── 📁 Hades II [PC]/
+│   │   ├── Hades II.iso
+│   │   └── .otix
+│   ├── 📁 High on Life [PC]/
+│   │   ├── High On Life.iso
+│   │   └── .otix
+│   ├── 📁 High on Life 2 [PC]/
+│   │   ├── High On Life 2.iso
+│   │   ├── DLC/High_On_Life_High_On_Knife-Razor1911.iso
+│   │   ├── Updates/
+│   │   └── .otix
+│   ├── 📁 Hogwarts Legacy [PC]/
+│   │   ├── Hogwarts Legacy Deluxe Edition.iso
+│   │   ├── Crack/Hogwarts_Legacy_-_small_DLC_unlocker_+_CrackFix_Win11_24H2/
+│   │   ├── .otix
+│   │   ├── folder.jpg
+│   │   └── icon.ico
+│   ├── 📁 Invincible VS [PC]/
+│   │   ├── Invincible VS.iso
+│   │   ├── .otix
+│   │   ├── folder.jpg
+│   │   └── icon.ico
+│   ├── 📁 Kiborg [PC]/
+│   │   ├── Kiborg.iso
+│   │   ├── Updates/
+│   │   └── .otix
+│   ├── 📁 Kingdom Come: Deliverance II [PC]/
+│   │   ├── Kingdom Come Deliverance II.iso
+│   │   └── .otix
+│   ├── 📁 Kingdom Hearts III and Re Mind [PC]/
+│   │   ├── Kingdom Hearts III and Re-Mind.iso
+│   │   └── .otix
+│   ├── 📁 Lies of P [PC]/
+│   │   ├── Lies of P.iso
+│   │   ├── .otix
+│   │   ├── folder.jpg
+│   │   └── icon.ico
+│   ├── 📁 Lords of the Fallen 2023 [PC]/
+│   │   ├── Lords of the Fallen 2023.iso
+│   │   ├── Updates/
+│   │   └── .otix
+│   ├── 📁 Marvel's Spider-Man 2 [PC]/
+│   │   ├── Marvels SpiderMan 2/ (Repack Folder Package Intact)
+│   │   ├── ├── setup.exe
+│   │   ├── ├── elamigos-1.bin ... elamigos-4.bin
+│   │   └── └── .otix
+│   ├── 📁 Marvel's Spider-Man: Miles Morales [PC]/
+│   │   ├── Marvel's Spider Man Miles Morales.iso
+│   │   ├── Updates/
+│   │   └── .otix
+│   ├── 📁 Marvel's Spider-Man Remastered [PC]/
+│   │   ├── Marvel's Spider Man Remastered.iso
+│   │   ├── Updates/
+│   │   └── .otix
+│   ├── 📁 Need for Speed: Most Wanted (Black Edition) [PC]/
+│   │   ├── speed.exe
+│   │   ├── GLOBAL/
+│   │   ├── CARS/
+│   │   ├── NextGenGraphics/
+│   │   └── .otix
+│   ├── 📁 Pragmata [PC]/
+│   │   ├── Pragmata.iso
+│   │   ├── .otix
+│   │   ├── folder.jpg
+│   │   └── icon.ico
+│   ├── 📁 Red Dead Redemption [PC]/
+│   │   ├── Red Dead Redemption.iso
+│   │   └── .otix
+│   ├── 📁 Red Dead Redemption 2 [PC]/
+│   │   ├── Red_Dead_Redemption_2_Ultimate_Edition-Razor1911.iso
+│   │   ├── DLC/Red_Dead_Redemption_2_Ultimate_Edition_DLC_Unlocker-Razor1911/
+│   │   └── .otix
+│   ├── 📁 Remnant II [PC]/
+│   │   ├── Remnant II.iso
+│   │   ├── Updates/Remnant_II_update_444.163_-_453.438_ElAmigos/
+│   │   ├── .otix
+│   │   ├── folder.jpg
+│   │   └── icon.ico
+│   ├── 📁 RuneScape: Dragonwilds [PC]/
+│   │   ├── RuneScape Dragonwilds.iso
+│   │   ├── Crack/RuneScapeDragonwilds Fix Repair Steam/
+│   │   └── .otix
+│   ├── 📁 Satisfactory [PC]/
+│   │   ├── Satisfactory.iso
+│   │   └── .otix
+│   ├── 📁 Sifu [PC]/
+│   │   ├── Sifu Deluxe Edition.iso
+│   │   ├── .otix
+│   │   ├── folder.jpg
+│   │   └── icon.ico
+│   ├── 📁 Split Fiction [PC]/
+│   │   ├── Split Fiction.iso
+│   │   └── .otix
+│   ├── 📁 Stellar Blade [PC]/
+│   │   ├── Stellar.Blade-voices38.iso
+│   │   ├── voices38.nfo
+│   │   ├── .otix
+│   │   ├── folder.jpg
+│   │   └── icon.ico
+│   ├── 📁 Summers Heartbeat [PC]/
+│   │   ├── Summers Heartbeat Deluxe Edition.iso
+│   │   └── .otix
+│   ├── 📁 Tainted Grail: The Fall of Avalon [PC]/
+│   │   ├── Tainted Grail The Fall of Avalon.iso
+│   │   └── .otix
+│   ├── 📁 The Alters [PC]/
+│   │   ├── The Alters.iso
+│   │   └── .otix
+│   ├── 📁 The Elder Scrolls IV: Oblivion Remastered [PC]/
+│   │   ├── The Elder Scrolls IV Oblivion Remastered.iso
+│   │   ├── .otix
+│   │   ├── folder.jpg
+│   │   └── icon.ico
+│   ├── 📁 The Last of Us Part I [PC]/
+│   │   ├── The Last of Us Part I.iso
+│   │   └── .otix
+│   ├── 📁 The Last of Us Part II Remastered [PC]/
+│   │   ├── The Last of Us Part II Remastered.iso
+│   │   └── .otix
+│   ├── 📁 The Universim [PC]/
+│   │   ├── The Universim.iso
+│   │   ├── .otix
+│   │   ├── folder.jpg
+│   │   └── icon.ico
+│   ├── 📁 Tomb Raider IV-VI Remastered [PC]/
+│   │   ├── Tomb Raider IV VI Remastered.iso
+│   │   └── .otix
+│   ├── 📁 Transport Fever 3 [PC]/
+│   │   ├── Transport Fever 3.iso
+│   │   └── .otix
+│   ├── 📁 Valheim [PC]/
+│   │   ├── Valheim.iso
+│   │   └── .otix
+│   └── 📁 Warhammer 40,000: Space Marine 2 [PC]/
+│       ├── Warhammer 40,000 Space Marine 2 1 Year Anniversary Edition Bonuses.iso
+│       └── .otix

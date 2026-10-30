@@ -11,6 +11,16 @@ vi.mock('@/lib/api/client', () => ({
   },
 }))
 
+vi.mock('../components/organisms/match-review-center-modal', () => ({
+  MatchReviewCenterModal: ({ open, onOpenChange }: any) =>
+    open ? (
+      <div data-testid="match-review-center-modal">
+        <span>Match Review Center</span>
+        <button onClick={() => onOpenChange(false)}>Close Review</button>
+      </div>
+    ) : null,
+}))
+
 describe('OrganizeTestRunModal', () => {
   const onOpenChange = vi.fn()
 
@@ -600,5 +610,156 @@ describe('OrganizeTestRunModal', () => {
     expect(screen.getAllByText('AI Limit [PC]').length).toBeGreaterThanOrEqual(1)
     expect(screen.getAllByText('Baldurs Gate').length).toBeGreaterThanOrEqual(1)
     expect(screen.getAllByText('Baldurs Gate 3 [PC]').length).toBeGreaterThanOrEqual(1)
+  })
+
+  it('displays callout banner when items are unmatched and does not allow executing unmatched items', async () => {
+    ;(window as any).desktopAPI = {
+      smartOrganizePreview: vi.fn().mockResolvedValue([
+        {
+          sourcePath: 'D:\\Downloads\\UnmatchedGame.iso',
+          sourceFilename: 'UnmatchedGame.iso',
+          type: 'iso',
+          matched: false,
+          extracted: { Title: 'UnmatchedGame' },
+          targetPath: 'D:\\Games\\UnmatchedGame\\UnmatchedGame.iso',
+          status: 'rename_and_move',
+        },
+      ]),
+    }
+
+    render(
+      <OrganizeTestRunModal
+        open={true}
+        onOpenChange={onOpenChange}
+        template="{Title}/{Title}.{ext}"
+        isoDirectory="D:\\Downloads"
+      />,
+    )
+
+    await waitFor(() => {
+      expect(screen.getByText(/1 game requires matching before organizing/i)).toBeInTheDocument()
+      expect(screen.getByText('Review & Match Games')).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: /^execute/i })).not.toBeInTheDocument()
+    })
+
+    const user = userEvent.setup()
+    const reviewBtn = screen.getByText('Review & Match Games')
+    await user.click(reviewBtn)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('match-review-center-modal')).toBeInTheDocument()
+      expect(screen.getByText('Match Review Center')).toBeInTheDocument()
+    })
+  })
+
+  it('seamlessly falls back to desktop IPC execution when remote node returns network_unreachable', async () => {
+    const user = userEvent.setup()
+    const { apiClient } = await import('@/lib/api/client')
+    ;(apiClient.post as any).mockImplementation((url: string) => {
+      if (url.includes('/organize/preview')) {
+        return Promise.resolve({
+          data: [
+            {
+              sourcePath: 'D:\\Games\\Elden Ring.iso',
+              sourceFilename: 'Elden Ring.iso',
+              type: 'iso',
+              matched: true,
+              extracted: { Title: 'Elden Ring' },
+              targetPath: 'D:\\Games\\Library\\Elden Ring\\Elden Ring.iso',
+              status: 'rename_and_move',
+            },
+          ],
+        })
+      }
+      if (url.includes('/organize/execute')) {
+        const error: any = new Error('Network Unreachable')
+        error.response = { status: 502, data: { error: 'network_unreachable' } }
+        return Promise.reject(error)
+      }
+      return Promise.resolve({ data: [] })
+    })
+
+    const mockExecuteOrganization = vi.fn().mockResolvedValue([
+      { sourcePath: 'D:\\Games\\Elden Ring.iso', targetPath: 'D:\\Games\\Library\\Elden Ring\\Elden Ring.iso', success: true },
+    ])
+
+    ;(window as any).desktopAPI = {
+      executeOrganization: mockExecuteOrganization,
+    }
+
+    render(
+      <OrganizeTestRunModal
+        open={true}
+        onOpenChange={onOpenChange}
+        nodeId={42}
+        template="{Title}/{Title}.{ext}"
+        isoDirectory="D:\\Games"
+      />,
+    )
+
+    await waitFor(() => {
+      expect(screen.getByText('Execute (1)')).toBeInTheDocument()
+    })
+
+    await user.click(screen.getByText('Execute (1)'))
+
+    await waitFor(() => {
+      expect(mockExecuteOrganization).toHaveBeenCalledTimes(1)
+      expect(screen.getByText(/Successfully organized 1 game artifacts/)).toBeInTheDocument()
+    })
+  })
+
+  it('handles remote node offline errors cleanly when desktop IPC is not available', async () => {
+    const user = userEvent.setup()
+    const { apiClient } = await import('@/lib/api/client')
+    ;(apiClient.post as any).mockImplementation((url: string) => {
+      if (url.includes('/organize/preview')) {
+        return Promise.resolve({
+          data: [
+            {
+              sourcePath: 'D:\\Games\\Elden Ring.iso',
+              sourceFilename: 'Elden Ring.iso',
+              type: 'iso',
+              matched: true,
+              extracted: { Title: 'Elden Ring' },
+              targetPath: 'D:\\Games\\Library\\Elden Ring\\Elden Ring.iso',
+              status: 'rename_and_move',
+            },
+          ],
+        })
+      }
+      if (url.includes('/organize/execute')) {
+        const error: any = new Error('Node offline')
+        error.response = { status: 502, data: { code: 'node_unreachable', error: 'node_unreachable' } }
+        return Promise.reject(error)
+      }
+      return Promise.resolve({ data: [] })
+    })
+
+    // No desktopAPI available
+    delete (window as any).desktopAPI
+    delete (window as any).electronAPI
+
+    render(
+      <OrganizeTestRunModal
+        open={true}
+        onOpenChange={onOpenChange}
+        nodeId={42}
+        template="{Title}/{Title}.{ext}"
+        isoDirectory="D:\\Games"
+      />,
+    )
+
+    await waitFor(() => {
+      expect(screen.getByText('Execute (1)')).toBeInTheDocument()
+    })
+
+    await user.click(screen.getByText('Execute (1)'))
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(/Node server is offline or unreachable. Please ensure the node daemon is running./i),
+      ).toBeInTheDocument()
+    })
   })
 })

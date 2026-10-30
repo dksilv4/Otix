@@ -14,7 +14,7 @@ import http from 'http'
 import https from 'https'
 import { URL } from 'url'
 
-const API_BASE = process.env.API_BASE || 'http://localhost:8000/api/v1'
+const API_BASE = process.env.API_BASE || 'https://otix.app/api/v1'
 
 async function fetch(url: string, opts: RequestInit = {}): Promise<any> {
   return new Promise((resolve, reject) => {

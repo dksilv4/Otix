@@ -1118,3 +1118,250 @@ func TestMovePath_ConcurrentSameDestinationRace(t *testing.T) {
 	}
 }
 
+func TestPreviewOrganizationPS5Dump(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "otix-ps5-test-*")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	ps5DumpDir := filepath.Join(tmpDir, "app0 [PS5]")
+	sceSysDir := filepath.Join(ps5DumpDir, "sce_sys")
+	if err := os.MkdirAll(sceSysDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	// Create internal PS5 files that must NEVER be shredded or moved individually
+	_ = os.WriteFile(filepath.Join(ps5DumpDir, "eboot.bin"), []byte("bin"), 0644)
+	_ = os.WriteFile(filepath.Join(ps5DumpDir, "PPSA12544.complete.txt"), []byte(""), 0644)
+	_ = os.WriteFile(filepath.Join(ps5DumpDir, "Hollow.Knight.Silksong.PS5-DUPLEX.pak"), []byte("pak"), 0644)
+
+	paramJson := `{
+		"titleId": "PPSA12544",
+		"localizedParameters": {
+			"defaultLanguage": "en-GB",
+			"en-GB": {
+				"titleName": "Hollow Knight: Silksong"
+			}
+		}
+	}`
+	if err := os.WriteFile(filepath.Join(sceSysDir, "param.json"), []byte(paramJson), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	previews, err := PreviewOrganization(tmpDir, "{Title} [{Platform}]", false)
+	if err != nil {
+		t.Fatalf("PreviewOrganization failed: %v", err)
+	}
+
+	if len(previews) != 1 {
+		t.Fatalf("expected 1 preview item for PS5 dump container package, got %d", len(previews))
+	}
+
+	item := previews[0]
+	if item.Type != "folder_package" {
+		t.Errorf("expected type 'folder_package', got %q", item.Type)
+	}
+	if item.Extracted["Platform"] != "PS5" {
+		t.Errorf("expected Platform 'PS5', got %q", item.Extracted["Platform"])
+	}
+	if item.Extracted["TitleId"] != "PPSA12544" {
+		t.Errorf("expected TitleId 'PPSA12544', got %q", item.Extracted["TitleId"])
+	}
+	if item.Extracted["ps_id"] != "PPSA12544" {
+		t.Errorf("expected ps_id 'PPSA12544', got %q", item.Extracted["ps_id"])
+	}
+	if !strings.Contains(item.Extracted["Title"], "Silksong") {
+		t.Errorf("expected Title to contain 'Silksong', got %q", item.Extracted["Title"])
+	}
+
+	// Test ExecuteOrganization writes .otix sidecar with PS ID for future fast scans
+	target := filepath.Join(tmpDir, "Hollow Knight Silksong [PS5]")
+	execResults, err := ExecuteOrganization([]ExecuteItem{
+		{SourcePath: ps5DumpDir, TargetPath: target},
+	}, false)
+	if err != nil {
+		t.Fatalf("ExecuteOrganization failed: %v", err)
+	}
+	if len(execResults) != 1 || !execResults[0].Success {
+		t.Fatalf("execute failed: %+v", execResults)
+	}
+
+	// Verify .otix sidecar was generated with TitleID
+	sc, err := otixmeta.Read(target)
+	if err != nil || sc == nil {
+		t.Fatalf("failed to read generated .otix sidecar: %v", err)
+	}
+	if sc.TitleID != "PPSA12544" {
+		t.Errorf("expected sc.TitleID to be 'PPSA12544', got %q", sc.TitleID)
+	}
+	if sc.Title != "Hollow Knight: Silksong" {
+		t.Errorf("expected sc.Title to be 'Hollow Knight: Silksong', got %q", sc.Title)
+	}
+
+	// Verify internal files were kept intact
+	if _, err := os.Stat(filepath.Join(target, "eboot.bin")); err != nil {
+		t.Errorf("eboot.bin missing from organized PS5 dump")
+	}
+	if _, err := os.Stat(filepath.Join(target, "sce_sys", "param.json")); err != nil {
+		t.Errorf("sce_sys/param.json missing from organized PS5 dump")
+	}
+}
+
+func TestUpdateChainDetection(t *testing.T) {
+	// Subtest 1: Continuous update chain (Healthy)
+	t.Run("ContinuousChain", func(t *testing.T) {
+		tmpDir, err := os.MkdirTemp("", "otix-chain-cont-*")
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer os.RemoveAll(tmpDir)
+
+		gameDir := filepath.Join(tmpDir, "Valheim.v1.0.7.MULTi14-ElAmigos")
+		if err := os.MkdirAll(gameDir, 0755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(gameDir, "setup.exe"), []byte("dummy installer"), 0755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(gameDir, "elamigos-1.bin"), []byte("bin1"), 0644); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(gameDir, "Valheim update 1.0.7 - 1.0.12.exe"), []byte("upd1"), 0755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(gameDir, "Valheim update 1.0.12 - 1.0.15.exe"), []byte("upd2"), 0755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(gameDir, "Valheim update 1.0.15 - 1.0.16.exe"), []byte("upd3"), 0755); err != nil {
+			t.Fatal(err)
+		}
+
+		previews, err := PreviewOrganization(tmpDir, "{Title} [{Platform}]", false)
+		if err != nil {
+			t.Fatalf("PreviewOrganization failed: %v", err)
+		}
+		if len(previews) != 1 {
+			t.Fatalf("expected 1 preview item, got %d", len(previews))
+		}
+
+		item := previews[0]
+		if item.Health != "HEALTHY" {
+			t.Errorf("expected Health HEALTHY, got %q (anomalies: %v)", item.Health, item.Anomalies)
+		}
+		if item.Extracted["ReachableVersion"] != "1.0.16" {
+			t.Errorf("expected ReachableVersion '1.0.16', got %q", item.Extracted["ReachableVersion"])
+		}
+		if item.Extracted["TargetVersion"] != "1.0.16" {
+			t.Errorf("expected TargetVersion '1.0.16', got %q", item.Extracted["TargetVersion"])
+		}
+		if len(item.Anomalies) != 0 {
+			t.Errorf("expected 0 anomalies, got %v", item.Anomalies)
+		}
+	})
+
+	// Subtest 2: Broken update chain with missing intermediate delta
+	t.Run("BrokenChainMissingDelta", func(t *testing.T) {
+		tmpDir, err := os.MkdirTemp("", "otix-chain-broken-*")
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer os.RemoveAll(tmpDir)
+
+		gameDir := filepath.Join(tmpDir, "Valheim.v1.0.7.MULTi14-ElAmigos")
+		if err := os.MkdirAll(gameDir, 0755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(gameDir, "setup.exe"), []byte("dummy installer"), 0755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(gameDir, "elamigos-1.bin"), []byte("bin1"), 0644); err != nil {
+			t.Fatal(err)
+		}
+		// Notice: 1.0.12 - 1.0.15 is missing!
+		if err := os.WriteFile(filepath.Join(gameDir, "Valheim update 1.0.7 - 1.0.12.exe"), []byte("upd1"), 0755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(gameDir, "Valheim update 1.0.15 - 1.0.16.exe"), []byte("upd3"), 0755); err != nil {
+			t.Fatal(err)
+		}
+
+		previews, err := PreviewOrganization(tmpDir, "{Title} [{Platform}]", false)
+		if err != nil {
+			t.Fatalf("PreviewOrganization failed: %v", err)
+		}
+		if len(previews) != 1 {
+			t.Fatalf("expected 1 preview item, got %d", len(previews))
+		}
+
+		item := previews[0]
+		if item.Health != "WARNING" {
+			t.Errorf("expected Health 'WARNING', got %q", item.Health)
+		}
+		if item.Extracted["ReachableVersion"] != "1.0.12" {
+			t.Errorf("expected ReachableVersion '1.0.12', got %q", item.Extracted["ReachableVersion"])
+		}
+		if item.Extracted["TargetVersion"] != "1.0.16" {
+			t.Errorf("expected TargetVersion '1.0.16', got %q", item.Extracted["TargetVersion"])
+		}
+		foundGapMsg := false
+		for _, a := range item.Anomalies {
+			if strings.Contains(a, "missing update between v1.0.12 and v1.0.15") {
+				foundGapMsg = true
+				break
+			}
+		}
+		if !foundGapMsg {
+			t.Errorf("expected anomaly containing 'missing update between v1.0.12 and v1.0.15', got %v", item.Anomalies)
+		}
+	})
+
+	// Subtest 3: Base game version mismatch
+	t.Run("BaseVersionMismatch", func(t *testing.T) {
+		tmpDir, err := os.MkdirTemp("", "otix-chain-base-*")
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer os.RemoveAll(tmpDir)
+
+		gameDir := filepath.Join(tmpDir, "Valheim.v1.0.0.MULTi14-ElAmigos")
+		if err := os.MkdirAll(gameDir, 0755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(gameDir, "setup.exe"), []byte("dummy installer"), 0755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(gameDir, "elamigos-1.bin"), []byte("bin1"), 0644); err != nil {
+			t.Fatal(err)
+		}
+		// Earliest patch starts at 1.0.7, but base game is 1.0.0
+		if err := os.WriteFile(filepath.Join(gameDir, "Valheim update 1.0.7 - 1.0.12.exe"), []byte("upd1"), 0755); err != nil {
+			t.Fatal(err)
+		}
+
+		previews, err := PreviewOrganization(tmpDir, "{Title} [{Platform}]", false)
+		if err != nil {
+			t.Fatalf("PreviewOrganization failed: %v", err)
+		}
+		if len(previews) != 1 {
+			t.Fatalf("expected 1 preview item, got %d", len(previews))
+		}
+
+		item := previews[0]
+		if item.Health != "WARNING" {
+			t.Errorf("expected Health 'WARNING', got %q", item.Health)
+		}
+		foundBaseMsg := false
+		for _, a := range item.Anomalies {
+			if strings.Contains(a, "base game is v1.0.0, but earliest available update") && strings.Contains(a, "requires v1.0.7") {
+				foundBaseMsg = true
+				break
+			}
+		}
+		if !foundBaseMsg {
+			t.Errorf("expected anomaly for base game mismatch, got %v", item.Anomalies)
+		}
+	})
+}
+
+

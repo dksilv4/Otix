@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ModalProvider, ModalRoot } from '@/lib/modals'
 import { SettingsDownloadsPage } from '../pages/settings-downloads-page'
 
@@ -85,8 +86,16 @@ vi.mock('@/features/downloads/use-server-usenet', () => ({
 import { SettingsSaveProvider } from '../context/settings-save-context'
 import { clearDesktopAPICache } from '@/lib/desktop/api'
 
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: { retry: false },
+    mutations: { retry: false },
+  },
+})
+
 describe('SettingsDownloadsPage Manage Downloaders', () => {
   beforeEach(() => {
+    queryClient.clear()
     clearDesktopAPICache()
     vi.clearAllMocks()
     localStorage.clear()
@@ -107,12 +116,14 @@ describe('SettingsDownloadsPage Manage Downloaders', () => {
 
   it('renders correctly', () => {
     render(
-      <SettingsSaveProvider>
-        <ModalProvider>
-          <SettingsDownloadsPage />
-          <ModalRoot />
-        </ModalProvider>
-      </SettingsSaveProvider>,
+      <QueryClientProvider client={queryClient}>
+        <SettingsSaveProvider>
+          <ModalProvider>
+            <SettingsDownloadsPage />
+            <ModalRoot />
+          </ModalProvider>
+        </SettingsSaveProvider>
+      </QueryClientProvider>,
     )
     expect(screen.getByText('Downloads')).toBeInTheDocument()
     expect(screen.getByText('Home Server')).toBeInTheDocument()
@@ -122,12 +133,14 @@ describe('SettingsDownloadsPage Manage Downloaders', () => {
   it('opens Manage Downloaders modal with SABnzbd as the only downloader', async () => {
     const user = userEvent.setup()
     render(
-      <SettingsSaveProvider>
-        <ModalProvider>
-          <SettingsDownloadsPage />
-          <ModalRoot />
-        </ModalProvider>
-      </SettingsSaveProvider>,
+      <QueryClientProvider client={queryClient}>
+        <SettingsSaveProvider>
+          <ModalProvider>
+            <SettingsDownloadsPage />
+            <ModalRoot />
+          </ModalProvider>
+        </SettingsSaveProvider>
+      </QueryClientProvider>,
     )
     const manageButtons = screen.getAllByRole('button', { name: /manage downloaders/i })
     expect(manageButtons.length).toBeGreaterThan(0)
@@ -141,8 +154,8 @@ describe('SettingsDownloadsPage Manage Downloaders', () => {
     expect(screen.queryByText('Radarr')).not.toBeInTheDocument()
     expect(screen.queryByText('Sonarr')).not.toBeInTheDocument()
 
-    expect(screen.getByRole('button', { name: /configure client/i })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /test connection/i })).toBeInTheDocument()
+    expect(screen.getAllByRole('button', { name: /configure client/i })[0]).toBeInTheDocument()
+    expect(screen.getAllByRole('button', { name: /test connection/i })[0]).toBeInTheDocument()
 
     const goToConnectionsBtn = screen.getByRole('button', { name: /go to connections/i })
     await user.click(goToConnectionsBtn)

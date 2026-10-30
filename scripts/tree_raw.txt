@@ -1,0 +1,656 @@
+└── Games/
+    ├── 1 [PC]/
+    ├── AI Limit [PC]/
+    │   ├── AI Limit/
+    │   ├── Baldurs Gate 3/ [disc_image]
+    │   │   ├── Baldurs Gate 3.iso
+    │   │   └── Updates/ [installed_game]
+    │   │       ├── Baldurs Gate 3 update 4 1 1 5009956 4 1 1 5849914 ElAmigos.bin
+    │   │       ├── Baldurs Gate 3 update 4.1.1.4763283 - 4.1.1.4788723.exe
+    │   │       ├── Baldurs Gate 3 update 4.1.1.4788723 - 4.1.1.5009956 ElAmigos.bin
+    │   │       ├── Baldurs Gate 3 update 4.1.1.4788723 - 4.1.1.5009956.exe
+    │   │       ├── Baldurs Gate 3 update 4.1.1.5009956 - 4.1.1.5849914.exe
+    │   │       ├── Baldurs Gate 3 update 5849914 - 6758295.exe
+    │   │       ├── Baldurs Gate 3 update 5849914 6758295 ElAmigos.bin
+    │   │       ├── Baldurs Gate 3 update 6758295 - 6848561 ElAmigos.bin
+    │   │       └── Baldurs Gate 3 update 6758295 - 6848561.exe
+    │   ├── Black Myth Wukong/ [disc_image]
+    │   │   └── Black.Myth.Wukong-voices38.iso
+    │   ├── Clair Obscur Expedition 33/ [disc_image]
+    │   │   ├── Clair Obscur Expedition 33.iso
+    │   │   └── Updates/
+    │   │       ├── Clair Obscur Expedition 33 update 56180 - 56289.exe
+    │   │       ├── Clair Obscur Expedition 33 update 56289 - 56323.exe
+    │   │       ├── Clair Obscur Expedition 33 update 56442 - 57006.exe
+    │   │       └── Clair Obscur Expedition 33 update 57006 - 57069.exe
+    │   ├── Crack/
+    │   │   ├── Black.Myth.Wukong.CRACKFIX-voices38/
+    │   │   │   ├── voices38.nfo
+    │   │   │   └── voices38/
+    │   │   │       └── b1/
+    │   │   └── Hogwarts_Legacy_-_small_DLC_unlocker_+_CrackFix_Win11_24H2/
+    │   │       ├── g4u.to - games 4 you.url
+    │   │       └── Hogwarts Legacy - small DLC unlocker + CrackFix Win11 24H2/
+    │   │           ├── Hogwarts Legacy - CrackFix Win11/
+    │   │           │   └── Phoenix/
+    │   │           └── Hogwarts Legacy - DLC pack/
+    │   │               └── Phoenix/
+    │   ├── Cyberpunk 2077/
+    │   │   ├── folder.jpg
+    │   │   ├── icon.ico
+    │   │   └── Cyberpunk 2077 Ultimate Edition/
+    │   │       └── 2.20-2.21.v
+    │   ├── Cyberpunk 2077 (2077)/ [disc_image]
+    │   │   └── Cyberpunk 2077.iso
+    │   ├── DOOM Eternal/ [disc_image]
+    │   │   ├── DOOM Eternal.iso
+    │   │   └── Updates/
+    │   │       └── DOOM Eternal update 05.09.2023 - 08.08.2024.exe
+    │   ├── Dead or Alive 6 Deluxe Edition/ [disc_image]
+    │   │   └── Dead or Alive 6 Deluxe Edition.iso
+    │   ├── Deus Ex/
+    │   │   ├── folder.jpg
+    │   │   ├── icon.ico
+    │   │   └── Deus Ex Mankind Divided 1.19.801.0/
+    │   ├── Deus Ex Mankind Divided/ [disc_image]
+    │   │   └── Deus Ex Mankind Divided.iso
+    │   ├── Dispatch/ [disc_image]
+    │   │   ├── Dispatch.iso
+    │   │   ├── folder.jpg
+    │   │   ├── icon.ico
+    │   │   └── v1.0.16598
+    │   ├── Dyson Sphere Program/ [installed_game]
+    │   │   ├── DSPGAME.exe
+    │   │   ├── UnityPlayer.dll
+    │   │   ├── WinPixEventRuntime.dll
+    │   │   ├── folder.jpg
+    │   │   ├── icon.ico
+    │   │   └── Updates/
+    │   │       ├── Versions.txt
+    │   │       ├── History/
+    │   │       │   ├── 0.10.28.EN.txt
+    │   │       │   ├── 0.10.28.ZH.txt
+    │   │       │   ├── 0.10.29.EN.txt
+    │   │       │   ├── 0.10.29.ZH.txt
+    │   │       │   ├── 0.10.30.EN.txt
+    │   │       │   ├── 0.10.30.ZH.txt
+    │   │       │   ├── 0.10.31.EN.txt
+    │   │       │   ├── 0.10.31.ZH.txt
+    │   │       │   ├── 0.10.32.EN.txt
+    │   │       │   ├── 0.10.32.ZH.txt
+    │   │       │   ├── 0.4.11.EN.txt
+    │   │       │   ├── 0.4.11.ZH.txt
+    │   │       │   ├── 0.4.12.EN.txt
+    │   │       │   ├── 0.4.12.ZH.txt
+    │   │       │   ├── 0.5.13.EN.txt
+    │   │       │   ├── 0.5.13.ZH.txt
+    │   │       │   ├── 0.6.14.EN.txt
+    │   │       │   ├── 0.6.14.ZH.txt
+    │   │       │   ├── 0.6.15.EN.txt
+    │   │       │   ├── 0.6.15.ZH.txt
+    │   │       │   ├── 0.6.16.EN.txt
+    │   │       │   ├── 0.6.16.ZH.txt
+    │   │       │   ├── 0.6.17.EN.txt
+    │   │       │   ├── 0.6.17.ZH.txt
+    │   │       │   ├── 0.7.18.EN.txt
+    │   │       │   ├── 0.7.18.ZH.txt
+    │   │       │   ├── 0.8.19.EN.txt
+    │   │       │   ├── 0.8.19.ZH.txt
+    │   │       │   ├── 0.8.20.EN.txt
+    │   │       │   ├── 0.8.20.ZH.txt
+    │   │       │   ├── 0.8.21.EN.txt
+    │   │       │   ├── 0.8.21.ZH.txt
+    │   │       │   ├── 0.8.22.EN.txt
+    │   │       │   ├── 0.8.22.ZH.txt
+    │   │       │   ├── 0.8.23.EN.txt
+    │   │       │   ├── 0.8.23.ZH.txt
+    │   │       │   ├── 0.9.24.EN.txt
+    │   │       │   ├── 0.9.24.ZH.txt
+    │   │       │   ├── 0.9.25.EN.txt
+    │   │       │   ├── 0.9.25.ZH.txt
+    │   │       │   ├── 0.9.26.EN.txt
+    │   │       │   ├── 0.9.26.ZH.txt
+    │   │       │   ├── 0.9.27.EN.txt
+    │   │       │   └── 0.9.27.ZH.txt
+    │   │       └── Images/
+    │   │           ├── 10000-1.jpg
+    │   │           ├── 10000-2.png
+    │   │           ├── 10000-3.png
+    │   │           ├── 11979-1.png
+    │   │           ├── 12080-1.png
+    │   │           ├── 12080-2.png
+    │   │           ├── 12850-1.png
+    │   │           ├── 14553-1.png
+    │   │           ├── 14553-2.png
+    │   │           ├── 14555-1.png
+    │   │           ├── 14660-1.png
+    │   │           ├── 15034-1.png
+    │   │           ├── 20000-1.jpg
+    │   │           ├── 20857-1.png
+    │   │           ├── 21248-1.png
+    │   │           ├── 21309-1.png
+    │   │           ├── 22016-1.png
+    │   │           ├── 22293-1.png
+    │   │           ├── 23500-1.png
+    │   │           ├── 23500-2.png
+    │   │           ├── 23500-3.png
+    │   │           ├── 23500-4.png
+    │   │           ├── 25295-1-en.jpg
+    │   │           ├── 25295-1-zh.jpg
+    │   │           ├── 25295-2-en.jpg
+    │   │           ├── 25295-2-zh.jpg
+    │   │           ├── 25295-3-en.jpg
+    │   │           ├── 25295-3-zh.jpg
+    │   │           ├── 25295-4-en.jpg
+    │   │           ├── 25295-4-zh.jpg
+    │   │           ├── 25654-1-en.jpg
+    │   │           ├── 25654-1-zh.jpg
+    │   │           ├── 5001-1.png
+    │   │           ├── 5001-2.png
+    │   │           ├── 5223-1.png
+    │   │           ├── 5223-2.png
+    │   │           ├── 5262-1.png
+    │   │           ├── 5421-1.png
+    │   │           ├── 5932-1.png
+    │   │           ├── 5932-2.png
+    │   │           ├── 6200-1.png
+    │   │           └── 7624-1.png
+    │   ├── Elden Ring Deluxe Edition/ [disc_image]
+    │   │   └── Elden Ring Deluxe Edition.iso
+    │   ├── FOUNDRY/ [installed_game]
+    │   │   ├── Foundry.exe
+    │   │   ├── ThirdPartyLicenses.txt
+    │   │   ├── UnityCrashHandler64.exe
+    │   │   ├── UnityPlayer.dll
+    │   │   ├── dowser.exe
+    │   │   ├── launcher-installer-windows_2025.5.exe
+    │   │   ├── launcher-settings.json
+    │   │   └── steam_appid.txt
+    │   ├── Final Fantasy VII Rebirth/ [disc_image]
+    │   │   ├── Final Fantasy VII Rebirth.iso
+    │   │   └── Updates/
+    │   │       ├── Final Fantasy VII Rebirth update 1.003.exe
+    │   │       └── Final_Fantasy_VII_Rebirth_update_1.003_ElAmigos.bin
+    │   ├── Five Hearts Under One Roof/ [disc_image]
+    │   │   └── Five Hearts Under One Roof.iso
+    │   ├── Five Hearts Under One Roof 2/ [disc_image]
+    │   │   └── Five Hearts Under One Roof 2.iso
+    │   ├── God of War/ [disc_image]
+    │   │   └── God of War.iso
+    │   ├── God of War Ragnarok/ [disc_image]
+    │   │   ├── God of War Ragnarok.iso
+    │   │   └── Updates/ [installed_game]
+    │   │       ├── God of War Ragnarok update 1.1.1.exe
+    │   │       ├── God of War Ragnarok update 1.2.exe
+    │   │       ├── God of War Ragnarok update 1.3.exe
+    │   │       ├── God of War Ragnarok update 1.4.exe
+    │   │       ├── God of War Ragnarok update 1.5.exe
+    │   │       ├── God of War Ragnarok update 1.6.exe
+    │   │       ├── God of War Ragnarok update 1.7.exe
+    │   │       ├── God of War Ragnarok update 1.8 H2.exe
+    │   │       ├── God of War Ragnarok update 1.9 H3.exe
+    │   │       └── God of War Ragnarok update 1.9.exe
+    │   ├── Hades II/ [disc_image]
+    │   │   └── Hades II.iso
+    │   ├── High On Life/ [disc_image]
+    │   │   └── High On Life.iso
+    │   ├── High On Life 2/ [disc_image]
+    │   │   ├── High On Life 2.iso
+    │   │   └── Updates/ [installed_game]
+    │   │       ├── 2 - High On Life 2 update 04.03.2026.exe
+    │   │       ├── High On Life 2 update 04.03.2026-ElAmigos.bin
+    │   │       ├── High On Life 2 update 05.05.2026.exe
+    │   │       ├── High On Life 2 update 13.03.2026 - 05.05.2026  ElAmigos.bin
+    │   │       ├── High On Life 2 update 20.02.2026.exe
+    │   │       └── elamigos-1.bin
+    │   ├── High On Life High On Knife/ [disc_image]
+    │   │   └── High_On_Life_High_On_Knife-Razor1911.iso
+    │   ├── Hogwarts Legacy Deluxe Edition/ [disc_image]
+    │   │   └── Hogwarts Legacy Deluxe Edition.iso
+    │   ├── Invincible VS/ [disc_image]
+    │   │   └── Invincible VS.iso
+    │   ├── Kiborg/ [disc_image]
+    │   │   ├── Kiborg.iso
+    │   │   └── Updates/
+    │   │       └── Kiborg update 16.05.2025 - 15.06.2025.exe
+    │   ├── Kingdom Come Deliverance II/ [disc_image]
+    │   │   └── Kingdom Come Deliverance II.iso
+    │   ├── Kingdom Hearts III and Re Mind/ [disc_image]
+    │   │   └── Kingdom Hearts III and Re-Mind.iso
+    │   ├── Launcher/
+    │   │   └── Launcher.exe
+    │   ├── Lies of P/ [disc_image]
+    │   │   └── Lies of P.iso
+    │   ├── Lords of the Fallen 2023 (2023)/ [disc_image]
+    │   │   └── Lords of the Fallen 2023.iso
+    │   ├── Marvels SpiderMan 2/ [repack_package]
+    │   │   ├── Spider-Man2_0.ico
+    │   │   ├── autorun.inf
+    │   │   ├── elamigos-1.bin
+    │   │   ├── elamigos-2.bin
+    │   │   ├── elamigos-3.bin
+    │   │   └── setup.exe
+    │   ├── Marvels SpiderMan Miles Morales/ [disc_image]
+    │   │   └── Marvels SpiderMan Miles Morales.iso
+    │   ├── Marvels SpiderMan Remastered/ [disc_image]
+    │   │   └── Marvels SpiderMan Remastered.iso
+    │   ├── Need for Speed Most Wanted (Black Edition)/ [installed_game]
+    │   │   ├── 00000000.256
+    │   │   ├── LuaDebugPrintout.log
+    │   │   ├── d3d9.dll
+    │   │   ├── d3d9.ini
+    │   │   ├── d3d9.log
+    │   │   ├── dinput8.dll
+    │   │   ├── filelist.txt
+    │   │   ├── nfsmostwantedblack_logo.bmp
+    │   │   ├── nfsmw-key.reg
+    │   │   ├── server.cfg
+    │   │   ├── server.dll
+    │   │   ├── speed.exe
+    │   │   └── speed_ico.ico
+    │   ├── Pragmata/ [disc_image]
+    │   │   └── Pragmata.iso
+    │   ├── Red Dead Redemption/ [disc_image]
+    │   │   └── Red Dead Redemption.iso
+    │   ├── Red Dead Redemption 2 Ultimate Edition/ [disc_image]
+    │   │   └── Red_Dead_Redemption_2_Ultimate_Edition-Razor1911.iso
+    │   ├── Remnant II/ [disc_image]
+    │   │   ├── Remnant II.iso
+    │   │   └── Updates/
+    │   │       └── Remnant II update 444.163 - 453.438.exe
+    │   ├── RuneScape Dragonwilds/ [disc_image]
+    │   │   ├── RuneScape Dragonwilds update 240163 - 243922.exe
+    │   │   ├── RuneScape Dragonwilds.iso
+    │   │   ├── elamigos-1.bin
+    │   │   └── g4u.to - games 4 you.url
+    │   ├── RuneScapeDragonwilds Fix Repair Steam/
+    │   │   └── RuneScapeDragonwilds_Fix_Repair_Steam_Generic.rar
+    │   ├── Satisfactory/ [disc_image]
+    │   │   ├── Satisfactory.iso
+    │   │   └── Updates/
+    │   │       ├── Satisfactory update 365306 - 366202.exe
+    │   │       └── Satisfactory update 366202 - 367101.exe
+    │   ├── Sifu Deluxe Edition/ [disc_image]
+    │   │   └── Sifu Deluxe Edition.iso
+    │   ├── Split Fiction/ [disc_image]
+    │   │   ├── Split Fiction.iso
+    │   │   └── Updates/
+    │   │       └── Split Fiction update 17.03.2025.exe
+    │   ├── Stellar Blade/ [disc_image]
+    │   │   └── Stellar.Blade-voices38.iso
+    │   ├── Summers Heartbeat Deluxe Edition I KnoW/ [disc_image]
+    │   │   └── Summers.Heartbeat.Deluxe.Edition-I KnoW.iso
+    │   ├── Tainted Grail The Fall of Avalon/ [disc_image]
+    │   │   ├── Tainted Grail The Fall of Avalon.iso
+    │   │   └── Updates/
+    │   │       ├── 1 - Tainted Grail The Fall of Avalon update 27.05.2025.exe
+    │   │       ├── 2 - Tainted Grail The Fall of Avalon update 31.05.2025.exe
+    │   │       ├── 3 - Tainted Grail The Fall of Avalon update 06.06.2025.exe
+    │   │       ├── 4 - Tainted Grail The Fall of Avalon update 16.06.2025.exe
+    │   │       └── Tainted Grail The Fall of Avalon update 27.05.2025.exe
+    │   ├── The Alters/ [disc_image]
+    │   │   └── The Alters.iso
+    │   ├── The Elder Scrolls IV Oblivion Remastered/ [disc_image]
+    │   │   └── The Elder Scrolls IV Oblivion Remastered.iso
+    │   ├── The Last of Us Part I/ [disc_image]
+    │   │   ├── The Last of Us Part I.iso
+    │   │   ├── folder.jpg
+    │   │   ├── icon.ico
+    │   │   └── Updates/
+    │   │       ├── The Last of Us Part I update 1.0.5.0 - 1.1.0.0.exe
+    │   │       └── elamigos-1.bin
+    │   ├── The Last of Us Part II Remastered/ [repack_package]
+    │   │   ├── autorun.inf
+    │   │   ├── elamigos-1.bin
+    │   │   ├── launcher_00.ico
+    │   │   ├── setup.exe
+    │   │   ├── Crack/
+    │   │   │   └── The Last of Us Part II Remastered Crackfix/
+    │   │   │       ├── steam_api64.dll
+    │   │   │       ├── steam_api64.rne.exe
+    │   │   │       ├── steam_emu.ini
+    │   │   │       ├── tlou-ii-l.exe
+    │   │   │       └── tlou-ii.exe
+    │   │   └── Updates/
+    │   │       ├── The Last of Us Part II Remastered update 1.0.10407.exe
+    │   │       ├── The Last of Us Part II Remastered update 1.1.10410.exe
+    │   │       ├── The Last of Us Part II Remastered update 1.1.10411.exe
+    │   │       └── The Last of Us Part II Remastered update 1.2.10416.exe
+    │   ├── The Universim/ [disc_image]
+    │   │   ├── The Universim.iso
+    │   │   ├── folder.jpg
+    │   │   └── icon.ico
+    │   ├── Tomb Raider IV VI Remastered/ [disc_image]
+    │   │   └── Tomb Raider IV-VI Remastered.iso
+    │   ├── Transport Fever 3/ [disc_image]
+    │   │   └── Transport Fever 3.iso
+    │   ├── Valheim/ [disc_image]
+    │   │   ├── Valheim update 1.0.12 - 1.0.15.exe
+    │   │   ├── Valheim update 1.0.15 - 1.0.16.exe
+    │   │   ├── Valheim update 1.0.7 - 1.0.12.exe
+    │   │   ├── Valheim.iso
+    │   │   └── g4u.to - games 4 you.url
+    │   └── Warhammer 40,000 Space Marine 2 1 Year Anniversary Edition Bonuses/ [repack_package]
+    │       ├── Verify BIN files before installation.bat
+    │       ├── fg-01.bin
+    │       ├── fg-02.bin
+    │       ├── fg-03.bin
+    │       ├── fg-04.bin
+    │       ├── fg-05.bin
+    │       ├── fg-06.bin
+    │       ├── fg-optional-4K-texture-pack.bin
+    │       ├── fg-optional-bonus-content.bin
+    │       ├── fg-optional-chinese-vo.bin
+    │       ├── fg-optional-french-vo.bin
+    │       ├── fg-optional-german-vo.bin
+    │       ├── fg-optional-japanese-vo.bin
+    │       ├── fg-optional-russian-vo.bin
+    │       ├── fg-optional-spanish-vo.bin
+    │       └── setup.exe
+    ├── Baldur's Gate 3 Digital [PC]/
+    │   ├── Baldur's Gate 3 - Digital Deluxe Edition/
+    │   │   ├── folder.jpg
+    │   │   ├── icon.ico
+    │   │   └── Baldurs Gate 3/
+    │   │       └── v4.1.1.4763283.txt
+    │   ├── Black Myth - Wukong/
+    │   │   ├── Black.Myth.Wukong-voices38/
+    │   │   │   └── voices38.nfo
+    │   │   ├── Dead.Cells.PS5-DUPLEX/
+    │   │   │   ├── duplex-dead.cells.ps5.sfv
+    │   │   │   └── duplex.nfo
+    │   │   ├── Digimon_Story_Time_Stranger_Update_v1.2.2_NSW-VENOM/
+    │   │   │   ├── v-digimon_story_time_stranger_v262144.nfo
+    │   │   │   ├── v-digimon_story_time_stranger_v262144.nsp.hdf
+    │   │   │   └── v-digimon_story_time_stranger_v262144.sfv
+    │   │   ├── Five.Hearts.Under.One.Roof..MULTi13-ElAmigos/
+    │   │   ├── Five.Hearts.Under.One.Roof.2.MULTi10-ElAmigos/
+    │   │   │   └── g4u.to - games 4 you.url
+    │   │   ├── Hollow.Knight.Silksong.PS5-DUPLEX/
+    │   │   │   ├── duplex-hollow.knight.silksong.ps5.sfv
+    │   │   │   └── duplex.nfo
+    │   │   ├── Kingdom Come Deliverance II v1.5.0 ElAmigos/
+    │   │   ├── Kingdom Hearts III and Re-Mind (build 13.06.2024)-ElAmigos/
+    │   │   │   └── g4u.to - games 4 you.url
+    │   │   ├── Kingdom.Hearts.III.DLC.Unlocker.PS4-DUPLEX/
+    │   │   │   ├── duplex-kingdom.hearts.iii.dlc.unlocker.ps4.sfv
+    │   │   │   └── duplex.nfo
+    │   │   ├── Kingdom.Hearts.III.Update.v1.10.PS4-DUPLEX/
+    │   │   │   ├── duplex-kingdom.hearts.iii.update.v1.10.ps4.sfv
+    │   │   │   └── duplex.nfo
+    │   │   ├── Rayman.30th.Anniversary.Edition.PS5-DUPLEX/
+    │   │   │   ├── duplex-rayman.30th.anniversary.edition.ps5.sfv
+    │   │   │   ├── duplex.nfo
+    │   │   │   └── PPSA33016-app0/ [ps5_dump]
+    │   │   │       ├── copytexture2d_p.ags
+    │   │   │       ├── cs_clearbuffer_c.ags
+    │   │   │       ├── cs_cleartexture1d_c.ags
+    │   │   │       ├── cs_cleartexture2d_c.ags
+    │   │   │       ├── cs_cleartexture3d_c.ags
+    │   │   │       ├── cs_copybuffer_c.ags
+    │   │   │       ├── cs_copyrawtexture1d_c.ags
+    │   │   │       ├── cs_copyrawtexture2d_c.ags
+    │   │   │       ├── cs_copyrawtexture3d_c.ags
+    │   │   │       ├── cs_copytexture1d_c.ags
+    │   │   │       ├── cs_copytexture2d_c.ags
+    │   │   │       ├── cs_copytexture3d_c.ags
+    │   │   │       ├── cs_set_uint_c.ags
+    │   │   │       ├── cs_set_uint_fast_c.ags
+    │   │   │       ├── cs_test_buffer_read_c.ags
+    │   │   │       ├── cs_test_texture_read_c.ags
+    │   │   │       ├── eboot.bin
+    │   │   │       ├── imgui_p.ags
+    │   │   │       ├── imgui_vv.ags
+    │   │   │       ├── libmipsaot-SLUS00005_ps5.prx
+    │   │   │       ├── pancake_libretro_ps5.prx
+    │   │   │       ├── pix_clear_p.ags
+    │   │   │       ├── pix_generateMipMaps_2d_p.ags
+    │   │   │       ├── pix_generateMipMaps_3d_p.ags
+    │   │   │       ├── pixbg_p.ags
+    │   │   │       ├── vex_clear_vv.ags
+    │   │   │       └── vexbg_vv.ags
+    │   │   ├── Summers.Heartbeat.Deluxe.Edition-I KnoW/
+    │   │   │   └── iknow.nfo
+    │   │   ├── Super_Mario_Galaxy_NSW-VENOM/
+    │   │   │   ├── v-super_mario_galaxy.nfo
+    │   │   │   ├── v-super_mario_galaxy.nsp.hdf
+    │   │   │   ├── v-super_mario_galaxy.sfv
+    │   │   │   └── v-super_mario_galaxy_v131072.nsp.hdf
+    │   │   ├── Tomb_Raider_I-III_Remastered_Starring_Lara_Croft_Update_v1.1.4_NSW-VENOM/
+    │   │   │   ├── v-tomb_raider_v851968.nfo
+    │   │   │   ├── v-tomb_raider_v851968.nsp.hdf
+    │   │   │   └── v-tomb_raider_v851968.sfv
+    │   │   ├── Transport.Fever.3.Deluxe.Edition.v40408.MULTi13-ElAmigos/
+    │   │   │   └── g4u.to - games 4 you.url
+    │   │   └── Valheim.v1.0.7.MULTi14-ElAmigos/
+    │   │       └── g4u.to - games 4 you.url
+    │   ├── Clair Obscur - Expedition 33/
+    │   │   ├── folder.jpg
+    │   │   └── icon.ico
+    │   ├── Doom - Eternal Deluxe Edition/
+    │   │   ├── folder.jpg
+    │   │   ├── icon.ico
+    │   │   └── DOOM Eternal/
+    │   │       └── DOOM Eternal (build 05.09.2023)/
+    │   ├── Elden Ring - Collector's Edition/
+    │   │   ├── folder.jpg
+    │   │   ├── icon.ico
+    │   │   └── Elden Ring Deluxe Edition v1.12.0/
+    │   ├── Final Fantasy VII Rebirth/
+    │   │   ├── folder.jpg
+    │   │   ├── icon.ico
+    │   │   ├── Final.Fantasy.VII.Rebirth.Deluxe.Edition.MULTi11-ElAmigos/
+    │   │   │   ├── g4u.to - games 4 you.url
+    │   │   │   └── Final Fantasy VII Rebirth/
+    │   │   └── Final_Fantasy_VII_Rebirth_update_1.003_ElAmigos/
+    │   │       └── g4u.to - games 4 you.url
+    │   ├── Hades II/
+    │   │   ├── folder.jpg
+    │   │   ├── icon.ico
+    │   │   └── Hades II v1.132940-ElAmigos/
+    │   ├── High on Life 2/
+    │   │   ├── folder.jpg
+    │   │   ├── icon.ico
+    │   │   ├── High On Life (build 03.10.2023)/
+    │   │   ├── High.On.Life.2.MULTi7-ElAmigos/
+    │   │   └── High_On_Life_High_On_Knife-Razor1911/
+    │   │       ├── g4u.to - games 4 you.url
+    │   │       └── High_On_Life_High_On_Knife-Razor1911/
+    │   │           └── High_On_Life_High_On_Knife-Razor1911.nfo
+    │   ├── Hogwarts Legacy - Deluxe Edition/
+    │   │   ├── folder.jpg
+    │   │   ├── icon.ico
+    │   │   └── Hogwarts_Legacy_Deluxe_Edition_MULTi11-ElAmigos/
+    │   ├── Invincible Vs - Deluxe Edition/
+    │   │   ├── folder.jpg
+    │   │   ├── icon.ico
+    │   │   └── Invincible.VS.MULTi6-ElAmigos/
+    │   ├── Kiborg/
+    │   │   ├── folder.jpg
+    │   │   └── Kiborg/
+    │   │       └── v16.05.2025.txt
+    │   ├── Lords of the Fallen II/
+    │   │   ├── folder.jpg
+    │   │   ├── icon.ico
+    │   │   └── Lords of the Fallen/
+    │   │       └── v2.0.9.txt
+    │   ├── Pragmata - Deluxe Edition/
+    │   │   ├── folder.jpg
+    │   │   ├── icon.ico
+    │   │   └── Pragmata-ElAmigos/
+    │   ├── Remnant II/
+    │   │   ├── folder.jpg
+    │   │   ├── icon.ico
+    │   │   ├── Remnant_II_update_444.163_-_453.438_ElAmigos/
+    │   │   │   └── g4u.to - games 4 you.url
+    │   │   └── Remnant_II_v444.163_.Ultimate.Edition.MULTi10-ElAmigos/
+    │   │       ├── g4u.to - games 4 you.url
+    │   │       └── Remnant II v444.163/
+    │   ├── RuneScape - Dragonwilds/
+    │   │   ├── folder.jpg
+    │   │   ├── icon.ico
+    │   │   └── Dragonwilds/
+    │   │       └── RuneScape.Dragonwilds.Deluxe.Edition.v240163.MULTi11-ElAmigos/
+    │   │           └── g4u.to - games 4 you.url
+    │   ├── Satisfactory/
+    │   │   ├── folder.jpg
+    │   │   ├── icon.ico
+    │   │   └── Satisfactory (build 365306)/
+    │   ├── Split Fiction/
+    │   │   ├── folder.jpg
+    │   │   ├── icon.ico
+    │   │   └── Split Fiction/
+    │   ├── Tainted Grail - The Fall of Avalon/
+    │   │   ├── folder.jpg
+    │   │   ├── icon.ico
+    │   │   └── Tainted  Grail The Fall of Avalon/
+    │   ├── The Alters/
+    │   │   ├── folder.jpg
+    │   │   ├── icon.ico
+    │   │   └── The Alters/
+    │   └── The Elder Scrolls IV - Oblivion Remastered/
+    │       ├── folder.jpg
+    │       ├── icon.ico
+    │       └── The.Elder.Scrolls.IV.Oblivion.Remastered.Deluxe.Edition.MULTi9-ElAmigos/
+    │           ├── g4u.to - games 4 you.url
+    │           └── The Elder Scrolls IV Oblivion Remastered/
+    ├── Cyberpunk 2077 [PC]/
+    │   └── Updates/
+    │       └── Cyberpunk 2077 update 2.20 - 2.21.exe
+    ├── Dead or Alive 6 Digital [PC]/
+    │   ├── folder.jpg
+    │   ├── icon.ico
+    │   └── Dead or Alive 6 Deluxe Edition/
+    │       └── v1.22.txt
+    ├── Elden Ring [PC]/
+    │   └── Updates/
+    │       ├── Elden Ring update 1.12.0 - 1.12.3.exe
+    │       ├── Elden Ring update 1.12.3 - 1.13.0.exe
+    │       ├── Elden Ring update 1.13.0 - 1.14.0.exe
+    │       ├── Elden Ring update 1.14.0 - 1.15.0.exe
+    │       └── Elden Ring update 1.15.0 - 1.16.0.exe
+    ├── God of War Ragnarök [PC]/
+    │   ├── folder.jpg
+    │   ├── icon.ico
+    │   ├── God of War - Ragnarok/
+    │   │   └── folder.jpg
+    │   └── Gof of War/
+    │       └── folder.jpg
+    ├── God of War [PC]/
+    │   └── Updates/ [installed_game]
+    │       ├── God of War update 1.0.2.exe
+    │       ├── God of War update 1.0.3.exe
+    │       ├── God of War update 1.0.4.exe
+    │       ├── God of War update 1.0.5.exe
+    │       ├── God of War update 1.0.6.exe
+    │       └── God of War update 1.0.8.exe
+    ├── Kingdom Hearts III DUPLEX [PS4]/ [playstation_pkg]
+    │   └── Kingdom.Hearts.III.Update.v1.10.PS4-DUPLEX.pkg
+    ├── Kingdom Hearts III Dawn Till Dusk Keyblade DLC [PS4]/ [playstation_pkg]
+    │   └── Kingdom.Hearts.III.Dawn.Till.Dusk.Keyblade.DLC.PS4-DUPLEX.pkg
+    ├── Kingdom Hearts III Midnight Blue Keyblade DLC [PS4]/ [playstation_pkg]
+    │   └── Kingdom.Hearts.III.Midnight.Blue.Keyblade.DLC.PS4-DUPLEX.pkg
+    ├── Kingdom Hearts III Re Mind DLC [PS4]/ [playstation_pkg]
+    │   └── Kingdom.Hearts.III.Re.Mind.DLC.PS4-DUPLEX.pkg
+    ├── Kingdom Hearts III Starlight Keyblade DLC [PS4]/ [playstation_pkg]
+    │   └── Kingdom.Hearts.III.Starlight.Keyblade.DLC.PS4-DUPLEX.pkg
+    ├── Lies of P H1 [PC]/
+    │   ├── g4u.to - games 4 you.url
+    │   └── Lies of P v1.5.0.0 H1/
+    ├── Lords of the Fallen 2023 [PC]/
+    │   └── Updates/
+    │       ├── Lords of the Fallen 2023 update 2.0.13 - 2.0.29.exe
+    │       └── Lords of the Fallen 2023 update 2.0.9 - 2.0.13.exe
+    ├── Marvel's Spider Man Miles Morales [PC]/
+    │   ├── folder.jpg
+    │   ├── icon.ico
+    │   ├── Marvel's Spider Man Miles Morales/
+    │   ├── Marvel's Spider Man Remastered/
+    │   └── Updates/ [installed_game]
+    │       ├── Marvel's Spider-Man Miles Morales update 1.1116.0.0 - 1.1122.0.0.exe
+    │       ├── Marvel's Spider-Man Miles Morales update 1.1122.0.0 - 1.1130.0.0.exe
+    │       ├── Marvel's Spider-Man Miles Morales update 1.1130.0.0 - 1.1209.0.0.exe
+    │       ├── Marvel's Spider-Man Miles Morales update 1.1209.0.0 - 2.209.0.0.exe
+    │       ├── Marvel's Spider-Man Miles Morales update 2.1012 - 3.617.1.exe
+    │       └── Marvel's Spider-Man Miles Morales update 2.209 - 2.1012.exe
+    ├── Marvel's Spider Man Remastered [PC]/
+    │   └── Updates/
+    │       ├── Marvel's Spider-Man Remastered update 1.812.1.0 - 1.824.1.0.exe
+    │       ├── Marvel's Spider-Man Remastered update 1.824.1.0 - 1.919.0.0.exe
+    │       └── Marvel's Spider-Man Remastered update 1.919.0.0 - 1.1006.0.0.exe
+    ├── Metroid Prime 4 Beyond HR [Switch]/ [switch_rom]
+    │   └── Metroid Prime 4 Beyond NSW-HR.xci
+    ├── PC/
+    │   ├── 1 /
+    │   │   └── Updates/
+    │   │       └── elamigos-1.bin
+    │   ├── AI Limit/ [disc_image]
+    │   │   └── AI Limit.iso
+    │   ├── Balatro/
+    │   │   ├── Balatro.exe
+    │   │   ├── OpenAL32.dll
+    │   │   ├── SDL2.dll
+    │   │   └── https.dll
+    │   ├── Balatro - Special Edition/ [installed_game]
+    │   │   ├── Balatro.exe
+    │   │   ├── OpenAL32.dll
+    │   │   ├── SDL2.dll
+    │   │   ├── https.dll
+    │   │   ├── license.txt
+    │   │   ├── love.dll
+    │   │   ├── lua51.dll
+    │   │   ├── luasteam.dll
+    │   │   ├── mpg123.dll
+    │   │   ├── msvcp120.dll
+    │   │   ├── msvcr120.dll
+    │   │   ├── readme.txt
+    │   │   ├── steam_64.dll
+    │   │   ├── steam_api.ini
+    │   │   ├── steam_api64.dll
+    │   │   ├── steam_api64.org.exe
+    │   │   ├── steam_appid.txt
+    │   │   └── steamclient64.dll
+    │   ├── Baldur's Gate III/ [disc_image]
+    │   │   └── Baldurs Gate 3.iso
+    │   ├── Black Myth - Wukong/ [disc_image]
+    │   │   └── Black.Myth.Wukong-voices38.iso
+    │   ├── Blade and Sorcery VR/ [disc_image]
+    │   │   └── Blade and Sorcery VR.iso
+    │   ├── Call of Duty - Black Ops II/
+    │   │   └── Call Of Duty Black Ops 2.rar
+    │   └── Red Dead Redemption/
+    │       ├── folder.jpg
+    │       ├── icon.ico
+    │       └── Red_Dead_Redemption_2_Ultimate_Edition_DLC_Unlocker-Razor1911/
+    │           └── Red_Dead_Redemption_2_Ultimate_Edition_DLC_Unlocker-Razor1911/
+    │               └── rzr-reddeadredemption2dlcunlocker.nfo
+    ├── Red Dead Redemption 2 [PC]/
+    │   ├── g4u.to - games 4 you.url
+    │   └── Red_Dead_Redemption_2_Ultimate_Edition-Razor1911/
+    │       └── Red_Dead_Redemption_2_Ultimate_Edition-Razor1911.nfo
+    ├── Red Dead Redemption [PC]/
+    │   ├── g4u.to - games 4 you.url
+    │   └── Red Dead Redemption/
+    ├── Sifu [PC]/
+    │   ├── folder.jpg
+    │   └── Sifu (Deluxe Edition)/
+    │       └── v1.12.4.477.txt
+    ├── Stellar Blade Digital [PC]/
+    │   ├── folder.jpg
+    │   ├── icon.ico
+    │   └── Stellar.Blade-voices38/
+    │       └── voices38.nfo
+    ├── Switch/
+    │   └── Lies of P - Complete Edition/
+    │       ├── folder.jpg
+    │       └── icon.ico
+    ├── TODO/
+    ├── The Legend Of Zelda Tears Of The Kingdom NSW [Switch]/ [switch_rom]
+    │   └── The_Legend_Of_Zelda_Tears_Of_The_Kingdom_NSW-NiiNTENDO.xci
+    ├── app0 [PS5]/ [ps5_dump]
+    │   ├── Dead.Cells.PS5-DUPLEX.pak
+    │   ├── PPSA15552.complete.txt
+    │   ├── ampr_emu.index
+    │   └── eboot.bin
+    └── g4u to games 4 you url [PC]/
+        └── g4u.to - games 4 you.url

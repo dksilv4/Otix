@@ -51,10 +51,36 @@ vi.mock("@/features/auth/hooks/use-auth", () => ({
     isLoading: false,
     isAuthenticated: true,
   })),
+  useOptionalAuth: vi.fn(() => ({
+    user: {
+      id: "1",
+      email: "test@test.com",
+      username: "testuser",
+      isVerified: true,
+      twoFactorEnabled: false,
+      steamId: "steam-123",
+      plexId: "plex-123",
+    },
+    isLoading: false,
+    isAuthenticated: true,
+  })),
 }))
 
 vi.mock("@auth/hooks/use-auth", () => ({
   useAuth: vi.fn(() => ({
+    user: {
+      id: "1",
+      email: "test@test.com",
+      username: "testuser",
+      isVerified: true,
+      twoFactorEnabled: false,
+      steamId: "steam-123",
+      plexId: "plex-123",
+    },
+    isLoading: false,
+    isAuthenticated: true,
+  })),
+  useOptionalAuth: vi.fn(() => ({
     user: {
       id: "1",
       email: "test@test.com",
@@ -100,6 +126,7 @@ vi.mock("./library-queries", () => ({
   useSteamWishlistScan: vi.fn(() => ({ mutate: vi.fn(), isPending: false, data: null, error: null })),
   usePlexLibraryScan: vi.fn(() => ({ mutate: vi.fn(), isPending: false, data: null, error: null })),
   usePlexStatus: vi.fn(() => ({ data: { itemCount: 0, lastScannedAt: null } })),
+  useStreamableMediaIds: vi.fn(() => ({ data: new Set(), isLoading: false })),
   TAB_LABELS: {
     overview: "Overview",
     watchlist: "Watchlist",

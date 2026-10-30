@@ -1,0 +1,2035 @@
+{
+  "type": "directory",
+  "path": "",
+  "files": [],
+  "children": {
+    "1 [PC]": {
+      "type": "directory",
+      "path": "1 [PC]",
+      "files": [],
+      "children": {}
+    },
+    "AI Limit [PC]": {
+      "type": "directory",
+      "path": "AI Limit [PC]",
+      "files": [],
+      "children": {
+        "AI Limit": {
+          "type": "directory",
+          "path": "AI Limit [PC]/AI Limit",
+          "files": [],
+          "children": {}
+        },
+        "Baldurs Gate 3": {
+          "type": "game_container",
+          "kind": "disc_image",
+          "path": "AI Limit [PC]/Baldurs Gate 3",
+          "files": [
+            "Baldurs Gate 3.iso"
+          ],
+          "children": {
+            "Updates": {
+              "type": "game_container",
+              "kind": "installed_game",
+              "path": "AI Limit [PC]/Baldurs Gate 3/Updates",
+              "files": [
+                "Baldurs Gate 3 update 4 1 1 5009956 4 1 1 5849914 ElAmigos.bin",
+                "Baldurs Gate 3 update 4.1.1.4763283 - 4.1.1.4788723.exe",
+                "Baldurs Gate 3 update 4.1.1.4788723 - 4.1.1.5009956 ElAmigos.bin",
+                "Baldurs Gate 3 update 4.1.1.4788723 - 4.1.1.5009956.exe",
+                "Baldurs Gate 3 update 4.1.1.5009956 - 4.1.1.5849914.exe",
+                "Baldurs Gate 3 update 5849914 - 6758295.exe",
+                "Baldurs Gate 3 update 5849914 6758295 ElAmigos.bin",
+                "Baldurs Gate 3 update 6758295 - 6848561 ElAmigos.bin",
+                "Baldurs Gate 3 update 6758295 - 6848561.exe"
+              ],
+              "children": {}
+            }
+          }
+        },
+        "Black Myth Wukong": {
+          "type": "game_container",
+          "kind": "disc_image",
+          "path": "AI Limit [PC]/Black Myth Wukong",
+          "files": [
+            "Black.Myth.Wukong-voices38.iso"
+          ],
+          "children": {}
+        },
+        "Clair Obscur Expedition 33": {
+          "type": "game_container",
+          "kind": "disc_image",
+          "path": "AI Limit [PC]/Clair Obscur Expedition 33",
+          "files": [
+            "Clair Obscur Expedition 33.iso"
+          ],
+          "children": {
+            "Updates": {
+              "type": "directory",
+              "path": "AI Limit [PC]/Clair Obscur Expedition 33/Updates",
+              "files": [
+                "Clair Obscur Expedition 33 update 56180 - 56289.exe",
+                "Clair Obscur Expedition 33 update 56289 - 56323.exe",
+                "Clair Obscur Expedition 33 update 56442 - 57006.exe",
+                "Clair Obscur Expedition 33 update 57006 - 57069.exe"
+              ],
+              "children": {}
+            }
+          }
+        },
+        "Crack": {
+          "type": "directory",
+          "path": "AI Limit [PC]/Crack",
+          "files": [],
+          "children": {
+            "Black.Myth.Wukong.CRACKFIX-voices38": {
+              "type": "directory",
+              "path": "AI Limit [PC]/Crack/Black.Myth.Wukong.CRACKFIX-voices38",
+              "files": [
+                "voices38.nfo"
+              ],
+              "children": {
+                "voices38": {
+                  "type": "directory",
+                  "path": "AI Limit [PC]/Crack/Black.Myth.Wukong.CRACKFIX-voices38/voices38",
+                  "files": [],
+                  "children": {
+                    "b1": {
+                      "type": "directory",
+                      "path": "AI Limit [PC]/Crack/Black.Myth.Wukong.CRACKFIX-voices38/voices38/b1",
+                      "files": [],
+                      "children": {}
+                    }
+                  }
+                }
+              }
+            },
+            "Hogwarts_Legacy_-_small_DLC_unlocker_+_CrackFix_Win11_24H2": {
+              "type": "directory",
+              "path": "AI Limit [PC]/Crack/Hogwarts_Legacy_-_small_DLC_unlocker_+_CrackFix_Win11_24H2",
+              "files": [
+                "g4u.to - games 4 you.url"
+              ],
+              "children": {
+                "Hogwarts Legacy - small DLC unlocker + CrackFix Win11 24H2": {
+                  "type": "directory",
+                  "path": "AI Limit [PC]/Crack/Hogwarts_Legacy_-_small_DLC_unlocker_+_CrackFix_Win11_24H2/Hogwarts Legacy - small DLC unlocker + CrackFix Win11 24H2",
+                  "files": [],
+                  "children": {
+                    "Hogwarts Legacy - CrackFix Win11": {
+                      "type": "directory",
+                      "path": "AI Limit [PC]/Crack/Hogwarts_Legacy_-_small_DLC_unlocker_+_CrackFix_Win11_24H2/Hogwarts Legacy - small DLC unlocker + CrackFix Win11 24H2/Hogwarts Legacy - CrackFix Win11",
+                      "files": [],
+                      "children": {
+                        "Phoenix": {
+                          "type": "directory",
+                          "path": "AI Limit [PC]/Crack/Hogwarts_Legacy_-_small_DLC_unlocker_+_CrackFix_Win11_24H2/Hogwarts Legacy - small DLC unlocker + CrackFix Win11 24H2/Hogwarts Legacy - CrackFix Win11/Phoenix",
+                          "files": [],
+                          "children": {}
+                        }
+                      }
+                    },
+                    "Hogwarts Legacy - DLC pack": {
+                      "type": "directory",
+                      "path": "AI Limit [PC]/Crack/Hogwarts_Legacy_-_small_DLC_unlocker_+_CrackFix_Win11_24H2/Hogwarts Legacy - small DLC unlocker + CrackFix Win11 24H2/Hogwarts Legacy - DLC pack",
+                      "files": [],
+                      "children": {
+                        "Phoenix": {
+                          "type": "directory",
+                          "path": "AI Limit [PC]/Crack/Hogwarts_Legacy_-_small_DLC_unlocker_+_CrackFix_Win11_24H2/Hogwarts Legacy - small DLC unlocker + CrackFix Win11 24H2/Hogwarts Legacy - DLC pack/Phoenix",
+                          "files": [],
+                          "children": {}
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "Cyberpunk 2077": {
+          "type": "directory",
+          "path": "AI Limit [PC]/Cyberpunk 2077",
+          "files": [
+            "desktop.ini",
+            "folder.jpg",
+            "icon.ico"
+          ],
+          "children": {
+            "Cyberpunk 2077 Ultimate Edition": {
+              "type": "directory",
+              "path": "AI Limit [PC]/Cyberpunk 2077/Cyberpunk 2077 Ultimate Edition",
+              "files": [
+                "2.20-2.21.v"
+              ],
+              "children": {}
+            }
+          }
+        },
+        "Cyberpunk 2077 (2077)": {
+          "type": "game_container",
+          "kind": "disc_image",
+          "path": "AI Limit [PC]/Cyberpunk 2077 (2077)",
+          "files": [
+            "Cyberpunk 2077.iso"
+          ],
+          "children": {}
+        },
+        "DOOM Eternal": {
+          "type": "game_container",
+          "kind": "disc_image",
+          "path": "AI Limit [PC]/DOOM Eternal",
+          "files": [
+            "DOOM Eternal.iso"
+          ],
+          "children": {
+            "Updates": {
+              "type": "directory",
+              "path": "AI Limit [PC]/DOOM Eternal/Updates",
+              "files": [
+                "DOOM Eternal update 05.09.2023 - 08.08.2024.exe"
+              ],
+              "children": {}
+            }
+          }
+        },
+        "Dead or Alive 6 Deluxe Edition": {
+          "type": "game_container",
+          "kind": "disc_image",
+          "path": "AI Limit [PC]/Dead or Alive 6 Deluxe Edition",
+          "files": [
+            "Dead or Alive 6 Deluxe Edition.iso"
+          ],
+          "children": {}
+        },
+        "Deus Ex": {
+          "type": "directory",
+          "path": "AI Limit [PC]/Deus Ex",
+          "files": [
+            "desktop.ini",
+            "folder.jpg",
+            "icon.ico"
+          ],
+          "children": {
+            "Deus Ex Mankind Divided 1.19.801.0": {
+              "type": "directory",
+              "path": "AI Limit [PC]/Deus Ex/Deus Ex Mankind Divided 1.19.801.0",
+              "files": [],
+              "children": {}
+            }
+          }
+        },
+        "Deus Ex Mankind Divided": {
+          "type": "game_container",
+          "kind": "disc_image",
+          "path": "AI Limit [PC]/Deus Ex Mankind Divided",
+          "files": [
+            "Deus Ex Mankind Divided.iso"
+          ],
+          "children": {}
+        },
+        "Dispatch": {
+          "type": "game_container",
+          "kind": "disc_image",
+          "path": "AI Limit [PC]/Dispatch",
+          "files": [
+            "Dispatch.iso",
+            "desktop.ini",
+            "folder.jpg",
+            "icon.ico",
+            "v1.0.16598"
+          ],
+          "children": {}
+        },
+        "Dyson Sphere Program": {
+          "type": "game_container",
+          "kind": "installed_game",
+          "path": "AI Limit [PC]/Dyson Sphere Program",
+          "files": [
+            "DSPGAME.exe",
+            "UnityPlayer.dll",
+            "WinPixEventRuntime.dll",
+            "desktop.ini",
+            "folder.jpg",
+            "icon.ico"
+          ],
+          "children": {
+            "Updates": {
+              "type": "directory",
+              "path": "AI Limit [PC]/Dyson Sphere Program/Updates",
+              "files": [
+                "Versions.txt"
+              ],
+              "children": {
+                "History": {
+                  "type": "directory",
+                  "path": "AI Limit [PC]/Dyson Sphere Program/Updates/History",
+                  "files": [
+                    "0.10.28.EN.txt",
+                    "0.10.28.ZH.txt",
+                    "0.10.29.EN.txt",
+                    "0.10.29.ZH.txt",
+                    "0.10.30.EN.txt",
+                    "0.10.30.ZH.txt",
+                    "0.10.31.EN.txt",
+                    "0.10.31.ZH.txt",
+                    "0.10.32.EN.txt",
+                    "0.10.32.ZH.txt",
+                    "0.4.11.EN.txt",
+                    "0.4.11.ZH.txt",
+                    "0.4.12.EN.txt",
+                    "0.4.12.ZH.txt",
+                    "0.5.13.EN.txt",
+                    "0.5.13.ZH.txt",
+                    "0.6.14.EN.txt",
+                    "0.6.14.ZH.txt",
+                    "0.6.15.EN.txt",
+                    "0.6.15.ZH.txt",
+                    "0.6.16.EN.txt",
+                    "0.6.16.ZH.txt",
+                    "0.6.17.EN.txt",
+                    "0.6.17.ZH.txt",
+                    "0.7.18.EN.txt",
+                    "0.7.18.ZH.txt",
+                    "0.8.19.EN.txt",
+                    "0.8.19.ZH.txt",
+                    "0.8.20.EN.txt",
+                    "0.8.20.ZH.txt",
+                    "0.8.21.EN.txt",
+                    "0.8.21.ZH.txt",
+                    "0.8.22.EN.txt",
+                    "0.8.22.ZH.txt",
+                    "0.8.23.EN.txt",
+                    "0.8.23.ZH.txt",
+                    "0.9.24.EN.txt",
+                    "0.9.24.ZH.txt",
+                    "0.9.25.EN.txt",
+                    "0.9.25.ZH.txt",
+                    "0.9.26.EN.txt",
+                    "0.9.26.ZH.txt",
+                    "0.9.27.EN.txt",
+                    "0.9.27.ZH.txt"
+                  ],
+                  "children": {}
+                },
+                "Images": {
+                  "type": "directory",
+                  "path": "AI Limit [PC]/Dyson Sphere Program/Updates/Images",
+                  "files": [
+                    "10000-1.jpg",
+                    "10000-2.png",
+                    "10000-3.png",
+                    "11979-1.png",
+                    "12080-1.png",
+                    "12080-2.png",
+                    "12850-1.png",
+                    "14553-1.png",
+                    "14553-2.png",
+                    "14555-1.png",
+                    "14660-1.png",
+                    "15034-1.png",
+                    "20000-1.jpg",
+                    "20857-1.png",
+                    "21248-1.png",
+                    "21309-1.png",
+                    "22016-1.png",
+                    "22293-1.png",
+                    "23500-1.png",
+                    "23500-2.png",
+                    "23500-3.png",
+                    "23500-4.png",
+                    "25295-1-en.jpg",
+                    "25295-1-zh.jpg",
+                    "25295-2-en.jpg",
+                    "25295-2-zh.jpg",
+                    "25295-3-en.jpg",
+                    "25295-3-zh.jpg",
+                    "25295-4-en.jpg",
+                    "25295-4-zh.jpg",
+                    "25654-1-en.jpg",
+                    "25654-1-zh.jpg",
+                    "5001-1.png",
+                    "5001-2.png",
+                    "5223-1.png",
+                    "5223-2.png",
+                    "5262-1.png",
+                    "5421-1.png",
+                    "5932-1.png",
+                    "5932-2.png",
+                    "6200-1.png",
+                    "7624-1.png"
+                  ],
+                  "children": {}
+                }
+              }
+            }
+          }
+        },
+        "Elden Ring Deluxe Edition": {
+          "type": "game_container",
+          "kind": "disc_image",
+          "path": "AI Limit [PC]/Elden Ring Deluxe Edition",
+          "files": [
+            "Elden Ring Deluxe Edition.iso"
+          ],
+          "children": {}
+        },
+        "FOUNDRY": {
+          "type": "game_container",
+          "kind": "installed_game",
+          "path": "AI Limit [PC]/FOUNDRY",
+          "files": [
+            "Foundry.exe",
+            "ThirdPartyLicenses.txt",
+            "UnityCrashHandler64.exe",
+            "UnityPlayer.dll",
+            "dowser.exe",
+            "launcher-installer-windows_2025.5.exe",
+            "launcher-settings.json",
+            "steam_appid.txt"
+          ],
+          "children": {}
+        },
+        "Final Fantasy VII Rebirth": {
+          "type": "game_container",
+          "kind": "disc_image",
+          "path": "AI Limit [PC]/Final Fantasy VII Rebirth",
+          "files": [
+            "Final Fantasy VII Rebirth.iso"
+          ],
+          "children": {
+            "Updates": {
+              "type": "directory",
+              "path": "AI Limit [PC]/Final Fantasy VII Rebirth/Updates",
+              "files": [
+                "Final Fantasy VII Rebirth update 1.003.exe",
+                "Final_Fantasy_VII_Rebirth_update_1.003_ElAmigos.bin"
+              ],
+              "children": {}
+            }
+          }
+        },
+        "Five Hearts Under One Roof": {
+          "type": "game_container",
+          "kind": "disc_image",
+          "path": "AI Limit [PC]/Five Hearts Under One Roof",
+          "files": [
+            "Five Hearts Under One Roof.iso"
+          ],
+          "children": {}
+        },
+        "Five Hearts Under One Roof 2": {
+          "type": "game_container",
+          "kind": "disc_image",
+          "path": "AI Limit [PC]/Five Hearts Under One Roof 2",
+          "files": [
+            "Five Hearts Under One Roof 2.iso"
+          ],
+          "children": {}
+        },
+        "God of War": {
+          "type": "game_container",
+          "kind": "disc_image",
+          "path": "AI Limit [PC]/God of War",
+          "files": [
+            "God of War.iso"
+          ],
+          "children": {}
+        },
+        "God of War Ragnarok": {
+          "type": "game_container",
+          "kind": "disc_image",
+          "path": "AI Limit [PC]/God of War Ragnarok",
+          "files": [
+            "God of War Ragnarok.iso"
+          ],
+          "children": {
+            "Updates": {
+              "type": "game_container",
+              "kind": "installed_game",
+              "path": "AI Limit [PC]/God of War Ragnarok/Updates",
+              "files": [
+                "God of War Ragnarok update 1.1.1.exe",
+                "God of War Ragnarok update 1.2.exe",
+                "God of War Ragnarok update 1.3.exe",
+                "God of War Ragnarok update 1.4.exe",
+                "God of War Ragnarok update 1.5.exe",
+                "God of War Ragnarok update 1.6.exe",
+                "God of War Ragnarok update 1.7.exe",
+                "God of War Ragnarok update 1.8 H2.exe",
+                "God of War Ragnarok update 1.9 H3.exe",
+                "God of War Ragnarok update 1.9.exe"
+              ],
+              "children": {}
+            }
+          }
+        },
+        "Hades II": {
+          "type": "game_container",
+          "kind": "disc_image",
+          "path": "AI Limit [PC]/Hades II",
+          "files": [
+            "Hades II.iso"
+          ],
+          "children": {}
+        },
+        "High On Life": {
+          "type": "game_container",
+          "kind": "disc_image",
+          "path": "AI Limit [PC]/High On Life",
+          "files": [
+            "High On Life.iso"
+          ],
+          "children": {}
+        },
+        "High On Life 2": {
+          "type": "game_container",
+          "kind": "disc_image",
+          "path": "AI Limit [PC]/High On Life 2",
+          "files": [
+            "High On Life 2.iso"
+          ],
+          "children": {
+            "Updates": {
+              "type": "game_container",
+              "kind": "installed_game",
+              "path": "AI Limit [PC]/High On Life 2/Updates",
+              "files": [
+                "2 - High On Life 2 update 04.03.2026.exe",
+                "High On Life 2 update 04.03.2026-ElAmigos.bin",
+                "High On Life 2 update 05.05.2026.exe",
+                "High On Life 2 update 13.03.2026 - 05.05.2026  ElAmigos.bin",
+                "High On Life 2 update 20.02.2026.exe",
+                "elamigos-1.bin"
+              ],
+              "children": {}
+            }
+          }
+        },
+        "High On Life High On Knife": {
+          "type": "game_container",
+          "kind": "disc_image",
+          "path": "AI Limit [PC]/High On Life High On Knife",
+          "files": [
+            "High_On_Life_High_On_Knife-Razor1911.iso"
+          ],
+          "children": {}
+        },
+        "Hogwarts Legacy Deluxe Edition": {
+          "type": "game_container",
+          "kind": "disc_image",
+          "path": "AI Limit [PC]/Hogwarts Legacy Deluxe Edition",
+          "files": [
+            "Hogwarts Legacy Deluxe Edition.iso"
+          ],
+          "children": {}
+        },
+        "Invincible VS": {
+          "type": "game_container",
+          "kind": "disc_image",
+          "path": "AI Limit [PC]/Invincible VS",
+          "files": [
+            "Invincible VS.iso"
+          ],
+          "children": {}
+        },
+        "Kiborg": {
+          "type": "game_container",
+          "kind": "disc_image",
+          "path": "AI Limit [PC]/Kiborg",
+          "files": [
+            "Kiborg.iso"
+          ],
+          "children": {
+            "Updates": {
+              "type": "directory",
+              "path": "AI Limit [PC]/Kiborg/Updates",
+              "files": [
+                "Kiborg update 16.05.2025 - 15.06.2025.exe"
+              ],
+              "children": {}
+            }
+          }
+        },
+        "Kingdom Come Deliverance II": {
+          "type": "game_container",
+          "kind": "disc_image",
+          "path": "AI Limit [PC]/Kingdom Come Deliverance II",
+          "files": [
+            "Kingdom Come Deliverance II.iso"
+          ],
+          "children": {}
+        },
+        "Kingdom Hearts III and Re Mind": {
+          "type": "game_container",
+          "kind": "disc_image",
+          "path": "AI Limit [PC]/Kingdom Hearts III and Re Mind",
+          "files": [
+            "Kingdom Hearts III and Re-Mind.iso"
+          ],
+          "children": {}
+        },
+        "Launcher": {
+          "type": "directory",
+          "path": "AI Limit [PC]/Launcher",
+          "files": [
+            "Launcher.exe"
+          ],
+          "children": {}
+        },
+        "Lies of P": {
+          "type": "game_container",
+          "kind": "disc_image",
+          "path": "AI Limit [PC]/Lies of P",
+          "files": [
+            "Lies of P.iso"
+          ],
+          "children": {}
+        },
+        "Lords of the Fallen 2023 (2023)": {
+          "type": "game_container",
+          "kind": "disc_image",
+          "path": "AI Limit [PC]/Lords of the Fallen 2023 (2023)",
+          "files": [
+            "Lords of the Fallen 2023.iso"
+          ],
+          "children": {}
+        },
+        "Marvels SpiderMan 2": {
+          "type": "game_container",
+          "kind": "repack_package",
+          "path": "AI Limit [PC]/Marvels SpiderMan 2",
+          "files": [
+            "Spider-Man2_0.ico",
+            "autorun.inf",
+            "elamigos-1.bin",
+            "elamigos-2.bin",
+            "elamigos-3.bin",
+            "setup.exe"
+          ],
+          "children": {}
+        },
+        "Marvels SpiderMan Miles Morales": {
+          "type": "game_container",
+          "kind": "disc_image",
+          "path": "AI Limit [PC]/Marvels SpiderMan Miles Morales",
+          "files": [
+            "Marvels SpiderMan Miles Morales.iso"
+          ],
+          "children": {}
+        },
+        "Marvels SpiderMan Remastered": {
+          "type": "game_container",
+          "kind": "disc_image",
+          "path": "AI Limit [PC]/Marvels SpiderMan Remastered",
+          "files": [
+            "Marvels SpiderMan Remastered.iso"
+          ],
+          "children": {}
+        },
+        "Need for Speed Most Wanted (Black Edition)": {
+          "type": "game_container",
+          "kind": "installed_game",
+          "path": "AI Limit [PC]/Need for Speed Most Wanted (Black Edition)",
+          "files": [
+            "00000000.256",
+            "LuaDebugPrintout.log",
+            "d3d9.dll",
+            "d3d9.ini",
+            "d3d9.log",
+            "dinput8.dll",
+            "filelist.txt",
+            "nfsmostwantedblack_logo.bmp",
+            "nfsmw-key.reg",
+            "server.cfg",
+            "server.dll",
+            "speed.exe",
+            "speed_ico.ico"
+          ],
+          "children": {}
+        },
+        "Pragmata": {
+          "type": "game_container",
+          "kind": "disc_image",
+          "path": "AI Limit [PC]/Pragmata",
+          "files": [
+            "Pragmata.iso"
+          ],
+          "children": {}
+        },
+        "Red Dead Redemption": {
+          "type": "game_container",
+          "kind": "disc_image",
+          "path": "AI Limit [PC]/Red Dead Redemption",
+          "files": [
+            "Red Dead Redemption.iso"
+          ],
+          "children": {}
+        },
+        "Red Dead Redemption 2 Ultimate Edition": {
+          "type": "game_container",
+          "kind": "disc_image",
+          "path": "AI Limit [PC]/Red Dead Redemption 2 Ultimate Edition",
+          "files": [
+            "Red_Dead_Redemption_2_Ultimate_Edition-Razor1911.iso"
+          ],
+          "children": {}
+        },
+        "Remnant II": {
+          "type": "game_container",
+          "kind": "disc_image",
+          "path": "AI Limit [PC]/Remnant II",
+          "files": [
+            "Remnant II.iso"
+          ],
+          "children": {
+            "Updates": {
+              "type": "directory",
+              "path": "AI Limit [PC]/Remnant II/Updates",
+              "files": [
+                "Remnant II update 444.163 - 453.438.exe"
+              ],
+              "children": {}
+            }
+          }
+        },
+        "RuneScape Dragonwilds": {
+          "type": "game_container",
+          "kind": "disc_image",
+          "path": "AI Limit [PC]/RuneScape Dragonwilds",
+          "files": [
+            "RuneScape Dragonwilds update 240163 - 243922.exe",
+            "RuneScape Dragonwilds.iso",
+            "elamigos-1.bin",
+            "g4u.to - games 4 you.url"
+          ],
+          "children": {}
+        },
+        "RuneScapeDragonwilds Fix Repair Steam": {
+          "type": "directory",
+          "path": "AI Limit [PC]/RuneScapeDragonwilds Fix Repair Steam",
+          "files": [
+            "RuneScapeDragonwilds_Fix_Repair_Steam_Generic.rar"
+          ],
+          "children": {}
+        },
+        "Satisfactory": {
+          "type": "game_container",
+          "kind": "disc_image",
+          "path": "AI Limit [PC]/Satisfactory",
+          "files": [
+            "Satisfactory.iso"
+          ],
+          "children": {
+            "Updates": {
+              "type": "directory",
+              "path": "AI Limit [PC]/Satisfactory/Updates",
+              "files": [
+                "Satisfactory update 365306 - 366202.exe",
+                "Satisfactory update 366202 - 367101.exe"
+              ],
+              "children": {}
+            }
+          }
+        },
+        "Sifu Deluxe Edition": {
+          "type": "game_container",
+          "kind": "disc_image",
+          "path": "AI Limit [PC]/Sifu Deluxe Edition",
+          "files": [
+            "Sifu Deluxe Edition.iso"
+          ],
+          "children": {}
+        },
+        "Split Fiction": {
+          "type": "game_container",
+          "kind": "disc_image",
+          "path": "AI Limit [PC]/Split Fiction",
+          "files": [
+            "Split Fiction.iso"
+          ],
+          "children": {
+            "Updates": {
+              "type": "directory",
+              "path": "AI Limit [PC]/Split Fiction/Updates",
+              "files": [
+                "Split Fiction update 17.03.2025.exe"
+              ],
+              "children": {}
+            }
+          }
+        },
+        "Stellar Blade": {
+          "type": "game_container",
+          "kind": "disc_image",
+          "path": "AI Limit [PC]/Stellar Blade",
+          "files": [
+            "Stellar.Blade-voices38.iso"
+          ],
+          "children": {}
+        },
+        "Summers Heartbeat Deluxe Edition I KnoW": {
+          "type": "game_container",
+          "kind": "disc_image",
+          "path": "AI Limit [PC]/Summers Heartbeat Deluxe Edition I KnoW",
+          "files": [
+            "Summers.Heartbeat.Deluxe.Edition-I KnoW.iso"
+          ],
+          "children": {}
+        },
+        "Tainted Grail The Fall of Avalon": {
+          "type": "game_container",
+          "kind": "disc_image",
+          "path": "AI Limit [PC]/Tainted Grail The Fall of Avalon",
+          "files": [
+            "Tainted Grail The Fall of Avalon.iso"
+          ],
+          "children": {
+            "Updates": {
+              "type": "directory",
+              "path": "AI Limit [PC]/Tainted Grail The Fall of Avalon/Updates",
+              "files": [
+                "1 - Tainted Grail The Fall of Avalon update 27.05.2025.exe",
+                "2 - Tainted Grail The Fall of Avalon update 31.05.2025.exe",
+                "3 - Tainted Grail The Fall of Avalon update 06.06.2025.exe",
+                "4 - Tainted Grail The Fall of Avalon update 16.06.2025.exe",
+                "Tainted Grail The Fall of Avalon update 27.05.2025.exe"
+              ],
+              "children": {}
+            }
+          }
+        },
+        "The Alters": {
+          "type": "game_container",
+          "kind": "disc_image",
+          "path": "AI Limit [PC]/The Alters",
+          "files": [
+            "The Alters.iso"
+          ],
+          "children": {}
+        },
+        "The Elder Scrolls IV Oblivion Remastered": {
+          "type": "game_container",
+          "kind": "disc_image",
+          "path": "AI Limit [PC]/The Elder Scrolls IV Oblivion Remastered",
+          "files": [
+            "The Elder Scrolls IV Oblivion Remastered.iso"
+          ],
+          "children": {}
+        },
+        "The Last of Us Part I": {
+          "type": "game_container",
+          "kind": "disc_image",
+          "path": "AI Limit [PC]/The Last of Us Part I",
+          "files": [
+            "The Last of Us Part I.iso",
+            "desktop.ini",
+            "folder.jpg",
+            "icon.ico"
+          ],
+          "children": {
+            "Updates": {
+              "type": "directory",
+              "path": "AI Limit [PC]/The Last of Us Part I/Updates",
+              "files": [
+                "The Last of Us Part I update 1.0.5.0 - 1.1.0.0.exe",
+                "elamigos-1.bin"
+              ],
+              "children": {}
+            }
+          }
+        },
+        "The Last of Us Part II Remastered": {
+          "type": "game_container",
+          "kind": "repack_package",
+          "path": "AI Limit [PC]/The Last of Us Part II Remastered",
+          "files": [
+            "autorun.inf",
+            "elamigos-1.bin",
+            "launcher_00.ico",
+            "setup.exe"
+          ],
+          "children": {
+            "Crack": {
+              "type": "directory",
+              "path": "AI Limit [PC]/The Last of Us Part II Remastered/Crack",
+              "files": [],
+              "children": {
+                "The Last of Us Part II Remastered Crackfix": {
+                  "type": "directory",
+                  "path": "AI Limit [PC]/The Last of Us Part II Remastered/Crack/The Last of Us Part II Remastered Crackfix",
+                  "files": [
+                    "steam_api64.dll",
+                    "steam_api64.rne.exe",
+                    "steam_emu.ini",
+                    "tlou-ii-l.exe",
+                    "tlou-ii.exe"
+                  ],
+                  "children": {}
+                }
+              }
+            },
+            "Updates": {
+              "type": "directory",
+              "path": "AI Limit [PC]/The Last of Us Part II Remastered/Updates",
+              "files": [
+                "The Last of Us Part II Remastered update 1.0.10407.exe",
+                "The Last of Us Part II Remastered update 1.1.10410.exe",
+                "The Last of Us Part II Remastered update 1.1.10411.exe",
+                "The Last of Us Part II Remastered update 1.2.10416.exe"
+              ],
+              "children": {}
+            }
+          }
+        },
+        "The Universim": {
+          "type": "game_container",
+          "kind": "disc_image",
+          "path": "AI Limit [PC]/The Universim",
+          "files": [
+            "The Universim.iso",
+            "desktop.ini",
+            "folder.jpg",
+            "icon.ico"
+          ],
+          "children": {}
+        },
+        "Tomb Raider IV VI Remastered": {
+          "type": "game_container",
+          "kind": "disc_image",
+          "path": "AI Limit [PC]/Tomb Raider IV VI Remastered",
+          "files": [
+            "Tomb Raider IV-VI Remastered.iso"
+          ],
+          "children": {}
+        },
+        "Transport Fever 3": {
+          "type": "game_container",
+          "kind": "disc_image",
+          "path": "AI Limit [PC]/Transport Fever 3",
+          "files": [
+            "Transport Fever 3.iso"
+          ],
+          "children": {}
+        },
+        "Valheim": {
+          "type": "game_container",
+          "kind": "disc_image",
+          "path": "AI Limit [PC]/Valheim",
+          "files": [
+            "Valheim update 1.0.12 - 1.0.15.exe",
+            "Valheim update 1.0.15 - 1.0.16.exe",
+            "Valheim update 1.0.7 - 1.0.12.exe",
+            "Valheim.iso",
+            "g4u.to - games 4 you.url"
+          ],
+          "children": {}
+        },
+        "Warhammer 40,000 Space Marine 2 1 Year Anniversary Edition Bonuses": {
+          "type": "game_container",
+          "kind": "repack_package",
+          "path": "AI Limit [PC]/Warhammer 40,000 Space Marine 2 1 Year Anniversary Edition Bonuses",
+          "files": [
+            "Verify BIN files before installation.bat",
+            "fg-01.bin",
+            "fg-02.bin",
+            "fg-03.bin",
+            "fg-04.bin",
+            "fg-05.bin",
+            "fg-06.bin",
+            "fg-optional-4K-texture-pack.bin",
+            "fg-optional-bonus-content.bin",
+            "fg-optional-chinese-vo.bin",
+            "fg-optional-french-vo.bin",
+            "fg-optional-german-vo.bin",
+            "fg-optional-japanese-vo.bin",
+            "fg-optional-russian-vo.bin",
+            "fg-optional-spanish-vo.bin",
+            "setup.exe"
+          ],
+          "children": {}
+        }
+      }
+    },
+    "Baldur's Gate 3 Digital [PC]": {
+      "type": "directory",
+      "path": "Baldur's Gate 3 Digital [PC]",
+      "files": [],
+      "children": {
+        "Baldur's Gate 3 - Digital Deluxe Edition": {
+          "type": "directory",
+          "path": "Baldur's Gate 3 Digital [PC]/Baldur's Gate 3 - Digital Deluxe Edition",
+          "files": [
+            "desktop.ini",
+            "folder.jpg",
+            "icon.ico"
+          ],
+          "children": {
+            "Baldurs Gate 3": {
+              "type": "directory",
+              "path": "Baldur's Gate 3 Digital [PC]/Baldur's Gate 3 - Digital Deluxe Edition/Baldurs Gate 3",
+              "files": [
+                "v4.1.1.4763283.txt"
+              ],
+              "children": {}
+            }
+          }
+        },
+        "Black Myth - Wukong": {
+          "type": "directory",
+          "path": "Baldur's Gate 3 Digital [PC]/Black Myth - Wukong",
+          "files": [],
+          "children": {
+            "Black.Myth.Wukong-voices38": {
+              "type": "directory",
+              "path": "Baldur's Gate 3 Digital [PC]/Black Myth - Wukong/Black.Myth.Wukong-voices38",
+              "files": [
+                "voices38.nfo"
+              ],
+              "children": {}
+            },
+            "Dead.Cells.PS5-DUPLEX": {
+              "type": "directory",
+              "path": "Baldur's Gate 3 Digital [PC]/Black Myth - Wukong/Dead.Cells.PS5-DUPLEX",
+              "files": [
+                "duplex-dead.cells.ps5.sfv",
+                "duplex.nfo"
+              ],
+              "children": {}
+            },
+            "Digimon_Story_Time_Stranger_Update_v1.2.2_NSW-VENOM": {
+              "type": "directory",
+              "path": "Baldur's Gate 3 Digital [PC]/Black Myth - Wukong/Digimon_Story_Time_Stranger_Update_v1.2.2_NSW-VENOM",
+              "files": [
+                "v-digimon_story_time_stranger_v262144.nfo",
+                "v-digimon_story_time_stranger_v262144.nsp.hdf",
+                "v-digimon_story_time_stranger_v262144.sfv"
+              ],
+              "children": {}
+            },
+            "Five.Hearts.Under.One.Roof..MULTi13-ElAmigos": {
+              "type": "directory",
+              "path": "Baldur's Gate 3 Digital [PC]/Black Myth - Wukong/Five.Hearts.Under.One.Roof..MULTi13-ElAmigos",
+              "files": [],
+              "children": {}
+            },
+            "Five.Hearts.Under.One.Roof.2.MULTi10-ElAmigos": {
+              "type": "directory",
+              "path": "Baldur's Gate 3 Digital [PC]/Black Myth - Wukong/Five.Hearts.Under.One.Roof.2.MULTi10-ElAmigos",
+              "files": [
+                "g4u.to - games 4 you.url"
+              ],
+              "children": {}
+            },
+            "Hollow.Knight.Silksong.PS5-DUPLEX": {
+              "type": "directory",
+              "path": "Baldur's Gate 3 Digital [PC]/Black Myth - Wukong/Hollow.Knight.Silksong.PS5-DUPLEX",
+              "files": [
+                "duplex-hollow.knight.silksong.ps5.sfv",
+                "duplex.nfo"
+              ],
+              "children": {}
+            },
+            "Kingdom Come Deliverance II v1.5.0 ElAmigos": {
+              "type": "directory",
+              "path": "Baldur's Gate 3 Digital [PC]/Black Myth - Wukong/Kingdom Come Deliverance II v1.5.0 ElAmigos",
+              "files": [],
+              "children": {}
+            },
+            "Kingdom Hearts III and Re-Mind (build 13.06.2024)-ElAmigos": {
+              "type": "directory",
+              "path": "Baldur's Gate 3 Digital [PC]/Black Myth - Wukong/Kingdom Hearts III and Re-Mind (build 13.06.2024)-ElAmigos",
+              "files": [
+                "g4u.to - games 4 you.url"
+              ],
+              "children": {}
+            },
+            "Kingdom.Hearts.III.DLC.Unlocker.PS4-DUPLEX": {
+              "type": "directory",
+              "path": "Baldur's Gate 3 Digital [PC]/Black Myth - Wukong/Kingdom.Hearts.III.DLC.Unlocker.PS4-DUPLEX",
+              "files": [
+                "duplex-kingdom.hearts.iii.dlc.unlocker.ps4.sfv",
+                "duplex.nfo"
+              ],
+              "children": {}
+            },
+            "Kingdom.Hearts.III.Update.v1.10.PS4-DUPLEX": {
+              "type": "directory",
+              "path": "Baldur's Gate 3 Digital [PC]/Black Myth - Wukong/Kingdom.Hearts.III.Update.v1.10.PS4-DUPLEX",
+              "files": [
+                "duplex-kingdom.hearts.iii.update.v1.10.ps4.sfv",
+                "duplex.nfo"
+              ],
+              "children": {}
+            },
+            "Rayman.30th.Anniversary.Edition.PS5-DUPLEX": {
+              "type": "directory",
+              "path": "Baldur's Gate 3 Digital [PC]/Black Myth - Wukong/Rayman.30th.Anniversary.Edition.PS5-DUPLEX",
+              "files": [
+                "duplex-rayman.30th.anniversary.edition.ps5.sfv",
+                "duplex.nfo"
+              ],
+              "children": {
+                "PPSA33016-app0": {
+                  "type": "game_container",
+                  "kind": "ps5_dump",
+                  "path": "Baldur's Gate 3 Digital [PC]/Black Myth - Wukong/Rayman.30th.Anniversary.Edition.PS5-DUPLEX/PPSA33016-app0",
+                  "files": [
+                    "copytexture2d_p.ags",
+                    "cs_clearbuffer_c.ags",
+                    "cs_cleartexture1d_c.ags",
+                    "cs_cleartexture2d_c.ags",
+                    "cs_cleartexture3d_c.ags",
+                    "cs_copybuffer_c.ags",
+                    "cs_copyrawtexture1d_c.ags",
+                    "cs_copyrawtexture2d_c.ags",
+                    "cs_copyrawtexture3d_c.ags",
+                    "cs_copytexture1d_c.ags",
+                    "cs_copytexture2d_c.ags",
+                    "cs_copytexture3d_c.ags",
+                    "cs_set_uint_c.ags",
+                    "cs_set_uint_fast_c.ags",
+                    "cs_test_buffer_read_c.ags",
+                    "cs_test_texture_read_c.ags",
+                    "eboot.bin",
+                    "imgui_p.ags",
+                    "imgui_vv.ags",
+                    "libmipsaot-SLUS00005_ps5.prx",
+                    "pancake_libretro_ps5.prx",
+                    "pix_clear_p.ags",
+                    "pix_generateMipMaps_2d_p.ags",
+                    "pix_generateMipMaps_3d_p.ags",
+                    "pixbg_p.ags",
+                    "vex_clear_vv.ags",
+                    "vexbg_vv.ags"
+                  ],
+                  "children": {}
+                }
+              }
+            },
+            "Summers.Heartbeat.Deluxe.Edition-I KnoW": {
+              "type": "directory",
+              "path": "Baldur's Gate 3 Digital [PC]/Black Myth - Wukong/Summers.Heartbeat.Deluxe.Edition-I KnoW",
+              "files": [
+                "iknow.nfo"
+              ],
+              "children": {}
+            },
+            "Super_Mario_Galaxy_NSW-VENOM": {
+              "type": "directory",
+              "path": "Baldur's Gate 3 Digital [PC]/Black Myth - Wukong/Super_Mario_Galaxy_NSW-VENOM",
+              "files": [
+                "v-super_mario_galaxy.nfo",
+                "v-super_mario_galaxy.nsp.hdf",
+                "v-super_mario_galaxy.sfv",
+                "v-super_mario_galaxy_v131072.nsp.hdf"
+              ],
+              "children": {}
+            },
+            "Tomb_Raider_I-III_Remastered_Starring_Lara_Croft_Update_v1.1.4_NSW-VENOM": {
+              "type": "directory",
+              "path": "Baldur's Gate 3 Digital [PC]/Black Myth - Wukong/Tomb_Raider_I-III_Remastered_Starring_Lara_Croft_Update_v1.1.4_NSW-VENOM",
+              "files": [
+                "v-tomb_raider_v851968.nfo",
+                "v-tomb_raider_v851968.nsp.hdf",
+                "v-tomb_raider_v851968.sfv"
+              ],
+              "children": {}
+            },
+            "Transport.Fever.3.Deluxe.Edition.v40408.MULTi13-ElAmigos": {
+              "type": "directory",
+              "path": "Baldur's Gate 3 Digital [PC]/Black Myth - Wukong/Transport.Fever.3.Deluxe.Edition.v40408.MULTi13-ElAmigos",
+              "files": [
+                "g4u.to - games 4 you.url"
+              ],
+              "children": {}
+            },
+            "Valheim.v1.0.7.MULTi14-ElAmigos": {
+              "type": "directory",
+              "path": "Baldur's Gate 3 Digital [PC]/Black Myth - Wukong/Valheim.v1.0.7.MULTi14-ElAmigos",
+              "files": [
+                "g4u.to - games 4 you.url"
+              ],
+              "children": {}
+            }
+          }
+        },
+        "Clair Obscur - Expedition 33": {
+          "type": "directory",
+          "path": "Baldur's Gate 3 Digital [PC]/Clair Obscur - Expedition 33",
+          "files": [
+            "desktop.ini",
+            "folder.jpg",
+            "icon.ico"
+          ],
+          "children": {}
+        },
+        "Doom - Eternal Deluxe Edition": {
+          "type": "directory",
+          "path": "Baldur's Gate 3 Digital [PC]/Doom - Eternal Deluxe Edition",
+          "files": [
+            "desktop.ini",
+            "folder.jpg",
+            "icon.ico"
+          ],
+          "children": {
+            "DOOM Eternal": {
+              "type": "directory",
+              "path": "Baldur's Gate 3 Digital [PC]/Doom - Eternal Deluxe Edition/DOOM Eternal",
+              "files": [],
+              "children": {
+                "DOOM Eternal (build 05.09.2023)": {
+                  "type": "directory",
+                  "path": "Baldur's Gate 3 Digital [PC]/Doom - Eternal Deluxe Edition/DOOM Eternal/DOOM Eternal (build 05.09.2023)",
+                  "files": [],
+                  "children": {}
+                }
+              }
+            }
+          }
+        },
+        "Elden Ring - Collector's Edition": {
+          "type": "directory",
+          "path": "Baldur's Gate 3 Digital [PC]/Elden Ring - Collector's Edition",
+          "files": [
+            "desktop.ini",
+            "folder.jpg",
+            "icon.ico"
+          ],
+          "children": {
+            "Elden Ring Deluxe Edition v1.12.0": {
+              "type": "directory",
+              "path": "Baldur's Gate 3 Digital [PC]/Elden Ring - Collector's Edition/Elden Ring Deluxe Edition v1.12.0",
+              "files": [],
+              "children": {}
+            }
+          }
+        },
+        "Final Fantasy VII Rebirth": {
+          "type": "directory",
+          "path": "Baldur's Gate 3 Digital [PC]/Final Fantasy VII Rebirth",
+          "files": [
+            "desktop.ini",
+            "folder.jpg",
+            "icon.ico"
+          ],
+          "children": {
+            "Final.Fantasy.VII.Rebirth.Deluxe.Edition.MULTi11-ElAmigos": {
+              "type": "directory",
+              "path": "Baldur's Gate 3 Digital [PC]/Final Fantasy VII Rebirth/Final.Fantasy.VII.Rebirth.Deluxe.Edition.MULTi11-ElAmigos",
+              "files": [
+                "g4u.to - games 4 you.url"
+              ],
+              "children": {
+                "Final Fantasy VII Rebirth": {
+                  "type": "directory",
+                  "path": "Baldur's Gate 3 Digital [PC]/Final Fantasy VII Rebirth/Final.Fantasy.VII.Rebirth.Deluxe.Edition.MULTi11-ElAmigos/Final Fantasy VII Rebirth",
+                  "files": [],
+                  "children": {}
+                }
+              }
+            },
+            "Final_Fantasy_VII_Rebirth_update_1.003_ElAmigos": {
+              "type": "directory",
+              "path": "Baldur's Gate 3 Digital [PC]/Final Fantasy VII Rebirth/Final_Fantasy_VII_Rebirth_update_1.003_ElAmigos",
+              "files": [
+                "g4u.to - games 4 you.url"
+              ],
+              "children": {}
+            }
+          }
+        },
+        "Hades II": {
+          "type": "directory",
+          "path": "Baldur's Gate 3 Digital [PC]/Hades II",
+          "files": [
+            "desktop.ini",
+            "folder.jpg",
+            "icon.ico"
+          ],
+          "children": {
+            "Hades II v1.132940-ElAmigos": {
+              "type": "directory",
+              "path": "Baldur's Gate 3 Digital [PC]/Hades II/Hades II v1.132940-ElAmigos",
+              "files": [],
+              "children": {}
+            }
+          }
+        },
+        "High on Life 2": {
+          "type": "directory",
+          "path": "Baldur's Gate 3 Digital [PC]/High on Life 2",
+          "files": [
+            "desktop.ini",
+            "folder.jpg",
+            "icon.ico"
+          ],
+          "children": {
+            "High On Life (build 03.10.2023)": {
+              "type": "directory",
+              "path": "Baldur's Gate 3 Digital [PC]/High on Life 2/High On Life (build 03.10.2023)",
+              "files": [],
+              "children": {}
+            },
+            "High.On.Life.2.MULTi7-ElAmigos": {
+              "type": "directory",
+              "path": "Baldur's Gate 3 Digital [PC]/High on Life 2/High.On.Life.2.MULTi7-ElAmigos",
+              "files": [],
+              "children": {}
+            },
+            "High_On_Life_High_On_Knife-Razor1911": {
+              "type": "directory",
+              "path": "Baldur's Gate 3 Digital [PC]/High on Life 2/High_On_Life_High_On_Knife-Razor1911",
+              "files": [
+                "g4u.to - games 4 you.url"
+              ],
+              "children": {
+                "High_On_Life_High_On_Knife-Razor1911": {
+                  "type": "directory",
+                  "path": "Baldur's Gate 3 Digital [PC]/High on Life 2/High_On_Life_High_On_Knife-Razor1911/High_On_Life_High_On_Knife-Razor1911",
+                  "files": [
+                    "High_On_Life_High_On_Knife-Razor1911.nfo"
+                  ],
+                  "children": {}
+                }
+              }
+            }
+          }
+        },
+        "Hogwarts Legacy - Deluxe Edition": {
+          "type": "directory",
+          "path": "Baldur's Gate 3 Digital [PC]/Hogwarts Legacy - Deluxe Edition",
+          "files": [
+            "desktop.ini",
+            "folder.jpg",
+            "icon.ico"
+          ],
+          "children": {
+            "Hogwarts_Legacy_Deluxe_Edition_MULTi11-ElAmigos": {
+              "type": "directory",
+              "path": "Baldur's Gate 3 Digital [PC]/Hogwarts Legacy - Deluxe Edition/Hogwarts_Legacy_Deluxe_Edition_MULTi11-ElAmigos",
+              "files": [],
+              "children": {}
+            }
+          }
+        },
+        "Invincible Vs - Deluxe Edition": {
+          "type": "directory",
+          "path": "Baldur's Gate 3 Digital [PC]/Invincible Vs - Deluxe Edition",
+          "files": [
+            "desktop.ini",
+            "folder.jpg",
+            "icon.ico"
+          ],
+          "children": {
+            "Invincible.VS.MULTi6-ElAmigos": {
+              "type": "directory",
+              "path": "Baldur's Gate 3 Digital [PC]/Invincible Vs - Deluxe Edition/Invincible.VS.MULTi6-ElAmigos",
+              "files": [],
+              "children": {}
+            }
+          }
+        },
+        "Kiborg": {
+          "type": "directory",
+          "path": "Baldur's Gate 3 Digital [PC]/Kiborg",
+          "files": [
+            "desktop.ini",
+            "folder.jpg"
+          ],
+          "children": {
+            "Kiborg": {
+              "type": "directory",
+              "path": "Baldur's Gate 3 Digital [PC]/Kiborg/Kiborg",
+              "files": [
+                "v16.05.2025.txt"
+              ],
+              "children": {}
+            }
+          }
+        },
+        "Lords of the Fallen II": {
+          "type": "directory",
+          "path": "Baldur's Gate 3 Digital [PC]/Lords of the Fallen II",
+          "files": [
+            "desktop.ini",
+            "folder.jpg",
+            "icon.ico"
+          ],
+          "children": {
+            "Lords of the Fallen": {
+              "type": "directory",
+              "path": "Baldur's Gate 3 Digital [PC]/Lords of the Fallen II/Lords of the Fallen",
+              "files": [
+                "v2.0.9.txt"
+              ],
+              "children": {}
+            }
+          }
+        },
+        "Pragmata - Deluxe Edition": {
+          "type": "directory",
+          "path": "Baldur's Gate 3 Digital [PC]/Pragmata - Deluxe Edition",
+          "files": [
+            "desktop.ini",
+            "folder.jpg",
+            "icon.ico"
+          ],
+          "children": {
+            "Pragmata-ElAmigos": {
+              "type": "directory",
+              "path": "Baldur's Gate 3 Digital [PC]/Pragmata - Deluxe Edition/Pragmata-ElAmigos",
+              "files": [],
+              "children": {}
+            }
+          }
+        },
+        "Remnant II": {
+          "type": "directory",
+          "path": "Baldur's Gate 3 Digital [PC]/Remnant II",
+          "files": [
+            "desktop.ini",
+            "folder.jpg",
+            "icon.ico"
+          ],
+          "children": {
+            "Remnant_II_update_444.163_-_453.438_ElAmigos": {
+              "type": "directory",
+              "path": "Baldur's Gate 3 Digital [PC]/Remnant II/Remnant_II_update_444.163_-_453.438_ElAmigos",
+              "files": [
+                "g4u.to - games 4 you.url"
+              ],
+              "children": {}
+            },
+            "Remnant_II_v444.163_.Ultimate.Edition.MULTi10-ElAmigos": {
+              "type": "directory",
+              "path": "Baldur's Gate 3 Digital [PC]/Remnant II/Remnant_II_v444.163_.Ultimate.Edition.MULTi10-ElAmigos",
+              "files": [
+                "g4u.to - games 4 you.url"
+              ],
+              "children": {
+                "Remnant II v444.163": {
+                  "type": "directory",
+                  "path": "Baldur's Gate 3 Digital [PC]/Remnant II/Remnant_II_v444.163_.Ultimate.Edition.MULTi10-ElAmigos/Remnant II v444.163",
+                  "files": [],
+                  "children": {}
+                }
+              }
+            }
+          }
+        },
+        "RuneScape - Dragonwilds": {
+          "type": "directory",
+          "path": "Baldur's Gate 3 Digital [PC]/RuneScape - Dragonwilds",
+          "files": [
+            "desktop.ini",
+            "folder.jpg",
+            "icon.ico"
+          ],
+          "children": {
+            "Dragonwilds": {
+              "type": "directory",
+              "path": "Baldur's Gate 3 Digital [PC]/RuneScape - Dragonwilds/Dragonwilds",
+              "files": [],
+              "children": {
+                "RuneScape.Dragonwilds.Deluxe.Edition.v240163.MULTi11-ElAmigos": {
+                  "type": "directory",
+                  "path": "Baldur's Gate 3 Digital [PC]/RuneScape - Dragonwilds/Dragonwilds/RuneScape.Dragonwilds.Deluxe.Edition.v240163.MULTi11-ElAmigos",
+                  "files": [
+                    "g4u.to - games 4 you.url"
+                  ],
+                  "children": {}
+                }
+              }
+            }
+          }
+        },
+        "Satisfactory": {
+          "type": "directory",
+          "path": "Baldur's Gate 3 Digital [PC]/Satisfactory",
+          "files": [
+            "desktop.ini",
+            "folder.jpg",
+            "icon.ico"
+          ],
+          "children": {
+            "Satisfactory (build 365306)": {
+              "type": "directory",
+              "path": "Baldur's Gate 3 Digital [PC]/Satisfactory/Satisfactory (build 365306)",
+              "files": [],
+              "children": {}
+            }
+          }
+        },
+        "Split Fiction": {
+          "type": "directory",
+          "path": "Baldur's Gate 3 Digital [PC]/Split Fiction",
+          "files": [
+            "desktop.ini",
+            "folder.jpg",
+            "icon.ico"
+          ],
+          "children": {
+            "Split Fiction": {
+              "type": "directory",
+              "path": "Baldur's Gate 3 Digital [PC]/Split Fiction/Split Fiction",
+              "files": [],
+              "children": {}
+            }
+          }
+        },
+        "Tainted Grail - The Fall of Avalon": {
+          "type": "directory",
+          "path": "Baldur's Gate 3 Digital [PC]/Tainted Grail - The Fall of Avalon",
+          "files": [
+            "desktop.ini",
+            "folder.jpg",
+            "icon.ico"
+          ],
+          "children": {
+            "Tainted  Grail The Fall of Avalon": {
+              "type": "directory",
+              "path": "Baldur's Gate 3 Digital [PC]/Tainted Grail - The Fall of Avalon/Tainted  Grail The Fall of Avalon",
+              "files": [],
+              "children": {}
+            }
+          }
+        },
+        "The Alters": {
+          "type": "directory",
+          "path": "Baldur's Gate 3 Digital [PC]/The Alters",
+          "files": [
+            "desktop.ini",
+            "folder.jpg",
+            "icon.ico"
+          ],
+          "children": {
+            "The Alters": {
+              "type": "directory",
+              "path": "Baldur's Gate 3 Digital [PC]/The Alters/The Alters",
+              "files": [],
+              "children": {}
+            }
+          }
+        },
+        "The Elder Scrolls IV - Oblivion Remastered": {
+          "type": "directory",
+          "path": "Baldur's Gate 3 Digital [PC]/The Elder Scrolls IV - Oblivion Remastered",
+          "files": [
+            "desktop.ini",
+            "folder.jpg",
+            "icon.ico"
+          ],
+          "children": {
+            "The.Elder.Scrolls.IV.Oblivion.Remastered.Deluxe.Edition.MULTi9-ElAmigos": {
+              "type": "directory",
+              "path": "Baldur's Gate 3 Digital [PC]/The Elder Scrolls IV - Oblivion Remastered/The.Elder.Scrolls.IV.Oblivion.Remastered.Deluxe.Edition.MULTi9-ElAmigos",
+              "files": [
+                "g4u.to - games 4 you.url"
+              ],
+              "children": {
+                "The Elder Scrolls IV Oblivion Remastered": {
+                  "type": "directory",
+                  "path": "Baldur's Gate 3 Digital [PC]/The Elder Scrolls IV - Oblivion Remastered/The.Elder.Scrolls.IV.Oblivion.Remastered.Deluxe.Edition.MULTi9-ElAmigos/The Elder Scrolls IV Oblivion Remastered",
+                  "files": [],
+                  "children": {}
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Cyberpunk 2077 [PC]": {
+      "type": "directory",
+      "path": "Cyberpunk 2077 [PC]",
+      "files": [],
+      "children": {
+        "Updates": {
+          "type": "directory",
+          "path": "Cyberpunk 2077 [PC]/Updates",
+          "files": [
+            "Cyberpunk 2077 update 2.20 - 2.21.exe"
+          ],
+          "children": {}
+        }
+      }
+    },
+    "Dead or Alive 6 Digital [PC]": {
+      "type": "directory",
+      "path": "Dead or Alive 6 Digital [PC]",
+      "files": [
+        "desktop.ini",
+        "folder.jpg",
+        "icon.ico"
+      ],
+      "children": {
+        "Dead or Alive 6 Deluxe Edition": {
+          "type": "directory",
+          "path": "Dead or Alive 6 Digital [PC]/Dead or Alive 6 Deluxe Edition",
+          "files": [
+            "v1.22.txt"
+          ],
+          "children": {}
+        }
+      }
+    },
+    "Elden Ring [PC]": {
+      "type": "directory",
+      "path": "Elden Ring [PC]",
+      "files": [],
+      "children": {
+        "Updates": {
+          "type": "directory",
+          "path": "Elden Ring [PC]/Updates",
+          "files": [
+            "Elden Ring update 1.12.0 - 1.12.3.exe",
+            "Elden Ring update 1.12.3 - 1.13.0.exe",
+            "Elden Ring update 1.13.0 - 1.14.0.exe",
+            "Elden Ring update 1.14.0 - 1.15.0.exe",
+            "Elden Ring update 1.15.0 - 1.16.0.exe"
+          ],
+          "children": {}
+        }
+      }
+    },
+    "God of War Ragnaro\u0308k [PC]": {
+      "type": "directory",
+      "path": "God of War Ragnaro\u0308k [PC]",
+      "files": [
+        "desktop.ini",
+        "folder.jpg",
+        "icon.ico"
+      ],
+      "children": {
+        "God of War - Ragnarok": {
+          "type": "directory",
+          "path": "God of War Ragnaro\u0308k [PC]/God of War - Ragnarok",
+          "files": [
+            "folder.jpg"
+          ],
+          "children": {}
+        },
+        "Gof of War": {
+          "type": "directory",
+          "path": "God of War Ragnaro\u0308k [PC]/Gof of War",
+          "files": [
+            "folder.jpg"
+          ],
+          "children": {}
+        }
+      }
+    },
+    "God of War [PC]": {
+      "type": "directory",
+      "path": "God of War [PC]",
+      "files": [],
+      "children": {
+        "Updates": {
+          "type": "game_container",
+          "kind": "installed_game",
+          "path": "God of War [PC]/Updates",
+          "files": [
+            "God of War update 1.0.2.exe",
+            "God of War update 1.0.3.exe",
+            "God of War update 1.0.4.exe",
+            "God of War update 1.0.5.exe",
+            "God of War update 1.0.6.exe",
+            "God of War update 1.0.8.exe"
+          ],
+          "children": {}
+        }
+      }
+    },
+    "Kingdom Hearts III DUPLEX [PS4]": {
+      "type": "game_container",
+      "kind": "playstation_pkg",
+      "path": "Kingdom Hearts III DUPLEX [PS4]",
+      "files": [
+        "Kingdom.Hearts.III.Update.v1.10.PS4-DUPLEX.pkg"
+      ],
+      "children": {}
+    },
+    "Kingdom Hearts III Dawn Till Dusk Keyblade DLC [PS4]": {
+      "type": "game_container",
+      "kind": "playstation_pkg",
+      "path": "Kingdom Hearts III Dawn Till Dusk Keyblade DLC [PS4]",
+      "files": [
+        "Kingdom.Hearts.III.Dawn.Till.Dusk.Keyblade.DLC.PS4-DUPLEX.pkg"
+      ],
+      "children": {}
+    },
+    "Kingdom Hearts III Midnight Blue Keyblade DLC [PS4]": {
+      "type": "game_container",
+      "kind": "playstation_pkg",
+      "path": "Kingdom Hearts III Midnight Blue Keyblade DLC [PS4]",
+      "files": [
+        "Kingdom.Hearts.III.Midnight.Blue.Keyblade.DLC.PS4-DUPLEX.pkg"
+      ],
+      "children": {}
+    },
+    "Kingdom Hearts III Re Mind DLC [PS4]": {
+      "type": "game_container",
+      "kind": "playstation_pkg",
+      "path": "Kingdom Hearts III Re Mind DLC [PS4]",
+      "files": [
+        "Kingdom.Hearts.III.Re.Mind.DLC.PS4-DUPLEX.pkg"
+      ],
+      "children": {}
+    },
+    "Kingdom Hearts III Starlight Keyblade DLC [PS4]": {
+      "type": "game_container",
+      "kind": "playstation_pkg",
+      "path": "Kingdom Hearts III Starlight Keyblade DLC [PS4]",
+      "files": [
+        "Kingdom.Hearts.III.Starlight.Keyblade.DLC.PS4-DUPLEX.pkg"
+      ],
+      "children": {}
+    },
+    "Lies of P H1 [PC]": {
+      "type": "directory",
+      "path": "Lies of P H1 [PC]",
+      "files": [
+        "g4u.to - games 4 you.url"
+      ],
+      "children": {
+        "Lies of P v1.5.0.0 H1": {
+          "type": "directory",
+          "path": "Lies of P H1 [PC]/Lies of P v1.5.0.0 H1",
+          "files": [],
+          "children": {}
+        }
+      }
+    },
+    "Lords of the Fallen 2023 [PC]": {
+      "type": "directory",
+      "path": "Lords of the Fallen 2023 [PC]",
+      "files": [],
+      "children": {
+        "Updates": {
+          "type": "directory",
+          "path": "Lords of the Fallen 2023 [PC]/Updates",
+          "files": [
+            "Lords of the Fallen 2023 update 2.0.13 - 2.0.29.exe",
+            "Lords of the Fallen 2023 update 2.0.9 - 2.0.13.exe"
+          ],
+          "children": {}
+        }
+      }
+    },
+    "Marvel's Spider Man Miles Morales [PC]": {
+      "type": "directory",
+      "path": "Marvel's Spider Man Miles Morales [PC]",
+      "files": [
+        "desktop.ini",
+        "folder.jpg",
+        "icon.ico"
+      ],
+      "children": {
+        "Marvel's Spider Man Miles Morales": {
+          "type": "directory",
+          "path": "Marvel's Spider Man Miles Morales [PC]/Marvel's Spider Man Miles Morales",
+          "files": [],
+          "children": {}
+        },
+        "Marvel's Spider Man Remastered": {
+          "type": "directory",
+          "path": "Marvel's Spider Man Miles Morales [PC]/Marvel's Spider Man Remastered",
+          "files": [],
+          "children": {}
+        },
+        "Updates": {
+          "type": "game_container",
+          "kind": "installed_game",
+          "path": "Marvel's Spider Man Miles Morales [PC]/Updates",
+          "files": [
+            "Marvel's Spider-Man Miles Morales update 1.1116.0.0 - 1.1122.0.0.exe",
+            "Marvel's Spider-Man Miles Morales update 1.1122.0.0 - 1.1130.0.0.exe",
+            "Marvel's Spider-Man Miles Morales update 1.1130.0.0 - 1.1209.0.0.exe",
+            "Marvel's Spider-Man Miles Morales update 1.1209.0.0 - 2.209.0.0.exe",
+            "Marvel's Spider-Man Miles Morales update 2.1012 - 3.617.1.exe",
+            "Marvel's Spider-Man Miles Morales update 2.209 - 2.1012.exe"
+          ],
+          "children": {}
+        }
+      }
+    },
+    "Marvel's Spider Man Remastered [PC]": {
+      "type": "directory",
+      "path": "Marvel's Spider Man Remastered [PC]",
+      "files": [],
+      "children": {
+        "Updates": {
+          "type": "directory",
+          "path": "Marvel's Spider Man Remastered [PC]/Updates",
+          "files": [
+            "Marvel's Spider-Man Remastered update 1.812.1.0 - 1.824.1.0.exe",
+            "Marvel's Spider-Man Remastered update 1.824.1.0 - 1.919.0.0.exe",
+            "Marvel's Spider-Man Remastered update 1.919.0.0 - 1.1006.0.0.exe"
+          ],
+          "children": {}
+        }
+      }
+    },
+    "Metroid Prime 4 Beyond HR [Switch]": {
+      "type": "game_container",
+      "kind": "switch_rom",
+      "path": "Metroid Prime 4 Beyond HR [Switch]",
+      "files": [
+        "Metroid Prime 4 Beyond NSW-HR.xci"
+      ],
+      "children": {}
+    },
+    "PC": {
+      "type": "directory",
+      "path": "PC",
+      "files": [],
+      "children": {
+        "1 ": {
+          "type": "directory",
+          "path": "PC/1 ",
+          "files": [],
+          "children": {
+            "Updates": {
+              "type": "directory",
+              "path": "PC/1 /Updates",
+              "files": [
+                "elamigos-1.bin"
+              ],
+              "children": {}
+            }
+          }
+        },
+        "AI Limit": {
+          "type": "game_container",
+          "kind": "disc_image",
+          "path": "PC/AI Limit",
+          "files": [
+            "AI Limit.iso"
+          ],
+          "children": {}
+        },
+        "Balatro": {
+          "type": "directory",
+          "path": "PC/Balatro",
+          "files": [
+            "Balatro.exe",
+            "OpenAL32.dll",
+            "SDL2.dll",
+            "https.dll"
+          ],
+          "children": {}
+        },
+        "Balatro - Special Edition": {
+          "type": "game_container",
+          "kind": "installed_game",
+          "path": "PC/Balatro - Special Edition",
+          "files": [
+            "Balatro.exe",
+            "OpenAL32.dll",
+            "SDL2.dll",
+            "https.dll",
+            "license.txt",
+            "love.dll",
+            "lua51.dll",
+            "luasteam.dll",
+            "mpg123.dll",
+            "msvcp120.dll",
+            "msvcr120.dll",
+            "readme.txt",
+            "steam_64.dll",
+            "steam_api.ini",
+            "steam_api64.dll",
+            "steam_api64.org.exe",
+            "steam_appid.txt",
+            "steamclient64.dll"
+          ],
+          "children": {}
+        },
+        "Baldur's Gate III": {
+          "type": "game_container",
+          "kind": "disc_image",
+          "path": "PC/Baldur's Gate III",
+          "files": [
+            "Baldurs Gate 3.iso"
+          ],
+          "children": {}
+        },
+        "Black Myth - Wukong": {
+          "type": "game_container",
+          "kind": "disc_image",
+          "path": "PC/Black Myth - Wukong",
+          "files": [
+            "Black.Myth.Wukong-voices38.iso"
+          ],
+          "children": {}
+        },
+        "Blade and Sorcery VR": {
+          "type": "game_container",
+          "kind": "disc_image",
+          "path": "PC/Blade and Sorcery VR",
+          "files": [
+            "Blade and Sorcery VR.iso"
+          ],
+          "children": {}
+        },
+        "Call of Duty - Black Ops II": {
+          "type": "directory",
+          "path": "PC/Call of Duty - Black Ops II",
+          "files": [
+            "Call Of Duty Black Ops 2.rar"
+          ],
+          "children": {}
+        },
+        "Red Dead Redemption": {
+          "type": "directory",
+          "path": "PC/Red Dead Redemption",
+          "files": [
+            "desktop.ini",
+            "folder.jpg",
+            "icon.ico"
+          ],
+          "children": {
+            "Red_Dead_Redemption_2_Ultimate_Edition_DLC_Unlocker-Razor1911": {
+              "type": "directory",
+              "path": "PC/Red Dead Redemption/Red_Dead_Redemption_2_Ultimate_Edition_DLC_Unlocker-Razor1911",
+              "files": [],
+              "children": {
+                "Red_Dead_Redemption_2_Ultimate_Edition_DLC_Unlocker-Razor1911": {
+                  "type": "directory",
+                  "path": "PC/Red Dead Redemption/Red_Dead_Redemption_2_Ultimate_Edition_DLC_Unlocker-Razor1911/Red_Dead_Redemption_2_Ultimate_Edition_DLC_Unlocker-Razor1911",
+                  "files": [
+                    "rzr-reddeadredemption2dlcunlocker.nfo"
+                  ],
+                  "children": {}
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Red Dead Redemption 2 [PC]": {
+      "type": "directory",
+      "path": "Red Dead Redemption 2 [PC]",
+      "files": [
+        "g4u.to - games 4 you.url"
+      ],
+      "children": {
+        "Red_Dead_Redemption_2_Ultimate_Edition-Razor1911": {
+          "type": "directory",
+          "path": "Red Dead Redemption 2 [PC]/Red_Dead_Redemption_2_Ultimate_Edition-Razor1911",
+          "files": [
+            "Red_Dead_Redemption_2_Ultimate_Edition-Razor1911.nfo"
+          ],
+          "children": {}
+        }
+      }
+    },
+    "Red Dead Redemption [PC]": {
+      "type": "directory",
+      "path": "Red Dead Redemption [PC]",
+      "files": [
+        "g4u.to - games 4 you.url"
+      ],
+      "children": {
+        "Red Dead Redemption": {
+          "type": "directory",
+          "path": "Red Dead Redemption [PC]/Red Dead Redemption",
+          "files": [],
+          "children": {}
+        }
+      }
+    },
+    "Sifu [PC]": {
+      "type": "directory",
+      "path": "Sifu [PC]",
+      "files": [
+        "desktop.ini",
+        "folder.jpg"
+      ],
+      "children": {
+        "Sifu (Deluxe Edition)": {
+          "type": "directory",
+          "path": "Sifu [PC]/Sifu (Deluxe Edition)",
+          "files": [
+            "v1.12.4.477.txt"
+          ],
+          "children": {}
+        }
+      }
+    },
+    "Stellar Blade Digital [PC]": {
+      "type": "directory",
+      "path": "Stellar Blade Digital [PC]",
+      "files": [
+        "desktop.ini",
+        "folder.jpg",
+        "icon.ico"
+      ],
+      "children": {
+        "Stellar.Blade-voices38": {
+          "type": "directory",
+          "path": "Stellar Blade Digital [PC]/Stellar.Blade-voices38",
+          "files": [
+            "voices38.nfo"
+          ],
+          "children": {}
+        }
+      }
+    },
+    "Switch": {
+      "type": "directory",
+      "path": "Switch",
+      "files": [],
+      "children": {
+        "Lies of P - Complete Edition": {
+          "type": "directory",
+          "path": "Switch/Lies of P - Complete Edition",
+          "files": [
+            "desktop.ini",
+            "folder.jpg",
+            "icon.ico"
+          ],
+          "children": {}
+        }
+      }
+    },
+    "TODO": {
+      "type": "directory",
+      "path": "TODO",
+      "files": [],
+      "children": {}
+    },
+    "The Legend Of Zelda Tears Of The Kingdom NSW [Switch]": {
+      "type": "game_container",
+      "kind": "switch_rom",
+      "path": "The Legend Of Zelda Tears Of The Kingdom NSW [Switch]",
+      "files": [
+        "The_Legend_Of_Zelda_Tears_Of_The_Kingdom_NSW-NiiNTENDO.xci"
+      ],
+      "children": {}
+    },
+    "app0 [PS5]": {
+      "type": "game_container",
+      "kind": "ps5_dump",
+      "path": "app0 [PS5]",
+      "files": [
+        "Dead.Cells.PS5-DUPLEX.pak",
+        "PPSA15552.complete.txt",
+        "ampr_emu.index",
+        "eboot.bin"
+      ],
+      "children": {}
+    },
+    "g4u to games 4 you url [PC]": {
+      "type": "directory",
+      "path": "g4u to games 4 you url [PC]",
+      "files": [
+        "g4u.to - games 4 you.url"
+      ],
+      "children": {}
+    }
+  }
+}

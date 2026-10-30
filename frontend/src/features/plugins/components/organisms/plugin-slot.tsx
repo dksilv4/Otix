@@ -45,7 +45,7 @@ interface Props {
   pluginApi: PluginAPI
 }
 
-const API_BASE = (window as any).desktopAPI?.getApiBaseUrl?.() || 'http://127.0.0.1:8000/api'
+const API_BASE = (window as any).desktopAPI?.getApiBaseUrl?.() || 'https://otix.app/api'
 
 type ScanPhase = 'idle' | 'scanning' | 'matching' | 'hydrating' | 'done'
 

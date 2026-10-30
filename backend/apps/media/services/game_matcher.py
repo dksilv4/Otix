@@ -139,7 +139,7 @@ def _strip_edition_markers(raw: str) -> str:
     edition_phrase = (
         r"(?:(?:Game of the Year|GOTY|Complete|Enhanced|Deluxe|Definitive|Ultimate|"
         r"Collector'?s|Anniversary|Special|Standard|Gold|Celebration|Day One|"
-        r"Digital Deluxe|Remastered)(?:\s+Edition)(?:\s+Pack)?)"
+        r"Digital Deluxe|Remastered)(?:\s+Edition)?(?:\s+Pack)?)"
     )
     t = re.sub(
         r"\s*(?:[-–—:]?\s*)?(?:The\s+)?" + edition_phrase + r"\s*$",
@@ -148,7 +148,7 @@ def _strip_edition_markers(raw: str) -> str:
         flags=re.IGNORECASE,
     )
     t = re.sub(
-        r"\s*(?:[-–—:]?\s*)?(?:The Final Cut|Legacy Mode|Re-Elected|Afterlife|Starter Access)\s*$",
+        r"\s*(?:[-–—:]?\s*)?(?:The Final Cut|Legacy Mode|Re-Elected|Afterlife|Starter Access|Director'?s\s*Cut)\s*$",
         "",
         t,
         flags=re.IGNORECASE,
@@ -256,12 +256,44 @@ def _comparison_key(raw: str) -> str:
     return re.sub(r"\s+", " ", t).strip().lower()
 
 
+_SCENE_TAGS_PATTERN = (
+    r"rune|codex|flt|skidrow|tenoke|goldberg|razor1911|hoodlum|empress|cpy|"
+    r"reloaded|prophet|plaza|tinyiso|chronos|tiki|kaos|darck|xatab|selax|"
+    r"fitgirl|dodi|elamigos|gog|fairlight|delusion|unleashed"
+)
+
+
 def _igdb_search_query(raw: str) -> str:
-    """Build an IGDB-friendly search string from a raw store title."""
+    """Build an IGDB-friendly search string from a raw store or scanned title."""
     t = re.sub(r"[™®©]", "", raw)
+    t = re.sub(r"\.(?:iso|exe|bin|zip|7z|rar|pkg|dmg|tar|gz|nsp|xci)$", "", t, flags=re.IGNORECASE)
+    t = re.sub(r"\.part\d+$", "", t, flags=re.IGNORECASE)
+    t = re.sub(r"\[[^\]]*\]", " ", t)
+    t = re.sub(
+        r"\((?:[^\)]*(?:" + _SCENE_TAGS_PATTERN + r"|v\d+|build|\d{4}|repack)[^\)]*)\)",
+        " ",
+        t,
+        flags=re.IGNORECASE,
+    )
+    t = re.sub(r"^\d+\s*[-_.]\s*", "", t)
+    t = re.sub(r"(?:^|[^a-zA-Z0-9])v\d+(?:\.\d+)+(?:[a-zA-Z]\d*)?(?![a-zA-Z0-9])", " ", t, flags=re.IGNORECASE)
+    t = re.sub(r"(?:^|[\s._-])(?:v\d+|ver\s*\d+|version\s*\d+|build\s*\d+)(?=[\s._-]|$)", " ", t, flags=re.IGNORECASE)
+    t = re.sub(r"\b\d{2}[._-]\d{2}[._-](?:19|20)\d{2}\b", " ", t)
+    t = re.sub(r"(?:^|[^a-zA-Z0-9])(?:update\s*[\d\s._-]+(?=[a-zA-Z]|$))", " ", t, flags=re.IGNORECASE)
+    t = re.sub(
+        r"[-._\s]+(?:" + _SCENE_TAGS_PATTERN + r"|repack|multi\d+|crackfix|crack(?:[._\s]*fix|[._\s]*only)?|onlinefix|online[._\s]*fix|proper|earlyaccess|direct[._\s]*play)\b",
+        " ",
+        t,
+        flags=re.IGNORECASE,
+    )
+    t = re.sub(r"[\._]", " ", t)
+    t = re.sub(r"\b(?:" + _SCENE_TAGS_PATTERN + r"|repack|crackfix|crack\s*only|crack\s*fix|crack|proper|earlyaccess)\b", " ", t, flags=re.IGNORECASE)
     t = _strip_edition_markers(t)
     t = re.sub(r"\s*\([^)]*\)\s*$", "", t).strip()
     t = re.sub(r"\s+(?:Starring|Featuring)\s+.*$", "", t, flags=re.IGNORECASE).strip()
+    t = re.sub(r"[\s\-_/:,+&]+$", "", t)
+    t = re.sub(r"^[\s\-_/:,+&]+", "", t)
+    t = re.sub(r"\s+", " ", t).strip()
     return t or raw
 
 

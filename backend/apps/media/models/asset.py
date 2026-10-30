@@ -87,7 +87,7 @@ class MediaRelease(BaseModel):
     media_item = models.ForeignKey(MediaItem, on_delete=models.CASCADE, related_name="releases")
     country_code = models.CharField(max_length=2)
     release_date = models.DateField(null=True, blank=True)
-    certification = models.CharField(max_length=20, null=True, blank=True)
+    certification = models.CharField(max_length=64, null=True, blank=True)
     release_type = models.PositiveSmallIntegerField(null=True, blank=True)
 
     class Meta(BaseModel.Meta):

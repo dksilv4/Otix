@@ -1,4 +1,5 @@
 import http from 'http';
+import https from 'https';
 import { URL } from 'url';
 import { EventEmitter } from 'events';
 import type { PluginManager } from '../plugin-runtime/manager';
@@ -15,6 +16,7 @@ import {
 import { LocalMatcher } from './local-matcher';
 import { buildCatalogRequests, normalizeCatalogResponse } from './catalog-match';
 import type { CatalogMatchCandidate } from './catalog-match';
+import { cleanGameTitle } from './parser';
 
 // ── Types ──────────────────────────────────────────────────────────────
 
@@ -165,6 +167,55 @@ export class GameScanOrchestrator extends EventEmitter {
       results.push(result);
     }
     return results;
+  }
+
+  /** Match an arbitrary list of scanned games (e.g. from node / local folder scan) */
+  async matchGames(
+    games: ScannedGame[],
+    pluginId: string = 'local',
+    mediaType: string = 'game',
+  ): Promise<PluginScanResult> {
+    ensureGameMatchesTable();
+    this.queryIdToGames.clear();
+    if (!games || games.length === 0) {
+      return { pluginId, pluginLabel: pluginId, totalGames: 0, matched: 0, unmatched: 0 };
+    }
+
+    const abortController = new AbortController();
+    this.activeScans.set(pluginId, abortController);
+    const normalized = games.map((g) => ({
+      ...g,
+      title: cleanGameTitle(g.title) || g.title,
+      externalIds: this.buildExternalIds(g),
+    }));
+
+    try {
+      this.emit('scan:progress', { pluginId, phase: 'matching', current: 0, total: normalized.length });
+      await this.streamMatches(normalized, pluginId, mediaType, abortController.signal);
+      const matched = normalized.filter((g) => {
+        const m = getGameMatch(g.platform, g.id);
+        return m?.otixMediaId;
+      }).length;
+      return {
+        pluginId,
+        pluginLabel: pluginId,
+        totalGames: normalized.length,
+        matched,
+        unmatched: normalized.length - matched,
+      };
+    } catch (err: any) {
+      console.warn(`[Orchestrator] Match failed for ${pluginId}:`, err);
+      return {
+        pluginId,
+        pluginLabel: pluginId,
+        totalGames: normalized.length,
+        matched: 0,
+        unmatched: normalized.length,
+        errors: [err.message],
+      };
+    } finally {
+      this.activeScans.delete(pluginId);
+    }
   }
 
   /** Cancel an active plugin scan */
@@ -348,7 +399,7 @@ export class GameScanOrchestrator extends EventEmitter {
   ): Promise<void> {
     const requests = games.map(g => ({
       query_id: `${g.platform}:${g.id}`,
-      title: g.title,
+      title: cleanGameTitle(g.title) || g.title,
       platform: g.platform,
       platforms: g.platform ? [g.platform] : undefined,
       developer: g.developer || null,
@@ -373,18 +424,23 @@ export class GameScanOrchestrator extends EventEmitter {
       this.queryIdToGames.set(qid, existing);
     }
 
-    const url = new URL(`/api/v1/media/match/scan?hydrate=true&seed_missing=true`, this.apiBaseUrl);
+    const url = new URL(`/api/v1/media/match/stream?hydrate=true&seed_missing=true`, this.apiBaseUrl);
     const body = JSON.stringify({ games: requests });
 
     return new Promise<void>((resolve, reject) => {
-      const req = http.request(url, {
+      const client = url.protocol === 'https:' ? https : http;
+      const headers: Record<string, string | number> = {
+        'Content-Type': 'application/json',
+        'Accept': 'text/event-stream, application/json',
+        'Content-Length': Buffer.byteLength(body),
+      };
+      if (this.authToken) {
+        headers['Authorization'] = `Bearer ${this.authToken}`;
+      }
+
+      const req = client.request(url, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'text/event-stream',
-          'Authorization': this.authToken ? `Bearer ${this.authToken}` : '',
-          'Content-Length': Buffer.byteLength(body),
-        },
+        headers,
         timeout: 120_000,
       });
 
@@ -406,7 +462,12 @@ export class GameScanOrchestrator extends EventEmitter {
           buffer += chunk.toString();
           buffer = this.processSseEvents(buffer, pluginId);
         });
-        res.on('end', () => resolve());
+        res.on('end', () => {
+          if (buffer.trim()) {
+            this.processRemainingResponse(buffer, pluginId, games.length);
+          }
+          resolve();
+        });
       });
 
       req.on('error', (err) => {
@@ -518,6 +579,41 @@ export class GameScanOrchestrator extends EventEmitter {
     return remaining;
   }
 
+  private processRemainingResponse(buffer: string, pluginId: string, totalGames: number): void {
+    const trimmed = buffer.trim();
+    if (!trimmed.startsWith('{') && !trimmed.startsWith('[')) return;
+    try {
+      const data = JSON.parse(trimmed) as any;
+      const matches: any[] = Array.isArray(data) ? data : (data.matches || []);
+      if (!matches.length) return;
+
+      let matchedCount = 0;
+      for (const row of matches) {
+        const matchData = row.match || row.auto_match;
+        const status = row.status || (matchData?.media_item_id ? 'matched' : 'unmatched');
+        if (status === 'matched') matchedCount++;
+
+        this.handleProgress(JSON.stringify({
+          query_id: row.query_id || '',
+          query_title: row.query_title || '',
+          total_games: totalGames,
+          status,
+          match: matchData,
+          candidates: row.candidates || [],
+          error: row.error,
+        }), pluginId);
+      }
+      this.emit('match:complete', {
+        pluginId,
+        total: totalGames,
+        matched: matchedCount,
+        unmatched: totalGames - matchedCount,
+      });
+    } catch (err) {
+      console.warn('[Orchestrator] Failed to parse batch match response as JSON:', err);
+    }
+  }
+
   private handleProgress(dataStr: string, pluginId: string): void {
     const data = JSON.parse(dataStr) as any;
     const event: GameProgressEvent = {
@@ -586,7 +682,8 @@ export class GameScanOrchestrator extends EventEmitter {
     if (!this.authToken) return;
 
     const url = new URL(`/api/v1/media/${mediaItemId}/claim`, this.apiBaseUrl);
-    const req = http.request(url, { method: 'POST', headers: { 'Authorization': `Bearer ${this.authToken}` }, timeout: 10_000 });
+    const client = url.protocol === 'https:' ? https : http;
+    const req = client.request(url, { method: 'POST', headers: { 'Authorization': `Bearer ${this.authToken}` }, timeout: 10_000 });
     req.on('error', (err) => console.warn(`[Orchestrator] Claim failed for ${mediaItemId}:`, err.message));
     req.end();
   }

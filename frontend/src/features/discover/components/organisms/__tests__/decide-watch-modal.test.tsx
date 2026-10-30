@@ -17,6 +17,7 @@ vi.mock('@/lib/router', () => ({
 
 vi.mock('@auth/hooks/use-auth', () => ({
   useAuth: () => ({ isAuthenticated: true, isLoading: false }),
+  useOptionalAuth: () => ({ isAuthenticated: true, user: { id: '1' } }),
 }))
 
 vi.mock('@/lib/api/client', () => ({

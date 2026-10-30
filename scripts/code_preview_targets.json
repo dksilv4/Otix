@@ -1,0 +1,1160 @@
+{
+  "/Volumes/Games/AI Limit [PC]/Baldurs Gate 3": {
+    "target": "/Volumes/Games/Baldur's Gate III [PC]",
+    "status": "container_package",
+    "platform": "PC",
+    "title": "Baldur's Gate III",
+    "title_id": "",
+    "subdirs": [
+      "Updates"
+    ]
+  },
+  "/Volumes/Games/AI Limit [PC]/Black Myth Wukong": {
+    "target": "/Volumes/Games/Black Myth - Wukong [PC]",
+    "status": "container_package",
+    "platform": "PC",
+    "title": "Black Myth - Wukong",
+    "title_id": "",
+    "subdirs": []
+  },
+  "/Volumes/Games/AI Limit [PC]/Clair Obscur Expedition 33": {
+    "target": "/Volumes/Games/Clair Obscur - Expedition 33 [PC]",
+    "status": "container_package",
+    "platform": "PC",
+    "title": "Clair Obscur - Expedition 33",
+    "title_id": "",
+    "subdirs": [
+      "Updates"
+    ]
+  },
+  "/Volumes/Games/AI Limit [PC]/Crack/Black.Myth.Wukong.CRACKFIX-voices38": {
+    "target": "/Volumes/Games/Black Myth [PC]/Crack/Black.Myth.Wukong.CRACKFIX-voices38",
+    "status": "secondary_crack",
+    "platform": "PC",
+    "title": "Black Myth",
+    "title_id": "",
+    "subdirs": [
+      "voices38"
+    ]
+  },
+  "/Volumes/Games/AI Limit [PC]/Crack/Hogwarts_Legacy_-_small_DLC_unlocker_+_CrackFix_Win11_24H2": {
+    "target": "/Volumes/Games/Hogwarts Legacy [PC]/Crack/Hogwarts_Legacy_-_small_DLC_unlocker_+_CrackFix_Win11_24H2",
+    "status": "secondary_crack",
+    "platform": "PC",
+    "title": "Hogwarts Legacy",
+    "title_id": "",
+    "subdirs": [
+      "Hogwarts Legacy - small DLC unlocker + CrackFix Win11 24H2"
+    ]
+  },
+  "/Volumes/Games/AI Limit [PC]/Cyberpunk 2077": {
+    "target": "/Volumes/Games/Cyberpunk 2077 [PC]",
+    "status": "conflict",
+    "platform": "PC",
+    "title": "Cyberpunk 2077",
+    "title_id": "",
+    "subdirs": [
+      "Cyberpunk 2077 Ultimate Edition"
+    ]
+  },
+  "/Volumes/Games/AI Limit [PC]/Cyberpunk 2077 (2077)": {
+    "target": "/Volumes/Games/Cyberpunk 2077 [PC]",
+    "status": "conflict",
+    "platform": "PC",
+    "title": "Cyberpunk 2077",
+    "title_id": "",
+    "subdirs": []
+  },
+  "/Volumes/Games/AI Limit [PC]/DOOM Eternal": {
+    "target": "/Volumes/Games/Doom - Eternal Deluxe Edition [PC]",
+    "status": "container_package",
+    "platform": "PC",
+    "title": "Doom - Eternal Deluxe Edition",
+    "title_id": "",
+    "subdirs": [
+      "Updates"
+    ]
+  },
+  "/Volumes/Games/AI Limit [PC]/Dead or Alive 6 Deluxe Edition": {
+    "target": "/Volumes/Games/Dead or Alive 6 [PC]",
+    "status": "container_package",
+    "platform": "PC",
+    "title": "Dead or Alive 6",
+    "title_id": "",
+    "subdirs": []
+  },
+  "/Volumes/Games/AI Limit [PC]/Deus Ex": {
+    "target": "/Volumes/Games/Deus Ex [PC]",
+    "status": "container_package",
+    "platform": "PC",
+    "title": "Deus Ex",
+    "title_id": "",
+    "subdirs": [
+      "Deus Ex Mankind Divided 1.19.801.0"
+    ]
+  },
+  "/Volumes/Games/AI Limit [PC]/Deus Ex Mankind Divided": {
+    "target": "/Volumes/Games/Deus Ex - Mankind Divided [PC]",
+    "status": "container_package",
+    "platform": "PC",
+    "title": "Deus Ex - Mankind Divided",
+    "title_id": "",
+    "subdirs": []
+  },
+  "/Volumes/Games/AI Limit [PC]/Dispatch": {
+    "target": "/Volumes/Games/Alien Breed Evolution [PC]",
+    "status": "container_package",
+    "platform": "PC",
+    "title": "Alien Breed Evolution",
+    "title_id": "",
+    "subdirs": []
+  },
+  "/Volumes/Games/AI Limit [PC]/Dyson Sphere Program": {
+    "target": "/Volumes/Games/Dyson Sphere Program [PC]",
+    "status": "container_package",
+    "platform": "PC",
+    "title": "Dyson Sphere Program",
+    "title_id": "",
+    "subdirs": [
+      "Configs",
+      "DSPGAME_Data",
+      "Icarus",
+      "MonoBleedingEdge",
+      "Updates",
+      "Verta"
+    ]
+  },
+  "/Volumes/Games/AI Limit [PC]/Elden Ring Deluxe Edition": {
+    "target": "/Volumes/Games/Elden Ring [PC]",
+    "status": "conflict",
+    "platform": "PC",
+    "title": "Elden Ring",
+    "title_id": "",
+    "subdirs": []
+  },
+  "/Volumes/Games/AI Limit [PC]/FOUNDRY": {
+    "target": "/Volumes/Games/Foundry [PC]",
+    "status": "container_package",
+    "platform": "PC",
+    "title": "Foundry",
+    "title_id": "",
+    "subdirs": [
+      "Licenses",
+      "MonoBleedingEdge",
+      "foundry_Data",
+      "launcher-assets"
+    ]
+  },
+  "/Volumes/Games/AI Limit [PC]/Final Fantasy VII Rebirth": {
+    "target": "/Volumes/Games/Final Fantasy VII Rebirth [PC]",
+    "status": "container_package",
+    "platform": "PC",
+    "title": "Final Fantasy VII Rebirth",
+    "title_id": "",
+    "subdirs": [
+      "Updates"
+    ]
+  },
+  "/Volumes/Games/AI Limit [PC]/Five Hearts Under One Roof": {
+    "target": "/Volumes/Games/Five Hearts Under One Roof [PC]",
+    "status": "container_package",
+    "platform": "PC",
+    "title": "Five Hearts Under One Roof",
+    "title_id": "",
+    "subdirs": []
+  },
+  "/Volumes/Games/AI Limit [PC]/Five Hearts Under One Roof 2": {
+    "target": "/Volumes/Games/Five Hearts Under One Roof 2 [PC]",
+    "status": "container_package",
+    "platform": "PC",
+    "title": "Five Hearts Under One Roof 2",
+    "title_id": "",
+    "subdirs": []
+  },
+  "/Volumes/Games/AI Limit [PC]/God of War": {
+    "target": "/Volumes/Games/God of War [PC]",
+    "status": "conflict",
+    "platform": "PC",
+    "title": "God of War",
+    "title_id": "",
+    "subdirs": []
+  },
+  "/Volumes/Games/AI Limit [PC]/God of War Ragnarok": {
+    "target": "/Volumes/Games/God of War Ragnar\u00f6k [PC]",
+    "status": "conflict",
+    "platform": "PC",
+    "title": "God of War Ragnar\u00f6k",
+    "title_id": "",
+    "subdirs": [
+      "Updates"
+    ]
+  },
+  "/Volumes/Games/AI Limit [PC]/Hades II": {
+    "target": "/Volumes/Games/Hades II [PC]",
+    "status": "container_package",
+    "platform": "PC",
+    "title": "Hades II",
+    "title_id": "",
+    "subdirs": []
+  },
+  "/Volumes/Games/AI Limit [PC]/High On Life": {
+    "target": "/Volumes/Games/High on Life [PC]",
+    "status": "container_package",
+    "platform": "PC",
+    "title": "High on Life",
+    "title_id": "",
+    "subdirs": []
+  },
+  "/Volumes/Games/AI Limit [PC]/High On Life 2": {
+    "target": "/Volumes/Games/High on Life 2 [PC]",
+    "status": "container_package",
+    "platform": "PC",
+    "title": "High on Life 2",
+    "title_id": "",
+    "subdirs": [
+      "Updates"
+    ]
+  },
+  "/Volumes/Games/AI Limit [PC]/High On Life High On Knife": {
+    "target": "/Volumes/Games/High On Life High On Knife [PC]",
+    "status": "container_package",
+    "platform": "PC",
+    "title": "High On Life High On Knife",
+    "title_id": "",
+    "subdirs": []
+  },
+  "/Volumes/Games/AI Limit [PC]/Hogwarts Legacy Deluxe Edition": {
+    "target": "/Volumes/Games/Hogwarts Legacy [PC]",
+    "status": "container_package",
+    "platform": "PC",
+    "title": "Hogwarts Legacy",
+    "title_id": "",
+    "subdirs": []
+  },
+  "/Volumes/Games/AI Limit [PC]/Invincible VS": {
+    "target": "/Volumes/Games/Invincible Vs - Deluxe Edition [PC]",
+    "status": "container_package",
+    "platform": "PC",
+    "title": "Invincible Vs - Deluxe Edition",
+    "title_id": "",
+    "subdirs": []
+  },
+  "/Volumes/Games/AI Limit [PC]/Kiborg": {
+    "target": "/Volumes/Games/Kiborg [PC]",
+    "status": "container_package",
+    "platform": "PC",
+    "title": "Kiborg",
+    "title_id": "",
+    "subdirs": [
+      "Updates"
+    ]
+  },
+  "/Volumes/Games/AI Limit [PC]/Kingdom Come Deliverance II": {
+    "target": "/Volumes/Games/Kingdom Come - Deliverance II [PC]",
+    "status": "container_package",
+    "platform": "PC",
+    "title": "Kingdom Come - Deliverance II",
+    "title_id": "",
+    "subdirs": []
+  },
+  "/Volumes/Games/AI Limit [PC]/Kingdom Hearts III and Re Mind": {
+    "target": "/Volumes/Games/Kingdom Hearts III and Re Mind [PC]",
+    "status": "container_package",
+    "platform": "PC",
+    "title": "Kingdom Hearts III and Re Mind",
+    "title_id": "",
+    "subdirs": []
+  },
+  "/Volumes/Games/AI Limit [PC]/Launcher/Launcher.exe": {
+    "target": "/Volumes/Games/Launcher [PC]/Launcher.exe",
+    "status": "rename_and_move",
+    "platform": "PC",
+    "title": "Launcher",
+    "title_id": "",
+    "subdirs": []
+  },
+  "/Volumes/Games/AI Limit [PC]/Lies of P": {
+    "target": "/Volumes/Games/Lies of P [PC]",
+    "status": "container_package",
+    "platform": "PC",
+    "title": "Lies of P",
+    "title_id": "",
+    "subdirs": []
+  },
+  "/Volumes/Games/AI Limit [PC]/Lords of the Fallen 2023 (2023)": {
+    "target": "/Volumes/Games/Lords of the Fallen (2023) [PC]",
+    "status": "container_package",
+    "platform": "PC",
+    "title": "Lords of the Fallen",
+    "title_id": "",
+    "subdirs": []
+  },
+  "/Volumes/Games/AI Limit [PC]/Marvels SpiderMan 2": {
+    "target": "/Volumes/Games/Marvel's Spider Man 2 [PC]",
+    "status": "container_package",
+    "platform": "PC",
+    "title": "Marvel's Spider Man 2",
+    "title_id": "",
+    "subdirs": []
+  },
+  "/Volumes/Games/AI Limit [PC]/Marvels SpiderMan Miles Morales": {
+    "target": "/Volumes/Games/Marvel's Spider Man - Miles Morales [PC]",
+    "status": "container_package",
+    "platform": "PC",
+    "title": "Marvel's Spider Man - Miles Morales",
+    "title_id": "",
+    "subdirs": []
+  },
+  "/Volumes/Games/AI Limit [PC]/Marvels SpiderMan Remastered": {
+    "target": "/Volumes/Games/Marvel's Spider Man Remastered [PC]",
+    "status": "conflict",
+    "platform": "PC",
+    "title": "Marvel's Spider Man Remastered",
+    "title_id": "",
+    "subdirs": []
+  },
+  "/Volumes/Games/AI Limit [PC]/Need for Speed Most Wanted (Black Edition)": {
+    "target": "/Volumes/Games/Need for Speed - Most Wanted Black Edition [PC]",
+    "status": "container_package",
+    "platform": "PC",
+    "title": "Need for Speed - Most Wanted Black Edition",
+    "title_id": "",
+    "subdirs": [
+      "CARS",
+      "CREDITS",
+      "FRONTEND",
+      "GLOBAL",
+      "MEMCARD",
+      "NIS",
+      "Need for Speed Most Wanted (Black Edition)",
+      "NextGenGraphics",
+      "SUBTITLES",
+      "TRACKS"
+    ]
+  },
+  "/Volumes/Games/AI Limit [PC]/Pragmata": {
+    "target": "/Volumes/Games/Pragmata [PC]",
+    "status": "container_package",
+    "platform": "PC",
+    "title": "Pragmata",
+    "title_id": "",
+    "subdirs": []
+  },
+  "/Volumes/Games/AI Limit [PC]/Red Dead Redemption": {
+    "target": "/Volumes/Games/Red Dead Redemption [PC]",
+    "status": "conflict",
+    "platform": "PC",
+    "title": "Red Dead Redemption",
+    "title_id": "",
+    "subdirs": []
+  },
+  "/Volumes/Games/AI Limit [PC]/Red Dead Redemption 2 Ultimate Edition": {
+    "target": "/Volumes/Games/Red Dead Redemption 2 [PC]",
+    "status": "conflict",
+    "platform": "PC",
+    "title": "Red Dead Redemption 2",
+    "title_id": "",
+    "subdirs": []
+  },
+  "/Volumes/Games/AI Limit [PC]/Remnant II": {
+    "target": "/Volumes/Games/Remnant II [PC]",
+    "status": "container_package",
+    "platform": "PC",
+    "title": "Remnant II",
+    "title_id": "",
+    "subdirs": [
+      "Updates"
+    ]
+  },
+  "/Volumes/Games/AI Limit [PC]/RuneScape Dragonwilds": {
+    "target": "/Volumes/Games/RuneScape Dragonwilds [PC]",
+    "status": "container_package",
+    "platform": "PC",
+    "title": "RuneScape Dragonwilds",
+    "title_id": "",
+    "subdirs": []
+  },
+  "/Volumes/Games/AI Limit [PC]/RuneScapeDragonwilds Fix Repair Steam/RuneScapeDragonwilds_Fix_Repair_Steam_Generic.rar": {
+    "target": "/Volumes/Games/RuneScapeDragonwilds Fix Repair Steam [PC]/RuneScapeDragonwilds_Fix_Repair_Steam_Generic.rar",
+    "status": "rename_and_move",
+    "platform": "PC",
+    "title": "RuneScapeDragonwilds Fix Repair Steam",
+    "title_id": "",
+    "subdirs": []
+  },
+  "/Volumes/Games/AI Limit [PC]/Satisfactory": {
+    "target": "/Volumes/Games/Satisfactory [PC]",
+    "status": "container_package",
+    "platform": "PC",
+    "title": "Satisfactory",
+    "title_id": "",
+    "subdirs": [
+      "Updates"
+    ]
+  },
+  "/Volumes/Games/AI Limit [PC]/Sifu Deluxe Edition": {
+    "target": "/Volumes/Games/Sifu [PC]",
+    "status": "conflict",
+    "platform": "PC",
+    "title": "Sifu",
+    "title_id": "",
+    "subdirs": []
+  },
+  "/Volumes/Games/AI Limit [PC]/Split Fiction": {
+    "target": "/Volumes/Games/Split Fiction [PC]",
+    "status": "container_package",
+    "platform": "PC",
+    "title": "Split Fiction",
+    "title_id": "",
+    "subdirs": [
+      "Updates"
+    ]
+  },
+  "/Volumes/Games/AI Limit [PC]/Stellar Blade": {
+    "target": "/Volumes/Games/Stellar Blade [PC]",
+    "status": "container_package",
+    "platform": "PC",
+    "title": "Stellar Blade",
+    "title_id": "",
+    "subdirs": []
+  },
+  "/Volumes/Games/AI Limit [PC]/Summers Heartbeat Deluxe Edition I KnoW": {
+    "target": "/Volumes/Games/Summers Heartbeat Deluxe Edition I KnoW [PC]",
+    "status": "container_package",
+    "platform": "PC",
+    "title": "Summers Heartbeat Deluxe Edition I KnoW",
+    "title_id": "",
+    "subdirs": []
+  },
+  "/Volumes/Games/AI Limit [PC]/Tainted Grail The Fall of Avalon": {
+    "target": "/Volumes/Games/Tainted Grail - The Fall of Avalon [PC]",
+    "status": "container_package",
+    "platform": "PC",
+    "title": "Tainted Grail - The Fall of Avalon",
+    "title_id": "",
+    "subdirs": [
+      "Updates"
+    ]
+  },
+  "/Volumes/Games/AI Limit [PC]/The Alters": {
+    "target": "/Volumes/Games/The Alters [PC]",
+    "status": "container_package",
+    "platform": "PC",
+    "title": "The Alters",
+    "title_id": "",
+    "subdirs": []
+  },
+  "/Volumes/Games/AI Limit [PC]/The Elder Scrolls IV Oblivion Remastered": {
+    "target": "/Volumes/Games/The Elder Scrolls IV - Oblivion Remastered [PC]",
+    "status": "container_package",
+    "platform": "PC",
+    "title": "The Elder Scrolls IV - Oblivion Remastered",
+    "title_id": "",
+    "subdirs": []
+  },
+  "/Volumes/Games/AI Limit [PC]/The Last of Us Part I": {
+    "target": "/Volumes/Games/The Last of Us Part I [PC]",
+    "status": "container_package",
+    "platform": "PC",
+    "title": "The Last of Us Part I",
+    "title_id": "",
+    "subdirs": [
+      "The Last of Us Part I",
+      "Updates"
+    ]
+  },
+  "/Volumes/Games/AI Limit [PC]/The Last of Us Part II Remastered": {
+    "target": "/Volumes/Games/The Last of Us Part II Remastered [PC]",
+    "status": "container_package",
+    "platform": "PC",
+    "title": "The Last of Us Part II Remastered",
+    "title_id": "",
+    "subdirs": [
+      "Crack",
+      "Updates"
+    ]
+  },
+  "/Volumes/Games/AI Limit [PC]/The Universim": {
+    "target": "/Volumes/Games/The Universim [PC]",
+    "status": "container_package",
+    "platform": "PC",
+    "title": "The Universim",
+    "title_id": "",
+    "subdirs": [
+      "The_Universim_v47416_MULTi8_ElAmigos"
+    ]
+  },
+  "/Volumes/Games/AI Limit [PC]/Tomb Raider IV VI Remastered": {
+    "target": "/Volumes/Games/Tomb Raider IV\u2022V\u2022VI Remastered [PC]",
+    "status": "container_package",
+    "platform": "PC",
+    "title": "Tomb Raider IV\u2022V\u2022VI Remastered",
+    "title_id": "",
+    "subdirs": []
+  },
+  "/Volumes/Games/AI Limit [PC]/Transport Fever 3": {
+    "target": "/Volumes/Games/Transport Fever 3 [PC]",
+    "status": "container_package",
+    "platform": "PC",
+    "title": "Transport Fever 3",
+    "title_id": "",
+    "subdirs": []
+  },
+  "/Volumes/Games/AI Limit [PC]/Valheim": {
+    "target": "/Volumes/Games/Valheim [PC]",
+    "status": "container_package",
+    "platform": "PC",
+    "title": "Valheim",
+    "title_id": "",
+    "subdirs": []
+  },
+  "/Volumes/Games/AI Limit [PC]/Warhammer 40,000 Space Marine 2 1 Year Anniversary Edition Bonuses": {
+    "target": "/Volumes/Games/Warhammer 40,000 Space Marine 2 1 Year Anniversary Edition Bonuses [PC]",
+    "status": "container_package",
+    "platform": "PC",
+    "title": "Warhammer 40,000 Space Marine 2 1 Year Anniversary Edition Bonuses",
+    "title_id": "",
+    "subdirs": []
+  },
+  "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Baldur's Gate 3 - Digital Deluxe Edition": {
+    "target": "/Volumes/Games/Baldur's Gate 3 - Digital Deluxe Edition [PC]",
+    "status": "container_package",
+    "platform": "PC",
+    "title": "Baldur's Gate 3 - Digital Deluxe Edition",
+    "title_id": "",
+    "subdirs": [
+      "Baldurs Gate 3"
+    ]
+  },
+  "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Black Myth - Wukong": {
+    "target": "/Volumes/Games/Black Myth Wukong [PS5]",
+    "status": "container_package",
+    "platform": "PS5",
+    "title": "Black Myth Wukong",
+    "title_id": "",
+    "subdirs": [
+      "Black.Myth.Wukong-voices38",
+      "Dead.Cells.PS5-DUPLEX",
+      "Digimon_Story_Time_Stranger_Update_v1.2.2_NSW-VENOM",
+      "Five.Hearts.Under.One.Roof..MULTi13-ElAmigos",
+      "Five.Hearts.Under.One.Roof.2.MULTi10-ElAmigos",
+      "Hollow.Knight.Silksong.PS5-DUPLEX",
+      "Kingdom Come Deliverance II v1.5.0 ElAmigos",
+      "Kingdom Hearts III and Re-Mind (build 13.06.2024)-ElAmigos",
+      "Kingdom.Hearts.III.DLC.Unlocker.PS4-DUPLEX",
+      "Kingdom.Hearts.III.Update.v1.10.PS4-DUPLEX",
+      "Rayman.30th.Anniversary.Edition.PS5-DUPLEX",
+      "Summers.Heartbeat.Deluxe.Edition-I KnoW",
+      "Super_Mario_Galaxy_NSW-VENOM",
+      "Tomb_Raider_I-III_Remastered_Starring_Lara_Croft_Update_v1.1.4_NSW-VENOM",
+      "Transport.Fever.3.Deluxe.Edition.v40408.MULTi13-ElAmigos",
+      "Valheim.v1.0.7.MULTi14-ElAmigos"
+    ]
+  },
+  "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Clair Obscur - Expedition 33": {
+    "target": "/Volumes/Games/Clair Obscur - Expedition 33 [PC]",
+    "status": "conflict",
+    "platform": "PC",
+    "title": "Clair Obscur - Expedition 33",
+    "title_id": "",
+    "subdirs": []
+  },
+  "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Doom - Eternal Deluxe Edition/DOOM Eternal": {
+    "target": "/Volumes/Games/Doom - Eternal Deluxe Edition [PC]",
+    "status": "conflict",
+    "platform": "PC",
+    "title": "Doom - Eternal Deluxe Edition",
+    "title_id": "",
+    "subdirs": [
+      "DOOM Eternal (build 05.09.2023)"
+    ]
+  },
+  "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Elden Ring - Collector's Edition": {
+    "target": "/Volumes/Games/Elden Ring - Collector's Edition [PC]",
+    "status": "container_package",
+    "platform": "PC",
+    "title": "Elden Ring - Collector's Edition",
+    "title_id": "",
+    "subdirs": [
+      "Elden Ring Deluxe Edition v1.12.0"
+    ]
+  },
+  "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Final Fantasy VII Rebirth/Final.Fantasy.VII.Rebirth.Deluxe.Edition.MULTi11-ElAmigos": {
+    "target": "/Volumes/Games/Final Fantasy VII Rebirth [PC]",
+    "status": "conflict",
+    "platform": "PC",
+    "title": "Final Fantasy VII Rebirth",
+    "title_id": "",
+    "subdirs": [
+      "Final Fantasy VII Rebirth"
+    ]
+  },
+  "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Hades II": {
+    "target": "/Volumes/Games/Hades II [PC]",
+    "status": "conflict",
+    "platform": "PC",
+    "title": "Hades II",
+    "title_id": "",
+    "subdirs": [
+      "Hades II v1.132940-ElAmigos"
+    ]
+  },
+  "/Volumes/Games/Baldur's Gate 3 Digital [PC]/High on Life 2/High On Life (build 03.10.2023)": {
+    "target": "/Volumes/Games/High on Life 2 (2023) [PC]",
+    "status": "container_package",
+    "platform": "PC",
+    "title": "High on Life 2",
+    "title_id": "",
+    "subdirs": []
+  },
+  "/Volumes/Games/Baldur's Gate 3 Digital [PC]/High on Life 2/High.On.Life.2.MULTi7-ElAmigos": {
+    "target": "/Volumes/Games/High on Life 2 [PC]",
+    "status": "conflict",
+    "platform": "PC",
+    "title": "High on Life 2",
+    "title_id": "",
+    "subdirs": []
+  },
+  "/Volumes/Games/Baldur's Gate 3 Digital [PC]/High on Life 2/High_On_Life_High_On_Knife-Razor1911": {
+    "target": "/Volumes/Games/High on Life 2 [PC]",
+    "status": "conflict",
+    "platform": "PC",
+    "title": "High on Life 2",
+    "title_id": "",
+    "subdirs": [
+      "High_On_Life_High_On_Knife-Razor1911"
+    ]
+  },
+  "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Hogwarts Legacy - Deluxe Edition": {
+    "target": "/Volumes/Games/Hogwarts Legacy - Deluxe Edition [PC]",
+    "status": "container_package",
+    "platform": "PC",
+    "title": "Hogwarts Legacy - Deluxe Edition",
+    "title_id": "",
+    "subdirs": [
+      "Hogwarts_Legacy_Deluxe_Edition_MULTi11-ElAmigos"
+    ]
+  },
+  "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Invincible Vs - Deluxe Edition": {
+    "target": "/Volumes/Games/Invincible Vs - Deluxe Edition [PC]",
+    "status": "conflict",
+    "platform": "PC",
+    "title": "Invincible Vs - Deluxe Edition",
+    "title_id": "",
+    "subdirs": [
+      "Invincible.VS.MULTi6-ElAmigos"
+    ]
+  },
+  "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Kiborg": {
+    "target": "/Volumes/Games/Kiborg [PC]",
+    "status": "conflict",
+    "platform": "PC",
+    "title": "Kiborg",
+    "title_id": "",
+    "subdirs": [
+      "Kiborg"
+    ]
+  },
+  "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Lords of the Fallen II": {
+    "target": "/Volumes/Games/Lords of the Fallen II [PC]",
+    "status": "container_package",
+    "platform": "PC",
+    "title": "Lords of the Fallen II",
+    "title_id": "",
+    "subdirs": [
+      "Lords of the Fallen"
+    ]
+  },
+  "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Pragmata - Deluxe Edition": {
+    "target": "/Volumes/Games/Pragmata - Deluxe Edition [PC]",
+    "status": "container_package",
+    "platform": "PC",
+    "title": "Pragmata - Deluxe Edition",
+    "title_id": "",
+    "subdirs": [
+      "Pragmata-ElAmigos"
+    ]
+  },
+  "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Remnant II/Remnant_II_v444.163_.Ultimate.Edition.MULTi10-ElAmigos": {
+    "target": "/Volumes/Games/Remnant II [PC]",
+    "status": "conflict",
+    "platform": "PC",
+    "title": "Remnant II",
+    "title_id": "",
+    "subdirs": [
+      "Remnant II v444.163"
+    ]
+  },
+  "/Volumes/Games/Baldur's Gate 3 Digital [PC]/RuneScape - Dragonwilds/Dragonwilds": {
+    "target": "/Volumes/Games/RuneScape - Dragonwilds [PC]",
+    "status": "container_package",
+    "platform": "PC",
+    "title": "RuneScape - Dragonwilds",
+    "title_id": "",
+    "subdirs": [
+      "RuneScape.Dragonwilds.Deluxe.Edition.v240163.MULTi11-ElAmigos"
+    ]
+  },
+  "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Satisfactory": {
+    "target": "/Volumes/Games/Satisfactory [PC]",
+    "status": "conflict",
+    "platform": "PC",
+    "title": "Satisfactory",
+    "title_id": "",
+    "subdirs": [
+      "Satisfactory (build 365306)"
+    ]
+  },
+  "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Split Fiction": {
+    "target": "/Volumes/Games/Split Fiction [PC]",
+    "status": "conflict",
+    "platform": "PC",
+    "title": "Split Fiction",
+    "title_id": "",
+    "subdirs": [
+      "Split Fiction"
+    ]
+  },
+  "/Volumes/Games/Baldur's Gate 3 Digital [PC]/Tainted Grail - The Fall of Avalon": {
+    "target": "/Volumes/Games/Tainted Grail - The Fall of Avalon [PC]",
+    "status": "conflict",
+    "platform": "PC",
+    "title": "Tainted Grail - The Fall of Avalon",
+    "title_id": "",
+    "subdirs": [
+      "Tainted  Grail The Fall of Avalon"
+    ]
+  },
+  "/Volumes/Games/Baldur's Gate 3 Digital [PC]/The Alters": {
+    "target": "/Volumes/Games/The Alters [PC]",
+    "status": "conflict",
+    "platform": "PC",
+    "title": "The Alters",
+    "title_id": "",
+    "subdirs": [
+      "The Alters"
+    ]
+  },
+  "/Volumes/Games/Baldur's Gate 3 Digital [PC]/The Elder Scrolls IV - Oblivion Remastered/The.Elder.Scrolls.IV.Oblivion.Remastered.Deluxe.Edition.MULTi9-ElAmigos": {
+    "target": "/Volumes/Games/The Elder Scrolls IV - Oblivion Remastered [PC]",
+    "status": "conflict",
+    "platform": "PC",
+    "title": "The Elder Scrolls IV - Oblivion Remastered",
+    "title_id": "",
+    "subdirs": [
+      "The Elder Scrolls IV Oblivion Remastered"
+    ]
+  },
+  "/Volumes/Games/Cyberpunk 2077 [PC]/Updates/Cyberpunk 2077 update 2.20 - 2.21.exe": {
+    "target": "/Volumes/Games/Cyberpunk 2077 (2077) [PC]/Updates/Cyberpunk 2077 update 2.20 - 2.21.exe",
+    "status": "secondary_update",
+    "platform": "PC",
+    "title": "Cyberpunk 2077",
+    "title_id": "",
+    "subdirs": []
+  },
+  "/Volumes/Games/Dead or Alive 6 Digital [PC]": {
+    "target": "/Volumes/Games/Dead or Alive 6 - Digital Deluxe Edition [PC]",
+    "status": "container_package",
+    "platform": "PC",
+    "title": "Dead or Alive 6 - Digital Deluxe Edition",
+    "title_id": "",
+    "subdirs": [
+      "Dead or Alive 6 Deluxe Edition"
+    ]
+  },
+  "/Volumes/Games/Elden Ring [PC]/Updates/Elden Ring update 1.12.0 - 1.12.3.exe": {
+    "target": "/Volumes/Games/Elden Ring [PC]/Updates/Elden Ring update 1.12.0 - 1.12.3.exe",
+    "status": "already_organized",
+    "platform": "PC",
+    "title": "Elden Ring",
+    "title_id": "",
+    "subdirs": []
+  },
+  "/Volumes/Games/Elden Ring [PC]/Updates/Elden Ring update 1.12.3 - 1.13.0.exe": {
+    "target": "/Volumes/Games/Elden Ring [PC]/Updates/Elden Ring update 1.12.3 - 1.13.0.exe",
+    "status": "already_organized",
+    "platform": "PC",
+    "title": "Elden Ring",
+    "title_id": "",
+    "subdirs": []
+  },
+  "/Volumes/Games/Elden Ring [PC]/Updates/Elden Ring update 1.13.0 - 1.14.0.exe": {
+    "target": "/Volumes/Games/Elden Ring [PC]/Updates/Elden Ring update 1.13.0 - 1.14.0.exe",
+    "status": "already_organized",
+    "platform": "PC",
+    "title": "Elden Ring",
+    "title_id": "",
+    "subdirs": []
+  },
+  "/Volumes/Games/Elden Ring [PC]/Updates/Elden Ring update 1.14.0 - 1.15.0.exe": {
+    "target": "/Volumes/Games/Elden Ring [PC]/Updates/Elden Ring update 1.14.0 - 1.15.0.exe",
+    "status": "already_organized",
+    "platform": "PC",
+    "title": "Elden Ring",
+    "title_id": "",
+    "subdirs": []
+  },
+  "/Volumes/Games/Elden Ring [PC]/Updates/Elden Ring update 1.15.0 - 1.16.0.exe": {
+    "target": "/Volumes/Games/Elden Ring [PC]/Updates/Elden Ring update 1.15.0 - 1.16.0.exe",
+    "status": "already_organized",
+    "platform": "PC",
+    "title": "Elden Ring",
+    "title_id": "",
+    "subdirs": []
+  },
+  "/Volumes/Games/God of War Ragnaro\u0308k [PC]/God of War - Ragnarok": {
+    "target": "/Volumes/Games/God of War Ragnar\u00f6k [PC]",
+    "status": "conflict",
+    "platform": "PC",
+    "title": "God of War Ragnar\u00f6k",
+    "title_id": "",
+    "subdirs": []
+  },
+  "/Volumes/Games/God of War Ragnaro\u0308k [PC]/Gof of War": {
+    "target": "/Volumes/Games/God of War [PlayStation 2]",
+    "status": "container_package",
+    "platform": "PlayStation 2",
+    "title": "God of War",
+    "title_id": "",
+    "subdirs": []
+  },
+  "/Volumes/Games/God of War [PC]/Updates/God of War update 1.0.2.exe": {
+    "target": "/Volumes/Games/God of War [PC]/Updates/God of War update 1.0.2.exe",
+    "status": "already_organized",
+    "platform": "PC",
+    "title": "God of War",
+    "title_id": "",
+    "subdirs": []
+  },
+  "/Volumes/Games/God of War [PC]/Updates/God of War update 1.0.3.exe": {
+    "target": "/Volumes/Games/God of War [PC]/Updates/God of War update 1.0.3.exe",
+    "status": "already_organized",
+    "platform": "PC",
+    "title": "God of War",
+    "title_id": "",
+    "subdirs": []
+  },
+  "/Volumes/Games/God of War [PC]/Updates/God of War update 1.0.4.exe": {
+    "target": "/Volumes/Games/God of War [PC]/Updates/God of War update 1.0.4.exe",
+    "status": "already_organized",
+    "platform": "PC",
+    "title": "God of War",
+    "title_id": "",
+    "subdirs": []
+  },
+  "/Volumes/Games/God of War [PC]/Updates/God of War update 1.0.5.exe": {
+    "target": "/Volumes/Games/God of War [PC]/Updates/God of War update 1.0.5.exe",
+    "status": "already_organized",
+    "platform": "PC",
+    "title": "God of War",
+    "title_id": "",
+    "subdirs": []
+  },
+  "/Volumes/Games/God of War [PC]/Updates/God of War update 1.0.6.exe": {
+    "target": "/Volumes/Games/God of War [PC]/Updates/God of War update 1.0.6.exe",
+    "status": "already_organized",
+    "platform": "PC",
+    "title": "God of War",
+    "title_id": "",
+    "subdirs": []
+  },
+  "/Volumes/Games/God of War [PC]/Updates/God of War update 1.0.8.exe": {
+    "target": "/Volumes/Games/God of War [PC]/Updates/God of War update 1.0.8.exe",
+    "status": "already_organized",
+    "platform": "PC",
+    "title": "God of War",
+    "title_id": "",
+    "subdirs": []
+  },
+  "/Volumes/Games/Kingdom Hearts III DUPLEX [PS4]/Kingdom.Hearts.III.Update.v1.10.PS4-DUPLEX.pkg": {
+    "target": "/Volumes/Games/Kingdom Hearts III 10 [PC]/Kingdom.Hearts.III.Update.v1.10.PS4-DUPLEX.pkg",
+    "status": "rename_and_move",
+    "platform": "PC",
+    "title": "Kingdom Hearts III 10",
+    "title_id": "",
+    "subdirs": []
+  },
+  "/Volumes/Games/Kingdom Hearts III Dawn Till Dusk Keyblade DLC [PS4]/Kingdom.Hearts.III.Dawn.Till.Dusk.Keyblade.DLC.PS4-DUPLEX.pkg": {
+    "target": "/Volumes/Games/Kingdom Hearts III Dawn Till Dusk Keyblade [PC]/Kingdom.Hearts.III.Dawn.Till.Dusk.Keyblade.DLC.PS4-DUPLEX.pkg",
+    "status": "rename_and_move",
+    "platform": "PC",
+    "title": "Kingdom Hearts III Dawn Till Dusk Keyblade",
+    "title_id": "",
+    "subdirs": []
+  },
+  "/Volumes/Games/Kingdom Hearts III Midnight Blue Keyblade DLC [PS4]/Kingdom.Hearts.III.Midnight.Blue.Keyblade.DLC.PS4-DUPLEX.pkg": {
+    "target": "/Volumes/Games/Kingdom Hearts III Midnight Blue Keyblade [PC]/Kingdom.Hearts.III.Midnight.Blue.Keyblade.DLC.PS4-DUPLEX.pkg",
+    "status": "rename_and_move",
+    "platform": "PC",
+    "title": "Kingdom Hearts III Midnight Blue Keyblade",
+    "title_id": "",
+    "subdirs": []
+  },
+  "/Volumes/Games/Kingdom Hearts III Re Mind DLC [PS4]/Kingdom.Hearts.III.Re.Mind.DLC.PS4-DUPLEX.pkg": {
+    "target": "/Volumes/Games/Kingdom Hearts III Re Mind [PC]/Kingdom.Hearts.III.Re.Mind.DLC.PS4-DUPLEX.pkg",
+    "status": "rename_and_move",
+    "platform": "PC",
+    "title": "Kingdom Hearts III Re Mind",
+    "title_id": "",
+    "subdirs": []
+  },
+  "/Volumes/Games/Kingdom Hearts III Starlight Keyblade DLC [PS4]/Kingdom.Hearts.III.Starlight.Keyblade.DLC.PS4-DUPLEX.pkg": {
+    "target": "/Volumes/Games/Kingdom Hearts III Starlight Keyblade [PC]/Kingdom.Hearts.III.Starlight.Keyblade.DLC.PS4-DUPLEX.pkg",
+    "status": "rename_and_move",
+    "platform": "PC",
+    "title": "Kingdom Hearts III Starlight Keyblade",
+    "title_id": "",
+    "subdirs": []
+  },
+  "/Volumes/Games/Lies of P H1 [PC]": {
+    "target": "/Volumes/Games/Lies of P - Complete Edition [Switch]",
+    "status": "container_package",
+    "platform": "Switch",
+    "title": "Lies of P - Complete Edition",
+    "title_id": "",
+    "subdirs": [
+      "Lies of P v1.5.0.0 H1"
+    ]
+  },
+  "/Volumes/Games/Lords of the Fallen 2023 [PC]/Updates/Lords of the Fallen 2023 update 2.0.13 - 2.0.29.exe": {
+    "target": "/Volumes/Games/Lords of the Fallen 2023 (2023) [PC]/Updates/Lords of the Fallen 2023 update 2.0.13 - 2.0.29.exe",
+    "status": "secondary_update",
+    "platform": "PC",
+    "title": "Lords of the Fallen 2023",
+    "title_id": "",
+    "subdirs": []
+  },
+  "/Volumes/Games/Lords of the Fallen 2023 [PC]/Updates/Lords of the Fallen 2023 update 2.0.9 - 2.0.13.exe": {
+    "target": "/Volumes/Games/Lords of the Fallen 2023 (2023) [PC]/Updates/Lords of the Fallen 2023 update 2.0.9 - 2.0.13.exe",
+    "status": "secondary_update",
+    "platform": "PC",
+    "title": "Lords of the Fallen 2023",
+    "title_id": "",
+    "subdirs": []
+  },
+  "/Volumes/Games/Marvel's Spider Man Miles Morales [PC]/Marvel's Spider Man Miles Morales": {
+    "target": "/Volumes/Games/Marvel's Spider Man - Miles Morales Ultimate Edition [PS5]",
+    "status": "container_package",
+    "platform": "PS5",
+    "title": "Marvel's Spider Man - Miles Morales Ultimate Edition",
+    "title_id": "",
+    "subdirs": []
+  },
+  "/Volumes/Games/Marvel's Spider Man Miles Morales [PC]/Marvel's Spider Man Remastered": {
+    "target": "/Volumes/Games/Marvel's Spider Man [PS4]",
+    "status": "container_package",
+    "platform": "PS4",
+    "title": "Marvel's Spider Man",
+    "title_id": "",
+    "subdirs": []
+  },
+  "/Volumes/Games/Marvel's Spider Man Miles Morales [PC]/Updates/Marvel's Spider-Man Miles Morales update 1.1116.0.0 - 1.1122.0.0.exe": {
+    "target": "/Volumes/Games/Marvel's Spider Man Miles Morales [PC]/Updates/Marvel's Spider-Man Miles Morales update 1.1116.0.0 - 1.1122.0.0.exe",
+    "status": "already_organized",
+    "platform": "PC",
+    "title": "Marvel's Spider Man Miles Morales",
+    "title_id": "",
+    "subdirs": []
+  },
+  "/Volumes/Games/Marvel's Spider Man Miles Morales [PC]/Updates/Marvel's Spider-Man Miles Morales update 1.1122.0.0 - 1.1130.0.0.exe": {
+    "target": "/Volumes/Games/Marvel's Spider Man Miles Morales [PC]/Updates/Marvel's Spider-Man Miles Morales update 1.1122.0.0 - 1.1130.0.0.exe",
+    "status": "already_organized",
+    "platform": "PC",
+    "title": "Marvel's Spider Man Miles Morales",
+    "title_id": "",
+    "subdirs": []
+  },
+  "/Volumes/Games/Marvel's Spider Man Miles Morales [PC]/Updates/Marvel's Spider-Man Miles Morales update 1.1130.0.0 - 1.1209.0.0.exe": {
+    "target": "/Volumes/Games/Marvel's Spider Man Miles Morales [PC]/Updates/Marvel's Spider-Man Miles Morales update 1.1130.0.0 - 1.1209.0.0.exe",
+    "status": "already_organized",
+    "platform": "PC",
+    "title": "Marvel's Spider Man Miles Morales",
+    "title_id": "",
+    "subdirs": []
+  },
+  "/Volumes/Games/Marvel's Spider Man Miles Morales [PC]/Updates/Marvel's Spider-Man Miles Morales update 1.1209.0.0 - 2.209.0.0.exe": {
+    "target": "/Volumes/Games/Marvel's Spider Man Miles Morales [PC]/Updates/Marvel's Spider-Man Miles Morales update 1.1209.0.0 - 2.209.0.0.exe",
+    "status": "already_organized",
+    "platform": "PC",
+    "title": "Marvel's Spider Man Miles Morales",
+    "title_id": "",
+    "subdirs": []
+  },
+  "/Volumes/Games/Marvel's Spider Man Miles Morales [PC]/Updates/Marvel's Spider-Man Miles Morales update 2.1012 - 3.617.1.exe": {
+    "target": "/Volumes/Games/Marvel's Spider Man Miles Morales [PC]/Updates/Marvel's Spider-Man Miles Morales update 2.1012 - 3.617.1.exe",
+    "status": "already_organized",
+    "platform": "PC",
+    "title": "Marvel's Spider Man Miles Morales",
+    "title_id": "",
+    "subdirs": []
+  },
+  "/Volumes/Games/Marvel's Spider Man Miles Morales [PC]/Updates/Marvel's Spider-Man Miles Morales update 2.209 - 2.1012.exe": {
+    "target": "/Volumes/Games/Marvel's Spider Man Miles Morales [PC]/Updates/Marvel's Spider-Man Miles Morales update 2.209 - 2.1012.exe",
+    "status": "already_organized",
+    "platform": "PC",
+    "title": "Marvel's Spider Man Miles Morales",
+    "title_id": "",
+    "subdirs": []
+  },
+  "/Volumes/Games/Marvel's Spider Man Remastered [PC]/Updates/Marvel's Spider-Man Remastered update 1.812.1.0 - 1.824.1.0.exe": {
+    "target": "/Volumes/Games/Marvel's Spider Man Remastered [PC]/Updates/Marvel's Spider-Man Remastered update 1.812.1.0 - 1.824.1.0.exe",
+    "status": "already_organized",
+    "platform": "PC",
+    "title": "Marvel's Spider Man Remastered",
+    "title_id": "",
+    "subdirs": []
+  },
+  "/Volumes/Games/Marvel's Spider Man Remastered [PC]/Updates/Marvel's Spider-Man Remastered update 1.824.1.0 - 1.919.0.0.exe": {
+    "target": "/Volumes/Games/Marvel's Spider Man Remastered [PC]/Updates/Marvel's Spider-Man Remastered update 1.824.1.0 - 1.919.0.0.exe",
+    "status": "already_organized",
+    "platform": "PC",
+    "title": "Marvel's Spider Man Remastered",
+    "title_id": "",
+    "subdirs": []
+  },
+  "/Volumes/Games/Marvel's Spider Man Remastered [PC]/Updates/Marvel's Spider-Man Remastered update 1.919.0.0 - 1.1006.0.0.exe": {
+    "target": "/Volumes/Games/Marvel's Spider Man Remastered [PC]/Updates/Marvel's Spider-Man Remastered update 1.919.0.0 - 1.1006.0.0.exe",
+    "status": "already_organized",
+    "platform": "PC",
+    "title": "Marvel's Spider Man Remastered",
+    "title_id": "",
+    "subdirs": []
+  },
+  "/Volumes/Games/Metroid Prime 4 Beyond HR [Switch]/Metroid Prime 4 Beyond NSW-HR.xci": {
+    "target": "/Volumes/Games/Metroid Prime 4 Beyond HR [Switch]/Metroid Prime 4 Beyond NSW-HR.xci",
+    "status": "already_organized",
+    "platform": "Switch",
+    "title": "Metroid Prime 4 Beyond HR",
+    "title_id": "",
+    "subdirs": []
+  },
+  "/Volumes/Games/PC/1 /Updates/elamigos-1.bin": {
+    "target": "/Volumes/Games/1 [PC]/Updates/elamigos-1.bin",
+    "status": "secondary_update",
+    "platform": "PC",
+    "title": "1",
+    "title_id": "",
+    "subdirs": []
+  },
+  "/Volumes/Games/PC/AI Limit": {
+    "target": "/Volumes/Games/AI Limit [PC]",
+    "status": "conflict",
+    "platform": "PC",
+    "title": "AI Limit",
+    "title_id": "",
+    "subdirs": [
+      "AI Limit"
+    ]
+  },
+  "/Volumes/Games/PC/Balatro": {
+    "target": "/Volumes/Games/Balatro - Special Edition [PC]",
+    "status": "container_package",
+    "platform": "PC",
+    "title": "Balatro - Special Edition",
+    "title_id": "",
+    "subdirs": []
+  },
+  "/Volumes/Games/PC/Balatro - Special Edition": {
+    "target": "/Volumes/Games/Balatro - Special Edition [PC]",
+    "status": "conflict",
+    "platform": "PC",
+    "title": "Balatro - Special Edition",
+    "title_id": "",
+    "subdirs": []
+  },
+  "/Volumes/Games/PC/Baldur's Gate III": {
+    "target": "/Volumes/Games/Baldur's Gate III [PC]",
+    "status": "conflict",
+    "platform": "PC",
+    "title": "Baldur's Gate III",
+    "title_id": "",
+    "subdirs": []
+  },
+  "/Volumes/Games/PC/Black Myth - Wukong": {
+    "target": "/Volumes/Games/Black Myth - Wukong [PC]",
+    "status": "conflict",
+    "platform": "PC",
+    "title": "Black Myth - Wukong",
+    "title_id": "",
+    "subdirs": []
+  },
+  "/Volumes/Games/PC/Blade and Sorcery VR": {
+    "target": "/Volumes/Games/Blade and Sorcery VR [PC]",
+    "status": "container_package",
+    "platform": "PC",
+    "title": "Blade and Sorcery VR",
+    "title_id": "",
+    "subdirs": []
+  },
+  "/Volumes/Games/PC/Call of Duty - Black Ops II": {
+    "target": "/Volumes/Games/Call of Duty - Black Ops II [PC]",
+    "status": "container_package",
+    "platform": "PC",
+    "title": "Call of Duty - Black Ops II",
+    "title_id": "",
+    "subdirs": []
+  },
+  "/Volumes/Games/Red Dead Redemption 2 [PC]": {
+    "target": "/Volumes/Games/Red Dead Redemption 2 - Special Edition [PS4]",
+    "status": "container_package",
+    "platform": "PS4",
+    "title": "Red Dead Redemption 2 - Special Edition",
+    "title_id": "",
+    "subdirs": [
+      "Red_Dead_Redemption_2_Ultimate_Edition-Razor1911"
+    ]
+  },
+  "/Volumes/Games/Red Dead Redemption [PC]": {
+    "target": "/Volumes/Games/Red Dead Redemption [PC]",
+    "status": "already_organized",
+    "platform": "PC",
+    "title": "Red Dead Redemption",
+    "title_id": "",
+    "subdirs": [
+      "Red Dead Redemption"
+    ]
+  },
+  "/Volumes/Games/Sifu [PC]": {
+    "target": "/Volumes/Games/Sifu - Deluxe Edition [PC]",
+    "status": "container_package",
+    "platform": "PC",
+    "title": "Sifu - Deluxe Edition",
+    "title_id": "",
+    "subdirs": [
+      "Sifu (Deluxe Edition)"
+    ]
+  },
+  "/Volumes/Games/Stellar Blade Digital [PC]": {
+    "target": "/Volumes/Games/Stellar Blade - Digital Deluxe Edition [PS5]",
+    "status": "container_package",
+    "platform": "PS5",
+    "title": "Stellar Blade - Digital Deluxe Edition",
+    "title_id": "",
+    "subdirs": [
+      "Stellar.Blade-voices38"
+    ]
+  },
+  "/Volumes/Games/The Legend Of Zelda Tears Of The Kingdom NSW [Switch]/The_Legend_Of_Zelda_Tears_Of_The_Kingdom_NSW-NiiNTENDO.xci": {
+    "target": "/Volumes/Games/The Legend Of Zelda Tears Of The Kingdom [Switch]/The_Legend_Of_Zelda_Tears_Of_The_Kingdom_NSW-NiiNTENDO.xci",
+    "status": "rename_and_move",
+    "platform": "Switch",
+    "title": "The Legend Of Zelda Tears Of The Kingdom",
+    "title_id": "",
+    "subdirs": []
+  },
+  "/Volumes/Games/app0 [PS5]": {
+    "target": "/Volumes/Games/Hollow Knight - Silksong [PS5]",
+    "status": "container_package",
+    "platform": "PS5",
+    "title": "Hollow Knight: Silksong",
+    "title_id": "PPSA12544",
+    "subdirs": [
+      "Media",
+      "_DUPLEX_",
+      "fakelib",
+      "sce_module",
+      "sce_sys"
+    ]
+  }
+}

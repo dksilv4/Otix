@@ -221,7 +221,7 @@ const DkMediaCard = memo(({
       )}
 
       {/* Media Activity Tag (Requested, Processing, Available) */}
-      {hasActivityTag && (
+      {effectiveActivityStatus && hasActivityTag && (
         <div
           className={cn(
             'absolute z-10',
@@ -249,7 +249,7 @@ const DkMediaCard = memo(({
                     activity={{
                       status: 'available',
                       mediaType: mediaType as 'movie' | 'show',
-                      tmdbId,
+                      tmdbId: tmdbId ? String(tmdbId) : undefined,
                       title,
                       year: year ? Number(year) : undefined,
                       nodeName: providerLabel || 'Stream',

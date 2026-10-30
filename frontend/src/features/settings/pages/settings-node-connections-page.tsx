@@ -10,9 +10,9 @@ import { SettingsLockedState } from '../components/molecules/settings-locked-sta
 import { GLOBAL_PROFILE_NODE_ID } from '../utils/node-switcher'
 
 export const SettingsNodeConnectionsPage = () => {
-  const { isAuthenticated } = useAuth()
+  const { isAuthenticated, user } = useAuth()
   const { servers, selectedNode, selectedNodeId, setSelectedNodeId, isLoading } = useSettingsNode()
-  const { config: dlConfig } = useDownloadConfig()
+  const { config: dlConfig } = useDownloadConfig(user?.id)
   const [searchQuery, setSearchQuery] = useState('')
 
   const activeNodeId =

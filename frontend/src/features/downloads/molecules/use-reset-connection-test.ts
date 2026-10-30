@@ -1,10 +1,10 @@
 import { useEffect, useRef } from 'react'
 
-export function useResetConnectionTest(
-  connection: { host: string; port: number; apiKey: string; useSsl: boolean; urlBase: string },
+export function useResetConnectionTest<T extends Record<string, unknown> | readonly unknown[]>(
+  dependencies: T,
   reset: () => void,
 ) {
-  const fingerprint = `${connection.host}\0${connection.port}\0${connection.apiKey}\0${connection.useSsl}\0${connection.urlBase}`
+  const fingerprint = JSON.stringify(dependencies)
   const previous = useRef(fingerprint)
   useEffect(() => {
     if (previous.current === fingerprint) return
