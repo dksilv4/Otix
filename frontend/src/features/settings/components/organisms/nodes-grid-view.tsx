@@ -169,7 +169,7 @@ export const NodesGridView = ({
                   'bg-[var(--dk-surface-field)] border border-white/[0.04]',
                 )}
               >
-                <NodeItemTypeIcon type={item.type} size={18} />
+                <NodeItemTypeIcon type={item.type} isApp={item.typeLabel === 'Otix App'} size={18} />
               </div>
               <div className="min-w-0">
                 <h4

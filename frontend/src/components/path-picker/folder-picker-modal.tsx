@@ -31,11 +31,17 @@ export const FolderPickerModal = ({
   const { toast } = useOptionalToast()
   const { data: servers = [] } = useGameServers()
   const remoteServers = useMemo(
-    () => servers.filter((s) => !isLocalDesktopNode(s) && Number(s.id) > 0),
+    () =>
+      servers.filter(
+        (s) =>
+          Number(s.id) > 0 &&
+          !s.localUrl?.startsWith('otix://') &&
+          !s.primaryUrl?.startsWith('otix://'),
+      ),
     [servers],
   )
   const [selectedServerId, setSelectedServerId] = useState<number | undefined>(
-    initialServerId && !isLocalDesktopNodeId(initialServerId)
+    initialServerId && remoteServers.some((s) => s.id === initialServerId)
       ? initialServerId
       : remoteServers[0]?.id,
   )

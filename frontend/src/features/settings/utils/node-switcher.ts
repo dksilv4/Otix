@@ -1,5 +1,5 @@
 import type { GameServer } from '@/features/downloads/types'
-import { isLocalDesktopNode, LOCAL_DESKTOP_NODE_ID } from '../local-desktop-node'
+import { isLocalDesktopNode } from '../local-desktop-node'
 
 export const GLOBAL_PROFILE_NODE_ID = 0
 
@@ -31,11 +31,11 @@ export function buildNodeSwitcherOptions(servers: GameServer[]): NodeSwitcherOpt
     const isLocal = isLocalDesktopNode(s)
     options.push({
       value: String(s.id),
-      label: s.name,
+      label: isLocal ? `${s.name} (Otix App)` : s.name,
       isOnline: Boolean(s.isOnline),
       isLocal,
       isGlobal: false,
-      host: isLocal ? 'otix://desktop' : s.primaryUrl || s.localUrl || undefined,
+      host: s.primaryUrl || s.localUrl || undefined,
     })
   }
 
@@ -67,17 +67,27 @@ export function getActiveNodeInfo(
     }
   }
 
-  const effectiveId = nodeId ?? (servers[0]?.id ?? LOCAL_DESKTOP_NODE_ID)
+  const effectiveId = nodeId ?? (servers[0]?.id ?? GLOBAL_PROFILE_NODE_ID)
   const matched = servers.find((s) => s.id === effectiveId)
 
   if (!matched) {
+    if (effectiveId === GLOBAL_PROFILE_NODE_ID) {
+      return {
+        id: GLOBAL_PROFILE_NODE_ID,
+        name: 'Default Node Profile',
+        isOnline: true,
+        isLocal: false,
+        isGlobal: true,
+        description: 'Account-wide defaults applied automatically to new worker nodes.',
+      }
+    }
     return {
       id: effectiveId,
-      name: effectiveId === LOCAL_DESKTOP_NODE_ID ? 'This PC' : `Node #${effectiveId}`,
-      isOnline: true,
-      isLocal: effectiveId === LOCAL_DESKTOP_NODE_ID,
+      name: `Node #${effectiveId}`,
+      isOnline: false,
+      isLocal: false,
       isGlobal: false,
-      description: effectiveId === LOCAL_DESKTOP_NODE_ID ? 'Local desktop companion' : 'Standalone worker node',
+      description: 'Standalone worker node',
     }
   }
 
@@ -88,9 +98,9 @@ export function getActiveNodeInfo(
     isOnline: Boolean(matched.isOnline),
     isLocal,
     isGlobal: false,
-    host: isLocal ? 'otix://desktop' : matched.primaryUrl || matched.localUrl || undefined,
+    host: matched.primaryUrl || matched.localUrl || undefined,
     description: isLocal
-      ? 'Local Otix application and companion services on this computer.'
+      ? 'Local Otix desktop application on this computer.'
       : matched.isOnline
         ? 'Connected and synchronized worker node.'
         : 'Worker node currently offline — changes will sync once online.',

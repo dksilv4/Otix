@@ -51,19 +51,23 @@ protocol.registerSchemesAsPrivileged([
   },
 ]);
 import { getApiBaseUrl } from './config';
+import { syncMachineMappings, getRegisteredMachineMappings, syncMachineMappingsFromBackend } from './unc-resolver';
 import { GameDetector, type RunningGame, type PlaySession } from './game/detector';
+import { FpsCaptureService } from './game/fps-capture';
 import { registerDownloadsIPC, setPluginCaller } from './ipc/downloads';
 import { registerScannerIPC, setScanOrchestrator, registerPluginScanIPC, setPluginManager } from './ipc/scanner';
 import { registerInstallerIPC } from './ipc/installer';
 import { rehydrateActiveInstalls } from './installer';
 import { registerGameDetectorIPC } from './ipc/game-detector';
 import { Cs2GsiManager } from './game/cs2-gsi';
+import { AchievementTracker } from './game/achievements/tracker';
+import { registerAchievementsIPC } from './ipc/achievements';
 import { registerWindowIPC, notifyMaximizedChange } from './ipc/window';
 import { registerDesktopSettingsIPC } from './ipc/settings';
 import { loadDesktopSettings, applyDesktopSettings, getSettings, saveDesktopSettings } from './desktop-settings';
 import { createTray, destroyTray, setTrayVisible, isTrayActive } from './tray';
 import { initDatabase, closeDb, PluginsRepository } from './db';
-import { setNotifyTarget, getAllGames } from './game/storage';
+import { setNotifyTarget, getAllGames, onGamesChanged } from './game/storage';
 import type { LocalGame } from './preload-api';
 import { purgeOldDeletedDownloads } from './downloads';
 import { SaveDaemon } from './saves';
@@ -97,6 +101,8 @@ setDefaultAutoSelectFamily(false);
 
 let mainWindow: BrowserWindow | null = null;
 let gameDetector: GameDetector | null = null;
+let fpsCaptureService: FpsCaptureService | null = null;
+let achievementTracker: AchievementTracker | null = null;
 let cs2GsiManager: Cs2GsiManager | null = null;
 let pluginManager: PluginManager | null = null;
 let saveDaemon: SaveDaemon | null = null;
@@ -117,6 +123,36 @@ const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
 // errors on some Windows configurations (typically after unclean shutdown).
 app.commandLine.appendSwitch('disable-gpu-program-cache');
 app.commandLine.appendSwitch('disable-gpu-shader-disk-cache');
+
+// Disable native window occlusion calculation and background throttling.
+// On Windows (especially multi-GPU systems such as AMD iGPU + NVIDIA dGPU, and AMD Adrenalin),
+// Chromium's CalculateNativeWinOcclusion incorrectly marks the window as occluded and drops
+// DirectComposition presentation, causing the entire window to turn completely black until an
+// external overlay (such as AMD's Alt+R hotkey) forces DWM to re-evaluate the surface.
+app.commandLine.appendSwitch('disable-features', 'CalculateNativeWinOcclusion');
+app.commandLine.appendSwitch('disable-backgrounding-occluded-windows');
+app.commandLine.appendSwitch('disable-renderer-backgrounding');
+
+// Support disabling hardware acceleration via desktop-settings.json or CLI flag (--disable-gpu)
+try {
+  const initialDesktopSettings = loadDesktopSettings();
+  if (initialDesktopSettings.hardwareAcceleration === false || process.argv.includes('--disable-gpu')) {
+    console.log('[main] Disabling GPU hardware acceleration (configured in settings or --disable-gpu flag)');
+    app.disableHardwareAcceleration();
+  }
+} catch (err) {
+  console.warn('[main] Failed to evaluate hardwareAcceleration desktop setting on startup:', err);
+}
+
+// Watch for GPU child process crashes and force repaint upon recovery
+app.on('child-process-gone', (_event, details) => {
+  if (details.type === 'GPU') {
+    console.error('[main] GPU child process gone:', details.reason, 'exitCode:', details.exitCode);
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.invalidate();
+    }
+  }
+});
 
 // ── Window position persistence ───────────────────────────────
 interface WindowState {
@@ -246,6 +282,7 @@ function openStandaloneWindow(url: string): void {
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
+      sandbox: false,
     },
   })
   enableHistoryNavigation(win)
@@ -288,14 +325,17 @@ function createInstallerWindow(mode: 'installer' | 'uninstaller') {
     backgroundColor: '#07080a',
     title: isUninstaller ? 'Otix Uninstaller' : 'Otix Setup',
     icon: iconPath,
-    show: false,
+    show: true,
     center: true,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
+      additionalArguments: [`--otix-api-base-url=${getApiBaseUrl()}`],
       nodeIntegration: false,
       contextIsolation: true,
+      sandbox: false,
       webSecurity: false,
       partition: 'persist:main',
+      backgroundThrottling: false,
     },
   });
 
@@ -322,7 +362,11 @@ function createInstallerWindow(mode: 'installer' | 'uninstaller') {
     : `app://otix/${pagePath}`;
 
   logInstaller(`loading URL: ${targetUrl}`);
-  void win.loadURL(targetUrl);
+  win.webContents.session.clearCache().catch(() => {}).finally(() => {
+    if (!win.isDestroyed()) {
+      void win.loadURL(targetUrl);
+    }
+  });
 
   win.webContents.on('did-finish-load', () => {
     logInstaller(`did-finish-load url=${win.webContents.getURL()}`);
@@ -349,11 +393,6 @@ function createInstallerWindow(mode: 'installer' | 'uninstaller') {
 }
 
 function createWindow() {
-  // If a deep link was received before the window was created, forward it
-  if (pendingDeepLink) {
-    handleDeepLink(pendingDeepLink);
-    pendingDeepLink = null;
-  }
   const saved = loadWindowState()
   const bounds = saved ? ensureVisible(saved) : DEFAULT_SIZE
 
@@ -376,10 +415,13 @@ function createWindow() {
     trafficLightPosition: isMac ? { x: 12, y: 10 } : undefined,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
+      additionalArguments: [`--otix-api-base-url=${getApiBaseUrl()}`],
       nodeIntegration: false,
       contextIsolation: true,
+      sandbox: false,
       webSecurity: false,
       partition: 'persist:main',
+      backgroundThrottling: false,
     },
   });
 
@@ -387,6 +429,7 @@ function createWindow() {
   setNotifyTarget(mainWindow);
   setPluginMainWebContents(mainWindow.webContents);
   nodeDaemon?.setWebContents(mainWindow.webContents);
+  fpsCaptureService?.setWebContents(mainWindow.webContents);
 
   // Route renderer window.open() calls (e.g. Epic claim links) into a
   // nav-enabled standalone window so the user can go back naturally.
@@ -431,11 +474,26 @@ function createWindow() {
   mainWindow.on('hide', () => console.log('[main] Window hidden'))
   mainWindow.on('show', () => console.log('[main] Window shown'))
   mainWindow.on('minimize', () => console.log('[main] Window minimized'))
+  mainWindow.on('restore', () => {
+    console.log('[main] Window restored');
+    mainWindow?.webContents.invalidate();
+  });
+  mainWindow.on('focus', () => {
+    mainWindow?.webContents.invalidate();
+  });
 
-  // Crash diagnostics
+  // Crash diagnostics & automatic recovery
   mainWindow.webContents.on('render-process-gone', (_event, details) => {
-    console.error('[main] RENDERER GONE:', details.reason, 'exitCode:', details.exitCode)
-  })
+    console.error('[main] RENDERER GONE:', details.reason, 'exitCode:', details.exitCode);
+    if (!isQuitting && details.reason !== 'clean-exit') {
+      console.warn('[main] Unexpected renderer process termination, reloading window in 500ms...');
+      setTimeout(() => {
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.reload();
+        }
+      }, 500);
+    }
+  });
   mainWindow.webContents.on('did-fail-load', (_event, code, desc, url, isMainFrame) => {
     if (isMainFrame) console.error('[main] PAGE LOAD FAILED:', code, desc, url)
   })
@@ -443,11 +501,17 @@ function createWindow() {
     console.error('[main] RENDERER UNRESPONSIVE')
   })
 
-  // Keyboard shortcut to toggle DevTools (F12 / Ctrl+Shift+I)
+  // Keyboard shortcuts (F12 / Ctrl+Shift+I for DevTools, Ctrl+R / F5 / Alt+R for reload)
   mainWindow.webContents.on('before-input-event', (event, input) => {
     if (input.type === 'keyDown') {
       if (input.key === 'F12' || (input.control && input.shift && input.key.toLowerCase() === 'i')) {
         mainWindow?.webContents.toggleDevTools();
+        event.preventDefault();
+      } else if ((input.control && input.key.toLowerCase() === 'r') || input.key === 'F5') {
+        mainWindow?.webContents.reload();
+        event.preventDefault();
+      } else if (input.alt && input.key.toLowerCase() === 'r') {
+        mainWindow?.webContents.reload();
         event.preventDefault();
       }
     }
@@ -460,9 +524,24 @@ function createWindow() {
     mainWindow.loadURL('app://otix/');
   }
 
-  // Ensure window is visible
+  mainWindow.webContents.on('did-finish-load', () => {
+    if (pendingDeepLink) {
+      const url = pendingDeepLink;
+      pendingDeepLink = null;
+      handleDeepLink(url);
+    }
+  });
+
+  // Ensure window is visible and brought to foreground
   mainWindow.show();
+  mainWindow.restore();
+  mainWindow.setAlwaysOnTop(true);
   mainWindow.focus();
+  setTimeout(() => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.setAlwaysOnTop(false);
+    }
+  }, 1200);
   console.log('[main] Window created — visible:', mainWindow.isVisible(), 'minimized:', mainWindow.isMinimized());
 
   mainWindow.on('closed', () => {
@@ -478,14 +557,26 @@ function createWindow() {
 
 // ── Custom protocol (otix://) for OAuth deep links ───────────────
 const PROTOCOL = 'otix';
-app.setAsDefaultProtocolClient(PROTOCOL);
+if (process.defaultApp || !app.isPackaged) {
+  const appPath = path.resolve(__dirname, '..');
+  app.setAsDefaultProtocolClient(PROTOCOL, process.execPath, [appPath]);
+} else {
+  app.setAsDefaultProtocolClient(PROTOCOL);
+}
+
+// Check process.argv for initial deep link (Windows/Linux cold start)
+const initialDeepLink = process.argv.find((arg) => typeof arg === 'string' && arg.startsWith(`${PROTOCOL}://`));
+if (initialDeepLink) {
+  pendingDeepLink = initialDeepLink;
+}
 
 // ── Installer / Uninstaller mode detection ────────────────────────
 const isSetupExe =
   path.basename(process.execPath).toLowerCase().includes('setup') ||
   Boolean(
     process.env.PORTABLE_EXECUTABLE_FILE &&
-    path.basename(process.env.PORTABLE_EXECUTABLE_FILE).toLowerCase().includes('setup'),
+    path.basename(process.env.PORTABLE_EXECUTABLE_FILE).toLowerCase().includes('setup') &&
+    process.execPath.toLowerCase().includes('temp'),
   );
 
 const isInstallerMode = process.argv.includes('--installer') || process.env.OTIX_INSTALLER === '1' || isSetupExe;
@@ -497,6 +588,29 @@ try {
     `[START] ${new Date().toISOString()} execPath=${process.execPath} argv=${JSON.stringify(process.argv)} PORTABLE_EXECUTABLE_FILE=${process.env.PORTABLE_EXECUTABLE_FILE} PORTABLE_EXECUTABLE_DIR=${process.env.PORTABLE_EXECUTABLE_DIR} isInstallerMode=${isInstallerMode} isSetupExe=${isSetupExe}\n`
   );
 } catch {}
+
+function isProcessElevated(): boolean {
+  if (process.platform !== 'win32') return false;
+  try {
+    execSync('fltmc', { stdio: 'ignore' });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// Run setup/uninstaller elevated as administrator by default on Windows
+if (process.platform === 'win32' && (isInstallerMode || isUninstallerMode) && !isProcessElevated() && !process.argv.includes('--no-elevate')) {
+  const targetExe = process.env.PORTABLE_EXECUTABLE_FILE || process.execPath;
+  const modeArg = isUninstallerMode ? '--uninstall' : '--installer';
+  const psCmd = `Start-Process -FilePath '${targetExe.replace(/'/g, "''")}' -ArgumentList '${modeArg}' -Verb RunAs`;
+  try {
+    execSync(`powershell -NoProfile -NonInteractive -Command "${psCmd}"`, { stdio: 'ignore' });
+    process.exit(0);
+  } catch (elevErr) {
+    console.warn('[main] Auto-elevation declined or cancelled by user:', elevErr);
+  }
+}
 
 // Single-instance lock: on Windows/Linux, deep links arrive via argv
 // of a second instance rather than an open-url event.
@@ -510,11 +624,15 @@ if (!isInstallerMode && !isUninstallerMode) {
     app.on('second-instance', (_event, argv) => {
       const dl = argv.find((a) => a.startsWith(`${PROTOCOL}://`));
       if (dl) handleDeepLink(dl);
-      if (mainWindow) {
-        if (!mainWindow.isVisible()) mainWindow.show();
+      if (!mainWindow || mainWindow.isDestroyed()) {
+        createWindow();
+      } else {
         if (mainWindow.isMinimized()) mainWindow.restore();
+        if (!mainWindow.isVisible()) mainWindow.show();
+        mainWindow.setAlwaysOnTop(true);
         mainWindow.show();
         mainWindow.focus();
+        mainWindow.setAlwaysOnTop(false);
       }
     });
   }
@@ -533,7 +651,8 @@ function parseDeepLink(url: string): { action: string; params: Record<string, st
     const u = new URL(url);
     const params: Record<string, string> = {};
     u.searchParams.forEach((v, k) => { params[k] = v; });
-    return { action: u.hostname + u.pathname, params };
+    const action = (u.hostname + u.pathname).replace(/\/+$/, '');
+    return { action, params };
   } catch {
     return { action: 'refocus', params: {} };
   }
@@ -556,12 +675,14 @@ app.on('ready', async () => {
     app.dock!.setIcon(nativeImage.createFromPath(path.join(__dirname, '..', 'assets', 'icon.png')));
   }
 
-  // PresentMon is managed by the fps-capture plugin — no startup download needed here.
-  gameDetector = new GameDetector(app.getPath('userData'));
+  if (!isInstallerMode && !isUninstallerMode) {
+    fpsCaptureService = new FpsCaptureService(app.getPath('userData'));
+    gameDetector = new GameDetector(app.getPath('userData'));
 
-  // Purge old deleted downloads every hour
-  purgeOldDeletedDownloads().catch(() => {});
-  setInterval(() => purgeOldDeletedDownloads().catch(() => {}), 3600000);
+    // Purge old deleted downloads every hour
+    purgeOldDeletedDownloads().catch(() => {});
+    setInterval(() => purgeOldDeletedDownloads().catch(() => {}), 3600000);
+  }
 
   // Fix SameSite cookies for cross-origin requests from file:// (frontend) to backend
   const { session } = require('electron');
@@ -672,16 +793,18 @@ app.on('ready', async () => {
       const response = await net.fetch(fileUrl);
       const targetExt = path.extname(targetPath).toLowerCase();
       const mime = MIME_TYPES[targetExt];
+      const headers = new Headers(response.headers);
       if (mime) {
-        const headers = new Headers(response.headers);
         headers.set('content-type', mime);
-        return new Response(response.body, {
-          status: response.status,
-          statusText: response.statusText,
-          headers,
-        });
       }
-      return response;
+      headers.set('cache-control', 'no-store, no-cache, must-revalidate, max-age=0');
+      headers.set('pragma', 'no-cache');
+      headers.set('expires', '0');
+      return new Response(response.body, {
+        status: response.status,
+        statusText: response.statusText,
+        headers,
+      });
     } catch (err) {
       console.error('[main] app protocol error:', err);
       return new Response('Internal error', { status: 500 });
@@ -832,15 +955,31 @@ app.on('ready', async () => {
     const apiBase = getApiBaseUrl();
     const url = `${apiBase}/api/v1/library/nodes/desktop-heartbeat`;
     const deviceId = fetchBridge?.deviceId || os.hostname();
-    const name = `${os.hostname()} OTIX`;
+    const name = os.hostname();
     const runningList = gameDetector ? gameDetector.getRunningGames() : [];
     const totalFiles = gameDetector ? gameDetector.getLibrary().length : 0;
+    const daemonStatus = nodeDaemon?.getStatus();
+
+    let currentLibraries: Array<{ name: string; path: string; kind: string }> = [];
+    try {
+      const { getScanPaths } = require('./game/storage');
+      const paths = getScanPaths ? getScanPaths() : [];
+      currentLibraries = paths.map((p: any) => ({
+        name: path.basename(p.path) || p.type,
+        path: p.path,
+        kind: p.type,
+      }));
+    } catch {
+      // ignore
+    }
 
     const payload = {
       name,
       device_id: deviceId,
+      port: daemonStatus?.port || 8090,
       is_online: isOnline,
       total_files: totalFiles,
+      libraries: currentLibraries,
       running_games: runningList.map((g) => ({
         id: g.game.id,
         title: g.game.title,
@@ -864,6 +1003,7 @@ app.on('ready', async () => {
         body: JSON.stringify(payload),
       });
       if (resp.ok) {
+        void syncMachineMappingsFromBackend(apiBase, currentAuthToken);
         const data = (await resp.json().catch(() => null)) as any;
         if (data && Array.isArray(data.pending_updates) && data.pending_updates.length > 0 && data.id) {
           const updateIds: string[] = [];
@@ -892,7 +1032,7 @@ app.on('ready', async () => {
               }
             }
           }
-          const ackUrl = `${apiBase}/api/v1/library/servers/${data.id}/acknowledge-updates`;
+          const ackUrl = `${apiBase}/api/v1/library/nodes/${data.id}/acknowledge-updates`;
           await net.fetch(ackUrl, {
             method: 'POST',
             headers: {
@@ -911,10 +1051,20 @@ app.on('ready', async () => {
   // Forward game detection events to renderer AND bridge to plugin event bus.
   // Guard with isDestroyed() — detector fires from timer callbacks
   // that may outlive the window.
-  gameDetector.on('game:started', (runningGame) => {
+  gameDetector?.on('game:started', (runningGame) => {
     if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.webContents.send('game:started', runningGame);
     }
+    fpsCaptureService?.handleGameStarted({
+      game: runningGame.game,
+      gameId: runningGame.game.id,
+      pid: runningGame.pid ?? 0,
+      processName: runningGame.game.exePath ? path.basename(runningGame.game.exePath) : undefined,
+      node: runningGame.node ?? null,
+      hardware: runningGame.hardware ?? null,
+      shareEligible: runningGame.shareEligible ?? false,
+    });
+    achievementTracker?.startTracking(runningGame.game).catch(() => {});
     eventBus.emit('game:started', {
       gameId: runningGame.game.id,
       gameTitle: runningGame.game.title,
@@ -940,11 +1090,37 @@ app.on('ready', async () => {
       }
     }
   });
-  gameDetector.on('game:ended', (session) => {
+  gameDetector?.on('game:updated', (runningGame) => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('game:started', runningGame);
+    }
+    achievementTracker?.startTracking(runningGame.game).catch(() => {});
+    eventBus.emit('game:started', {
+      gameId: runningGame.game.id,
+      gameTitle: runningGame.game.title,
+      pid: runningGame.pid ?? 0,
+      launchedByOtix: runningGame.launchedByOtix,
+      node: runningGame.node ?? null,
+      hardware: runningGame.hardware ?? null,
+      shareEligible: runningGame.shareEligible ?? false,
+    });
+  });
+  gameDetector?.on('game:ended', (session) => {
+    fpsCaptureService?.handleGameStopped({
+      gameId: session.gameId,
+      gameTitle: session.gameTitle,
+      startTime: session.startTime,
+      endTime: session.endTime,
+      launchedByOtix: session.launchedByOtix,
+      node: session.node ?? null,
+      hardware: session.hardware ?? null,
+      shareEligible: session.shareEligible ?? false,
+    });
     if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.webContents.send('game:ended', session);
       mainWindow.webContents.send('game:sessions-updated', session);
     }
+    achievementTracker?.stopTracking(session.gameId);
     eventBus.emit('game:ended', {
       gameId: session.gameId,
       gameTitle: session.gameTitle,
@@ -1029,18 +1205,19 @@ app.on('ready', async () => {
     }
   }, 'main');
 
-  // ── FPS permission fix (delegates to fps-capture plugin) ──
+  // ── FPS permission fix (native service) ──
   ipcMain.handle('fps:fix-permissions', async () => {
-    if (!pluginManager) return { success: false, error: 'Plugin system not ready' };
-    try {
-      return await pluginManager.callPluginData('fps-capture', 'fixPermissions');
-    } catch (err: any) {
-      return { success: false, error: err.message };
+    if (fpsCaptureService) {
+      return fpsCaptureService.fixPermissions();
     }
+    return { success: false, error: 'FPS capture service not available' };
   });
 
   // General utilities
   ipcMain.handle('ping', () => 'pong');
+  ipcMain.on('desktop:get-api-base-url-sync', (event) => {
+    event.returnValue = getApiBaseUrl();
+  });
 
   ipcMain.handle('open-external', async (_event, url: string) => {
     await shell.openExternal(url);
@@ -1115,8 +1292,17 @@ app.on('ready', async () => {
     } catch { return null; }
   });
   ipcMain.handle('cache:save', async (_event, data: unknown) => {
-    try { fs.writeFileSync(cachePath, JSON.stringify(data), 'utf-8'); }
+    try { await fs.promises.writeFile(cachePath, JSON.stringify(data), 'utf-8'); }
     catch (err) { console.error('[Cache] persist failed', err); }
+  });
+
+  // Machine mapping IPCs for UNC network resolution
+  ipcMain.handle('settings:sync-machine-mappings', (_event, mappings: any) => {
+    syncMachineMappings(mappings);
+    return true;
+  });
+  ipcMain.handle('settings:get-machine-mappings', () => {
+    return getRegisteredMachineMappings();
   });
 
   // Init all databases before any IPC handler or window.
@@ -1137,8 +1323,20 @@ app.on('ready', async () => {
   registerNetworkIPC();
   nodeDaemon = new NodeDaemonManager(app.getPath('userData'), process.resourcesPath);
   registerNodeDaemonIPC(nodeDaemon);
-  registerScannerIPC(gameDetector, nodeDaemon);
+  registerScannerIPC(gameDetector, nodeDaemon, () => {
+    void syncDesktopNodeToBackend(true);
+  });
   registerInstallerIPC();
+  if (dbReady && !isInstallerMode && !isUninstallerMode) {
+    achievementTracker = new AchievementTracker();
+    registerAchievementsIPC(achievementTracker);
+    achievementTracker.on('achievement:unlocked', (payload) => {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('game:achievement-unlocked', payload);
+      }
+      eventBus.emit('achievement:unlocked', payload);
+    });
+  }
   // game-detector IPC registered after pluginManager init (needs plugin ref for session queries)
 
   // Seed detector with previously-scanned games so it can detect
@@ -1148,12 +1346,25 @@ app.on('ready', async () => {
       const existingGames = getAllGames({ installed: true });
       if (existingGames.length > 0) {
         gameDetector?.setLibrary(existingGames as LocalGame[]);
-        gameDetector?.startPeriodicScan();
         console.log(`[main] Seeded detector with ${existingGames.length} installed game(s) from DB`);
       }
+      gameDetector?.startPeriodicScan();
     } catch (err) {
       console.error('[main] Failed to seed detector from DB:', err);
     }
+
+    onGamesChanged(() => {
+      try {
+        if (gameDetector) {
+          const freshGames = getAllGames({ installed: true });
+          gameDetector.setLibrary(freshGames as LocalGame[]);
+        }
+      } catch (err) {
+        console.error('[main] Failed to refresh detector library on games changed:', err);
+      }
+    });
+  } else {
+    gameDetector?.startPeriodicScan();
   }
 
   // Pre-download innounp on startup (ready for ISO installs)
@@ -1206,7 +1417,10 @@ app.on('ready', async () => {
         mainWindow.webContents.send('game:cs2-gsi-update', state);
       }
     });
-    registerGameDetectorIPC(gameDetector, pluginManager, cs2GsiManager);
+    if (fpsCaptureService && cs2GsiManager) {
+      fpsCaptureService.setCs2GsiManager(cs2GsiManager);
+    }
+    registerGameDetectorIPC(gameDetector, fpsCaptureService, cs2GsiManager);
 
     // ── Initialize GameScanOrchestrator ──
     const orchestrator = new GameScanOrchestrator(pluginManager);
@@ -1269,8 +1483,7 @@ app.on('ready', async () => {
       const all = pluginManager!.getAllPlugins();
       console.log(`[plugins] Discovery complete, ${all.length} plugin(s) in DB:`, all.map(p => `${p.id} (${p.status})`).join(', '));
 
-      // Auto-enable default plugins (always enabled, no user action needed)
-      const DEFAULT_PLUGINS = ['fps-capture', 'local-files'];
+      const DEFAULT_PLUGINS: string[] = [];
       for (const id of DEFAULT_PLUGINS) {
         const p = pluginManager!.getPlugin(id);
         if (p && p.status !== 'enabled') {
@@ -1285,25 +1498,6 @@ app.on('ready', async () => {
 
       return pluginManager!.loadEnabledPlugins();
     }).then(async () => {
-      // Migrate existing scan paths to local-files plugin config (if plugin is discovered)
-      // so paths are ready when user enables the plugin.
-      const localFiles = pluginManager!.getPlugin('local-files');
-      if (localFiles) {
-        const cfg = pluginManager!.getConfig('local-files');
-        const scanDirs = (cfg?.scanDirectories as string[] | undefined) ?? [];
-        const isoDirs = (cfg?.isoDirectories as string[] | undefined) ?? [];
-        if (!scanDirs.length && !isoDirs.length) {
-          const { getScanPaths } = require('./game/storage') as typeof import('./game/storage');
-          const paths = getScanPaths();
-          const gamePaths = paths.filter(p => p.type === 'game').map(p => p.path);
-          const isoPaths = paths.filter(p => p.type === 'iso').map(p => p.path);
-          if (gamePaths.length || isoPaths.length) {
-            pluginManager!.setConfig('local-files', 'scanDirectories', gamePaths);
-            pluginManager!.setConfig('local-files', 'isoDirectories', isoPaths);
-            console.log(`[main] Migrated ${gamePaths.length} game + ${isoPaths.length} ISO scan paths to local-files plugin config`);
-          }
-        }
-      }
       // Mirror the IGDB source-plugin credentials into the proxy-fetch bridge so
       // a desktop whose launcher already fetches IGDB can serve that provider to
       // a connected Otix server. Refresh on later config edits (setConfig emits
@@ -1376,9 +1570,20 @@ app.on('ready', async () => {
 
   // Signal renderer that all IPC handlers are registered.
   // The renderer's loadFromDatabase() waits for this before calling IPC.
-  mainWindow?.webContents.on('did-finish-load', () => {
+  const notifyIpcReady = () => {
     mainWindow?.webContents.send('main:ipc-ready');
-  });
+    if (pendingDeepLink) {
+      const url = pendingDeepLink;
+      pendingDeepLink = null;
+      handleDeepLink(url);
+    }
+  };
+
+  if (mainWindow?.webContents.isLoading()) {
+    mainWindow.webContents.once('did-finish-load', notifyIpcReady);
+  } else {
+    notifyIpcReady();
+  }
 
   // ── Clean-quit signal for last-route restore ──
   app.on('before-quit', () => {

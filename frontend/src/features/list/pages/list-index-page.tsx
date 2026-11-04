@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link, useLocation } from '@tanstack/react-router'
 import { Helmet } from 'react-helmet-async'
 import { useAuth } from '@auth/hooks/use-auth'
 import { useUserLists, useCreateList, useDeleteLists, ListCard, ListComposer, type UserListCreate } from '@list'
@@ -7,6 +8,7 @@ import { useModal } from '@/lib/modals'
 
 export const ListIndexPage = () => {
   const { user } = useAuth()
+  const location = useLocation()
   const { data: lists, isLoading, isError, refetch } = useUserLists()
   const createList = useCreateList()
   const deleteLists = useDeleteLists()
@@ -68,7 +70,7 @@ export const ListIndexPage = () => {
   }
 
   return (
-    <div id="list-index-page" className="mx-auto w-full max-w-6xl px-6 py-8">
+    <div id="list-index-page" className="w-full px-6 py-8">
       <Helmet>
         <title>My Lists - Otix</title>
       </Helmet>
@@ -170,6 +172,13 @@ export const ListIndexPage = () => {
           <p className="mt-1 text-sm text-muted-foreground">
             Organize your media into custom lists
           </p>
+          <Link
+            to="/auth/login"
+            search={!location.pathname.startsWith('/auth') && location.href ? { redirect: location.href } : undefined}
+            className="mt-4 inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-semibold text-primary-foreground bg-primary hover:bg-primary/90 transition-all shadow-sm"
+          >
+            Sign In
+          </Link>
         </div>
       ) : isLoading ? (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">

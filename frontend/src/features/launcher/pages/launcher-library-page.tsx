@@ -7,7 +7,7 @@ import { useLauncherVisibleGames, useLauncherFoundGames, localGameKeys } from '@
 import { usePopularGames, gameDetailOptions } from '@/features/launcher/data/queries'
 import { fetchGameById } from '@/features/launcher/data/storage'
 import { hasDesktopAPI } from '@/lib/desktop/api'
-import { toDisplayGame, heroImage } from '@/features/launcher/utils'
+import { toDisplayGame, heroImage, isCatalogId } from '@/features/launcher/utils'
 import { useHydrateLocalGames } from '@/features/launcher/hooks/use-launcher-hydrate'
 import { LauncherMediaCard } from '@/features/launcher/components/molecules/launcher-media-card'
 import { LauncherFoundGames } from '@/features/launcher/components/organisms/launcher-found-games'
@@ -15,6 +15,7 @@ import { MediaGrid } from '@ui/molecules/media-grid'
 import { useOffline } from '@/lib/offline'
 import { OfflineNotice } from '@/lib/offline-notice'
 import { useLauncherSettings } from '@/features/launcher/hooks/use-launcher-settings'
+import { LibraryScanBar } from '@/features/library/molecules/library-scan-bar'
 import { PLATFORM_LABELS } from '@/constants/games'
 import { MediaLogo } from '@/lib/media/media-logo'
 import type { DisplayGame, LauncherPlatform } from '@/features/launcher/types'
@@ -56,6 +57,7 @@ export const LauncherLibraryPage = () => {
   // ── State ──
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedPlatform, setSelectedPlatform] = useState<string>('all')
+  const [selectedDevice, setSelectedDevice] = useState<string>('all')
   const [sortBy, setSortBy] = useState<SortMode>('recent')
   const [hoveredId, setHoveredId] = useState<string | null>(null)
   const [logoErrors, setLogoErrors] = useState<Set<string>>(new Set())
@@ -71,9 +73,15 @@ export const LauncherLibraryPage = () => {
           staleTime: 30000,
         })
       }
-      const catalogId = game.otixMediaId || (game as any).rawGame?.otixMediaId || (game as any).rawGame?.data?.id || (!game.id.startsWith('server-') ? game.id : undefined)
-      if (catalogId) queryClient.prefetchQuery(gameDetailOptions(catalogId))
-    } else {
+      const potentialCatalogId =
+        game.otixMediaId ||
+        (game as any).rawGame?.otixMediaId ||
+        (game as any).rawGame?.data?.id ||
+        (isCatalogId(game.id) ? game.id : undefined)
+      if (potentialCatalogId && isCatalogId(potentialCatalogId)) {
+        queryClient.prefetchQuery(gameDetailOptions(potentialCatalogId))
+      }
+    } else if (isCatalogId(game.id)) {
       queryClient.prefetchQuery(gameDetailOptions(game.id))
     }
   }, [isDesktop, queryClient])
@@ -83,6 +91,16 @@ export const LauncherLibraryPage = () => {
   }, [])
 
   // ── Derived data ──
+  const devices = useMemo(() => {
+    const set = new Set<string>()
+    set.add('This PC')
+    rawGames.forEach((g) => {
+      const dev = (g.rawGame as any)?.nodeName || (g.rawGame as any)?.serverName || (g.id.startsWith('server-') || g.id.startsWith('node-') ? 'Remote Node' : 'This PC')
+      if (dev) set.add(dev)
+    })
+    return Array.from(set)
+  }, [rawGames])
+
   const platforms = useMemo(() => {
     const set = new Set<string>()
     rawGames.forEach((g) => { if (g.platform) set.add(g.platform) })
@@ -94,6 +112,12 @@ export const LauncherLibraryPage = () => {
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase()
       result = result.filter((g) => g.title.toLowerCase().includes(q))
+    }
+    if (selectedDevice !== 'all') {
+      result = result.filter((g) => {
+        const dev = (g.rawGame as any)?.nodeName || (g.rawGame as any)?.serverName || (g.id.startsWith('server-') || g.id.startsWith('node-') ? 'Remote Node' : 'This PC')
+        return dev === selectedDevice
+      })
     }
     if (selectedPlatform !== 'all') {
       result = result.filter((g) => g.platform === selectedPlatform)
@@ -172,19 +196,15 @@ export const LauncherLibraryPage = () => {
       </div>
 
       {/* ═══════════ Scrollable content ═══════════ */}
-      <div
-        className="relative z-10 h-full overflow-y-auto overflow-x-hidden"
-        style={{ paddingLeft: 'calc(76px + 1.5rem)', paddingRight: '2rem' }}
-      >
-        <div className="flex flex-col gap-0 pt-20 pb-12 max-w-[1600px]">
+      <div className="relative z-10 h-full overflow-y-auto overflow-x-hidden px-4 md:pl-[calc(76px+1.5rem)] md:pr-8">
+        <div className="flex flex-col gap-0 pt-20 pb-12 w-full">
 
           {/* ────────── Featured Hero ────────── */}
           {featured && featuredBackdrop && !searchQuery && (
             <section
-              className="relative w-full h-[340px] rounded-3xl overflow-hidden mb-8 group/hero cursor-pointer"
+              className="relative w-full h-[340px] rounded-3xl overflow-hidden mb-8 group/hero cursor-pointer border border-white/[0.06] shadow-2xl"
               onClick={() => openGame(featured.id)}
               onMouseEnter={() => handlePrefetch(featured)}
-              style={{ boxShadow: 'inset 0 0 0 1px rgb(255 255 255 / 0.06), 0 12px 48px rgb(0 0 0 / 0.5)' }}
             >
               <AnimatePresence initial={false}>
                 <motion.div
@@ -202,8 +222,8 @@ export const LauncherLibraryPage = () => {
                 </motion.div>
               </AnimatePresence>
 
-              <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/30 to-transparent z-[1]" />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/20 z-[1]" />
+              <div className="absolute inset-0 bg-gradient-to-r from-background/80 via-background/30 to-transparent z-[1]" />
+              <div className="absolute inset-0 bg-gradient-to-t from-background/70 via-transparent to-background/20 z-[1]" />
 
               <AnimatePresence mode="wait">
                 <motion.div
@@ -236,19 +256,16 @@ export const LauncherLibraryPage = () => {
                         />
                       </div>
                     ) : (
-                      <h2 className="text-3xl font-black text-white tracking-tight mb-2 drop-shadow-lg line-clamp-1">
+                      <h2 className="text-3xl font-black text-foreground tracking-tight mb-2 drop-shadow-lg line-clamp-1">
                         {featured.title}
                       </h2>
                     )}
                     <div className="flex items-center gap-3">
-                      <span
-                        className="text-[9px] uppercase tracking-[0.25em] font-bold"
-                        style={{ color: 'oklch(0.705 0.213 47.604)' }}
-                      >
+                      <span className="text-[9px] uppercase tracking-[0.25em] font-bold text-primary">
                         {PLATFORM_LABELS[featured.platform] ?? featured.platform}
                       </span>
                       {featured.rawGame?.lastPlayedAt && (
-                        <span className="text-[10px] text-white/40 flex items-center gap-1">
+                        <span className="text-[10px] text-muted-foreground flex items-center gap-1">
                           <Clock size={10} />
                           {new Date(featured.rawGame.lastPlayedAt).toLocaleDateString(undefined, { month: 'long', day: 'numeric' })}
                         </span>
@@ -258,15 +275,14 @@ export const LauncherLibraryPage = () => {
 
                   <div className="flex items-center gap-3 shrink-0 ml-6">
                     <button
-                      className="flex items-center gap-2.5 px-6 py-3 rounded-xl text-[11px] font-black uppercase tracking-wider text-white cursor-pointer transition-all active:scale-95 hover:brightness-110"
-                      style={{ background: 'oklch(0.705 0.213 47.604)', boxShadow: '0 0 24px oklch(0.705 0.213 47.604 / 0.35)' }}
+                      className="flex items-center gap-2.5 px-6 py-3 rounded-xl text-[11px] font-black uppercase tracking-wider text-primary-foreground bg-primary hover:bg-primary/90 cursor-pointer transition-all active:scale-95 shadow-lg"
                       onClick={(e) => { e.stopPropagation(); openGame(featured.id) }}
                     >
-                      <Play size={14} fill="white" />
+                      <Play size={14} fill="currentColor" />
                       Launch
                     </button>
                     <button
-                      className="flex items-center gap-1.5 px-4 py-3 rounded-xl text-[11px] font-semibold text-white/70 cursor-pointer transition-all active:scale-95 bg-white/8 hover:bg-white/12 border border-white/10 backdrop-blur-md"
+                      className="flex items-center gap-1.5 px-4 py-3 rounded-xl text-[11px] font-semibold text-foreground/80 cursor-pointer transition-all active:scale-95 bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-field)] border border-[var(--dk-separator)] backdrop-blur-md"
                       onClick={(e) => { e.stopPropagation(); openGame(featured.id) }}
                     >
                       Details
@@ -282,18 +298,18 @@ export const LauncherLibraryPage = () => {
                     <button
                       key={i}
                       onClick={(e) => { e.stopPropagation(); setFeaturedIdx(i) }}
-                      className="cursor-pointer transition-all"
-                      style={{
-                        width: i === featuredIdx ? 20 : 6, height: 6, borderRadius: 9999,
-                        background: i === featuredIdx ? 'oklch(0.705 0.213 47.604)' : 'rgb(255 255 255 / 0.25)',
-                        transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
-                      }}
+                      className={`cursor-pointer transition-all h-1.5 rounded-full ${
+                        i === featuredIdx ? 'w-5 bg-primary' : 'w-1.5 bg-foreground/30 hover:bg-foreground/50'
+                      }`}
                     />
                   ))}
                 </div>
               )}
             </section>
           )}
+
+          {/* ────────── Scan Bar & Summary ────────── */}
+          <LibraryScanBar showButton={true} className="mb-4" />
 
           {/* ────────── Toolbar ────────── */}
           <div className="glass-card flex items-center gap-3 px-4 py-2.5 mb-6">
@@ -321,6 +337,24 @@ export const LauncherLibraryPage = () => {
                 </button>
               ))}
             </div>
+            {devices.length > 1 && (
+              <>
+                <div className="w-px self-stretch bg-[var(--dk-separator)]" />
+                <div className="flex items-center gap-1 overflow-x-auto scrollbar-none shrink min-w-0">
+                  {['all', ...devices].map((dev) => (
+                    <button
+                      key={dev}
+                      onClick={() => setSelectedDevice(dev)}
+                      className={`glass-tab px-2.5 py-1 rounded-lg text-[9px] font-semibold uppercase tracking-wider cursor-pointer transition-all whitespace-nowrap ${
+                        selectedDevice === dev ? 'glass-tab-active bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      {dev === 'all' ? 'All Devices' : dev}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
             <div className="w-px self-stretch bg-[var(--dk-separator)]" />
             <select
               value={sortBy}

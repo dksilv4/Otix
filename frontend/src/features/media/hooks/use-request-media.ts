@@ -18,6 +18,7 @@ import { readyArrInstances } from '@/features/downloads/arr-instances'
 import type { ServerArrQueueItem } from '@/features/downloads/arr-types'
 import { mediaQueries } from '@media/queries/media-queries'
 import { useMediaParams } from './use-media-params'
+import { useMediaDownloadActivity } from './use-media-download-activity'
 import type { RequestInstance, RequestWidget } from '../components/organisms/plugin-detail-actions'
 import {
   arrRequestErrorMessage,
@@ -69,6 +70,8 @@ export interface RequestMediaState {
   requesting: string | null
   queueItem: ServerArrQueueItem | null
   queuePercent: number
+  downloadSpeed?: string | null
+  downloadEta?: string | null
   activeServerName: string
   serverId?: number
   handleRequest: (opts?: string | RequestMediaOptions) => Promise<void>
@@ -85,8 +88,8 @@ async function lookupOnInstance(
 ) {
   const path =
     kind === 'radarr'
-      ? `/library/servers/${serverId}/radarr/lookup`
-      : `/library/servers/${serverId}/sonarr/lookup`
+      ? `/library/nodes/${serverId}/radarr/lookup`
+      : `/library/nodes/${serverId}/sonarr/lookup`
   const { data } = await apiClient.get<unknown[]>(path, {
     params: { term, instance_id: instanceId },
   })
@@ -161,7 +164,14 @@ export function useRequestMedia(): RequestMediaState {
   const radarrQueue = useServerRadarrQueue(isMovie ? serverId : undefined, 1, 50, isRequested ? 4000 : false)
   const sonarrQueue = useServerSonarrQueue(isShow ? serverId : undefined, 1, 50, isRequested ? 4000 : false)
   const queueRecords = (isMovie ? radarrQueue.data?.records : sonarrQueue.data?.records) || []
-  const queueItem = matchArrQueueItem(queueRecords, { tmdbId, title: mediaTitle })
+
+  const downloadActivity = useMediaDownloadActivity(mediaType, detail?.id ? String(detail.id) : mediaId, {
+    tmdbId,
+    tvdbId,
+    title: mediaTitle,
+  })
+  const queueItem = downloadActivity.primaryQueueItem || matchArrQueueItem(queueRecords, { tmdbId, title: mediaTitle })
+  const queuePercent = downloadActivity.isDownloading ? downloadActivity.overallProgress : queueProgress(queueItem)
 
   const addMovie = useAddServerRadarrMovie(serverId)
   const addSeries = useAddServerSonarrSeries(serverId)
@@ -189,7 +199,9 @@ export function useRequestMedia(): RequestMediaState {
     const target =
       requestable.find((item) => item.id === options.instanceId) ||
       requestable.find((item) => item.status === 'not_exists' || item.status === 'error') ||
-      requestable[0]
+      requestable[0] ||
+      (options.instanceId ? { id: options.instanceId, name: options.instanceId, status: 'not_exists' as const } : null) ||
+      (instances[0] ? { id: instances[0].id, name: instances[0].name, status: 'not_exists' as const } : null)
     if (!target) return
     const parsed = parseServerArrInstanceId(target.id)
     setRequesting(target.id)
@@ -228,6 +240,10 @@ export function useRequestMedia(): RequestMediaState {
   }
 
   const handleCancelQueue = () => {
+    if (downloadActivity.primaryQueueItem) {
+      void downloadActivity.cancelQueueItem(downloadActivity.primaryQueueItem.id)
+      return
+    }
     if (!queueItem) return
     if (isMovie) cancelRadarr.mutate({ queueId: queueItem.id })
     else cancelSonarr.mutate({ queueId: queueItem.id })
@@ -297,7 +313,9 @@ export function useRequestMedia(): RequestMediaState {
     ),
     requesting,
     queueItem,
-    queuePercent: queueProgress(queueItem),
+    queuePercent,
+    downloadSpeed: downloadActivity.speed,
+    downloadEta: downloadActivity.eta || queueItem?.timeleft,
     activeServerName: activeServer?.name || 'Server',
     serverId,
     handleRequest,

@@ -57,7 +57,7 @@ export const LauncherFoundGames = ({ className, compact = false }: Props) => {
       >
         <HardDrive size={14} className="text-muted-foreground shrink-0" />
         <h3 className="text-xs font-bold uppercase tracking-wider text-foreground">
-          Found on servers
+          Found on nodes
         </h3>
         <span className="text-[10px] font-semibold text-muted-foreground tabular-nums">
           {found.length}
@@ -147,7 +147,7 @@ const FoundGameRow = ({
         <p className="text-[10px] text-muted-foreground truncate">
           {item.filename}
           {item.filesize ? ` · ${formatBytes(item.filesize)}` : ''}
-          {item.serverName ? ` · ${item.serverName}` : ''}
+          {item.nodeName || item.serverName ? ` · ${item.nodeName || item.serverName}` : ''}
           {extras}
         </p>
       </div>

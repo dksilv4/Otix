@@ -19,7 +19,7 @@ export const CharacterDetailPage = () => {
 
   if (isLoading) {
     return (
-      <div className={`mx-auto max-w-5xl px-4 ${ptClass} pb-16 sm:px-6 lg:px-8 space-y-8`}>
+      <div className={`w-full px-4 ${ptClass} pb-16 sm:px-6 lg:px-8 space-y-8`}>
         <div className="flex flex-col sm:flex-row gap-6 p-6 rounded-3xl bg-[var(--dk-surface-ghost)] border border-[var(--dk-separator)]">
           <Skeleton className="w-36 h-48 rounded-2xl shrink-0" />
           <div className="space-y-3 flex-1">
@@ -56,7 +56,7 @@ export const CharacterDetailPage = () => {
   return (
     <div
       id="character-detail-page"
-      className={`mx-auto max-w-5xl px-4 ${ptClass} pb-16 sm:px-6 lg:px-8 space-y-10`}
+      className={`w-full px-4 ${ptClass} pb-16 sm:px-6 lg:px-8 space-y-10`}
     >
       <Helmet>
         <title>{`${character.name} - Game Character - Otix`}</title>

@@ -164,7 +164,7 @@ describe('NodeMachineSettings', () => {
     expect(screen.getByText(/Driver: 610.88/i)).toBeInTheDocument()
 
     // RAM (Physical static spec only, normalized to installed tier 32 GB, no dynamic RAM load or 31.1 GB)
-    expect(screen.getByText(/Physical Memory/i)).toBeInTheDocument()
+    expect(screen.getAllByText(/Physical Memory/i)[0]).toBeInTheDocument()
     expect(screen.getByText(/Installed Physical RAM/i)).toBeInTheDocument()
     expect(screen.getAllByText(/32 GB/i).length).toBeGreaterThan(0)
     expect(screen.queryByText(/31\.1/i)).not.toBeInTheDocument()
@@ -206,7 +206,7 @@ describe('NodeMachineSettings', () => {
     const rescanButton = screen.getByRole('button', { name: /Re-scan Hardware/i })
     await user.click(rescanButton)
 
-    expect(apiClient.get).toHaveBeenCalledWith('/library/servers/8/desktop?refresh=true')
+    expect(apiClient.get).toHaveBeenCalledWith('/library/nodes/8/desktop?refresh=true')
 
     await waitFor(() => {
       expect(screen.getByText(/AMD Ryzen 9 9950X/i)).toBeInTheDocument()
@@ -228,8 +228,77 @@ describe('NodeMachineSettings', () => {
     render(<NodeMachineSettings server={mockServer} />)
 
     await waitFor(() => {
-      expect(screen.getByText(/Hardware & Machine Specifications/i)).toBeInTheDocument()
+      expect(screen.getByText(/System Identity/i)).toBeInTheDocument()
       expect(screen.getByText(/ubuntu-node/i)).toBeInTheDocument()
     })
+  })
+
+  it('renders displays with sanitized friendly titles without raw device paths', async () => {
+    vi.mocked(apiClient.get).mockResolvedValueOnce({
+      data: {
+        ...mockHardwareResponse,
+        hardware: {
+          ...mockHardwareResponse.hardware,
+          displays: [
+            {
+              index: 1,
+              deviceName: '\\\\.\\DISPLAY1',
+              name: 'Display 1 (\\\\.\\DISPLAY1)',
+              model: '2560x1440 Display',
+              resolution: '2560x1440',
+              refreshRate: 165,
+              width: 2560,
+              height: 1440,
+              positionX: 0,
+              positionY: 0,
+              isPrimary: true,
+              arrangement: 'Primary Display (Center)',
+            },
+            {
+              index: 2,
+              deviceName: '\\\\.\\DISPLAY2',
+              name: '\\\\.\\DISPLAY2',
+              model: 'LG ULTRAGEAR 27GP850',
+              resolution: '2560x1440',
+              refreshRate: 144,
+              width: 2560,
+              height: 1440,
+              positionX: 2560,
+              positionY: 0,
+              isPrimary: false,
+              arrangement: 'Right of Primary',
+            },
+            {
+              index: 3,
+              deviceName: '\\\\.\\DISPLAY3',
+              name: 'Generic PnP Monitor',
+              manufacturer: 'Dell',
+              resolution: '1920x1080',
+              refreshRate: 60,
+              width: 1920,
+              height: 1080,
+              positionX: -1920,
+              positionY: 0,
+              isPrimary: false,
+              arrangement: 'Left of Primary',
+            },
+          ],
+        },
+      },
+    })
+
+    render(<NodeMachineSettings server={mockServer} />)
+
+    await waitFor(() => {
+      expect(screen.getByText(/Connected Displays & Desktop Arrangement/i)).toBeInTheDocument()
+    })
+
+    expect(screen.getAllByText('Display 1').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('LG ULTRAGEAR 27GP850').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Dell Display 3').length).toBeGreaterThan(0)
+
+    expect(screen.queryByText(/DISPLAY1/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/DISPLAY2/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Generic PnP Monitor/i)).not.toBeInTheDocument()
   })
 })

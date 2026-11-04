@@ -7,6 +7,7 @@ export type NotificationType =
   | 'user_rating' | 'like' | 'comment' | 'release_available'
   | 'new_season' | 'studio_release'
   | 'integration_disconnected'
+  | 'media_request'
   | 'system'
 
 export interface Notification {
@@ -91,6 +92,7 @@ export interface NotificationPreferences {
   release_available?: boolean
   new_season?: boolean
   studio_release?: boolean
+  media_request?: boolean
   _desktop_enabled?: boolean
   _web_enabled?: boolean
   _pwa_enabled?: boolean

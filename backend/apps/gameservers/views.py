@@ -79,7 +79,7 @@ class GameServerListCreateView(APIView):
         if server_type:
             qs = qs.filter(server_type=server_type)
 
-        qs = qs.select_related("owner", "media_item", "server_machine").prefetch_related(
+        qs = qs.select_related("owner", "media_item", "machine").prefetch_related(
             "shares", "invites"
         )
         serializer = DedicatedGameServerSerializer(qs, many=True, context={"request": request})

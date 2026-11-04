@@ -112,12 +112,12 @@ export const LauncherGameHeroMeta = () => {
             </span>
           )}
           {isFree && (
-            <span className="text-xs font-bold px-2.5 py-0.5 rounded-xl bg-emerald-500/15 text-emerald-500 dark:text-emerald-400 border border-emerald-500/25">
+            <span className="text-xs font-bold px-2.5 py-0.5 rounded-xl bg-primary/15 text-primary border border-primary/25">
               Free
             </span>
           )}
           {hasMultiplayer && (
-            <span className="text-xs font-semibold px-2.5 py-0.5 rounded-xl bg-blue-500/15 text-blue-500 dark:text-blue-400 border border-blue-500/25">
+            <span className="text-xs font-semibold px-2.5 py-0.5 rounded-xl bg-[var(--dk-surface-ghost)] text-foreground border border-[var(--dk-separator)]">
               Multiplayer
             </span>
           )}

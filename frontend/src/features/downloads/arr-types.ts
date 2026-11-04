@@ -2,6 +2,10 @@ export interface ArrConnectionTestResult {
   ok: boolean;
   version?: string;
   message?: string;
+  url_base?: string;
+  urlBase?: string;
+  detected_url_base?: string;
+  detectedUrlBase?: string;
 }
 
 export interface ArrQualityProfile {
@@ -32,6 +36,8 @@ export interface ServerRadarrConfig {
   root_folder_path?: string;
   minimumAvailability?: string;
   minimum_availability?: string;
+  autoRequestWatchlist?: boolean;
+  auto_request_watchlist?: boolean;
   configured?: boolean;
   hasApiKey?: boolean;
   has_api_key?: boolean;
@@ -56,6 +62,8 @@ export interface ServerSonarrConfig {
   series_type?: string;
   seasonFolder?: boolean;
   season_folder?: boolean;
+  autoRequestWatchlist?: boolean;
+  auto_request_watchlist?: boolean;
   languageProfileId?: number;
   language_profile_id?: number;
   configured?: boolean;
@@ -111,6 +119,8 @@ export interface ServerArrQueueItem {
   status: string;
   trackedDownloadStatus?: string;
   tracked_download_status?: string;
+  trackedDownloadState?: string;
+  tracked_download_state?: string;
   size: number;
   sizeLeft?: number;
   size_left?: number;
@@ -120,6 +130,8 @@ export interface ServerArrQueueItem {
   protocol?: string;
   downloadClient?: string;
   download_client?: string;
+  downloadId?: string;
+  download_id?: string;
   indexer?: string;
   outputPath?: string;
   output_path?: string;
@@ -129,6 +141,65 @@ export interface ServerArrQueueItem {
   tmdb_id?: number;
   tvdbId?: number;
   tvdb_id?: number;
+  seasonNumber?: number;
+  season_number?: number;
+  episodeNumber?: number;
+  episode_number?: number;
+  mediaItemId?: number | string;
+  media_item_id?: number | string;
+  showTitle?: string;
+  show_title?: string;
+  showPosterUrl?: string;
+  show_poster_url?: string;
+  showBackdropUrl?: string;
+  show_backdrop_url?: string;
+  episodeName?: string;
+  episode_name?: string;
+  episodeStillUrl?: string;
+  episode_still_url?: string;
+  episodeOverview?: string;
+  episode_overview?: string;
+  otixEpisodeId?: number;
+  otix_episode_id?: number;
+  movieTitle?: string;
+  movie_title?: string;
+  movieYear?: number;
+  movie_year?: number;
+  posterUrl?: string;
+  poster_url?: string;
+  backdropUrl?: string;
+  backdrop_url?: string;
+  overview?: string;
+  series?: {
+    id?: number;
+    title?: string;
+    year?: number;
+    tvdbId?: number;
+    tmdbId?: number;
+    images?: Array<{ coverType?: string; remoteUrl?: string; url?: string }>;
+  };
+  episode?: {
+    id?: number;
+    title?: string;
+    seasonNumber?: number;
+    episodeNumber?: number;
+    overview?: string;
+  };
+  movie?: {
+    id?: number;
+    title?: string;
+    year?: number;
+    tmdbId?: number;
+    images?: Array<{ coverType?: string; remoteUrl?: string; url?: string }>;
+  };
+  quality?: {
+    quality?: {
+      id?: number;
+      name?: string;
+      resolution?: number;
+      source?: string;
+    };
+  };
 }
 
 export interface ServerArrQueueResponse {

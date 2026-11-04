@@ -45,7 +45,7 @@ export const DocsPage = () => {
         />
       </Helmet>
 
-      <div className="mx-auto max-w-7xl">
+      <div className="w-full">
         {/* Top Header & Breadcrumbs */}
         <DocsHeader
           currentCategory={currentCategory}

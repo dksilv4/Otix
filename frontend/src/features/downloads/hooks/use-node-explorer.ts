@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api/client';
+import { isValidNodeId } from './use-node-usenet';
 import { nodeKeys } from './use-node-downloads';
 import { normalizeExplorerBrowse } from '../node-explorer-utils';
 import type {
@@ -30,12 +31,12 @@ export function useNodeExplorer(nodeId?: number, path?: string) {
       }
       const params = path ? { path } : undefined;
       const { data } = await apiClient.get<NodeExplorerBrowseResult>(
-        `/library/servers/${nodeId}/explorer`,
+        `/library/nodes/${nodeId}/explorer`,
         { params },
       );
       return normalizeExplorerBrowse(data);
     },
-    enabled: !!nodeId,
+    enabled: isValidNodeId(nodeId),
     staleTime: 10_000,
   });
 }
@@ -49,7 +50,7 @@ export function useSetNodeDownloadPath(nodeId?: number) {
     mutationFn: async (payload: SetNodeDownloadPathPayload) => {
       if (!nodeId) throw new Error('No node selected');
       const { data } = await apiClient.post(
-        `/library/servers/${nodeId}/explorer/set-download-path`,
+        `/library/nodes/${nodeId}/explorer/set-download-path`,
         payload,
       );
       return data;
@@ -71,7 +72,7 @@ export function useCreateNodeFolder(nodeId?: number) {
     mutationFn: async (payload: CreateNodeFolderPayload) => {
       if (!nodeId) throw new Error('No node selected');
       const { data } = await apiClient.post(
-        `/library/servers/${nodeId}/explorer/create-folder`,
+        `/library/nodes/${nodeId}/explorer/create-folder`,
         payload,
       );
       return data;
@@ -91,7 +92,7 @@ export function useRequestNodePermission(nodeId?: number) {
     mutationFn: async (payload: RequestNodePermissionPayload) => {
       if (!nodeId) throw new Error('No node selected');
       const { data } = await apiClient.post<RequestNodePermissionResult>(
-        `/library/servers/${nodeId}/explorer/request-permission`,
+        `/library/nodes/${nodeId}/explorer/request-permission`,
         payload,
       );
       return data;
@@ -111,7 +112,7 @@ export function useConnectNodeShare(nodeId?: number) {
     mutationFn: async (payload: ConnectNodeSharePayload) => {
       if (!nodeId) throw new Error('No node selected');
       const { data } = await apiClient.post<ConnectNodeShareResult>(
-        `/library/servers/${nodeId}/explorer/connect-share`,
+        `/library/nodes/${nodeId}/explorer/connect-share`,
         payload,
       );
       return data;

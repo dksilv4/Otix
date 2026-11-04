@@ -15,6 +15,7 @@ export interface MediaItemSummary {
   backdropUrl: string | null
   logoUrl: string | null
   logoColorGuess: string | null
+  dominantColor?: string | null
   releaseDate: string | null
   popularity: number
   avgRating?: number | null
@@ -62,6 +63,8 @@ export interface MediaAssetOut {
   style?: string | null
   score?: number | null
   provider?: string | null
+  colorGuess?: string | null
+  dominantColor?: string | null
 }
 
 export interface FreePromotionItem {
@@ -94,6 +97,7 @@ export interface MediaItemDetail {
   backdropUrl: string | null
   logoUrl: string | null
   logoColorGuess: string | null
+  dominantColor?: string | null
   releaseDate: string | null
   popularity: number
   originalLanguage: string | null

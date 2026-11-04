@@ -17,8 +17,11 @@ import type { UserServerMachine } from '../../types/server-machines'
 import { findCompatibleTargets, getCompatibleCreationOptions } from '../../utils/node-map'
 
 export interface ConnectNodePickerModalProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
+  open?: boolean
+  isOpen?: boolean
+  onOpenChange?: (open: boolean) => void
+  onClose?: () => void
+  isExiting?: boolean
   sourceItem: NodeMapItem | null
   allItems: NodeMapItem[]
   edges: NodeMapEdge[]
@@ -32,7 +35,10 @@ export interface ConnectNodePickerModalProps {
 
 export const ConnectNodePickerModal = ({
   open,
+  isOpen,
   onOpenChange,
+  onClose,
+  isExiting,
   sourceItem,
   allItems,
   edges,
@@ -43,6 +49,11 @@ export const ConnectNodePickerModal = ({
   onAddNode,
   onAddHome,
 }: ConnectNodePickerModalProps) => {
+  const isModalOpen = (open ?? isOpen ?? true) && !isExiting
+  const handleClose = () => {
+    onOpenChange?.(false)
+    onClose?.()
+  }
   const compatibleOptions = useMemo(() => {
     if (!sourceItem) return []
     return findCompatibleTargets(sourceItem, allItems)
@@ -86,8 +97,10 @@ export const ConnectNodePickerModal = ({
 
   return (
     <DkDialog
-      open={open}
-      onOpenChange={onOpenChange}
+      open={isModalOpen}
+      onOpenChange={(next) => {
+        if (!next) handleClose()
+      }}
       title={`Connect ${sourceItem.name}`}
       description="Link this node with another machine, home environment, or storage share in your homelab."
       className="max-w-lg"
@@ -259,7 +272,7 @@ export const ConnectNodePickerModal = ({
             type="button"
             variant="secondary"
             size="sm"
-            onClick={() => onOpenChange(false)}
+            onClick={handleClose}
           >
             Close
           </DkButton>

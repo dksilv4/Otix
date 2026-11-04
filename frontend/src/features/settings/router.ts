@@ -49,6 +49,9 @@ const SettingsIntegrationsPage = safeLazy(() =>
 const SettingsNodeConnectionsPage = safeLazy(() =>
   import('./pages/settings-node-connections-page').then((m) => ({ default: m.SettingsNodeConnectionsPage })),
 )
+const SettingsNewNodeScanFilesPage = safeLazy(() =>
+  import('./pages/settings-node-scan-files-page').then((m) => ({ default: m.SettingsNewNodeScanFilesPage })),
+)
 const SettingsStoragePage = safeLazy(() =>
   import('./pages/settings-storage-page').then((m) => ({ default: m.SettingsStoragePage })),
 )
@@ -172,12 +175,60 @@ export function createSettingsRoutes(rootRoute: AnyRoute, pluginTabs?: PluginSet
     },
   })
 
+  const settingsNodesMachineRedirect = createRoute({
+    getParentRoute: () => settingsRoute,
+    path: '/nodes/machine',
+    beforeLoad: () => {
+      throw redirect({ to: '/settings/nodes', hash: 'machine' })
+    },
+  })
+
+  const settingsNodesHardwareRedirect = createRoute({
+    getParentRoute: () => settingsRoute,
+    path: '/nodes/hardware',
+    beforeLoad: () => {
+      throw redirect({ to: '/settings/nodes', hash: 'machine' })
+    },
+  })
+
+  const settingsNodesSoftwareRedirect = createRoute({
+    getParentRoute: () => settingsRoute,
+    path: '/nodes/software',
+    beforeLoad: () => {
+      throw redirect({ to: '/settings/nodes', hash: 'software' })
+    },
+  })
+
+  const settingsNodesOverlayRedirect = createRoute({
+    getParentRoute: () => settingsRoute,
+    path: '/nodes/overlay',
+    beforeLoad: () => {
+      throw redirect({ to: '/settings/nodes', hash: 'overlay' })
+    },
+  })
+
   const settingsNodeDetailRoute = createRoute({
     getParentRoute: () => settingsRoute,
     path: '/nodes/$nodeId',
     component: SettingsNodeDetailPage,
 
     loader: preload(() => import('./pages/settings-node-detail-page')),
+  })
+
+  const settingsNewNodeScanFilesRoute = createRoute({
+    getParentRoute: () => settingsRoute,
+    path: '/new-node-scan-files',
+    component: SettingsNewNodeScanFilesPage,
+
+    loader: preload(() => import('./pages/settings-node-scan-files-page')),
+  })
+
+  const settingsNodeScanFilesRedirect = createRoute({
+    getParentRoute: () => settingsRoute,
+    path: '/node-scan-files',
+    beforeLoad: () => {
+      throw redirect({ to: '/settings/new-node-scan-files' })
+    },
   })
 
   const settingsLauncherRoute = createRoute({
@@ -367,8 +418,14 @@ export function createSettingsRoutes(rootRoute: AnyRoute, pluginTabs?: PluginSet
       settingsNodesPathsRedirect,
       settingsNodesOrganizeRedirect,
       settingsNodesConnectionsRedirect,
+      settingsNodesMachineRedirect,
+      settingsNodesHardwareRedirect,
+      settingsNodesSoftwareRedirect,
+      settingsNodesOverlayRedirect,
       settingsNodesProposalsRedirect,
       settingsNodeDetailRoute,
+      settingsNewNodeScanFilesRoute,
+      settingsNodeScanFilesRedirect,
       settingsIntegrationsRedirect,
       settingsAdminProposalsRedirect,
       

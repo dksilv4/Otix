@@ -13,6 +13,7 @@ import {
 } from 'lucide-react'
 import { DkButton } from '@ui/atoms/button'
 import { DkDropdown } from '@ui/atoms/dropdown'
+import { useToast } from '@ui/molecules/toast'
 import { useModal } from '@/lib/modals'
 import type { GameServer } from '@/features/downloads/use-server-downloads'
 import { ServerSabnzbdSettingsModal } from '@/features/downloads/molecules/server-sabnzbd-settings-modal'
@@ -29,7 +30,10 @@ import {
   useServerSonarrConfig,
   useServerSonarrSeries,
   useServerSonarrQueue,
+  useSaveServerRadarrConfig,
+  useSaveServerSonarrConfig,
 } from '@/features/downloads/use-server-arr'
+import { DkSwitch } from '@ui/atoms/switch'
 import {
   useServerUsenetConfig,
   useServerUsenetQueue,
@@ -75,6 +79,7 @@ export const NodeConnectionsGroup = ({
   hideNodeHeader = false,
 }: NodeConnectionsGroupProps) => {
   const { openModal } = useModal()
+  const { toast } = useToast()
   const hasQuery = Boolean(searchQuery && searchQuery.trim().length > 0)
   const [nodeOpen, setNodeOpen] = useState(defaultExpanded || hasQuery || hideNodeHeader)
   const [expandedId, setExpandedId] = useState<string | null>(null)
@@ -92,6 +97,8 @@ export const NodeConnectionsGroup = ({
   const { data: jdConfig } = useNodeJDownloaderConfig(server.id)
   const { data: radarrConfig } = useServerRadarrConfig(server.id)
   const { data: sonarrConfig } = useServerSonarrConfig(server.id)
+  const saveRadarrMutation = useSaveServerRadarrConfig(server.id)
+  const saveSonarrMutation = useSaveServerSonarrConfig(server.id)
   const { data: radarrMovies = [] } = useServerRadarrMovies(radarrLiveId)
   const { data: sonarrSeries = [] } = useServerSonarrSeries(sonarrLiveId)
   const { data: radarrQueue } = useServerRadarrQueue(radarrLiveId, 1, 50, 4000)
@@ -103,6 +110,66 @@ export const NodeConnectionsGroup = ({
   const { data: fetchedProwlarrIndexers = [], refetch: refetchProwlarrIndexers } = useProwlarrIndexers(prowlarrLiveId)
   const syncProwlarrMutation = useSyncProwlarrIndexers(server.id)
   const prowlarrIndexers = fetchedProwlarrIndexers.length > 0 ? fetchedProwlarrIndexers : syncedProwlarrIndexers
+
+  const handleToggleRadarrAutoRequest = async (checked: boolean) => {
+    if (!radarrConfig) return
+    const instances = (radarrConfig.instances || []).map((inst) => ({
+      ...inst,
+      autoRequestWatchlist: checked,
+      auto_request_watchlist: checked,
+    }))
+    try {
+      await saveRadarrMutation.mutateAsync({
+        ...radarrConfig,
+        autoRequestWatchlist: checked,
+        auto_request_watchlist: checked,
+        instances: instances.length > 0 ? instances : undefined,
+      })
+      toast({
+        title: checked ? 'Watchlist auto-request enabled' : 'Watchlist auto-request disabled',
+        description: checked
+          ? 'Movies added to your watchlist will be automatically requested in Radarr.'
+          : 'Movies added to your watchlist will no longer be automatically requested.',
+        variant: 'success',
+      })
+    } catch (err) {
+      toast({
+        title: 'Failed to update auto-request',
+        description: err instanceof Error ? err.message : 'Could not save setting',
+        variant: 'error',
+      })
+    }
+  }
+
+  const handleToggleSonarrAutoRequest = async (checked: boolean) => {
+    if (!sonarrConfig) return
+    const instances = (sonarrConfig.instances || []).map((inst) => ({
+      ...inst,
+      autoRequestWatchlist: checked,
+      auto_request_watchlist: checked,
+    }))
+    try {
+      await saveSonarrMutation.mutateAsync({
+        ...sonarrConfig,
+        autoRequestWatchlist: checked,
+        auto_request_watchlist: checked,
+        instances: instances.length > 0 ? instances : undefined,
+      })
+      toast({
+        title: checked ? 'Watchlist auto-request enabled' : 'Watchlist auto-request disabled',
+        description: checked
+          ? 'TV series added to your watchlist will be automatically requested in Sonarr.'
+          : 'TV series added to your watchlist will no longer be automatically requested.',
+        variant: 'success',
+      })
+    } catch (err) {
+      toast({
+        title: 'Failed to update auto-request',
+        description: err instanceof Error ? err.message : 'Could not save setting',
+        variant: 'error',
+      })
+    }
+  }
 
   const isSabnzbdConfigured =
     Boolean(
@@ -474,6 +541,25 @@ export const NodeConnectionsGroup = ({
                   buttonIcon={Film}
                   onPress={openRadarrModal}
                 />
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-5 py-3.5 bg-[var(--dk-surface-ghost)] border-t border-white/[0.04]">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-semibold uppercase text-muted-foreground tracking-wider">
+                      Watchlist Automation
+                    </p>
+                    <p className="mt-0.5 text-sm font-medium text-foreground">
+                      Automatically request media from the watchlist
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Automatically request movies added to your watchlist on this Radarr instance
+                    </p>
+                  </div>
+                  <DkSwitch
+                    checked={Boolean(radarrConfig?.autoRequestWatchlist ?? radarrConfig?.auto_request_watchlist)}
+                    onCheckedChange={handleToggleRadarrAutoRequest}
+                    disabled={!isRadarrConfigured || saveRadarrMutation.isPending}
+                    aria-label="Automatically request media from the watchlist"
+                  />
+                </div>
               </>
             )}
 
@@ -495,6 +581,25 @@ export const NodeConnectionsGroup = ({
                   buttonIcon={Tv}
                   onPress={openSonarrModal}
                 />
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-5 py-3.5 bg-[var(--dk-surface-ghost)] border-t border-white/[0.04]">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-semibold uppercase text-muted-foreground tracking-wider">
+                      Watchlist Automation
+                    </p>
+                    <p className="mt-0.5 text-sm font-medium text-foreground">
+                      Automatically request media from the watchlist
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Automatically request TV series added to your watchlist on this Sonarr instance
+                    </p>
+                  </div>
+                  <DkSwitch
+                    checked={Boolean(sonarrConfig?.autoRequestWatchlist ?? sonarrConfig?.auto_request_watchlist)}
+                    onCheckedChange={handleToggleSonarrAutoRequest}
+                    disabled={!isSonarrConfigured || saveSonarrMutation.isPending}
+                    aria-label="Automatically request media from the watchlist"
+                  />
+                </div>
               </>
             )}
           </IntegrationCard>
@@ -752,6 +857,25 @@ export const NodeConnectionsGroup = ({
                     buttonIcon={Film}
                     onPress={openRadarrModal}
                   />
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-5 py-3.5 bg-[var(--dk-surface-ghost)] border-t border-white/[0.04]">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-semibold uppercase text-muted-foreground tracking-wider">
+                        Watchlist Automation
+                      </p>
+                      <p className="mt-0.5 text-sm font-medium text-foreground">
+                        Automatically request media from the watchlist
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        Automatically request movies added to your watchlist on this Radarr instance
+                      </p>
+                    </div>
+                    <DkSwitch
+                      checked={Boolean(radarrConfig?.autoRequestWatchlist ?? radarrConfig?.auto_request_watchlist)}
+                      onCheckedChange={handleToggleRadarrAutoRequest}
+                      disabled={!isRadarrConfigured || saveRadarrMutation.isPending}
+                      aria-label="Automatically request media from the watchlist"
+                    />
+                  </div>
                 </>
               )}
 
@@ -773,6 +897,25 @@ export const NodeConnectionsGroup = ({
                     buttonIcon={Tv}
                     onPress={openSonarrModal}
                   />
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-5 py-3.5 bg-[var(--dk-surface-ghost)] border-t border-white/[0.04]">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-semibold uppercase text-muted-foreground tracking-wider">
+                        Watchlist Automation
+                      </p>
+                      <p className="mt-0.5 text-sm font-medium text-foreground">
+                        Automatically request media from the watchlist
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        Automatically request TV series added to your watchlist on this Sonarr instance
+                      </p>
+                    </div>
+                    <DkSwitch
+                      checked={Boolean(sonarrConfig?.autoRequestWatchlist ?? sonarrConfig?.auto_request_watchlist)}
+                      onCheckedChange={handleToggleSonarrAutoRequest}
+                      disabled={!isSonarrConfigured || saveSonarrMutation.isPending}
+                      aria-label="Automatically request media from the watchlist"
+                    />
+                  </div>
                 </>
               )}
             </IntegrationCard>

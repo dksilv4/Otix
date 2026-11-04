@@ -2,11 +2,15 @@ import { Info } from 'lucide-react'
 import { useNavigate, useParams } from '@tanstack/react-router'
 import { useLocalGame } from '@/features/launcher/data/game-queries'
 
-export const GameDetailButton = () => {
+interface GameDetailButtonProps {
+  mediaId?: string | null
+}
+
+export const GameDetailButton = ({ mediaId: propMediaId }: GameDetailButtonProps = {}) => {
   const { gameId } = useParams({ strict: false })
-  const { data: g } = useLocalGame(gameId)
+  const { data: g } = useLocalGame(propMediaId ? undefined : gameId)
   const navigate = useNavigate()
-  const mediaId = g?.data?.id
+  const mediaId = propMediaId ?? g?.data?.id
   if (!mediaId) return null
 
   return (

@@ -28,6 +28,7 @@ import { OPEN_QUICK_STREAM_EVENT, type QuickStreamEventDetail } from '../../util
 import { cn } from '@/lib/utils'
 import { safePlay, buildYouTubeEmbedUrl } from '../../utils/player'
 import { loadPlayerSettings, savePlayerSettings, formatTime } from '@/features/discover/utils/trailer'
+import { extractYoutubeIdFromUrl } from '@/features/discover/utils/hero'
 import { buildQualityOptions, getQualityBadgeLabel } from '../../utils/quality'
 import { MediaPlayerInAppPipOverlay } from '../molecules/media-player-in-app-pip-overlay'
 import type { UnifiedMediaPlayerModalProps } from '../../types/unified-player'
@@ -724,7 +725,8 @@ export const UnifiedMediaPlayerModal = ({
     ? (bufferedTime / effectiveDuration) * 100
     : 0
 
-  const iframeSrc = youtubeId ? buildYouTubeEmbedUrl(youtubeId) : ''
+  const cleanYoutubeId = youtubeId ? extractYoutubeIdFromUrl(youtubeId) || youtubeId : ''
+  const iframeSrc = cleanYoutubeId ? buildYouTubeEmbedUrl(cleanYoutubeId) : ''
 
   // Dynamic aspect ratio calculation
   const currentAspectRatio = isTrailer ? 16 / 9 : videoAspectRatio || 16 / 9
@@ -1209,7 +1211,7 @@ export const UnifiedMediaPlayerModal = ({
                       </p>
                     </div>
                     <a
-                      href={`https://www.youtube.com/watch?v=${youtubeId}`}
+                      href={`https://www.youtube.com/watch?v=${cleanYoutubeId || youtubeId}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary text-primary-foreground font-medium text-xs sm:text-sm shadow-md hover:opacity-90 transition-opacity"
@@ -1229,9 +1231,9 @@ export const UnifiedMediaPlayerModal = ({
                     'w-full h-full origin-center transition-transform duration-300 ease-out pointer-events-none border-0',
                     isZoomedOut ? 'scale-100' : 'scale-[1.35]'
                   )}
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                   allowFullScreen
-                  referrerPolicy="no-referrer-when-downgrade"
+                  referrerPolicy="strict-origin-when-cross-origin"
                 />
               )
             ) : (

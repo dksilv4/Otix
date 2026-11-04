@@ -35,11 +35,12 @@ export const NodesViewContext = createContext<NodesViewContextValue | null>(null
 
 export interface NodesViewProviderProps {
   children: ReactNode
+  initialTab?: NodesActiveTab
 }
 
-export const NodesViewProvider = ({ children }: NodesViewProviderProps) => {
+export const NodesViewProvider = ({ children, initialTab }: NodesViewProviderProps) => {
   const [viewMode, setViewModeState] = useState<NodesViewMode>(loadStoredNodesViewMode)
-  const [activeTab, setActiveTabState] = useState<NodesActiveTab>(loadStoredNodesActiveTab)
+  const [activeTab, setActiveTabState] = useState<NodesActiveTab>(() => initialTab ?? loadStoredNodesActiveTab())
   const [searchQuery, setSearchQuery] = useState('')
   const [categoryFilter, setCategoryFilter] = useState<NodesCategoryFilter>('all')
   const [statusFilter, setStatusFilter] = useState<NodesStatusFilter>('all')
@@ -71,12 +72,9 @@ export const NodesViewProvider = ({ children }: NodesViewProviderProps) => {
         setActiveTabState(parsed)
       } else if (
         !window.location.hash ||
-        window.location.hash === '#' ||
-        window.location.hash === '#map' ||
-        window.location.hash === '#grid' ||
-        window.location.hash === '#list'
+        window.location.hash === '#'
       ) {
-        setActiveTabState('infrastructure')
+        setActiveTabState('paths')
       }
     }
     window.addEventListener('hashchange', handleHashChange)

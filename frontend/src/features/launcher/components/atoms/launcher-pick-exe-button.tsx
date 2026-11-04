@@ -1,21 +1,28 @@
 import { FileCode } from 'lucide-react'
 import { getDesktopAPI } from '@/lib/desktop/api'
 import { useToast } from '@ui/molecules/toast'
-import {useParams} from "@tanstack/react-router";
-import {useLocalGame} from "@/features/launcher/data/game-queries";
+import { useParams } from '@tanstack/react-router'
+import { useLocalGame } from '@/features/launcher/data/game-queries'
 
-export const PickExeButton = () => {
+interface PickExeButtonProps {
+  gameId?: string
+  installDir?: string | null
+}
+
+export const PickExeButton = ({ gameId: propGameId, installDir: propInstallDir }: PickExeButtonProps = {}) => {
   const { toast } = useToast()
-  const {gameId} = useParams({ strict: false })
-  const { data: g } = useLocalGame(gameId)
+  const { gameId: routeGameId } = useParams({ strict: false })
+  const activeGameId = propGameId ?? routeGameId
+  const { data: g } = useLocalGame(propInstallDir ? undefined : activeGameId)
+  const installDir = propInstallDir ?? g?.installDir
 
   const handleClick = async () => {
-    if (!gameId || !getDesktopAPI()) return
+    if (!activeGameId || !getDesktopAPI()) return
     const api = getDesktopAPI()!
-    if (!api.pickExecutable || !api.updateGamePath || !g) return
-    const newExe = await api.pickExecutable(g.installDir)
+    if (!api.pickExecutable || !api.updateGamePath) return
+    const newExe = await api.pickExecutable(installDir ?? '')
     if (!newExe) return
-    await api.updateGamePath(gameId, newExe)
+    await api.updateGamePath(activeGameId, newExe)
     toast({ title: 'Executable Updated', description: `Exe changed to: ${newExe}`, variant: 'success' })
   }
 

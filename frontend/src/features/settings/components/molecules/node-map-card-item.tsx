@@ -19,6 +19,7 @@ import {
   HardDrive,
   Lock,
   Activity,
+  Laptop,
 } from 'lucide-react'
 import { DkButton } from '@ui/atoms/button'
 import { cn } from '@/lib/utils'
@@ -301,7 +302,7 @@ export const NodeMapCardItem = ({
             <div className="h-7 w-7 rounded-lg bg-[var(--dk-surface-field)] flex items-center justify-center text-primary">
               {type === 'home' && <HomeIcon size={14} />}
               {type === 'server' && <Server size={14} />}
-              {type === 'node' && <Cpu size={14} />}
+              {type === 'node' && (isLocalDesktopNode(data.server) ? <Laptop size={14} /> : <Cpu size={14} />)}
               {type === 'samba' && <FolderTree size={14} />}
               {type === 'unclaimed_node' && <Sparkles size={14} />}
             </div>
@@ -367,7 +368,7 @@ export const NodeMapCardItem = ({
             <p className="text-[10px] text-muted-foreground truncate leading-tight">
               {type === 'home' && (data.home.subnetCidr ? `Subnet ${data.home.subnetCidr}` : 'Homelab Network')}
               {type === 'server' && (data.machine.ipAddress || data.machine.host || getOSLabel(data.machine.os))}
-              {type === 'node' && (isLocalDesktopNode(data.server) ? 'Companion Daemon' : data.server.primaryUrl || 'Local Node')}
+              {type === 'node' && (isLocalDesktopNode(data.server) ? 'Otix Desktop App' : data.server.primaryUrl || 'Local Node')}
               {type === 'samba' && (data.samba.serverName ? `/${data.samba.shareName} • ${data.samba.serverName}` : `/${data.samba.shareName} • Port ${data.samba.port}`)}
               {type === 'unclaimed_node' && (data.pending.claimCode ? `PIN: ${data.pending.claimCode}` : 'Discovered Node')}
             </p>

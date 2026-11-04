@@ -25,10 +25,10 @@ describe('settings navigation IA', () => {
     expect(NAV_ITEMS.find((i) => i.id === 'connections')?.label).toBe('Connections')
     expect(NAV_ITEMS.find((i) => i.id === 'node-connections')?.label).toBe('Node Connections')
     expect(NAV_ITEMS.find((i) => i.id === 'node-connections')?.group).toBe('connections')
-    expect(NAV_ITEMS.find((i) => i.id === 'nodes')?.label).toBe('Nodes')
+    expect(NAV_ITEMS.find((i) => i.id === 'nodes')?.label).toBe('Drive Locations')
     expect(NAV_ITEMS.find((i) => i.id === 'nodes')?.isPage).toBe(true)
     expect(NAV_ITEMS.find((i) => i.id === 'nodes')?.group).toBe('library')
-    expect(NAV_ITEMS.filter((i) => i.group === 'library').map((i) => i.id)).toEqual(['nodes'])
+    expect(NAV_ITEMS.filter((i) => i.group === 'library').map((i) => i.id)).toEqual(['nodes', 'new-node-scan-files'])
     const connectionsGroup = NAV_ITEMS.filter((i) => i.group === 'connections')
     expect(connectionsGroup[connectionsGroup.length - 1].id).toBe('plugins')
     expect(

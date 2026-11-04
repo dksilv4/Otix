@@ -1,6 +1,5 @@
 import { useState, useCallback, useEffect } from "react";
 import {
-  X,
   Disc,
   HardDrive,
   FolderOpen,
@@ -10,9 +9,10 @@ import {
   Download,
   Gamepad2,
 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { DkButton } from "@ui/atoms/button";
+import { DkDialog } from "@ui/molecules/dialog";
 import { hasDesktopAPI, markGameInstalled } from "@/features/launcher/data/storage";
 import { usePickFolder } from "@/components/path-picker";
 import { useInstallProgress } from "@/features/launcher/data/install-store";
@@ -33,8 +33,11 @@ const PHASE_LABELS: Record<InstallPhase, string> = {
   error: "Install failed",
 };
 
-interface IsoInstallerModalProps {
-  onClose: () => void;
+export interface IsoInstallerModalProps {
+  open?: boolean;
+  isOpen?: boolean;
+  onClose?: () => void;
+  onOpenChange?: (open: boolean) => void;
   games: LocalGame[];
   initialIsoPath?: string;
   onInstallComplete?: (isoPath: string, installDir: string, gameExe: string | null) => void;
@@ -42,7 +45,10 @@ interface IsoInstallerModalProps {
 }
 
 export const IsoInstallerModal = ({
+  open,
+  isOpen,
   onClose,
+  onOpenChange,
   games,
   initialIsoPath,
   onInstallComplete,
@@ -52,6 +58,13 @@ export const IsoInstallerModal = ({
   const [targetDir, setTargetDir] = useState("");
   const [error, setError] = useState<string | null>(null);
   const { pick: pickFolder } = usePickFolder({ target: 'local' });
+
+  const isModalOpen = (open ?? isOpen ?? true) && !isExiting
+
+  const handleClose = useCallback(() => {
+    onClose?.();
+    onOpenChange?.(false);
+  }, [onClose, onOpenChange]);
 
   const {
     installs,
@@ -72,6 +85,7 @@ export const IsoInstallerModal = ({
     );
     return game?.data?.title || game?.title || cleanTitle(iso.split(/[\\/]/).pop() || "");
   }, [games]);
+
   // Reset on mount — also dismiss any stale completed/errored entry so
   // the user gets the idle form immediately
   useEffect(() => {
@@ -124,7 +138,7 @@ export const IsoInstallerModal = ({
 
     // If this ISO is already being installed, just close and show in sidebar
     if (isInstallingThis) {
-      onClose();
+      handleClose();
       return;
     }
 
@@ -156,11 +170,7 @@ export const IsoInstallerModal = ({
       storeFail(isoPath, err instanceof Error ? err.message : "Installation failed unexpectedly");
       setError(err instanceof Error ? err.message : "Installation failed unexpectedly");
     }
-  }, [isoPath, targetDir, isInstallingThis, games, onClose, storeStart, storeComplete, storeFail]);
-
-  const handleClose = useCallback(() => {
-    onClose();
-  }, [onClose]);
+  }, [isoPath, targetDir, isInstallingThis, games, handleClose, storeStart, storeComplete, storeFail]);
 
   const progress = entry?.progress;
   const currentPhase = progress?.phase;
@@ -169,253 +179,233 @@ export const IsoInstallerModal = ({
   const isIdle = !entry?.active && !error && !entry?.result;
 
   return (
-    <AnimatePresence>
-      {!isExiting && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
-        {/* Backdrop */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-          onClick={handleClose}
-        />
-
-        {/* Dialog */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95, y: 20 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.95, y: 20 }}
-          transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-          className="relative max-h-[90vh] w-full max-w-lg overflow-hidden rounded-[2rem] bg-[var(--dk-surface-overlay)] shadow-[var(--dk-shadow-dialog)] backdrop-blur-xl border border-[var(--dk-separator)] flex flex-col"
-        >
-          {/* Header */}
-          <div className="flex items-center justify-between border-b border-[var(--dk-separator)] px-6 py-4 flex-none">
-            <div className="flex items-center gap-3">
-              <Disc className="h-5 w-5 text-primary" />
-              <h2 className="text-lg font-semibold text-foreground">
-                {isInstallingThis ? 'Installing...' : 'Install Game'}
-              </h2>
-            </div>
-            <button
-              onClick={handleClose}
-              className="rounded-xl p-2 text-muted-foreground transition-colors hover:bg-[var(--dk-surface-glass)] hover:text-foreground active:scale-90"
-            >
-              <X className="h-5 w-5" />
-            </button>
+    <DkDialog
+      open={isModalOpen}
+      onOpenChange={(next) => {
+        if (!next) handleClose()
+      }}
+      className="max-h-[90vh] w-full max-w-lg p-0 sm:p-0 flex flex-col overflow-hidden"
+    >
+      <div className="relative z-10 flex min-h-0 flex-1 flex-col overflow-hidden">
+        {/* Header */}
+        <div className="flex items-center justify-between border-b border-[var(--dk-separator)] px-6 py-4 flex-none pr-14">
+          <div className="flex items-center gap-3">
+            <Disc className="h-5 w-5 text-primary" />
+            <h2 className="text-lg font-semibold text-foreground">
+              {isInstallingThis ? 'Installing...' : 'Install Game'}
+            </h2>
           </div>
+        </div>
 
-          {/* Content */}
-          <div className="flex-1 overflow-y-auto px-6 py-5 min-h-0 space-y-5">
-            {/* ISO selection */}
-            {isIdle && (
-              <div className="space-y-4">
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto px-6 py-5 min-h-0 space-y-5">
+          {/* ISO selection */}
+          {isIdle && (
+            <div className="space-y-4">
+              <button
+                onClick={handleSelectIso}
+                className="flex w-full items-center gap-4 rounded-2xl bg-[var(--dk-surface-glass)] p-4 text-left transition-all hover:bg-[var(--dk-surface-glass-hover)] active:scale-[0.99] cursor-pointer"
+              >
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
+                  <Disc className="h-6 w-6 text-primary" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold text-foreground">
+                    {isoPath
+                      ? isoPath.split(/[\\/]/).pop()
+                      : "Select ISO file"}
+                  </p>
+                  <p className="text-xs text-muted-foreground truncate">
+                    {isoPath || "Choose a disk image to install from"}
+                  </p>
+                </div>
+                <FolderOpen className="h-5 w-5 text-muted-foreground shrink-0" />
+              </button>
+
+              <div>
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Install to
+                </p>
                 <button
-                  onClick={handleSelectIso}
-                  className="flex w-full items-center gap-4 rounded-2xl bg-[var(--dk-surface-glass)] p-4 text-left transition-all hover:bg-[var(--dk-surface-glass-hover)] active:scale-[0.99]"
+                  onClick={handleSelectTargetDir}
+                  disabled={!isoPath}
+                  className="flex w-full items-center gap-4 rounded-2xl bg-[var(--dk-surface-glass)] p-4 text-left transition-all hover:bg-[var(--dk-surface-glass-hover)] active:scale-[0.99] disabled:opacity-40 cursor-pointer"
                 >
-                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
-                    <Disc className="h-6 w-6 text-primary" />
+                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-500/10">
+                    <HardDrive className="h-6 w-6 text-emerald-500" />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold text-foreground">
-                      {isoPath
-                        ? isoPath.split(/[\\/]/).pop()
-                        : "Select ISO file"}
+                    <p className="text-sm font-semibold text-foreground truncate">
+                      {targetDir
+                        ? targetDir.split(/[\\/]/).pop()
+                        : "Select install folder"}
                     </p>
-                    <p className="text-xs text-muted-foreground truncate">
-                      {isoPath || "Choose a disk image to install from"}
+                    <p className="text-xs text-muted-foreground truncate font-mono">
+                      {targetDir || "Where to install the game"}
                     </p>
                   </div>
                   <FolderOpen className="h-5 w-5 text-muted-foreground shrink-0" />
                 </button>
+              </div>
+            </div>
+          )}
 
-                <div>
-                  <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    Install to
+          {/* Progress */}
+          {isInstallingThis && (
+            <div className="space-y-5">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-foreground font-medium">
+                    {progress ? PHASE_LABELS[progress.phase] : "Starting..."}
+                  </span>
+                </div>
+                <div className="h-2 rounded-full bg-[var(--dk-surface-glass)] overflow-hidden">
+                  <motion.div
+                    className="h-full rounded-full bg-gradient-to-r from-primary to-emerald-500 animate-pulse"
+                    initial={{ width: "100%" }}
+                    animate={{ width: "100%" }}
+                    transition={{ duration: 0.3, ease: "easeOut" }}
+                  />
+                </div>
+                {progress && (
+                  <p className="text-xs text-muted-foreground">
+                    {progress.message}
                   </p>
-                  <button
-                    onClick={handleSelectTargetDir}
-                    disabled={!isoPath}
-                    className="flex w-full items-center gap-4 rounded-2xl bg-[var(--dk-surface-glass)] p-4 text-left transition-all hover:bg-[var(--dk-surface-glass-hover)] active:scale-[0.99] disabled:opacity-40"
-                  >
-                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-500/10">
-                      <HardDrive className="h-6 w-6 text-emerald-500" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-semibold text-foreground truncate">
-                        {targetDir
-                          ? targetDir.split(/[\\/]/).pop()
-                          : "Select install folder"}
-                      </p>
-                      <p className="text-xs text-muted-foreground truncate font-mono">
-                        {targetDir || "Where to install the game"}
-                      </p>
-                    </div>
-                    <FolderOpen className="h-5 w-5 text-muted-foreground shrink-0" />
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* Progress */}
-            {isInstallingThis && (
-              <div className="space-y-5">
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-foreground font-medium">
-                      {progress ? PHASE_LABELS[progress.phase] : "Starting..."}
-                    </span>
-                  </div>
-                  <div className="h-2 rounded-full bg-[var(--dk-surface-glass)] overflow-hidden">
-                    <motion.div
-                      className="h-full rounded-full bg-gradient-to-r from-primary to-emerald-500 animate-pulse"
-                      initial={{ width: "100%" }}
-                      animate={{ width: "100%" }}
-                      transition={{ duration: 0.3, ease: "easeOut" }}
-                    />
-                  </div>
-                  {progress && (
-                    <p className="text-xs text-muted-foreground">
-                      {progress.message}
-                    </p>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  {(["mounting","detecting","installing","finishing"] as InstallPhase[]).map((phase) => {
-                    const phaseOrder: InstallPhase[] = ["mounting","detecting","installing","finishing","done"];
-                    const currentIdx = phaseOrder.indexOf(currentPhase ?? 'mounting');
-                    const phaseIdx = phaseOrder.indexOf(phase);
-                    const isActive = phase === currentPhase;
-                    const isPast = phaseIdx < currentIdx;
-
-                    return (
-                      <div
-                        key={phase}
-                        className={cn(
-                          "flex items-center gap-3 rounded-xl px-4 py-2.5 transition-all",
-                          isActive && "bg-primary/10",
-                          isPast && "opacity-60",
-                          !isActive && !isPast && "opacity-30",
-                        )}
-                      >
-                        {isActive ? (
-                          <Loader2 className="h-4 w-4 animate-spin text-primary shrink-0" />
-                        ) : isPast ? (
-                          <CheckCircle2 className="h-4 w-4 text-green-400 shrink-0" />
-                        ) : (
-                          <div className="h-4 w-4 shrink-0 rounded-full border-2 border-muted-foreground/30" />
-                        )}
-                        <span className="text-sm font-medium">{PHASE_LABELS[phase]}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* Error */}
-            {isError && (
-              <div className="space-y-4">
-                <div className="flex flex-col items-center gap-3 py-6 text-center">
-                  <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-destructive/10">
-                    <AlertCircle className="h-8 w-8 text-destructive" />
-                  </div>
-                  <div>
-                    <p className="text-lg font-semibold text-foreground">Installation Failed</p>
-                    <p className="mt-1 text-sm text-muted-foreground max-w-sm">{error}</p>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Success */}
-            {isDone && entry?.result && (
-              <div className="space-y-4">
-                <div className="flex flex-col items-center gap-3 py-6 text-center">
-                  <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-green-500/10">
-                    <Gamepad2 className="h-8 w-8 text-green-400" />
-                  </div>
-                  <div>
-                    <p className="text-lg font-semibold text-foreground">Installation Complete</p>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      {entry.result.gameExe ? "Game is ready to play!" : "Game has been installed."}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="rounded-xl bg-[var(--dk-surface-glass)] p-3">
-                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Installed To</p>
-                    <p className="mt-0.5 text-xs font-mono truncate">{entry.result.installDir}</p>
-                  </div>
-                  {entry.result.gameExe && (
-                    <div className="rounded-xl bg-[var(--dk-surface-glass)] p-3">
-                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Executable</p>
-                      <p className="mt-0.5 text-xs font-mono truncate">{entry.result.gameExe.split(/[\\/]/).pop()}</p>
-                    </div>
-                  )}
-                  <div className="rounded-xl bg-[var(--dk-surface-glass)] p-3">
-                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Crack</p>
-                    <p className="mt-0.5 text-xs">{entry.result.crackApplied ? "Applied" : "Pre-applied or not needed"}</p>
-                  </div>
-                  <div className="rounded-xl bg-[var(--dk-surface-glass)] p-3">
-                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Status</p>
-                    <p className="mt-0.5 text-xs text-green-400 font-semibold">Installed</p>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Footer */}
-          <div className="flex-none border-t border-[var(--dk-separator)] bg-[var(--dk-surface-overlay)]/60 backdrop-blur-md px-6 py-4 flex items-center justify-end gap-3">
-            {isIdle && (
-              <DkButton onClick={handleInstall} disabled={!isoPath || !targetDir} className="w-full gap-2">
-                <Download className="h-4 w-4" />
-                Install
-              </DkButton>
-            )}
-
-            {(isDone || isError) && (
-              <div className="flex w-full gap-3">
-                {isError && (
-                  <DkButton
-                    variant="ghost"
-                    onClick={() => {
-                      storeDismiss(isoPath)
-                      setError(null)
-                    }}
-                    className="flex-1"
-                  >
-                    Try Again
-                  </DkButton>
                 )}
-                <DkButton onClick={handleClose} className="flex-1">
-                  {isDone ? "Done" : "Close"}
-                </DkButton>
               </div>
-            )}
 
-            {isInstallingThis && (
-              <div className="flex w-full items-center justify-between gap-3">
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <Loader2 className="h-3 w-3 animate-spin" />
-                  Installing... (you may close)
-                </div>
-                <button
-                  onClick={() => storeCancel(isoPath)}
-                  className="rounded-lg bg-destructive/10 px-3 py-1.5 text-xs font-medium text-destructive hover:bg-destructive/20 transition-colors active:scale-95"
-                >
-                  Cancel
-                </button>
+              <div className="space-y-2">
+                {(["mounting","detecting","installing","finishing"] as InstallPhase[]).map((phase) => {
+                  const phaseOrder: InstallPhase[] = ["mounting","detecting","installing","finishing","done"];
+                  const currentIdx = phaseOrder.indexOf(currentPhase ?? 'mounting');
+                  const phaseIdx = phaseOrder.indexOf(phase);
+                  const isActive = phase === currentPhase;
+                  const isPast = phaseIdx < currentIdx;
+
+                  return (
+                    <div
+                      key={phase}
+                      className={cn(
+                        "flex items-center gap-3 rounded-xl px-4 py-2.5 transition-all",
+                        isActive && "bg-primary/10",
+                        isPast && "opacity-60",
+                        !isActive && !isPast && "opacity-30",
+                      )}
+                    >
+                      {isActive ? (
+                        <Loader2 className="h-4 w-4 animate-spin text-primary shrink-0" />
+                      ) : isPast ? (
+                        <CheckCircle2 className="h-4 w-4 text-green-400 shrink-0" />
+                      ) : (
+                        <div className="h-4 w-4 shrink-0 rounded-full border-2 border-muted-foreground/30" />
+                      )}
+                      <span className="text-sm font-medium">{PHASE_LABELS[phase]}</span>
+                    </div>
+                  );
+                })}
               </div>
-            )}
-          </div>
-        </motion.div>
+            </div>
+          )}
+
+          {/* Error */}
+          {isError && (
+            <div className="space-y-4">
+              <div className="flex flex-col items-center gap-3 py-6 text-center">
+                <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-destructive/10">
+                  <AlertCircle className="h-8 w-8 text-destructive" />
+                </div>
+                <div>
+                  <p className="text-lg font-semibold text-foreground">Installation Failed</p>
+                  <p className="mt-1 text-sm text-muted-foreground max-w-sm">{error}</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Success */}
+          {isDone && entry?.result && (
+            <div className="space-y-4">
+              <div className="flex flex-col items-center gap-3 py-6 text-center">
+                <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-green-500/10">
+                  <Gamepad2 className="h-8 w-8 text-green-400" />
+                </div>
+                <div>
+                  <p className="text-lg font-semibold text-foreground">Installation Complete</p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {entry.result.gameExe ? "Game is ready to play!" : "Game has been installed."}
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-xl bg-[var(--dk-surface-glass)] p-3">
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Installed To</p>
+                  <p className="mt-0.5 text-xs font-mono truncate">{entry.result.installDir}</p>
+                </div>
+                {entry.result.gameExe && (
+                  <div className="rounded-xl bg-[var(--dk-surface-glass)] p-3">
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Executable</p>
+                    <p className="mt-0.5 text-xs font-mono truncate">{entry.result.gameExe.split(/[\\/]/).pop()}</p>
+                  </div>
+                )}
+                <div className="rounded-xl bg-[var(--dk-surface-glass)] p-3">
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Crack</p>
+                  <p className="mt-0.5 text-xs">{entry.result.crackApplied ? "Applied" : "Pre-applied or not needed"}</p>
+                </div>
+                <div className="rounded-xl bg-[var(--dk-surface-glass)] p-3">
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Status</p>
+                  <p className="mt-0.5 text-xs text-green-400 font-semibold">Installed</p>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
-      )}
-    </AnimatePresence>
+
+        {/* Footer */}
+        <div className="flex-none border-t border-[var(--dk-separator)] bg-[var(--dk-surface-overlay)]/60 backdrop-blur-md px-6 py-4 flex items-center justify-end gap-3">
+          {isIdle && (
+            <DkButton onClick={handleInstall} disabled={!isoPath || !targetDir} className="w-full gap-2">
+              <Download className="h-4 w-4" />
+              Install
+            </DkButton>
+          )}
+
+          {(isDone || isError) && (
+            <div className="flex w-full gap-3">
+              {isError && (
+                <DkButton
+                  variant="ghost"
+                  onClick={() => {
+                    storeDismiss(isoPath)
+                    setError(null)
+                  }}
+                  className="flex-1"
+                >
+                  Try Again
+                </DkButton>
+              )}
+              <DkButton onClick={handleClose} className="flex-1">
+                {isDone ? "Done" : "Close"}
+              </DkButton>
+            </div>
+          )}
+
+          {isInstallingThis && (
+            <div className="flex w-full items-center justify-between gap-3">
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <Loader2 className="h-3 w-3 animate-spin" />
+                Installing... (you may close)
+              </div>
+              <button
+                onClick={() => storeCancel(isoPath)}
+                className="rounded-lg bg-destructive/10 px-3 py-1.5 text-xs font-medium text-destructive hover:bg-destructive/20 transition-colors active:scale-95 cursor-pointer"
+              >
+                Cancel
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    </DkDialog>
   );
 };

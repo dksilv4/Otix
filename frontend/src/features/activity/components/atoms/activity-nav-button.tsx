@@ -47,7 +47,7 @@ export const ActivityModuleButton = ({
   bare?: boolean
 }) => {
   const { source, isPlaying, currentTrack } = usePlayer()
-  const { runningGame, matchedGame } = useMatchedRunningGame()
+  const { runningGame, runningGames = [], matchedGame } = useMatchedRunningGame()
 
   const { user: currentUser } = useAuth()
 
@@ -61,7 +61,9 @@ export const ActivityModuleButton = ({
   const { sessions: plexSessions = [], isAdmin: isPlexAdmin } = usePlexSessions()
 
   const { downloads } = useDownloads(currentUser?.id)
-  const activeDownloads = downloads.filter(d => d.status === 'queued' || d.status === 'downloading' || d.status === 'processing')
+  const activeDownloads = downloads.filter(
+    (d) => d.status === 'queued' || d.status === 'downloading' || d.status === 'processing',
+  )
   const hasDownloads = activeDownloads.length > 0
 
   const hasLocalPlayback = source !== 'none' && currentTrack !== null
@@ -75,7 +77,8 @@ export const ActivityModuleButton = ({
     }
   }
 
-  const runningGamePoster = matchedGame?.posterUrl || runningGame?.game.posterUrl || runningGame?.game.iconUrl
+  const runningGamePoster =
+    matchedGame?.posterUrl || runningGame?.game.posterUrl || runningGame?.game.iconUrl
 
   return (
     <>
@@ -88,14 +91,14 @@ export const ActivityModuleButton = ({
           (!bare ? ' flex items-center p-1.5' : '') +
           (!isPinned ? ' cursor-pointer' : '') +
           (isSidebarOpen ? ' bg-[var(--dk-surface-ghost-active)] text-foreground' : '') +
-          (!hasLocalPlayback && hasPlex ? ' bg-amber-600/[0.06]' : '') +
+          (!hasLocalPlayback && hasPlex ? ' bg-primary/10' : '') +
           (bare ? ' w-8 h-8 hover:bg-[var(--dk-surface-ghost-hover)] active:bg-[var(--dk-surface-ghost-active)]' : '')
         }
         style={!bare ? GLASS_STYLE : undefined}
         aria-label="Activity"
       >
         {runningGame ? (
-          <div className="flex items-center justify-center">
+          <div className="relative flex items-center justify-center">
             {runningGamePoster ? (
               <img
                 src={runningGamePoster}
@@ -103,7 +106,15 @@ export const ActivityModuleButton = ({
                 className="h-6 w-6 rounded-full object-cover"
               />
             ) : (
-              <Gamepad2 className="h-5 w-5 text-emerald-400" />
+              <Gamepad2 className="h-5 w-5 text-primary" />
+            )}
+            {runningGames.length > 1 && (
+              <span
+                className="absolute -bottom-1 -right-1 flex h-3.5 min-w-[14px] items-center justify-center rounded-full bg-primary text-primary-foreground text-[8px] font-mono font-bold px-0.5 shadow-xs ring-1 ring-[var(--dk-surface-root)]"
+                title={`${runningGames.length} games running`}
+              >
+                {runningGames.length}
+              </span>
             )}
           </div>
         ) : hasLocalPlayback ? (
@@ -119,8 +130,8 @@ export const ActivityModuleButton = ({
           )
         ) : hasDownloads ? (
           <div className="relative">
-            <Download className="h-5 w-5 text-blue-400" />
-            <span className="absolute -top-1.5 -right-1.5 flex items-center justify-center h-3.5 min-w-[14px] px-[3px] text-[9px] font-bold text-black leading-none rounded-full bg-blue-500">
+            <Download className="h-5 w-5 text-primary" />
+            <span className="absolute -top-1.5 -right-1.5 flex items-center justify-center h-3.5 min-w-[14px] px-[3px] text-[9px] font-bold text-primary-foreground leading-none rounded-full bg-primary">
               {activeDownloads.length > 9 ? '9+' : activeDownloads.length}
             </span>
           </div>
@@ -132,28 +143,28 @@ export const ActivityModuleButton = ({
                 alt=""
                 className="h-6 w-6 rounded-full object-cover shadow-sm"
               />
-              <span className="absolute -bottom-1 -right-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-[#e5a00d]">
-                <PlexIcon className="h-2 w-2 text-black" />
+              <span className="absolute -bottom-1 -right-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                <PlexIcon className="h-2 w-2" />
               </span>
             </div>
           ) : (
-            <PlexIcon className="h-5 w-5 text-[#e5a00d]" />
+            <PlexIcon className="h-5 w-5 text-primary" />
           )
         ) : (
           <LayoutGrid className="h-5 w-5 text-muted-foreground" />
         )}
         {hasPlex && !hasLocalPlayback && (
-          <span className="absolute -top-0.5 -right-0.5 flex items-center justify-center h-4 min-w-4 px-1 text-[10px] font-bold text-black leading-none rounded-full bg-[#e5a00d]">
+          <span className="absolute -top-0.5 -right-0.5 flex items-center justify-center h-4 min-w-4 px-1 text-[10px] font-bold text-primary-foreground leading-none rounded-full bg-primary">
             {plexCount > 9 ? '9+' : plexCount}
           </span>
         )}
         {hasLocalPlayback && hasDownloads && (
-          <span className="absolute -top-1.5 -right-1.5 flex items-center justify-center h-3.5 min-w-[14px] px-[3px] text-[9px] font-bold text-black leading-none rounded-full bg-blue-500">
+          <span className="absolute -top-1.5 -right-1.5 flex items-center justify-center h-3.5 min-w-[14px] px-[3px] text-[9px] font-bold text-primary-foreground leading-none rounded-full bg-primary">
             {activeDownloads.length > 9 ? '9+' : activeDownloads.length}
           </span>
         )}
         {unreadCount > 0 && (
-          <span className="absolute -top-0.5 -left-0.5 flex items-center justify-center h-4 min-w-4 px-1 text-[10px] font-bold text-black leading-none rounded-full bg-primary text-primary-foreground">
+          <span className="absolute -top-0.5 -left-0.5 flex items-center justify-center h-4 min-w-4 px-1 text-[10px] font-bold text-primary-foreground leading-none rounded-full bg-primary">
             {unreadCount > 9 ? '9+' : unreadCount}
           </span>
         )}

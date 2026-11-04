@@ -49,6 +49,9 @@ import { SettingsPathsPage } from './settings-paths-page'
 import { SettingsOrganizePage } from './settings-organize-page'
 import { SettingsProposalsPage } from './settings-proposals-page'
 import { SettingsNodeConnectionsPage } from './settings-node-connections-page'
+import { SettingsMachinePage } from './settings-machine-page'
+import { SettingsSoftwarePage } from './settings-software-page'
+import { SettingsOverlayPage } from './settings-overlay-page'
 import { useNodesView } from '../context/nodes-view-context'
 import {
   flattenInfrastructureItems,
@@ -90,8 +93,8 @@ export const SettingsNodesPage = () => {
   const claimServerMutation = useClaimGameServer()
   const { data: pendingNodes = [] } = usePendingGameServers()
 
-  const { data: homes = [] } = useUserHomes()
-  const { data: serverMachines = [] } = useServerMachines()
+  const { data: homes = [] } = useUserHomes({ enabled: isAuthenticated })
+  const { data: serverMachines = [] } = useServerMachines(null, { enabled: isAuthenticated })
   const deleteMachineMutation = useDeleteServerMachine()
   const detectDrivesMutation = useDetectServerDrives()
   const deleteHomeMutation = useDeleteHome()
@@ -454,16 +457,6 @@ export const SettingsNodesPage = () => {
     }
   }
 
-  if (!isAuthenticated) {
-    return (
-      <SettingsLockedState
-        title="Sign in required"
-        description="Sign in to view and configure your Otix nodes, homes, and homelab server machines."
-        icon={ShieldAlert}
-        action={<span />}
-      />
-    )
-  }
 
   if (activeTab === 'paths') {
     return (
@@ -474,7 +467,7 @@ export const SettingsNodesPage = () => {
           getNavPillsTopOffset(false),
         )}
       >
-        <div className="max-w-5xl xl:max-w-6xl mx-auto space-y-5">
+        <div className="w-full space-y-5">
           <SettingsPathsPage
             onNavigateToOrganize={() => setActiveTab('organize')}
             onNavigateToInfrastructure={() => setActiveTab('infrastructure')}
@@ -493,7 +486,7 @@ export const SettingsNodesPage = () => {
           getNavPillsTopOffset(false),
         )}
       >
-        <div className="max-w-5xl xl:max-w-6xl mx-auto space-y-5">
+        <div className="w-full space-y-5">
           <SettingsOrganizePage />
         </div>
       </div>
@@ -509,8 +502,56 @@ export const SettingsNodesPage = () => {
           getNavPillsTopOffset(false),
         )}
       >
-        <div className="max-w-5xl xl:max-w-6xl mx-auto space-y-5">
+        <div className="w-full space-y-5">
           <SettingsNodeConnectionsPage />
+        </div>
+      </div>
+    )
+  }
+
+  if (activeTab === 'machine') {
+    return (
+      <div
+        id="settings-nodes-section"
+        className={cn(
+          'relative w-full h-full overflow-y-auto px-4 sm:px-6 lg:px-8 pb-28',
+          getNavPillsTopOffset(false),
+        )}
+      >
+        <div className="w-full space-y-5">
+          <SettingsMachinePage />
+        </div>
+      </div>
+    )
+  }
+
+  if (activeTab === 'software') {
+    return (
+      <div
+        id="settings-nodes-section"
+        className={cn(
+          'relative w-full h-full overflow-y-auto px-4 sm:px-6 lg:px-8 pb-28',
+          getNavPillsTopOffset(false),
+        )}
+      >
+        <div className="w-full space-y-5">
+          <SettingsSoftwarePage />
+        </div>
+      </div>
+    )
+  }
+
+  if (activeTab === 'overlay') {
+    return (
+      <div
+        id="settings-nodes-section"
+        className={cn(
+          'relative w-full h-full overflow-y-auto px-4 sm:px-6 lg:px-8 pb-28',
+          getNavPillsTopOffset(false),
+        )}
+      >
+        <div className="w-full space-y-5">
+          <SettingsOverlayPage />
         </div>
       </div>
     )
@@ -525,7 +566,7 @@ export const SettingsNodesPage = () => {
           getNavPillsTopOffset(false),
         )}
       >
-        <div className="max-w-5xl xl:max-w-6xl mx-auto space-y-5">
+        <div className="w-full space-y-5">
           <SettingsProposalsPage />
         </div>
       </div>
@@ -607,11 +648,24 @@ export const SettingsNodesPage = () => {
                   <span className="w-1.5 h-1.5 rounded-full bg-status-online" />
                   <span>{onlineInfrastructureCount}/{totalInfrastructureCount} online</span>
                 </span>
+                {!isAuthenticated && (
+                  <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-[var(--dk-surface-ghost)] border border-white/[0.04] text-muted-foreground">
+                    Guest Mode
+                  </span>
+                )}
               </div>
               <p className="text-xs text-muted-foreground mt-0.5">
                 Worker companions, server machines, Samba network storage, and dedicated game servers.
               </p>
             </div>
+            {!isAuthenticated && (
+              <Link
+                to="/auth/login"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary text-primary-foreground font-semibold text-xs hover:bg-primary/90 transition-all cursor-pointer self-start sm:self-auto"
+              >
+                Sign in to sync cloud nodes
+              </Link>
+            )}
           </div>
         </div>
       )}

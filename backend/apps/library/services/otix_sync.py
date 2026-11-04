@@ -22,21 +22,21 @@ from apps.search.services.search import enqueue_prehydrate_titles
 
 logger = logging.getLogger(__name__)
 
-UserGameServer = UserNode
-
 AUTO_MATCH_MIN_CONFIDENCE = 0.85
 
 
-def node_get_otix_settings(server: UserGameServer) -> tuple[int, dict | list]:
+def node_get_otix_settings(server: UserNode) -> tuple[int, dict | list]:
     return usenet_proxy_request(server, "GET", "/api/v1/otix/settings", timeout=6.0)
 
 
-def node_save_otix_settings(server: UserGameServer, payload: dict) -> tuple[int, dict | list]:
+def node_save_otix_settings(server: UserNode, payload: dict) -> tuple[int, dict | list]:
     return usenet_proxy_request(server, "POST", "/api/v1/otix/settings", json=payload, timeout=8.0)
 
 
-def node_write_otix(server: UserGameServer, payload: dict) -> tuple[int, dict | list]:
-    return usenet_proxy_request(server, "POST", "/api/v1/otix/write", json=payload, timeout=120.0)
+def node_write_otix(server: UserNode, payload: dict) -> tuple[int, dict | list]:
+    """Deprecated: Sidecar writing disabled in favor of database-only persistence."""
+    logger.info("Skipping sidecar disk write to node %s (DB-only persistence active)", server.id)
+    return 200, {"status": "ok", "written": 0, "persisted_to_database": True}
 
 
 def _image_ref(url: str | None) -> dict:
@@ -110,7 +110,7 @@ def _hydrate_detail(media_id: int) -> dict | None:
 
 
 def sync_otix_sidecars(
-    server: UserGameServer,
+    server: UserNode,
     *,
     download_images: bool | None = None,
     write_otix: bool | None = None,
@@ -120,7 +120,7 @@ def sync_otix_sidecars(
     settings_status, settings_data = node_get_otix_settings(server)
     prefs: dict[str, Any] = settings_data if isinstance(settings_data, dict) else {}
     if write_otix is None:
-        write_otix = bool(prefs.get("write_otix_after_scan", True))
+        write_otix = bool(prefs.get("write_otix_after_scan", False))
     if download_images is None:
         download_images = bool(prefs.get("download_otix_images", False))
 
@@ -156,6 +156,13 @@ def sync_otix_sidecars(
     ]
 
     match_files_to_catalog(base_files)
+
+    try:
+        from apps.library.services.game_matching import sync_node_manifest
+
+        sync_node_manifest(server, files)
+    except Exception:
+        logger.exception("Failed to sync node manifest during otix sync")
 
     unmatched = [f for f in base_files if not f.get("catalog_item") and not f.get("otix_media_id")]
     titles = unmatched_scan_titles(unmatched)
@@ -267,7 +274,7 @@ def sync_otix_sidecars(
 
 
 def node_match_and_write_otix(
-    server: UserGameServer,
+    server: UserNode,
     *,
     media_id: int | str,
     file_id: str | None = None,
@@ -320,11 +327,75 @@ def node_match_and_write_otix(
         try:
             from apps.media.services.imports import _enqueue_local_game_mirror
             from apps.media.services.interaction import set_interaction
+            from apps.media.models import MediaItem
+            from apps.library.models.game_source import NodeGameSource, UserGame
+            from apps.library.models import GameMatchRecord
 
             set_interaction(user, int_media_id, "owned")
             _enqueue_local_game_mirror(int_media_id)
+
+            media_item = MediaItem.objects.filter(id=int_media_id).first()
+            clean_title = (detail.get("title") or filename or "Unknown Game").strip()
+            platform = "pc"
+            cover_url = detail.get("poster_url") or ""
+
+            user_game = None
+            if media_item:
+                user_game = UserGame.objects.filter(user=user, media_item=media_item, platform=platform).first()
+            if not user_game:
+                user_game = UserGame.objects.filter(user=user, clean_title=clean_title, platform=platform).first()
+            if not user_game:
+                user_game, _ = UserGame.objects.get_or_create(
+                    user=user,
+                    clean_title=clean_title,
+                    platform=platform,
+                    defaults={
+                        "media_item": media_item,
+                        "cover_image_url": cover_url,
+                    },
+                )
+            else:
+                updated_fields = []
+                if media_item and user_game.media_item != media_item:
+                    user_game.media_item = media_item
+                    updated_fields.append("media_item")
+                if not user_game.cover_image_url and cover_url:
+                    user_game.cover_image_url = cover_url
+                    updated_fields.append("cover_image_url")
+                if updated_fields:
+                    updated_fields.append("updated_at")
+                    user_game.save(update_fields=updated_fields)
+
+            if filepath:
+                NodeGameSource.objects.update_or_create(
+                    node=server,
+                    canonical_path=filepath,
+                    defaults={
+                        "user_game": user_game,
+                        "relative_path": filename or filepath,
+                        "source_state": "installed",
+                        "is_available": True,
+                        "format_details": {
+                            "mediaId": int_media_id,
+                            "confidence": float(confidence or 1.0),
+                            "matchSource": "manual",
+                        },
+                    },
+                )
+
+                rel = filename or os.path.basename(filepath)
+                GameMatchRecord.objects.filter(
+                    user=user,
+                    node=server,
+                    relative_path=rel,
+                ).update(
+                    media_item=media_item,
+                    match_status="matched",
+                    confidence=float(confidence or 1.0),
+                    user_override=True,
+                )
         except Exception:
-            logger.exception("Failed to record owned interaction on manual match")
+            logger.exception("Failed to record owned interaction or game source on manual match")
 
     if not isinstance(write_data, dict):
         write_data = {"detail": write_data}

@@ -13,6 +13,8 @@ let mockSelectedNodeId: number | null = 1
 const mockSetSelectedNodeId = vi.fn((id: number | null) => {
   mockSelectedNodeId = id
 })
+const mockSaveRadarr = vi.fn().mockResolvedValue({})
+const mockSaveSonarr = vi.fn().mockResolvedValue({})
 
 vi.mock('@/lib/providers/auth', () => ({
   useAuth: () => ({
@@ -63,9 +65,9 @@ vi.mock('@/features/downloads/use-server-arr', () => ({
   useServerSonarrConfig: () => ({ data: { host: 'http://localhost:8989', configured: true }, isLoading: false }),
   useServerSonarrSeries: () => ({ data: [], isLoading: false }),
   useServerSonarrQueue: () => ({ data: null, isLoading: false }),
-  useSaveServerRadarrConfig: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useSaveServerRadarrConfig: () => ({ mutateAsync: mockSaveRadarr, isPending: false }),
   useTestRadarr: () => ({ mutateAsync: vi.fn(), isPending: false }),
-  useSaveServerSonarrConfig: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useSaveServerSonarrConfig: () => ({ mutateAsync: mockSaveSonarr, isPending: false }),
   useTestSonarr: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useServerRadarrQualityProfiles: () => ({ data: [], isLoading: false }),
   useServerRadarrProfiles: () => ({ data: [], isLoading: false }),
@@ -170,11 +172,12 @@ describe('SettingsNodeConnectionsPage', () => {
     expect(screen.queryByText('Sonarr')).not.toBeInTheDocument()
   })
 
-  it('renders locked state when user is not authenticated', () => {
+  it('allows unauthenticated users to view node connections without sign-in lock', () => {
     mockAuthUser = null
     renderComponent()
 
-    expect(screen.getByText(/sign in required/i)).toBeInTheDocument()
+    expect(screen.queryByText(/sign in required/i)).not.toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Node Connections', level: 1 })).toBeInTheDocument()
   })
 
   it('renders empty state when there are no connected nodes', () => {
@@ -182,5 +185,37 @@ describe('SettingsNodeConnectionsPage', () => {
     renderComponent()
 
     expect(screen.getByText(/no connected nodes/i)).toBeInTheDocument()
+  })
+
+  it('renders watchlist automation toggles on Radarr and Sonarr cards and allows toggling', async () => {
+    renderComponent()
+
+    // Expand Radarr card
+    await userEvent.click(screen.getByRole('button', { name: /Radarr/i }))
+
+    const radarrSwitch = screen.getByRole('switch', { name: /automatically request media from the watchlist/i })
+    expect(radarrSwitch).toBeInTheDocument()
+
+    // Toggle Radarr switch
+    await userEvent.click(radarrSwitch)
+    expect(mockSaveRadarr).toHaveBeenCalledWith(
+      expect.objectContaining({
+        autoRequestWatchlist: true,
+      })
+    )
+
+    // Expand Sonarr card
+    await userEvent.click(screen.getByRole('button', { name: /Sonarr/i }))
+
+    const sonarrSwitch = screen.getByRole('switch', { name: /automatically request media from the watchlist/i })
+    expect(sonarrSwitch).toBeInTheDocument()
+
+    // Toggle Sonarr switch
+    await userEvent.click(sonarrSwitch)
+    expect(mockSaveSonarr).toHaveBeenCalledWith(
+      expect.objectContaining({
+        autoRequestWatchlist: true,
+      })
+    )
   })
 })

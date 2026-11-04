@@ -7,7 +7,7 @@ from django.test import TestCase
 from rest_framework import status
 from rest_framework.test import APIClient
 
-from apps.library.models import UserGameServer, UserNodeShare
+from apps.library.models import UserNode, UserNodeShare
 from apps.social.models import FriendRequest
 
 User = get_user_model()
@@ -24,7 +24,7 @@ class NodeSharingTests(TestCase):
         FriendRequest.objects.create(sender=self.alice, receiver=self.bob, status="accepted")
 
         # Alice's Otix node
-        self.node = UserGameServer.objects.create(
+        self.node = UserNode.objects.create(
             user=self.alice,
             name="Alice's TrueNAS Node",
             local_url="http://192.168.1.50:8090",

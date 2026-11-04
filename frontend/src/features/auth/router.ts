@@ -1,6 +1,7 @@
 import { createRoute } from '@tanstack/react-router'
 import type { AnyRoute } from '@tanstack/react-router'
 import { safeLazy, safePrefetchChunk } from '@/lib/utils/chunk-reload'
+import { getSafeRedirectUrl } from '@auth/utils'
 
 const AuthPage = safeLazy(() => import('@auth/pages/auth-page').then(m => ({ default: m.AuthPage })))
 const RegisterPage = safeLazy(() => import('@auth/pages/auth-register-page').then(m => ({ default: m.RegisterPage })))
@@ -23,7 +24,7 @@ export function createAuthRoutes(rootRoute: AnyRoute) {
     component: AuthPage,
     loader: preload(() => import('@auth/pages/auth-page')),
     validateSearch: (search: Record<string, unknown>) => ({
-      redirect: (search.redirect as string) || '/',
+      redirect: getSafeRedirectUrl(search.redirect as string | undefined),
     } as { redirect?: string }),
   })
 
@@ -32,6 +33,9 @@ export function createAuthRoutes(rootRoute: AnyRoute) {
     path: '/auth/register',
     component: RegisterPage,
     loader: preload(() => import('@auth/pages/auth-register-page')),
+    validateSearch: (search: Record<string, unknown>) => ({
+      redirect: getSafeRedirectUrl(search.redirect as string | undefined),
+    } as { redirect?: string }),
   })
 
   const authTwoFactorRoute = createRoute({
@@ -40,7 +44,7 @@ export function createAuthRoutes(rootRoute: AnyRoute) {
     component: TwoFactorPage,
     loader: preload(() => import('@auth/pages/auth-two-factor-page')),
     validateSearch: (search: Record<string, unknown>) => ({
-      redirect: (search.redirect as string) || '/',
+      redirect: getSafeRedirectUrl(search.redirect as string | undefined),
     } as { redirect?: string }),
   })
 

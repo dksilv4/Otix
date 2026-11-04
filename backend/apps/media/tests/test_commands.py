@@ -60,24 +60,31 @@ class AnalyzeAssetColorsCommandTests(TestCase):
             asset_type="logo",
             url="https://example.com/logo.png",
             color_guess=None,
+            dominant_color=None,
         )
 
+    @patch("apps.media.management.commands.analyze_asset_colors.extract_dominant_color_url")
     @patch("apps.media.management.commands.analyze_asset_colors.analyze_image_url")
-    def test_analyze_and_backfill(self, mock_analyze_url):
+    def test_analyze_and_backfill(self, mock_analyze_url, mock_dom_url):
         mock_analyze_url.return_value = "guess_white"
+        mock_dom_url.return_value = "#ffffff"
         out = io.StringIO()
         call_command("analyze_asset_colors", "--limit=10", stdout=out)
 
         self.asset.refresh_from_db()
         self.assertEqual(self.asset.color_guess, "guess_white")
+        self.assertEqual(self.asset.dominant_color, "#ffffff")
         self.assertIn("Updated 1 rows", out.getvalue())
 
+    @patch("apps.media.management.commands.analyze_asset_colors.extract_dominant_color_url")
     @patch("apps.media.management.commands.analyze_asset_colors.analyze_image_url")
-    def test_dry_run_does_not_save(self, mock_analyze_url):
+    def test_dry_run_does_not_save(self, mock_analyze_url, mock_dom_url):
         mock_analyze_url.return_value = "guess_black"
+        mock_dom_url.return_value = "#000000"
         out = io.StringIO()
         call_command("analyze_asset_colors", "--dry-run", stdout=out)
 
         self.asset.refresh_from_db()
         self.assertIsNone(self.asset.color_guess)
+        self.assertIsNone(self.asset.dominant_color)
         self.assertIn("Would update 0 rows", out.getvalue())

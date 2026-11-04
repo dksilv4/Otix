@@ -1,0 +1,1874 @@
+{
+  "cases": [
+    {
+      "input": "The.Witcher.3.Wild.Hunt.v1.31-GOG",
+      "ext_hint": "",
+      "parent_dir": "",
+      "expected": {
+        "title": "The Witcher 3: Wild Hunt",
+        "clean_title": "the witcher 3 wild hunt",
+        "year": "2015",
+        "edition": "",
+        "platform": "PC",
+        "release_group": "GOG",
+        "region": "World",
+        "version": "1.31",
+        "title_id": "",
+        "is_scene": false
+      }
+    },
+    {
+      "input": "Cyberpunk.2077.Phantom.Liberty.v2.12-CODEX",
+      "ext_hint": "",
+      "parent_dir": "",
+      "expected": {
+        "title": "Cyberpunk 2077: Phantom Liberty",
+        "clean_title": "cyberpunk 2077 phantom liberty",
+        "year": "2023",
+        "edition": "",
+        "platform": "PC",
+        "release_group": "CODEX",
+        "region": "",
+        "version": "2.12",
+        "title_id": "",
+        "is_scene": true
+      }
+    },
+    {
+      "input": "Hogwarts.Legacy-FLT",
+      "ext_hint": "",
+      "parent_dir": "",
+      "expected": {
+        "title": "Hogwarts Legacy",
+        "clean_title": "hogwarts legacy",
+        "year": "2023",
+        "edition": "",
+        "platform": "PC",
+        "release_group": "FLT",
+        "region": "",
+        "version": "",
+        "title_id": "",
+        "is_scene": true
+      }
+    },
+    {
+      "input": "Elden.Ring.Shadow.of.the.Erdtree-RUNE",
+      "ext_hint": "",
+      "parent_dir": "",
+      "expected": {
+        "title": "Elden Ring: Shadow of the Erdtree",
+        "clean_title": "elden ring shadow of the erdtree",
+        "year": "2024",
+        "edition": "",
+        "platform": "PC",
+        "release_group": "RUNE",
+        "region": "",
+        "version": "",
+        "title_id": "",
+        "is_scene": true
+      }
+    },
+    {
+      "input": "Starfield-RUNE",
+      "ext_hint": "",
+      "parent_dir": "",
+      "expected": {
+        "title": "Starfield",
+        "clean_title": "starfield",
+        "year": "2023",
+        "edition": "",
+        "platform": "PC",
+        "release_group": "RUNE",
+        "region": "",
+        "version": "",
+        "title_id": "",
+        "is_scene": true
+      }
+    },
+    {
+      "input": "Baldurs.Gate.3.v4.1.1-CODEX",
+      "ext_hint": "",
+      "parent_dir": "",
+      "expected": {
+        "title": "Baldur's Gate 3",
+        "clean_title": "baldurs gate 3",
+        "year": "2023",
+        "edition": "",
+        "platform": "PC",
+        "release_group": "CODEX",
+        "region": "",
+        "version": "4.1.1",
+        "title_id": "",
+        "is_scene": true
+      }
+    },
+    {
+      "input": "Grand.Theft.Auto.V-RELOADED",
+      "ext_hint": "",
+      "parent_dir": "",
+      "expected": {
+        "title": "Grand Theft Auto V",
+        "clean_title": "grand theft auto v",
+        "year": "2015",
+        "edition": "",
+        "platform": "PC",
+        "release_group": "RELOADED",
+        "region": "",
+        "version": "",
+        "title_id": "",
+        "is_scene": true
+      }
+    },
+    {
+      "input": "Resident.Evil.4-EMPRESS",
+      "ext_hint": "",
+      "parent_dir": "",
+      "expected": {
+        "title": "Resident Evil 4",
+        "clean_title": "resident evil 4",
+        "year": "2023",
+        "edition": "",
+        "platform": "PC",
+        "release_group": "EMPRESS",
+        "region": "",
+        "version": "",
+        "title_id": "",
+        "is_scene": true
+      }
+    },
+    {
+      "input": "Dead.Island.2-EMPRESS",
+      "ext_hint": "",
+      "parent_dir": "",
+      "expected": {
+        "title": "Dead Island 2",
+        "clean_title": "dead island 2",
+        "year": "2023",
+        "edition": "",
+        "platform": "PC",
+        "release_group": "EMPRESS",
+        "region": "",
+        "version": "",
+        "title_id": "",
+        "is_scene": true
+      }
+    },
+    {
+      "input": "Armored.Core.VI.Fires.of.Rubicon-TENOKE",
+      "ext_hint": "",
+      "parent_dir": "",
+      "expected": {
+        "title": "Armored Core VI: Fires of Rubicon",
+        "clean_title": "armored core vi fires of rubicon",
+        "year": "2023",
+        "edition": "",
+        "platform": "PC",
+        "release_group": "TENOKE",
+        "region": "",
+        "version": "",
+        "title_id": "",
+        "is_scene": true
+      }
+    },
+    {
+      "input": "Alan.Wake.2-RUNE",
+      "ext_hint": "",
+      "parent_dir": "",
+      "expected": {
+        "title": "Alan Wake 2",
+        "clean_title": "alan wake 2",
+        "year": "2023",
+        "edition": "",
+        "platform": "PC",
+        "release_group": "RUNE",
+        "region": "",
+        "version": "",
+        "title_id": "",
+        "is_scene": true
+      }
+    },
+    {
+      "input": "Ghost.of.Tsushima.DIRECTORS.CUT-RUNE",
+      "ext_hint": "",
+      "parent_dir": "",
+      "expected": {
+        "title": "Ghost of Tsushima",
+        "clean_title": "ghost of tsushima",
+        "year": "2024",
+        "edition": "Director's Cut",
+        "platform": "PC",
+        "release_group": "RUNE",
+        "region": "",
+        "version": "",
+        "title_id": "",
+        "is_scene": true
+      }
+    },
+    {
+      "input": "Red.Dead.Redemption.2-EMPRESS",
+      "ext_hint": "",
+      "parent_dir": "",
+      "expected": {
+        "title": "Red Dead Redemption 2",
+        "clean_title": "red dead redemption 2",
+        "year": "2019",
+        "edition": "",
+        "platform": "PC",
+        "release_group": "EMPRESS",
+        "region": "",
+        "version": "",
+        "title_id": "",
+        "is_scene": true
+      }
+    },
+    {
+      "input": "Forza.Horizon.5.Premium.Edition-PROPHET",
+      "ext_hint": "",
+      "parent_dir": "",
+      "expected": {
+        "title": "Forza Horizon 5",
+        "clean_title": "forza horizon 5",
+        "year": "2021",
+        "edition": "Premium Edition",
+        "platform": "PC",
+        "release_group": "PROPHET",
+        "region": "",
+        "version": "",
+        "title_id": "",
+        "is_scene": true
+      }
+    },
+    {
+      "input": "Sekiro.Shadows.Die.Twice.GOTY-CODEX",
+      "ext_hint": "",
+      "parent_dir": "",
+      "expected": {
+        "title": "Sekiro: Shadows Die Twice",
+        "clean_title": "sekiro shadows die twice",
+        "year": "2020",
+        "edition": "GOTY Edition",
+        "platform": "PC",
+        "release_group": "CODEX",
+        "region": "",
+        "version": "",
+        "title_id": "",
+        "is_scene": true
+      }
+    },
+    {
+      "input": "DOOM.Eternal-CODEX",
+      "ext_hint": "",
+      "parent_dir": "",
+      "expected": {
+        "title": "DOOM Eternal",
+        "clean_title": "doom eternal",
+        "year": "2020",
+        "edition": "",
+        "platform": "PC",
+        "release_group": "CODEX",
+        "region": "",
+        "version": "",
+        "title_id": "",
+        "is_scene": true
+      }
+    },
+    {
+      "input": "Control.Ultimate.Edition-GOG",
+      "ext_hint": "",
+      "parent_dir": "",
+      "expected": {
+        "title": "Control",
+        "clean_title": "control",
+        "year": "2020",
+        "edition": "Ultimate Edition",
+        "platform": "PC",
+        "release_group": "GOG",
+        "region": "World",
+        "version": "",
+        "title_id": "",
+        "is_scene": false
+      }
+    },
+    {
+      "input": "Half-Life.2-SKIDROW",
+      "ext_hint": "",
+      "parent_dir": "",
+      "expected": {
+        "title": "Half-Life 2",
+        "clean_title": "half life 2",
+        "year": "2004",
+        "edition": "",
+        "platform": "PC",
+        "release_group": "SKIDROW",
+        "region": "",
+        "version": "",
+        "title_id": "",
+        "is_scene": true
+      }
+    },
+    {
+      "input": "Portal.2-SKIDROW",
+      "ext_hint": "",
+      "parent_dir": "",
+      "expected": {
+        "title": "Portal 2",
+        "clean_title": "portal 2",
+        "year": "2011",
+        "edition": "",
+        "platform": "PC",
+        "release_group": "SKIDROW",
+        "region": "",
+        "version": "",
+        "title_id": "",
+        "is_scene": true
+      }
+    },
+    {
+      "input": "Crysis.3-PROPHET",
+      "ext_hint": "",
+      "parent_dir": "",
+      "expected": {
+        "title": "Crysis 3",
+        "clean_title": "crysis 3",
+        "year": "2013",
+        "edition": "",
+        "platform": "PC",
+        "release_group": "PROPHET",
+        "region": "",
+        "version": "",
+        "title_id": "",
+        "is_scene": true
+      }
+    },
+    {
+      "input": "Dark.Souls.III.The.Ringed.City-CODEX",
+      "ext_hint": "",
+      "parent_dir": "",
+      "expected": {
+        "title": "Dark Souls III: The Ringed City",
+        "clean_title": "dark souls iii the ringed city",
+        "year": "2017",
+        "edition": "",
+        "platform": "PC",
+        "release_group": "CODEX",
+        "region": "",
+        "version": "",
+        "title_id": "",
+        "is_scene": true
+      }
+    },
+    {
+      "input": "Death.Stranding.Directors.Cut-FLT",
+      "ext_hint": "",
+      "parent_dir": "",
+      "expected": {
+        "title": "Death Stranding",
+        "clean_title": "death stranding",
+        "year": "2022",
+        "edition": "Director's Cut",
+        "platform": "PC",
+        "release_group": "FLT",
+        "region": "",
+        "version": "",
+        "title_id": "",
+        "is_scene": true
+      }
+    },
+    {
+      "input": "God.of.War-FLT",
+      "ext_hint": "",
+      "parent_dir": "",
+      "expected": {
+        "title": "God of War",
+        "clean_title": "god of war",
+        "year": "2022",
+        "edition": "",
+        "platform": "PC",
+        "release_group": "FLT",
+        "region": "",
+        "version": "",
+        "title_id": "",
+        "is_scene": true
+      }
+    },
+    {
+      "input": "Horizon.Zero.Dawn.Complete.Edition-GOG",
+      "ext_hint": "",
+      "parent_dir": "",
+      "expected": {
+        "title": "Horizon Zero Dawn",
+        "clean_title": "horizon zero dawn",
+        "year": "2020",
+        "edition": "Complete Edition",
+        "platform": "PC",
+        "release_group": "GOG",
+        "region": "World",
+        "version": "",
+        "title_id": "",
+        "is_scene": false
+      }
+    },
+    {
+      "input": "Mortal.Kombat.11-EMPRESS",
+      "ext_hint": "",
+      "parent_dir": "",
+      "expected": {
+        "title": "Mortal Kombat 11",
+        "clean_title": "mortal kombat 11",
+        "year": "2020",
+        "edition": "",
+        "platform": "PC",
+        "release_group": "EMPRESS",
+        "region": "",
+        "version": "",
+        "title_id": "",
+        "is_scene": true
+      }
+    },
+    {
+      "input": "Cyberpunk 2077 [FitGirl Repack].part01.rar",
+      "ext_hint": "rar",
+      "parent_dir": "Cyberpunk 2077",
+      "expected": {
+        "title": "Cyberpunk 2077",
+        "clean_title": "cyberpunk 2077",
+        "year": "2020",
+        "edition": "",
+        "platform": "PC",
+        "release_group": "FitGirl",
+        "region": "",
+        "version": "",
+        "title_id": "",
+        "is_scene": false
+      }
+    },
+    {
+      "input": "Baldurs Gate 3 [DODI Repack].part1.rar",
+      "ext_hint": "rar",
+      "parent_dir": "Baldurs Gate 3",
+      "expected": {
+        "title": "Baldur's Gate 3",
+        "clean_title": "baldurs gate 3",
+        "year": "2023",
+        "edition": "",
+        "platform": "PC",
+        "release_group": "DODI",
+        "region": "",
+        "version": "",
+        "title_id": "",
+        "is_scene": false
+      }
+    },
+    {
+      "input": "Elden Ring - ElAmigos (Multi12).iso",
+      "ext_hint": "iso",
+      "parent_dir": "",
+      "expected": {
+        "title": "Elden Ring",
+        "clean_title": "elden ring",
+        "year": "2022",
+        "edition": "",
+        "platform": "PC",
+        "release_group": "ElAmigos",
+        "region": "World",
+        "version": "",
+        "title_id": "",
+        "is_scene": false
+      }
+    },
+    {
+      "input": "Red Dead Redemption 2.part05.rar",
+      "ext_hint": "rar",
+      "parent_dir": "Red Dead Redemption 2",
+      "expected": {
+        "title": "Red Dead Redemption 2",
+        "clean_title": "red dead redemption 2",
+        "year": "2019",
+        "edition": "",
+        "platform": "PC",
+        "release_group": "",
+        "region": "",
+        "version": "",
+        "title_id": "",
+        "is_scene": false
+      }
+    },
+    {
+      "input": "Starfield.part02.rar",
+      "ext_hint": "rar",
+      "parent_dir": "Starfield",
+      "expected": {
+        "title": "Starfield",
+        "clean_title": "starfield",
+        "year": "2023",
+        "edition": "",
+        "platform": "PC",
+        "release_group": "",
+        "region": "",
+        "version": "",
+        "title_id": "",
+        "is_scene": false
+      }
+    },
+    {
+      "input": "Grand Theft Auto V [FitGirl Repack] setup-fitgirl-1.bin",
+      "ext_hint": "bin",
+      "parent_dir": "Grand Theft Auto V",
+      "expected": {
+        "title": "Grand Theft Auto V",
+        "clean_title": "grand theft auto v",
+        "year": "2015",
+        "edition": "",
+        "platform": "PC",
+        "release_group": "FitGirl",
+        "region": "",
+        "version": "",
+        "title_id": "",
+        "is_scene": false
+      }
+    },
+    {
+      "input": "Final Fantasy VII Remake Intergrade.part1.rar",
+      "ext_hint": "rar",
+      "parent_dir": "Final Fantasy VII Remake Intergrade",
+      "expected": {
+        "title": "Final Fantasy VII Remake Intergrade",
+        "clean_title": "final fantasy vii remake intergrade",
+        "year": "2022",
+        "edition": "",
+        "platform": "PC",
+        "release_group": "",
+        "region": "",
+        "version": "",
+        "title_id": "",
+        "is_scene": false
+      }
+    },
+    {
+      "input": "The Last of Us Part I [DODI Repack].part03.rar",
+      "ext_hint": "rar",
+      "parent_dir": "The Last of Us Part I",
+      "expected": {
+        "title": "The Last of Us Part I",
+        "clean_title": "the last of us part i",
+        "year": "2023",
+        "edition": "",
+        "platform": "PC",
+        "release_group": "DODI",
+        "region": "",
+        "version": "",
+        "title_id": "",
+        "is_scene": false
+      }
+    },
+    {
+      "input": "Forza Horizon 5 [ElAmigos].iso",
+      "ext_hint": "iso",
+      "parent_dir": "",
+      "expected": {
+        "title": "Forza Horizon 5",
+        "clean_title": "forza horizon 5",
+        "year": "2021",
+        "edition": "",
+        "platform": "PC",
+        "release_group": "ElAmigos",
+        "region": "",
+        "version": "",
+        "title_id": "",
+        "is_scene": false
+      }
+    },
+    {
+      "input": "Metal Gear Solid V The Phantom Pain.part04.rar",
+      "ext_hint": "rar",
+      "parent_dir": "Metal Gear Solid V The Phantom Pain",
+      "expected": {
+        "title": "Metal Gear Solid V: The Phantom Pain",
+        "clean_title": "metal gear solid v the phantom pain",
+        "year": "2015",
+        "edition": "",
+        "platform": "PC",
+        "release_group": "",
+        "region": "",
+        "version": "",
+        "title_id": "",
+        "is_scene": false
+      }
+    },
+    {
+      "input": "Monster Hunter World.part01.rar",
+      "ext_hint": "rar",
+      "parent_dir": "Monster Hunter World",
+      "expected": {
+        "title": "Monster Hunter: World",
+        "clean_title": "monster hunter world",
+        "year": "2018",
+        "edition": "",
+        "platform": "PC",
+        "release_group": "",
+        "region": "",
+        "version": "",
+        "title_id": "",
+        "is_scene": false
+      }
+    },
+    {
+      "input": "Kingdom Come Deliverance Royal Edition.part2.rar",
+      "ext_hint": "rar",
+      "parent_dir": "Kingdom Come Deliverance",
+      "expected": {
+        "title": "Kingdom Come: Deliverance",
+        "clean_title": "kingdom come deliverance",
+        "year": "2019",
+        "edition": "Royal Edition",
+        "platform": "PC",
+        "release_group": "",
+        "region": "",
+        "version": "",
+        "title_id": "",
+        "is_scene": false
+      }
+    },
+    {
+      "input": "The Witcher 3 Wild Hunt GOTY.part01.rar",
+      "ext_hint": "rar",
+      "parent_dir": "The Witcher 3 Wild Hunt",
+      "expected": {
+        "title": "The Witcher 3: Wild Hunt",
+        "clean_title": "the witcher 3 wild hunt",
+        "year": "2016",
+        "edition": "GOTY Edition",
+        "platform": "PC",
+        "release_group": "",
+        "region": "",
+        "version": "",
+        "title_id": "",
+        "is_scene": false
+      }
+    },
+    {
+      "input": "Fallout 4 GOTY Edition.part1.rar",
+      "ext_hint": "rar",
+      "parent_dir": "Fallout 4",
+      "expected": {
+        "title": "Fallout 4",
+        "clean_title": "fallout 4",
+        "year": "2017",
+        "edition": "GOTY Edition",
+        "platform": "PC",
+        "release_group": "",
+        "region": "",
+        "version": "",
+        "title_id": "",
+        "is_scene": false
+      }
+    },
+    {
+      "input": "Skyrim Special Edition [FitGirl Repack].part02.rar",
+      "ext_hint": "rar",
+      "parent_dir": "Skyrim Special Edition",
+      "expected": {
+        "title": "The Elder Scrolls V: Skyrim",
+        "clean_title": "the elder scrolls v skyrim",
+        "year": "2016",
+        "edition": "Special Edition",
+        "platform": "PC",
+        "release_group": "FitGirl",
+        "region": "",
+        "version": "",
+        "title_id": "",
+        "is_scene": false
+      }
+    },
+    {
+      "input": "Hogwarts Legacy.part01.rar",
+      "ext_hint": "rar",
+      "parent_dir": "Hogwarts Legacy",
+      "expected": {
+        "title": "Hogwarts Legacy",
+        "clean_title": "hogwarts legacy",
+        "year": "2023",
+        "edition": "",
+        "platform": "PC",
+        "release_group": "",
+        "region": "",
+        "version": "",
+        "title_id": "",
+        "is_scene": false
+      }
+    },
+    {
+      "input": "Resident Evil Village.part03.rar",
+      "ext_hint": "rar",
+      "parent_dir": "Resident Evil Village",
+      "expected": {
+        "title": "Resident Evil Village",
+        "clean_title": "resident evil village",
+        "year": "2021",
+        "edition": "",
+        "platform": "PC",
+        "release_group": "",
+        "region": "",
+        "version": "",
+        "title_id": "",
+        "is_scene": false
+      }
+    },
+    {
+      "input": "Dragon Age Inquisition GOTY.part1.rar",
+      "ext_hint": "rar",
+      "parent_dir": "Dragon Age Inquisition",
+      "expected": {
+        "title": "Dragon Age: Inquisition",
+        "clean_title": "dragon age inquisition",
+        "year": "2015",
+        "edition": "GOTY Edition",
+        "platform": "PC",
+        "release_group": "",
+        "region": "",
+        "version": "",
+        "title_id": "",
+        "is_scene": false
+      }
+    },
+    {
+      "input": "Mass Effect Legendary Edition [FitGirl Repack].part01.rar",
+      "ext_hint": "rar",
+      "parent_dir": "Mass Effect Legendary Edition",
+      "expected": {
+        "title": "Mass Effect Legendary Edition",
+        "clean_title": "mass effect legendary edition",
+        "year": "2021",
+        "edition": "Legendary Edition",
+        "platform": "PC",
+        "release_group": "FitGirl",
+        "region": "",
+        "version": "",
+        "title_id": "",
+        "is_scene": false
+      }
+    },
+    {
+      "input": "Assassins Creed Valhalla.part02.rar",
+      "ext_hint": "rar",
+      "parent_dir": "Assassins Creed Valhalla",
+      "expected": {
+        "title": "Assassin's Creed Valhalla",
+        "clean_title": "assassins creed valhalla",
+        "year": "2020",
+        "edition": "",
+        "platform": "PC",
+        "release_group": "",
+        "region": "",
+        "version": "",
+        "title_id": "",
+        "is_scene": false
+      }
+    },
+    {
+      "input": "Marvels Spider-Man Remastered [DODI Repack].part1.rar",
+      "ext_hint": "rar",
+      "parent_dir": "Marvels Spider-Man Remastered",
+      "expected": {
+        "title": "Marvel's Spider-Man Remastered",
+        "clean_title": "marvels spider man remastered",
+        "year": "2022",
+        "edition": "Remastered Edition",
+        "platform": "PC",
+        "release_group": "DODI",
+        "region": "",
+        "version": "",
+        "title_id": "",
+        "is_scene": false
+      }
+    },
+    {
+      "input": "Persona 5 Royal.part01.rar",
+      "ext_hint": "rar",
+      "parent_dir": "Persona 5 Royal",
+      "expected": {
+        "title": "Persona 5 Royal",
+        "clean_title": "persona 5 royal",
+        "year": "2022",
+        "edition": "",
+        "platform": "PC",
+        "release_group": "",
+        "region": "",
+        "version": "",
+        "title_id": "",
+        "is_scene": false
+      }
+    },
+    {
+      "input": "Tekken 8.part01.rar",
+      "ext_hint": "rar",
+      "parent_dir": "Tekken 8",
+      "expected": {
+        "title": "Tekken 8",
+        "clean_title": "tekken 8",
+        "year": "2024",
+        "edition": "",
+        "platform": "PC",
+        "release_group": "",
+        "region": "",
+        "version": "",
+        "title_id": "",
+        "is_scene": false
+      }
+    },
+    {
+      "input": "Lies of P.part02.rar",
+      "ext_hint": "rar",
+      "parent_dir": "Lies of P",
+      "expected": {
+        "title": "Lies of P",
+        "clean_title": "lies of p",
+        "year": "2023",
+        "edition": "",
+        "platform": "PC",
+        "release_group": "",
+        "region": "",
+        "version": "",
+        "title_id": "",
+        "is_scene": false
+      }
+    },
+    {
+      "input": "Armored Core VI Fires of Rubicon.part01.rar",
+      "ext_hint": "rar",
+      "parent_dir": "Armored Core VI Fires of Rubicon",
+      "expected": {
+        "title": "Armored Core VI: Fires of Rubicon",
+        "clean_title": "armored core vi fires of rubicon",
+        "year": "2023",
+        "edition": "",
+        "platform": "PC",
+        "release_group": "",
+        "region": "",
+        "version": "",
+        "title_id": "",
+        "is_scene": false
+      }
+    },
+    {
+      "input": "The.Witcher.3.Wild.Hunt.Update.v1.32-CODEX",
+      "ext_hint": "",
+      "parent_dir": "",
+      "expected": {
+        "title": "The Witcher 3: Wild Hunt",
+        "clean_title": "the witcher 3 wild hunt",
+        "year": "2015",
+        "edition": "",
+        "platform": "PC",
+        "release_group": "CODEX",
+        "region": "",
+        "version": "1.32",
+        "title_id": "",
+        "is_scene": true
+      }
+    },
+    {
+      "input": "Cyberpunk.2077.Phantom.Liberty.DLC.Pack-CODEX",
+      "ext_hint": "",
+      "parent_dir": "",
+      "expected": {
+        "title": "Cyberpunk 2077: Phantom Liberty",
+        "clean_title": "cyberpunk 2077 phantom liberty",
+        "year": "2023",
+        "edition": "",
+        "platform": "PC",
+        "release_group": "CODEX",
+        "region": "",
+        "version": "",
+        "title_id": "",
+        "is_scene": true
+      }
+    },
+    {
+      "input": "Baldurs.Gate.3.Hotfix.21-RUNE",
+      "ext_hint": "",
+      "parent_dir": "",
+      "expected": {
+        "title": "Baldur's Gate 3",
+        "clean_title": "baldurs gate 3",
+        "year": "2023",
+        "edition": "",
+        "platform": "PC",
+        "release_group": "RUNE",
+        "region": "",
+        "version": "21",
+        "title_id": "",
+        "is_scene": true
+      }
+    },
+    {
+      "input": "Elden.Ring.Update.v1.12.3-RUNE",
+      "ext_hint": "",
+      "parent_dir": "",
+      "expected": {
+        "title": "Elden Ring",
+        "clean_title": "elden ring",
+        "year": "2022",
+        "edition": "",
+        "platform": "PC",
+        "release_group": "RUNE",
+        "region": "",
+        "version": "1.12.3",
+        "title_id": "",
+        "is_scene": true
+      }
+    },
+    {
+      "input": "Starfield.Update.v1.11.36-RUNE",
+      "ext_hint": "",
+      "parent_dir": "",
+      "expected": {
+        "title": "Starfield",
+        "clean_title": "starfield",
+        "year": "2023",
+        "edition": "",
+        "platform": "PC",
+        "release_group": "RUNE",
+        "region": "",
+        "version": "1.11.36",
+        "title_id": "",
+        "is_scene": true
+      }
+    },
+    {
+      "input": "Hogwarts.Legacy.Day.One.Patch-FLT",
+      "ext_hint": "",
+      "parent_dir": "",
+      "expected": {
+        "title": "Hogwarts Legacy",
+        "clean_title": "hogwarts legacy",
+        "year": "2023",
+        "edition": "",
+        "platform": "PC",
+        "release_group": "FLT",
+        "region": "",
+        "version": "",
+        "title_id": "",
+        "is_scene": true
+      }
+    },
+    {
+      "input": "Alan.Wake.2.Update.v1.0.14-RUNE",
+      "ext_hint": "",
+      "parent_dir": "",
+      "expected": {
+        "title": "Alan Wake 2",
+        "clean_title": "alan wake 2",
+        "year": "2023",
+        "edition": "",
+        "platform": "PC",
+        "release_group": "RUNE",
+        "region": "",
+        "version": "1.0.14",
+        "title_id": "",
+        "is_scene": true
+      }
+    },
+    {
+      "input": "Resident.Evil.4.Crackfix-EMPRESS",
+      "ext_hint": "",
+      "parent_dir": "",
+      "expected": {
+        "title": "Resident Evil 4",
+        "clean_title": "resident evil 4",
+        "year": "2023",
+        "edition": "",
+        "platform": "PC",
+        "release_group": "EMPRESS",
+        "region": "",
+        "version": "",
+        "title_id": "",
+        "is_scene": true
+      }
+    },
+    {
+      "input": "Ghost.of.Tsushima.Update.v1.0.5-RUNE",
+      "ext_hint": "",
+      "parent_dir": "",
+      "expected": {
+        "title": "Ghost of Tsushima",
+        "clean_title": "ghost of tsushima",
+        "year": "2024",
+        "edition": "",
+        "platform": "PC",
+        "release_group": "RUNE",
+        "region": "",
+        "version": "1.0.5",
+        "title_id": "",
+        "is_scene": true
+      }
+    },
+    {
+      "input": "Forza.Horizon.5.Update.v1.656.392.0-ELAMIGOS",
+      "ext_hint": "",
+      "parent_dir": "",
+      "expected": {
+        "title": "Forza Horizon 5",
+        "clean_title": "forza horizon 5",
+        "year": "2021",
+        "edition": "",
+        "platform": "PC",
+        "release_group": "ElAmigos",
+        "region": "",
+        "version": "1.656.392.0",
+        "title_id": "",
+        "is_scene": false
+      }
+    },
+    {
+      "input": "Armored.Core.VI.Update.v1.06.1-TENOKE",
+      "ext_hint": "",
+      "parent_dir": "",
+      "expected": {
+        "title": "Armored Core VI: Fires of Rubicon",
+        "clean_title": "armored core vi fires of rubicon",
+        "year": "2023",
+        "edition": "",
+        "platform": "PC",
+        "release_group": "TENOKE",
+        "region": "",
+        "version": "1.06.1",
+        "title_id": "",
+        "is_scene": true
+      }
+    },
+    {
+      "input": "Lies.of.P.Update.v1.5.0.0-RUNE",
+      "ext_hint": "",
+      "parent_dir": "",
+      "expected": {
+        "title": "Lies of P",
+        "clean_title": "lies of p",
+        "year": "2023",
+        "edition": "",
+        "platform": "PC",
+        "release_group": "RUNE",
+        "region": "",
+        "version": "1.5.0.0",
+        "title_id": "",
+        "is_scene": true
+      }
+    },
+    {
+      "input": "Persona.5.Royal.DLC.Bundle-SKIDROW",
+      "ext_hint": "",
+      "parent_dir": "",
+      "expected": {
+        "title": "Persona 5 Royal",
+        "clean_title": "persona 5 royal",
+        "year": "2022",
+        "edition": "",
+        "platform": "PC",
+        "release_group": "SKIDROW",
+        "region": "",
+        "version": "",
+        "title_id": "",
+        "is_scene": true
+      }
+    },
+    {
+      "input": "Tekken.8.Patch.v1.03.01-RUNE",
+      "ext_hint": "",
+      "parent_dir": "",
+      "expected": {
+        "title": "Tekken 8",
+        "clean_title": "tekken 8",
+        "year": "2024",
+        "edition": "",
+        "platform": "PC",
+        "release_group": "RUNE",
+        "region": "",
+        "version": "1.03.01",
+        "title_id": "",
+        "is_scene": true
+      }
+    },
+    {
+      "input": "Dragon.Age.The.Veilguard.Update.v1.0.1-FLT",
+      "ext_hint": "",
+      "parent_dir": "",
+      "expected": {
+        "title": "Dragon Age: The Veilguard",
+        "clean_title": "dragon age the veilguard",
+        "year": "2024",
+        "edition": "",
+        "platform": "PC",
+        "release_group": "FLT",
+        "region": "",
+        "version": "1.0.1",
+        "title_id": "",
+        "is_scene": true
+      }
+    },
+    {
+      "input": "Dead.Space.Update.1-FLT",
+      "ext_hint": "",
+      "parent_dir": "",
+      "expected": {
+        "title": "Dead Space",
+        "clean_title": "dead space",
+        "year": "2023",
+        "edition": "",
+        "platform": "PC",
+        "release_group": "FLT",
+        "region": "",
+        "version": "1",
+        "title_id": "",
+        "is_scene": true
+      }
+    },
+    {
+      "input": "Super Mario Bros. (USA).nes",
+      "ext_hint": "nes",
+      "parent_dir": "",
+      "expected": {
+        "title": "Super Mario Bros.",
+        "clean_title": "super mario bros",
+        "year": "1985",
+        "edition": "",
+        "platform": "NES",
+        "release_group": "",
+        "region": "USA",
+        "version": "",
+        "title_id": "",
+        "is_scene": false
+      }
+    },
+    {
+      "input": "Legend of Zelda, The (USA) (Rev 1).nes",
+      "ext_hint": "nes",
+      "parent_dir": "",
+      "expected": {
+        "title": "The Legend of Zelda",
+        "clean_title": "the legend of zelda",
+        "year": "1987",
+        "edition": "",
+        "platform": "NES",
+        "release_group": "",
+        "region": "USA",
+        "version": "1",
+        "title_id": "",
+        "is_scene": false
+      }
+    },
+    {
+      "input": "Metroid (USA).nes",
+      "ext_hint": "nes",
+      "parent_dir": "",
+      "expected": {
+        "title": "Metroid",
+        "clean_title": "metroid",
+        "year": "1987",
+        "edition": "",
+        "platform": "NES",
+        "release_group": "",
+        "region": "USA",
+        "version": "",
+        "title_id": "",
+        "is_scene": false
+      }
+    },
+    {
+      "input": "Mega Man 2 (USA).nes",
+      "ext_hint": "nes",
+      "parent_dir": "",
+      "expected": {
+        "title": "Mega Man 2",
+        "clean_title": "mega man 2",
+        "year": "1989",
+        "edition": "",
+        "platform": "NES",
+        "release_group": "",
+        "region": "USA",
+        "version": "",
+        "title_id": "",
+        "is_scene": false
+      }
+    },
+    {
+      "input": "Super Mario World (USA).sfc",
+      "ext_hint": "sfc",
+      "parent_dir": "",
+      "expected": {
+        "title": "Super Mario World",
+        "clean_title": "super mario world",
+        "year": "1991",
+        "edition": "",
+        "platform": "SNES",
+        "release_group": "",
+        "region": "USA",
+        "version": "",
+        "title_id": "",
+        "is_scene": false
+      }
+    },
+    {
+      "input": "Chrono Trigger (USA).smc",
+      "ext_hint": "smc",
+      "parent_dir": "",
+      "expected": {
+        "title": "Chrono Trigger",
+        "clean_title": "chrono trigger",
+        "year": "1995",
+        "edition": "",
+        "platform": "SNES",
+        "release_group": "",
+        "region": "USA",
+        "version": "",
+        "title_id": "",
+        "is_scene": false
+      }
+    },
+    {
+      "input": "Legend of Zelda, The - A Link to the Past (USA).sfc",
+      "ext_hint": "sfc",
+      "parent_dir": "",
+      "expected": {
+        "title": "The Legend of Zelda: A Link to the Past",
+        "clean_title": "the legend of zelda a link to the past",
+        "year": "1992",
+        "edition": "",
+        "platform": "SNES",
+        "release_group": "",
+        "region": "USA",
+        "version": "",
+        "title_id": "",
+        "is_scene": false
+      }
+    },
+    {
+      "input": "Super Metroid (Japan, USA) (En).sfc",
+      "ext_hint": "sfc",
+      "parent_dir": "",
+      "expected": {
+        "title": "Super Metroid",
+        "clean_title": "super metroid",
+        "year": "1994",
+        "edition": "",
+        "platform": "SNES",
+        "release_group": "",
+        "region": "World",
+        "version": "",
+        "title_id": "",
+        "is_scene": false
+      }
+    },
+    {
+      "input": "Super Mario 64 (USA).z64",
+      "ext_hint": "z64",
+      "parent_dir": "",
+      "expected": {
+        "title": "Super Mario 64",
+        "clean_title": "super mario 64",
+        "year": "1996",
+        "edition": "",
+        "platform": "N64",
+        "release_group": "",
+        "region": "USA",
+        "version": "",
+        "title_id": "",
+        "is_scene": false
+      }
+    },
+    {
+      "input": "Legend of Zelda, The - Ocarina of Time (USA).n64",
+      "ext_hint": "n64",
+      "parent_dir": "",
+      "expected": {
+        "title": "The Legend of Zelda: Ocarina of Time",
+        "clean_title": "the legend of zelda ocarina of time",
+        "year": "1998",
+        "edition": "",
+        "platform": "N64",
+        "release_group": "",
+        "region": "USA",
+        "version": "",
+        "title_id": "",
+        "is_scene": false
+      }
+    },
+    {
+      "input": "GoldenEye 007 (USA).v64",
+      "ext_hint": "v64",
+      "parent_dir": "",
+      "expected": {
+        "title": "GoldenEye 007",
+        "clean_title": "goldeneye 007",
+        "year": "1997",
+        "edition": "",
+        "platform": "N64",
+        "release_group": "",
+        "region": "USA",
+        "version": "",
+        "title_id": "",
+        "is_scene": false
+      }
+    },
+    {
+      "input": "Banjo-Kazooie (USA).z64",
+      "ext_hint": "z64",
+      "parent_dir": "",
+      "expected": {
+        "title": "Banjo-Kazooie",
+        "clean_title": "banjo kazooie",
+        "year": "1998",
+        "edition": "",
+        "platform": "N64",
+        "release_group": "",
+        "region": "USA",
+        "version": "",
+        "title_id": "",
+        "is_scene": false
+      }
+    },
+    {
+      "input": "Super Smash Bros. Melee (USA) (v1.02).iso",
+      "ext_hint": "iso",
+      "parent_dir": "",
+      "expected": {
+        "title": "Super Smash Bros. Melee",
+        "clean_title": "super smash bros melee",
+        "year": "2001",
+        "edition": "",
+        "platform": "GameCube",
+        "release_group": "",
+        "region": "USA",
+        "version": "1.02",
+        "title_id": "",
+        "is_scene": false
+      }
+    },
+    {
+      "input": "Legend of Zelda, The - The Wind Waker (USA).gcm",
+      "ext_hint": "gcm",
+      "parent_dir": "",
+      "expected": {
+        "title": "The Legend of Zelda: The Wind Waker",
+        "clean_title": "the legend of zelda the wind waker",
+        "year": "2003",
+        "edition": "",
+        "platform": "GameCube",
+        "release_group": "",
+        "region": "USA",
+        "version": "",
+        "title_id": "",
+        "is_scene": false
+      }
+    },
+    {
+      "input": "Metroid Prime (USA).rvz",
+      "ext_hint": "rvz",
+      "parent_dir": "",
+      "expected": {
+        "title": "Metroid Prime",
+        "clean_title": "metroid prime",
+        "year": "2002",
+        "edition": "",
+        "platform": "GameCube",
+        "release_group": "",
+        "region": "USA",
+        "version": "",
+        "title_id": "",
+        "is_scene": false
+      }
+    },
+    {
+      "input": "Mario Kart - Double Dash!! (USA).rvz",
+      "ext_hint": "rvz",
+      "parent_dir": "",
+      "expected": {
+        "title": "Mario Kart: Double Dash!!",
+        "clean_title": "mario kart double dash",
+        "year": "2003",
+        "edition": "",
+        "platform": "GameCube",
+        "release_group": "",
+        "region": "USA",
+        "version": "",
+        "title_id": "",
+        "is_scene": false
+      }
+    },
+    {
+      "input": "Super Mario Galaxy (USA).wbfs",
+      "ext_hint": "wbfs",
+      "parent_dir": "",
+      "expected": {
+        "title": "Super Mario Galaxy",
+        "clean_title": "super mario galaxy",
+        "year": "2007",
+        "edition": "",
+        "platform": "Wii",
+        "release_group": "",
+        "region": "USA",
+        "version": "",
+        "title_id": "",
+        "is_scene": false
+      }
+    },
+    {
+      "input": "Legend of Zelda, The - Twilight Princess (USA).iso",
+      "ext_hint": "iso",
+      "parent_dir": "",
+      "expected": {
+        "title": "The Legend of Zelda: Twilight Princess",
+        "clean_title": "the legend of zelda twilight princess",
+        "year": "2006",
+        "edition": "",
+        "platform": "Wii",
+        "release_group": "",
+        "region": "USA",
+        "version": "",
+        "title_id": "",
+        "is_scene": false
+      }
+    },
+    {
+      "input": "Xenoblade Chronicles (USA).rvz",
+      "ext_hint": "rvz",
+      "parent_dir": "",
+      "expected": {
+        "title": "Xenoblade Chronicles",
+        "clean_title": "xenoblade chronicles",
+        "year": "2012",
+        "edition": "",
+        "platform": "Wii",
+        "release_group": "",
+        "region": "USA",
+        "version": "",
+        "title_id": "",
+        "is_scene": false
+      }
+    },
+    {
+      "input": "Super Smash Bros. Brawl (USA).wbfs",
+      "ext_hint": "wbfs",
+      "parent_dir": "",
+      "expected": {
+        "title": "Super Smash Bros. Brawl",
+        "clean_title": "super smash bros brawl",
+        "year": "2008",
+        "edition": "",
+        "platform": "Wii",
+        "release_group": "",
+        "region": "USA",
+        "version": "",
+        "title_id": "",
+        "is_scene": false
+      }
+    },
+    {
+      "input": "Super Mario Odyssey [0100000000010000] [v0].nsp",
+      "ext_hint": "nsp",
+      "parent_dir": "",
+      "expected": {
+        "title": "Super Mario Odyssey",
+        "clean_title": "super mario odyssey",
+        "year": "2017",
+        "edition": "",
+        "platform": "Switch",
+        "release_group": "",
+        "region": "",
+        "version": "0",
+        "title_id": "0100000000010000",
+        "is_scene": false
+      }
+    },
+    {
+      "input": "Legend of Zelda Breath of the Wild [01007EF00011E000] [v0].xci",
+      "ext_hint": "xci",
+      "parent_dir": "",
+      "expected": {
+        "title": "The Legend of Zelda: Breath of the Wild",
+        "clean_title": "the legend of zelda breath of the wild",
+        "year": "2017",
+        "edition": "",
+        "platform": "Switch",
+        "release_group": "",
+        "region": "",
+        "version": "0",
+        "title_id": "01007EF00011E000",
+        "is_scene": false
+      }
+    },
+    {
+      "input": "Metroid Dread [010093801237C000] [v65536].nsp",
+      "ext_hint": "nsp",
+      "parent_dir": "",
+      "expected": {
+        "title": "Metroid Dread",
+        "clean_title": "metroid dread",
+        "year": "2021",
+        "edition": "",
+        "platform": "Switch",
+        "release_group": "",
+        "region": "",
+        "version": "65536",
+        "title_id": "010093801237C000",
+        "is_scene": false
+      }
+    },
+    {
+      "input": "Super Smash Bros. Ultimate [01006A800016E000] [v131072].nsp",
+      "ext_hint": "nsp",
+      "parent_dir": "",
+      "expected": {
+        "title": "Super Smash Bros. Ultimate",
+        "clean_title": "super smash bros ultimate",
+        "year": "2018",
+        "edition": "",
+        "platform": "Switch",
+        "release_group": "",
+        "region": "",
+        "version": "131072",
+        "title_id": "01006A800016E000",
+        "is_scene": false
+      }
+    },
+    {
+      "input": "Castlevania - Symphony of the Night (USA).cue",
+      "ext_hint": "cue",
+      "parent_dir": "",
+      "expected": {
+        "title": "Castlevania: Symphony of the Night",
+        "clean_title": "castlevania symphony of the night",
+        "year": "1997",
+        "edition": "",
+        "platform": "PS1",
+        "release_group": "",
+        "region": "USA",
+        "version": "",
+        "title_id": "",
+        "is_scene": false
+      }
+    },
+    {
+      "input": "Final Fantasy VII (USA) (Disc 1).chd",
+      "ext_hint": "chd",
+      "parent_dir": "",
+      "expected": {
+        "title": "Final Fantasy VII",
+        "clean_title": "final fantasy vii",
+        "year": "1997",
+        "edition": "",
+        "platform": "PS1",
+        "release_group": "",
+        "region": "USA",
+        "version": "",
+        "title_id": "",
+        "is_scene": false
+      }
+    },
+    {
+      "input": "Metal Gear Solid (USA) (Disc 1).chd",
+      "ext_hint": "chd",
+      "parent_dir": "",
+      "expected": {
+        "title": "Metal Gear Solid",
+        "clean_title": "metal gear solid",
+        "year": "1998",
+        "edition": "",
+        "platform": "PS1",
+        "release_group": "",
+        "region": "USA",
+        "version": "",
+        "title_id": "",
+        "is_scene": false
+      }
+    },
+    {
+      "input": "Crash Bandicoot (USA) [SCUS-94900].pbp",
+      "ext_hint": "pbp",
+      "parent_dir": "",
+      "expected": {
+        "title": "Crash Bandicoot",
+        "clean_title": "crash bandicoot",
+        "year": "1996",
+        "edition": "",
+        "platform": "PS1",
+        "release_group": "",
+        "region": "USA",
+        "version": "",
+        "title_id": "SCUS-94900",
+        "is_scene": false
+      }
+    },
+    {
+      "input": "Shadow of the Colossus (USA) [SLUS-21134].iso",
+      "ext_hint": "iso",
+      "parent_dir": "",
+      "expected": {
+        "title": "Shadow of the Colossus",
+        "clean_title": "shadow of the colossus",
+        "year": "2005",
+        "edition": "",
+        "platform": "PS2",
+        "release_group": "",
+        "region": "USA",
+        "version": "",
+        "title_id": "SLUS-21134",
+        "is_scene": false
+      }
+    },
+    {
+      "input": "Grand Theft Auto - San Andreas (USA) [SLUS-20946].chd",
+      "ext_hint": "chd",
+      "parent_dir": "",
+      "expected": {
+        "title": "Grand Theft Auto: San Andreas",
+        "clean_title": "grand theft auto san andreas",
+        "year": "2004",
+        "edition": "",
+        "platform": "PS2",
+        "release_group": "",
+        "region": "USA",
+        "version": "",
+        "title_id": "SLUS-20946",
+        "is_scene": false
+      }
+    },
+    {
+      "input": "Metal Gear Solid 3 - Snake Eater (USA) [SLUS-20915].iso",
+      "ext_hint": "iso",
+      "parent_dir": "",
+      "expected": {
+        "title": "Metal Gear Solid 3: Snake Eater",
+        "clean_title": "metal gear solid 3 snake eater",
+        "year": "2004",
+        "edition": "",
+        "platform": "PS2",
+        "release_group": "",
+        "region": "USA",
+        "version": "",
+        "title_id": "SLUS-20915",
+        "is_scene": false
+      }
+    },
+    {
+      "input": "Silent Hill 2 (USA) [SLUS-20228].chd",
+      "ext_hint": "chd",
+      "parent_dir": "",
+      "expected": {
+        "title": "Silent Hill 2",
+        "clean_title": "silent hill 2",
+        "year": "2001",
+        "edition": "",
+        "platform": "PS2",
+        "release_group": "",
+        "region": "USA",
+        "version": "",
+        "title_id": "SLUS-20228",
+        "is_scene": false
+      }
+    },
+    {
+      "input": "Demon's Souls (USA) [BCUS98174].iso",
+      "ext_hint": "iso",
+      "parent_dir": "",
+      "expected": {
+        "title": "Demon's Souls",
+        "clean_title": "demons souls",
+        "year": "2009",
+        "edition": "",
+        "platform": "PS3",
+        "release_group": "",
+        "region": "USA",
+        "version": "",
+        "title_id": "BCUS98174",
+        "is_scene": false
+      }
+    },
+    {
+      "input": "Metal Gear Solid 4 - Guns of the Patriots (USA) [BCUS98150].iso",
+      "ext_hint": "iso",
+      "parent_dir": "",
+      "expected": {
+        "title": "Metal Gear Solid 4: Guns of the Patriots",
+        "clean_title": "metal gear solid 4 guns of the patriots",
+        "year": "2008",
+        "edition": "",
+        "platform": "PS3",
+        "release_group": "",
+        "region": "USA",
+        "version": "",
+        "title_id": "BCUS98150",
+        "is_scene": false
+      }
+    },
+    {
+      "input": "Last of Us, The (USA) [BCUS98174].iso",
+      "ext_hint": "iso",
+      "parent_dir": "",
+      "expected": {
+        "title": "The Last of Us",
+        "clean_title": "the last of us",
+        "year": "2013",
+        "edition": "",
+        "platform": "PS3",
+        "release_group": "",
+        "region": "USA",
+        "version": "",
+        "title_id": "BCUS98174",
+        "is_scene": false
+      }
+    },
+    {
+      "input": "God of War III (Europe) [BCES00510].iso",
+      "ext_hint": "iso",
+      "parent_dir": "",
+      "expected": {
+        "title": "God of War III",
+        "clean_title": "god of war iii",
+        "year": "2010",
+        "edition": "",
+        "platform": "PS3",
+        "release_group": "",
+        "region": "Europe",
+        "version": "",
+        "title_id": "BCES00510",
+        "is_scene": false
+      }
+    },
+    {
+      "input": "Crisis Core - Final Fantasy VII (USA) [ULUS-10336].iso",
+      "ext_hint": "iso",
+      "parent_dir": "",
+      "expected": {
+        "title": "Crisis Core: Final Fantasy VII",
+        "clean_title": "crisis core final fantasy vii",
+        "year": "2008",
+        "edition": "",
+        "platform": "PSP",
+        "release_group": "",
+        "region": "USA",
+        "version": "",
+        "title_id": "ULUS-10336",
+        "is_scene": false
+      }
+    },
+    {
+      "input": "God of War - Chains of Olympus (USA) [UCUS-98653].cso",
+      "ext_hint": "cso",
+      "parent_dir": "",
+      "expected": {
+        "title": "God of War: Chains of Olympus",
+        "clean_title": "god of war chains of olympus",
+        "year": "2008",
+        "edition": "",
+        "platform": "PSP",
+        "release_group": "",
+        "region": "USA",
+        "version": "",
+        "title_id": "UCUS-98653",
+        "is_scene": false
+      }
+    },
+    {
+      "input": "Monster Hunter Freedom Unite (USA) [ULUS-10391].iso",
+      "ext_hint": "iso",
+      "parent_dir": "",
+      "expected": {
+        "title": "Monster Hunter Freedom Unite",
+        "clean_title": "monster hunter freedom unite",
+        "year": "2009",
+        "edition": "",
+        "platform": "PSP",
+        "release_group": "",
+        "region": "USA",
+        "version": "",
+        "title_id": "ULUS-10391",
+        "is_scene": false
+      }
+    },
+    {
+      "input": "Persona 3 Portable (USA) [ULUS-10523].pbp",
+      "ext_hint": "pbp",
+      "parent_dir": "",
+      "expected": {
+        "title": "Persona 3 Portable",
+        "clean_title": "persona 3 portable",
+        "year": "2010",
+        "edition": "",
+        "platform": "PSP",
+        "release_group": "",
+        "region": "USA",
+        "version": "",
+        "title_id": "ULUS-10523",
+        "is_scene": false
+      }
+    },
+    {
+      "input": "Shenmue (USA) (Disc 1).gdi",
+      "ext_hint": "gdi",
+      "parent_dir": "",
+      "expected": {
+        "title": "Shenmue",
+        "clean_title": "shenmue",
+        "year": "2000",
+        "edition": "",
+        "platform": "Dreamcast",
+        "release_group": "",
+        "region": "USA",
+        "version": "",
+        "title_id": "",
+        "is_scene": false
+      }
+    },
+    {
+      "input": "Crazy Taxi (USA).cdi",
+      "ext_hint": "cdi",
+      "parent_dir": "",
+      "expected": {
+        "title": "Crazy Taxi",
+        "clean_title": "crazy taxi",
+        "year": "2000",
+        "edition": "",
+        "platform": "Dreamcast",
+        "release_group": "",
+        "region": "USA",
+        "version": "",
+        "title_id": "",
+        "is_scene": false
+      }
+    },
+    {
+      "input": "Sonic Adventure (USA).chd",
+      "ext_hint": "chd",
+      "parent_dir": "",
+      "expected": {
+        "title": "Sonic Adventure",
+        "clean_title": "sonic adventure",
+        "year": "1999",
+        "edition": "",
+        "platform": "Dreamcast",
+        "release_group": "",
+        "region": "USA",
+        "version": "",
+        "title_id": "",
+        "is_scene": false
+      }
+    },
+    {
+      "input": "Jet Grind Radio (USA).gdi",
+      "ext_hint": "gdi",
+      "parent_dir": "",
+      "expected": {
+        "title": "Jet Grind Radio",
+        "clean_title": "jet grind radio",
+        "year": "2000",
+        "edition": "",
+        "platform": "Dreamcast",
+        "release_group": "",
+        "region": "USA",
+        "version": "",
+        "title_id": "",
+        "is_scene": false
+      }
+    }
+  ]
+}

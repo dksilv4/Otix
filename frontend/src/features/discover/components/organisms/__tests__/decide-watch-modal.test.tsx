@@ -8,6 +8,7 @@ import { DecideWatchModal } from '../decide-watch-modal'
 const mockNavigate = vi.fn().mockResolvedValue(undefined)
 vi.mock('@tanstack/react-router', () => ({
   useNavigate: () => mockNavigate,
+  useLocation: () => ({ href: '/discover', pathname: '/discover' }),
 }))
 vi.mock('@/lib/router', () => ({
   router: {

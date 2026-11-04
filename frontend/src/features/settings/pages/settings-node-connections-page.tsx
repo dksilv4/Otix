@@ -2,17 +2,14 @@ import { useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import { Network, Server, Search, ExternalLink } from 'lucide-react'
 import { useAuth } from '@/lib/providers/auth'
-import { useDownloadConfig } from '@/features/downloads/use-downloads'
 import { useSettingsNode } from '../context/settings-node-context'
-import { SettingsNodeSwitcherBar } from '../components/molecules/settings-node-switcher-bar'
 import { NodeConnectionsGroup } from '../components/organisms/node-connections-group'
 import { SettingsLockedState } from '../components/molecules/settings-locked-state'
 import { GLOBAL_PROFILE_NODE_ID } from '../utils/node-switcher'
 
 export const SettingsNodeConnectionsPage = () => {
-  const { isAuthenticated, user } = useAuth()
-  const { servers, selectedNode, selectedNodeId, setSelectedNodeId, isLoading } = useSettingsNode()
-  const { config: dlConfig } = useDownloadConfig(user?.id)
+  const { isAuthenticated } = useAuth()
+  const { servers, selectedNode, selectedNodeId, isLoading } = useSettingsNode()
   const [searchQuery, setSearchQuery] = useState('')
 
   const activeNodeId =
@@ -25,17 +22,6 @@ export const SettingsNodeConnectionsPage = () => {
     selectedNode ||
     servers[0] ||
     null
-
-  if (!isAuthenticated) {
-    return (
-      <SettingsLockedState
-        title="Sign in required"
-        description="Sign in to view and configure service connections for your Otix nodes."
-        icon={Network}
-        action={<span />}
-      />
-    )
-  }
 
   return (
     <div className="space-y-5">
@@ -75,16 +61,6 @@ export const SettingsNodeConnectionsPage = () => {
           </div>
         )}
       </div>
-
-      {/* Node Selector Tabs */}
-      {servers.length > 0 && (
-        <SettingsNodeSwitcherBar
-          activeNodeId={activeNodeId}
-          onSelectNodeId={(id) => setSelectedNodeId(id)}
-          servers={servers}
-          dlConfig={dlConfig}
-        />
-      )}
 
       {/* Search Input */}
       {activeServer && (

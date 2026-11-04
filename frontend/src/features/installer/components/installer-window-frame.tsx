@@ -13,28 +13,36 @@ export const InstallerWindowFrame = ({
   return (
     <div
       className={cn(
-        'relative w-screen h-screen flex flex-col overflow-hidden select-none',
-        'bg-[var(--dk-surface-root)] text-foreground',
+        'installer-draggable-frame relative w-screen h-screen flex flex-col overflow-hidden select-none',
+        'bg-gradient-to-br from-[#07080a] via-[#0d0f17] to-[#08090d] text-foreground',
         className,
       )}
+      style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
     >
-      {/* Top draggable area so users can drag the frameless window freely */}
+      {/* Top Window Drag Anchor Strip */}
       <div
-        className="absolute top-0 left-0 right-0 h-11 z-50 pointer-events-auto"
+        className="absolute top-0 left-0 right-0 h-16 z-30 pointer-events-auto"
         style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
+        aria-hidden="true"
       />
 
-      {/* Atmospheric glowing brand ambient backdrops */}
+      {/* Rich Atmospheric Luminous Ambient Background Glows */}
       <div
-        className="pointer-events-none absolute -top-28 -left-28 w-[450px] h-[450px] rounded-full bg-[var(--primary)]/[0.08] blur-[110px]"
+        className="pointer-events-none absolute -top-24 -left-24 w-[520px] h-[520px] rounded-full bg-[var(--primary)]/[0.24] blur-[120px] animate-pulse"
+        style={{ animationDuration: '7s' }}
         aria-hidden="true"
       />
       <div
-        className="pointer-events-none absolute -bottom-28 -right-28 w-[450px] h-[450px] rounded-full bg-[var(--primary)]/[0.05] blur-[110px]"
+        className="pointer-events-none absolute -bottom-24 -right-24 w-[500px] h-[500px] rounded-full bg-[var(--primary)]/[0.20] blur-[130px] animate-pulse"
+        style={{ animationDuration: '9s' }}
         aria-hidden="true"
       />
       <div
-        className="pointer-events-none absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[350px] h-[350px] rounded-full bg-white/[0.015] blur-[90px]"
+        className="pointer-events-none absolute top-1/4 right-1/4 w-[380px] h-[380px] rounded-full bg-indigo-500/[0.16] blur-[110px]"
+        aria-hidden="true"
+      />
+      <div
+        className="pointer-events-none absolute bottom-1/3 left-1/3 w-[340px] h-[340px] rounded-full bg-violet-500/[0.12] blur-[100px]"
         aria-hidden="true"
       />
 

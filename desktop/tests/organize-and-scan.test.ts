@@ -198,11 +198,11 @@ describe('Production Game Organization & Scanning', () => {
 
     const p1 = preview.find((p) => p.sourceFilename === 'Cyberpunk.2077.part01.rar');
     expect(p1?.status).toBe('rename_and_move');
-    expect(p1?.targetPath.replace(/\\/g, '/')).toContain('Cyberpunk 2077 [PC]');
+    expect(p1?.targetPath.replace(/\\/g, '/')).toContain('Cyberpunk 2077 (2020) [PC]');
 
     const p2 = preview.find((p) => p.sourceFilename === 'Cyberpunk.2077.part02.rar');
     expect(p2?.status).toBe('secondary_archive_part');
-    expect(p2?.targetPath.replace(/\\/g, '/')).toContain('Cyberpunk 2077 [PC]/Cyberpunk.2077.part02.rar');
+    expect(p2?.targetPath.replace(/\\/g, '/')).toContain('Cyberpunk 2077 (2020) [PC]/Cyberpunk.2077.part02.rar');
   });
 
   it('cleans update filenames with sequence prefixes in smartOrganizePreview', async () => {

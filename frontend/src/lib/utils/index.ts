@@ -7,3 +7,5 @@ export { extractErrorMessage, getErrorMessage, extractAccountErrorMessage, extra
 export { encodePositionInUrl, parsePositionFromUrl, stripPositionFromUrl } from './image-position'
 export { openExternal, openSessionWindow } from './open-external'
 export type { OpenExternalOptions } from './open-external'
+export { MANIFEST_CHUNK_SIZE, toManifestFiles, uploadNodeManifestInChunks, uploadScannedGamesManifest } from './manifest'
+export type { ManifestFileEntry, UploadManifestOptions } from './manifest'

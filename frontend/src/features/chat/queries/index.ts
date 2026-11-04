@@ -1,3 +1,4 @@
+import { useOptionalAuth } from '@auth/hooks/use-auth'
 import { queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiClient } from '@/lib/api'
 import { chatKeys } from './keys'
@@ -56,9 +57,21 @@ export const chatQueries = {
     }),
 }
 
-export const useChatUnreadCountQuery = () => useQuery(chatQueries.unreadCount())
+export const useChatUnreadCountQuery = (options?: { enabled?: boolean }) => {
+  const auth = useOptionalAuth()
+  return useQuery({
+    ...chatQueries.unreadCount(),
+    enabled: (options?.enabled ?? true) && Boolean(auth?.isAuthenticated),
+  })
+}
 
-export const useConversationsQuery = () => useQuery(chatQueries.conversations())
+export const useConversationsQuery = (options?: { enabled?: boolean }) => {
+  const auth = useOptionalAuth()
+  return useQuery({
+    ...chatQueries.conversations(),
+    enabled: (options?.enabled ?? true) && Boolean(auth?.isAuthenticated),
+  })
+}
 
 export const useConversationQuery = (conversationId: string) =>
   useQuery(chatQueries.conversation(conversationId))

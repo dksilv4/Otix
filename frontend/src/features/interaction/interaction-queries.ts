@@ -179,6 +179,10 @@ export function useToggleInteraction(mediaType: string, mediaId: string) {
           listId: 'watchlist',
           item: { mediaItemId: mediaId, mediaType: mediaType },
         })
+        qc.invalidateQueries({ queryKey: ['media-requests'] })
+        qc.invalidateQueries({ queryKey: ['request-media'] })
+        qc.invalidateQueries({ queryKey: ['server-radarr'] })
+        qc.invalidateQueries({ queryKey: ['server-sonarr'] })
       }
       if (variables.type === 'watched' && variables.active) {
         emitOtixEvent('otix:media:watched', { mediaId, mediaType })

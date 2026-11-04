@@ -17,24 +17,24 @@ export function registerLocalDesktopNodeId(id: number | null | undefined): void 
 export function isLocalDesktopNodeId(id: number | null | undefined): boolean {
   if (id == null) return false
   const numId = Number(id)
-  if (Number.isNaN(numId)) return false
+  if (Number.isNaN(numId) || numId <= 0) return false
   if (knownLocalDesktopIds.has(numId)) return true
 
-  // Inspect localStorage cached servers if available in client
+  // Inspect localStorage cached nodes if available in client
   if (typeof window !== 'undefined') {
     try {
-      const raw = localStorage.getItem('otix:cached-servers')
+      const raw = localStorage.getItem('otix:cached-nodes') || localStorage.getItem('otix:cached-servers')
       if (raw) {
-        const servers = JSON.parse(raw)
-        if (Array.isArray(servers)) {
-          for (const s of servers) {
+        const nodes = JSON.parse(raw)
+        if (Array.isArray(nodes)) {
+          for (const s of nodes) {
             if (
               s &&
               (s.isLocalDesktop ||
                 s.localUrl?.startsWith('otix://desktop') ||
                 s.primaryUrl?.startsWith('otix://desktop'))
             ) {
-              if (s.id != null) {
+              if (s.id != null && Number(s.id) > 0) {
                 knownLocalDesktopIds.add(Number(s.id))
               }
             }
@@ -51,15 +51,35 @@ export function isLocalDesktopNodeId(id: number | null | undefined): boolean {
 }
 
 export function isLocalDesktopNode(
-  server: { id?: number; isLocalDesktop?: boolean; localUrl?: string | null; primaryUrl?: string | null } | null | undefined,
+  server:
+    | {
+        id?: number
+        isLocalDesktop?: boolean
+        is_local?: boolean
+        isLocal?: boolean
+        localUrl?: string | null
+        primaryUrl?: string | null
+      }
+    | null
+    | undefined,
 ): boolean {
-  const isLocal = Boolean(
-    server?.isLocalDesktop ||
-      (server?.id != null && knownLocalDesktopIds.has(Number(server.id))) ||
-      server?.localUrl?.startsWith('otix://desktop') ||
-      server?.primaryUrl?.startsWith('otix://desktop'),
+  if (!server) return false
+  const isLoopback = Boolean(
+    server.localUrl?.includes('127.0.0.1') ||
+      server.localUrl?.includes('localhost') ||
+      server.primaryUrl?.includes('127.0.0.1') ||
+      server.primaryUrl?.includes('localhost'),
   )
-  if (isLocal && server?.id != null) {
+  const isLocal = Boolean(
+    server.isLocalDesktop ||
+      server.is_local ||
+      server.isLocal ||
+      isLoopback ||
+      (server.id != null && server.id > 0 && knownLocalDesktopIds.has(Number(server.id))) ||
+      server.localUrl?.startsWith('otix://desktop') ||
+      server.primaryUrl?.startsWith('otix://desktop'),
+  )
+  if (isLocal && server.id != null && server.id > 0) {
     registerLocalDesktopNodeId(server.id)
   }
   return isLocal
@@ -94,6 +114,12 @@ export function getLocalDesktopNode(): GameServer | null {
   return getLocalDesktopNodeFallback()
 }
 
+export function findLocalDesktopNode<
+  T extends { id?: number; isLocalDesktop?: boolean; localUrl?: string | null; primaryUrl?: string | null },
+>(nodes: T[]): T | null {
+  return nodes.find((node) => isLocalDesktopNode(node)) || null
+}
+
 export function isBrowserSessionNode(server: { name?: string | null } | null | undefined): boolean {
   const name = (server?.name || '').toLowerCase()
   return (
@@ -105,15 +131,27 @@ export function isBrowserSessionNode(server: { name?: string | null } | null | u
   )
 }
 
+export function isVirtualDesktopNode(
+  server: { id?: number; localUrl?: string | null; primaryUrl?: string | null } | null | undefined,
+): boolean {
+  if (!server) return false
+  return Boolean(
+    server.localUrl?.startsWith('otix://') ||
+      server.primaryUrl?.startsWith('otix://'),
+  )
+}
+
 export function mergeLocalDesktopNode(servers: GameServer[]): GameServer[] {
-  // Prune any lingering browser sessions — browser sessions are never nodes
-  const validServers = servers.filter((s) => !isBrowserSessionNode(s))
-  // If servers already contains a registered desktop node (from backend DB), keep it
+  // Prune any lingering browser sessions and virtual otix:// desktop nodes
+  const validServers = servers.filter((s) => !isBrowserSessionNode(s) && !isVirtualDesktopNode(s))
+
+  // Register real desktop node IDs
   for (const server of validServers) {
     if (isLocalDesktopNode(server)) {
       registerLocalDesktopNodeId(server.id)
     }
   }
+
   if (validServers.some((server) => isLocalDesktopNode(server))) {
     return validServers
   }
@@ -128,7 +166,6 @@ export function syncServersWithPendingNodes(servers: GameServer[], pendingNodes:
   return servers.map((server) => {
     if (isLocalDesktopNode(server)) {
       registerLocalDesktopNodeId(server.id)
-      return server
     }
     const match = pendingNodes.find(
       (p) =>
@@ -159,13 +196,12 @@ export function syncServersWithPendingNodes(servers: GameServer[], pendingNodes:
 export function pickSettingsNode(servers: GameServer[], preferredId: number | null): GameServer | null {
   if (preferredId === 0) return null
   if (!servers.length) return null
-  const workers = servers.filter((server) => !isLocalDesktopNode(server))
   return (
-    servers.find((server) => server.id === preferredId) ||
-    servers.find((server) => server.isLocalDesktop) ||
-    workers.find((server) => server.isActive) ||
-    workers.find((server) => server.isOnline) ||
-    workers[0] ||
+    (preferredId != null ? servers.find((server) => server.id === preferredId) : undefined) ||
+    servers.find((server) => isLocalDesktopNode(server) && server.isOnline) ||
+    servers.find((server) => isLocalDesktopNode(server)) ||
+    servers.find((server) => server.isActive) ||
+    servers.find((server) => server.isOnline) ||
     servers[0]
   )
 }

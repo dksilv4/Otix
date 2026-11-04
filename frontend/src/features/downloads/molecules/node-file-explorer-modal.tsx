@@ -3,9 +3,11 @@ import { DkDialog } from '@ui/molecules/dialog'
 import { NodeFileExplorer } from './node-file-explorer'
 
 export interface NodeFileExplorerModalProps {
+  open?: boolean
   isOpen?: boolean
   isExiting?: boolean
-  onClose: () => void
+  onClose?: () => void
+  onOpenChange?: (open: boolean) => void
   initialNodeId?: number
   initialServerId?: number
   initialPath?: string
@@ -16,23 +18,30 @@ export interface NodeFileExplorerModalProps {
 export type ServerFileExplorerModalProps = NodeFileExplorerModalProps
 
 export const NodeFileExplorerModal = ({
+  open,
   isOpen,
   isExiting,
   onClose,
+  onOpenChange,
   initialNodeId,
   initialServerId,
   initialPath,
   nodeName,
   serverName,
 }: NodeFileExplorerModalProps) => {
+  const isModalOpen = (open ?? isOpen ?? true) && !isExiting
+  const handleClose = () => {
+    onClose?.()
+    onOpenChange?.(false)
+  }
   const effectiveName = nodeName || serverName
   const effectiveId = initialNodeId ?? initialServerId
 
   return (
     <DkDialog
-      open={isOpen !== false && !isExiting}
+      open={isModalOpen}
       onOpenChange={(next) => {
-        if (!next) onClose()
+        if (!next) handleClose()
       }}
       className="flex max-h-[min(92vh,860px)] w-[calc(100vw-1.25rem)] max-w-3xl flex-col overflow-hidden !p-0 sm:w-full"
     >

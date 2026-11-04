@@ -18,6 +18,9 @@ vi.mock('../game/fps', () => ({
   getLiveFps: vi.fn(() => null),
   isCapturing: vi.fn(() => false),
 }))
+vi.mock('../desktop-settings', () => ({
+  getSettings: vi.fn(() => ({ onlyTrackScannedGames: false })),
+}))
 
 // ── Imports that depend on mocks ────────────────────────────────────
 
@@ -498,6 +501,45 @@ describe('GameDetector', () => {
       vi.mocked(fs.existsSync).mockReturnValue(true)
       vi.mocked(fs.readFileSync).mockReturnValue('not valid json')
       expect(detector.getRecentSessions()).toEqual([])
+    })
+  })
+
+  // ── Large library performance & scale ──
+
+  describe('large library performance & scale', () => {
+    it('scans 5,000 games with 200 processes in under 500ms without freezing', async () => {
+      const games: LocalGame[] = []
+      for (let i = 0; i < 5000; i++) {
+        games.push(makeGame({
+          id: `game-${i}`,
+          title: `Awesome Adventure Chronicles Chapter ${i}`,
+          exePath: `C:\\Games\\Game${i}\\game_${i}.exe`,
+        }))
+      }
+      // Place the active running game right in the middle
+      games[2500] = makeGame({
+        id: 'running-game',
+        title: 'Running Game Title',
+        exePath: 'C:\\Games\\RunningGame\\running.exe',
+      })
+      detector.setLibrary(games)
+
+      const procNames: string[] = []
+      for (let i = 0; i < 200; i++) {
+        procNames.push(`background_service_${i}.exe`)
+      }
+      procNames[100] = 'running.exe'
+      mockProcesses(procNames)
+      mockWindowTitles([{ processName: 'running', pid: process.pid, title: 'Running Game Title' }])
+
+      const start = Date.now()
+      const results = await detector.scanRunningProcesses()
+      const elapsed = Date.now() - start
+
+      expect(results).toHaveLength(1)
+      expect(results[0].game.id).toBe('running-game')
+      // Ensure the optimized scan completes well under 500ms (typically < 50ms)
+      expect(elapsed).toBeLessThan(500)
     })
   })
 })

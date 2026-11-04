@@ -443,12 +443,25 @@ class AdminComputeSubmitView(APIView):
         color_guess = request.data.get("color_guess")
         if color_guess:
             asset.color_guess = str(color_guess)[:20]
-        elif not asset.color_guess:
-            from apps.media.services.color_analyzer import analyze_image_bytes
 
-            guess = analyze_image_bytes(file_bytes, asset.asset_type)
-            if guess:
-                asset.color_guess = guess
+        dominant_color = request.data.get("dominant_color")
+        if dominant_color:
+            asset.dominant_color = str(dominant_color)[:7]
+
+        if not asset.color_guess or not asset.dominant_color:
+            from apps.media.services.color_analyzer import (
+                analyze_image_bytes,
+                extract_dominant_color_bytes,
+            )
+
+            if not asset.color_guess:
+                guess = analyze_image_bytes(file_bytes, asset.asset_type)
+                if guess:
+                    asset.color_guess = guess
+            if not asset.dominant_color:
+                dom_col = extract_dominant_color_bytes(file_bytes)
+                if dom_col:
+                    asset.dominant_color = dom_col
 
         asset.save(
             update_fields=[
@@ -458,6 +471,7 @@ class AdminComputeSubmitView(APIView):
                 "width",
                 "height",
                 "color_guess",
+                "dominant_color",
             ]
         )
 

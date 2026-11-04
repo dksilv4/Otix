@@ -4,9 +4,9 @@ import type { RemoteDownloadProgress } from '@/lib/desktop/api'
 
 describe('serverKeys', () => {
   it('generates consistent query keys', () => {
-    expect(serverKeys.all).toEqual(['game-servers'])
-    expect(serverKeys.lists()).toEqual(['game-servers', 'list'])
-    expect(serverKeys.games()).toEqual(['game-servers', 'games'])
+    expect(serverKeys.all).toEqual(['nodes'])
+    expect(serverKeys.lists()).toEqual(['nodes', 'list'])
+    expect(serverKeys.games()).toEqual(['nodes', 'games'])
   })
 })
 

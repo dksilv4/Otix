@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, waitFor } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { GamingXpHost } from '../components/organisms/gaming-xp-host'
 import { apiClient } from '@/lib/api/client'
 import * as xpToast from '@/components/ui/atoms/xp-toast'
@@ -112,9 +113,15 @@ describe('GamingXpHost', () => {
     })
   })
 
-  it('rewards XP and shows toast when the session ends', async () => {
+  it('rewards XP, saves game session to account, and shows toast when the session ends', async () => {
+    const queryClient = new QueryClient()
+    const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries')
     const game = { id: 'elden-ring', title: 'Elden Ring', platform: 'pc' }
-    const { rerender } = render(<GamingXpHost />)
+    const { rerender } = render(
+      <QueryClientProvider client={queryClient}>
+        <GamingXpHost />
+      </QueryClientProvider>,
+    )
 
     // Game starts playing for 10 minutes (600s = 10 XP)
     vi.mocked(runningHooks.useRunningGame).mockReturnValue({
@@ -125,7 +132,11 @@ describe('GamingXpHost', () => {
       },
       elapsedMs: 600000,
     })
-    rerender(<GamingXpHost />)
+    rerender(
+      <QueryClientProvider client={queryClient}>
+        <GamingXpHost />
+      </QueryClientProvider>,
+    )
     expect(getGamingSessionState().sessionXp).toBe(10)
 
     vi.mocked(apiClient.post).mockResolvedValue({
@@ -144,9 +155,22 @@ describe('GamingXpHost', () => {
       runningGame: null,
       elapsedMs: 600000,
     })
-    rerender(<GamingXpHost />)
+    rerender(
+      <QueryClientProvider client={queryClient}>
+        <GamingXpHost />
+      </QueryClientProvider>,
+    )
 
     await waitFor(() => {
+      expect(apiClient.post).toHaveBeenCalledWith(
+        '/library/game-sessions',
+        expect.objectContaining({
+          gameId: 'elden-ring',
+          gameTitle: 'Elden Ring',
+          durationSeconds: 600,
+          platform: 'pc',
+        }),
+      )
       expect(apiClient.post).toHaveBeenCalledWith(
         '/users/me/gaming-heartbeat',
         expect.objectContaining({
@@ -157,6 +181,88 @@ describe('GamingXpHost', () => {
         }),
       )
       expect(xpToast.showXPToast).toHaveBeenCalledWith(10, 'Elden Ring', 100)
+      expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['user-game-sessions'] })
+    })
+  })
+
+  it('saves CS2 game session to user account with match stats when game closes', async () => {
+    const queryClient = new QueryClient()
+    const game = { id: 'cs2', title: 'Counter-Strike 2', platform: 'pc' }
+    vi.mocked(runningHooks.useRunningGame).mockReturnValue({
+      runningGame: {
+        game,
+        startTime: 1000000,
+        launchedByOtix: true,
+      },
+      elapsedMs: 1200000,
+    })
+
+    vi.mocked(cs2Hooks.useCs2GameState).mockReturnValue({
+      gameState: {
+        activity: 'playing',
+        isInGame: true,
+        phase: 'gameover',
+        mapName: 'Mirage',
+        round: 22,
+        scoreCt: 13,
+        scoreT: 9,
+        team: 'CT',
+        kills: 22,
+        deaths: 8,
+        assists: 4,
+        mvps: 3,
+        health: 100,
+        armor: 100,
+        helmet: true,
+        rawMapName: 'de_mirage',
+        mode: 'competitive',
+        roundKills: 0,
+        timestamp: Date.now(),
+      },
+      isCs2Active: true,
+    })
+
+    const { rerender } = render(
+      <QueryClientProvider client={queryClient}>
+        <GamingXpHost />
+      </QueryClientProvider>,
+    )
+
+    vi.mocked(apiClient.post).mockResolvedValue({
+      data: {
+        status: 'ok',
+        xpAwarded: 100,
+        totalXp: 200,
+      },
+    })
+
+    // Game closes
+    vi.mocked(runningHooks.useRunningGame).mockReturnValue({
+      runningGame: null,
+      elapsedMs: 1200000,
+    })
+    rerender(
+      <QueryClientProvider client={queryClient}>
+        <GamingXpHost />
+      </QueryClientProvider>,
+    )
+
+    await waitFor(() => {
+      expect(apiClient.post).toHaveBeenCalledWith(
+        '/library/game-sessions',
+        expect.objectContaining({
+          gameId: 'cs2',
+          gameTitle: 'Counter-Strike 2',
+          durationSeconds: 1200,
+          fpsStats: expect.objectContaining({
+            kills: 22,
+            deaths: 8,
+            assists: 4,
+            won: true,
+            completed: true,
+          }),
+        }),
+      )
     })
   })
 

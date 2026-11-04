@@ -1,8 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { showToast } from '@ui/molecules/toast'
+import { apiClient } from '@/lib/api/client'
 import { PlexSyncPromptModal } from '../components/plex-sync-prompt-modal'
-import { triggerPlexSyncPrompt } from '../utils/plex-sync'
+import { triggerPlexSyncPrompt, executePlexSync } from '../utils/plex-sync'
 import * as plexSyncUtils from '../utils/plex-sync'
 
 vi.mock('@auth/hooks/use-auth', () => ({
@@ -16,6 +18,12 @@ vi.mock('@ui/molecules/toast', () => ({
   showToast: vi.fn(),
 }))
 
+vi.mock('@/lib/api/client', () => ({
+  apiClient: {
+    post: vi.fn(),
+  },
+}))
+
 describe('PlexSyncPromptModal', () => {
   let queryClient: QueryClient
 
@@ -24,7 +32,7 @@ describe('PlexSyncPromptModal', () => {
       defaultOptions: { queries: { retry: false } },
     })
     sessionStorage.clear()
-    vi.clearAllMocks()
+    vi.restoreAllMocks()
   })
 
   it('renders closed initially when no pending prompt exists', () => {
@@ -92,11 +100,13 @@ describe('PlexSyncPromptModal', () => {
     })
   })
 
-  it('calls executePlexSync and notifies on Sync Selected', async () => {
-    const executeSpy = vi.spyOn(plexSyncUtils, 'executePlexSync').mockResolvedValueOnce({
-      watchlist: { total: 5, matched: 4, seeded: 1 },
-      watched: { total: 10, matched: 8, seeded: 2, episodes: 15 },
+  it('closes modal immediately, shows starting toast, and runs sync in the background', async () => {
+    let resolveSync: (val: any) => void = () => {}
+    const syncPromise = new Promise((resolve) => {
+      resolveSync = resolve
     })
+
+    const executeSpy = vi.spyOn(plexSyncUtils, 'executePlexSync').mockReturnValue(syncPromise as any)
 
     render(
       <QueryClientProvider client={queryClient}>
@@ -115,11 +125,74 @@ describe('PlexSyncPromptModal', () => {
     const syncBtn = screen.getByText('Sync Selected')
     fireEvent.click(syncBtn)
 
+    // Modal closes immediately without waiting for sync to finish
     await waitFor(() => {
-      expect(executeSpy).toHaveBeenCalledWith({
-        syncWatchlist: true,
-        syncWatched: true,
+      expect(screen.queryByText('Welcome! Sync Plex Data?')).not.toBeInTheDocument()
+    })
+
+    // Feedback toast shown immediately
+    expect(showToast).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: 'Plex sync started',
+        description: 'Syncing your Plex data in the background...',
+      }),
+    )
+
+    expect(executeSpy).toHaveBeenCalledWith({
+      syncWatchlist: true,
+      syncWatched: true,
+    })
+
+    // Complete background sync
+    await act(async () => {
+      resolveSync({
+        watchlist: { total: 5, matched: 4, seeded: 1 },
+        watched: { total: 10, matched: 8, seeded: 2, episodes: 15 },
       })
     })
+
+    // Final completion notification shown
+    await waitFor(() => {
+      expect(showToast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'Plex sync complete',
+        }),
+      )
+    })
+  })
+
+  it('executePlexSync runs watchlist and watched sync concurrently', async () => {
+    vi.mocked(apiClient.post).mockImplementation(async (url: string) => {
+      if (url.includes('watchlist')) {
+        return { data: { total: 10, matched: 8, seeded: 2 } }
+      }
+      if (url.includes('watched')) {
+        return { data: { total: 20, matched: 15, seeded: 5, episodes: 30 } }
+      }
+      return { data: {} }
+    })
+
+    const result = await executePlexSync({ syncWatchlist: true, syncWatched: true })
+
+    expect(result.watchlist).toEqual({ total: 10, matched: 8, seeded: 2 })
+    expect(result.watched).toEqual({ total: 20, matched: 15, seeded: 5, episodes: 30 })
+    expect(apiClient.post).toHaveBeenCalledTimes(2)
+  })
+
+  it('executePlexSync returns partial results if one sync task fails', async () => {
+    vi.mocked(apiClient.post).mockImplementation(async (url: string) => {
+      if (url.includes('watchlist')) {
+        return { data: { total: 10, matched: 8, seeded: 2 } }
+      }
+      if (url.includes('watched')) {
+        throw new Error('Connection timeout')
+      }
+      return { data: {} }
+    })
+
+    const result = await executePlexSync({ syncWatchlist: true, syncWatched: true })
+
+    expect(result.watchlist).toEqual({ total: 10, matched: 8, seeded: 2 })
+    expect(result.watched).toBeUndefined()
   })
 })

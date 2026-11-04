@@ -6,9 +6,26 @@ let _resolveIpcReady: (() => void) | null = null;
 const _ipcReady = new Promise<void>((resolve) => { _resolveIpcReady = resolve; });
 ipcRenderer.on('main:ipc-ready', () => _resolveIpcReady?.());
 
+function getInitialApiBaseUrl(): string {
+  const arg = process.argv.find((a) => a.startsWith('--otix-api-base-url='));
+  if (arg) {
+    return arg.slice('--otix-api-base-url='.length);
+  }
+  return 'https://otix.app';
+}
+
+let _apiBaseUrl = getInitialApiBaseUrl();
+ipcRenderer.on('desktop:api-base-url-changed', (_event, url: string) => {
+  if (url) _apiBaseUrl = url;
+});
+
 contextBridge.exposeInMainWorld('desktopAPI', {
   /** Wait for the main process to finish registering all IPC handlers. */
   onMainIpcReady: () => _ipcReady,
+
+  // ── Backend API base URL ──
+  apiBaseUrl: _apiBaseUrl,
+  getApiBaseUrl: () => _apiBaseUrl,
 
   // ── Platform info ──
   platform: process.platform,
@@ -63,7 +80,7 @@ contextBridge.exposeInMainWorld('desktopAPI', {
   // ── Notifications ──
   showNotification: (opts: { title: string; body?: string; icon?: string; type: string; metadata?: Record<string, unknown> }) =>
     ipcRenderer.invoke('notifications:show', opts),
-  scanPaths: (paths: string[], isoPaths: string[]) => ipcRenderer.invoke('scanner:scan-paths', paths, isoPaths),
+  scanPaths: (paths: string[], isoPaths: string[], authToken?: string) => ipcRenderer.invoke('scanner:scan-paths', paths, isoPaths, authToken),
   scanLaunchers: () => ipcRenderer.invoke('scanner:scan-launchers'),
   launchGame: (game: LocalGame) => ipcRenderer.invoke('launcher:launch-game', game),
   getEmulators: () => ipcRenderer.invoke('emulators:get-all'),
@@ -102,6 +119,8 @@ contextBridge.exposeInMainWorld('desktopAPI', {
   getGameById: (id: string) => ipcRenderer.invoke('scanner:get-game-by-id', id),
   getGameCount: (filter: unknown) => ipcRenderer.invoke('scanner:get-game-count', filter),
   saveScannedGames: (games: unknown[]) => ipcRenderer.invoke('scanner:save-scanned-game', games),
+  syncMachineMappings: (mappings: unknown[]) => ipcRenderer.invoke('settings:sync-machine-mappings', mappings),
+  getMachineMappings: () => ipcRenderer.invoke('settings:get-machine-mappings'),
   pickExecutable: (defaultPath?: string) => ipcRenderer.invoke('scanner:pick-executable', defaultPath),
   pickFolder: (defaultPath?: string) => ipcRenderer.invoke('scanner:pick-folder', defaultPath),
   openDirectoryDialog: (defaultPath?: string) => ipcRenderer.invoke('dialog:open-directory', defaultPath),
@@ -117,6 +136,8 @@ contextBridge.exposeInMainWorld('desktopAPI', {
   acceptSuggestion: (gameId: string, suggestion: unknown) => ipcRenderer.invoke('scanner:accept-suggestion', gameId, suggestion),
   unmatchGame: (gameId: string) => ipcRenderer.invoke('scanner:unmatch-game', gameId),
   rejectSuggestion: (gameId: string, suggestionMediaId: string) => ipcRenderer.invoke('scanner:reject-suggestion', gameId, suggestionMediaId),
+  searchCatalog: (query: string) => ipcRenderer.invoke('catalog:search', query),
+  importCatalogIgdb: (igdbId: string) => ipcRenderer.invoke('catalog:import-igdb', igdbId),
   resetPlatformGames: (platforms: string[]) => ipcRenderer.invoke('scanner:reset-platform-games', platforms),
   deleteGamesByDirectory: (dirPrefix: string) => ipcRenderer.invoke('scanner:delete-games-by-dir', dirPrefix),
   onGamesDbChanged: (callback: () => void) => {
@@ -128,6 +149,8 @@ contextBridge.exposeInMainWorld('desktopAPI', {
   // Game detection
   getRunningGame: () => ipcRenderer.invoke('game:get-running-single'),
   getRunningGames: () => ipcRenderer.invoke('game:get-running'),
+  cycleActiveGame: () => ipcRenderer.invoke('game:cycle-active'),
+  setActiveGame: (gameId: string) => ipcRenderer.invoke('game:set-active', gameId),
   getRecentSessions: () => ipcRenderer.invoke('game:get-recent-sessions'),
   getPlaytimeForGame: (gameId: string) => ipcRenderer.invoke('game:get-playtime', gameId),
   setLibrary: (games: LocalGame[]) => ipcRenderer.invoke('game:set-library', games),
@@ -410,10 +433,23 @@ contextBridge.exposeInMainWorld('desktopAPI', {
   },
   installerFinishAndLaunch: () => ipcRenderer.invoke('setup:finish-and-launch'),
   installerCancel: () => ipcRenderer.invoke('setup:cancel'),
+  installerRelaunchElevated: () => ipcRenderer.invoke('setup:relaunch-elevated'),
+  installerGetUserInstallPath: () => ipcRenderer.invoke('setup:get-user-install-path'),
   uninstallerConfirm: (options: { removeUserData: boolean }) => ipcRenderer.invoke('setup:uninstall', options),
   uninstallerOnProgress: (callback: (progress: any) => void) => {
     const handler = (_event: any, progress: any) => callback(progress);
     ipcRenderer.on('setup:uninstall-progress', handler);
     return () => ipcRenderer.removeListener('setup:uninstall-progress', handler);
+  },
+
+  // ── Game Achievements ──
+  getGameAchievements: (gameId: string) => ipcRenderer.invoke('achievements:get-for-game', gameId),
+  getGameAchievementStats: (gameId: string) => ipcRenderer.invoke('achievements:get-stats', gameId),
+  getRecentAchievements: (limit?: number) => ipcRenderer.invoke('achievements:get-recent-unlocks', limit),
+  syncGameAchievements: (gameId: string) => ipcRenderer.invoke('achievements:sync', gameId),
+  onAchievementUnlocked: (callback: (achievement: any) => void) => {
+    const handler = (_event: any, achievement: any) => callback(achievement);
+    ipcRenderer.on('game:achievement-unlocked', handler);
+    return () => ipcRenderer.removeListener('game:achievement-unlocked', handler);
   },
 });

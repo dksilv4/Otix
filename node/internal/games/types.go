@@ -13,7 +13,8 @@ type RunningGame struct {
 	PID                int              `json:"pid"`
 	StartTime          time.Time        `json:"start_time"`
 	CurrentDurationSec int              `json:"current_duration_seconds"`
-	FpsAvailable       bool             `json:"fps_available"`
+	FpsAvailable        bool             `json:"fps_available"`
+	FpsPermissionDenied bool             `json:"fps_permission_denied,omitempty"`
 	FpsSnapshot        *LiveFpsSnapshot `json:"fps_snapshot,omitempty"`
 	OtixMediaID        string           `json:"otix_media_id,omitempty"`
 	PosterURL          string           `json:"poster_url,omitempty"`
@@ -34,7 +35,10 @@ type LiveFpsSnapshot struct {
 	SampleCount  int     `json:"sample_count"`
 	Timestamp    int64   `json:"timestamp"` // Unix timestamp in ms
 	IsLoading    bool    `json:"is_loading,omitempty"`
-	IsBackground bool    `json:"is_background,omitempty"`
+	IsBackground     bool    `json:"is_background,omitempty"`
+	IsLobby          bool    `json:"is_lobby,omitempty"`
+	PermissionDenied bool    `json:"permission_denied,omitempty"`
+	Status           string  `json:"status,omitempty"`
 }
 
 // FpsStatsData aggregates overall performance metrics at the end of a session.
@@ -50,6 +54,8 @@ type FpsStatsData struct {
 	GameplaySeconds   int     `json:"gameplay_seconds,omitempty"`
 	LoadingSeconds    int     `json:"loading_seconds,omitempty"`
 	BackgroundSeconds int     `json:"background_seconds,omitempty"`
+	LobbySeconds      int     `json:"lobby_seconds,omitempty"`
+	UnfilteredAvgFPS  float64 `json:"unfiltered_avg_fps,omitempty"`
 }
 
 // SessionHardwareSummary records matched host hardware for anonymous benchmark sharing.
@@ -126,12 +132,13 @@ type OverlaySettings struct {
 	Opacity         float64 `json:"opacity"`
 	Scale           float64 `json:"scale"`
 	Hotkey          string  `json:"hotkey"`
+	OnlyTrackScanned bool   `json:"only_track_scanned"`
 }
 
 // DefaultOverlaySettings provides sensible defaults for the HUD.
 func DefaultOverlaySettings() OverlaySettings {
 	return OverlaySettings{
-		Enabled:         false,
+		Enabled:         true,
 		Corner:          "top-wide",
 		Monitor:         "auto",
 		ShowFps:         true,
@@ -141,6 +148,7 @@ func DefaultOverlaySettings() OverlaySettings {
 		Opacity:         0.92,
 		Scale:           1.0,
 		Hotkey:          "Ctrl+`",
+		OnlyTrackScanned: true,
 	}
 }
 

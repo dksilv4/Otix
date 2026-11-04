@@ -33,11 +33,17 @@ type DesktopSettingsResponse struct {
 	GamesInstallPath  string                     `json:"gamesInstallPath"`
 	ScanOnLaunch      bool                       `json:"scanOnLaunch"`
 	GameTracking      bool                       `json:"gameTracking"`
-	OverlayEnabled    bool                       `json:"overlayEnabled"`
-	OverlayCorner     string                     `json:"overlayCorner"`
-	OverlayMonitor    string                     `json:"overlayMonitor"`
-	OverlayMonitors   []games.MonitorInfo        `json:"overlayMonitors,omitempty"`
-	OverlayHotkey     string                     `json:"overlayHotkey,omitempty"`
+	OverlayEnabled         bool                       `json:"overlayEnabled"`
+	OverlayCorner          string                     `json:"overlayCorner"`
+	OverlayMonitor         string                     `json:"overlayMonitor"`
+	OverlayMonitors        []games.MonitorInfo        `json:"overlayMonitors,omitempty"`
+	OverlayHotkey          string                     `json:"overlayHotkey,omitempty"`
+	OverlayShowFps         bool                       `json:"overlayShowFps"`
+	OverlayShowPercentiles bool                       `json:"overlayShowPercentiles"`
+	OverlayShowPlaytime    bool                       `json:"overlayShowPlaytime"`
+	OverlayShowTitle       bool                       `json:"overlayShowTitle"`
+	OverlayOpacity         float64                    `json:"overlayOpacity"`
+	OverlayScale           float64                    `json:"overlayScale"`
 	AutoBackupOnExit  bool                       `json:"autoBackupOnExit"`
 }
 
@@ -115,12 +121,18 @@ func GetDesktopSettings(cfg *config.AppConfig, refresh ...bool) DesktopSettingsR
 		GamesDownloadPath: dlPath,
 		GamesInstallPath:  cfg.Desktop.GamesInstallPath,
 		ScanOnLaunch:      cfg.Desktop.ScanOnLaunch,
-		GameTracking:      true,
-		OverlayEnabled:    false,
-		OverlayCorner:     "top-wide",
-		OverlayMonitor:    "auto",
-		OverlayHotkey:     "Ctrl+`",
-		AutoBackupOnExit:  cfg.Saves.AutoBackupOnExit,
+		GameTracking:           true,
+		OverlayEnabled:         true,
+		OverlayCorner:          "top-wide",
+		OverlayMonitor:         "auto",
+		OverlayHotkey:          "Ctrl+`",
+		OverlayShowFps:         true,
+		OverlayShowPercentiles: true,
+		OverlayShowPlaytime:    true,
+		OverlayShowTitle:       true,
+		OverlayOpacity:         0.92,
+		OverlayScale:           1.0,
+		AutoBackupOnExit:       cfg.Saves.AutoBackupOnExit,
 	}
 }
 

@@ -5,7 +5,7 @@ import { Helmet } from 'react-helmet-async'
 import { AuthBackground } from '@auth/components/atoms/auth-background'
 import { AuthCard } from '@auth/components/molecules/auth-card'
 import { useAuth } from '@auth/hooks/use-auth'
-import { extractErrorMessage } from '@auth/utils'
+import { extractErrorMessage, getSafeRedirectUrl } from '@auth/utils'
 
 import { ACCESS_TOKEN_KEY } from '@/lib/config'
 import { PENDING_LOGIN_SYNC_KEY } from '@/features/interaction/offline-watchlist'
@@ -63,10 +63,12 @@ export const CallbackPage = () => {
         // Web OAuth login: update AuthProvider session state and navigate immediately into the app
         if (isLoginFlow && token) {
           await completeLogin(token)
-          const redirectParam = params.get('redirect') || params.get('next')
-          const target = (redirectParam && redirectParam.startsWith('/') && !redirectParam.startsWith('//'))
-            ? redirectParam
-            : '/'
+          const redirectParam =
+            params.get('redirect') ||
+            params.get('next') ||
+            (typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('auth_redirect') : null)
+          const target = getSafeRedirectUrl(redirectParam)
+          try { sessionStorage.removeItem('auth_redirect') } catch { /* ignore */ }
           void navigate({ to: target, replace: true })
           return
         }

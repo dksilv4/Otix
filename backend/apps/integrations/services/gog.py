@@ -9,9 +9,9 @@ from django.contrib.contenttypes.models import ContentType
 
 from apps.integrations.models import UserGOGGame
 from apps.integrations.services import gog_client
-from apps.library.services.game_server import (
+from apps.library.services.node import (
     NO_GOG_NODE,
-    pick_online_game_server,
+    pick_online_node,
     proxy_gog_scan,
 )
 from apps.media.models import ExternalID, MediaItem
@@ -41,7 +41,7 @@ def scan_gog_library(user, server=None, auto_resolve: bool = False) -> dict:
     Returns ``{total_in_gog, matched_in_otix, failed, source}``.
     """
     if server is None:
-        server = pick_online_game_server(user)
+        server = pick_online_node(user)
 
     games: list[dict] = []
     scanned = False

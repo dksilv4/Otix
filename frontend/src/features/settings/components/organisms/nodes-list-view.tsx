@@ -167,7 +167,7 @@ export const NodesListView = ({
                 <td className="py-3 px-4 sm:px-6">
                   <div className="flex items-center gap-3 min-w-[180px]">
                     <div className="h-8 w-8 rounded-xl bg-[var(--dk-surface-field)] border border-white/[0.04] flex items-center justify-center shrink-0">
-                      <NodeItemTypeIcon type={item.type} size={15} />
+                      <NodeItemTypeIcon type={item.type} isApp={item.typeLabel === 'Otix App'} size={15} />
                     </div>
                     <div className="min-w-0">
                       <div className="font-semibold text-foreground truncate" title={item.name}>

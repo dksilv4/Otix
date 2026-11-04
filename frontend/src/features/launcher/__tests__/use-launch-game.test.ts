@@ -57,7 +57,7 @@ describe('useLaunchGame', () => {
       }),
     )
     expect(windowOpenSpy).toHaveBeenCalledWith(
-      expect.stringContaining('/api/v1/library/servers/42/stream'),
+      expect.stringContaining('/api/v1/library/nodes/42/stream'),
       '_blank',
     )
     windowOpenSpy.mockRestore()

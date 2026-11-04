@@ -21,8 +21,11 @@ import type { GameServer } from '@/features/downloads/types'
 import type { UserHome } from '../../types/server-machines'
 
 export interface DuplicateWorkerNodeModalProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
+  open?: boolean
+  isOpen?: boolean
+  onOpenChange?: (open: boolean) => void
+  onClose?: () => void
+  isExiting?: boolean
   sourceNode: GameServer | null
   homes?: UserHome[]
   onSuccess?: (newNode: GameServer) => void
@@ -30,11 +33,19 @@ export interface DuplicateWorkerNodeModalProps {
 
 export const DuplicateWorkerNodeModal = ({
   open,
+  isOpen,
   onOpenChange,
+  onClose,
+  isExiting,
   sourceNode,
   homes = [],
   onSuccess,
 }: DuplicateWorkerNodeModalProps) => {
+  const isModalOpen = (open ?? isOpen ?? true) && !isExiting
+  const handleClose = () => {
+    onOpenChange?.(false)
+    onClose?.()
+  }
   const { toast } = useToast()
   const createServerMutation = useCreateGameServer()
   const assignHomeMutation = useAssignNodeHome()
@@ -51,7 +62,7 @@ export const DuplicateWorkerNodeModal = ({
   const [isDuplicating, setIsDuplicating] = useState(false)
 
   useEffect(() => {
-    if (open && sourceNode) {
+    if (isModalOpen && sourceNode) {
       const existingNames = (allServers || []).map((s) => s.name)
       setName(suggestDuplicateNodeName(sourceNode.name, existingNames))
       setLocalUrl(suggestDuplicateNodeUrl(sourceNode.localUrl || sourceNode.primaryUrl))
@@ -62,7 +73,7 @@ export const DuplicateWorkerNodeModal = ({
       setCopyOrganize(true)
       setCopyPaths(true)
     }
-  }, [open, sourceNode])
+  }, [isModalOpen, sourceNode])
 
   if (!sourceNode) return null
 
@@ -119,7 +130,7 @@ export const DuplicateWorkerNodeModal = ({
         variant: 'default',
       })
 
-      onOpenChange(false)
+      handleClose()
       onSuccess?.(newNode as GameServer)
     } catch (err: unknown) {
       const error = err as { response?: { data?: { error?: string } }; message?: string }
@@ -146,8 +157,10 @@ export const DuplicateWorkerNodeModal = ({
 
   return (
     <DkDialog
-      open={open}
-      onOpenChange={onOpenChange}
+      open={isModalOpen}
+      onOpenChange={(next) => {
+        if (!next) handleClose()
+      }}
       title="Duplicate Worker Node"
       description={`Create a clone of "${sourceNode.name}" with its organize rules and library configurations.`}
       className="max-w-lg"
@@ -306,7 +319,7 @@ export const DuplicateWorkerNodeModal = ({
             variant="secondary"
             size="sm"
             disabled={isDuplicating}
-            onClick={() => onOpenChange(false)}
+            onClick={handleClose}
           >
             Cancel
           </DkButton>

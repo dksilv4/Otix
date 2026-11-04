@@ -19,9 +19,7 @@ export const PlexSyncPromptModal = () => {
   return (
     <DkDialog
       open={open}
-      onOpenChange={(nextOpen) => {
-        if (!syncing) setOpen(nextOpen)
-      }}
+      onOpenChange={setOpen}
       title={
         <div className="flex items-center gap-2">
           <Sparkles className="h-5 w-5 text-primary" />

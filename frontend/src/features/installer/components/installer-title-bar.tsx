@@ -18,15 +18,15 @@ export const InstallerTitleBar = ({
   return (
     <div
       className={cn(
-        'h-10 w-full flex items-center justify-between px-4 select-none',
-        'border-b border-white/[0.04] bg-white/[0.02]',
+        'h-10 w-full flex items-center justify-between px-4 select-none shrink-0',
+        'bg-white/[0.015] backdrop-blur-md',
         className,
       )}
       style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
     >
       {/* Brand mark & title */}
       <div className="flex items-center gap-2.5">
-        <OtixLogoSvg className="h-4 w-4 text-[var(--foreground)] opacity-90" />
+        <OtixLogoSvg className="h-4 w-4 text-foreground/90" />
         <span className="text-xs font-medium tracking-wide text-muted-foreground">
           {title}
         </span>
@@ -40,7 +40,7 @@ export const InstallerTitleBar = ({
         <button
           type="button"
           onClick={onMinimize}
-          className="h-7 w-7 inline-flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-white/[0.06] transition-colors"
+          className="h-7 w-7 inline-flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-white/[0.06] transition-colors cursor-pointer"
           title="Minimize"
           aria-label="Minimize window"
         >
@@ -49,7 +49,7 @@ export const InstallerTitleBar = ({
         <button
           type="button"
           onClick={onClose}
-          className="h-7 w-7 inline-flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-red-500/20 hover:text-red-400 transition-colors"
+          className="h-7 w-7 inline-flex items-center justify-center rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/20 transition-colors cursor-pointer"
           title="Close"
           aria-label="Close window"
         >

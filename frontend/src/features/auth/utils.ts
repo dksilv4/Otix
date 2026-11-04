@@ -25,6 +25,29 @@ export function getTierLabel(tier: StrengthTier): string {
   return tier.charAt(0).toUpperCase() + tier.slice(1)
 }
 
+/**
+ * Sanitizes a redirect URL to ensure it is a safe relative internal route,
+ * preventing open redirect attacks and redirect loops to auth routes.
+ */
+export function getSafeRedirectUrl(raw: string | null | undefined, fallback = '/'): string {
+  if (!raw || typeof raw !== 'string') return fallback
+  const trimmed = raw.trim()
+  // Must start with a single slash (relative internal route) and not a scheme-relative '//' or Windows path '/\\'
+  if (!trimmed.startsWith('/') || trimmed.startsWith('//') || trimmed.startsWith('/\\')) {
+    return fallback
+  }
+  // Prevent redirect loops back to auth routes
+  if (
+    trimmed === '/auth' ||
+    trimmed.startsWith('/auth/') ||
+    trimmed === '/login' ||
+    trimmed.startsWith('/login?')
+  ) {
+    return fallback
+  }
+  return trimmed
+}
+
 export function extractErrorMessage(err: unknown, fallback = 'Something went wrong. Please try again.'): string {
   if (err && typeof err === 'object' && 'response' in err) {
     const resp = (err as { response?: { data?: { detail?: string; message?: string } } }).response

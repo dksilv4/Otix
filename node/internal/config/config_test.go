@@ -4,6 +4,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/google/uuid"
 )
 
 func TestDefaultAllowedExtensions(t *testing.T) {
@@ -51,6 +53,12 @@ func TestDefaultConfig(t *testing.T) {
 	}
 	if cfg.Usenet.Prowlarr.Port != 9696 {
 		t.Errorf("expected default Prowlarr port 9696, got %d", cfg.Usenet.Prowlarr.Port)
+	}
+	if cfg.Server.WriteOtixAfterScan != false {
+		t.Errorf("expected default WriteOtixAfterScan false, got %v", cfg.Server.WriteOtixAfterScan)
+	}
+	if cfg.Server.DownloadOtixImages != false {
+		t.Errorf("expected default DownloadOtixImages false, got %v", cfg.Server.DownloadOtixImages)
 	}
 }
 
@@ -135,5 +143,41 @@ func TestFindDefaultConfigPath(t *testing.T) {
 	p := FindDefaultConfigPath()
 	if p == "" {
 		t.Error("expected non-empty default config path")
+	}
+}
+
+func TestPersistentNodeID(t *testing.T) {
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "config.yaml")
+
+	// 1. Initial load should generate a valid UUID and persist it
+	cfg := LoadConfig(configPath)
+	if cfg.Server.NodeID == "" {
+		t.Fatal("expected non-empty NodeID to be generated")
+	}
+	if _, err := uuid.Parse(cfg.Server.NodeID); err != nil {
+		t.Fatalf("expected valid UUID v4 for NodeID, got: %s", cfg.Server.NodeID)
+	}
+
+	firstNodeID := cfg.Server.NodeID
+
+	// 2. Reloading the config from disk must yield the exact same NodeID
+	reloaded := LoadConfig(configPath)
+	if reloaded.Server.NodeID != firstNodeID {
+		t.Fatalf("expected reloaded NodeID %s to equal initial NodeID %s", reloaded.Server.NodeID, firstNodeID)
+	}
+
+	// 3. Modifying other fields and saving should preserve NodeID
+	reloaded.Server.Name = "Station-Z"
+	if err := reloaded.Save(""); err != nil {
+		t.Fatalf("failed to save config: %v", err)
+	}
+
+	finalReload := LoadConfig(configPath)
+	if finalReload.Server.NodeID != firstNodeID {
+		t.Fatalf("NodeID mutated after save: expected %s, got %s", firstNodeID, finalReload.Server.NodeID)
+	}
+	if finalReload.Server.Name != "Station-Z" {
+		t.Fatalf("expected name Station-Z, got %s", finalReload.Server.Name)
 	}
 }

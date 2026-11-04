@@ -4,7 +4,7 @@ import { Loader2, Check, ArrowRight } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth } from '@auth/hooks/use-auth'
 import { PasswordField } from '@auth/components/molecules/auth-password-field'
-import { extractErrorMessage } from '@auth/utils'
+import { extractErrorMessage, getSafeRedirectUrl } from '@auth/utils'
 
 interface LoginFormProps {
   onSuccess: () => void
@@ -15,7 +15,8 @@ export const LoginForm = ({ onSuccess }: LoginFormProps) => {
   const { login } = useAuth()
   const navigate = useNavigate()
   const search = useSearch({ strict: false }) as { redirect?: string }
-  const redirect = search.redirect || '/'
+  const rawRedirect = search?.redirect ?? (typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('redirect') : undefined)
+  const redirect = getSafeRedirectUrl(rawRedirect)
 
   const [identity, setIdentity] = useState('')
   const [password, setPassword] = useState('')

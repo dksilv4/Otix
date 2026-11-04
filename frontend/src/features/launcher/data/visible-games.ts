@@ -1,5 +1,6 @@
 import { isTitleMatch } from '@media/utils'
 import { isApplicationGame } from '@/features/launcher/utils'
+import { mergeDuplicateGames } from './storage-utils'
 import {
   classifyReleaseKind,
   compareVersions,
@@ -414,7 +415,8 @@ export function mergeLocalAndServerGames(
   localGames: LocalGame[] | undefined,
   files: ServerGameFile[] | undefined,
 ): LocalGame[] {
-  const all = (localGames || []).filter((game) => !isApplicationGame(game)).map((game) => ({ ...game }))
+  const filtered = (localGames || []).filter((game) => !isApplicationGame(game)).map((game) => ({ ...game }))
+  const all = mergeDuplicateGames(filtered)
   const installed = all.filter((game) => game.platform !== 'server')
   const persistedServer = all.filter((game) => game.platform === 'server')
   const extras: LocalGame[] = []
@@ -465,6 +467,7 @@ export interface FoundServerGame {
   filename: string
   filesize: number
   serverName: string
+  nodeName?: string
   extraCount: number
 }
 
@@ -509,6 +512,7 @@ export function listFoundServerGames(
       filename: group.primary.file.relativePath || group.primary.file.filename,
       filesize: group.primary.file.filesize,
       serverName: group.primary.file.serverName,
+      nodeName: group.primary.file.nodeName || group.primary.file.serverName,
       extraCount: group.updates.length + group.dlc.length + Math.max(0, group.games.length - 1),
     })
   }

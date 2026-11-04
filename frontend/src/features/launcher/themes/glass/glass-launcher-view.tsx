@@ -6,6 +6,7 @@ import {
   Settings,
   Sliders,
   Search,
+  RotateCw,
   ArrowLeft,
 } from "lucide-react"
 import { MediaLogo } from "@/lib/media/media-logo"
@@ -24,7 +25,7 @@ export const GlassLauncherView = () => {
   const _isDesktop = hasDesktopAPI()
   const { data: localGames = [] } = useLauncherVisibleGames()
   const { data: popularGames = [] } = usePopularGames()
-  const { runningGame } = useRunningGame()
+  const { runningGame, runningGames = [], cycleActiveGame } = useRunningGame()
   const { toast } = useToast()
 
   const [selectedGameId, setSelectedGameId] = useState<string | null>(null)
@@ -147,11 +148,22 @@ export const GlassLauncherView = () => {
 
           <div className="flex items-center gap-4">
             {runningGame && (
-              <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-bold border border-emerald-500/30 backdrop-blur-md">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                <span>Playing {runningGame.game.title}</span>
-              </div>
-            )}
+                <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-primary/20 text-primary text-xs font-bold border border-primary/30 backdrop-blur-md">
+                  <span className="w-1.5 h-1.5 rounded-full bg-primary" />
+                  <span>Playing {runningGame.game.title}</span>
+                  {runningGames.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => void cycleActiveGame()}
+                      title={`Running ${runningGames.length} games. Click or press Ctrl+Tab to cycle active game focus.`}
+                      className="inline-flex items-center gap-1 pl-2 border-l border-primary/30 text-[10px] font-semibold text-primary hover:text-white transition-colors cursor-pointer"
+                    >
+                      <RotateCw className="h-2.5 w-2.5" />
+                      <span>+${runningGames.length - 1}</span>
+                    </button>
+                  )}
+                </div>
+              )}
 
             <div className="relative w-56">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40" size={13} />

@@ -1,7 +1,7 @@
 import { createContext, createElement, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import * as serverDownloads from '@/features/downloads/use-server-downloads'
 import type { GameServer } from '@/features/downloads/types'
-import { LOCAL_DESKTOP_NODE_ID, isLocalDesktopNode, mergeLocalDesktopNode, pickSettingsNode, syncServersWithPendingNodes } from '../local-desktop-node'
+import { isLocalDesktopNode, mergeLocalDesktopNode, pickSettingsNode, syncServersWithPendingNodes } from '../local-desktop-node'
 import { nodeUrlKey, type PendingNode } from '@/features/downloads/pending-nodes'
 import { useCompanionNode } from '../hooks/use-companion-node'
 import { queryClient } from '@/lib/query/client'
@@ -114,19 +114,24 @@ export const SettingsNodeProvider = ({
 
     const claimedCompanion = servers.find(
       (s) =>
-        s.id !== LOCAL_DESKTOP_NODE_ID &&
-        (isLocalDesktopNode(s) ||
-          (companion.port &&
-            ((s.localUrl && s.localUrl.includes(`:${companion.port}`)) ||
-              (s.primaryUrl && s.primaryUrl.includes(`:${companion.port}`))))),
+        isLocalDesktopNode(s) ||
+        (companion.port &&
+          ((s.localUrl && s.localUrl.includes(`:${companion.port}`)) ||
+            (s.primaryUrl && s.primaryUrl.includes(`:${companion.port}`)))),
     )
     const targetCompanion = claimedCompanion ?? servers.find((s) => isLocalDesktopNode(s))
 
     if (!targetCompanion) return
 
+    // Respect user's explicit selection if already stored
+    const stored = readStoredNodeId()
+    if (stored !== null && servers.some((s) => s.id === stored)) {
+      return
+    }
+
     const shouldSwitch =
       lastAutoSwitchedIdRef.current === null ||
-      (lastAutoSwitchedIdRef.current === LOCAL_DESKTOP_NODE_ID && targetCompanion.id !== LOCAL_DESKTOP_NODE_ID)
+      lastAutoSwitchedIdRef.current !== targetCompanion.id
 
     if (shouldSwitch) {
       lastAutoSwitchedIdRef.current = targetCompanion.id
@@ -148,13 +153,18 @@ export const SettingsNodeProvider = ({
         // ignore
       }
 
+      // Do not override user's manual node selection
+      const stored = readStoredNodeId()
+      if (stored !== null && servers.some((s) => s.id === stored)) {
+        return
+      }
+
       const claimed = servers.find(
         (s) =>
-          s.id !== LOCAL_DESKTOP_NODE_ID &&
-          (isLocalDesktopNode(s) ||
-            (port &&
-              ((s.localUrl && s.localUrl.includes(`:${port}`)) ||
-                (s.primaryUrl && s.primaryUrl.includes(`:${port}`))))),
+          isLocalDesktopNode(s) ||
+          (port &&
+            ((s.localUrl && s.localUrl.includes(`:${port}`)) ||
+              (s.primaryUrl && s.primaryUrl.includes(`:${port}`)))),
       )
       const target = claimed ?? servers.find((s) => isLocalDesktopNode(s))
       if (target) {
@@ -258,19 +268,24 @@ export const useSettingsNode = (): SettingsNodeValue => {
 
     const claimedCompanion = servers.find(
       (s) =>
-        s.id !== LOCAL_DESKTOP_NODE_ID &&
-        (isLocalDesktopNode(s) ||
-          (companion.port &&
-            ((s.localUrl && s.localUrl.includes(`:${companion.port}`)) ||
-              (s.primaryUrl && s.primaryUrl.includes(`:${companion.port}`))))),
+        isLocalDesktopNode(s) ||
+        (companion.port &&
+          ((s.localUrl && s.localUrl.includes(`:${companion.port}`)) ||
+            (s.primaryUrl && s.primaryUrl.includes(`:${companion.port}`)))),
     )
     const targetCompanion = claimedCompanion ?? servers.find((s) => isLocalDesktopNode(s))
 
     if (!targetCompanion) return
 
+    // Respect user's explicit selection if already stored
+    const stored = readStoredNodeId()
+    if (stored !== null && servers.some((s) => s.id === stored)) {
+      return
+    }
+
     const shouldSwitch =
       lastAutoSwitchedIdRef.current === null ||
-      (lastAutoSwitchedIdRef.current === LOCAL_DESKTOP_NODE_ID && targetCompanion.id !== LOCAL_DESKTOP_NODE_ID)
+      lastAutoSwitchedIdRef.current !== targetCompanion.id
 
     if (shouldSwitch) {
       lastAutoSwitchedIdRef.current = targetCompanion.id

@@ -10,6 +10,9 @@ const LogoLoadingTestPage = safeLazy(() =>
 const TelemetryTestPage = safeLazy(() =>
   import("@/pages/telemetry-test-page").then((m) => ({ default: m.TelemetryTestPage })),
 )
+const NavDockPrototypePage = safeLazy(() =>
+  import("@/pages/nav-dock-prototype-page").then((m) => ({ default: m.NavDockPrototypePage })),
+)
 const TermsPage = safeLazy(() =>
   import("@/pages/terms-page").then((m) => ({ default: m.TermsPage })),
 )
@@ -65,6 +68,12 @@ const telemetryTestRoute = createRoute({
   component: TelemetryTestPage,
 })
 
+const navDockPrototypeRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/dev/nav-dock",
+  component: NavDockPrototypePage,
+})
+
 const termsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/terms",
@@ -108,6 +117,7 @@ const aboutRoute = createRoute({
 const routeTree = rootRoute.addChildren([
   logoLoadingTestRoute,
   telemetryTestRoute,
+  navDockPrototypeRoute,
   termsRoute,
   privacyRoute,
   installerRoute,

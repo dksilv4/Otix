@@ -61,6 +61,17 @@ export interface Game {
   steamAppId?: number | null
 }
 
+export interface LocalGameSource {
+  id?: string
+  title?: string
+  path: string
+  isIso?: boolean
+  format?: string
+  sourceType?: 'installed' | 'iso' | 'source' | 'folder'
+  sizeBytes?: number
+  updatedAt?: string
+}
+
 export interface LocalGame {
   id: string
   title: string
@@ -69,7 +80,7 @@ export interface LocalGame {
   platform: LauncherPlatform
   installDir?: string
   backdropUrl?: string | null | null
-  sources?: string[]
+  sources?: (string | LocalGameSource)[]
   localIconUrl?: string
   iconUrl?: string | null
   posterUrl?: string | null

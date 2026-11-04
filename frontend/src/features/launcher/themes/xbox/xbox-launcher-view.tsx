@@ -6,6 +6,7 @@ import {
   Settings,
   Sliders,
   Search,
+  RotateCw,
   ArrowLeft,
   Flame,
   Gamepad2,
@@ -26,7 +27,7 @@ export const XboxLauncherView = () => {
   const { data: localGames = [] } = useLauncherVisibleGames()
   const { data: popularGames = [] } = usePopularGames()
   const { toast } = useToast()
-  const { runningGame } = useRunningGame()
+  const { runningGame, runningGames = [], cycleActiveGame } = useRunningGame()
 
   const [selectedGameId, setSelectedGameId] = useState<string | null>(null)
   const [detailGame, setDetailGame] = useState<LocalGame | null>(null)
@@ -129,9 +130,20 @@ export const XboxLauncherView = () => {
         {/* Gamertag & Status */}
         <div className="flex items-center gap-4">
           {runningGame && (
-            <div className="flex items-center gap-2 px-3 py-1 rounded-md bg-[#107c10]/20 text-[#107c10] text-xs font-bold border border-[#107c10]/40">
-              <span className="w-2 h-2 rounded-full bg-[#107c10] animate-ping" />
+            <div className="flex items-center gap-2 px-3 py-1 rounded-md bg-primary/20 text-primary text-xs font-bold border border-primary/30">
+              <span className="w-1.5 h-1.5 rounded-full bg-primary" />
               <span>Playing {runningGame.game.title}</span>
+              {runningGames.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => void cycleActiveGame()}
+                  title={`Running ${runningGames.length} games. Click or press Ctrl+Tab to cycle active game focus.`}
+                  className="inline-flex items-center gap-1 pl-2 border-l border-primary/30 text-[10px] font-semibold text-primary hover:text-white transition-colors cursor-pointer"
+                >
+                  <RotateCw className="h-2.5 w-2.5" />
+                  <span>+${runningGames.length - 1}</span>
+                </button>
+              )}
             </div>
           )}
 

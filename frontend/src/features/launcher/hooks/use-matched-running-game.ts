@@ -219,13 +219,18 @@ export function cleanGameTitle(rawTitle: string, exePath?: string): string {
   return title
 }
 
-export function useMatchedRunningGame(): {
+export function useMatchedRunningGame(customGame?: RunningGameData): {
   runningGame: RunningGameData | null
+  runningGames: RunningGameData[]
   elapsedMs: number
   matchedGame: MatchedGameInfo | null
   isMatching: boolean
+  cycleActiveGame: () => Promise<void>
+  setActiveGame: (gameId: string) => Promise<void>
 } {
-  const { runningGame, elapsedMs } = useRunningGame()
+  const { runningGame: defaultRunningGame, runningGames, elapsedMs: defaultElapsedMs, cycleActiveGame, setActiveGame } = useRunningGame()
+  const runningGame = customGame ?? defaultRunningGame
+  const elapsedMs = customGame?.startTime ? Math.max(0, Date.now() - customGame.startTime) : defaultElapsedMs
 
   const rawTitle = runningGame?.game.title || ''
   const exePath = runningGame?.game.exePath || ''

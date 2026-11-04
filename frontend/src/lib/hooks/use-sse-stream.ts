@@ -39,11 +39,15 @@ export const useSseStream = (options: UseSseStreamOptions) => {
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const isActiveRef = useRef(false)
   const onMessageRef = useRef(onMessage)
+  const reconnectDelaysRef = useRef(reconnectDelays)
 
-  // Keep the callback ref fresh without triggering reconnects
+  // Keep callback and delays refs fresh without triggering reconnects
   useEffect(() => {
     onMessageRef.current = onMessage
   })
+  useEffect(() => {
+    reconnectDelaysRef.current = reconnectDelays
+  }, [reconnectDelays])
 
   const cleanup = useCallback(() => {
     if (reconnectTimerRef.current) {
@@ -96,9 +100,13 @@ export const useSseStream = (options: UseSseStreamOptions) => {
             isActiveRef.current = false
             try {
               await refreshAccessToken()
-              // Successfully refreshed token, reconnect if still active
+              // Successfully refreshed token, schedule reconnect with backoff delay if still active
               if (abortRef.current === controller) {
-                connect()
+                const attempt = reconnectAttemptRef.current
+                const delays = reconnectDelaysRef.current
+                const delay = delays[Math.min(attempt, delays.length - 1)]
+                reconnectAttemptRef.current = attempt + 1
+                reconnectTimerRef.current = setTimeout(() => connect(), delay)
               }
             } catch {
               clearAuthSession()
@@ -114,7 +122,8 @@ export const useSseStream = (options: UseSseStreamOptions) => {
         // Connection error — schedule reconnect
         isActiveRef.current = false
         const attempt = reconnectAttemptRef.current
-        const delay = reconnectDelays[Math.min(attempt, reconnectDelays.length - 1)]
+        const delays = reconnectDelaysRef.current
+        const delay = delays[Math.min(attempt, delays.length - 1)]
         reconnectAttemptRef.current = attempt + 1
 
         reconnectTimerRef.current = setTimeout(() => connect(), delay)
@@ -122,7 +131,7 @@ export const useSseStream = (options: UseSseStreamOptions) => {
     }
 
     run()
-  }, [url, reconnectDelays, cleanup])
+  }, [url, cleanup])
 
   useEffect(() => {
     if (!enabled) {

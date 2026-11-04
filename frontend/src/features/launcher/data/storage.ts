@@ -69,9 +69,12 @@ export async function fetchGameById(id: string): Promise<LocalGame | null> {
       const game = await api.getGameById(id);
       if (game) return game;
     } catch {
-      return null;
+      // Fall through to in-memory cache
     }
   }
+  const cached = cache.games.find((g) => g.id === id || g.otixMediaId === id);
+  if (cached) return cached;
+
   return null;
 }
 

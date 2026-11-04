@@ -3,7 +3,6 @@ import { useInfiniteQuery } from '@tanstack/react-query'
 import { DiscoverHero } from './discover-hero'
 import { DiscoverIntentBar } from '../molecules/discover-intent-bar'
 import { DiscoverWelcomeBanner } from '../molecules/discover-welcome-banner'
-import { DiscoverFanCarousel } from './discover-fan-carousel'
 import { DiscoverContinueWatchingSection } from './discover-continue-watching-section'
 import { DiscoverDecideSection } from './discover-decide-section'
 import { TrendingSeasonsSection } from './trending-seasons-section'
@@ -49,6 +48,9 @@ export const DiscoverFeed = () => {
   } = useDiscoverSections()
 
   const shouldRenderSection = (id: string): boolean => {
+    // Discover fan slides disabled for now
+    if (id === 'fan_spotlight') return false
+
     const item = sections.find((s) => s.id === id)
     if (!item || !item.enabled) return false
 
@@ -59,7 +61,6 @@ export const DiscoverFeed = () => {
         id === 'continue_watching' ||
         id === 'player_activity' ||
         id === 'decide_for_me' ||
-        id === 'fan_spotlight' ||
         id === 'genres_explore' ||
         id === 'extended_catalog'
       )
@@ -71,7 +72,6 @@ export const DiscoverFeed = () => {
         id === 'continue_watching' ||
         id === 'player_activity' ||
         id === 'decide_for_me' ||
-        id === 'fan_spotlight' ||
         id === 'genres_explore' ||
         id === 'extended_catalog'
       )
@@ -81,7 +81,6 @@ export const DiscoverFeed = () => {
         id === 'free_games' ||
         id === 'gaming_rails' ||
         id === 'decide_for_me' ||
-        id === 'fan_spotlight' ||
         id === 'continue_watching' ||
         id === 'player_activity' ||
         id === 'genres_explore' ||
@@ -117,7 +116,7 @@ export const DiscoverFeed = () => {
       </div>
 
       {/* 3. Welcome Banner */}
-      <div className="px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full">
+      <div className="px-4 sm:px-6 lg:px-8 w-full">
         <DiscoverWelcomeBanner />
       </div>
 
@@ -129,7 +128,7 @@ export const DiscoverFeed = () => {
 
             switch (section.id) {
               case 'fan_spotlight':
-                return <DiscoverFanCarousel key={section.id} />
+                return null
 
               case 'continue_watching':
                 return <DiscoverContinueWatchingSection key={section.id} eager />

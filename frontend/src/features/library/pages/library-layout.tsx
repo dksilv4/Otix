@@ -13,6 +13,7 @@ import { getPlatformTabs } from "@library/platforms"
 import { CORE_TABS } from "@library/constants"
 import { TabBar } from "@library/molecules/tab-bar"
 import { LibraryTabSettingsModal } from "@library/molecules/library-tab-settings-modal"
+import { LibraryScanBar } from "@library/molecules/library-scan-bar"
 import { useSlotData, SlotRenderer } from "@/features/_config/slots"
 import { getPluginAPI, getPluginIcon } from "@/features/plugins/api"
 import type { SlotContribution, PluginInfo } from "@/features/plugins/types/plugins"
@@ -143,18 +144,21 @@ export const LibraryLayout = () => {
     : undefined
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6 pb-12">
+    <div className="w-full px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6 pb-12">
       <Helmet>
         <title>Library - Otix</title>
         <meta name="description" content="Your saved, liked, watched items, and lists on Otix." />
         <meta name="robots" content="noindex" />
       </Helmet>
-      <div className="flex flex-col mb-6">
-        <h1 className="text-2xl sm:text-3xl font-bold text-foreground tracking-tight">Library</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Your saved, liked, watched items, and lists.
-        </p>
-        <OfflineNotice className="mt-3 self-start" />
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold text-foreground tracking-tight">Library</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Your saved, liked, watched items, and lists.
+          </p>
+          <OfflineNotice className="mt-3 self-start" />
+        </div>
+        <LibraryScanBar showButton={true} className="w-full sm:w-auto self-start sm:self-center" />
       </div>
 
       <div className="flex items-start gap-2 mb-2">

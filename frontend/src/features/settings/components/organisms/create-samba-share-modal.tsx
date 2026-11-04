@@ -11,8 +11,11 @@ import type { SambaShareConfig } from '../../types/node-map'
 import { useUpdateServerMachine } from '../../hooks/use-server-machines'
 
 export interface CreateSambaShareModalProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
+  open?: boolean
+  isOpen?: boolean
+  onOpenChange?: (open: boolean) => void
+  onClose?: () => void
+  isExiting?: boolean
   serverMachines: UserServerMachine[]
   onSaveCustom?: (config: SambaShareConfig) => void
   initialServerId?: number | null
@@ -21,12 +24,20 @@ export interface CreateSambaShareModalProps {
 
 export const CreateSambaShareModal = ({
   open,
+  isOpen,
   onOpenChange,
+  onClose,
+  isExiting,
   serverMachines,
   onSaveCustom,
   initialServerId,
   preset,
 }: CreateSambaShareModalProps) => {
+  const isModalOpen = (open ?? isOpen ?? true) && !isExiting
+  const handleClose = () => {
+    onOpenChange?.(false)
+    onClose?.()
+  }
   const { toast } = useToast()
   const updateServerMutation = useUpdateServerMachine()
 
@@ -42,7 +53,7 @@ export const CreateSambaShareModal = ({
   const [isSaving, setIsSaving] = useState(false)
 
   useEffect(() => {
-    if (open) {
+    if (isModalOpen) {
       setShareName(preset?.shareName || 'games')
       const targetId = preset?.serverId != null
         ? String(preset.serverId)
@@ -65,7 +76,7 @@ export const CreateSambaShareModal = ({
       setWorkgroup('WORKGROUP')
       setMountPath('')
     }
-  }, [open, initialServerId, preset, serverMachines])
+  }, [isModalOpen, initialServerId, preset, serverMachines])
 
   const handleServerChange = (val: string) => {
     setSelectedServerId(val)
@@ -160,7 +171,7 @@ export const CreateSambaShareModal = ({
         })
       }
 
-      onOpenChange(false)
+      handleClose()
     } catch {
       toast({
         title: 'Save Failed',
@@ -182,8 +193,10 @@ export const CreateSambaShareModal = ({
 
   return (
     <DkDialog
-      open={open}
-      onOpenChange={onOpenChange}
+      open={isModalOpen}
+      onOpenChange={(next) => {
+        if (!next) handleClose()
+      }}
       title="Add Samba Share"
       description="Configure SMB network storage share parameters for game libraries and remote storage."
       className="max-w-md"
@@ -302,7 +315,7 @@ export const CreateSambaShareModal = ({
             type="button"
             variant="ghost"
             size="sm"
-            onClick={() => onOpenChange(false)}
+            onClick={handleClose}
             disabled={isSaving}
           >
             Cancel

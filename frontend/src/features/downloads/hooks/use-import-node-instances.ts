@@ -26,7 +26,7 @@ export function useImportNodeInstances() {
   return useMutation({
     mutationFn: async ({ fromServerId, toServerId, kinds }: ImportNodeInstancesPayload) => {
       const { data } = await apiClient.post<ImportNodeInstancesResult>(
-        `/library/servers/${toServerId}/instances/import`,
+        `/library/nodes/${toServerId}/instances/import`,
         kinds ? { fromServerId, kinds } : { fromServerId },
       )
       return data

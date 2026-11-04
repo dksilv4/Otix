@@ -634,21 +634,43 @@ def classify_theme(image: Image.Image, asset_type: str = "logo") -> str:
 
 
 def extract_dominant_color(img: Image.Image) -> str:
-    """Extract a dominant color hex string (#RRGGBB) from an image."""
+    """Extract a dominant color hex string (#RRGGBB) from an image, respecting alpha."""
     try:
-        small = img.copy().convert("RGB")
-        small.thumbnail((50, 50), Image.Resampling.BOX)
-        quantized = small.quantize(colors=8, method=Image.Quantize.FASTOCTREE)
-        palette = quantized.getpalette()
-        color_counts = sorted(
-            quantized.getcolors(50 * 50) or [], key=lambda x: x[0], reverse=True
-        )
-        if color_counts and palette:
-            dominant_idx = color_counts[0][1]
-            r = palette[dominant_idx * 3]
-            g = palette[dominant_idx * 3 + 1]
-            b = palette[dominant_idx * 3 + 2]
-            return f"#{r:02x}{g:02x}{b:02x}"
+        has_alpha = img.mode in ("RGBA", "LA") or (img.mode == "P" and "transparency" in img.info)
+        if has_alpha:
+            converted = img.convert("RGBA")
+            converted = converted.resize((64, 64), resample=Image.Resampling.BILINEAR)
+            raw_pixels = list(converted.getdata())
+            visible = [(r, g, b) for r, g, b, a in raw_pixels if a >= 128]
+            if not visible:
+                return "#333333"
+            temp_img = Image.new("RGB", (len(visible), 1))
+            temp_img.putdata(visible)
+            quantized = temp_img.quantize(colors=8, method=Image.Quantize.FASTOCTREE)
+            palette = quantized.getpalette()
+            color_counts = sorted(
+                quantized.getcolors(len(visible)) or [], key=lambda x: x[0], reverse=True
+            )
+            if color_counts and palette:
+                dominant_idx = color_counts[0][1]
+                r = palette[dominant_idx * 3]
+                g = palette[dominant_idx * 3 + 1]
+                b = palette[dominant_idx * 3 + 2]
+                return f"#{r:02x}{g:02x}{b:02x}"
+        else:
+            small = img.copy().convert("RGB")
+            small.thumbnail((64, 64), Image.Resampling.BOX)
+            quantized = small.quantize(colors=8, method=Image.Quantize.FASTOCTREE)
+            palette = quantized.getpalette()
+            color_counts = sorted(
+                quantized.getcolors(64 * 64) or [], key=lambda x: x[0], reverse=True
+            )
+            if color_counts and palette:
+                dominant_idx = color_counts[0][1]
+                r = palette[dominant_idx * 3]
+                g = palette[dominant_idx * 3 + 1]
+                b = palette[dominant_idx * 3 + 2]
+                return f"#{r:02x}{g:02x}{b:02x}"
     except Exception:
         pass
     return "#333333"
@@ -1295,7 +1317,11 @@ class AdminComputeWorker:
                         "image/webp",
                     )
                 }
-                data = {"asset_id": aid, "color_guess": item["theme_guess"]}
+                data = {
+                    "asset_id": aid,
+                    "color_guess": item["theme_guess"],
+                    "dominant_color": item.get("hex_color"),
+                }
                 resp = self.authenticated_request(
                     "POST", sub_url, data=data, files=files
                 )

@@ -3,6 +3,7 @@ import { Suspense, type ComponentType, type LazyExoticComponent } from "react"
 import { safeLazy } from "@/lib/utils/chunk-reload"
 import { QueryErrorBoundary } from "@/components/query-error-boundary"
 import { FpsPermissionDialog } from "@/features/launcher/components/molecules/launcher-fps-permission-dialog"
+import { LauncherAchievementToast } from "@/features/launcher/components/molecules/launcher-achievement-toast"
 import { useHydrateLocalGames } from "@/features/launcher/hooks/use-launcher-hydrate"
 import {
   LauncherThemeProvider,
@@ -65,18 +66,19 @@ const themeViews: Record<LauncherThemeId, LazyExoticComponent<ComponentType>> = 
 
 const LauncherContent = () => {
   const { currentTheme } = useLauncherTheme()
-  const ThemeView = themeViews[currentTheme] ?? themeViews.modern
+  const ThemeView = themeViews[currentTheme] ?? themeViews.classic
 
   return (
     <div
       id="launcher-root"
-      className="w-full h-screen bg-[#0a0a0d] text-white relative shadow-[0_24px_50px_rgba(0,0,0,0.85)] font-sans select-none overflow-hidden"
+      className="w-full h-screen bg-background text-foreground relative shadow-[0_24px_50px_rgba(0,0,0,0.85)] font-sans select-none overflow-hidden"
     >
       <Helmet>
         <title>Launcher · Otix</title>
       </Helmet>
       <FpsPermissionDialog />
-      <Suspense fallback={<div className="w-full h-full bg-[#0a0a0d]" aria-hidden />}>
+      <LauncherAchievementToast />
+      <Suspense fallback={<div className="w-full h-full bg-background" aria-hidden />}>
         <ThemeView />
       </Suspense>
     </div>

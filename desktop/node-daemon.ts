@@ -7,6 +7,7 @@ import * as crypto from 'crypto';
 import * as netSocket from 'net';
 import { net, type WebContents } from 'electron';
 import { getApiBaseUrl } from './config';
+import { resolveUncPath } from './unc-resolver';
 
 export type DaemonLifecycleState = 'stopped' | 'starting' | 'running' | 'error' | 'stopping';
 
@@ -62,6 +63,7 @@ export class NodeDaemonManager {
   private lastError: string | null = null;
   private cachedVersion: string | null = null;
   private currentAuthToken = '';
+  private localNodeAuthToken: string | null = null;
   private currentState: DaemonLifecycleState = 'stopped';
 
   constructor(
@@ -159,33 +161,41 @@ export class NodeDaemonManager {
 
   /** Check if an Otix Node service is responding on the specified port */
   public async probeNode(port = this.currentPort, timeoutMs = 800): Promise<boolean> {
-    return new Promise((resolve) => {
-      const req = http.get(`http://127.0.0.1:${port}/api/v1/status`, { timeout: timeoutMs }, (res) => {
-        const isOk = res.statusCode === 200;
-        let body = '';
-        res.setEncoding('utf8');
-        res.on('data', (chunk) => { body += chunk; });
-        res.on('end', () => {
-          if (isOk) {
-            try {
-              const parsed = JSON.parse(body);
-              if (parsed.version) {
-                this.cachedVersion = parsed.version;
+    const checkEndpoint = (endpointPath: string): Promise<boolean> => {
+      return new Promise((resolve) => {
+        const req = http.get(`http://127.0.0.1:${port}${endpointPath}`, { timeout: timeoutMs }, (res) => {
+          const isOk = res.statusCode === 200;
+          let body = '';
+          res.setEncoding('utf8');
+          res.on('data', (chunk) => { body += chunk; });
+          res.on('end', () => {
+            if (isOk) {
+              try {
+                const parsed = JSON.parse(body);
+                if (parsed.version) {
+                  this.cachedVersion = parsed.version;
+                }
+              } catch {
+                // ignore json parse error
               }
-            } catch {
-              // ignore json parse error
             }
-          }
-          resolve(isOk);
+            resolve(isOk);
+          });
+        });
+
+        req.on('error', () => resolve(false));
+        req.on('timeout', () => {
+          req.destroy();
+          resolve(false);
         });
       });
+    };
 
-      req.on('error', () => resolve(false));
-      req.on('timeout', () => {
-        req.destroy();
-        resolve(false);
-      });
-    });
+    // Try /api/v1/ping first, fallback to /api/v1/status
+    if (await checkEndpoint('/api/v1/ping')) {
+      return true;
+    }
+    return checkEndpoint('/api/v1/status');
   }
 
   /** Start the embedded node daemon if not already running */
@@ -422,8 +432,7 @@ export class NodeDaemonManager {
 
   /** Ensure the local companion node is claimed and linked to the authenticated user */
   public async ensureClaimed(authToken?: string): Promise<boolean> {
-    const token = authToken || this.currentAuthToken;
-    if (!token) return false;
+    const token = authToken || this.currentAuthToken || '';
 
     const port = this.currentPort;
     const statusRes = await new Promise<{ claimed?: boolean; claim_code?: string; username?: string } | null>((resolve) => {
@@ -459,16 +468,17 @@ export class NodeDaemonManager {
           const tokenMatch = /auth_token:\s*["']?([a-zA-Z0-9_-]+)["']?/.exec(content);
           const existingToken = tokenMatch ? tokenMatch[1] : '';
           if (existingToken) {
-            const serverName = `${os.hostname()} OTIX NODE`;
+            const serverName = os.hostname();
             const apiBase = getApiBaseUrl().replace(/\/$/, '');
-            const backendClaimUrl = `${apiBase}/api/v1/library/servers/claim-direct`;
+            const backendClaimUrl = `${apiBase}/api/v1/library/nodes/claim-direct`;
             await net.fetch(backendClaimUrl, {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
-                Authorization: `Bearer ${token}`,
+                ...(token ? { Authorization: `Bearer ${token}` } : {}),
               },
               body: JSON.stringify({
+                node_name: serverName,
                 server_name: serverName,
                 auth_token: existingToken,
                 port,
@@ -488,20 +498,21 @@ export class NodeDaemonManager {
     const claimCode = statusRes.claim_code;
     if (!claimCode) return false;
 
-    const serverName = `${os.hostname()} OTIX NODE`;
+    const serverName = os.hostname();
     const nodeAuthToken = crypto.randomBytes(24).toString('hex');
     const apiBase = getApiBaseUrl().replace(/\/$/, '');
 
     try {
       // 1. Outbound claim with Otix backend (registers node directly in user's account)
-      const backendClaimUrl = `${apiBase}/api/v1/library/servers/claim-direct`;
+      const backendClaimUrl = `${apiBase}/api/v1/library/nodes/claim-direct`;
       const backendResp = await net.fetch(backendClaimUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
         body: JSON.stringify({
+          node_name: serverName,
           server_name: serverName,
           auth_token: nodeAuthToken,
           port,
@@ -538,6 +549,7 @@ export class NodeDaemonManager {
         return false;
       }
 
+      this.localNodeAuthToken = nodeAuthToken;
       console.log(`[node-daemon] Successfully claimed embedded Otix Node for user account (${serverName})`);
       this.notifyStatus();
       return true;
@@ -569,22 +581,52 @@ export class NodeDaemonManager {
     }
   }
 
-  /** Returns the local node auth token from node-config.yaml or memory */
+  /** Returns the local node server auth token from config.yaml or node-config.yaml */
   public getNodeAuthToken(): string {
-    if (this.currentAuthToken) return this.currentAuthToken;
-    try {
-      const configPath = path.join(this.userDataPath, 'node-config.yaml');
-      if (fs.existsSync(configPath)) {
-        const content = fs.readFileSync(configPath, 'utf-8');
-        const tokenMatch = /auth_token:\s*["']?([a-zA-Z0-9_-]+)["']?/.exec(content);
-        if (tokenMatch && tokenMatch[1]) {
-          this.currentAuthToken = tokenMatch[1];
-          return tokenMatch[1];
-        }
+    if (this.localNodeAuthToken) return this.localNodeAuthToken;
+
+    const candidatePaths: string[] = [];
+
+    // 1. Electron userData directory
+    candidatePaths.push(path.join(this.userDataPath, 'node-config.yaml'));
+    candidatePaths.push(path.join(this.userDataPath, 'config.yaml'));
+
+    // 2. Platform-specific Otix config paths
+    if (process.platform === 'win32') {
+      if (process.env.APPDATA) {
+        candidatePaths.push(path.join(process.env.APPDATA, 'Otix', 'config.yaml'));
+        candidatePaths.push(path.join(process.env.APPDATA, 'otix', 'config.yaml'));
       }
-    } catch {
-      // ignore
+      if (process.env.LOCALAPPDATA) {
+        candidatePaths.push(path.join(process.env.LOCALAPPDATA, 'Otix', 'config.yaml'));
+      }
+    } else if (process.platform === 'darwin') {
+      if (process.env.HOME) {
+        candidatePaths.push(path.join(process.env.HOME, 'Library', 'Application Support', 'Otix', 'config.yaml'));
+        candidatePaths.push(path.join(process.env.HOME, 'Library', 'Application Support', 'otix', 'config.yaml'));
+      }
+    } else {
+      if (process.env.HOME) {
+        candidatePaths.push(path.join(process.env.HOME, '.config', 'otix', 'config.yaml'));
+      }
+      candidatePaths.push('/etc/otix/config.yaml');
     }
+
+    for (const cp of candidatePaths) {
+      try {
+        if (fs.existsSync(cp)) {
+          const content = fs.readFileSync(cp, 'utf-8');
+          const tokenMatch = /auth_token:\s*["']?([a-zA-Z0-9_-]+)["']?/.exec(content);
+          if (tokenMatch && tokenMatch[1]) {
+            this.localNodeAuthToken = tokenMatch[1];
+            return tokenMatch[1];
+          }
+        }
+      } catch {
+        // continue checking
+      }
+    }
+
     return '';
   }
 
@@ -604,7 +646,7 @@ export class NodeDaemonManager {
         body: JSON.stringify({
           libraries: paths.map((item) => ({
             name: path.basename(item.path) || item.type,
-            path: item.path,
+            path: resolveUncPath(item.path),
             kind: item.type,
           })),
         }),
@@ -657,6 +699,11 @@ export class NodeDaemonManager {
       try {
         let content = fs.readFileSync(configPath, 'utf-8');
         let modified = false;
+
+        const tokenMatch = /auth_token:\s*["']?([a-zA-Z0-9_-]+)["']?/.exec(content);
+        if (tokenMatch && tokenMatch[1]) {
+          this.localNodeAuthToken = tokenMatch[1];
+        }
 
         const indentMatch = /server:\s*\r?\n(\s+)/.exec(content);
         const indent = indentMatch ? indentMatch[1] : '  ';

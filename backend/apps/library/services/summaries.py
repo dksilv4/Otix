@@ -124,6 +124,8 @@ def _attach_resolved_assets(items: list[MediaItem]) -> None:
                         original_language=orig_lang,
                     )
                     break
+                if best is not None and best.dominant_color:
+                    item._resolved_backdrop_dominant_color = best.dominant_color
                 item._resolved_backdrop_url = best.url if best is not None else None
                 continue
             assets = by_item[(item.id, asset_type)]
@@ -134,6 +136,8 @@ def _attach_resolved_assets(items: list[MediaItem]) -> None:
                 original_language=orig_lang,
             )
             setattr(item, f"_resolved_{suffix}", best.url if best is not None else None)
+            if best is not None and best.dominant_color:
+                setattr(item, f"_resolved_{asset_type}_dominant_color", best.dominant_color)
             if asset_type == "logo":
                 item._resolved_logo_color_guess = best.color_guess if best is not None else None
         # No explicit textless poster -> fall back to the clean backdrop art.
@@ -141,6 +145,11 @@ def _attach_resolved_assets(items: list[MediaItem]) -> None:
             item, "_resolved_backdrop_url", None
         ):
             item._resolved_textless_poster_url = item._resolved_backdrop_url
+        item._resolved_dominant_color = (
+            getattr(item, "_resolved_backdrop_dominant_color", None)
+            or getattr(item, "_resolved_poster_dominant_color", None)
+            or getattr(item, "_resolved_logo_dominant_color", None)
+        )
 
 
 def _attach_tmdb_ids(items: list[MediaItem]) -> None:
@@ -213,6 +222,7 @@ def build_media_item_summary(item: MediaItem) -> dict:
         "backdrop_url": getattr(item, "_resolved_backdrop_url", None),
         "logo_url": getattr(item, "_resolved_logo_url", None),
         "logo_color_guess": getattr(item, "_resolved_logo_color_guess", None),
+        "dominant_color": getattr(item, "_resolved_dominant_color", None),
         "icon_url": getattr(item, "_resolved_icon_url", None),
         "release_date": _iso(item.release_date),
         "popularity": item.popularity,

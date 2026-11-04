@@ -234,3 +234,87 @@ def analyze_image_url(url: str, asset_type: str = "logo") -> str | None:
     except Exception as exc:
         logger.debug("Failed to fetch image %s for analysis: %s", url, exc)
         return None
+
+
+def extract_dominant_color(image: Image.Image) -> str | None:
+    """Extract a dominant color hex string (#RRGGBB) from an image, respecting alpha."""
+    try:
+        has_alpha = image.mode in ("RGBA", "LA") or (image.mode == "P" and "transparency" in image.info)
+        if has_alpha:
+            img = image.convert("RGBA")
+            img = img.resize((64, 64), resample=Image.Resampling.BILINEAR)
+            raw_pixels = list(img.getdata())
+            visible = [(r, g, b) for r, g, b, a in raw_pixels if a >= 128]
+            if not visible:
+                return None
+            temp_img = Image.new("RGB", (len(visible), 1))
+            temp_img.putdata(visible)
+            quantized = temp_img.quantize(colors=8, method=Image.Quantize.FASTOCTREE)
+            palette = quantized.getpalette()
+            color_counts = sorted(
+                quantized.getcolors(len(visible)) or [], key=lambda x: x[0], reverse=True
+            )
+            if color_counts and palette:
+                dominant_idx = color_counts[0][1]
+                r = palette[dominant_idx * 3]
+                g = palette[dominant_idx * 3 + 1]
+                b = palette[dominant_idx * 3 + 2]
+                return f"#{r:02x}{g:02x}{b:02x}"
+        else:
+            small = image.copy().convert("RGB")
+            small.thumbnail((64, 64), Image.Resampling.BOX)
+            quantized = small.quantize(colors=8, method=Image.Quantize.FASTOCTREE)
+            palette = quantized.getpalette()
+            color_counts = sorted(
+                quantized.getcolors(64 * 64) or [], key=lambda x: x[0], reverse=True
+            )
+            if color_counts and palette:
+                dominant_idx = color_counts[0][1]
+                r = palette[dominant_idx * 3]
+                g = palette[dominant_idx * 3 + 1]
+                b = palette[dominant_idx * 3 + 2]
+                return f"#{r:02x}{g:02x}{b:02x}"
+    except Exception as exc:
+        logger.debug("Failed to extract dominant color from image: %s", exc)
+        return None
+    return None
+
+
+def extract_dominant_color_bytes(data: bytes) -> str | None:
+    """Extract dominant color hex string from raw image bytes."""
+    if not data:
+        return None
+    try:
+        with Image.open(io.BytesIO(data)) as img:
+            return extract_dominant_color(img)
+    except Exception as exc:
+        logger.debug("Failed to decode/extract dominant color from bytes: %s", exc)
+        return None
+
+
+def extract_dominant_color_file(path: Path | str) -> str | None:
+    """Extract dominant color hex string from an image file on disk."""
+    file_path = Path(path)
+    if not file_path.is_file():
+        return None
+    try:
+        with Image.open(file_path) as img:
+            return extract_dominant_color(img)
+    except Exception as exc:
+        logger.debug("Failed to read/extract dominant color from file %s: %s", file_path, exc)
+        return None
+
+
+def extract_dominant_color_url(url: str) -> str | None:
+    """Download an image from a URL and extract its dominant color."""
+    if not url:
+        return None
+    try:
+        with httpx.Client(timeout=_TIMEOUT, follow_redirects=True) as client:
+            resp = client.get(url)
+        if resp.status_code != 200 or not resp.content:
+            return None
+        return extract_dominant_color_bytes(resp.content)
+    except Exception as exc:
+        logger.debug("Failed to fetch image %s for dominant color extraction: %s", url, exc)
+        return None

@@ -22,6 +22,8 @@ import {
   bumpUnreadCount,
 } from '../utils'
 
+const SSE_RECONNECT_DELAYS = [3000, 10000, 30000]
+
 interface NotificationsProviderProps {
   children: React.ReactNode
 }
@@ -103,7 +105,7 @@ export const NotificationsProvider = ({ children }: NotificationsProviderProps) 
     url: '/api/v1/notifications/stream',
     onMessage: handleMessage,
     enabled: isAuthenticated,
-    reconnectDelays: [3000, 10000, 30000],
+    reconnectDelays: SSE_RECONNECT_DELAYS,
     initialDelayMs: 2000,
   })
 

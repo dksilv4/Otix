@@ -20,6 +20,7 @@ class MediaAsset(BaseModel):
     score = models.IntegerField(null=True, blank=True)
     provider = models.CharField(max_length=20, null=True, blank=True)
     color_guess = models.CharField(max_length=20, null=True, blank=True)
+    dominant_color = models.CharField(max_length=7, null=True, blank=True)
 
     # Mirrored local copy on the backend's own disk. ``local_name`` is the
     # unguessable filename under ``MEDIA_DIR/assets``; when set, catalog

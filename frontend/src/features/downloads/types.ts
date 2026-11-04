@@ -110,10 +110,10 @@ export interface NodeShare {
   createdAt: string;
 }
 
-export interface ServerGameFile {
-  serverId: number;
-  serverName: string;
-  serverUrl: string;
+export interface NodeGameFile {
+  nodeId: number;
+  nodeName: string;
+  nodeUrl: string;
   fileId: string;
   filename: string;
   filepath?: string;
@@ -138,13 +138,23 @@ export interface ServerGameFile {
     iconUrl?: string | null
     overview?: string | null
   } | null
+  // Compatibility fields for legacy callers
+  serverId?: number;
+  serverName?: string;
+  serverUrl?: string;
 }
 
-export interface ServerGamesResponse {
-  servers: GameServer[];
-  files: ServerGameFile[];
-  errors?: { serverId: number; error: string }[] | null;
+export type ServerGameFile = NodeGameFile;
+
+export interface NodeGamesResponse {
+  nodes: OtixNode[];
+  files: NodeGameFile[];
+  errors?: { nodeId?: number; serverId?: number; error: string }[] | null;
+  // Compatibility alias
+  servers?: GameServer[];
 }
+
+export type ServerGamesResponse = NodeGamesResponse;
 
 export * from './usenet-types'
 

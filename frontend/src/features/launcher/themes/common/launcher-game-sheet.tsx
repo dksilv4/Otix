@@ -1,9 +1,11 @@
 import { useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { X, Calendar, Star, HardDrive, Layers, Image as ImageIcon, BookOpen, Sparkles, Server } from "lucide-react"
+import { X, Calendar, Star, HardDrive, Layers, Image as ImageIcon, BookOpen, Sparkles, Server, Trophy, Disc } from "lucide-react"
+import { getDesktopAPI } from "@/lib/desktop/api"
 import { MediaLogo } from "@/lib/media/media-logo"
 import { LauncherActionButtons } from "./launcher-action-buttons"
 import { LauncherGameChangelog } from "@/features/launcher/components/molecules/launcher-game-changelog"
+import { LauncherGameAchievementsTab } from "@/features/launcher/components/molecules/launcher-game-achievements-tab"
 import { MatchGameModal } from "@/features/launcher/components/molecules/launcher-match-game-modal"
 import { MediaGameServersSection, useGameServersByGame } from "@/features/gameservers"
 import { useModal } from "@/lib/modals"
@@ -18,7 +20,7 @@ interface LauncherGameSheetProps {
 export const LauncherGameSheet = ({ game, onClose }: LauncherGameSheetProps) => {
   const { openModal } = useModal()
   const [selectedScreenshot, setSelectedScreenshot] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState<'overview' | 'updates' | 'servers'>('overview')
+  const [activeTab, setActiveTab] = useState<'overview' | 'achievements' | 'updates' | 'servers'>('overview')
 
   const raw = game ? (("rawGame" in game && game.rawGame ? game.rawGame : game) as LocalGame) : null
   const mediaId = raw?.otixMediaId || raw?.data?.mediaId || raw?.data?.id || ''
@@ -138,6 +140,17 @@ export const LauncherGameSheet = ({ game, onClose }: LauncherGameSheetProps) => 
             </button>
 
             <button
+              onClick={() => setActiveTab("achievements")}
+              className={`py-3 text-xs font-bold uppercase tracking-wider transition-all border-b-2 cursor-pointer flex items-center gap-1.5 ${
+                activeTab === "achievements"
+                  ? "border-primary text-foreground"
+                  : "border-transparent text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Trophy size={13} /> Achievements
+            </button>
+
+            <button
               onClick={() => setActiveTab("updates")}
               className={`py-3 text-xs font-bold uppercase tracking-wider transition-all border-b-2 cursor-pointer flex items-center gap-1.5 ${
                 activeTab === "updates"
@@ -170,7 +183,9 @@ export const LauncherGameSheet = ({ game, onClose }: LauncherGameSheetProps) => 
 
           {/* Scrollable Content */}
           <div className="flex-1 overflow-y-auto p-6 space-y-6 scrollbar-none">
-            {activeTab === "updates" ? (
+            {activeTab === "achievements" ? (
+              <LauncherGameAchievementsTab gameId={raw.id} gameTitle={title} />
+            ) : activeTab === "updates" ? (
               <LauncherGameChangelog game={game} />
             ) : activeTab === "servers" && gameServers.length > 0 ? (
               <MediaGameServersSection
@@ -206,6 +221,49 @@ export const LauncherGameSheet = ({ game, onClose }: LauncherGameSheetProps) => 
                       </span>
                     </div>
                   )}
+
+                  {/* Available Sources & Backups (if multi-source or ISO source exists) */}
+                  {Array.isArray((raw as any).sources) &&
+                    (raw as any).sources.some((s: any) => s?.isIso || s?.format === 'ISO' || s?.sourceType === 'iso') && (
+                      <div className="flex flex-col gap-1.5 pt-2 border-t border-[var(--dk-separator)]">
+                        <span className="text-[10px] text-muted-foreground uppercase font-semibold">
+                          Available Sources & Backups
+                        </span>
+                        <div className="space-y-1.5">
+                          {(raw as any).sources
+                            .filter((s: any) => s?.isIso || s?.format === 'ISO' || s?.sourceType === 'iso')
+                            .map((isoSrc: any, idx: number) => (
+                              <div
+                                key={isoSrc.id || idx}
+                                className="flex items-center justify-between gap-2 p-2 rounded-xl bg-[var(--dk-surface-field)] border border-[var(--dk-separator)] text-xs"
+                              >
+                                <div className="flex items-center gap-2 min-w-0 flex-1">
+                                  <Disc size={13} className="text-primary shrink-0" />
+                                  <span className="font-mono text-[11px] text-foreground truncate" title={isoSrc.path}>
+                                    {isoSrc.path}
+                                  </span>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={async () => {
+                                    const api = getDesktopAPI()
+                                    if (api?.mountIso) {
+                                      try {
+                                        await api.mountIso(isoSrc.path)
+                                      } catch (err) {
+                                        console.error('Mount failed:', err)
+                                      }
+                                    }
+                                  }}
+                                  className="px-2.5 py-1 rounded-lg bg-primary/10 text-primary border border-primary/20 text-[11px] font-semibold hover:bg-primary/20 transition-colors shrink-0 cursor-pointer flex items-center gap-1"
+                                >
+                                  <Disc size={11} /> Mount ISO
+                                </button>
+                              </div>
+                            ))}
+                        </div>
+                      </div>
+                    )}
                 </div>
 
                 {/* Genres & Details */}

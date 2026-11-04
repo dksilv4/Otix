@@ -24,8 +24,7 @@ export const LauncherGamePage = () => {
       <LauncherGameHero />
       <section
         id="launcher-shelf-section"
-        className="w-full bg-[var(--dk-surface-root)] border-t border-[var(--dk-separator)] py-8 pr-8 shrink-0 flex flex-col gap-8 relative z-10 shadow-[var(--dk-shadow-dialog)]"
-        style={{ paddingLeft: 'calc(76px + 1.5rem)' }}
+        className="w-full bg-[var(--dk-surface-root)] border-t border-[var(--dk-separator)] py-8 px-4 md:pl-[calc(76px+1.5rem)] md:pr-8 shrink-0 flex flex-col gap-8 relative z-10 shadow-[var(--dk-shadow-dialog)]"
       >
         <LauncherShelf id="launcher-shelf" />
         <LauncherFooter id="launcher-footer" />

@@ -79,7 +79,7 @@ class MediaRequestsTests(APITestCase):
             "root_folder_path": "/movies",
         }
         res = self.client.post(
-            f"/api/v1/library/servers/{self.server.id}/radarr/movies",
+            f"/api/v1/library/nodes/{self.server.id}/radarr/movies",
             payload,
             format="json",
         )
@@ -113,7 +113,7 @@ class MediaRequestsTests(APITestCase):
             "root_folder_path": "/tv",
         }
         res = self.client.post(
-            f"/api/v1/library/servers/{self.server.id}/sonarr/series",
+            f"/api/v1/library/nodes/{self.server.id}/sonarr/series",
             payload,
             format="json",
         )
@@ -125,3 +125,139 @@ class MediaRequestsTests(APITestCase):
         self.assertEqual(req.service, "sonarr")
         self.assertEqual(req.media_type, "show")
         self.assertEqual(req.external_id, "888")
+
+    @patch("apps.library.services.node.radarr_add_movie")
+    def test_auto_request_watchlist_movie(self, mock_add_movie):
+        from apps.library.services.node import set_cached_node_config
+        from apps.media.models import ExternalID, MediaItem
+        from apps.media.services.interaction import set_interaction
+
+        # Configure Radarr on server with auto_request_watchlist = True
+        set_cached_node_config(
+            self.server.id,
+            "radarr_config",
+            {
+                "enabled": True,
+                "configured": True,
+                "host": "127.0.0.1",
+                "port": 7878,
+                "auto_request_watchlist": True,
+                "quality_profile_id": 1,
+                "root_folder_path": "/movies",
+            },
+        )
+        mock_add_movie.return_value = (201, {"id": 1234, "title": "The Matrix"})
+
+        movie = MediaItem.objects.create(
+            title="The Matrix",
+            media_type="movie",
+            slug="the-matrix-1999",
+        )
+        ExternalID.objects.create(
+            provider="tmdb",
+            external_id="603",
+            target=movie,
+        )
+
+        # User watchlists the movie
+        set_interaction(self.user, movie.id, "watchlisted")
+
+        req = UserMediaRequest.objects.filter(user=self.user, tmdb_id="603").first()
+        self.assertIsNotNone(req)
+        self.assertEqual(req.title, "The Matrix")
+        self.assertEqual(req.service, "radarr")
+        self.assertEqual(req.external_id, "1234")
+        self.assertTrue(mock_add_movie.called)
+
+        from apps.social.models import Notification
+
+        notif = Notification.objects.filter(user=self.user, type="media_request").first()
+        self.assertIsNotNone(notif)
+        self.assertIn("The Matrix", notif.title)
+        self.assertEqual(notif.metadata_json.get("link"), "/downloads?tab=requests")
+
+    @patch("apps.library.services.node.sonarr_add_series")
+    def test_auto_request_watchlist_show(self, mock_add_series):
+        from apps.library.services.node import set_cached_node_config
+        from apps.media.models import ExternalID, MediaItem
+        from apps.media.services.interaction import set_interaction
+
+        # Configure Sonarr on server with auto_request_watchlist = True
+        set_cached_node_config(
+            self.server.id,
+            "sonarr_config",
+            {
+                "enabled": True,
+                "configured": True,
+                "host": "127.0.0.1",
+                "port": 8989,
+                "auto_request_watchlist": True,
+                "quality_profile_id": 2,
+                "root_folder_path": "/tv",
+            },
+        )
+        mock_add_series.return_value = (201, {"id": 5678, "title": "Dark"})
+
+        show = MediaItem.objects.create(
+            title="Dark",
+            media_type="show",
+            slug="dark-2017",
+        )
+        ExternalID.objects.create(
+            provider="tvdb",
+            external_id="334824",
+            target=show,
+        )
+
+        # User watchlists the show
+        set_interaction(self.user, show.id, "watchlisted")
+
+        req = UserMediaRequest.objects.filter(user=self.user, tvdb_id="334824").first()
+        self.assertIsNotNone(req)
+        self.assertEqual(req.title, "Dark")
+        self.assertEqual(req.service, "sonarr")
+        self.assertEqual(req.external_id, "5678")
+        self.assertTrue(mock_add_series.called)
+
+        from apps.social.models import Notification
+
+        notif = Notification.objects.filter(user=self.user, type="media_request", title__contains="Dark").first()
+        self.assertIsNotNone(notif)
+        self.assertIn("Dark", notif.title)
+        self.assertEqual(notif.metadata_json.get("link"), "/downloads?tab=requests")
+
+    @patch("apps.library.services.node.radarr_add_movie")
+    def test_no_auto_request_when_disabled(self, mock_add_movie):
+        from apps.library.services.node import set_cached_node_config
+        from apps.media.models import ExternalID, MediaItem
+        from apps.media.services.interaction import set_interaction
+
+        # Configure Radarr on server with auto_request_watchlist = False
+        set_cached_node_config(
+            self.server.id,
+            "radarr_config",
+            {
+                "enabled": True,
+                "configured": True,
+                "host": "127.0.0.1",
+                "port": 7878,
+                "auto_request_watchlist": False,
+            },
+        )
+
+        movie = MediaItem.objects.create(
+            title="Avatar",
+            media_type="movie",
+            slug="avatar-2009",
+        )
+        ExternalID.objects.create(
+            provider="tmdb",
+            external_id="19995",
+            target=movie,
+        )
+
+        set_interaction(self.user, movie.id, "watchlisted")
+
+        req = UserMediaRequest.objects.filter(user=self.user, tmdb_id="19995").first()
+        self.assertIsNone(req)
+        self.assertFalse(mock_add_movie.called)

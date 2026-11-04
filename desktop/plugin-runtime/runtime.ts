@@ -35,6 +35,7 @@ export class PluginRuntime {
     private authToken: string,
     private callPlugin: (targetId: string, method: string, args: any) => Promise<any>,
     private serviceRegistry: import('./service-registry').ServiceRegistry,
+    private userDataPath?: string,
   ) {
     this.pluginId = pluginId
     this.manifest = manifest
@@ -55,7 +56,7 @@ export class PluginRuntime {
     const mainPath = path.join(this.pluginDir, this.manifest.entry.main)
     this.worker = new Worker(
       path.join(__dirname, 'worker.js'),
-      { workerData: { pluginPath: mainPath } }
+      { workerData: { pluginPath: mainPath, userDataPath: this.userDataPath } }
     )
 
     this.worker.on('error', (err) => {

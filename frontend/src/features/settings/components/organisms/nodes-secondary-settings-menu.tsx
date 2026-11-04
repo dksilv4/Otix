@@ -64,7 +64,7 @@ export const NodesSecondarySettingsMenu = ({
     setAddModalOpen,
   } = useNodesView()
 
-  const { servers, selectedNodeId, setSelectedNodeId } = useSettingsNode()
+  const { servers, selectedNode, selectedNodeId, setSelectedNodeId } = useSettingsNode()
 
   const handleBack = () => {
     if (onBackToSettings) {
@@ -315,11 +315,11 @@ export const NodesSecondarySettingsMenu = ({
                 <button
                   type="button"
                   onClick={() => setCategoryFilter('machines')}
-                  title={collapsed ? 'Server Machines' : undefined}
+                  title={collapsed ? 'Machines' : undefined}
                   className={navItemClass(categoryFilter === 'machines')}
                 >
                   <Server className="h-4 w-4 shrink-0" />
-                  {!collapsed && <span className="flex-1 truncate">Server Machines</span>}
+                  {!collapsed && <span className="flex-1 truncate">Machines</span>}
                   {collapsed && categoryFilter === 'machines' && (
                     <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-primary" />
                   )}
@@ -451,7 +451,7 @@ export const NodesSecondarySettingsMenu = ({
         </>
       )}
 
-      {(activeTab === 'paths' || activeTab === 'organize' || activeTab === 'connections') && (
+      {(activeTab === 'paths' || activeTab === 'organize' || activeTab === 'connections' || activeTab === 'machine' || activeTab === 'software' || activeTab === 'overlay') && (
         <nav
           className={cn('flex flex-col gap-0.5 flex-1 overflow-y-auto pr-1 w-full', collapsed && 'items-center')}
           aria-label="Node selection"
@@ -483,7 +483,7 @@ export const NodesSecondarySettingsMenu = ({
             )}
 
             {servers.map((node) => {
-              const isSelected = selectedNodeId === node.id
+              const isSelected = selectedNodeId === node.id || (selectedNodeId == null && selectedNode?.id === node.id)
               return (
                 <button
                   key={node.id}

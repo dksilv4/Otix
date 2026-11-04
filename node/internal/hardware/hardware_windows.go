@@ -545,7 +545,7 @@ func detectDisplays() []DisplayInfo {
 			friendlyName = monDeviceStr
 			model = monDeviceStr
 		} else {
-			friendlyName = fmt.Sprintf("Display %d (%s)", displayIdx, m.device)
+			friendlyName = fmt.Sprintf("Display %d", displayIdx)
 			model = fmt.Sprintf("%dx%d Display", m.width, m.height)
 		}
 

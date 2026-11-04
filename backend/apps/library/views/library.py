@@ -13,6 +13,7 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.library.models import UserGame
 from apps.library import services
 from apps.library.serializers import (
     EpicUnmatchedGameSerializer,
@@ -21,6 +22,7 @@ from apps.library.serializers import (
     MediaItemSummarySerializer,
     SteamUnmatchedGameSerializer,
     SteamWishlistItemSerializer,
+    UserGameSerializer,
     YoutubeLikedVideoSerializer,
 )
 from apps.media.models import MediaItem
@@ -276,3 +278,41 @@ class LibraryTabView(APIView):
             raise NotFound(services.UNKNOWN_TAB_DETAIL)
         items, has_more, next_cursor = result
         return Response(_media_list_payload(items, has_more, next_cursor))
+
+
+class CanonicalGamesView(APIView):
+    """``GET /api/v1/library/games`` — canonical multi-source game library."""
+
+    def get(self, request: Request) -> Response:
+        limit = _int_param(request, "limit", default=50, low=1, high=200)
+        offset = _int_param(request, "offset", default=0, low=0, high=1_000_000)
+        platform = request.query_params.get("platform")
+        search = request.query_params.get("search")
+
+        qs = UserGame.objects.filter(user=request.user, is_hidden=False).prefetch_related(
+            "sources__node",
+            "sources__storage_share",
+            "media_item__assets",
+        )
+        if platform:
+            qs = qs.filter(platform=platform)
+        if search:
+            qs = qs.filter(clean_title__icontains=search)
+
+        total = qs.count()
+        games = list(qs[offset : offset + limit])
+        media_items = [g.media_item for g in games if g.media_item]
+        if media_items:
+            from apps.media.services.catalog import attach_media_urls
+
+            attach_media_urls(media_items)
+
+        return Response(
+            {
+                "games": UserGameSerializer(games, many=True).data,
+                "total": total,
+                "limit": limit,
+                "offset": offset,
+            }
+        )
+

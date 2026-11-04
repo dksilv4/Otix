@@ -8,6 +8,8 @@ from PIL import Image
 from apps.media.services.color_analyzer import (
     analyze_image_bytes,
     classify_image,
+    extract_dominant_color,
+    extract_dominant_color_bytes,
 )
 
 
@@ -86,3 +88,36 @@ class ColorAnalyzerTests(TestCase):
     def test_empty_or_corrupt_bytes(self):
         self.assertIsNone(analyze_image_bytes(b"", "logo"))
         self.assertIsNone(analyze_image_bytes(b"not an image", "logo"))
+
+    def test_extract_dominant_color_opaque(self):
+        img = Image.new("RGB", (64, 64), (255, 0, 0))
+        hex_color = extract_dominant_color(img)
+        self.assertIsNotNone(hex_color)
+        self.assertTrue(hex_color.startswith("#"))
+        # Should be predominantly red
+        r = int(hex_color[1:3], 16)
+        g = int(hex_color[3:5], 16)
+        b = int(hex_color[5:7], 16)
+        self.assertGreater(r, 200)
+        self.assertLess(g, 50)
+        self.assertLess(b, 50)
+
+    def test_extract_dominant_color_transparent_logo(self):
+        # A transparent image with blue logo in center
+        img = self._create_transparent_image(64, 64, (0, 100, 255))
+        hex_color = extract_dominant_color(img)
+        self.assertIsNotNone(hex_color)
+        self.assertTrue(hex_color.startswith("#"))
+        # Transparent pixels should not be treated as black; dominant should be blue
+        b = int(hex_color[5:7], 16)
+        self.assertGreater(b, 150)
+
+    def test_extract_dominant_color_bytes(self):
+        img = Image.new("RGB", (32, 32), (0, 255, 0))
+        buf = io.BytesIO()
+        img.save(buf, format="PNG")
+        hex_color = extract_dominant_color_bytes(buf.getvalue())
+        self.assertIsNotNone(hex_color)
+        self.assertTrue(hex_color.startswith("#"))
+        g = int(hex_color[3:5], 16)
+        self.assertGreater(g, 200)

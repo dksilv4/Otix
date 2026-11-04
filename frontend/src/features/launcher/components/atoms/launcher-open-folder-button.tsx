@@ -1,18 +1,19 @@
 import { FolderOpen } from 'lucide-react'
 import { getDesktopAPI } from '@/lib/desktop/api'
 import { useToast } from '@ui/molecules/toast'
-import {useParams} from "@tanstack/react-router";
-import {useLocalGame} from "@/features/launcher/data/game-queries";
+import { useParams } from '@tanstack/react-router'
+import { useLocalGame } from '@/features/launcher/data/game-queries'
 
+interface OpenFolderButtonProps {
+  path?: string | null
+}
 
-
-export const OpenFolderButton = () => {
+export const OpenFolderButton = ({ path: propPath }: OpenFolderButtonProps = {}) => {
   const { toast } = useToast()
-  const {gameId} = useParams({ strict: false })
-  const { data: g } = useLocalGame(gameId)
-  const path = g?.exePath
-  if(!path) return null
-
+  const { gameId } = useParams({ strict: false })
+  const { data: g } = useLocalGame(propPath ? undefined : gameId)
+  const path = propPath ?? g?.exePath
+  if (!path) return null
 
   const handleClick = () => {
     const api = getDesktopAPI()

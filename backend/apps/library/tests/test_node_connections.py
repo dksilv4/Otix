@@ -6,8 +6,8 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from rest_framework.test import APIClient
 
-from apps.library.models import UserGameServer, UserNodeConnection
-from apps.library.services.game_server import apply_node_heartbeat
+from apps.library.models import UserNode, UserNodeConnection
+from apps.library.services.node import apply_node_heartbeat
 from apps.library.services.node_connections import store_connection
 
 User = get_user_model()
@@ -31,7 +31,7 @@ class NodeConnectionSyncTests(TestCase):
         )
         self.client = APIClient()
         self.client.force_authenticate(user=self.user)
-        self.node_a = UserGameServer.objects.create(
+        self.node_a = UserNode.objects.create(
             user=self.user,
             name="Living Room",
             local_url="http://10.0.0.10:8090",
@@ -39,7 +39,7 @@ class NodeConnectionSyncTests(TestCase):
             is_active=True,
             is_online=True,
         )
-        self.node_b = UserGameServer.objects.create(
+        self.node_b = UserNode.objects.create(
             user=self.user,
             name="Office",
             local_url="http://10.0.0.20:8090",
@@ -56,13 +56,13 @@ class NodeConnectionSyncTests(TestCase):
             urls.append(kwargs.get("url") or (args[1] if len(args) > 1 else None))
         return urls
 
-    @mock.patch("apps.library.services.game_server.httpx.Client")
+    @mock.patch("apps.library.services.node.httpx.Client")
     def test_usenet_save_is_node_specific(self, mock_client_cls):
         mock_client, _resp = _ok_client({"status": "ok", "sabnzbdLibrary": {"folderLinked": True}})
         mock_client_cls.return_value = mock_client
 
         res = self.client.post(
-            f"/api/v1/library/servers/{self.node_a.id}/usenet/config",
+            f"/api/v1/library/nodes/{self.node_a.id}/usenet/config",
             {"sabnzbd": {"host": "10.0.0.50", "port": 8080, "api_key": "sab-secret"}},
             format="json",
         )
@@ -78,18 +78,18 @@ class NodeConnectionSyncTests(TestCase):
         )
         self.assertFalse(any("10.0.0.20:8090" in (url or "") for url in urls))
 
-    @mock.patch("apps.library.services.game_server.httpx.Client")
+    @mock.patch("apps.library.services.node.httpx.Client")
     def test_radarr_and_sonarr_save_only_the_target_node(self, mock_client_cls):
         mock_client, _resp = _ok_client({"status": "ok"})
         mock_client_cls.return_value = mock_client
 
         radarr = self.client.post(
-            f"/api/v1/library/servers/{self.node_a.id}/radarr/config",
+            f"/api/v1/library/nodes/{self.node_a.id}/radarr/config",
             {"host": "10.0.0.8", "port": 7878, "api_key": "radarr-key"},
             format="json",
         )
         sonarr = self.client.post(
-            f"/api/v1/library/servers/{self.node_b.id}/sonarr/config",
+            f"/api/v1/library/nodes/{self.node_b.id}/sonarr/config",
             {"host": "10.0.0.9", "port": 8989, "api_key": "sonarr-key"},
             format="json",
         )
@@ -123,7 +123,7 @@ class NodeConnectionSyncTests(TestCase):
             )
         )
 
-    @mock.patch("apps.library.services.game_server.httpx.Client")
+    @mock.patch("apps.library.services.node.httpx.Client")
     def test_get_does_not_overlay_backend_store_onto_workers(self, mock_client_cls):
         store_connection(
             self.user,
@@ -135,14 +135,14 @@ class NodeConnectionSyncTests(TestCase):
         )
         mock_client_cls.return_value = mock_client
 
-        res = self.client.get(f"/api/v1/library/servers/{self.node_b.id}/usenet/config")
+        res = self.client.get(f"/api/v1/library/nodes/{self.node_b.id}/usenet/config")
         self.assertEqual(res.status_code, 200)
         body = res.json()
         self.assertEqual(body["sabnzbd"]["host"], "")
 
     def test_backend_node_save_returns_404(self):
         res = self.client.post(
-            "/api/v1/library/servers/-2/usenet/config",
+            "/api/v1/library/nodes/-2/usenet/config",
             {"sabnzbd": {"host": "backend.local", "port": 8080, "api_key": "backend-secret"}},
             format="json",
         )
@@ -154,8 +154,8 @@ class NodeConnectionSyncTests(TestCase):
         stored = UserNodeConnection.objects.get(user=self.user)
         self.assertEqual(stored.radarr["api_key"], "real-key")
 
-    @mock.patch("apps.library.services.game_server.ping_server_sync")
-    @mock.patch("apps.library.services.game_server.usenet_save_config")
+    @mock.patch("apps.library.services.node.ping_server_sync")
+    @mock.patch("apps.library.services.node.usenet_save_config")
     def test_claiming_a_node_does_not_push_shared_connections(self, mock_save, mock_ping):
         mock_ping.return_value = {"online": True}
         mock_save.return_value = (200, {"status": "ok"})
@@ -166,7 +166,7 @@ class NodeConnectionSyncTests(TestCase):
         )
 
         res = self.client.post(
-            "/api/v1/library/servers",
+            "/api/v1/library/nodes",
             {
                 "name": "Basement",
                 "local_url": "http://10.0.0.30:8090",
@@ -177,7 +177,7 @@ class NodeConnectionSyncTests(TestCase):
         self.assertEqual(res.status_code, 201)
         self.assertFalse(mock_save.called)
 
-    @mock.patch("apps.library.services.game_server.usenet_save_config")
+    @mock.patch("apps.library.services.node.usenet_save_config")
     def test_heartbeat_does_not_push_shared_connections(self, mock_save):
         mock_save.return_value = (200, {"status": "ok"})
         store_connection(
@@ -200,12 +200,12 @@ class NodeConnectionSyncTests(TestCase):
         self.assertTrue(self.node_a.is_online)
         self.assertFalse(mock_save.called)
 
-    @mock.patch("apps.library.services.game_server.sonarr_save_config")
-    @mock.patch("apps.library.services.game_server.radarr_save_config")
-    @mock.patch("apps.library.services.game_server.usenet_save_config")
-    @mock.patch("apps.library.services.game_server.sonarr_get_config")
-    @mock.patch("apps.library.services.game_server.radarr_get_config")
-    @mock.patch("apps.library.services.game_server.usenet_get_config")
+    @mock.patch("apps.library.services.node.sonarr_save_config")
+    @mock.patch("apps.library.services.node.radarr_save_config")
+    @mock.patch("apps.library.services.node.usenet_save_config")
+    @mock.patch("apps.library.services.node.sonarr_get_config")
+    @mock.patch("apps.library.services.node.radarr_get_config")
+    @mock.patch("apps.library.services.node.usenet_get_config")
     def test_import_instances_between_nodes(
         self,
         mock_u_get,
@@ -229,7 +229,7 @@ class NodeConnectionSyncTests(TestCase):
         mock_s_save.return_value = (200, {"status": "ok"})
 
         res = self.client.post(
-            f"/api/v1/library/servers/{self.node_a.id}/instances/import",
+            f"/api/v1/library/nodes/{self.node_a.id}/instances/import",
             {"from_server_id": self.node_b.id},
             format="json",
         )
@@ -243,7 +243,7 @@ class NodeConnectionSyncTests(TestCase):
 
     def test_import_instances_from_backend_node_returns_404(self):
         res = self.client.post(
-            f"/api/v1/library/servers/{self.node_a.id}/instances/import",
+            f"/api/v1/library/nodes/{self.node_a.id}/instances/import",
             {"from_server_id": -2},
             format="json",
         )
@@ -251,7 +251,7 @@ class NodeConnectionSyncTests(TestCase):
 
     def test_import_instances_to_backend_node_returns_404(self):
         res = self.client.post(
-            "/api/v1/library/servers/-2/instances/import",
+            "/api/v1/library/nodes/-2/instances/import",
             {"from_server_id": self.node_a.id},
             format="json",
         )
@@ -259,7 +259,7 @@ class NodeConnectionSyncTests(TestCase):
 
     def test_import_instances_rejects_the_same_node(self):
         res = self.client.post(
-            f"/api/v1/library/servers/{self.node_a.id}/instances/import",
+            f"/api/v1/library/nodes/{self.node_a.id}/instances/import",
             {"from_server_id": self.node_a.id},
             format="json",
         )

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -210,6 +211,29 @@ func (s *Store) DeleteMissing(activePaths map[string]bool, libraryName string) (
 	}
 
 	return len(toDelete), nil
+}
+
+func (s *Store) PruneRemovedLibraries(activeLibNames []string) error {
+	if s == nil || s.db == nil {
+		return nil
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if len(activeLibNames) == 0 {
+		_, err := s.db.Exec(`DELETE FROM indexed_files`)
+		return err
+	}
+
+	placeholders := make([]string, len(activeLibNames))
+	args := make([]interface{}, len(activeLibNames))
+	for i, name := range activeLibNames {
+		placeholders[i] = "?"
+		args[i] = name
+	}
+	query := fmt.Sprintf(`DELETE FROM indexed_files WHERE library_name NOT IN (%s)`, strings.Join(placeholders, ","))
+	_, err := s.db.Exec(query, args...)
+	return err
 }
 
 func (s *Store) Clear() error {

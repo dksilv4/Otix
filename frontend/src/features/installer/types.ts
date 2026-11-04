@@ -31,6 +31,7 @@ export interface CarouselSlide {
   id: string
   title: string
   subtitle: string
+  category?: string
   iconName: 'gamepad' | 'zap' | 'cloud' | 'blocks'
 }
 

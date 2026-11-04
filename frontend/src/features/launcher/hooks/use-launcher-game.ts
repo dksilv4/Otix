@@ -1,9 +1,10 @@
 import { useMemo } from 'react'
-import { useLocalGame } from '@/features/launcher/data/game-queries'
+import { useLocalGame, useLauncherVisibleGames } from '@/features/launcher/data/game-queries'
 import { useGameDetail } from '@/features/launcher/data/queries'
 import { useServerGames } from '@/features/downloads/use-server-downloads'
 import { hasDesktopAPI } from '@/lib/desktop/api'
 import { OTIX_DEFAULT_GAME, OTIX_DEFAULT_GAME_ID } from '@/features/launcher/data/otix-default-game'
+import { isCatalogId } from '@/features/launcher/utils'
 import {
   attachGroupToLocalGame,
   findGroupedServerGame,
@@ -11,15 +12,21 @@ import {
 } from '@/features/launcher/data/visible-games'
 import type { LocalGame, Game } from '@/features/launcher/types'
 
-export function useLauncherGame(gameId: string | undefined) {
+export const useLauncherGame = (gameId: string | undefined) => {
   const isDefault = gameId === OTIX_DEFAULT_GAME_ID
   const isDesktop = hasDesktopAPI()
   const { data: localGame, isLoading: isLocalLoading } = useLocalGame(isDefault ? undefined : gameId)
+  const { data: visibleGames = [] } = useLauncherVisibleGames()
   const { data: serverGamesData, isLoading: isServerGamesLoading } = useServerGames()
 
+  const matchingVisible = useMemo(
+    () => (!isDefault && gameId ? visibleGames.find((g) => g.id === gameId || g.otixMediaId === gameId || g.data?.id === gameId) : null),
+    [isDefault, gameId, visibleGames],
+  )
+
   const group = useMemo(
-    () => (isDefault ? null : findGroupedServerGame(serverGamesData?.files, { gameId, local: localGame })),
-    [isDefault, gameId, localGame, serverGamesData?.files],
+    () => (isDefault ? null : findGroupedServerGame(serverGamesData?.files, { gameId, local: localGame || matchingVisible })),
+    [isDefault, gameId, localGame, matchingVisible, serverGamesData?.files],
   )
   const serverFile = group?.primary.file || null
   const groupedGame = useMemo(
@@ -27,15 +34,16 @@ export function useLauncherGame(gameId: string | undefined) {
     [group],
   )
 
-  // For desktop matched games, use the otix ID for catalog detail fetch.
-  // Falls back to grouped catalog id, or gameId directly if not a server- prefix.
+  const baseGame = localGame || matchingVisible || groupedGame
+
+  // For catalog detail fetch, prioritize known catalog/otix id, or gameId only if it is a valid catalog id
   const catalogId = isDefault
     ? undefined
-    : localGame?.data?.id ||
-      localGame?.otixMediaId ||
+    : baseGame?.data?.id ||
+      baseGame?.otixMediaId ||
       groupedGame?.otixMediaId ||
       serverFile?.catalogItem?.id ||
-      (gameId && !gameId.startsWith('server-') ? gameId : undefined)
+      (isCatalogId(gameId) ? gameId : undefined)
 
   const { data: catalogDetail, isLoading: isCatalogLoading } = useGameDetail(catalogId)
 
@@ -43,28 +51,29 @@ export function useLauncherGame(gameId: string | undefined) {
   // Without this, the page flashes "not found" while that request is in flight.
   const waitingForServerGame =
     !isDefault &&
-    !!gameId?.startsWith('server-') &&
-    !localGame &&
-    !groupedGame &&
+    Boolean(gameId?.startsWith('server-')) &&
+    !baseGame &&
     isServerGamesLoading
 
   const isLoading = isDefault
     ? false
-    : isDesktop
-      ? isLocalLoading || waitingForServerGame || (!!catalogId && isCatalogLoading)
-      : waitingForServerGame || isCatalogLoading
+    : baseGame
+      ? false
+      : isDesktop
+        ? isLocalLoading || waitingForServerGame || (Boolean(catalogId) && isCatalogLoading)
+        : waitingForServerGame || (Boolean(catalogId) && isCatalogLoading)
 
   if (isDefault) {
     return { game: OTIX_DEFAULT_GAME, isLoading: false }
   }
 
-  const withUpdates = localGame
-    ? attachGroupToLocalGame(localGame, group)
+  const withUpdates = baseGame
+    ? (baseGame.platform === 'server' && !localGame && !matchingVisible ? baseGame : attachGroupToLocalGame(baseGame, group))
     : groupedGame
 
-  // Merge catalog data into local game — prefers data, falls back to otix* fields / catalog detail
+  // Merge catalog data into game — prefers data, falls back to otix* fields / catalog detail
   if (withUpdates) {
-    const hasRichData = !!(withUpdates.data?.backdropUrl && withUpdates.data?.posterUrl)
+    const hasRichData = Boolean(withUpdates.data?.backdropUrl && withUpdates.data?.posterUrl)
     const catalogSource = (catalogDetail as Record<string, unknown> | null) ?? {}
 
     if (!hasRichData) {

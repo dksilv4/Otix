@@ -97,6 +97,8 @@ class MediaAssetOutSerializer(serializers.Serializer):
     style = serializers.CharField(allow_null=True)
     score = serializers.IntegerField(allow_null=True)
     provider = serializers.CharField(allow_null=True)
+    color_guess = serializers.CharField(allow_null=True, required=False)
+    dominant_color = serializers.CharField(allow_null=True, required=False)
     # Admin-pinned context (general/dark/light), mirror state, and which
     # contexts this asset currently resolves for — surfaced to the chooser.
     selected_context = serializers.CharField(allow_null=True)
@@ -466,6 +468,7 @@ class MediaItemSummarySerializer(serializers.Serializer):
     backdrop_url = serializers.CharField(allow_null=True)
     logo_url = serializers.CharField(allow_null=True)
     logo_color_guess = serializers.CharField(allow_null=True)
+    dominant_color = serializers.CharField(allow_null=True, required=False, default=None)
     icon_url = serializers.CharField(allow_null=True)
     release_date = serializers.DateField(allow_null=True)
     popularity = serializers.FloatField()
@@ -512,6 +515,7 @@ class MediaItemDetailSerializer(serializers.Serializer):
     backdrop_url = serializers.CharField(allow_null=True)
     logo_url = serializers.CharField(allow_null=True)
     logo_color_guess = serializers.CharField(allow_null=True)
+    dominant_color = serializers.CharField(allow_null=True, required=False, default=None)
     release_date = serializers.DateField(allow_null=True)
     popularity = serializers.FloatField()
     original_language = serializers.CharField(allow_null=True)

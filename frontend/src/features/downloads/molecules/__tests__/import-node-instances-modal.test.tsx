@@ -71,7 +71,7 @@ describe('ImportNodeInstancesButton', () => {
     await user.click(screen.getByRole('button', { name: /import onto backup server/i }))
 
     await waitFor(() => {
-      expect(apiClient.post).toHaveBeenCalledWith('/library/servers/3/instances/import', {
+      expect(apiClient.post).toHaveBeenCalledWith('/library/nodes/3/instances/import', {
         fromServerId: 2,
       })
     })

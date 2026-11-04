@@ -7,15 +7,29 @@ describe("LauncherThemeProvider & useLauncherTheme", () => {
     localStorage.clear()
   })
 
-  it("defaults to modern theme", () => {
+  it("defaults to classic theme", () => {
     const { result } = renderHook(() => useLauncherTheme(), {
       wrapper: LauncherThemeProvider,
     })
-    expect(result.current.currentTheme).toBe("modern")
-    expect(result.current.themeMeta.id).toBe("modern")
+    expect(result.current.currentTheme).toBe("classic")
+    expect(result.current.themeMeta.id).toBe("classic")
   })
 
-  it("changes theme and persists to localStorage", () => {
+  it("persists classic theme to localStorage", () => {
+    const { result } = renderHook(() => useLauncherTheme(), {
+      wrapper: LauncherThemeProvider,
+    })
+
+    act(() => {
+      result.current.setTheme("classic")
+    })
+
+    expect(result.current.currentTheme).toBe("classic")
+    expect(result.current.themeMeta.name).toBe("Classic")
+    expect(localStorage.getItem("otix:launcher-theme")).toBe("classic")
+  })
+
+  it("rejects disabled themes during development and stays on classic", () => {
     const { result } = renderHook(() => useLauncherTheme(), {
       wrapper: LauncherThemeProvider,
     })
@@ -24,30 +38,25 @@ describe("LauncherThemeProvider & useLauncherTheme", () => {
       result.current.setTheme("steam")
     })
 
-    expect(result.current.currentTheme).toBe("steam")
-    expect(result.current.themeMeta.name).toBe("Deck")
-    expect(localStorage.getItem("otix:launcher-theme")).toBe("steam")
+    expect(result.current.currentTheme).toBe("classic")
+    expect(result.current.themeMeta.id).toBe("classic")
+    expect(localStorage.getItem("otix:launcher-theme")).toBeNull()
   })
 
-  it("cycles through available themes sequentially", () => {
+  it("cycleTheme remains on classic when other themes are disabled", () => {
     const { result } = renderHook(() => useLauncherTheme(), {
       wrapper: LauncherThemeProvider,
     })
 
-    expect(result.current.currentTheme).toBe("modern")
+    expect(result.current.currentTheme).toBe("classic")
 
     act(() => {
       result.current.cycleTheme()
     })
-    expect(result.current.currentTheme).toBe("steam")
-
-    act(() => {
-      result.current.cycleTheme()
-    })
-    expect(result.current.currentTheme).toBe("playstation")
+    expect(result.current.currentTheme).toBe("classic")
   })
 
-  it("provides full list of 10 available themes", () => {
+  it("provides full list of 10 launcher themes with classic enabled and others disabled", () => {
     const { result } = renderHook(() => useLauncherTheme(), {
       wrapper: LauncherThemeProvider,
     })
@@ -65,5 +74,10 @@ describe("LauncherThemeProvider & useLauncherTheme", () => {
       "forge",
       "glass",
     ])
+    const classicMeta = result.current.availableThemes.find((t) => t.id === "classic")
+    expect(classicMeta?.isEnabled).toBe(true)
+
+    const disabledThemes = result.current.availableThemes.filter((t) => t.id !== "classic")
+    expect(disabledThemes.every((t) => t.isEnabled === false)).toBe(true)
   })
 })

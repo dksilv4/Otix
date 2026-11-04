@@ -1,8 +1,7 @@
-import { useState, useCallback, useEffect } from "react"
+import { useState, useCallback } from "react"
 import { useLauncherVisibleGames } from "@/features/launcher/data/game-queries"
 import { usePopularGames } from "@/features/launcher/data/queries"
 import { hasDesktopAPI } from "@/lib/desktop/api"
-import { useNavPillsVisibility } from "@/features/navigation"
 import { ModernHeader } from "./modern-header"
 import { ModernDashboard } from "./modern-dashboard"
 import { ModernLibrary } from "./modern-library"
@@ -11,13 +10,6 @@ import type { LocalGame, DisplayGame } from "@/features/launcher/types"
 
 export const ModernLauncherView = () => {
   const isDesktop = hasDesktopAPI()
-  const { setOverride } = useNavPillsVisibility()
-
-  // Clear navigation pills while Modern launcher is active
-  useEffect(() => {
-    setOverride({ hidden: true })
-    return () => setOverride(null)
-  }, [setOverride])
 
   const { data: localGames = [] } = useLauncherVisibleGames(
     isDesktop ? { sortBy: "last_played_at", sortDir: "desc" } : undefined

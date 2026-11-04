@@ -25,13 +25,21 @@ class StorageShare(TimestampedModel):
         on_delete=models.CASCADE,
         related_name="storage_shares",
     )
-    server_machine = models.ForeignKey(
-        "library.UserServerMachine",
+    machine = models.ForeignKey(
+        "library.UserMachine",
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
         related_name="storage_shares",
     )
+
+    @property
+    def server_machine(self):
+        return self.machine
+
+    @server_machine.setter
+    def server_machine(self, value):
+        self.machine = value
     name = models.CharField(max_length=255)
     protocol = models.CharField(max_length=32, choices=SHARE_PROTOCOLS, default="smb")
     host = models.CharField(max_length=255, blank=True, default="")

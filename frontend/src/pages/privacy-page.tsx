@@ -71,7 +71,7 @@ export const PrivacyPage = () => {
   }
 
   return (
-    <div id="privacy-page" className="w-full max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10 space-y-10">
+    <div id="privacy-page" className="w-full px-4 sm:px-6 lg:px-8 py-6 sm:py-10 space-y-10">
       <Helmet>
         <title>Privacy Policy &amp; Data Rights — Otix</title>
         <meta

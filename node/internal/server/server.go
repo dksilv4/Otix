@@ -98,6 +98,7 @@ func NewServer(cfg *config.AppConfig, claimMgr *claim.ClaimManager) *Server {
 	fpsCollector := games.NewPresentMonCollector(storageDir)
 	gamesTracker := games.NewGameTracker(gamesStore, fpsCollector, idx)
 	gamesTracker.SetNodeInfo(cfg.Server.Name, cfg.Server.Port)
+	gamesTracker.SetOnlyTrackScanned(gamesStore.GetOverlaySettings().OnlyTrackScanned)
 	overlayMgr := games.NewOverlayManager(gamesStore, gamesTracker, fpsCollector)
 	gamesTracker.Start()
 	overlayMgr.Start()
@@ -354,6 +355,19 @@ func (s *Server) setupRoutes() {
 		MaxAge:           300,
 	}))
 
+	// Private Network Access (PNA) support for browser direct node queries
+	r.Use(func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.Header.Get("Access-Control-Request-Private-Network") == "true" {
+				w.Header().Set("Access-Control-Allow-Private-Network", "true")
+			}
+			if r.Method == http.MethodOptions {
+				w.Header().Set("Access-Control-Allow-Private-Network", "true")
+			}
+			next.ServeHTTP(w, r)
+		})
+	})
+
 	// Root WebUI
 	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
 		uptime := int(time.Since(s.startTime).Seconds())
@@ -363,7 +377,7 @@ func (s *Server) setupRoutes() {
 	})
 
 	// Public Health & Claim APIs
-	r.Get("/api/v1/ping", func(w http.ResponseWriter, r *http.Request) {
+	pingHandler := func(w http.ResponseWriter, r *http.Request) {
 		status := s.claimMgr.Status()
 		jsonResponse(w, http.StatusOK, map[string]interface{}{
 			"status":      "online",
@@ -372,7 +386,9 @@ func (s *Server) setupRoutes() {
 			"claimed":     status.Claimed,
 			"claimed_by":  status.Username,
 		})
-	})
+	}
+	r.Get("/api/v1/ping", pingHandler)
+	r.Get("/api/v1/status", pingHandler)
 
 	r.Get("/api/v1/claim/status", func(w http.ResponseWriter, r *http.Request) {
 		jsonResponse(w, http.StatusOK, s.claimMgr.Status())
@@ -461,15 +477,14 @@ func (s *Server) setupRoutes() {
 		if tokenToUnclaim != "" && registryURL != "" {
 			go func() {
 				client := &http.Client{Timeout: 5 * time.Second}
-				targetURL := fmt.Sprintf("%s/v1/servers/unclaim", registryURL)
-				localIP := heartbeat.GetLocalIP()
+				baseAPI := heartbeat.NormalizeBaseAPI(registryURL)
+				targetURL := fmt.Sprintf("%s/v1/nodes/%s/unclaim/", baseAPI, s.cfg.Server.NodeID)
 				payload := map[string]any{
-					"auth_token": tokenToUnclaim,
-					"local_url":  fmt.Sprintf("http://127.0.0.1:%d", s.cfg.Server.Port),
-					"local_endpoints": []string{
-						fmt.Sprintf("http://%s:%d", localIP, s.cfg.Server.Port),
-						fmt.Sprintf("http://127.0.0.1:%d", s.cfg.Server.Port),
-					},
+					"node_id":            s.cfg.Server.NodeID,
+					"auth_token":         tokenToUnclaim,
+					"local_url":          fmt.Sprintf("http://127.0.0.1:%d", s.cfg.Server.Port),
+					"local_endpoints":    heartbeat.GetRoutableEndpoints(s.cfg.Server.Port),
+					"network_interfaces": heartbeat.EnumerateInterfaces(),
 				}
 				data, err := json.Marshal(payload)
 				if err == nil {
@@ -573,16 +588,10 @@ func (s *Server) setupRoutes() {
 		}
 
 		// Normalize base API URL
-		baseAPI := registryURL
-		if strings.HasSuffix(baseAPI, "/api/v1") {
-			baseAPI = strings.TrimSuffix(baseAPI, "/v1")
-		} else if !strings.HasSuffix(baseAPI, "/api") {
-			baseAPI = baseAPI + "/api"
-		}
-
+		baseAPI := heartbeat.NormalizeBaseAPI(registryURL)
 
 		loginURL := fmt.Sprintf("%s/v1/auth/login", baseAPI)
-		claimURL := fmt.Sprintf("%s/v1/library/servers/claim-direct", baseAPI)
+		claimURL := fmt.Sprintf("%s/v1/nodes/claim-direct/", baseAPI)
 
 		// 1. Authenticate with Otix backend
 		loginPayload := map[string]string{
@@ -651,15 +660,13 @@ func (s *Server) setupRoutes() {
 		}
 
 		// 3. Perform direct claim with Otix backend
-		localIP := heartbeat.GetLocalIP()
 		claimPayload := map[string]any{
-			"server_name": s.cfg.Server.Name,
-			"auth_token":  authToken,
-			"port":        s.cfg.Server.Port,
-			"local_endpoints": []string{
-				fmt.Sprintf("http://%s:%d", localIP, s.cfg.Server.Port),
-				fmt.Sprintf("http://127.0.0.1:%d", s.cfg.Server.Port),
-			},
+			"node_id":            s.cfg.Server.NodeID,
+			"server_name":        s.cfg.Server.Name,
+			"auth_token":         authToken,
+			"port":               s.cfg.Server.Port,
+			"local_endpoints":    heartbeat.GetRoutableEndpoints(s.cfg.Server.Port),
+			"network_interfaces": heartbeat.EnumerateInterfaces(),
 		}
 		claimData, err := json.Marshal(claimPayload)
 		if err != nil {
@@ -768,7 +775,7 @@ func (s *Server) setupRoutes() {
 		jsonResponse(w, http.StatusOK, resp)
 	})
 
-	// ── Game Detection, FPS Tracking & Overlay APIs ──────────────────────────────
+	// â”€â”€ Game Detection, FPS Tracking & Overlay APIs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 	// Web Overlay HTML
 	r.Get("/api/v1/games/overlay", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -817,6 +824,22 @@ func (s *Server) setupRoutes() {
 		}
 	})
 
+	// Fix FPS capture permissions (adds user to Performance Log Users)
+	r.Post("/api/v1/games/fps/fix-permissions", func(w http.ResponseWriter, r *http.Request) {
+		success, err := games.FixFpsPermissions()
+		if err != nil {
+			jsonResponse(w, http.StatusInternalServerError, map[string]interface{}{
+				"success": false,
+				"error":   err.Error(),
+			})
+			return
+		}
+		jsonResponse(w, http.StatusOK, map[string]interface{}{
+			"success":      success,
+			"need_restart": true,
+		})
+	})
+
 	// Currently running games
 	r.Get("/api/v1/games/running", func(w http.ResponseWriter, r *http.Request) {
 		runningGames := s.gamesTracker.GetRunningGames()
@@ -825,6 +848,27 @@ func (s *Server) setupRoutes() {
 			"running": len(runningGames) > 0,
 			"game":    single,
 			"games":   runningGames,
+		})
+	})
+
+	// Switch or cycle active game focus
+	r.Post("/api/v1/games/active", func(w http.ResponseWriter, r *http.Request) {
+		var req struct {
+			GameID string `json:"game_id"`
+			Action string `json:"action"`
+		}
+		_ = json.NewDecoder(r.Body).Decode(&req)
+		var target *games.RunningGame
+		if req.Action == "cycle" {
+			target = s.gamesTracker.CycleActiveGame()
+		} else if req.GameID != "" {
+			target = s.gamesTracker.SetActiveGame(req.GameID)
+		} else {
+			target = s.gamesTracker.GetActiveGame()
+		}
+		jsonResponse(w, http.StatusOK, map[string]interface{}{
+			"success":     target != nil,
+			"active_game": target,
 		})
 	})
 
@@ -933,10 +977,105 @@ func (s *Server) setupRoutes() {
 	})
 
 	r.Post("/api/v1/games/overlay/settings", func(w http.ResponseWriter, r *http.Request) {
-		var settings games.OverlaySettings
-		if err := json.NewDecoder(r.Body).Decode(&settings); err != nil {
+		settings := s.gamesStore.GetOverlaySettings()
+		var body map[string]interface{}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 			http.Error(w, `{"error":"Invalid request payload"}`, http.StatusBadRequest)
 			return
+		}
+		if v, ok := body["enabled"]; ok {
+			if b, okB := v.(bool); okB {
+				settings.Enabled = b
+			}
+		}
+		if v, ok := body["corner"]; ok {
+			if sVal, okS := v.(string); okS && sVal != "" {
+				settings.Corner = sVal
+			}
+		}
+		if v, ok := body["monitor"]; ok {
+			if sVal, okS := v.(string); okS && sVal != "" {
+				settings.Monitor = sVal
+			}
+		}
+		if v, ok := body["hotkey"]; ok {
+			if sVal, okS := v.(string); okS && sVal != "" {
+				settings.Hotkey = sVal
+			}
+		}
+		if v, ok := body["show_fps"]; ok {
+			if b, okB := v.(bool); okB {
+				settings.ShowFps = b
+			}
+		} else if v, ok := body["showFps"]; ok {
+			if b, okB := v.(bool); okB {
+				settings.ShowFps = b
+			}
+		}
+		if v, ok := body["show_percentiles"]; ok {
+			if b, okB := v.(bool); okB {
+				settings.ShowPercentiles = b
+			}
+		} else if v, ok := body["showPercentiles"]; ok {
+			if b, okB := v.(bool); okB {
+				settings.ShowPercentiles = b
+			}
+		}
+		if v, ok := body["show_playtime"]; ok {
+			if b, okB := v.(bool); okB {
+				settings.ShowPlaytime = b
+			}
+		} else if v, ok := body["showPlaytime"]; ok {
+			if b, okB := v.(bool); okB {
+				settings.ShowPlaytime = b
+			}
+		}
+		if v, ok := body["show_title"]; ok {
+			if b, okB := v.(bool); okB {
+				settings.ShowTitle = b
+			}
+		} else if v, ok := body["showTitle"]; ok {
+			if b, okB := v.(bool); okB {
+				settings.ShowTitle = b
+			}
+		}
+		if v, ok := body["opacity"]; ok {
+			if fVal, okF := v.(float64); okF && fVal > 0 {
+				settings.Opacity = fVal
+			}
+		}
+		if v, ok := body["scale"]; ok {
+			if fVal, okF := v.(float64); okF && fVal > 0 {
+				settings.Scale = fVal
+			}
+		}
+		if v, ok := body["only_track_scanned"]; ok {
+			if b, okB := v.(bool); okB {
+				settings.OnlyTrackScanned = b
+				if s.gamesTracker != nil {
+					s.gamesTracker.SetOnlyTrackScanned(b)
+				}
+			}
+		} else if v, ok := body["onlyTrackScanned"]; ok {
+			if b, okB := v.(bool); okB {
+				settings.OnlyTrackScanned = b
+				if s.gamesTracker != nil {
+					s.gamesTracker.SetOnlyTrackScanned(b)
+				}
+			}
+		} else if v, ok := body["onlyTrackScannedGames"]; ok {
+			if b, okB := v.(bool); okB {
+				settings.OnlyTrackScanned = b
+				if s.gamesTracker != nil {
+					s.gamesTracker.SetOnlyTrackScanned(b)
+				}
+			}
+		}
+		if settings.Opacity <= 0 || settings.Opacity > 1.0 {
+			settings.Opacity = 0.92
+		}
+		if settings.Scale <= 0 {
+			settings.Scale = 1.0
 		}
 		if err := s.gamesStore.SaveOverlaySettings(settings); err != nil {
 			http.Error(w, fmt.Sprintf(`{"error":%q}`, err.Error()), http.StatusInternalServerError)
@@ -957,7 +1096,7 @@ func (s *Server) setupRoutes() {
 	r.Group(func(authed chi.Router) {
 		authed.Use(s.verifyToken)
 
-		// ── Libraries ────────────────────────────────────────────────────────
+		// â”€â”€ Libraries â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 		authed.Get("/api/v1/libraries", func(w http.ResponseWriter, r *http.Request) {
 			jsonResponse(w, http.StatusOK, s.indexer.GetLibraries())
 		})
@@ -995,7 +1134,9 @@ func (s *Server) setupRoutes() {
 			s.cfg.GameLibraries = req.Libraries
 			_ = s.cfg.Save("")
 			s.indexer.SetLibraries(s.cfg.GameLibraries)
-			go s.indexer.ScanAll()
+			if r.URL.Query().Get("no_scan") != "true" && r.URL.Query().Get("no_scan") != "1" {
+				go s.indexer.ScanAll()
+			}
 
 			jsonResponse(w, http.StatusOK, s.cfg.GameLibraries)
 		})
@@ -1045,6 +1186,55 @@ func (s *Server) setupRoutes() {
 			wait := r.URL.Query().Get("wait") == "1" || r.URL.Query().Get("wait") == "true"
 			deep := r.URL.Query().Get("deep") == "1" || r.URL.Query().Get("deep") == "true" || r.URL.Query().Get("force") == "1"
 			skipSync := r.URL.Query().Get("skip_sync") == "1" || r.Header.Get("X-Otix-Skip-Sync") == "true"
+
+			// If specific path or paths provided in query or JSON body, ensure they are indexed
+			var targetPaths []string
+			if p := r.URL.Query().Get("path"); p != "" {
+				targetPaths = append(targetPaths, p)
+			}
+			if r.Header.Get("Content-Type") == "application/json" || strings.HasPrefix(r.Header.Get("Content-Type"), "application/json") {
+				var bodyReq struct {
+					Path  string   `json:"path"`
+					Paths []string `json:"paths"`
+				}
+				if err := json.NewDecoder(r.Body).Decode(&bodyReq); err == nil {
+					if bodyReq.Path != "" {
+						targetPaths = append(targetPaths, bodyReq.Path)
+					}
+					targetPaths = append(targetPaths, bodyReq.Paths...)
+				}
+			}
+
+			if len(targetPaths) > 0 {
+				updated := false
+				for _, tp := range targetPaths {
+					if tp == "" {
+						continue
+					}
+					cleanTp := filepath.Clean(tp)
+					exists := false
+					for _, lib := range s.cfg.GameLibraries {
+						if filepath.Clean(lib.Path) == cleanTp {
+							exists = true
+							break
+						}
+					}
+					if !exists {
+						s.cfg.GameLibraries = append(s.cfg.GameLibraries, config.LibraryConfig{
+							Name:              filepath.Base(tp),
+							Path:              tp,
+							Kind:              "game",
+							AllowedExtensions: config.DefaultAllowedExtensions("game"),
+						})
+						updated = true
+					}
+				}
+				if updated {
+					s.indexer.SetLibraries(s.cfg.GameLibraries)
+					_ = s.cfg.Save("")
+				}
+			}
+
 			if wait {
 				files := s.indexer.ScanAllWithDeep(deep)
 				if !skipSync {
@@ -1081,7 +1271,7 @@ func (s *Server) setupRoutes() {
 			})
 		})
 
-		// ── Otix sidecars ────────────────────────────────────────────────────
+		// â”€â”€ Otix sidecars â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 		authed.Get("/api/v1/otix/settings", func(w http.ResponseWriter, r *http.Request) {
 			jsonResponse(w, http.StatusOK, map[string]any{
 				"write_otix_after_scan": s.cfg.Server.WriteOtixAfterScan,
@@ -1115,79 +1305,21 @@ func (s *Server) setupRoutes() {
 			var req struct {
 				DownloadImages *bool `json:"download_images"`
 				Items          []struct {
-					FileID   string          `json:"file_id"`
-					Filepath string          `json:"filepath"`
+					FileID   string           `json:"file_id"`
+					Filepath string           `json:"filepath"`
 					Sidecar  otixmeta.Sidecar `json:"sidecar"`
 				} `json:"items"`
 			}
-			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			if err := json.NewDecoder(r.Body).Decode(&req); err != nil && err != io.EOF {
 				http.Error(w, `{"error":"Invalid request payload"}`, http.StatusBadRequest)
 				return
 			}
-			downloadImages := s.cfg.Server.DownloadOtixImages
-			if req.DownloadImages != nil {
-				downloadImages = *req.DownloadImages
-			}
-
-			written := 0
-			var failed []map[string]any
-			libs := s.indexer.GetLibraries()
-			libPaths := make([]string, 0, len(libs))
-			for _, lib := range libs {
-				libPaths = append(libPaths, lib.Path)
-			}
-
-			for _, item := range req.Items {
-				filePath := item.Filepath
-				if filePath == "" && item.FileID != "" {
-					if f, ok := s.indexer.GetFile(item.FileID); ok {
-						filePath = f.Filepath
-					}
-				}
-				if filePath == "" {
-					failed = append(failed, map[string]any{
-						"file_id": item.FileID,
-						"error":   "missing filepath",
-					})
-					continue
-				}
-				libraryPath := matchLibraryPath(filePath, libPaths)
-				gameRoot := indexer.GameRootForFile(filePath, libraryPath)
-				sc := item.Sidecar
-				if sc.Version == 0 {
-					sc.Version = otixmeta.Version
-				}
-				if sc.ExeRelative == "" || strings.HasSuffix(sc.ExeRelative, ".otix") {
-					if rel, err := filepath.Rel(gameRoot, filePath); err == nil && rel != "." && !strings.HasSuffix(rel, ".otix") {
-						sc.ExeRelative = filepath.ToSlash(rel)
-					}
-				}
-				if downloadImages {
-					_ = otixmeta.DownloadImages(gameRoot, &sc, nil)
-				}
-				if err := otixmeta.Write(gameRoot, &sc); err != nil {
-					failed = append(failed, map[string]any{
-						"file_id":  item.FileID,
-						"filepath": filePath,
-						"error":    err.Error(),
-					})
-					continue
-				}
-				written++
-				// Refresh in-memory index fields for all files under this game root.
-				allFiles := s.indexer.Files()
-				for _, f := range allFiles {
-					if strings.HasPrefix(f.Filepath, gameRoot) {
-						indexer.AttachOtixSidecar(&f, libraryPath)
-						s.indexer.UpsertFile(f)
-					}
-				}
-			}
-
+			// Zero-disk sidecar mutation: database-only persistence active
 			jsonResponse(w, http.StatusOK, map[string]any{
 				"status":  "ok",
-				"written": written,
-				"failed":  failed,
+				"written": 0,
+				"message": "database-only metadata persistence active: disk sidecar mutation disabled",
+				"failed":  []any{},
 			})
 		})
 
@@ -1247,7 +1379,7 @@ func (s *Server) setupRoutes() {
 			http.ServeFile(w, r, assetPath)
 		})
 
-		// ── Files & HTTP/2 Range Streaming ────────────────────────────────────
+		// â”€â”€ Files & HTTP/2 Range Streaming â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 		authed.Get("/api/v1/files", func(w http.ResponseWriter, r *http.Request) {
 			jsonResponse(w, http.StatusOK, s.indexer.Files())
 		})
@@ -1288,7 +1420,7 @@ func (s *Server) setupRoutes() {
 			http.ServeContent(w, r, f.Filename, stat.ModTime(), file)
 		})
 
-		// ── Explorer ─────────────────────────────────────────────────────────
+		// â”€â”€ Explorer â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 		authed.Get("/api/v1/explorer/browse", func(w http.ResponseWriter, r *http.Request) {
 			targetPath := r.URL.Query().Get("path")
 			resp, err := explorer.InspectDirectory(targetPath, s.cfg.Server.DownloadsPath, "")
@@ -1425,7 +1557,7 @@ func (s *Server) setupRoutes() {
 			http.ServeContent(w, r, stat.Name(), stat.ModTime(), file)
 		})
 
-		// ── Cloud Saves ──────────────────────────────────────────────────────
+		// â”€â”€ Cloud Saves â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 		authed.Post("/api/v1/saves/upload", func(w http.ResponseWriter, r *http.Request) {
 			// Max 100MB save file
 			if err := r.ParseMultipartForm(100 << 20); err != nil {
@@ -1487,7 +1619,7 @@ func (s *Server) setupRoutes() {
 			http.ServeContent(w, r, stat.Name(), stat.ModTime(), file)
 		})
 
-		// ── Epic Games Vault & Scanner ────────────────────────────────────────
+		// â”€â”€ Epic Games Vault & Scanner â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 		authed.Get("/api/v1/epic/status", func(w http.ResponseWriter, r *http.Request) {
 			jsonResponse(w, http.StatusOK, s.epicClient.Status())
 		})
@@ -1534,7 +1666,7 @@ func (s *Server) setupRoutes() {
 			jsonResponse(w, http.StatusOK, games)
 		})
 
-		// ── GOG Vault & Scanner ───────────────────────────────────────────────
+		// â”€â”€ GOG Vault & Scanner â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 		authed.Get("/api/v1/gog/status", func(w http.ResponseWriter, r *http.Request) {
 			jsonResponse(w, http.StatusOK, s.gogClient.Status())
 		})
@@ -1581,7 +1713,7 @@ func (s *Server) setupRoutes() {
 			jsonResponse(w, http.StatusOK, games)
 		})
 
-		// ── Providers & Downloads ─────────────────────────────────────────────
+		// â”€â”€ Providers & Downloads â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 		authed.Get("/api/v1/providers", func(w http.ResponseWriter, r *http.Request) {
 			jsonResponse(w, http.StatusOK, s.providersMgr.ListProviders())
 		})
@@ -1608,18 +1740,49 @@ func (s *Server) setupRoutes() {
 		})
 
 		authed.Post("/api/v1/downloads/add", func(w http.ResponseWriter, r *http.Request) {
+			var rawMap map[string]interface{}
+			bodyBytes, err := io.ReadAll(r.Body)
+			if err != nil {
+				http.Error(w, `{"error":"Invalid request payload"}`, http.StatusBadRequest)
+				return
+			}
+			_ = json.Unmarshal(bodyBytes, &rawMap)
+
 			var req struct {
 				Title       string `json:"title"`
 				DownloadURL string `json:"download_url"`
 				Category    string `json:"category"`
 				Protocol    string `json:"protocol"`
+				Downloader  string `json:"downloader"`
 			}
-			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-				http.Error(w, `{"error":"Invalid request payload"}`, http.StatusBadRequest)
-				return
+			_ = json.Unmarshal(bodyBytes, &req)
+
+			if dlURL, ok := rawMap["downloadUrl"].(string); ok && dlURL != "" {
+				req.DownloadURL = dlURL
+			} else if dlURL, ok := rawMap["url"].(string); ok && dlURL != "" {
+				req.DownloadURL = dlURL
+			}
+			if dl, ok := rawMap["downloader"].(string); ok && dl != "" {
+				req.Downloader = dl
 			}
 
-			nzoID, err := s.providersMgr.AddDownload(req.DownloadURL, req.Title, req.Category, req.Protocol)
+			if qDownloader := r.URL.Query().Get("downloader"); qDownloader != "" && req.Downloader == "" {
+				req.Downloader = qDownloader
+			}
+			if qProto := r.URL.Query().Get("protocol"); qProto != "" && req.Protocol == "" {
+				req.Protocol = qProto
+			}
+
+			protocol := req.Protocol
+			if protocol == "" && req.Downloader != "" {
+				if req.Downloader == "jdownloader" || req.Downloader == "jd2" {
+					protocol = "jdownloader"
+				} else if req.Downloader == "sabnzbd" || req.Downloader == "usenet" {
+					protocol = "usenet"
+				}
+			}
+
+			nzoID, err := s.providersMgr.AddDownload(req.DownloadURL, req.Title, req.Category, protocol)
 			if err != nil {
 				http.Error(w, fmt.Sprintf(`{"detail":%q}`, err.Error()), http.StatusBadRequest)
 				return
@@ -1660,7 +1823,7 @@ func (s *Server) setupRoutes() {
 			jsonResponse(w, http.StatusOK, map[string]string{"status": "deleted", "download_id": id})
 		})
 
-		// ── Usenet Aliases (SABnzbd & Prowlarr & g4u) ────────────────────────
+		// â”€â”€ Usenet Aliases (SABnzbd & Prowlarr & g4u) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 		authed.Get("/api/v1/usenet/config", func(w http.ResponseWriter, r *http.Request) {
 			sab := s.cfg.Usenet.Sabnzbd
 			prow := s.cfg.Usenet.Prowlarr
@@ -1914,10 +2077,10 @@ func (s *Server) setupRoutes() {
 			jsonResponse(w, http.StatusOK, map[string]interface{}{"ok": ok, "message": msg})
 		})
 
-		// ── JDownloader Routes ──────────────────────────────────────────────
+		// â”€â”€ JDownloader Routes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 		authed.Get("/api/v1/jdownloader/config", func(w http.ResponseWriter, r *http.Request) {
 			jd := s.cfg.JDownloader
-			configured := jd.Enabled || jd.Email != "" || (jd.DirectHost != "" && jd.DirectPort > 0)
+			configured := (jd.Enabled && (jd.Email != "" || (jd.DirectHost != "" && jd.DirectPort > 0))) || (jd.Email != "" && jd.Password != "")
 			resp := struct {
 				config.JDownloaderConfig
 				Configured       bool   `json:"configured"`
@@ -1986,34 +2149,55 @@ func (s *Server) setupRoutes() {
 
 		authed.Post("/api/v1/jdownloader/test", func(w http.ResponseWriter, r *http.Request) {
 			jdCfg := s.cfg.JDownloader
-			var req struct {
-				Email      string `json:"email"`
-				Password   string `json:"password"`
-				DeviceName string `json:"device_name"`
-				DeviceID   string `json:"device_id"`
-				DirectHost string `json:"direct_host"`
-				DirectPort int    `json:"direct_port"`
+			var rawMap map[string]interface{}
+			bodyBytes, err := io.ReadAll(r.Body)
+			if err == nil && len(bodyBytes) > 0 {
+				_ = json.Unmarshal(bodyBytes, &rawMap)
 			}
-			if err := json.NewDecoder(r.Body).Decode(&req); err == nil {
-				if req.Email != "" {
-					jdCfg.Email = req.Email
-				}
-				if req.Password != "" {
-					jdCfg.Password = req.Password
-				}
-				if req.DeviceName != "" {
-					jdCfg.DeviceName = req.DeviceName
-				}
-				if req.DeviceID != "" {
-					jdCfg.DeviceID = req.DeviceID
-				}
-				if req.DirectHost != "" {
-					jdCfg.DirectHost = req.DirectHost
-				}
-				if req.DirectPort > 0 {
-					jdCfg.DirectPort = req.DirectPort
-				}
+
+			email, _ := rawMap["email"].(string)
+			password, _ := rawMap["password"].(string)
+			deviceName, _ := rawMap["deviceName"].(string)
+			if deviceName == "" {
+				deviceName, _ = rawMap["device_name"].(string)
 			}
+			deviceID, _ := rawMap["deviceId"].(string)
+			if deviceID == "" {
+				deviceID, _ = rawMap["device_id"].(string)
+			}
+			directHost, _ := rawMap["directHost"].(string)
+			if directHost == "" {
+				directHost, _ = rawMap["direct_host"].(string)
+			}
+			var directPort int
+			if dp, ok := rawMap["directPort"].(float64); ok && dp > 0 {
+				directPort = int(dp)
+			} else if dp, ok := rawMap["direct_port"].(float64); ok && dp > 0 {
+				directPort = int(dp)
+			}
+
+			if email != "" {
+				jdCfg.Email = email
+				jdCfg.DirectHost = ""
+				jdCfg.DirectPort = 0
+			}
+			if password != "" {
+				jdCfg.Password = password
+			}
+			if deviceName != "" {
+				jdCfg.DeviceName = deviceName
+			}
+			if deviceID != "" {
+				jdCfg.DeviceID = deviceID
+			}
+			if directHost != "" {
+				jdCfg.DirectHost = directHost
+				jdCfg.Email = ""
+			}
+			if directPort > 0 {
+				jdCfg.DirectPort = directPort
+			}
+
 			client := jdownloader.NewClient(jdCfg)
 			ok, msg := client.TestConnection()
 			jsonResponse(w, http.StatusOK, map[string]interface{}{"ok": ok, "message": msg})
@@ -2133,26 +2317,219 @@ func (s *Server) setupRoutes() {
 			jsonResponse(w, http.StatusOK, map[string]string{"status": "resumed"})
 		})
 
-		// ── Radarr ────────────────────────────────────────────────────────────
+		// â”€â”€ Radarr â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 		authed.Get("/api/v1/radarr/config", func(w http.ResponseWriter, r *http.Request) {
-			jsonResponse(w, http.StatusOK, s.cfg.Radarr)
+			cfg := s.cfg.Radarr
+			cfg.HasAPIKey = cfg.APIKey != ""
+			cfg.Configured = cfg.Host != "" && cfg.APIKey != ""
+			for i := range cfg.Instances {
+				cfg.Instances[i].HasAPIKey = cfg.Instances[i].APIKey != ""
+				cfg.Instances[i].Configured = cfg.Instances[i].Host != "" && cfg.Instances[i].APIKey != ""
+				if cfg.Instances[i].HasAPIKey {
+					cfg.HasAPIKey = true
+				}
+				if cfg.Instances[i].Configured {
+					cfg.Configured = true
+				}
+			}
+			jsonResponse(w, http.StatusOK, cfg)
 		})
 
 		authed.Post("/api/v1/radarr/config", func(w http.ResponseWriter, r *http.Request) {
-			var rc config.RadarrConfig
-			if err := json.NewDecoder(r.Body).Decode(&rc); err != nil {
+			bodyBytes, err := io.ReadAll(r.Body)
+			if err != nil {
 				http.Error(w, `{"error":"Invalid request payload"}`, http.StatusBadRequest)
 				return
 			}
+			var rc config.RadarrConfig
+			if err := json.Unmarshal(bodyBytes, &rc); err != nil {
+				http.Error(w, `{"error":"Invalid request payload"}`, http.StatusBadRequest)
+				return
+			}
+			var rawMap map[string]interface{}
+			_ = json.Unmarshal(bodyBytes, &rawMap)
+
+			if rc.APIKey == "" {
+				if k, ok := rawMap["apiKey"].(string); ok && k != "" {
+					rc.APIKey = k
+				}
+			}
+			if rc.APIKey == "" && s.cfg.Radarr.APIKey != "" {
+				rc.APIKey = s.cfg.Radarr.APIKey
+			}
+			if rc.Host == "" && s.cfg.Radarr.Host != "" {
+				rc.Host = s.cfg.Radarr.Host
+			}
+			if rc.Port == 0 && s.cfg.Radarr.Port != 0 {
+				rc.Port = s.cfg.Radarr.Port
+			}
+			if rc.URLBase == "" && s.cfg.Radarr.URLBase != "" {
+				rc.URLBase = s.cfg.Radarr.URLBase
+			}
+			if rc.QualityProfileID == nil && s.cfg.Radarr.QualityProfileID != nil {
+				rc.QualityProfileID = s.cfg.Radarr.QualityProfileID
+			}
+			if rc.RootFolderPath == "" && s.cfg.Radarr.RootFolderPath != "" {
+				rc.RootFolderPath = s.cfg.Radarr.RootFolderPath
+			}
+			if len(rc.Instances) == 0 && len(s.cfg.Radarr.Instances) > 0 {
+				rc.Instances = s.cfg.Radarr.Instances
+			}
+			if !rc.AutoRequestWatchlist {
+				if v, ok := rawMap["autoRequestWatchlist"].(bool); ok && v {
+					rc.AutoRequestWatchlist = true
+				} else if v, ok := rawMap["auto_request_watchlist"].(bool); ok && v {
+					rc.AutoRequestWatchlist = true
+				}
+			}
+
+			if rawInsts, ok := rawMap["instances"].([]interface{}); ok && len(rawInsts) == len(rc.Instances) {
+				for i, rawInst := range rawInsts {
+					if m, ok := rawInst.(map[string]interface{}); ok {
+						if rc.Instances[i].APIKey == "" {
+							if k, ok := m["apiKey"].(string); ok && k != "" {
+								rc.Instances[i].APIKey = k
+							}
+						}
+						if !rc.Instances[i].AutoRequestWatchlist {
+							if v, ok := m["autoRequestWatchlist"].(bool); ok && v {
+								rc.Instances[i].AutoRequestWatchlist = true
+							} else if v, ok := m["auto_request_watchlist"].(bool); ok && v {
+								rc.Instances[i].AutoRequestWatchlist = true
+							}
+						}
+					}
+				}
+			}
+			for i := range rc.Instances {
+				if rc.Instances[i].APIKey == "" {
+					existing := s.cfg.Radarr.Resolve(rc.Instances[i].ID)
+					if existing.APIKey != "" {
+						rc.Instances[i].APIKey = existing.APIKey
+					} else if rc.APIKey != "" {
+						rc.Instances[i].APIKey = rc.APIKey
+					}
+				}
+			}
+
+			if len(rc.Instances) > 0 {
+				primary := rc.Instances[0]
+				for _, inst := range rc.Instances {
+					if inst.Enabled {
+						primary = inst
+						break
+					}
+				}
+				if rc.Host == "" {
+					rc.Host = primary.Host
+				}
+				if rc.Port == 0 {
+					rc.Port = primary.Port
+				}
+				if rc.APIKey == "" {
+					rc.APIKey = primary.APIKey
+				}
+				if rc.URLBase == "" {
+					rc.URLBase = primary.URLBase
+				}
+				if !rc.AutoRequestWatchlist && primary.AutoRequestWatchlist {
+					rc.AutoRequestWatchlist = true
+				}
+			}
+
+			rc.HasAPIKey = rc.APIKey != ""
+			rc.Configured = rc.Host != "" && rc.APIKey != ""
 			s.cfg.Radarr = rc
 			_ = s.cfg.Save("")
 			jsonResponse(w, http.StatusOK, map[string]string{"status": "saved"})
 		})
 
 		authed.Post("/api/v1/radarr/test", func(w http.ResponseWriter, r *http.Request) {
-			inst := s.cfg.Radarr.Resolve(r.URL.Query().Get("instance_id"))
+			var req struct {
+				InstanceID string `json:"instance_id"`
+				InstanceId string `json:"instanceId"`
+				Host       string `json:"host"`
+				Port       int    `json:"port"`
+				APIKey     string `json:"api_key"`
+				ApiKey     string `json:"apiKey"`
+				UseSSL     bool   `json:"use_ssl"`
+				UseSsl     bool   `json:"useSsl"`
+				URLBase    string `json:"url_base"`
+				UrlBase    string `json:"urlBase"`
+			}
+			bodyBytes, _ := io.ReadAll(r.Body)
+			if len(bodyBytes) > 0 {
+				_ = json.Unmarshal(bodyBytes, &req)
+			}
+
+			targetID := r.URL.Query().Get("instance_id")
+			if targetID == "" {
+				targetID = req.InstanceID
+			}
+			if targetID == "" {
+				targetID = req.InstanceId
+			}
+
+			inst := s.cfg.Radarr.Resolve(targetID)
+			if req.Host != "" {
+				inst.Host = req.Host
+			}
+			if req.Port > 0 {
+				inst.Port = req.Port
+			}
+			key := req.APIKey
+			if key == "" {
+				key = req.ApiKey
+			}
+			if key != "" {
+				inst.APIKey = key
+			}
+			if req.UseSSL || req.UseSsl {
+				inst.UseSSL = true
+			} else if len(bodyBytes) > 0 && (bytes.Contains(bodyBytes, []byte(`"use_ssl"`)) || bytes.Contains(bodyBytes, []byte(`"useSsl"`))) {
+				inst.UseSSL = req.UseSSL || req.UseSsl
+			}
+			urlBase := req.URLBase
+			if urlBase == "" {
+				urlBase = req.UrlBase
+			}
+			if urlBase != "" || (len(bodyBytes) > 0 && (bytes.Contains(bodyBytes, []byte(`"url_base"`)) || bytes.Contains(bodyBytes, []byte(`"urlBase"`)))) {
+				inst.URLBase = urlBase
+			}
+
+			inst.Host = strings.TrimSpace(inst.Host)
+			inst.APIKey = strings.TrimSpace(inst.APIKey)
+			inst.URLBase = strings.TrimSpace(inst.URLBase)
+
 			client := arr.NewRadarrClient(inst)
-			jsonResponse(w, http.StatusOK, client.TestConnection())
+			res := client.TestConnection()
+
+			if res.OK && inst.Host != "" && inst.APIKey != "" {
+				if res.DetectedURLBase != "" && inst.URLBase == "" {
+					inst.URLBase = res.DetectedURLBase
+				}
+				if len(s.cfg.Radarr.Instances) == 0 {
+					s.cfg.Radarr.Host = inst.Host
+					s.cfg.Radarr.Port = inst.Port
+					s.cfg.Radarr.APIKey = inst.APIKey
+					s.cfg.Radarr.UseSSL = inst.UseSSL
+					s.cfg.Radarr.URLBase = inst.URLBase
+				} else {
+					matched := false
+					for i, existing := range s.cfg.Radarr.Instances {
+						if existing.ID == inst.ID {
+							s.cfg.Radarr.Instances[i] = inst
+							matched = true
+							break
+					}
+				}
+					if !matched {
+						s.cfg.Radarr.Instances = append(s.cfg.Radarr.Instances, inst)
+					}
+				}
+			}
+
+			jsonResponse(w, http.StatusOK, res)
 		})
 
 		authed.Get("/api/v1/radarr/rootfolders", func(w http.ResponseWriter, r *http.Request) {
@@ -2270,26 +2647,222 @@ func (s *Server) setupRoutes() {
 			jsonResponse(w, http.StatusOK, h)
 		})
 
-		// ── Sonarr ────────────────────────────────────────────────────────────
+		// â”€â”€ Sonarr â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 		authed.Get("/api/v1/sonarr/config", func(w http.ResponseWriter, r *http.Request) {
-			jsonResponse(w, http.StatusOK, s.cfg.Sonarr)
+			cfg := s.cfg.Sonarr
+			cfg.HasAPIKey = cfg.APIKey != ""
+			cfg.Configured = cfg.Host != "" && cfg.APIKey != ""
+			for i := range cfg.Instances {
+				cfg.Instances[i].HasAPIKey = cfg.Instances[i].APIKey != ""
+				cfg.Instances[i].Configured = cfg.Instances[i].Host != "" && cfg.Instances[i].APIKey != ""
+				if cfg.Instances[i].HasAPIKey {
+					cfg.HasAPIKey = true
+				}
+				if cfg.Instances[i].Configured {
+					cfg.Configured = true
+				}
+			}
+			jsonResponse(w, http.StatusOK, cfg)
 		})
 
 		authed.Post("/api/v1/sonarr/config", func(w http.ResponseWriter, r *http.Request) {
-			var sc config.SonarrConfig
-			if err := json.NewDecoder(r.Body).Decode(&sc); err != nil {
+			bodyBytes, err := io.ReadAll(r.Body)
+			if err != nil {
 				http.Error(w, `{"error":"Invalid request payload"}`, http.StatusBadRequest)
 				return
 			}
+			var sc config.SonarrConfig
+			if err := json.Unmarshal(bodyBytes, &sc); err != nil {
+				http.Error(w, `{"error":"Invalid request payload"}`, http.StatusBadRequest)
+				return
+			}
+			var rawMap map[string]interface{}
+			_ = json.Unmarshal(bodyBytes, &rawMap)
+
+			if sc.APIKey == "" {
+				if k, ok := rawMap["apiKey"].(string); ok && k != "" {
+					sc.APIKey = k
+				}
+			}
+			if sc.APIKey == "" && s.cfg.Sonarr.APIKey != "" {
+				sc.APIKey = s.cfg.Sonarr.APIKey
+			}
+			if sc.Host == "" && s.cfg.Sonarr.Host != "" {
+				sc.Host = s.cfg.Sonarr.Host
+			}
+			if sc.Port == 0 && s.cfg.Sonarr.Port != 0 {
+				sc.Port = s.cfg.Sonarr.Port
+			}
+			if sc.URLBase == "" && s.cfg.Sonarr.URLBase != "" {
+				sc.URLBase = s.cfg.Sonarr.URLBase
+			}
+			if sc.QualityProfileID == nil && s.cfg.Sonarr.QualityProfileID != nil {
+				sc.QualityProfileID = s.cfg.Sonarr.QualityProfileID
+			}
+			if sc.RootFolderPath == "" && s.cfg.Sonarr.RootFolderPath != "" {
+				sc.RootFolderPath = s.cfg.Sonarr.RootFolderPath
+			}
+			if sc.SeriesType == "" && s.cfg.Sonarr.SeriesType != "" {
+				sc.SeriesType = s.cfg.Sonarr.SeriesType
+			}
+			if len(sc.Instances) == 0 && len(s.cfg.Sonarr.Instances) > 0 {
+				sc.Instances = s.cfg.Sonarr.Instances
+			}
+			if !sc.AutoRequestWatchlist {
+				if v, ok := rawMap["autoRequestWatchlist"].(bool); ok && v {
+					sc.AutoRequestWatchlist = true
+				} else if v, ok := rawMap["auto_request_watchlist"].(bool); ok && v {
+					sc.AutoRequestWatchlist = true
+				}
+			}
+
+			if rawInsts, ok := rawMap["instances"].([]interface{}); ok && len(rawInsts) == len(sc.Instances) {
+				for i, rawInst := range rawInsts {
+					if m, ok := rawInst.(map[string]interface{}); ok {
+						if sc.Instances[i].APIKey == "" {
+							if k, ok := m["apiKey"].(string); ok && k != "" {
+								sc.Instances[i].APIKey = k
+							}
+						}
+						if !sc.Instances[i].AutoRequestWatchlist {
+							if v, ok := m["autoRequestWatchlist"].(bool); ok && v {
+								sc.Instances[i].AutoRequestWatchlist = true
+							} else if v, ok := m["auto_request_watchlist"].(bool); ok && v {
+								sc.Instances[i].AutoRequestWatchlist = true
+							}
+						}
+					}
+				}
+			}
+			for i := range sc.Instances {
+				if sc.Instances[i].APIKey == "" {
+					existing := s.cfg.Sonarr.Resolve(sc.Instances[i].ID)
+					if existing.APIKey != "" {
+						sc.Instances[i].APIKey = existing.APIKey
+					} else if sc.APIKey != "" {
+						sc.Instances[i].APIKey = sc.APIKey
+					}
+				}
+			}
+
+			if len(sc.Instances) > 0 {
+				primary := sc.Instances[0]
+				for _, inst := range sc.Instances {
+					if inst.Enabled {
+						primary = inst
+						break
+					}
+				}
+				if sc.Host == "" {
+					sc.Host = primary.Host
+				}
+				if sc.Port == 0 {
+					sc.Port = primary.Port
+				}
+				if sc.APIKey == "" {
+					sc.APIKey = primary.APIKey
+				}
+				if sc.URLBase == "" {
+					sc.URLBase = primary.URLBase
+				}
+				if !sc.AutoRequestWatchlist && primary.AutoRequestWatchlist {
+					sc.AutoRequestWatchlist = true
+				}
+			}
+
+			sc.HasAPIKey = sc.APIKey != ""
+			sc.Configured = sc.Host != "" && sc.APIKey != ""
 			s.cfg.Sonarr = sc
 			_ = s.cfg.Save("")
 			jsonResponse(w, http.StatusOK, map[string]string{"status": "saved"})
 		})
 
 		authed.Post("/api/v1/sonarr/test", func(w http.ResponseWriter, r *http.Request) {
-			inst := s.cfg.Sonarr.Resolve(r.URL.Query().Get("instance_id"))
+			var req struct {
+				InstanceID string `json:"instance_id"`
+				InstanceId string `json:"instanceId"`
+				Host       string `json:"host"`
+				Port       int    `json:"port"`
+				APIKey     string `json:"api_key"`
+				ApiKey     string `json:"apiKey"`
+				UseSSL     bool   `json:"use_ssl"`
+				UseSsl     bool   `json:"useSsl"`
+				URLBase    string `json:"url_base"`
+				UrlBase    string `json:"urlBase"`
+			}
+			bodyBytes, _ := io.ReadAll(r.Body)
+			if len(bodyBytes) > 0 {
+				_ = json.Unmarshal(bodyBytes, &req)
+			}
+
+			targetID := r.URL.Query().Get("instance_id")
+			if targetID == "" {
+				targetID = req.InstanceID
+			}
+			if targetID == "" {
+				targetID = req.InstanceId
+			}
+
+			inst := s.cfg.Sonarr.Resolve(targetID)
+			if req.Host != "" {
+				inst.Host = req.Host
+			}
+			if req.Port > 0 {
+				inst.Port = req.Port
+			}
+			key := req.APIKey
+			if key == "" {
+				key = req.ApiKey
+			}
+			if key != "" {
+				inst.APIKey = key
+			}
+			if req.UseSSL || req.UseSsl {
+				inst.UseSSL = true
+			} else if len(bodyBytes) > 0 && (bytes.Contains(bodyBytes, []byte(`"use_ssl"`)) || bytes.Contains(bodyBytes, []byte(`"useSsl"`))) {
+				inst.UseSSL = req.UseSSL || req.UseSsl
+			}
+			urlBase := req.URLBase
+			if urlBase == "" {
+				urlBase = req.UrlBase
+			}
+			if urlBase != "" || (len(bodyBytes) > 0 && (bytes.Contains(bodyBytes, []byte(`"url_base"`)) || bytes.Contains(bodyBytes, []byte(`"urlBase"`)))) {
+				inst.URLBase = urlBase
+			}
+
+			inst.Host = strings.TrimSpace(inst.Host)
+			inst.APIKey = strings.TrimSpace(inst.APIKey)
+			inst.URLBase = strings.TrimSpace(inst.URLBase)
+
 			client := arr.NewSonarrClient(inst)
-			jsonResponse(w, http.StatusOK, client.TestConnection())
+			res := client.TestConnection()
+
+			if res.OK && inst.Host != "" && inst.APIKey != "" {
+				if res.DetectedURLBase != "" && inst.URLBase == "" {
+					inst.URLBase = res.DetectedURLBase
+				}
+				if len(s.cfg.Sonarr.Instances) == 0 {
+					s.cfg.Sonarr.Host = inst.Host
+					s.cfg.Sonarr.Port = inst.Port
+					s.cfg.Sonarr.APIKey = inst.APIKey
+					s.cfg.Sonarr.UseSSL = inst.UseSSL
+					s.cfg.Sonarr.URLBase = inst.URLBase
+				} else {
+					matched := false
+					for i, existing := range s.cfg.Sonarr.Instances {
+						if existing.ID == inst.ID {
+							s.cfg.Sonarr.Instances[i] = inst
+							matched = true
+							break
+					}
+				}
+					if !matched {
+						s.cfg.Sonarr.Instances = append(s.cfg.Sonarr.Instances, inst)
+					}
+				}
+			}
+
+			jsonResponse(w, http.StatusOK, res)
 		})
 
 		authed.Get("/api/v1/sonarr/rootfolders", func(w http.ResponseWriter, r *http.Request) {
@@ -2407,7 +2980,7 @@ func (s *Server) setupRoutes() {
 			jsonResponse(w, http.StatusOK, h)
 		})
 
-		// ── Desktop & Organize ────────────────────────────────────────────────
+		// â”€â”€ Desktop & Organize â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 		authed.Get("/api/v1/desktop/settings", func(w http.ResponseWriter, r *http.Request) {
 			refresh := r.URL.Query().Get("refresh") == "true"
 			resp := desktop.GetDesktopSettings(s.cfg, refresh)
@@ -2417,6 +2990,12 @@ func (s *Server) setupRoutes() {
 				resp.OverlayCorner = ov.Corner
 				resp.OverlayMonitor = ov.Monitor
 				resp.OverlayHotkey = ov.Hotkey
+				resp.OverlayShowFps = ov.ShowFps
+				resp.OverlayShowPercentiles = ov.ShowPercentiles
+				resp.OverlayShowPlaytime = ov.ShowPlaytime
+				resp.OverlayShowTitle = ov.ShowTitle
+				resp.OverlayOpacity = ov.Opacity
+				resp.OverlayScale = ov.Scale
 			}
 			if resp.OverlayMonitor == "" {
 				resp.OverlayMonitor = "auto"
@@ -2481,6 +3060,72 @@ func (s *Server) setupRoutes() {
 						changed = true
 					}
 				}
+				if v, ok := payload["overlayHotkey"]; ok {
+					if sVal, okS := v.(string); okS && sVal != "" {
+						ov.Hotkey = sVal
+						changed = true
+					}
+				} else if v, ok := payload["overlay_hotkey"]; ok {
+					if sVal, okS := v.(string); okS && sVal != "" {
+						ov.Hotkey = sVal
+						changed = true
+					}
+				}
+				if v, ok := payload["overlayShowFps"]; ok {
+					if b, okB := v.(bool); okB {
+						ov.ShowFps = b
+						changed = true
+					}
+				} else if v, ok := payload["overlay_show_fps"]; ok {
+					if b, okB := v.(bool); okB {
+						ov.ShowFps = b
+						changed = true
+					}
+				}
+				if v, ok := payload["overlayShowPercentiles"]; ok {
+					if b, okB := v.(bool); okB {
+						ov.ShowPercentiles = b
+						changed = true
+					}
+				} else if v, ok := payload["overlay_show_percentiles"]; ok {
+					if b, okB := v.(bool); okB {
+						ov.ShowPercentiles = b
+						changed = true
+					}
+				}
+				if v, ok := payload["overlayShowPlaytime"]; ok {
+					if b, okB := v.(bool); okB {
+						ov.ShowPlaytime = b
+						changed = true
+					}
+				} else if v, ok := payload["overlay_show_playtime"]; ok {
+					if b, okB := v.(bool); okB {
+						ov.ShowPlaytime = b
+						changed = true
+					}
+				}
+				if v, ok := payload["overlayShowTitle"]; ok {
+					if b, okB := v.(bool); okB {
+						ov.ShowTitle = b
+						changed = true
+					}
+				} else if v, ok := payload["overlay_show_title"]; ok {
+					if b, okB := v.(bool); okB {
+						ov.ShowTitle = b
+						changed = true
+					}
+				}
+				if v, ok := payload["overlayOpacity"]; ok {
+					if fVal, okF := v.(float64); okF && fVal > 0 {
+						ov.Opacity = fVal
+						changed = true
+					}
+				} else if v, ok := payload["overlay_opacity"]; ok {
+					if fVal, okF := v.(float64); okF && fVal > 0 {
+						ov.Opacity = fVal
+						changed = true
+					}
+				}
 				if changed {
 					_ = s.gamesStore.SaveOverlaySettings(ov)
 					if s.overlayMgr != nil {
@@ -2491,6 +3136,12 @@ func (s *Server) setupRoutes() {
 				resp.OverlayCorner = ov.Corner
 				resp.OverlayMonitor = ov.Monitor
 				resp.OverlayHotkey = ov.Hotkey
+				resp.OverlayShowFps = ov.ShowFps
+				resp.OverlayShowPercentiles = ov.ShowPercentiles
+				resp.OverlayShowPlaytime = ov.ShowPlaytime
+				resp.OverlayShowTitle = ov.ShowTitle
+				resp.OverlayOpacity = ov.Opacity
+				resp.OverlayScale = ov.Scale
 			}
 			if s.overlayMgr != nil {
 				resp.OverlayMonitors = s.overlayMgr.GetAvailableMonitors()
@@ -2585,7 +3236,7 @@ func (s *Server) setupRoutes() {
 			})
 		})
 
-		// ── Headless Node Plugins (Deals) ─────────────────────────────────────
+		// â”€â”€ Headless Node Plugins (Deals) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 		authed.Get("/api/v1/plugins/deals", func(w http.ResponseWriter, r *http.Request) {
 			deals := s.dealsMonitor.GetDeals()
 			jsonResponse(w, http.StatusOK, map[string]interface{}{
@@ -2615,10 +3266,19 @@ var (
 	lastSyncTime time.Time
 )
 
+// ResetLastSyncTimeForTesting resets the debounce timer for tests.
+func ResetLastSyncTimeForTesting() {
+	lastSyncMu.Lock()
+	lastSyncTime = time.Time{}
+	lastSyncMu.Unlock()
+}
+
 func (s *Server) triggerBackendSync() {
-	if !s.cfg.Server.WriteOtixAfterScan {
-		return
-	}
+	s.TriggerBackendSync()
+}
+
+// TriggerBackendSync transmits indexed files directly to the backend manifest ingest endpoint in 500-item chunks.
+func (s *Server) TriggerBackendSync() {
 	lastSyncMu.Lock()
 	if time.Since(lastSyncTime) < 30*time.Second {
 		lastSyncMu.Unlock()
@@ -2627,47 +3287,86 @@ func (s *Server) triggerBackendSync() {
 	lastSyncTime = time.Now()
 	lastSyncMu.Unlock()
 
+	if s.cfg == nil {
+		return
+	}
 	registryURL := heartbeat.ResolveRegistryURL(s.cfg)
 	if registryURL == "" {
 		return
 	}
-	serverName := s.cfg.Server.Name
-	serverPort := s.cfg.Server.Port
+	nodeID := s.cfg.Server.NodeID
+	if nodeID == "" {
+		return
+	}
 	authToken := s.cfg.Server.AuthToken
-	downloadImages := s.cfg.Server.DownloadOtixImages
-	writeOtix := s.cfg.Server.WriteOtixAfterScan
+
+	var files []indexer.HostedFile
+	if s.indexer != nil {
+		files = s.indexer.Files()
+	}
+
 	go func() {
 		client := &http.Client{Timeout: 30 * time.Second}
-		targetURL := fmt.Sprintf("%s/v1/servers/scan-complete", registryURL)
-		localIP := heartbeat.GetLocalIP()
-		payload := map[string]any{
-			"server_name": serverName,
-			"port":        serverPort,
-			"auth_token":  authToken,
-			"local_endpoints": []string{
-				fmt.Sprintf("http://%s:%d", localIP, serverPort),
-				fmt.Sprintf("http://127.0.0.1:%d", serverPort),
-			},
-			"download_images": downloadImages,
-			"write_otix":      writeOtix,
-		}
-		data, err := json.Marshal(payload)
-		if err != nil {
-			return
-		}
-		req, err := http.NewRequest("POST", targetURL, bytes.NewReader(data))
-		if err != nil {
-			return
-		}
-		req.Header.Set("Content-Type", "application/json")
-		if authToken != "" {
-			req.Header.Set("Authorization", "Bearer "+authToken)
-		}
-		resp, err := client.Do(req)
-		if err != nil {
-			return
-		}
-		_ = resp.Body.Close()
+		baseAPI := heartbeat.NormalizeBaseAPI(registryURL)
+		manifestURL := fmt.Sprintf("%s/v1/nodes/%s/manifest/", baseAPI, nodeID)
+		_ = TransmitManifest(client, manifestURL, authToken, files)
 	}()
 }
+
+// TransmitManifest sends indexed files to the backend manifest ingest endpoint in chunks of 500 items.
+func TransmitManifest(client *http.Client, manifestURL, authToken string, files []indexer.HostedFile) error {
+	const chunkSize = 500
+	if len(files) == 0 {
+		payload := map[string]any{
+			"auth_token": authToken,
+			"files":      []indexer.HostedFile{},
+			"prune":      true,
+		}
+		return SendManifestPayload(client, manifestURL, authToken, payload)
+	}
+
+	for i := 0; i < len(files); i += chunkSize {
+		end := i + chunkSize
+		if end > len(files) {
+			end = len(files)
+		}
+		chunk := files[i:end]
+		isFirst := (i == 0)
+		isLast := (end == len(files))
+
+		payload := map[string]any{
+			"auth_token": authToken,
+			"files":      chunk,
+			"append":     !isFirst,
+			"prune":      isLast,
+		}
+		if err := SendManifestPayload(client, manifestURL, authToken, payload); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// SendManifestPayload transmits a JSON payload to the manifest endpoint with Bearer auth.
+func SendManifestPayload(client *http.Client, targetURL, authToken string, payload any) error {
+	data, err := json.Marshal(payload)
+	if err != nil {
+		return err
+	}
+	req, err := http.NewRequest("POST", targetURL, bytes.NewReader(data))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	if authToken != "" {
+		req.Header.Set("Authorization", "Bearer "+authToken)
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	return nil
+}
+
 

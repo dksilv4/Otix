@@ -1,5 +1,5 @@
 import { apiClient } from '@/lib/api/client'
-import { getDesktopAPI } from '@/lib/desktop/api'
+import { getDesktopAPI, isDesktop } from '@/lib/desktop/api'
 import { isLocalDesktopNodeId } from '../local-desktop-node'
 import { isGlobalProfileId } from './node-switcher'
 import type { DownloadConfig } from '@/features/downloads/types'
@@ -36,7 +36,7 @@ export async function fetchSourceOrganizePayload(
     }
   }
 
-  if (isLocalDesktopNodeId(sourceNodeId)) {
+  if (isDesktop() && isLocalDesktopNodeId(sourceNodeId)) {
     const api = getDesktopAPI()
     let isoDownloadPath = ''
     let scanOnLaunch = false
@@ -62,7 +62,7 @@ export async function fetchSourceOrganizePayload(
     }
   }
 
-  const res = await apiClient.get<Record<string, unknown>>(`/library/servers/${sourceNodeId}/organize`)
+  const res = await apiClient.get<Record<string, unknown>>(`/library/nodes/${sourceNodeId}/organize`)
   return res.data || {}
 }
 
@@ -70,11 +70,11 @@ export async function fetchSourcePathsPayload(
   sourceNodeId: number,
   dlConfig?: DownloadConfig | null,
 ): Promise<{ libraries: Array<{ name: string; path: string; kind?: string }>; downloadPath?: string }> {
-  if (isGlobalProfileId(sourceNodeId) || isLocalDesktopNodeId(sourceNodeId)) {
+  if (isGlobalProfileId(sourceNodeId) || (isDesktop() && isLocalDesktopNodeId(sourceNodeId))) {
     let libraries: Array<{ name: string; path: string; kind?: string }> = []
     let downloadPath = dlConfig?.downloadPath || ''
 
-    if (isLocalDesktopNodeId(sourceNodeId)) {
+    if (isDesktop() && isLocalDesktopNodeId(sourceNodeId)) {
       const api = getDesktopAPI()
       if (api?.getScanPaths) {
         try {
@@ -121,8 +121,8 @@ export async function fetchSourcePathsPayload(
   }
 
   const [libRes, desktopRes] = await Promise.all([
-    apiClient.get<any>(`/library/servers/${sourceNodeId}/libraries`).catch(() => ({ data: [] })),
-    apiClient.get<any>(`/library/servers/${sourceNodeId}/desktop`).catch(() => ({ data: {} })),
+    apiClient.get<any>(`/library/nodes/${sourceNodeId}/libraries`).catch(() => ({ data: [] })),
+    apiClient.get<any>(`/library/nodes/${sourceNodeId}/desktop`).catch(() => ({ data: {} })),
   ])
 
   const rawLibs = Array.isArray(libRes?.data) ? libRes.data : libRes?.data?.libraries || []
@@ -187,17 +187,17 @@ export async function replicateNodeSettings({
       }
 
       if (organizePayload) {
-        await apiClient.post(`/library/servers/${targetId}/organize`, organizePayload)
+        await apiClient.post(`/library/nodes/${targetId}/organize`, organizePayload)
       }
 
       if (pathsPayload) {
         if (pathsPayload.libraries.length > 0) {
-          await apiClient.put(`/library/servers/${targetId}/libraries`, {
+          await apiClient.put(`/library/nodes/${targetId}/libraries`, {
             libraries: pathsPayload.libraries,
           })
         }
         if (pathsPayload.downloadPath) {
-          await apiClient.post(`/library/servers/${targetId}/desktop`, {
+          await apiClient.post(`/library/nodes/${targetId}/desktop`, {
             games_download_path: pathsPayload.downloadPath,
           })
         }
@@ -292,7 +292,7 @@ export async function importNodeSettings({
     }
 
     // Apply to Local Desktop
-    if (isLocalDesktopNodeId(targetNodeId)) {
+    if (isDesktop() && isLocalDesktopNodeId(targetNodeId)) {
       const api = getDesktopAPI()
       if (api?.setDesktopSettings) {
         const desktopUpdates: Record<string, unknown> = {}
@@ -350,16 +350,16 @@ export async function importNodeSettings({
       payload.allowHypervisor = sourceOrganize.allowHypervisor ?? false
     }
 
-    await apiClient.post(`/library/servers/${targetNodeId}/organize`, payload)
+    await apiClient.post(`/library/nodes/${targetNodeId}/organize`, payload)
 
     if (copyPaths && sourcePaths) {
       if (sourcePaths.libraries.length > 0) {
-        await apiClient.put(`/library/servers/${targetNodeId}/libraries`, {
+        await apiClient.put(`/library/nodes/${targetNodeId}/libraries`, {
           libraries: sourcePaths.libraries,
         })
       }
       if (sourcePaths.downloadPath) {
-        await apiClient.post(`/library/servers/${targetNodeId}/desktop`, {
+        await apiClient.post(`/library/nodes/${targetNodeId}/desktop`, {
           games_download_path: sourcePaths.downloadPath,
         })
       }

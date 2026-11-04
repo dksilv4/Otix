@@ -210,8 +210,18 @@ export const useRunningGame = () => {
         try {
           if (api.getRunningGames) {
             const list = await api.getRunningGames()
-            if (Array.isArray(list) && list.length > 0) {
-              setRunningGames(list)
+            if (Array.isArray(list)) {
+              setRunningGames((prev) => {
+                const merged = list.map((item) => {
+                  const existing = prev.find((p) => p.game.id === item.game.id || (p.pid && p.pid === item.pid))
+                  if (existing && existing.fpsSnapshot && !item.fpsSnapshot) {
+                    return { ...item, fpsSnapshot: existing.fpsSnapshot }
+                  }
+                  return item
+                })
+                if (areRunningGamesEqual(prev, merged)) return prev
+                return merged
+              })
               return
             }
           }
@@ -226,6 +236,9 @@ export const useRunningGame = () => {
         }
       }
       void initGames()
+      const pollTimer = setInterval(() => {
+        void initGames()
+      }, 2000)
 
       // Listen for game started
       const unsubStart = api.onGameStarted((data: RunningGameData) => {
@@ -244,10 +257,15 @@ export const useRunningGame = () => {
 
       // Listen for live FPS updates
       const unsubFps = api.onFpsUpdate?.((data) => {
+        if (!data || !data.gameId) return
         setRunningGames((prev) => {
           if (prev.length === 0) return prev
-          return prev.map((g, index) => {
-            if (data?.gameId ? g.game.id === data.gameId : index === 0) {
+          let changed = false
+          const next = prev.map((g) => {
+            const matchesId = Boolean(data.gameId && g.game.id === data.gameId)
+            const matchesPid = Boolean(data.pid && g.pid === data.pid)
+            if (matchesId || matchesPid) {
+              changed = true
               return {
                 ...g,
                 fpsSnapshot: data,
@@ -255,10 +273,12 @@ export const useRunningGame = () => {
             }
             return g
           })
+          return changed ? next : prev
         })
       })
 
       return () => {
+        clearInterval(pollTimer)
         unsubStart()
         unsubEnd()
         unsubFps?.()
@@ -277,6 +297,8 @@ export const useRunningGame = () => {
     }
   }, [isDesktopEnv, clearTimer])
 
+  const hasReportedRunningRef = useRef(false)
+
   // When in desktop environment, sync running games to the backend so web browsers can display them
   useEffect(() => {
     if (!isDesktopEnv || !hasAccessToken()) return
@@ -284,6 +306,7 @@ export const useRunningGame = () => {
     const syncToBackend = async () => {
       try {
         if (runningGames.length > 0) {
+          hasReportedRunningRef.current = true
           const single = runningGames[0]
           await apiClient.post('/library/game-running', {
             running: true,
@@ -310,7 +333,8 @@ export const useRunningGame = () => {
               startTime: rg.startTime,
             })),
           })
-        } else {
+        } else if (hasReportedRunningRef.current) {
+          hasReportedRunningRef.current = false
           await apiClient.post('/library/game-running', {
             running: false,
             game: null,
@@ -332,7 +356,55 @@ export const useRunningGame = () => {
     }
   }, [isDesktopEnv, runningGames])
 
+  const cycleActiveGame = useCallback(async () => {
+    if (isDesktopEnv && window.desktopAPI?.cycleActiveGame) {
+      const next = await window.desktopAPI.cycleActiveGame()
+      if (next) {
+        setRunningGames((prev) => {
+          const list = [...prev]
+          const idx = list.findIndex((g) => g.game.id === next.game.id)
+          if (idx > 0) {
+            const [item] = list.splice(idx, 1)
+            list.unshift(item)
+          }
+          return list
+        })
+      }
+    } else {
+      try {
+        await apiClient.post('/library/game-active', { action: 'cycle' })
+        void executeWebCheck(true)
+      } catch {
+        // ignore
+      }
+    }
+  }, [isDesktopEnv])
+
+  const setActiveGame = useCallback(async (gameId: string) => {
+    if (isDesktopEnv && window.desktopAPI?.setActiveGame) {
+      const active = await window.desktopAPI.setActiveGame(gameId)
+      if (active) {
+        setRunningGames((prev) => {
+          const list = [...prev]
+          const idx = list.findIndex((g) => g.game.id === active.game.id)
+          if (idx > 0) {
+            const [item] = list.splice(idx, 1)
+            list.unshift(item)
+          }
+          return list
+        })
+      }
+    } else {
+      try {
+        await apiClient.post('/library/game-active', { gameId })
+        void executeWebCheck(true)
+      } catch {
+        // ignore
+      }
+    }
+  }, [isDesktopEnv])
+
   const runningGame = runningGames[0] ?? null
 
-  return { runningGame, runningGames, elapsedMs }
+  return { runningGame, runningGames, elapsedMs, cycleActiveGame, setActiveGame }
 }

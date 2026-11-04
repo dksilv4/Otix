@@ -1,7 +1,6 @@
 /* ── LauncherShelf — self-contained shelf: My Games + Popular tabs ── */
 
 import { useState } from 'react'
-import { MediaCard } from '@ui/molecules/media-card'
 import { LauncherMediaCard } from '@/features/launcher/components/molecules/launcher-media-card'
 import { LauncherFoundGames } from '@/features/launcher/components/organisms/launcher-found-games'
 import { usePopularGames } from '@/features/launcher/data/queries'
@@ -66,29 +65,11 @@ export const LauncherShelf = ({ id }: LauncherShelfProps) => {
           <div className="flex items-center justify-center h-32 w-full text-muted-foreground text-xs font-semibold">
             {emptyMessage}
           </div>
-        ) : shelfTab === 'my-games' ? (
-          localGames.map((g) => (
+        ) : (
+          activeGames.map((g) => (
             <LauncherMediaCard
               key={`shelf-${g.id}`}
               game={g}
-              className="w-[180px] shrink-0 snap-start"
-            />
-          ))
-        ) : (
-          popularGames.map((g) => (
-            <MediaCard
-              key={`shelf-${g.id}`}
-              id={g.id}
-              mediaType="game"
-              title={g.title}
-              posterUrl={g.posterUrl}
-              textlessPosterUrl={g.textlessPosterUrl}
-              backdropUrl={g.backdropUrl}
-              logoUrl={g.logoUrl}
-              logoColorGuess={g.logoColorGuess}
-              avgRating={g.avgRating}
-              ratingCount={g.ratingCount}
-              releaseDate={g.releaseDate}
               className="w-[180px] shrink-0 snap-start"
             />
           ))

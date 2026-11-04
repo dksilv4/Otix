@@ -187,7 +187,7 @@ export const NodesViewSwitcher = ({
               [
                 { id: 'all', label: 'All Items' },
                 { id: 'nodes', label: 'Nodes' },
-                { id: 'machines', label: 'Server Machines' },
+                { id: 'machines', label: 'Machines' },
                 { id: 'storage', label: 'Storage' },
                 { id: 'game_servers', label: 'Game Servers' },
               ] as const

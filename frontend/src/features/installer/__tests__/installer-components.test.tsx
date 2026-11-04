@@ -23,7 +23,7 @@ describe('Installer Components', () => {
     })
   })
 
-  it('renders InstallerWelcomeStep with hero branding and features', () => {
+  it('renders InstallerWelcomeStep with ultra minimalist branding and actions', () => {
     const onGetStarted = vi.fn()
     const onQuickInstall = vi.fn()
     const onExit = vi.fn()
@@ -31,19 +31,19 @@ describe('Installer Components', () => {
     render(
       <InstallerWelcomeStep
         version="0.1.24"
+        installPath="C:\Program Files\Otix"
         onGetStarted={onGetStarted}
         onQuickInstall={onQuickInstall}
         onExit={onExit}
       />,
     )
 
-    expect(screen.getByText('The All-In-One Gaming Command Center')).toBeDefined()
-    expect(screen.getByText('v0.1.24 · Public Preview')).toBeDefined()
-    expect(screen.getByText('Unified Game Library')).toBeDefined()
-    expect(screen.getByText('CS2 & Live Game HUD')).toBeDefined()
-    expect(screen.getByRole('button', { name: /Get Started/i })).toBeDefined()
-    expect(screen.getByRole('button', { name: /Quick Install/i })).toBeDefined()
-    expect(screen.getByRole('button', { name: /Exit Setup/i })).toBeDefined()
+    expect(screen.getByRole('heading', { name: 'Otix' })).toBeDefined()
+    expect(screen.getByText('v0.1.24')).toBeDefined()
+    expect(screen.getByRole('button', { name: /Install Now/i })).toBeDefined()
+    expect(screen.getByRole('button', { name: /Options/i })).toBeDefined()
+    expect(screen.getByRole('button', { name: /Exit/i })).toBeDefined()
+    expect(screen.getByText(/C:\\Program Files\\Otix/i)).toBeDefined()
   })
 
   it('renders InstallerConfigStep with correct version and path', () => {
@@ -79,7 +79,7 @@ describe('Installer Components', () => {
     expect(screen.getByText('Create Desktop shortcut')).toBeDefined()
     expect(screen.getByText('Create Start Menu shortcut')).toBeDefined()
     expect(screen.getByRole('button', { name: 'Install Otix' })).toBeDefined()
-    expect(screen.getByRole('button', { name: '← Back' })).toBeDefined()
+    expect(screen.getAllByRole('button', { name: /Back/i }).length).toBeGreaterThan(0)
   })
 
   it('renders InstallerProgressStep with percentage and status', () => {
@@ -95,19 +95,20 @@ describe('Installer Components', () => {
     expect(screen.getAllByText('45%').length).toBeGreaterThan(0)
   })
 
-  it('renders InstallerCompleteStep with launch button', () => {
+  it('renders InstallerCompleteStep with launch button and close button', () => {
     const onFinish = vi.fn()
+    const onClose = vi.fn()
     render(
       <InstallerCompleteStep
         version="0.1.24"
-        launchOnExit={true}
-        onLaunchOnExitChange={vi.fn()}
         onFinish={onFinish}
+        onClose={onClose}
       />,
     )
 
     expect(screen.getByText('Ready to Play!')).toBeDefined()
-    expect(screen.getByText('Launch Otix')).toBeDefined()
+    expect(screen.getByRole('button', { name: 'Launch Otix' })).toBeDefined()
+    expect(screen.getByRole('button', { name: 'Close' })).toBeDefined()
   })
 
   it('renders UninstallerView with confirmation prompts', () => {

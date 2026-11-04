@@ -1,6 +1,7 @@
 package indexer_test
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -47,6 +48,11 @@ func TestCleanTitleFromFilename(t *testing.T) {
 		{"Elden_Ring_dodi_repack.exe", "Elden Ring"},
 		{"Super_Mario_64.iso", "Super Mario 64"},
 		{"Hades.II.macOS.v1.0.dmg", "Hades Ii"},
+		{"Alien.Isolation.iso", "Alien Isolation"},
+		{"Machinarium.exe", "Machinarium"},
+		{"RuneScape.exe", "Rune Scape"},
+		{"Hitman.World.of.Assassination.exe", "Hitman World Of Assassination"},
+		{"Ghost.of.Tsushima.Director's.Cut.TENOKE.iso", "Ghost Of Tsushima Director's Cut"},
 	}
 
 	for _, tt := range tests {
@@ -256,7 +262,7 @@ func TestScanAllSkipsJunkWithEmptyAllowlist(t *testing.T) {
 		Name: "Games",
 		Path: tmpDir,
 		Kind: "game",
-		// Empty allowlist used to index every file — must still stay game-only.
+		// Empty allowlist used to index every file â€” must still stay game-only.
 	}})
 	files := idx.ScanAll()
 
@@ -267,6 +273,55 @@ func TestScanAllSkipsJunkWithEmptyAllowlist(t *testing.T) {
 		if f.FormatCategory == "file" {
 			t.Fatalf("junk file was indexed: %+v", f)
 		}
+	}
+}
+
+func TestFindGameRootFolder(t *testing.T) {
+	tests := []struct {
+		name         string
+		candidate    string
+		lib          string
+		wantRootName string
+	}{
+		{
+			name:         "Standard installed game with bin/x64",
+			candidate:    "/Games/The Witcher 3/bin/x64/witcher3.exe",
+			lib:          "/Games",
+			wantRootName: "The Witcher 3",
+		},
+		{
+			name:         "Unreal Engine game with project folder Phoenix",
+			candidate:    "/Games/Hogwarts Legacy/Phoenix/Binaries/Win64/HogwartsLegacy.exe",
+			lib:          "/Games",
+			wantRootName: "Hogwarts Legacy",
+		},
+		{
+			name:         "Unreal Engine game with b1 project folder",
+			candidate:    "/Games/Black Myth Wukong/b1/Binaries/Win64/b1-Win64-Shipping.exe",
+			lib:          "/Games",
+			wantRootName: "Black Myth Wukong",
+		},
+		{
+			name:         "Single-folder game scan where all rel parts are generic",
+			candidate:    "/Games/Cyberpunk 2077/bin/x64/Cyberpunk2077.exe",
+			lib:          "/Games/Cyberpunk 2077",
+			wantRootName: "Cyberpunk 2077",
+		},
+		{
+			name:         "Steam common library with nested subfolder",
+			candidate:    "/SteamLibrary/steamapps/common/Portal 2/portal2/portal2.exe",
+			lib:          "/SteamLibrary",
+			wantRootName: "Portal 2",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, rootName := indexer.FindGameRootFolder(tt.candidate, tt.lib)
+			if rootName != tt.wantRootName {
+				t.Errorf("got %q, want %q", rootName, tt.wantRootName)
+			}
+		})
 	}
 }
 
@@ -561,6 +616,118 @@ func TestScanAllTestGamesLibrary(t *testing.T) {
 	t.Logf("Total games indexed from test_games_library: %d", len(indexed))
 	if len(indexed) < 50 {
 		t.Errorf("Expected at least 50 games indexed, got %d", len(indexed))
+	}
+}
+
+func TestStorageIndexerOptimizedPS5DumpScanning(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "otix_ps5_optimized_scan_test_*")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	// 1. Root PS5 game dump: Hollow Knight Silksong [PS5] [PPSA12544]
+	hkDir := filepath.Join(tmpDir, "Hollow Knight Silksong [PS5] [PPSA12544]")
+	hkSceSys := filepath.Join(hkDir, "sce_sys")
+	hkMedia := filepath.Join(hkDir, "Media", "assets")
+	hkModules := filepath.Join(hkDir, "sce_module")
+	for _, d := range []string{hkSceSys, hkMedia, hkModules} {
+		if err := os.MkdirAll(d, 0755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	_ = os.WriteFile(filepath.Join(hkDir, "eboot.bin"), []byte("ps5 eboot binary data"), 0644)
+	paramHk := `{
+		"titleId": "PPSA12544",
+		"localizedParameters": {
+			"defaultLanguage": "en-GB",
+			"en-GB": { "titleName": "Hollow Knight: Silksong" }
+		}
+	}`
+	_ = os.WriteFile(filepath.Join(hkSceSys, "param.json"), []byte(paramHk), 0644)
+	// Create 30 internal files that should NEVER be scanned individually
+	for i := 0; i < 30; i++ {
+		_ = os.WriteFile(filepath.Join(hkMedia, fmt.Sprintf("texture_%d.dat", i)), []byte("texture"), 0644)
+		_ = os.WriteFile(filepath.Join(hkModules, fmt.Sprintf("module_%d.prx", i)), []byte("prx"), 0644)
+	}
+
+	// 2. Scene release containing nested app0 dump: Rayman.30th.Anniversary.Edition.PS5-DUPLEX
+	raymanDir := filepath.Join(tmpDir, "Rayman.30th.Anniversary.Edition.PS5-DUPLEX")
+	raymanApp0 := filepath.Join(raymanDir, "PPSA33016-app0")
+	raymanSceSys := filepath.Join(raymanApp0, "sce_sys")
+	raymanAssets := filepath.Join(raymanApp0, "assets", "levels")
+	for _, d := range []string{raymanSceSys, raymanAssets} {
+		if err := os.MkdirAll(d, 0755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	_ = os.WriteFile(filepath.Join(raymanDir, "duplex.nfo"), []byte("nfo"), 0644)
+	_ = os.WriteFile(filepath.Join(raymanDir, "duplex-rayman.30th.anniversary.edition.ps5.sfv"), []byte("sfv"), 0644)
+	_ = os.WriteFile(filepath.Join(raymanApp0, "eboot.bin"), []byte("rayman ps5 binary"), 0644)
+	paramRayman := `{
+		"titleId": "PPSA33016",
+		"localizedParameters": {
+			"defaultLanguage": "en-US",
+			"en-US": { "titleName": "Rayman 30th Anniversary Edition" }
+		}
+	}`
+	_ = os.WriteFile(filepath.Join(raymanSceSys, "param.json"), []byte(paramRayman), 0644)
+	for i := 0; i < 30; i++ {
+		_ = os.WriteFile(filepath.Join(raymanAssets, fmt.Sprintf("level_%d.bin", i)), []byte("level"), 0644)
+	}
+
+	libraries := []config.LibraryConfig{
+		{
+			Name: "PS5Library",
+			Path: tmpDir,
+			Kind: "game",
+		},
+	}
+
+	idx := indexer.NewStorageIndexer(libraries)
+	files := idx.ScanAll()
+
+	if len(files) != 2 {
+		t.Fatalf("expected exactly 2 PS5 games indexed, got %d: %+v", len(files), files)
+	}
+
+	status := idx.GetStatus()
+	// Total files in directory tree is >95, but scanner should have skipped internal dump files completely!
+	if status.FilesScanned > 20 {
+		t.Errorf("expected scanner to skip internal dump files, but scanned %d files", status.FilesScanned)
+	}
+
+	titles := make(map[string]indexer.HostedFile)
+	for _, f := range files {
+		titles[f.GameTitle] = f
+	}
+
+	hk, ok := titles["Hollow Knight: Silksong"]
+	if !ok {
+		t.Fatalf("missing 'Hollow Knight: Silksong' in indexed files: %+v", files)
+	}
+	if hk.Platform != "PS5" {
+		t.Errorf("expected platform 'PS5', got %q", hk.Platform)
+	}
+	if hk.FormatCategory != "game" {
+		t.Errorf("expected format category 'game', got %q", hk.FormatCategory)
+	}
+	if hk.Filename != "eboot.bin" {
+		t.Errorf("expected Filename 'eboot.bin', got %q", hk.Filename)
+	}
+
+	rayman, ok := titles["Rayman 30th Anniversary Edition"]
+	if !ok {
+		t.Fatalf("missing 'Rayman 30th Anniversary Edition' in indexed files: %+v", files)
+	}
+	if rayman.Platform != "PS5" {
+		t.Errorf("expected platform 'PS5', got %q", rayman.Platform)
+	}
+	if rayman.FormatCategory != "game" {
+		t.Errorf("expected format category 'game', got %q", rayman.FormatCategory)
+	}
+	if rayman.Filename != "eboot.bin" {
+		t.Errorf("expected Filename 'eboot.bin', got %q", rayman.Filename)
 	}
 }
 

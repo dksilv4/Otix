@@ -7,7 +7,7 @@ import { isLocalDesktopNode } from '../local-desktop-node'
 import { getOSLabel } from './server-machines'
 import { formatBytes } from '@/lib/utils'
 import { isDesktop } from '@/lib/desktop/api'
-import { Network, FolderOpen, Sparkles, Wand2, Link2 } from 'lucide-react'
+import { Network, FolderOpen, Sparkles, Wand2, Link2, Cpu, SlidersHorizontal, Tv } from 'lucide-react'
 import type { ComponentType } from 'react'
 
 export const getNavPillsTopOffset = (isMap: boolean): string => {
@@ -18,7 +18,7 @@ export const getNavPillsTopOffset = (isMap: boolean): string => {
   return desktop ? 'pt-24 sm:pt-28' : 'pt-16 sm:pt-20'
 }
 
-export type NodesActiveTab = 'infrastructure' | 'paths' | 'organize' | 'connections' | 'proposals'
+export type NodesActiveTab = 'infrastructure' | 'paths' | 'organize' | 'connections' | 'machine' | 'software' | 'overlay' | 'proposals'
 
 export const NODES_ACTIVE_TAB_STORAGE_KEY = 'otix:nodes-active-tab'
 
@@ -29,16 +29,25 @@ export const resolveNodesActiveTabFromHash = (hash: string | null | undefined): 
     clean === 'paths' ||
     clean === 'organize' ||
     clean === 'connections' ||
+    clean === 'machine' ||
+    clean === 'hardware' ||
+    clean === 'software' ||
+    clean === 'services' ||
+    clean === 'overlay' ||
+    clean === 'hud' ||
     clean === 'proposals' ||
     clean === 'infrastructure'
   ) {
+    if (clean === 'hardware') return 'machine'
+    if (clean === 'services') return 'software'
+    if (clean === 'hud') return 'overlay'
     return clean
   }
   return null
 }
 
 export const loadStoredNodesActiveTab = (): NodesActiveTab => {
-  if (typeof window === 'undefined') return 'infrastructure'
+  if (typeof window === 'undefined') return 'paths'
   try {
     const fromHash = resolveNodesActiveTabFromHash(window.location.hash)
     if (fromHash) return fromHash
@@ -47,6 +56,9 @@ export const loadStoredNodesActiveTab = (): NodesActiveTab => {
       search === 'paths' ||
       search === 'organize' ||
       search === 'connections' ||
+      search === 'machine' ||
+      search === 'software' ||
+      search === 'overlay' ||
       search === 'proposals' ||
       search === 'infrastructure'
     ) {
@@ -57,15 +69,17 @@ export const loadStoredNodesActiveTab = (): NodesActiveTab => {
       stored === 'paths' ||
       stored === 'organize' ||
       stored === 'connections' ||
-      stored === 'proposals' ||
-      stored === 'infrastructure'
+      stored === 'machine' ||
+      stored === 'software' ||
+      stored === 'overlay' ||
+      stored === 'proposals'
     ) {
       return stored
     }
   } catch {
     // ignore
   }
-  return 'infrastructure'
+  return 'paths'
 }
 
 export const saveStoredNodesActiveTab = (tab: NodesActiveTab): void => {
@@ -81,21 +95,21 @@ export interface NodesTabDefinition {
   id: NodesActiveTab
   label: string
   description: string
-  iconName: 'Network' | 'FolderOpen' | 'Sparkles' | 'Link2' | 'Wand2'
+  iconName: 'Network' | 'FolderOpen' | 'Sparkles' | 'Link2' | 'Cpu' | 'SlidersHorizontal' | 'Tv' | 'Wand2'
 }
 
 export const NODES_WORKSPACE_TABS: NodesTabDefinition[] = [
   {
-    id: 'infrastructure',
-    label: 'Infrastructure',
-    description: 'Topology map, connected worker daemons, and homelab servers',
-    iconName: 'Network',
+    id: 'paths',
+    label: 'Drive Locations',
+    description: 'Monitored game drives, folders, and storage locations per device',
+    iconName: 'FolderOpen',
   },
   {
-    id: 'paths',
-    label: 'Paths',
-    description: 'Library scan locations, ISO folders, and game storage directories per node',
-    iconName: 'FolderOpen',
+    id: 'infrastructure',
+    label: 'Topology (Advanced)',
+    description: 'Topology map, connected worker daemons, and homelab servers',
+    iconName: 'Network',
   },
   {
     id: 'organize',
@@ -108,6 +122,24 @@ export const NODES_WORKSPACE_TABS: NodesTabDefinition[] = [
     label: 'Connections',
     description: 'Downloader clients, indexers, and arr service integrations per node',
     iconName: 'Link2',
+  },
+  {
+    id: 'machine',
+    label: 'Machine',
+    description: 'Host CPU, GPU, memory, disks telemetry, and attached displays arrangement',
+    iconName: 'Cpu',
+  },
+  {
+    id: 'software',
+    label: 'Services',
+    description: 'Daemon startup on boot, automated save file snapshots, and network sharing',
+    iconName: 'SlidersHorizontal',
+  },
+  {
+    id: 'overlay',
+    label: 'Overlay & HUD',
+    description: 'In-game FPS overlay, docking positions, monitor targeting, and process detection',
+    iconName: 'Tv',
   },
   {
     id: 'proposals',
@@ -127,6 +159,12 @@ export const getNodesTabIcon = (tabId: NodesActiveTab): ComponentType<{ classNam
       return Sparkles
     case 'connections':
       return Link2
+    case 'machine':
+      return Cpu
+    case 'software':
+      return SlidersHorizontal
+    case 'overlay':
+      return Tv
     case 'proposals':
       return Wand2
   }
@@ -267,7 +305,7 @@ export const flattenInfrastructureItems = ({
       entityId: node.id,
       name: node.name,
       type: 'node',
-      typeLabel: isLocal ? 'Companion Node' : 'Worker Node',
+      typeLabel: isLocal ? 'Otix App' : 'Worker Node',
       isOnline: Boolean(node.isOnline),
       latencyMs: null,
       homeId: node.homeId,
@@ -275,7 +313,7 @@ export const flattenInfrastructureItems = ({
       endpoint: node.localUrl || node.primaryUrl || '',
       storageSummary,
       storagePercent,
-      details: isLocal ? 'Running locally on this device' : undefined,
+      details: isLocal ? 'Running in local Otix app' : undefined,
       raw: { node },
     })
   }

@@ -83,7 +83,7 @@ describe('CopyImportNodeSettingsCard', () => {
 
     await waitFor(() => {
       expect(apiClient.post).toHaveBeenCalledWith(
-        '/library/servers/1/organize',
+        '/library/nodes/1/organize',
         expect.objectContaining({
           namingTemplate: '{Title} ({Year})/{Title}.{ext}',
           autoOrganizeEnabled: true,

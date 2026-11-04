@@ -104,7 +104,7 @@ export const UserProfilePage = () => {
 
   return (
     <div id="user-profile-page" className="w-full flex flex-col pb-12">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6 w-full flex flex-col">
+      <div className="w-full px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6 flex flex-col">
       <Helmet>
         <title>{`${profile.username} - Otix`}</title>
         <meta
@@ -417,7 +417,7 @@ export const UserProfilePage = () => {
           ))}
         </div>
       ) : isOwner ? (
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-12 w-full">
+        <div className="w-full px-4 sm:px-6 lg:px-8 mt-12">
           <div className="py-12 flex flex-col items-center justify-center text-center rounded-2xl bg-[var(--dk-surface-base)] shadow-sm">
             <Sparkles className="h-6 w-6 text-primary/70 mb-2" />
             <p className="text-sm font-semibold text-foreground">
@@ -429,7 +429,7 @@ export const UserProfilePage = () => {
           </div>
         </div>
       ) : (
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-12 w-full">
+        <div className="w-full px-4 sm:px-6 lg:px-8 mt-12">
           <div className="py-12 flex flex-col items-center justify-center text-center rounded-2xl bg-[var(--dk-surface-base)] shadow-sm">
             <Lock className="h-6 w-6 text-muted-foreground/40 mb-2" />
             <p className="text-sm font-semibold text-foreground">
@@ -444,7 +444,7 @@ export const UserProfilePage = () => {
 
       {/* Add Section Button (Owner only) */}
       {isOwner && (
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-12 w-full">
+        <div className="w-full px-4 sm:px-6 lg:px-8 mt-12">
           <AddSectionButton
             currentSections={activeSections}
             onRemoveSection={removeSection}

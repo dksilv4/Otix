@@ -24,7 +24,7 @@ export type {
 
 // ── Query Keys ──
 export const nodeKeys = {
-  all: ['game-servers'] as const,
+  all: ['nodes'] as const,
   lists: () => [...nodeKeys.all, 'list'] as const,
   games: () => [...nodeKeys.all, 'games'] as const,
 }
@@ -33,26 +33,25 @@ export const serverKeys = nodeKeys
 
 // ── Cache Operations ──
 
-export const CACHED_SERVERS_KEY = 'otix:cached-servers'
-export const CACHED_NODES_KEY = CACHED_SERVERS_KEY
+export const CACHED_NODES_KEY = 'otix:cached-nodes'
+export const CACHED_SERVERS_KEY = CACHED_NODES_KEY
 
 import { hasAccessToken } from '@/lib/config'
-import { LOCAL_DESKTOP_NODE_ID } from '@/features/settings/local-desktop-node'
 
 export function getCachedNodes(): OtixNode[] {
   if (typeof window === 'undefined') return []
   if (!hasAccessToken()) return []
   try {
-    const raw = localStorage.getItem(CACHED_NODES_KEY)
+    const raw = localStorage.getItem(CACHED_NODES_KEY) || localStorage.getItem('otix:cached-servers')
     if (!raw) return []
     const parsed = JSON.parse(raw)
     if (!Array.isArray(parsed)) return []
-    // Filter out obsolete legacy synthetic nodes (e.g. retired backend node with id = -2)
+    // Filter out obsolete legacy synthetic nodes (e.g. retired backend node with id = -2 or -1)
     const valid = parsed.filter(
       (node): node is OtixNode =>
         Boolean(node) &&
         typeof (node as { id?: unknown }).id === 'number' &&
-        ((node as { id: number }).id > 0 || (node as { id: number }).id === LOCAL_DESKTOP_NODE_ID),
+        (node as { id: number }).id > 0,
     )
     if (valid.length !== parsed.length) {
       saveCachedNodes(valid)
@@ -105,7 +104,7 @@ export function useNodes(options?: { enabled?: boolean; refetchInterval?: number
     queryKey: nodeKeys.lists(),
     queryFn: async () => {
       try {
-        const { data } = await apiClient.get<OtixNode[]>('/library/servers')
+        const { data } = await apiClient.get<OtixNode[]>('/library/nodes')
         const list = Array.isArray(data) ? data : []
         saveCachedNodes(list)
         return list
@@ -197,7 +196,7 @@ export function useAutoClaimPendingServers(enabled: boolean) {
         claimCode?: string
         claim_code?: string
         claimed?: boolean
-      }>>('/library/servers/pending')
+      }>>('/library/nodes/pending')
       return (data || []).map(mapPendingRow)
     },
     enabled: active,
@@ -293,7 +292,7 @@ export function useScanNode(nodeId?: number) {
     mutationFn: async () => {
       if (!nodeId) throw new Error('No node selected')
       const { data } = await apiClient.post<{ status?: string; totalFiles?: number }>(
-        `/library/servers/${nodeId}/scan`
+        `/library/nodes/${nodeId}/scan`
       )
       return data
     },
@@ -301,8 +300,10 @@ export function useScanNode(nodeId?: number) {
       queryClient.invalidateQueries({ queryKey: nodeKeys.games() })
     },
     onError: () => {
-      queryClient.invalidateQueries({ queryKey: ['game-servers'] })
+      queryClient.invalidateQueries({ queryKey: nodeKeys.all })
+      queryClient.invalidateQueries({ queryKey: ['nodes'] })
       queryClient.invalidateQueries({ queryKey: ['library', 'servers'] })
+      queryClient.invalidateQueries({ queryKey: ['library', 'nodes'] })
     },
   })
 }
@@ -319,7 +320,7 @@ export function useCreateNode() {
       auth_token?: string
       is_local?: boolean
     }) => {
-      const { data } = await apiClient.post<OtixNode>('/library/servers', payload)
+      const { data } = await apiClient.post<OtixNode>('/library/nodes', payload)
       return data
     },
     onSuccess: () => {
@@ -343,7 +344,7 @@ export function useUpdateNode() {
       is_local?: boolean
     }) => {
       const { id, ...body } = payload
-      const { data } = await apiClient.patch<OtixNode>(`/library/servers/${id}`, body)
+      const { data } = await apiClient.patch<OtixNode>(`/library/nodes/${id}`, body)
       return data
     },
     onSuccess: () => {
@@ -362,7 +363,7 @@ export function useDeleteNode() {
         return
       }
       try {
-        await apiClient.delete(`/library/servers/${nodeId}`)
+        await apiClient.delete(`/library/nodes/${nodeId}`)
       } catch (err: unknown) {
         // If the node was already removed on the backend, treat 404 as successful disconnect
         const status = (err as { response?: { status?: number } })?.response?.status
@@ -391,7 +392,7 @@ export function usePingNode() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async (nodeId: number) => {
-      const { data } = await apiClient.post(`/library/servers/${nodeId}/ping`)
+      const { data } = await apiClient.post(`/library/nodes/${nodeId}/ping`)
       return data
     },
     onSuccess: () => {
@@ -411,7 +412,7 @@ export function useClaimNode() {
       server_name?: string
       is_local?: boolean
     }) => {
-      const { data } = await apiClient.post<OtixNode>('/library/servers/claim', payload)
+      const { data } = await apiClient.post<OtixNode>('/library/nodes/claim', payload)
       return data
     },
     onSuccess: () => {
@@ -425,7 +426,7 @@ export const useClaimGameServer = useClaimNode
 export function useProbeNode() {
   return useMutation({
     mutationFn: async (nodeId: number) => {
-      const { data } = await apiClient.post<NodeProbeResult>(`/library/servers/${nodeId}/probe`)
+      const { data } = await apiClient.post<NodeProbeResult>(`/library/nodes/${nodeId}/probe`)
       return data
     },
   })
@@ -448,7 +449,7 @@ export function usePendingNodes(options?: { enabled?: boolean }) {
           claimCode?: string
           claim_code?: string
           claimed?: boolean
-        }>>('/library/servers/pending')
+        }>>('/library/nodes/pending')
         .catch(() => ({ data: [] }))
 
       const localPromise = probeLocalGameNode().catch(() => null)
@@ -479,7 +480,7 @@ export function useUnclaimLocalNode() {
       const ok = await unclaimLocalGameNode(fetch, authToken)
       if (!ok) throw new Error('Failed to unclaim local node')
       try {
-        await apiClient.post('/api/v1/servers/unclaim', { authToken })
+        await apiClient.post('/library/nodes/unclaim', { authToken })
       } catch {
         // Backend record may have already been cleaned or unreachable
       }

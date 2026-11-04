@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api/client';
+import { searchNodeIndexersDirect } from '../utils/node-search';
 import type {
   ConnectionTestResult,
   DownloadReleasePayload,
@@ -31,7 +32,8 @@ export const usenetKeys = {
 
 export const nodeUsenetKeys = usenetKeys;
 
-export const isValidNodeId = (id?: number): id is number => typeof id === 'number' && id > 0;
+export const isValidNodeId = (id?: number): id is number =>
+  typeof id === 'number' && id > 0;
 
 /** Hook to fetch Usenet configuration from the connected node. */
 export function useNodeUsenetConfig(nodeId?: number) {
@@ -39,10 +41,19 @@ export function useNodeUsenetConfig(nodeId?: number) {
     queryKey: usenetKeys.config(nodeId),
     queryFn: async () => {
       if (!isValidNodeId(nodeId)) throw new Error('No valid node selected');
-      const { data } = await apiClient.get<ServerUsenetConfig>(
-        `/library/servers/${nodeId}/usenet/config`
-      );
-      return data;
+      try {
+        const { data } = await apiClient.get<ServerUsenetConfig>(
+          `/library/nodes/${nodeId}/usenet/config`
+        );
+        return data;
+      } catch {
+        return {
+          enabled: false,
+          sabnzbd: { configured: false, has_api_key: false, hasApiKey: false, provider_type: 'downloader-provider' },
+          prowlarr: { configured: false, has_api_key: false, hasApiKey: false, provider_type: 'indexer-provider' },
+          g4u: { configured: false, has_api_key: false, hasApiKey: false, provider_type: 'indexer-provider' },
+        } as unknown as ServerUsenetConfig;
+      }
     },
     enabled: isValidNodeId(nodeId),
     retry: false,
@@ -59,7 +70,7 @@ export function useSaveNodeUsenetConfig(nodeId?: number) {
     mutationFn: async (payload: Partial<ServerUsenetConfig>) => {
       if (!isValidNodeId(nodeId)) throw new Error('No valid node selected');
       const { data } = await apiClient.post(
-        `/library/servers/${nodeId}/usenet/config`,
+        `/library/nodes/${nodeId}/usenet/config`,
         payload
       );
       return data;
@@ -84,7 +95,7 @@ export function useTestSabnzbd(nodeId?: number) {
     } | void) => {
       if (!isValidNodeId(nodeId)) throw new Error('No valid node selected');
       const { data } = await apiClient.post<ConnectionTestResult>(
-        `/library/servers/${nodeId}/usenet/test-sabnzbd`,
+        `/library/nodes/${nodeId}/usenet/test-sabnzbd`,
         payload || {}
       );
       return data;
@@ -104,7 +115,7 @@ export function useTestProwlarr(nodeId?: number) {
     } | void) => {
       if (!isValidNodeId(nodeId)) throw new Error('No valid node selected');
       const { data } = await apiClient.post<ConnectionTestResult>(
-        `/library/servers/${nodeId}/usenet/test-prowlarr`,
+        `/library/nodes/${nodeId}/usenet/test-prowlarr`,
         payload || {}
       );
       return data;
@@ -119,7 +130,7 @@ export function useSaveNodeG4UConfig(nodeId?: number) {
     mutationFn: async (payload: { url?: string; api_key?: string; enabled?: boolean }) => {
       if (!isValidNodeId(nodeId)) throw new Error('No valid node selected');
       const { data } = await apiClient.post(
-        `/library/servers/${nodeId}/usenet/config`,
+        `/library/nodes/${nodeId}/usenet/config`,
         { g4u: payload }
       );
       return data;
@@ -141,7 +152,7 @@ export function useTestG4U(nodeId?: number) {
     } | void) => {
       if (!isValidNodeId(nodeId)) throw new Error('No valid node selected');
       const { data } = await apiClient.post<ConnectionTestResult>(
-        `/library/servers/${nodeId}/usenet/test-g4u`,
+        `/library/nodes/${nodeId}/usenet/test-g4u`,
         payload || {}
       );
       return data;
@@ -197,11 +208,7 @@ export function useNodeUsenetSearch(nodeId?: number, query?: string) {
       const results = await Promise.all(
         queries.map(async (searchQuery, idx) => {
           try {
-            const { data } = await apiClient.get<unknown>(
-              `/library/servers/${nodeId}/usenet/search`,
-              { params: { query: searchQuery } }
-            );
-            return Array.isArray(data) ? data : [];
+            return await searchNodeIndexersDirect(nodeId, searchQuery);
           } catch (err) {
             // Re-throw if primary search query fails so React Query populates the error state in the UI.
             if (idx === 0) throw err;
@@ -236,7 +243,7 @@ export function useStartNodeDownload(nodeId?: number) {
     mutationFn: async (payload: DownloadReleasePayload) => {
       if (!isValidNodeId(nodeId)) throw new Error('No valid node selected');
       const { data } = await apiClient.post(
-        `/library/servers/${nodeId}/usenet/download`,
+        `/library/nodes/${nodeId}/usenet/download`,
         payload
       );
       return data;
@@ -257,7 +264,7 @@ export function useNodeUsenetHistory(nodeId?: number, pollingIntervalMs: number 
     queryFn: async () => {
       if (!isValidNodeId(nodeId)) throw new Error('No valid node selected');
       const { data } = await apiClient.get<ServerDownloadHistoryData>(
-        `/library/servers/${nodeId}/usenet/history`,
+        `/library/nodes/${nodeId}/usenet/history`,
         { params: { limit: 50 } }
       );
       return Array.isArray(data?.items) ? data.items : [];
@@ -279,7 +286,7 @@ export function useNodeUsenetQueue(nodeId?: number, pollingIntervalMs: number = 
     queryFn: async () => {
       if (!isValidNodeId(nodeId)) throw new Error('No valid node selected');
       const { data } = await apiClient.get<ServerDownloadQueueData>(
-        `/library/servers/${nodeId}/usenet/queue`
+        `/library/nodes/${nodeId}/usenet/queue`
       );
       return data;
     },
@@ -308,7 +315,7 @@ export function useCancelNodeQueueDownload(nodeId?: number) {
     mutationFn: async (nzoId: string) => {
       if (!isValidNodeId(nodeId)) throw new Error('No valid node selected');
       const { data } = await apiClient.delete(
-        `/library/servers/${nodeId}/usenet/queue/${nzoId}`
+        `/library/nodes/${nodeId}/usenet/queue/${nzoId}`
       );
       return data;
     },
@@ -328,7 +335,7 @@ export function useSaveNodeSabnzbdConfig(nodeId?: number) {
     mutationFn: async (sabnzbd: Partial<ServerSabnzbdConfig>) => {
       if (!isValidNodeId(nodeId)) throw new Error('No valid node selected');
       const { data } = await apiClient.post<SaveServerUsenetConfigResponse>(
-        `/library/servers/${nodeId}/usenet/config`,
+        `/library/nodes/${nodeId}/usenet/config`,
         { sabnzbd }
       );
       return data;
@@ -350,7 +357,7 @@ export function useSaveNodeProwlarrConfig(nodeId?: number) {
     mutationFn: async (prowlarr: Partial<ServerProwlarrConfig>) => {
       if (!isValidNodeId(nodeId)) throw new Error('No valid node selected');
       const { data } = await apiClient.post<SaveServerUsenetConfigResponse>(
-        `/library/servers/${nodeId}/usenet/config`,
+        `/library/nodes/${nodeId}/usenet/config`,
         { prowlarr }
       );
       return data;
@@ -376,7 +383,7 @@ export function useProwlarrIndexers(
       if (!isValidNodeId(nodeId)) throw new Error('No valid node selected');
       const params = protocol && protocol !== 'all' ? { protocol } : undefined;
       const { data } = await apiClient.get<unknown>(
-        `/library/servers/${nodeId}/prowlarr/indexers`,
+        `/library/nodes/${nodeId}/prowlarr/indexers`,
         { params }
       );
       return normalizeProwlarrIndexers(data);
@@ -395,7 +402,7 @@ export function useSyncProwlarrIndexers(nodeId?: number) {
       if (!isValidNodeId(nodeId)) throw new Error('No valid node selected');
       const params = protocol && protocol !== 'all' ? { protocol } : undefined;
       const { data } = await apiClient.post<ProwlarrSyncResponse>(
-        `/library/servers/${nodeId}/prowlarr/sync`,
+        `/library/nodes/${nodeId}/prowlarr/sync`,
         params ? { protocol } : {},
         { params }
       );
@@ -415,7 +422,7 @@ export function usePauseSabnzbdQueue(nodeId?: number) {
     mutationFn: async () => {
       if (!isValidNodeId(nodeId)) throw new Error('No valid node selected');
       const { data } = await apiClient.post(
-        `/library/servers/${nodeId}/sabnzbd/queue/pause`
+        `/library/nodes/${nodeId}/sabnzbd/queue/pause`
       );
       return data;
     },
@@ -432,7 +439,7 @@ export function useResumeSabnzbdQueue(nodeId?: number) {
     mutationFn: async () => {
       if (!isValidNodeId(nodeId)) throw new Error('No valid node selected');
       const { data } = await apiClient.post(
-        `/library/servers/${nodeId}/sabnzbd/queue/resume`
+        `/library/nodes/${nodeId}/sabnzbd/queue/resume`
       );
       return data;
     },

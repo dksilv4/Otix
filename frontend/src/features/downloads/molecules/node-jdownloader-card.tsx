@@ -21,15 +21,17 @@ export const NodeJDownloaderCard = ({ server }: { server: GameServer }) => {
   const [testResult, setTestResult] = useState<{ ok: boolean; message: string } | null>(null);
 
   const isConfigured = Boolean(
-    config?.configured ||
-      config?.email ||
-      (config?.directHost && config?.directPort)
+    config?.configured !== undefined
+      ? config.configured
+      : config?.email || (config?.directHost && config?.directPort)
   );
 
   const isCloud = Boolean(config?.email);
   const targetLabel = isCloud
     ? `MyJDownloader (${config?.email}) · Device: ${config?.deviceName || 'auto'}`
-    : `Direct HTTP (${config?.directHost || '127.0.0.1'}:${config?.directPort || 10025})`;
+    : config?.directHost && config?.directPort
+      ? `Direct HTTP (${config.directHost}:${config.directPort})`
+      : 'Not configured';
 
   const handleOpenModal = () => {
     const closeSub = openModal(
@@ -70,7 +72,6 @@ export const NodeJDownloaderCard = ({ server }: { server: GameServer }) => {
               <h4 className="text-sm font-bold text-foreground">JDownloader 2 (DDL)</h4>
               {isConfigured ? (
                 <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-[var(--status-online)] bg-[var(--status-online)]/15 px-2 py-0.5 rounded-full">
-                  <span className="h-1.5 w-1.5 rounded-full bg-[var(--status-online)] animate-pulse" />
                   Configured
                 </span>
               ) : (

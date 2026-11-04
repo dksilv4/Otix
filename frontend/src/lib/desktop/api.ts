@@ -46,6 +46,7 @@ export interface DesktopSettingsData {
   closeToTray: boolean;
   alwaysOnTop: boolean;
   startMinimized: boolean;
+  hardwareAcceleration?: boolean;
   gamesDownloadPath?: string;
   gamesInstallPath?: string;
   isoDownloadPath?: string;
@@ -56,12 +57,19 @@ export interface DesktopSettingsData {
   overlayCorner?: string;
   overlayMonitor?: string;
   overlayHotkey?: string;
+  overlayShowFps?: boolean;
+  overlayShowPercentiles?: boolean;
+  overlayShowPlaytime?: boolean;
+  overlayShowTitle?: boolean;
+  overlayOpacity?: number;
+  overlayMonitors?: Array<{ id: string; name: string; device?: string; width?: number; height?: number; is_primary?: boolean; isPrimary?: boolean; left?: number; top?: number }>;
   embeddedNodeEnabled?: boolean;
   embeddedNodePort?: number;
   autoCheckUpdates?: boolean;
   autoDownloadUpdates?: boolean;
   allowPrerelease?: boolean;
   githubToken?: string;
+  onlyTrackScannedGames?: boolean;
 }
 
 export interface NodeDaemonStatus {
@@ -137,6 +145,8 @@ export interface LiveFpsSnapshot {
   node?: SessionNodeInfo | null
   hardware?: SessionHardwareInfo | null
   shareEligible?: boolean
+  isFocused?: boolean
+  inLobby?: boolean
 }
 
 export interface FpsStatsData {
@@ -147,6 +157,12 @@ export interface FpsStatsData {
   minFps: number
   totalFrames: number
   captureDurationMs: number
+  gameplayFrames?: number
+  loadingDurationMs?: number
+  gameplayDurationMs?: number
+  backgroundDurationMs?: number
+  lobbyDurationMs?: number
+  unfilteredAvgFps?: number
 }
 
 export interface PlaytimeInfo {
@@ -298,18 +314,22 @@ export interface RemoteDownloadOptions {
 // ── Desktop API interface ────────────────────────────────────────────
 
 export interface DesktopAPI {
+  apiBaseUrl?: string
+  getApiBaseUrl?: () => string
   hydrateMatchedGames?: () => Promise<{ updated: number; failed: number; total: number }>;
   readonly platform: string | undefined
   openExternal?: (url: string) => Promise<void>
   smartOrganizePreview?: (dir: string, template?: string) => Promise<unknown[]>
   executeOrganization?: (items: { sourcePath: string; targetPath: string }[]) => Promise<unknown>
+  syncMachineMappings?: (mappings: Array<{ name?: string; host?: string; smbHost?: string; localUrl?: string }>) => Promise<boolean>
+  getMachineMappings?: () => Promise<Record<string, string>>
 
   // Query cache persistence
   cacheLoad: () => Promise<unknown>
   cacheSave: (data: unknown) => Promise<void>
 
   // Game scanning & detection
-  scanPaths(scanPaths: string[], isoPaths: string[]): Promise<LocalGame[]>
+  scanPaths(scanPaths: string[], isoPaths: string[], authToken?: string): Promise<LocalGame[]>
   getScanPaths(): Promise<{ path: string; type: 'game' | 'iso' }[]>
   saveScanPaths(paths: { path: string; type: 'game' | 'iso' }[]): Promise<void>
   resetGameData(): Promise<void>
@@ -322,9 +342,19 @@ export interface DesktopAPI {
   getGameCount(filter?: GamesFilter): Promise<number>
   acceptSuggestion(gameId: string, suggestion: Record<string, unknown>): Promise<void>
   rejectSuggestion(gameId: string, suggestionMediaId: string): Promise<void>
+  unmatchGame?: (gameId: string) => Promise<void>
   onGamesDbChanged(cb: () => void): () => void
+  onScannerProgress?: (cb: (data: { currentDir?: string; progress?: number }) => void) => () => void
+  onMatchingProgress?: (cb: (data: any) => void) => () => void
+  onMatchingComplete?: (cb: (data: any) => void) => () => void
+  onMatchingCancelled?: (cb: () => void) => () => void
+  startMatching?: (options?: { rematchAll?: boolean; gameIds?: string[] }) => Promise<{ success: boolean; started: boolean }>
+  cancelMatching?: () => Promise<{ success: boolean; cancelled: boolean }>
+  getMatchingStatus?: () => Promise<{ isMatching: boolean; totalInLibrary: number; totalUnmatched: number; totalMatched: number; processed: number }>
   getRunningGame(): Promise<RunningGameData | null>
   getRunningGames?: () => Promise<RunningGameData[]>
+  cycleActiveGame?: () => Promise<RunningGameData | null>
+  setActiveGame?: (gameId: string) => Promise<RunningGameData | null>
 
   // Game launching
   launchGame(game: LocalGame): Promise<void>
@@ -498,6 +528,8 @@ export interface DesktopAPI {
   }) => void) => () => void
   installerFinishAndLaunch?: () => Promise<void>
   installerCancel?: () => Promise<void>
+  installerRelaunchElevated?: () => Promise<{ success: boolean; error?: string }>
+  installerGetUserInstallPath?: () => Promise<string>
   uninstallerConfirm?: (options: { removeUserData: boolean }) => Promise<{ success: boolean; error?: string }>
   uninstallerOnProgress?: (callback: (progress: { percent: number; status: string }) => void) => () => void
   closeWindow?: () => Promise<void>

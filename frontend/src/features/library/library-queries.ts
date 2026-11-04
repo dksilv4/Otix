@@ -90,8 +90,15 @@ export function libraryTabQueryOptions(tab: LibraryTab, extraParams?: Record<str
   })
 }
 
-export function useLibraryTab(tab: LibraryTab, extraParams?: Record<string, string>) {
-  return useInfiniteQuery(libraryTabQueryOptions(tab, extraParams))
+export function useLibraryTab(
+  tab: LibraryTab,
+  extraParams?: Record<string, string>,
+  options?: { enabled?: boolean },
+) {
+  return useInfiniteQuery({
+    ...libraryTabQueryOptions(tab, extraParams),
+    enabled: options?.enabled ?? true,
+  })
 }
 
 export function useSteamLibraryScan() {

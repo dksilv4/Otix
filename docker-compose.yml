@@ -179,6 +179,8 @@ services:
           memory: 64M
 
   bots:
+    profiles:
+      - bots
     build:
       context: .
       dockerfile: bots/Dockerfile

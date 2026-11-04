@@ -14,10 +14,20 @@ export const useNodeJDownloaderConfig = (nodeId?: number) => {
     queryKey: jdownloaderKeys.config(nodeId),
     queryFn: async () => {
       if (!isValidNodeId(nodeId)) throw new Error('No valid node selected');
-      const { data } = await apiClient.get<ServerJDownloaderConfig>(
-        `/library/servers/${nodeId}/jdownloader/config`
-      );
-      return data;
+      try {
+        const { data } = await apiClient.get<ServerJDownloaderConfig>(
+          `/library/nodes/${nodeId}/jdownloader/config`
+        );
+        return data;
+      } catch {
+        return {
+          enabled: false,
+          configured: false,
+          has_password: false,
+          hasPassword: false,
+          provider_type: 'downloader-provider',
+        } as ServerJDownloaderConfig;
+      }
     },
     enabled: isValidNodeId(nodeId),
     retry: false,
@@ -33,7 +43,7 @@ export const useSaveNodeJDownloaderConfig = (nodeId?: number) => {
     mutationFn: async (payload: Partial<ServerJDownloaderConfig>) => {
       if (!isValidNodeId(nodeId)) throw new Error('No valid node selected');
       const { data } = await apiClient.post(
-        `/library/servers/${nodeId}/jdownloader/config`,
+        `/library/nodes/${nodeId}/jdownloader/config`,
         payload
       );
       return data;
@@ -59,7 +69,7 @@ export const useTestJDownloader = (nodeId?: number) => {
     } | void) => {
       if (!isValidNodeId(nodeId)) throw new Error('No valid node selected');
       const { data } = await apiClient.post<ConnectionTestResult>(
-        `/library/servers/${nodeId}/jdownloader/test`,
+        `/library/nodes/${nodeId}/jdownloader/test`,
         payload || {}
       );
       return data;

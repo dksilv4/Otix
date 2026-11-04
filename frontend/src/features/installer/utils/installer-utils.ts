@@ -13,3 +13,15 @@ export const hasEnoughDiskSpace = (freeBytes: number, requiredBytes: number): bo
 export const normalizePath = (pathStr: string): string => {
   return pathStr.replace(/\\+/g, '/').replace(/\/+/g, '/')
 }
+
+export const isPermissionError = (errorMsg: string | null): boolean => {
+  if (!errorMsg) return false
+  const lower = errorMsg.toLowerCase()
+  return (
+    lower.includes('administrator') ||
+    lower.includes('privilege') ||
+    lower.includes('permission') ||
+    lower.includes('eacces') ||
+    lower.includes('access is denied')
+  )
+}

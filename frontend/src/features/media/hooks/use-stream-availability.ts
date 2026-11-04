@@ -24,14 +24,14 @@ export const useStreamableCatalog = () => {
   let plexId: string | null | undefined
   try {
     const auth = useAuth()
-    plexId = auth?.user?.plexId
+    plexId = auth?.isAuthenticated ? auth?.user?.plexId : undefined
   } catch {
     plexId = undefined
   }
   const isPlexConnected = Boolean(plexId)
 
   // Query connected library items for streamable matching
-  const { data, isLoading, isError } = useLibraryTab('plex', { limit: '100' })
+  const { data, isLoading, isError } = useLibraryTab('plex', { limit: '100' }, { enabled: isPlexConnected })
 
   // Query all streamable catalog media IDs from connected Plex library
   const streamableIdsQuery = useStreamableMediaIds({ enabled: isPlexConnected })

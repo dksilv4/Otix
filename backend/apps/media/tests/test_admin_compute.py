@@ -110,7 +110,8 @@ class AdminComputeTests(TestCase):
             {
                 "asset_id": self.asset1.pk,
                 "file": uploaded,
-                "color_guess": "#326496",
+                "color_guess": "guess_colorful",
+                "dominant_color": "#326496",
             },
             format="multipart",
         )
@@ -127,7 +128,8 @@ class AdminComputeTests(TestCase):
         self.assertIsNotNone(self.asset1.local_name)
         self.assertTrue(self.asset1.local_name.endswith(".webp"))
         self.assertEqual(self.asset1.local_size, len(img_bytes))
-        self.assertEqual(self.asset1.color_guess, "#326496")
+        self.assertEqual(self.asset1.color_guess, "guess_colorful")
+        self.assertEqual(self.asset1.dominant_color, "#326496")
         self.assertIsNotNone(self.asset1.downloaded_at)
 
     def test_submit_corrupted_image_rejected(self):

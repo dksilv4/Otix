@@ -302,11 +302,11 @@ describe('SettingsPathsSection - Watcher & Rescan Integration', () => {
 
     await waitFor(() => {
       expect(apiClient.post).toHaveBeenCalledWith(
-        '/library/servers/42/scan',
+        '/library/nodes/42/scan',
         expect.objectContaining({ path: 'C:\\Games\\Steam' }),
       )
       expect(apiClient.post).toHaveBeenCalledWith(
-        '/library/servers/42/otix/sync',
+        '/library/nodes/42/otix/sync',
         expect.objectContaining({
           writeOtix: true,
           path: 'C:\\Games\\Steam',

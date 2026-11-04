@@ -14,26 +14,33 @@ import {
 import { isNodeOrphaned, type PendingNode } from '@/features/downloads/pending-nodes'
 import { NodesFeatureTags } from '@/features/settings/components/nodes-feature-tags'
 
-interface ConnectNodeModalProps {
-  isOpen: boolean
-  onClose: () => void
+export interface ConnectNodeModalProps {
+  open?: boolean
+  isOpen?: boolean
+  isExiting?: boolean
+  onClose?: () => void
+  onOpenChange?: (open: boolean) => void
   defaultName?: string
   initialNodeUrl?: string
   initialTab?: 'claim' | 'manual'
 }
 
 export const ConnectNodeModal = ({
+  open,
   isOpen,
+  isExiting,
   onClose,
+  onOpenChange,
   defaultName = 'Node',
   initialNodeUrl = '',
   initialTab = 'claim',
 }: ConnectNodeModalProps) => {
+  const isModalOpen = (open ?? isOpen ?? true) && !isExiting
   const { toast } = useToast()
   const claimServerMutation = useClaimGameServer()
   const createServerMutation = useCreateGameServer()
   const { data: servers = [] } = useGameServers()
-  const { data: pendingNodes = [] } = usePendingGameServers({ enabled: isOpen })
+  const { data: pendingNodes = [] } = usePendingGameServers({ enabled: isModalOpen })
   const unclaimMutation = useUnclaimLocalNode()
 
   const [connectTab, setConnectTab] = useState<'claim' | 'manual'>(initialTab)
@@ -90,7 +97,8 @@ export const ConnectNodeModal = ({
     setServerRemoteUrl('')
     setServerToken('')
     setConnectTab('claim')
-    onClose()
+    onClose?.()
+    onOpenChange?.(false)
   }
 
   const handleClaimByPin = async (e: React.FormEvent) => {
@@ -186,8 +194,8 @@ export const ConnectNodeModal = ({
 
   return (
     <DkDialog
-      open={isOpen}
-      onOpenChange={(open) => !open && resetAndClose()}
+      open={isModalOpen}
+      onOpenChange={(nextOpen) => !nextOpen && resetAndClose()}
       title="Connect Otix Node"
       description="Claim a running node with its PIN, or link one manually with a URL and access token."
       className="max-w-lg"

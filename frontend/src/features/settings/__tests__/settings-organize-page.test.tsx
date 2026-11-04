@@ -101,7 +101,7 @@ describe('SettingsOrganizePage', () => {
     )
   }
 
-  it('renders node tabs and organize section without outer header container', async () => {
+  it('renders organize section without outer header container', async () => {
     renderPage()
 
     // Outer page header and subtitle are removed
@@ -109,11 +109,6 @@ describe('SettingsOrganizePage', () => {
     expect(
       screen.queryByText(/Configure folder structures, naming rules, and automated sorting/i),
     ).not.toBeInTheDocument()
-
-    // Node tabs
-    expect(screen.getByRole('tab', { name: /Default Node Profile/i })).toBeInTheDocument()
-    expect(screen.getByRole('tab', { name: /Home Server/i })).toBeInTheDocument()
-    expect(screen.getByRole('tab', { name: /Living Room PC/i })).toBeInTheDocument()
 
     // Target directory selector
     expect(screen.getByText('Target Directory')).toBeInTheDocument()

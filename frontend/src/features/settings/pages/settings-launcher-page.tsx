@@ -88,19 +88,23 @@ export const SettingsLauncherPage = () => {
   const [activeTheme, setActiveTheme] = useState<LauncherThemeId>(() => {
     try {
       const stored = localStorage.getItem('otix:launcher-theme') as LauncherThemeId | null
-      if (stored && LAUNCHER_THEMES.some((t) => t.id === stored)) return stored
+      const matched = LAUNCHER_THEMES.find((t) => t.id === stored)
+      if (matched && matched.isEnabled !== false) return matched.id
     } catch {
       // ignore unavailable localStorage (private mode / SSR)
     }
-    return 'modern'
+    return 'classic'
   })
 
   useEffect(() => {
     const handleSync = () => {
       try {
         const stored = localStorage.getItem('otix:launcher-theme') as LauncherThemeId | null
-        if (stored && LAUNCHER_THEMES.some((t) => t.id === stored)) {
-          setActiveTheme(stored)
+        const matched = LAUNCHER_THEMES.find((t) => t.id === stored)
+        if (matched && matched.isEnabled !== false) {
+          setActiveTheme(matched.id)
+        } else {
+          setActiveTheme('classic')
         }
       } catch {
         // ignore
@@ -111,7 +115,7 @@ export const SettingsLauncherPage = () => {
   }, [])
 
   const selectedThemeMeta = useMemo(() => {
-    return LAUNCHER_THEMES.find((t) => t.id === activeTheme) || LAUNCHER_THEMES[1]
+    return LAUNCHER_THEMES.find((t) => t.id === activeTheme) || LAUNCHER_THEMES[0]
   }, [activeTheme])
 
   const filteredThemes = useMemo(() => {
@@ -120,6 +124,15 @@ export const SettingsLauncherPage = () => {
   }, [activeCategory])
 
   const handleSelectTheme = (themeId: LauncherThemeId) => {
+    const target = LAUNCHER_THEMES.find((t) => t.id === themeId)
+    if (!target || target.isEnabled === false) {
+      toast({
+        title: 'Theme in development',
+        description: 'Engineering focus is locked to perfecting the Classic edition before enabling other themes.',
+        variant: 'default',
+      })
+      return
+    }
     setActiveTheme(themeId)
     try {
       localStorage.setItem('otix:launcher-theme', themeId)
@@ -129,7 +142,7 @@ export const SettingsLauncherPage = () => {
     }
     toast({
       title: 'Launcher Theme Updated',
-      description: `Default layout set to ${LAUNCHER_THEMES.find((t) => t.id === themeId)?.name}.`,
+      description: `Default layout set to ${target.name}.`,
       variant: 'success',
     })
   }
@@ -249,6 +262,7 @@ export const SettingsLauncherPage = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 pt-1">
             {filteredThemes.map((theme) => {
               const isSelected = activeTheme === theme.id
+              const isEnabled = theme.isEnabled !== false
               return (
                 <div
                   key={theme.id}
@@ -262,7 +276,8 @@ export const SettingsLauncherPage = () => {
                     }
                   }}
                   className={cn(
-                    'group relative flex flex-col rounded-2xl p-3.5 transition-all duration-200 text-left cursor-pointer',
+                    'group relative flex flex-col rounded-2xl p-3.5 transition-all duration-200 text-left',
+                    isEnabled ? 'cursor-pointer' : 'cursor-not-allowed opacity-65',
                     isSelected
                       ? 'bg-[var(--dk-surface-raised)] shadow-lg ring-1 ring-primary/20'
                       : 'bg-[var(--dk-surface-field)] hover:bg-[var(--dk-surface-hover)]',
@@ -299,6 +314,11 @@ export const SettingsLauncherPage = () => {
                         <CheckCircle2 size={13} />
                         Active
                       </span>
+                    ) : !isEnabled ? (
+                      <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-muted-foreground shrink-0">
+                        <Lock size={12} />
+                        Locked
+                      </span>
                     ) : (
                       <span className="text-[11px] font-medium text-muted-foreground group-hover:text-foreground transition-colors shrink-0">
                         Select
@@ -322,7 +342,11 @@ export const SettingsLauncherPage = () => {
                   {/* Bottom status bar */}
                   <div className="w-full pt-2.5 mt-3 flex items-center justify-between">
                     <span className="text-[10px] text-muted-foreground">
-                      {isSelected ? 'Default layout' : 'Click to activate'}
+                      {!isEnabled
+                        ? 'Disabled during development'
+                        : isSelected
+                        ? 'Default layout'
+                        : 'Click to activate'}
                     </span>
                     <div
                       className="h-1.5 rounded-full transition-all"

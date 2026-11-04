@@ -234,7 +234,7 @@ export const MediaDetailPage = () => {
           ADAPTIVE MAIN CONTENT CONTAINER
           Uniform max-w-7xl to avoid awkward width jumps
          ══════════════════════════════════════════════════════════════════════ */}
-      <main className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 mt-4 space-y-8">
+      <main className="relative z-10 w-full px-4 sm:px-6 lg:px-8 mt-4 space-y-8">
         {/* ── GAMES: ELEVATE FREE PROMOTION BANNER WHEN GAME IS FREE ── */}
         {isGame(detail) && (
           <Suspense fallback={null}>

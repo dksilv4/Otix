@@ -16,6 +16,7 @@ import (
 
 	"github.com/dksilv4/otix/node/internal/claim"
 	"github.com/dksilv4/otix/node/internal/config"
+	"github.com/dksilv4/otix/node/internal/games"
 	"github.com/dksilv4/otix/node/internal/heartbeat"
 	"github.com/dksilv4/otix/node/internal/server"
 )
@@ -49,7 +50,22 @@ func main() {
 	openBrowserFlag := flag.Bool("open", true, "Open setup WebUI in default browser on launch")
 	headlessFlag := flag.Bool("headless", false, "Run in headless daemon mode (do not open browser)")
 	noTrayFlag := flag.Bool("no-tray", false, "Disable taskbar tray notification icon")
+	captureServiceFlag := flag.Bool("capture-service", false, "Run as Windows background capture service (LocalSystem)")
 	flag.Parse()
+
+	if *captureServiceFlag {
+		if err := games.RunCaptureServiceMode(false); err != nil {
+			fmt.Fprintf(os.Stderr, "Capture service error: %v\n", err)
+			os.Exit(1)
+		}
+		os.Exit(0)
+	}
+
+	_, isSingleInstance := server.AcquireSingleInstanceMutex("Local\\OtixNodeOverlayDaemon")
+	if !isSingleInstance {
+		fmt.Println("[Otix Node] Another node instance is already running in this user session. Exiting.")
+		os.Exit(0)
+	}
 
 	if *versionFlag {
 		fmt.Printf("Otix Node v%s (%s)\n", Version, BuildTime)

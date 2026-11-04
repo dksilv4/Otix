@@ -38,7 +38,7 @@ export const FpsPermissionDialog = () => {
         {!done ? (
           <>
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-cyan-400 flex items-center justify-center text-white font-bold text-sm">
+              <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center text-primary-foreground font-bold text-sm">
                 O
               </div>
               <div>
@@ -49,7 +49,7 @@ export const FpsPermissionDialog = () => {
 
             <p className="text-foreground/80 text-sm leading-relaxed mb-5">
               Otix needs to enable Windows Performance Tracing to capture FPS data.
-              This requires adding your user to the <span className="text-cyan-600 dark:text-cyan-400 font-mono text-xs">Performance Log Users</span> group —
+              This requires adding your user to the <span className="text-primary font-mono text-xs">Performance Log Users</span> group —
               a one-time setup with no further prompts.
             </p>
 
@@ -90,8 +90,8 @@ export const FpsPermissionDialog = () => {
             </div>
 
             <p className="text-foreground/80 text-sm leading-relaxed mb-5">
-              You've been added to <span className="text-cyan-600 dark:text-cyan-400 font-mono text-xs">Performance Log Users</span>.
-              <span className="block mt-2 text-amber-600 dark:text-amber-400 font-medium">
+              You've been added to <span className="text-primary font-mono text-xs">Performance Log Users</span>.
+              <span className="block mt-2 text-primary font-medium">
                 ⚠ Restart your PC for the change to take effect, then FPS data will appear.
               </span>
             </p>

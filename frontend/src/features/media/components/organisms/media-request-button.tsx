@@ -94,7 +94,7 @@ const RequestMediaButtonInner = ({
     const isPaused = status.includes('pause')
     return (
       <div className="group/dl flex flex-wrap items-center gap-2">
-        <div className="relative inline-flex items-center gap-2 overflow-hidden rounded-full h-10 px-4 sm:px-5 py-2 text-sm font-semibold text-foreground bg-[var(--dk-surface-glass)] border border-[var(--dk-separator)] shadow-lg">
+        <div className="relative inline-flex items-center gap-2 overflow-hidden rounded-full h-10 px-4 sm:px-5 py-2 text-sm font-semibold text-foreground bg-[var(--dk-surface-glass)] border border-white/[0.04] shadow-lg">
           <span
             className={cn(
               'absolute inset-y-0 left-0 transition-[width] duration-500 ease-out',
@@ -103,11 +103,16 @@ const RequestMediaButtonInner = ({
             style={{ width: `${pct}%` }}
           />
           <span className="relative flex items-center gap-2">
-            <Loader2 className={cn('h-4 w-4', !isPaused && 'animate-spin')} />
+            <Loader2 className={cn('h-4 w-4 text-primary', !isPaused && 'animate-spin')} />
             <span className="tabular-nums">{pct.toFixed(0)}%</span>
-            {state.queueItem.timeleft && state.queueItem.timeleft !== '00:00:00' && (
-              <span className="text-xs font-medium text-muted-foreground">{state.queueItem.timeleft}</span>
+            {state.downloadSpeed && (
+              <span className="text-xs font-medium text-muted-foreground">{state.downloadSpeed}</span>
             )}
+            {state.downloadEta && state.downloadEta !== '00:00:00' ? (
+              <span className="text-xs font-medium text-muted-foreground">{state.downloadEta}</span>
+            ) : state.queueItem.timeleft && state.queueItem.timeleft !== '00:00:00' ? (
+              <span className="text-xs font-medium text-muted-foreground">{state.queueItem.timeleft}</span>
+            ) : null}
           </span>
         </div>
         <button

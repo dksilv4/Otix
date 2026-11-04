@@ -51,7 +51,7 @@ export const ActivityPanelContent = ({ onClose }: ActivityPanelContentProps) => 
   const { sessions: plexSessions, isAdmin: isPlexAdmin } = usePlexSessions()
   const { allItems: notifications } = useNotifications()
 
-  const { activeNowFriends } = useFriends()
+  const { activeNowFriends } = useFriends({ enabled: !!currentUser })
   const { data: unreadData } = useQuery({
     ...notificationQueries.unreadCount(),
     enabled: !!currentUser,

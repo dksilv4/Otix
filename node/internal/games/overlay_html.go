@@ -164,7 +164,7 @@ const WebOverlayHTML = `<!DOCTYPE html>
       align-items: baseline;
     }
     .hud-card.compact .metric-item::before {
-      content: "·";
+      content: "Â·";
       color: rgba(255, 255, 255, 0.25);
       margin-right: 4px;
     }
@@ -289,11 +289,19 @@ const WebOverlayHTML = `<!DOCTYPE html>
       evtSource.onmessage = (e) => {
         try {
           const snap = JSON.parse(e.data);
-          if (snap && snap.fps !== undefined) {
-            applyFps(snap.fps);
-            if (snap.low_1_percent) low1Display.textContent = Math.round(snap.low_1_percent);
-            if (snap.avg_fps) avgDisplay.textContent = Math.round(snap.avg_fps);
-            updateSparkline(snap.fps);
+          if (snap) {
+            if (snap.permission_denied) {
+              fpsDisplay.textContent = 'PERM';
+              fpsDisplay.className = 'fps-val fps-mid';
+              frametimeDisplay.textContent = 'Perm needed';
+              low1Display.textContent = '--';
+              avgDisplay.textContent = '--';
+            } else if (snap.fps !== undefined) {
+              applyFps(snap.fps);
+              if (snap.low_1_percent) low1Display.textContent = Math.round(snap.low_1_percent);
+              if (snap.avg_fps) avgDisplay.textContent = Math.round(snap.avg_fps);
+              updateSparkline(snap.fps);
+            }
           }
         } catch (err) {}
       };
@@ -310,7 +318,11 @@ const WebOverlayHTML = `<!DOCTYPE html>
         .then(data => {
           if (data && data.running && data.game) {
             playtimeDisplay.textContent = formatTime(data.game.current_duration_seconds || 0);
-            if (data.game.fps_snapshot && data.game.fps_snapshot.fps) {
+            if (data.game.fps_permission_denied) {
+              fpsDisplay.textContent = 'PERM';
+              fpsDisplay.className = 'fps-val fps-mid';
+              frametimeDisplay.textContent = 'Perm needed';
+            } else if (data.game.fps_snapshot && data.game.fps_snapshot.fps) {
               applyFps(data.game.fps_snapshot.fps);
             }
           }

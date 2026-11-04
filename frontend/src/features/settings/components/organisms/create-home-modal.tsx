@@ -9,16 +9,27 @@ import { useCreateHome } from '../../hooks/use-server-machines'
 import { detectDesktopCurrentNetwork } from '../../utils/server-machines'
 
 export interface CreateHomeModalProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
+  open?: boolean
+  isOpen?: boolean
+  onOpenChange?: (open: boolean) => void
+  onClose?: () => void
+  isExiting?: boolean
   onSuccess?: () => void
 }
 
 export const CreateHomeModal = ({
   open,
+  isOpen,
   onOpenChange,
+  onClose,
+  isExiting,
   onSuccess,
 }: CreateHomeModalProps) => {
+  const isModalOpen = (open ?? isOpen ?? true) && !isExiting
+  const handleClose = () => {
+    onOpenChange?.(false)
+    onClose?.()
+  }
   const { toast } = useToast()
   const createMutation = useCreateHome()
 
@@ -33,7 +44,7 @@ export const CreateHomeModal = ({
   const [isDetecting, setIsDetecting] = useState(false)
 
   useEffect(() => {
-    if (open) {
+    if (isModalOpen) {
       setName('')
       setDescription('')
       setSubnetCidr('')
@@ -43,7 +54,7 @@ export const CreateHomeModal = ({
       setLocalServerUrl('')
       setIsDefault(false)
     }
-  }, [open])
+  }, [isModalOpen])
 
   const handleDetectNetwork = async () => {
     setIsDetecting(true)
@@ -112,7 +123,7 @@ export const CreateHomeModal = ({
         description: `Created “${name.trim()}”.`,
         variant: 'default',
       })
-      onOpenChange(false)
+      handleClose()
       onSuccess?.()
     } catch (err: unknown) {
       const axiosErr = err as {
@@ -141,8 +152,10 @@ export const CreateHomeModal = ({
 
   return (
     <DkDialog
-      open={open}
-      onOpenChange={onOpenChange}
+      open={isModalOpen}
+      onOpenChange={(next) => {
+        if (!next) handleClose()
+      }}
       className="max-w-md"
       title="New Home Location"
       description="Group nodes, server machines, and instances by household or environment."
@@ -260,7 +273,7 @@ export const CreateHomeModal = ({
           <DkButton
             type="button"
             variant="ghost"
-            onClick={() => onOpenChange(false)}
+            onClick={handleClose}
             disabled={isSaving}
           >
             Cancel

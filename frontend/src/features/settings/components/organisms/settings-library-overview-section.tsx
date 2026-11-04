@@ -173,7 +173,7 @@ export const SettingsLibraryOverviewSection = ({
   const [pathsLoading, setPathsLoading] = useState(true)
 
   const nodeId = selectedNode?.id ?? null
-  const remoteNodeId = isLocalDesktopNodeId(nodeId) ? null : nodeId
+  const remoteNodeId = (!desktop || !isLocalDesktopNodeId(nodeId)) ? (nodeId && nodeId > 0 ? nodeId : null) : null
 
   useEffect(() => {
     let cancelled = false
@@ -235,9 +235,9 @@ export const SettingsLibraryOverviewSection = ({
       if (remoteNodeId) {
         try {
           const [libRes, desktopRes, organizeRes] = await Promise.all([
-            apiClient.get<any>(`/library/servers/${remoteNodeId}/libraries`),
-            apiClient.get<any>(`/library/servers/${remoteNodeId}/desktop`),
-            apiClient.get<any>(`/library/servers/${remoteNodeId}/organize`),
+            apiClient.get<any>(`/library/nodes/${remoteNodeId}/libraries`),
+            apiClient.get<any>(`/library/nodes/${remoteNodeId}/desktop`),
+            apiClient.get<any>(`/library/nodes/${remoteNodeId}/organize`),
           ])
           if (cancelled) return
           const rows = Array.isArray(libRes?.data) ? libRes.data : libRes?.data?.libraries || []

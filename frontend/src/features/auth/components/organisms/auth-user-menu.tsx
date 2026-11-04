@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
-import { Link } from '@tanstack/react-router'
+import { Link, useLocation } from '@tanstack/react-router'
 import {
   LogOut,
   User,
@@ -53,7 +53,7 @@ export const UserMenuContent = ({ onClose }: UserMenuContentProps) => {
     activeNowFriends,
     totalCount,
     activeCount,
-  } = useFriends()
+  } = useFriends({ enabled: !!user })
 
   const {
     incoming,
@@ -62,7 +62,7 @@ export const UserMenuContent = ({ onClose }: UserMenuContentProps) => {
     rejectRequest,
     isAccepting,
     isRejecting,
-  } = useFriendRequests()
+  } = useFriendRequests({ enabled: !!user })
 
   const totalXp = user?.totalXp ?? 0
   const gamification = useMemo(() => computeGamification(totalXp), [totalXp])
@@ -85,12 +85,8 @@ export const UserMenuContent = ({ onClose }: UserMenuContentProps) => {
           onClick={onClose}
           className="group flex items-center gap-3 transition-colors"
         >
-          {/* Avatar with shared element transition */}
-          <motion.div
-            layoutId="nav-profile-avatar"
-            transition={{ duration: 0.22, ease: "linear" }}
-            className="relative flex items-center justify-center shrink-0"
-          >
+          {/* Avatar */}
+          <div className="relative flex items-center justify-center shrink-0">
             <XPProgressRing
               progress={gamification.xpProgress}
               size={44}
@@ -107,7 +103,7 @@ export const UserMenuContent = ({ onClose }: UserMenuContentProps) => {
                 <Gamepad2 className="h-2.5 w-2.5 text-primary-foreground" />
               </span>
             )}
-          </motion.div>
+          </div>
 
           <div className="min-w-0 flex-1">
             <div className="flex items-center justify-between gap-1">
@@ -531,6 +527,7 @@ interface UserMenuProps {
  */
 export const UserMenu = ({ bare, triggerOnly, onToggle }: UserMenuProps) => {
   const { user, isAuthenticated, isLoading } = useAuth()
+  const location = useLocation()
   const { runningGame } = useRunningGame()
   const { isUserMenuOpen, setUserMenuOpen } = usePanelContext()
   const [internalOpen, setInternalOpen] = useState(false)
@@ -602,10 +599,16 @@ export const UserMenu = ({ bare, triggerOnly, onToggle }: UserMenuProps) => {
   }
 
   if (!isAuthenticated) {
+    const isAuthRoute = location.pathname.startsWith('/auth')
+    const redirectSearch = !isAuthRoute && location.href && location.href !== '/'
+      ? { redirect: location.href }
+      : undefined
+
     return (
       <div className="flex items-center">
         <Link
           to="/auth/login"
+          search={redirectSearch}
           className="flex items-center gap-1.5 rounded-full px-3.5 py-1 text-xs font-semibold text-foreground bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-glass-hover)] transition-all border border-[var(--dk-separator)] shadow-xs"
         >
           Sign In
@@ -617,17 +620,18 @@ export const UserMenu = ({ bare, triggerOnly, onToggle }: UserMenuProps) => {
   const avatarUrl = user?.avatarUrl
 
   const triggerNode = (
-    <motion.button
-      layoutId="nav-profile-avatar"
-      transition={{ duration: 0.22, ease: "linear" }}
+    <button
       type="button"
       data-user-menu-trigger
       onClick={toggle}
       className={
-        bare
-          ? 'cursor-pointer rounded-full transition-colors hover:bg-[var(--dk-surface-ghost-hover)] active:bg-[var(--dk-surface-ghost-active)] flex h-8 w-8 items-center justify-center relative shrink-0'
+        (bare
+          ? 'cursor-pointer rounded-full transition-colors flex h-8 w-8 items-center justify-center relative shrink-0'
           : pillClasses +
-            ' cursor-pointer rounded-full transition-colors hover:bg-[var(--dk-surface-ghost-hover)] active:bg-[var(--dk-surface-ghost-active)] relative shrink-0'
+            ' cursor-pointer rounded-full transition-colors relative shrink-0') +
+        (isOpen
+          ? ' bg-[var(--dk-surface-ghost-active)]'
+          : ' hover:bg-[var(--dk-surface-ghost-hover)] active:bg-[var(--dk-surface-ghost-active)]')
       }
       style={pillStyle}
       title={
@@ -667,7 +671,7 @@ export const UserMenu = ({ bare, triggerOnly, onToggle }: UserMenuProps) => {
           </span>
         ) : null}
       </div>
-    </motion.button>
+    </button>
   )
 
   if (triggerOnly) {

@@ -2,7 +2,11 @@
 import { parentPort, workerData } from 'worker_threads'
 import type { WorkerToMainMessage, MainToWorkerMessage } from './types'
 
-const { pluginPath } = workerData as { pluginPath: string }
+const { pluginPath, userDataPath } = workerData as { pluginPath: string; userDataPath?: string }
+
+if (userDataPath) {
+  process.env.OTIX_USER_DATA = userDataPath
+}
 
 // Pending RPC callbacks
 const pending = new Map<string, (result: unknown) => void>()
@@ -164,6 +168,9 @@ parentPort!.on('message', async (msg: MainToWorkerMessage) => {
 const ctx = {
   get id() { return '' },
   get manifest() { return {} as any },
+  get userDataPath() {
+    return userDataPath || process.env.OTIX_USER_DATA || ''
+  },
   config: {
     getAll: () => rpc('config.getAll'),
     get: <T>(key: string) => rpc('config.get', key) as Promise<T | undefined>,
@@ -176,7 +183,9 @@ const ctx = {
         handlers = new Set()
         eventHandlers.set(event, handlers)
       }
-      handlers.add(handler)
+      if (typeof handler === 'function') {
+        handlers.add(handler)
+      }
       return rpc('events.on', event).then((subId) => {
         return () => {
           const hs = eventHandlers.get(event)

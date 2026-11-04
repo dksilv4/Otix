@@ -146,20 +146,45 @@ type GameTracker struct {
 	nodeName     string
 	nodePort     int
 
+	// Focus hysteresis tracking (prevents rapid start/stop churn)
+	pendingFocusID    string
+	pendingFocusTicks int
+
+	// Manual focus override (honors user selection / cycle hotkey)
+	manualFocusGameID string
+	manualFocusUntil  time.Time
+	lastObservedFgPID int
+
 	onGameStarted       func(game *RunningGame)
 	onGameStopped       func(session *PlaySession)
 	onActiveGameChanged func(game *RunningGame)
+	onlyTrackScanned    bool
 }
 
 // NewGameTracker creates a GameTracker instance.
 func NewGameTracker(store *SessionStore, fpsCollector FpsCollector, idx *indexer.StorageIndexer) *GameTracker {
 	return &GameTracker{
-		store:        store,
-		fpsCollector: fpsCollector,
-		indexer:      idx,
-		runningGames: make(map[string]*RunningGame),
-		stopChan:     make(chan struct{}),
+		store:            store,
+		fpsCollector:     fpsCollector,
+		indexer:          idx,
+		runningGames:     make(map[string]*RunningGame),
+		stopChan:         make(chan struct{}),
+		onlyTrackScanned: true,
 	}
+}
+
+// SetOnlyTrackScanned configures whether only scanned library games or custom mappings are tracked.
+func (gt *GameTracker) SetOnlyTrackScanned(enabled bool) {
+	gt.mu.Lock()
+	defer gt.mu.Unlock()
+	gt.onlyTrackScanned = enabled
+}
+
+// GetOnlyTrackScanned reports whether unindexed heuristic tracking is disabled.
+func (gt *GameTracker) GetOnlyTrackScanned() bool {
+	gt.mu.RLock()
+	defer gt.mu.RUnlock()
+	return gt.onlyTrackScanned
 }
 
 // SetNodeInfo configures the identifying node details for game sessions.
@@ -241,10 +266,18 @@ func (gt *GameTracker) updateActiveGame() {
 
 	if len(gt.runningGames) == 0 {
 		gt.activeGameID = ""
+		gt.pendingFocusID = ""
+		gt.pendingFocusTicks = 0
 		return
 	}
 
 	fgPid := getForegroundProcessPID()
+
+	// If foreground window changed to a different process, release manual override
+	if gt.lastObservedFgPID != 0 && fgPid != gt.lastObservedFgPID {
+		gt.manualFocusGameID = ""
+	}
+	gt.lastObservedFgPID = fgPid
 
 	// 1. Check if the foreground window directly belongs to one of our running games
 	var fgGame *RunningGame
@@ -258,7 +291,13 @@ func (gt *GameTracker) updateActiveGame() {
 	}
 
 	targetID := gt.activeGameID
-	if fgGame != nil {
+	if gt.manualFocusGameID != "" && time.Now().Before(gt.manualFocusUntil) {
+		if _, exists := gt.runningGames[gt.manualFocusGameID]; exists {
+			targetID = gt.manualFocusGameID
+		} else {
+			gt.manualFocusGameID = ""
+		}
+	} else if fgGame != nil {
 		targetID = fgGame.ID
 	} else {
 		// If current activeGameID is no longer running or empty, pick the newest running game
@@ -284,10 +323,30 @@ func (gt *GameTracker) updateActiveGame() {
 		return
 	}
 
-	switched := gt.activeGameID != targetID
-	gt.activeGameID = targetID
+	if targetID != gt.activeGameID {
+		if targetID == gt.pendingFocusID {
+			gt.pendingFocusTicks++
+		} else {
+			gt.pendingFocusID = targetID
+			gt.pendingFocusTicks = 1
+		}
 
-	if switched {
+		// Require 2 consecutive ticks (~600ms) of consistent focus to switch active game
+		// unless the current active game is not running anymore
+		currentRunning := false
+		if _, ok := gt.runningGames[gt.activeGameID]; ok {
+			currentRunning = true
+		}
+
+		if currentRunning && gt.pendingFocusTicks < 2 {
+			return
+		}
+
+		// Commit focus change
+		gt.activeGameID = targetID
+		gt.pendingFocusID = ""
+		gt.pendingFocusTicks = 0
+
 		if gt.fpsCollector != nil && activeGame.FpsAvailable {
 			_ = gt.fpsCollector.Start(activeGame.PID, activeGame.ProcessName, activeGame.ID)
 		}
@@ -296,6 +355,9 @@ func (gt *GameTracker) updateActiveGame() {
 			cp := *activeGame
 			go cb(&cp)
 		}
+	} else {
+		gt.pendingFocusID = ""
+		gt.pendingFocusTicks = 0
 	}
 }
 
@@ -321,11 +383,9 @@ func (gt *GameTracker) scanStep() {
 		if stillAlive {
 			game.CurrentDurationSec = int(time.Since(game.StartTime).Seconds())
 			if gt.fpsCollector != nil {
-				snap := gt.fpsCollector.GetSnapshot()
-				if snap != nil && (snap.GameID == game.ID || (snap.GameID == "" && id == gt.activeGameID)) {
+				snap := gt.fpsCollector.GetSnapshotForGame(game.ID)
+				if snap != nil && (snap.GameID == game.ID || snap.GameID == "") {
 					game.FpsSnapshot = snap
-				} else {
-					game.FpsSnapshot = nil
 				}
 			}
 		} else {
@@ -428,6 +488,11 @@ func (gt *GameTracker) identifyGameFull(processName string) *IdentifiedGame {
 		}
 	}
 
+	// If restricted to scanned library games & custom mappings, do not match unindexed signatures
+	if gt.onlyTrackScanned {
+		return nil
+	}
+
 	// 3. Check known popular game executable signatures
 	if title, ok := KnownGameSignatures[lower]; ok {
 		slug := strings.ToLower(strings.ReplaceAll(title, " ", "-"))
@@ -527,8 +592,11 @@ func (gt *GameTracker) stopSingleSessionLocked(game *RunningGame) {
 	}
 
 	var stats *FpsStatsData
-	if wasActive && gt.fpsCollector != nil {
-		stats = gt.fpsCollector.Stop()
+	if gt.fpsCollector != nil {
+		stats = gt.fpsCollector.StopGame(game.ID)
+		if stats == nil && wasActive {
+			stats = gt.fpsCollector.Stop()
+		}
 	}
 
 	// If other games are still running, activate the newest remaining game!
@@ -550,8 +618,6 @@ func (gt *GameTracker) stopSingleSessionLocked(game *RunningGame) {
 				go cbActive(&cp)
 			}
 		}
-	} else if !wasActive && gt.fpsCollector != nil {
-		_ = gt.fpsCollector.Stop()
 	}
 
 	hw := hardware.GetMachineHardware(false)
@@ -659,6 +725,12 @@ func (gt *GameTracker) GetActiveGame() *RunningGame {
 		snap := gt.fpsCollector.GetSnapshot()
 		if snap != nil && (snap.GameID == active.ID || snap.GameID == "") {
 			cp.FpsSnapshot = snap
+			if snap.PermissionDenied {
+				cp.FpsPermissionDenied = true
+			}
+		}
+		if gt.fpsCollector.IsPermissionDenied() {
+			cp.FpsPermissionDenied = true
 		}
 	}
 	return &cp
@@ -689,7 +761,12 @@ func (gt *GameTracker) GetRunningGames() []*RunningGame {
 			continue
 		}
 		cp := *g
-		cp.FpsSnapshot = nil
+		if gt.fpsCollector != nil {
+			snap := gt.fpsCollector.GetSnapshotForGame(g.ID)
+			if snap != nil {
+				cp.FpsSnapshot = snap
+			}
+		}
 		others = append(others, &cp)
 	}
 
@@ -701,7 +778,7 @@ func (gt *GameTracker) GetRunningGames() []*RunningGame {
 	if active != nil {
 		cp := *active
 		if gt.fpsCollector != nil {
-			snap := gt.fpsCollector.GetSnapshot()
+			snap := gt.fpsCollector.GetSnapshotForGame(active.ID)
 			if snap != nil && (snap.GameID == active.ID || snap.GameID == "") {
 				cp.FpsSnapshot = snap
 			}
@@ -710,6 +787,87 @@ func (gt *GameTracker) GetRunningGames() []*RunningGame {
 	}
 	list = append(list, others...)
 	return list
+}
+
+// CycleActiveGame switches active game focus to the next running game and returns it.
+func (gt *GameTracker) CycleActiveGame() *RunningGame {
+	gt.mu.Lock()
+	defer gt.mu.Unlock()
+
+	if len(gt.runningGames) <= 1 {
+		if gt.activeGameID != "" {
+			if g, ok := gt.runningGames[gt.activeGameID]; ok {
+				cp := *g
+				return &cp
+			}
+		}
+		return nil
+	}
+
+	ids := make([]string, 0, len(gt.runningGames))
+	for id := range gt.runningGames {
+		ids = append(ids, id)
+	}
+	sort.Strings(ids)
+
+	currIdx := -1
+	for i, id := range ids {
+		if id == gt.activeGameID {
+			currIdx = i
+			break
+		}
+	}
+
+	nextIdx := (currIdx + 1) % len(ids)
+	nextID := ids[nextIdx]
+	gt.activeGameID = nextID
+	gt.pendingFocusID = ""
+	gt.pendingFocusTicks = 0
+	gt.manualFocusGameID = nextID
+	gt.manualFocusUntil = time.Now().Add(10 * time.Second)
+
+	activeGame := gt.runningGames[nextID]
+	if activeGame != nil {
+		if gt.fpsCollector != nil && activeGame.FpsAvailable {
+			_ = gt.fpsCollector.Start(activeGame.PID, activeGame.ProcessName, activeGame.ID)
+		}
+		cb := gt.onActiveGameChanged
+		if cb != nil {
+			cp := *activeGame
+			go cb(&cp)
+		}
+		cp := *activeGame
+		return &cp
+	}
+	return nil
+}
+
+// SetActiveGame explicitly sets the active game focus by game ID.
+func (gt *GameTracker) SetActiveGame(gameID string) *RunningGame {
+	gt.mu.Lock()
+	defer gt.mu.Unlock()
+
+	activeGame, ok := gt.runningGames[gameID]
+	if !ok {
+		return nil
+	}
+
+	gt.activeGameID = gameID
+	gt.pendingFocusID = ""
+	gt.pendingFocusTicks = 0
+	gt.manualFocusGameID = gameID
+	gt.manualFocusUntil = time.Now().Add(10 * time.Second)
+
+	if gt.fpsCollector != nil && activeGame.FpsAvailable {
+		_ = gt.fpsCollector.Start(activeGame.PID, activeGame.ProcessName, activeGame.ID)
+	}
+	cb := gt.onActiveGameChanged
+	if cb != nil {
+		cp := *activeGame
+		go cb(&cp)
+	}
+	cp := *activeGame
+	return &cp
 }
 
 // Launch programmatically spawns a game executable and immediately starts tracking it.

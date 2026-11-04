@@ -525,7 +525,7 @@ func parseShareTarget(raw string, req ConnectShareRequest) parsedShareTarget {
 	}
 
 	// 1. Existing local directory (e.g. temp directories used in tests or local drives)
-	if filepath.IsAbs(cleaned) && dirExists(cleaned) && !strings.HasPrefix(cleaned, "/Volumes") {
+	if !strings.HasPrefix(cleaned, `\\`) && !strings.HasPrefix(cleaned, "//") && filepath.IsAbs(cleaned) && dirExists(cleaned) && !strings.HasPrefix(cleaned, "/Volumes") {
 		res.IsLocalDir = true
 		res.LocalPath = filepath.Clean(cleaned)
 		res.ShareName = filepath.Base(res.LocalPath)

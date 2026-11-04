@@ -73,7 +73,7 @@ export const ReleaseNotesPage = () => {
   return (
     <div
       id="release-notes-page"
-      className="w-full max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10 space-y-8"
+      className="w-full px-4 sm:px-6 lg:px-8 py-6 sm:py-10 space-y-8"
     >
       <Helmet>
         <title>Release Notes — What&apos;s New in Otix</title>

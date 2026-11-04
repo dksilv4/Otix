@@ -101,42 +101,20 @@ export const LauncherGameHero = () => {
         className="absolute inset-0 z-1 pointer-events-none transition-opacity duration-500"
         style={{ opacity: isHoveringScreenshot ? 0.15 : 1 }}
       >
-        <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/10 to-black/50" />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-r from-background/80 via-background/20 to-background/70" />
+        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/30 to-transparent" />
       </div>
 
       {/* Bottom gradient mask transitioning hero smoothly into shelf */}
       <div className="absolute bottom-0 inset-x-0 h-36 bg-gradient-to-t from-[var(--dk-surface-root)] via-[var(--dk-surface-root)]/70 to-transparent pointer-events-none z-[4]" />
 
-      {/* Bottom info dock */}
-      <div
-        className="absolute z-10 bottom-6 md:bottom-8 pointer-events-auto flex flex-col gap-3.5 md:gap-4 max-w-full lg:max-w-[calc(100%-26rem)] xl:max-w-[calc(100%-30rem)]"
-        style={{ left: 'calc(76px + 1.5rem)', right: '2rem' }}
-      >
-        <div
-          className="flex items-center flex-wrap gap-3 transition-opacity duration-300 ease-out"
-          style={{ opacity: isHoveringScreenshot ? 0.15 : 1 }}
-        >
-          <LauncherGameStats />
-          <LauncherGameHeroMeta />
-        </div>
-
-        {/* Screenshot gallery */}
-        {screenshots.length > 0 && (
-          <LauncherScreenshotGallery
-            screenshots={screenshots}
-            onHoverScreenshot={setActiveBackdrop}
-            autoPlay={false}
-          />
-        )}
-      </div>
-
-      <div className="absolute inset-0 z-10 pointer-events-none">
-        {/* Logo/content with 3D parallax */}
+      {/* Hero interactive content */}
+      <div className="relative z-10 min-h-[100vh] flex flex-col justify-between pt-16 pb-8 px-4 sm:px-6 md:pl-[calc(76px+1.5rem)] md:pr-8 lg:p-0 pointer-events-none">
+        {/* Right Info & Actions dock */}
         <motion.div
-          className="absolute right-6 md:right-10 xl:right-14 top-[40%] md:top-[44%] xl:top-1/2 flex flex-col items-end text-right max-w-sm md:max-w-md xl:max-w-lg pointer-events-auto"
+          className="self-end text-right max-w-sm md:max-w-md xl:max-w-lg pointer-events-auto lg:absolute lg:right-10 xl:right-14 lg:top-[44%] lg:-translate-y-1/2"
           style={{
-            transform: `translateY(-38%) translateX(${lgX}px) translateY(${lgY}px) rotateX(${rotX}deg) rotateY(${rotY}deg)`,
+            transform: `translateX(${lgX}px) translateY(${lgY}px) rotateX(${rotX}deg) rotateY(${rotY}deg)`,
             transformStyle: 'preserve-3d',
             transition: 'transform 2.5s linear',
           }}
@@ -159,6 +137,25 @@ export const LauncherGameHero = () => {
             </AnimatePresence>
           </div>
         </motion.div>
+
+        {/* Bottom Info dock (Stats, Hero Meta, Screenshots) */}
+        <div className="pointer-events-auto flex flex-col gap-3.5 md:gap-4 max-w-full lg:max-w-[calc(100%-28rem)] xl:max-w-[calc(100%-32rem)] lg:absolute lg:bottom-8 lg:left-[calc(76px+1.5rem)] lg:right-8">
+          <div
+            className="flex items-center flex-wrap gap-3 transition-opacity duration-300 ease-out"
+            style={{ opacity: isHoveringScreenshot ? 0.15 : 1 }}
+          >
+            <LauncherGameStats />
+            <LauncherGameHeroMeta />
+          </div>
+
+          {screenshots.length > 0 && (
+            <LauncherScreenshotGallery
+              screenshots={screenshots}
+              onHoverScreenshot={setActiveBackdrop}
+              autoPlay={false}
+            />
+          )}
+        </div>
       </div>
     </section>
   )

@@ -63,13 +63,16 @@ import type {
 type ProtocolFilter = 'all' | 'usenet' | 'torrent'
 
 export interface NodeGameSearchModalProps {
+  open?: boolean
+  isOpen?: boolean
   nodeId?: number
   nodeName?: string
   serverId?: number
   serverName?: string
   initialQuery?: string
   mediaItemId?: string
-  onClose: () => void
+  onClose?: () => void
+  onOpenChange?: (open: boolean) => void
   onDownloadStarted?: () => void
   isExiting?: boolean
 }
@@ -77,6 +80,8 @@ export interface NodeGameSearchModalProps {
 export type ServerGameSearchModalProps = NodeGameSearchModalProps
 
 export const NodeGameSearchModal = ({
+  open,
+  isOpen,
   nodeId,
   nodeName = 'Node',
   serverId,
@@ -84,9 +89,15 @@ export const NodeGameSearchModal = ({
   initialQuery = '',
   mediaItemId,
   onClose,
+  onOpenChange,
   onDownloadStarted,
   isExiting,
 }: NodeGameSearchModalProps) => {
+  const isModalOpen = (open ?? isOpen ?? true) && !isExiting
+  const handleClose = () => {
+    onClose?.()
+    onOpenChange?.(false)
+  }
   const effectiveId = nodeId ?? serverId
   const effectiveName = nodeName !== 'Node' ? nodeName : (serverName ?? 'Node')
   const { toast } = useToast()
@@ -356,9 +367,9 @@ export const NodeGameSearchModal = ({
 
   return (
     <DkDialog
-      open={!isExiting}
-      onOpenChange={(open) => {
-        if (!open) onClose()
+      open={isModalOpen}
+      onOpenChange={(nextOpen) => {
+        if (!nextOpen) handleClose()
       }}
       title="Indexer results"
       description={`Search configured indexers (Prowlarr, g4u.to) on ${effectiveName} and queue a release to the node.`}

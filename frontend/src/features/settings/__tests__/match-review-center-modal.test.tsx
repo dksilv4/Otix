@@ -177,4 +177,60 @@ describe('MatchReviewCenterModal', () => {
       expect(apiClient.post).toHaveBeenCalledWith('/library/matches/3/unmatch')
     })
   })
+
+  it('renders poster image and release date for matched games in the matched tab', async () => {
+    const user = userEvent.setup()
+    render(
+      <QueryClientProvider client={queryClient}>
+        <MatchReviewCenterModal open={true} onOpenChange={vi.fn()} />
+      </QueryClientProvider>,
+    )
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /^matched/i })).toBeInTheDocument()
+    })
+
+    await user.click(screen.getByRole('button', { name: /^matched/i }))
+
+    await waitFor(() => {
+      const img = screen.getByRole('img', { name: 'Portal 2' })
+      expect(img).toBeInTheDocument()
+      expect(img).toHaveAttribute('src', 'https://img.test/portal2.jpg')
+      expect(screen.getByText(/Released: 2011-04-18/i)).toBeInTheDocument()
+    })
+  })
+
+  it('renders local scanned games in guest mode when unauthenticated (apiClient fails)', async () => {
+    // Both server requests fail (unauthenticated guest)
+    ;(apiClient.get as any).mockRejectedValue(new Error('401 Unauthorized'))
+
+    ;(window as any).desktopAPI = {
+      getLocalGames: vi.fn().mockResolvedValue([
+        {
+          id: 'pc_local_guest_game',
+          title: 'Guest Scanned Game',
+          exePath: 'C:\\Games\\GuestGame\\game.exe',
+          platform: 'pc',
+          otixMediaId: 'media_guest_1',
+          otixPosterUrl: 'https://img.test/guest.jpg',
+          otixConfidence: 1.0,
+          data: {
+            title: 'Guest Scanned Game',
+            releaseDate: '2024-05-10',
+          },
+        },
+      ]),
+    }
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <MatchReviewCenterModal open={true} onOpenChange={vi.fn()} />
+      </QueryClientProvider>,
+    )
+
+    // Should load the local record even without authentication
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /matched \(1\)/i })).toBeInTheDocument()
+    })
+  })
 })

@@ -102,7 +102,7 @@ export const Carousel = forwardRef((
   return (
     <div ref={ref} className={cn('relative', className)}>
       {(title || header) && (
-        <div className="relative z-[2] pb-3 px-8 flex items-center justify-between">
+        <div className="relative z-[2] pb-3 px-4 sm:px-6 lg:px-8 flex items-center justify-between">
           <div className="flex items-center gap-2">
             {title ? (
               <>
@@ -152,8 +152,8 @@ export const Carousel = forwardRef((
           )}
           style={{
             gap: `${gap}px`,
-            paddingInline: trackPaddingInline ?? '16px',
-            scrollPaddingInline: trackPaddingInline ?? '16px',
+            paddingInline: trackPaddingInline ?? 'clamp(1rem, 2vw, 2rem)',
+            scrollPaddingInline: trackPaddingInline ?? 'clamp(1rem, 2vw, 2rem)',
             scrollSnapType: 'x mandatory',
             touchAction: 'pan-x pan-y pinch-zoom',
           }}

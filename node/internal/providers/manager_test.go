@@ -23,6 +23,7 @@ func TestInferDownloadProtocol(t *testing.T) {
 		{"https://nzbplanet.net/getnzb/123.nzb", "usenet"},
 		{"https://indexer.example/api?t=get", "usenet"},
 		{"https://1fichier.com/?abcdef12345", "direct"},
+		{"https://ddownload.com/abcdef12345/game.rar", "direct"},
 		{"https://rapidgator.net/file/123456/game.part1.rar", "direct"},
 		{"https://example.com/container.dlc", "direct"},
 		{"", "usenet"},

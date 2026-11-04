@@ -17,7 +17,7 @@ export const DiscoverIntentBar = ({
   return (
     <div
       id="discover-intent-bar"
-      className={`w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 ${className || ''}`}
+      className={`w-full px-4 sm:px-6 lg:px-8 ${className || ''}`}
     >
       <div className="flex flex-wrap items-center justify-between gap-2.5 sm:gap-3">
         {/* Floating Category Buttons */}

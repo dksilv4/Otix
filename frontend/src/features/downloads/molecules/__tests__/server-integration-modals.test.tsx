@@ -393,12 +393,44 @@ describe('integration service modals', () => {
     expect(profileTrigger.tagName).toBe('BUTTON')
     expect(screen.getByText('Quality Profile', { selector: 'label' }).className).toMatch(/pl-4/)
 
+    const autoWatchlistSwitch = screen.getByRole('switch', {
+      name: /Automatically request media from the watchlist/i,
+    })
+    expect(autoWatchlistSwitch).toBeInTheDocument()
+    expect(autoWatchlistSwitch).toHaveAttribute('aria-checked', 'false')
+    await user.click(autoWatchlistSwitch)
+    expect(autoWatchlistSwitch).toHaveAttribute('aria-checked', 'true')
+
     await user.click(screen.getByRole('button', { name: /^Save$/i }))
     await waitFor(() => expect(saveRadarr).toHaveBeenCalled())
     const payload = saveRadarr.mock.calls[0][0]
     expect(payload.instances).toHaveLength(1)
     expect(payload.instances[0].quality_profile_id).toBe(1)
     expect(payload.instances[0].root_folder_path).toBe('/movies')
+    expect(payload.autoRequestWatchlist).toBe(true)
+    expect(payload.instances[0].autoRequestWatchlist).toBe(true)
+  })
+
+  it('renders and saves auto request watchlist switch in Sonarr', async () => {
+    const user = userEvent.setup()
+    mockGameServers = [{ id: 1, name: 'Node' }]
+    mockSonarrConfig = { host: '127.0.0.1', port: 8989 }
+
+    render(<ServerSonarrSettingsModal serverId={1} serverName="Node" onClose={vi.fn()} />)
+
+    const autoWatchlistSwitch = screen.getByRole('switch', {
+      name: /Automatically request media from the watchlist/i,
+    })
+    expect(autoWatchlistSwitch).toBeInTheDocument()
+    expect(autoWatchlistSwitch).toHaveAttribute('aria-checked', 'false')
+    await user.click(autoWatchlistSwitch)
+    expect(autoWatchlistSwitch).toHaveAttribute('aria-checked', 'true')
+
+    await user.click(screen.getByRole('button', { name: /^Save$/i }))
+    await waitFor(() => expect(saveSonarr).toHaveBeenCalled())
+    const payload = saveSonarr.mock.calls[0][0]
+    expect(payload.autoRequestWatchlist).toBe(true)
+    expect(payload.instances[0].autoRequestWatchlist).toBe(true)
   })
 
   it('lets Radarr add, switch, and delete instances and persists the full list', async () => {

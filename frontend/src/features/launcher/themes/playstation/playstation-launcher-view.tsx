@@ -10,6 +10,7 @@ import {
   Clock,
   ArrowLeft,
   Search,
+  RotateCw,
 } from "lucide-react"
 import { MediaLogo } from "@/lib/media/media-logo"
 import { useLauncherVisibleGames } from "@/features/launcher/data/game-queries"
@@ -27,7 +28,7 @@ export const PlayStationLauncherView = () => {
   const _isDesktop = hasDesktopAPI()
   const { data: localGames = [] } = useLauncherVisibleGames()
   const { data: popularGames = [] } = usePopularGames()
-  const { runningGame } = useRunningGame()
+  const { runningGame, runningGames = [], cycleActiveGame } = useRunningGame()
   const { toast } = useToast()
 
   const [soundEnabled, setSoundEnabled] = useState(true)
@@ -147,9 +148,20 @@ export const PlayStationLauncherView = () => {
 
         <div className="flex items-center gap-5">
           {runningGame && (
-            <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-400 text-xs font-bold border border-emerald-500/30">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-primary/20 text-primary text-xs font-bold border border-primary/30">
+              <span className="w-1.5 h-1.5 rounded-full bg-primary" />
               <span>Playing {runningGame.game.title}</span>
+              {runningGames.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => void cycleActiveGame()}
+                  title={`Running ${runningGames.length} games. Click or press Ctrl+Tab to cycle active game focus.`}
+                  className="inline-flex items-center gap-1 pl-2 border-l border-primary/30 text-[10px] font-semibold text-primary hover:text-white transition-colors cursor-pointer"
+                >
+                  <RotateCw className="h-2.5 w-2.5" />
+                  <span>+${runningGames.length - 1}</span>
+                </button>
+              )}
             </div>
           )}
 

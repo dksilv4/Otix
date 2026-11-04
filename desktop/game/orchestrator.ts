@@ -7,21 +7,92 @@ import { getApiBaseUrl } from '../config';
 import {
   getGameMatch,
   upsertGameMatch,
+  upsertGameMatches,
   upsertGamesForPlatform,
   ensureGameMatchesTable,
   hydrateGame,
   saveMatchSuggestion,
   notifyGamesChanged,
+  upsertGames,
+  getAllGames,
+  getGameCount,
+  withTransaction,
+  GameRow,
 } from './storage';
 import { LocalMatcher } from './local-matcher';
 import { buildCatalogRequests, normalizeCatalogResponse } from './catalog-match';
 import type { CatalogMatchCandidate } from './catalog-match';
 import { cleanGameTitle } from './parser';
+import { isUpdateFile, isDlcFile } from './local-scanner';
 
 // ── Types ──────────────────────────────────────────────────────────────
 
+/**
+ * Executes async tasks with a bounded concurrency pool while honoring an abort signal.
+ */
+async function runWithConcurrency<T, R>(
+  items: T[],
+  concurrency: number,
+  signal: AbortSignal,
+  fn: (item: T) => Promise<R>,
+): Promise<R[]> {
+  const results: R[] = new Array(items.length);
+  let currentIndex = 0;
+
+  const workers = Array.from({ length: Math.min(concurrency, items.length) }, async () => {
+    while (currentIndex < items.length) {
+      if (signal.aborted) break;
+      const idx = currentIndex++;
+      try {
+        results[idx] = await fn(items[idx]);
+      } catch {
+        // worker catch: individual item failure shouldn't cancel whole pool
+      }
+    }
+  });
+
+  await Promise.all(workers);
+  return results;
+}
+
+export interface BackgroundMatchingOptions {
+  /** If true, matches all non-app games in library regardless of current match status */
+  rematchAll?: boolean;
+  /** Optional specific game IDs to match */
+  gameIds?: string[];
+  /** Optional external abort signal */
+  signal?: AbortSignal;
+  /** Batch size per request (default: 25) */
+  batchSize?: number;
+}
+
+export interface MatchingStatus {
+  isMatching: boolean;
+  totalUnmatched: number;
+  totalInLibrary: number;
+  totalMatched?: number;
+  processed: number;
+  matched: number;
+}
+
+export interface BackgroundMatchingProgressEvent {
+  state: 'running' | 'cancelled' | 'completed' | 'error';
+  processed: number;
+  total: number;
+  totalInLibrary: number;
+  matched: number;
+  unmatched: number;
+  percent: number;
+  currentItem?: string;
+  error?: string;
+  current?: number;
+  progress?: number;
+  gameTitle?: string;
+}
+
 export interface ScannedGame {
   id: string
+  rowId?: string
   title: string
   platform: string
   externalIds?: Array<{ source: string; id: string }>
@@ -84,14 +155,6 @@ export interface GameProgressEvent {
   error?: string
 }
 
-// ── SSE event buffers (per-request) ────────────────────────────────────
-
-interface SseRequest {
-  controller: AbortController
-  processed: number
-  total: number
-}
-
 // ── Orchestrator ───────────────────────────────────────────────────────
 
 export class GameScanOrchestrator extends EventEmitter {
@@ -102,10 +165,36 @@ export class GameScanOrchestrator extends EventEmitter {
   /** Track games per queryId for persistence during SSE stream */
   private queryIdToGames = new Map<string, ScannedGame[]>();
 
+  /** In-memory query LRU caches for external catalog resolution */
+  private searchCache = new Map<string, { timestamp: number; data: any[] }>();
+  private hydrateCache = new Map<string, { timestamp: number; data: any }>();
+  private static readonly CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
+  private static readonly MAX_CACHE_ENTRIES = 500;
+
+  // ── Background Matching Engine State ──────────────────────────────────
+  private matchingAbortController: AbortController | null = null;
+  private isMatchingRunning: boolean = false;
+  private matchingStats: MatchingStatus = {
+    isMatching: false,
+    totalUnmatched: 0,
+    totalInLibrary: 0,
+    processed: 0,
+    matched: 0,
+  };
+  private _lastProcessedCount: number = 0;
+  private lastProgressEmitTime: number = 0;
+  private progressTimer: NodeJS.Timeout | null = null;
+  private pendingProgressPayload: BackgroundMatchingProgressEvent | null = null;
+  private lastMatchProgressTime: number = 0;
+  private pendingMatchProgress: GameProgressEvent | null = null;
+  private matchProgressTimer: NodeJS.Timeout | null = null;
+
   get isScanning(): boolean { return this.activeScans.size > 0; }
+  get isMatching(): boolean { return this.isMatchingRunning; }
+  get currentProcessed(): number { return this.matchingStats.processed; }
 
   constructor(
-    private pluginManager: PluginManager,
+    private pluginManager?: PluginManager | null,
   ) {
     super();
   }
@@ -151,6 +240,9 @@ export class GameScanOrchestrator extends EventEmitter {
    * Each plugin scans independently (per-plugin locks).
    */
   async scanAll(mediaType?: string): Promise<PluginScanResult[]> {
+    if (!this.pluginManager) {
+      return [];
+    }
     const matchingPlugins = this.pluginManager.getPluginsForSlot('matching:scan');
     const libraryPlugins = this.pluginManager.getPluginsForSlot('library:scan');
     const seen = new Set<string>();
@@ -189,6 +281,34 @@ export class GameScanOrchestrator extends EventEmitter {
       externalIds: this.buildExternalIds(g),
     }));
 
+    // Pre-register rows in scanned_games with ID `${plat}_${gameId}` so SSE hydration targets find them
+    const initialRows = normalized.map((g) => {
+      const plat = g.platform || pluginId || 'pc';
+      const gameId = g.id;
+      const isDlc = !!g.isDlc;
+      const isBeta = !!g.isBeta;
+      const isApp = !!g.isApp;
+      const gameType = g.gameType || (isApp ? 'application' : isBeta ? 'beta' : isDlc ? 'dlc_addon' : 'main_game');
+      return {
+        id: `${plat}_${gameId}`,
+        title: g.title,
+        exePath: g.exePath || '',
+        installDir: g.installPath || '',
+        platform: plat as any,
+        posterUrl: g.posterUrl || undefined,
+        iconUrl: g.logoUrl || g.posterUrl || undefined,
+        isDlc,
+        dlcOf: g.dlcOf || undefined,
+        isBeta,
+        betaOf: g.betaOf || undefined,
+        isApp,
+        gameType,
+        sources: [{ source: plat, id: gameId, developer: g.developer || null, publisher: g.publisher || null, releaseYear: g.releaseYear || null, dlcOf: g.dlcOf || null, isDlc, betaOf: g.betaOf || null, isBeta, isApp, gameType }],
+      };
+    });
+    const pathsToScope = initialRows.map((r) => r.installDir || r.exePath).filter(Boolean);
+    upsertGames(initialRows as any[], pathsToScope.length > 0 ? pathsToScope : undefined);
+
     try {
       this.emit('scan:progress', { pluginId, phase: 'matching', current: 0, total: normalized.length });
       await this.streamMatches(normalized, pluginId, mediaType, abortController.signal);
@@ -220,6 +340,15 @@ export class GameScanOrchestrator extends EventEmitter {
 
   /** Cancel an active plugin scan */
   cancelScan(pluginId?: string): void {
+    if (this.matchProgressTimer) {
+      clearTimeout(this.matchProgressTimer);
+      this.matchProgressTimer = null;
+      this.pendingMatchProgress = null;
+    }
+    if (pluginId === 'background') {
+      this.cancelMatching();
+      return;
+    }
     if (pluginId) {
       const ctrl = this.activeScans.get(pluginId);
       if (ctrl) { ctrl.abort(); this.activeScans.delete(pluginId); }
@@ -230,7 +359,505 @@ export class GameScanOrchestrator extends EventEmitter {
       ctrl.abort();
       this.activeScans.delete(id);
     }
+    this.cancelMatching();
     this.emit('scan:cancelled', { pluginId: pluginId || 'all' });
+  }
+
+  /**
+   * Returns current background matching status.
+   * Dynamically inspects database if idle to return accurate library counts.
+   */
+  getMatchingStatus(): MatchingStatus {
+    const totalInLibrary = getGameCount();
+    const totalUnmatched = getGameCount({ matched: false });
+    const totalMatched = totalInLibrary - totalUnmatched;
+    if (this.isMatchingRunning) {
+      return {
+        ...this.matchingStats,
+        isMatching: true,
+        totalInLibrary,
+        totalMatched,
+        processed: this.currentProcessed,
+      };
+    }
+    return {
+      isMatching: false,
+      totalUnmatched,
+      totalInLibrary,
+      totalMatched,
+      processed: this._lastProcessedCount ?? 0,
+      matched: totalMatched,
+    };
+  }
+
+  /**
+   * Cancels any active background matching process.
+   * In-flight HTTP requests are aborted immediately, the chunk loop terminates,
+   * and all previously committed matches in SQLite remain completely intact.
+   */
+  cancelMatching(): void {
+    if (!this.isMatchingRunning || !this.matchingAbortController) {
+      return;
+    }
+
+    console.log('[Orchestrator] Cancelling background matching...');
+    this._lastProcessedCount = this.matchingStats.processed;
+    this.matchingAbortController.abort();
+    this.isMatchingRunning = false;
+
+    if (this.progressTimer) {
+      clearTimeout(this.progressTimer);
+      this.progressTimer = null;
+    }
+    this.pendingProgressPayload = null;
+    if (this.matchProgressTimer) {
+      clearTimeout(this.matchProgressTimer);
+      this.matchProgressTimer = null;
+      this.pendingMatchProgress = null;
+    }
+
+    const cancelPayload: BackgroundMatchingProgressEvent = {
+      state: 'cancelled',
+      processed: this.matchingStats.processed,
+      total: this.matchingStats.totalUnmatched,
+      totalInLibrary: this.matchingStats.totalInLibrary,
+      matched: this.matchingStats.matched,
+      unmatched: Math.max(0, this.matchingStats.totalUnmatched - this.matchingStats.matched),
+      percent: this.matchingStats.totalUnmatched > 0
+        ? Math.min(100, Math.round((this.matchingStats.processed / this.matchingStats.totalUnmatched) * 100))
+        : 0,
+      progress: this.matchingStats.totalUnmatched > 0
+        ? Math.min(100, Math.round((this.matchingStats.processed / this.matchingStats.totalUnmatched) * 100))
+        : 0,
+      current: this.matchingStats.processed,
+    };
+
+    this.emit('game:matching:progress', cancelPayload);
+    this.emit('match:progress', {
+      pluginId: 'background',
+      status: 'cancelled',
+      ...cancelPayload,
+    });
+    this.emit('game:matching:cancelled');
+    this.emit('scan:cancelled', { pluginId: 'background' });
+  }
+
+  /**
+   * Starts autonomous background matching queue with resumption support.
+   * Queries unmatched games from storage:
+   *   WHERE (otix_media_id IS NULL OR otix_media_id = '') AND (is_app = 0 OR is_app IS NULL)
+   * Chunks into bounded batches of 25, runs with 15s per-batch timeouts,
+   * falls back to LocalMatcher per chunk on failure, and persists each chunk atomically.
+   */
+  async startBackgroundMatching(options?: BackgroundMatchingOptions): Promise<void> {
+    if (this.isMatchingRunning) {
+      console.warn('[Orchestrator] Background matching already in progress — ignoring request');
+      return;
+    }
+
+    if (options?.signal?.aborted) {
+      console.warn('[Orchestrator] startBackgroundMatching called with already aborted signal');
+      return;
+    }
+
+    const abortController = new AbortController();
+    this.matchingAbortController = abortController;
+    this.isMatchingRunning = true;
+
+    if (options?.signal) {
+      options.signal.addEventListener('abort', () => this.cancelMatching(), { once: true });
+    }
+
+    const BATCH_SIZE = options?.batchSize && options.batchSize > 0 ? options.batchSize : 25;
+    const rematchAll = !!options?.rematchAll || !!(options as any)?.forceAll || !!(options as any)?.forceRematch;
+
+    try {
+      const eligibleGames: GameRow[] = this.getUnmatchedGamesFromStorage({ rematchAll, gameIds: options?.gameIds });
+      const totalInLibrary = getGameCount();
+      const totalMatched = totalInLibrary - eligibleGames.length;
+
+      this.matchingStats = {
+        isMatching: true,
+        totalUnmatched: eligibleGames.length,
+        totalInLibrary,
+        totalMatched,
+        processed: 0,
+        matched: 0,
+      };
+
+      console.log(`[Orchestrator] Starting background matching: ${eligibleGames.length} games to match out of ${totalInLibrary} total in library`);
+
+      const initialPayload: BackgroundMatchingProgressEvent = {
+        state: 'running',
+        processed: 0,
+        total: eligibleGames.length,
+        totalInLibrary,
+        matched: 0,
+        unmatched: eligibleGames.length,
+        percent: 0,
+        current: 0,
+        progress: 0,
+      };
+      this.lastProgressEmitTime = Date.now();
+      this.emit('game:matching:progress', initialPayload);
+      this.emit('match:progress', {
+        pluginId: 'background',
+        status: 'processing',
+        totalGames: eligibleGames.length,
+        ...initialPayload,
+      });
+
+      if (eligibleGames.length === 0) {
+        this.emitComplete(0, totalInLibrary, 0, 0);
+        return;
+      }
+
+      let processedCount = 0;
+      let matchedCount = 0;
+
+      for (let i = 0; i < eligibleGames.length; i += BATCH_SIZE) {
+        if (abortController.signal.aborted) {
+          console.log('[Orchestrator] Matching loop aborted between chunks');
+          break;
+        }
+
+        const chunkRows = eligibleGames.slice(i, i + BATCH_SIZE);
+        const scannedChunk: ScannedGame[] = chunkRows.map((r) => this.gameRowToScannedGame(r));
+        const chunkSignal = abortController.signal;
+
+        try {
+          await this.streamMatchesRemote(scannedChunk, 'background', 'game', chunkSignal, 15_000);
+        } catch (remoteErr: any) {
+          if (chunkSignal.aborted) break;
+          console.warn(`[Orchestrator] Remote match failed for batch ${Math.floor(i / BATCH_SIZE) + 1} (${remoteErr?.message || remoteErr}), falling back to offline matcher for this chunk`);
+          try {
+            await this.streamMatchesLocal(scannedChunk, 'background');
+          } catch (localErr: any) {
+            console.error('[Orchestrator] Local matcher fallback error for chunk:', localErr);
+          }
+        }
+
+        if (chunkSignal.aborted) break;
+
+        // Resolve unmatched games via API search & hydration using bounded parallel concurrency (5)
+        const unmatchedInChunk = scannedChunk.filter((g) => {
+          if (chunkSignal.aborted) return false;
+          const matchBefore = getGameMatch(g.platform, g.id);
+          return !matchBefore?.otixMediaId;
+        });
+
+        if (unmatchedInChunk.length > 0) {
+          await runWithConcurrency(unmatchedInChunk, 5, chunkSignal, async (g) => {
+            if (chunkSignal.aborted) return;
+            try {
+              const query = cleanGameTitle(g.title) || g.title;
+              let apiCandidates = await this.searchApiCatalog(query);
+              if (!apiCandidates || apiCandidates.length === 0) {
+                const simplified = query.replace(/[:\-–—].*$/, '').replace(/\b(edition|remastered|remake|game of the year|goty|director'?s cut|deluxe)\b/gi, '').trim();
+                if (simplified && simplified.length >= 3 && simplified.toLowerCase() !== query.toLowerCase()) {
+                  apiCandidates = await this.searchApiCatalog(simplified);
+                }
+              }
+
+              if (apiCandidates && apiCandidates.length > 0) {
+                const top = apiCandidates[0];
+                const candTitle = (top.title || top.name || '').toLowerCase().trim();
+                const qLower = query.toLowerCase().trim();
+                const isClose = candTitle === qLower || candTitle.includes(qLower) || qLower.includes(candTitle);
+
+                let mediaId = String(top.id || top.mediaId || '');
+                let poster = top.posterUrl || top.poster_url || top.images?.poster?.url || null;
+                let backdrop = top.backdropUrl || top.backdrop_url || top.images?.backdrop?.url || null;
+                let matchedTitle = top.title || top.name || g.title;
+
+                if (mediaId.startsWith('igdb:')) {
+                  const imported = await this.importAndHydrateFromApi(mediaId);
+                  if (imported?.id) {
+                    mediaId = String(imported.id);
+                    matchedTitle = imported.title || matchedTitle;
+                    poster = imported.poster_url || imported.posterUrl || poster;
+                    backdrop = imported.backdrop_url || imported.backdropUrl || backdrop;
+                  }
+                }
+
+                const targetId = (g as any).rowId || `${g.platform}_${g.id}`;
+                if (isClose && mediaId) {
+                  upsertGameMatch({
+                    source: g.platform,
+                    sourceGameId: g.id,
+                    otixMediaId: mediaId,
+                    otixTitle: matchedTitle,
+                    otixPosterUrl: poster || undefined,
+                    otixBackdropUrl: backdrop || undefined,
+                    otixConfidence: 0.90,
+                    matchType: 'auto',
+                    status: 'approved',
+                  });
+                  hydrateGame(
+                    targetId,
+                    matchedTitle,
+                    null,
+                    poster || null,
+                    top,
+                    0.90,
+                    mediaId,
+                    backdrop || null,
+                  );
+                } else if (apiCandidates.length > 0) {
+                  saveMatchSuggestion(targetId, {
+                    id: mediaId,
+                    title: matchedTitle,
+                    posterUrl: poster,
+                    backdropUrl: backdrop,
+                    confidence: isClose ? 0.85 : 0.70,
+                    _candidates: apiCandidates,
+                  });
+                }
+              }
+            } catch (unmatchedErr) {
+              console.warn(`[Orchestrator] Error resolving unmatched game ${g.title}:`, unmatchedErr);
+            }
+          });
+        }
+
+        // Atomic chunk persistence: commit matches per chunk inside withTransaction using upsertGameMatches
+        const chunkMatches: Array<{
+          id: string;
+          source: string;
+          sourceGameId: string;
+          otixMediaId: string;
+          otixMediaTitle?: string | null;
+          otixConfidence?: number | null;
+          otixPosterUrl?: string;
+          otixBackdropUrl?: string;
+        }> = [];
+
+        for (const g of scannedChunk) {
+          const m = getGameMatch(g.platform, g.id);
+          if (m?.otixMediaId) {
+            matchedCount++;
+            chunkMatches.push({
+              id: (g as any).rowId || `${g.platform}_${g.id}`,
+              source: g.platform,
+              sourceGameId: g.id,
+              otixMediaId: m.otixMediaId,
+              otixMediaTitle: m.otixTitle || g.title,
+              otixConfidence: m.otixConfidence,
+              otixPosterUrl: m.otixPosterUrl,
+              otixBackdropUrl: m.otixBackdropUrl,
+            });
+          }
+        }
+
+        if (chunkMatches.length > 0) {
+          withTransaction(() => {
+            upsertGameMatches(chunkMatches);
+          });
+        }
+
+        processedCount += chunkRows.length;
+        this.matchingStats.processed = processedCount;
+        this._lastProcessedCount = processedCount;
+        this.matchingStats.matched = matchedCount;
+
+        const currentTitle = scannedChunk[scannedChunk.length - 1]?.title;
+        const percent = Math.min(100, Math.round((processedCount / eligibleGames.length) * 100));
+
+        this.emitThrottledProgress({
+          state: 'running',
+          processed: processedCount,
+          total: eligibleGames.length,
+          totalInLibrary,
+          matched: matchedCount,
+          unmatched: eligibleGames.length - matchedCount,
+          percent,
+          current: processedCount,
+          progress: percent,
+          currentItem: currentTitle,
+          gameTitle: currentTitle,
+        });
+      }
+
+      if (!abortController.signal.aborted) {
+        this.emitComplete(processedCount, totalInLibrary, matchedCount, eligibleGames.length);
+      }
+    } catch (err: any) {
+      console.error('[Orchestrator] Background matching engine error:', err);
+      this._lastProcessedCount = this.matchingStats.processed;
+      const errorPayload: BackgroundMatchingProgressEvent = {
+        state: 'error',
+        processed: this.matchingStats.processed,
+        total: this.matchingStats.totalUnmatched,
+        totalInLibrary: this.matchingStats.totalInLibrary,
+        matched: this.matchingStats.matched,
+        unmatched: Math.max(0, this.matchingStats.totalUnmatched - this.matchingStats.matched),
+        percent: this.matchingStats.totalUnmatched > 0
+          ? Math.min(100, Math.round((this.matchingStats.processed / this.matchingStats.totalUnmatched) * 100))
+          : 0,
+        progress: this.matchingStats.totalUnmatched > 0
+          ? Math.min(100, Math.round((this.matchingStats.processed / this.matchingStats.totalUnmatched) * 100))
+          : 0,
+        current: this.matchingStats.processed,
+        error: err.message || String(err),
+      };
+      this.emit('game:matching:progress', errorPayload);
+      this.emit('match:progress', {
+        pluginId: 'background',
+        status: 'failed',
+        error: errorPayload.error,
+        ...errorPayload,
+      });
+    } finally {
+      if (this.matchingAbortController === abortController) {
+        this.isMatchingRunning = false;
+        this.matchingAbortController = null;
+      }
+      notifyGamesChanged();
+    }
+  }
+
+  /** Alias for startBackgroundMatching */
+  async startMatching(options?: BackgroundMatchingOptions): Promise<void> {
+    return this.startBackgroundMatching(options);
+  }
+
+  private getUnmatchedGamesFromStorage(options?: { rematchAll?: boolean; rematchMissingArtwork?: boolean; gameIds?: string[] }): GameRow[] {
+    try {
+      const rematchAll = !!options?.rematchAll || !!(options as any)?.forceAll || !!(options as any)?.forceRematch;
+      const rematchMissing = !!options?.rematchMissingArtwork;
+
+      if (options?.gameIds && options.gameIds.length > 0) {
+        const idSet = new Set(options.gameIds);
+        const games = getAllGames().filter((g) => idSet.has(g.id) && !g.isApp);
+        if (rematchAll) {
+          return games;
+        }
+        return games.filter((g) => {
+          if (!g.otixMediaId || g.otixMediaId === '') return true;
+          if (rematchMissing && !g.posterUrl && !g.otixPosterUrl && !g.data?.posterUrl) return true;
+          return false;
+        });
+      }
+
+      const all = getAllGames();
+      if (rematchAll) {
+        return all.filter((g) => !g.isApp);
+      }
+      return all.filter((g) => {
+        if (g.isApp) return false;
+        if (!g.otixMediaId || g.otixMediaId === '') return true;
+        if (rematchMissing && !g.posterUrl && !g.otixPosterUrl && !g.data?.posterUrl) return true;
+        return false;
+      });
+    } catch (err) {
+      console.warn('[Orchestrator] Error fetching unmatched games from storage:', err);
+      return [];
+    }
+  }
+
+  private gameRowToScannedGame(row: GameRow): ScannedGame {
+    let originalId = row.id;
+    let sourcePlatform = (row.platform as string) || 'pc';
+
+    if (row.sources && Array.isArray(row.sources) && row.sources.length > 0) {
+      const s = row.sources[0] as any;
+      if (typeof s === 'object' && s !== null) {
+        if (s.id) originalId = String(s.id);
+        if (s.source) sourcePlatform = String(s.source);
+      }
+    }
+    if (originalId.startsWith(`${sourcePlatform}_`)) {
+      originalId = originalId.slice(sourcePlatform.length + 1);
+    }
+
+    const safeTitle = String(row.title ?? '');
+    return {
+      id: originalId,
+      rowId: row.id,
+      title: cleanGameTitle(safeTitle) || safeTitle,
+      platform: sourcePlatform,
+      installPath: row.installDir,
+      exePath: row.exePath,
+      posterUrl: row.posterUrl,
+      logoUrl: row.logoUrl,
+      isDlc: row.isDlc,
+      dlcOf: row.dlcOf,
+      isBeta: row.isBeta,
+      betaOf: row.betaOf,
+      isApp: row.isApp,
+      gameType: row.gameType,
+    };
+  }
+
+  private emitThrottledProgress(payload: BackgroundMatchingProgressEvent): void {
+    const now = Date.now();
+    this.pendingProgressPayload = payload;
+    const elapsed = now - this.lastProgressEmitTime;
+
+    if (elapsed >= 100 || payload.percent === 100 || payload.state !== 'running') {
+      this.flushProgress();
+    } else if (!this.progressTimer) {
+      this.progressTimer = setTimeout(() => {
+        this.progressTimer = null;
+        this.flushProgress();
+      }, 100 - elapsed);
+      this.progressTimer.unref?.();
+    }
+  }
+
+  private flushProgress(): void {
+    if (this.progressTimer) {
+      clearTimeout(this.progressTimer);
+      this.progressTimer = null;
+    }
+    if (this.pendingProgressPayload) {
+      const p = this.pendingProgressPayload;
+      this.pendingProgressPayload = null;
+      this.lastProgressEmitTime = Date.now();
+      this.emit('game:matching:progress', p);
+      this.emit('match:progress', {
+        pluginId: 'background',
+        status: p.state === 'running' ? 'processing' : p.state,
+        queryTitle: p.currentItem,
+        totalGames: p.total,
+        current: p.processed,
+        progress: p.percent,
+        ...p,
+      });
+    }
+  }
+
+  private emitComplete(processed: number, totalInLibrary: number, matched: number, total: number = processed): void {
+    this._lastProcessedCount = processed;
+    this.matchingStats.processed = processed;
+    const completePayload: BackgroundMatchingProgressEvent = {
+      state: 'completed',
+      processed,
+      total,
+      totalInLibrary,
+      matched,
+      unmatched: total - matched,
+      percent: 100,
+      current: processed,
+      progress: 100,
+    };
+    this.flushProgress();
+    this.emit('game:matching:progress', completePayload);
+    this.emit('match:progress', {
+      pluginId: 'background',
+      status: 'completed',
+      totalGames: total,
+      current: processed,
+      progress: 100,
+      ...completePayload,
+    });
+    this.emit('game:matching:complete', completePayload);
+    this.emit('scan:complete', {
+      pluginId: 'background',
+      totalGames: total,
+      matched,
+      unmatched: total - matched,
+    });
   }
 
   // ── Core scan flow ──────────────────────────────────────────────────
@@ -243,6 +870,10 @@ export class GameScanOrchestrator extends EventEmitter {
   ): Promise<PluginScanResult> {
     ensureGameMatchesTable();
     this.queryIdToGames.clear();
+
+    if (!this.pluginManager) {
+      return { pluginId, pluginLabel: pluginId, totalGames: 0, matched: 0, unmatched: 0, errors: ['Plugin manager not initialized'] };
+    }
 
     // Resolve plugin label from any slot
     const plugs = [
@@ -390,13 +1021,16 @@ export class GameScanOrchestrator extends EventEmitter {
     }
   }
 
-  /** Otix SSE match pipeline. */
+  /** Otix SSE match pipeline with configurable timeout and abort guard */
   private async streamMatchesRemote(
     games: ScannedGame[],
     pluginId: string,
     mediaType: string,
     signal: AbortSignal,
+    timeoutMs: number = 15_000,
   ): Promise<void> {
+    if (signal.aborted || games.length === 0) return;
+
     const requests = games.map(g => ({
       query_id: `${g.platform}:${g.id}`,
       title: cleanGameTitle(g.title) || g.title,
@@ -427,57 +1061,77 @@ export class GameScanOrchestrator extends EventEmitter {
     const url = new URL(`/api/v1/media/match/stream?hydrate=true&seed_missing=true`, this.apiBaseUrl);
     const body = JSON.stringify({ games: requests });
 
-    return new Promise<void>((resolve, reject) => {
-      const client = url.protocol === 'https:' ? https : http;
-      const headers: Record<string, string | number> = {
-        'Content-Type': 'application/json',
-        'Accept': 'text/event-stream, application/json',
-        'Content-Length': Buffer.byteLength(body),
-      };
-      if (this.authToken) {
-        headers['Authorization'] = `Bearer ${this.authToken}`;
-      }
-
-      const req = client.request(url, {
-        method: 'POST',
-        headers,
-        timeout: 120_000,
-      });
-
-      signal.addEventListener('abort', () => {
-        req.destroy();
-        resolve(); // clean abort, not an error
-      });
-
-      let buffer = '';
-
-      req.on('response', (res) => {
-        if (res.statusCode !== 200) {
-          let errBody = '';
-          res.on('data', (chunk: Buffer) => { errBody += chunk.toString(); });
-          res.on('end', () => reject(new Error(`Backend ${res.statusCode}: ${errBody.slice(0, 200)}`)));
-          return;
+    try {
+      await new Promise<void>((resolve, reject) => {
+        const client = url.protocol === 'https:' ? https : http;
+        const headers: Record<string, string | number> = {
+          'Content-Type': 'application/json',
+          'Accept': 'text/event-stream, application/json',
+          'Content-Length': Buffer.byteLength(body),
+        };
+        if (this.authToken) {
+          headers['Authorization'] = `Bearer ${this.authToken}`;
         }
-        res.on('data', (chunk: Buffer) => {
-          buffer += chunk.toString();
-          buffer = this.processSseEvents(buffer, pluginId);
-        });
-        res.on('end', () => {
-          if (buffer.trim()) {
-            this.processRemainingResponse(buffer, pluginId, games.length);
-          }
-          resolve();
-        });
-      });
 
-      req.on('error', (err) => {
-        if (signal.aborted) { resolve(); return; }
-        reject(err);
+        const req = client.request(url, {
+          method: 'POST',
+          headers,
+          timeout: timeoutMs,
+        });
+
+        const onAbort = () => {
+          req.destroy();
+          resolve(); // clean abort, not an error
+        };
+        signal.addEventListener('abort', onAbort, { once: true });
+
+        let buffer = '';
+
+        req.on('response', (res) => {
+          if (res.statusCode !== 200) {
+            let errBody = '';
+            res.on('data', (chunk: Buffer) => { errBody += chunk.toString(); });
+            res.on('end', () => reject(new Error(`Backend ${res.statusCode}: ${errBody.slice(0, 200)}`)));
+            return;
+          }
+          res.on('data', (chunk: Buffer) => {
+            buffer += chunk.toString();
+            buffer = this.processSseEvents(buffer, pluginId);
+          });
+          res.on('end', () => {
+            if (buffer.trim()) {
+              this.processRemainingResponse(buffer, pluginId, games.length);
+            }
+            resolve();
+          });
+        });
+
+        req.on('error', (err) => {
+          if (signal.aborted) { resolve(); return; }
+          reject(err);
+        });
+        req.on('timeout', () => {
+          req.destroy();
+          reject(new Error(`SSE batch timeout (${timeoutMs}ms)`));
+        });
+        req.write(body);
+        req.end();
       });
-      req.on('timeout', () => { req.destroy(); reject(new Error('SSE timeout')); });
-      req.write(body);
-      req.end();
-    });
+    } finally {
+      // Bounded memory lifecycle: remove queryId mappings after batch completes
+      for (const g of games) {
+        const qid = `${g.platform}:${g.id}`;
+        this.queryIdToGames.delete(qid);
+      }
+    }
+  }
+
+  public async searchCatalog(query: string): Promise<any[]> {
+    return this.searchApiCatalog(query);
+  }
+
+  public async importCatalogIgdb(igdbId: string): Promise<any | null> {
+    return this.importAndHydrateFromApi(igdbId);
   }
 
   /**
@@ -486,11 +1140,164 @@ export class GameScanOrchestrator extends EventEmitter {
    * persists locally, emitting the same match:progress / match:complete events
    * the SSE path would.
    */
+  private async searchApiCatalog(query: string): Promise<any[]> {
+    if (process.env.NODE_ENV === 'test' || !query || !this.apiBaseUrl) return [];
+    const normalizedKey = query.trim().toLowerCase();
+    const cached = this.searchCache.get(normalizedKey);
+    if (cached && Date.now() - cached.timestamp < GameScanOrchestrator.CACHE_TTL_MS) {
+      return cached.data;
+    }
+
+    try {
+      const url = new URL(`/api/v1/search?q=${encodeURIComponent(query)}&media_type=game&include_external=true`, this.apiBaseUrl);
+      const client = url.protocol === 'https:' ? https : http;
+      const items = await new Promise<any[]>((resolve) => {
+        const headers: Record<string, string> = { Accept: 'application/json' };
+        if (this.authToken) headers['Authorization'] = `Bearer ${this.authToken}`;
+        const req = client.request(url, { method: 'GET', headers, timeout: 5000 }, (res) => {
+          let body = '';
+          res.on('data', (c) => { body += c; });
+          res.on('end', () => {
+            try {
+              const data = JSON.parse(body);
+              const parsed = data.items || data.results || (Array.isArray(data) ? data : []);
+              resolve(Array.isArray(parsed) ? parsed : []);
+            } catch {
+              resolve([]);
+            }
+          });
+        });
+        req.on('error', () => resolve([]));
+        req.on('timeout', () => { req.destroy(); resolve([]); });
+        req.end();
+      });
+
+      if (this.searchCache.size >= GameScanOrchestrator.MAX_CACHE_ENTRIES) {
+        const oldestKey = this.searchCache.keys().next().value;
+        if (oldestKey) this.searchCache.delete(oldestKey);
+      }
+      this.searchCache.set(normalizedKey, { timestamp: Date.now(), data: items });
+      return items;
+    } catch {
+      return [];
+    }
+  }
+
+  private async importAndHydrateFromApi(igdbIdOrPlaceholder: string): Promise<any | null> {
+    if (process.env.NODE_ENV === 'test' || !igdbIdOrPlaceholder || !this.apiBaseUrl) return null;
+    const rawId = igdbIdOrPlaceholder.startsWith('igdb:')
+      ? igdbIdOrPlaceholder.slice(5)
+      : igdbIdOrPlaceholder;
+    if (!rawId || !/^\d+$/.test(rawId)) return null;
+
+    const cached = this.hydrateCache.get(rawId);
+    if (cached && Date.now() - cached.timestamp < GameScanOrchestrator.CACHE_TTL_MS) {
+      return cached.data;
+    }
+
+    try {
+      const url = new URL(`/api/v1/media/import/igdb?igdb_id=${encodeURIComponent(rawId)}`, this.apiBaseUrl);
+      const client = url.protocol === 'https:' ? https : http;
+      const result = await new Promise<any | null>((resolve) => {
+        const headers: Record<string, string> = { Accept: 'application/json' };
+        if (this.authToken) headers['Authorization'] = `Bearer ${this.authToken}`;
+        const req = client.request(url, { method: 'POST', headers, timeout: 10000 }, (res) => {
+          let body = '';
+          res.on('data', (c) => { body += c; });
+          res.on('end', () => {
+            try {
+              const data = JSON.parse(body);
+              resolve(data);
+            } catch {
+              resolve(null);
+            }
+          });
+        });
+        req.on('error', () => resolve(null));
+        req.on('timeout', () => { req.destroy(); resolve(null); });
+        req.end();
+      });
+
+      if (result) {
+        if (this.hydrateCache.size >= GameScanOrchestrator.MAX_CACHE_ENTRIES) {
+          const oldestKey = this.hydrateCache.keys().next().value;
+          if (oldestKey) this.hydrateCache.delete(oldestKey);
+        }
+        this.hydrateCache.set(rawId, { timestamp: Date.now(), data: result });
+      }
+      return result;
+    } catch {
+      return null;
+    }
+  }
+
   private async streamMatchesLocal(games: ScannedGame[], pluginId: string): Promise<void> {
     const candidates = await this.queryMatchCandidates(games);
     const results = new LocalMatcher().matchBatch(games, candidates);
     let matched = 0;
-    for (const r of results) {
+    for (let idx = 0; idx < results.length; idx++) {
+      const r = results[idx];
+      if (r.status !== 'matched' && this.apiBaseUrl) {
+        try {
+          const apiCandidates = await this.searchApiCatalog(cleanGameTitle(r.queryTitle) || r.queryTitle);
+          if (apiCandidates.length > 0) {
+            const top = apiCandidates[0];
+            const candTitle = (top.title || top.name || '').toLowerCase().trim();
+            const qTitle = (cleanGameTitle(r.queryTitle) || r.queryTitle).toLowerCase().trim();
+            const isClose = candTitle === qTitle || candTitle.includes(qTitle) || qTitle.includes(candTitle);
+            if (isClose) {
+              let poster = top.posterUrl || top.poster_url || top.images?.poster?.url;
+              let backdrop = top.backdropUrl || top.backdrop_url || top.images?.backdrop?.url;
+              let mediaId = String(top.id || top.mediaId);
+              let matchedTitle = top.title || top.name || r.queryTitle;
+
+              if (mediaId.startsWith('igdb:')) {
+                const imported = await this.importAndHydrateFromApi(mediaId);
+                if (imported?.id) {
+                  mediaId = String(imported.id);
+                  matchedTitle = imported.title || matchedTitle;
+                  poster = imported.poster_url || imported.posterUrl || poster;
+                  backdrop = imported.backdrop_url || imported.backdropUrl || backdrop;
+                }
+              }
+
+              r.status = 'matched';
+              r.mediaId = mediaId;
+              r.otixTitle = matchedTitle;
+              r.otixConfidence = 0.90;
+              r.otixPosterUrl = poster;
+              r.otixBackdropUrl = backdrop;
+
+              const parts = r.queryId.split(':');
+              const plat = parts[0] || 'pc';
+              const sId = parts.slice(1).join(':') || r.queryId;
+              const matching = games.find((g) => `${g.platform}:${g.id}` === r.queryId);
+              const targetId = (matching as any)?.rowId || `${plat}_${sId}`;
+              upsertGameMatch({
+                source: plat,
+                sourceGameId: sId,
+                otixMediaId: r.mediaId,
+                otixTitle: r.otixTitle,
+                otixPosterUrl: poster,
+                otixBackdropUrl: backdrop,
+                otixConfidence: 0.90,
+                matchType: 'auto',
+                status: 'approved',
+              });
+              hydrateGame(
+                targetId,
+                r.otixTitle || r.queryTitle || '',
+                null,
+                poster || null,
+                top,
+                0.90,
+                r.mediaId,
+                backdrop || null,
+              );
+            }
+          }
+        } catch {}
+      }
       if (r.status === 'matched') matched++;
       const event: GameProgressEvent = {
         pluginId,
@@ -506,8 +1313,9 @@ export class GameScanOrchestrator extends EventEmitter {
           backdrop_url: r.otixBackdropUrl || undefined,
         } : undefined,
       };
-      this.emit('match:progress', event);
+      this.emitThrottledMatchProgress(event, idx === results.length - 1);
     }
+    this.flushMatchProgress();
     this.emit('match:complete', {
       pluginId,
       total: games.length,
@@ -518,12 +1326,42 @@ export class GameScanOrchestrator extends EventEmitter {
     notifyGamesChanged();
   }
 
+  private emitThrottledMatchProgress(event: GameProgressEvent, force: boolean = false): void {
+    const now = Date.now();
+    this.pendingMatchProgress = event;
+    const elapsed = now - this.lastMatchProgressTime;
+
+    if (elapsed >= 100 || force) {
+      this.flushMatchProgress();
+    } else if (!this.matchProgressTimer) {
+      this.matchProgressTimer = setTimeout(() => {
+        this.matchProgressTimer = null;
+        this.flushMatchProgress();
+      }, 100 - elapsed);
+      this.matchProgressTimer.unref?.();
+    }
+  }
+
+  private flushMatchProgress(): void {
+    if (this.matchProgressTimer) {
+      clearTimeout(this.matchProgressTimer);
+      this.matchProgressTimer = null;
+    }
+    if (this.pendingMatchProgress) {
+      const event = this.pendingMatchProgress;
+      this.pendingMatchProgress = null;
+      this.lastMatchProgressTime = Date.now();
+      this.emit('match:progress', event);
+    }
+  }
+
   /**
    * Ask every plugin registered in the `matching:pipeline` slot for match
    * candidates. Plugins that error are skipped — a broken pipeline must not
    * break the offline scan. Earlier-registered plugins win on conflicts.
    */
   private async queryMatchCandidates(games: ScannedGame[]): Promise<Map<string, CatalogMatchCandidate>> {
+    if (!this.pluginManager) return new Map();
     const plugins = this.pluginManager.getPluginsForSlot('matching:pipeline');
     if (plugins.length === 0) return new Map();
 
@@ -615,51 +1453,113 @@ export class GameScanOrchestrator extends EventEmitter {
   }
 
   private handleProgress(dataStr: string, pluginId: string): void {
-    const data = JSON.parse(dataStr) as any;
-    const event: GameProgressEvent = {
-      pluginId, queryId: data.query_id, totalGames: data.total_games,
-      status: data.status, queryTitle: data.query_title,
-      match: data.match, candidates: data.candidates, error: data.error,
-    };
-    this.emit('match:progress', event);
-
-    const parts = data.query_id.split(':');
-    const source = parts[0] || 'unknown';
-    const sourceGameId = parts.slice(1).join(':') || data.query_id;
-    const scannedGameId = `${source}_${sourceGameId}`;
-
-    if (data.status === 'matched' && data.match?.media_item_id) {
-      for (const game of this.queryIdToGames.get(data.query_id) || []) {
-        upsertGameMatch({
-          source, sourceGameId,
-          otixMediaId: data.match.media_item_id, otixTitle: data.match.title,
-          otixPosterUrl: data.match.poster_url, otixBackdropUrl: data.match.backdrop_url,
-          otixConfidence: data.match.confidence, matchType: 'auto', status: 'pending',
-        });
-        // Save full hydrated data if the backend returned it
-        if (data.hydrated) {
-          hydrateGame(scannedGameId, data.match.title, null, data.match.poster_url || null,
-            data.hydrated, data.match.confidence, data.match.media_item_id);
-        } else {
-          hydrateGame(scannedGameId, data.match.title, null, data.match.poster_url || null,
-            data.match, data.match.confidence, data.match.media_item_id);
-        }
-        notifyGamesChanged();
-      }
-      this.tryClaimForPlugin(pluginId, data.match.media_item_id);
-    } else if (data.candidates?.length > 0) {
-      const best = data.candidates[0];
-      saveMatchSuggestion(scannedGameId, {
-        id: best.media_item_id || `${best.provider || 'igdb'}_${best.provider_id || scannedGameId}`,
-        title: best.title, posterUrl: best.poster_url || null,
-        backdropUrl: best.backdrop_url || null, developer: best.developer || null,
-        platforms: best.platforms || [], confidence: best.confidence,
-        _candidates: data.candidates,
-      });
-      // Do not hydrate / overwrite scanned game title or artwork with unconfirmed suggestions.
-      notifyGamesChanged();
+    let data: any;
+    try {
+      data = typeof dataStr === 'string' ? JSON.parse(dataStr) : dataStr;
+    } catch (parseErr) {
+      console.warn('[Orchestrator] Invalid JSON in handleProgress:', parseErr);
+      return;
     }
-    // unmatched → no persistence needed
+    if (!data || !data.query_id) return;
+
+    try {
+      const event: GameProgressEvent = {
+        pluginId, queryId: data.query_id, totalGames: data.total_games,
+        status: data.status, queryTitle: data.query_title,
+        match: data.match, candidates: data.candidates, error: data.error,
+      };
+      this.emit('match:progress', event);
+
+      const parts = String(data.query_id).split(':');
+      const source = parts[0] || 'unknown';
+      const sourceGameId = parts.slice(1).join(':') || data.query_id;
+      const scannedGameId = sourceGameId.startsWith(`${source}_`) ? sourceGameId : `${source}_${sourceGameId}`;
+
+      const matchData = data.match || data.auto_match;
+      const isMatched = (data.status === 'matched' || (!data.status && matchData?.media_item_id)) && matchData?.media_item_id;
+
+      if (isMatched) {
+        const posterUrl = matchData.poster_url || matchData.posterUrl || null;
+        const backdropUrl = matchData.backdrop_url || matchData.backdropUrl || null;
+        const logoUrl = matchData.logo_url || matchData.logoUrl || null;
+        const mediaTitle = matchData.title || data.query_title || '';
+        const mediaId = String(matchData.media_item_id);
+        const confidence = matchData.confidence != null ? Number(matchData.confidence) : 1.0;
+        const hydratedPayload = data.hydrated || matchData;
+
+        const matchingGames = this.queryIdToGames.get(data.query_id) || [];
+        if (matchingGames.length > 0) {
+          for (const game of matchingGames) {
+            const targetId = (game as any).rowId || scannedGameId || game.id;
+            try {
+              upsertGameMatch({
+                source, sourceGameId,
+                otixMediaId: mediaId, otixTitle: mediaTitle,
+                otixPosterUrl: posterUrl || undefined, otixBackdropUrl: backdropUrl || undefined,
+                otixConfidence: confidence, matchType: 'auto', status: 'approved',
+              });
+              hydrateGame(
+                targetId,
+                mediaTitle,
+                null,
+                posterUrl,
+                hydratedPayload,
+                confidence,
+                mediaId,
+                backdropUrl,
+                null,
+                logoUrl,
+              );
+            } catch (writeErr) {
+              console.warn(`[Orchestrator] Error persisting match for ${targetId}:`, writeErr);
+            }
+          }
+        } else {
+          try {
+            upsertGameMatch({
+              source, sourceGameId,
+              otixMediaId: mediaId, otixTitle: mediaTitle,
+              otixPosterUrl: posterUrl || undefined, otixBackdropUrl: backdropUrl || undefined,
+              otixConfidence: confidence, matchType: 'auto', status: 'approved',
+            });
+            hydrateGame(
+              scannedGameId,
+              mediaTitle,
+              null,
+              posterUrl,
+              hydratedPayload,
+              confidence,
+              mediaId,
+              backdropUrl,
+              null,
+              logoUrl,
+            );
+          } catch (writeErr) {
+            console.warn(`[Orchestrator] Error persisting match for ${scannedGameId}:`, writeErr);
+          }
+        }
+        this.tryClaimForPlugin(pluginId, mediaId);
+      } else if (data.candidates?.length > 0) {
+        try {
+          const matchingGames = this.queryIdToGames.get(data.query_id) || [];
+          const targetId = (matchingGames[0] as any)?.rowId || scannedGameId;
+          const best = data.candidates[0];
+          saveMatchSuggestion(targetId, {
+            id: best.media_item_id || `${best.provider || 'igdb'}_${best.provider_id || scannedGameId}`,
+            title: best.title, posterUrl: best.poster_url || null,
+            backdropUrl: best.backdrop_url || null, developer: best.developer || null,
+            platforms: best.platforms || [], confidence: best.confidence,
+            _candidates: data.candidates,
+          });
+          // Do not hydrate / overwrite scanned game title or artwork with unconfirmed suggestions.
+          notifyGamesChanged();
+        } catch (suggErr) {
+          console.warn(`[Orchestrator] Error saving suggestion for ${scannedGameId}:`, suggErr);
+        }
+      }
+    } catch (err) {
+      console.warn('[Orchestrator] Unexpected error in handleProgress:', err);
+    }
   }
 
   // ── Helpers ──────────────────────────────────────────────────────────
@@ -676,7 +1576,7 @@ export class GameScanOrchestrator extends EventEmitter {
 
   private tryClaimForPlugin(pluginId: string, mediaItemId: string): void {
     try {
-      const config = this.pluginManager.getConfig(pluginId);
+      const config = this.pluginManager?.getConfig(pluginId);
       if (!config?.mark_as_owned) return;
     } catch { return; }
     if (!this.authToken) return;

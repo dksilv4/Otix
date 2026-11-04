@@ -43,22 +43,22 @@ const ScreenshotLightboxModal = ({ screenshots, initialIndex, onClose }: Screens
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="fixed inset-0 z-[10005] bg-black/90 backdrop-blur-xl flex items-center justify-center"
+      className="fixed inset-0 z-[10005] bg-background/95 backdrop-blur-2xl flex items-center justify-center"
       onClick={onClose}
     >
       <button
         onClick={onClose}
-        className="absolute top-6 right-6 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors cursor-pointer z-10"
+        className="absolute top-6 right-6 w-10 h-10 rounded-full bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-field)] border border-[var(--dk-separator)] flex items-center justify-center transition-colors cursor-pointer z-10 text-foreground"
       >
-        <X size={18} className="text-white/80" />
+        <X size={18} />
       </button>
 
       {lightboxIdx > 0 && (
         <button
           onClick={(e) => { e.stopPropagation(); setLightboxIdx((s) => s - 1) }}
-          className="absolute left-6 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors cursor-pointer z-10"
+          className="absolute left-6 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-field)] border border-[var(--dk-separator)] flex items-center justify-center transition-colors cursor-pointer z-10 text-foreground"
         >
-          <ChevronLeft size={22} className="text-white/80" />
+          <ChevronLeft size={22} />
         </button>
       )}
 
@@ -79,9 +79,9 @@ const ScreenshotLightboxModal = ({ screenshots, initialIndex, onClose }: Screens
       {lightboxIdx < screenshots.length - 1 && (
         <button
           onClick={(e) => { e.stopPropagation(); setLightboxIdx((s) => s + 1) }}
-          className="absolute right-6 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors cursor-pointer z-10"
+          className="absolute right-6 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-field)] border border-[var(--dk-separator)] flex items-center justify-center transition-colors cursor-pointer z-10 text-foreground"
         >
-          <ChevronRight size={22} className="text-white/80" />
+          <ChevronRight size={22} />
         </button>
       )}
 
@@ -92,7 +92,7 @@ const ScreenshotLightboxModal = ({ screenshots, initialIndex, onClose }: Screens
             key={i}
             onClick={(e) => { e.stopPropagation(); setLightboxIdx(i) }}
             className={`w-2 h-2 rounded-full transition-all cursor-pointer ${
-              i === lightboxIdx ? 'bg-white scale-125' : 'bg-white/30 hover:bg-white/50'
+              i === lightboxIdx ? 'bg-primary scale-125' : 'bg-muted-foreground/30 hover:bg-muted-foreground/50'
             }`}
           />
         ))}
@@ -196,9 +196,9 @@ export const LauncherScreenshotGallery = ({ screenshots, onHoverScreenshot, auto
         {validScreenshots.length > 5 && (
           <button
             onClick={() => handleScroll('left')}
-            className="shrink-0 w-9 h-[72px] rounded-xl bg-black/40 hover:bg-black/60 active:bg-black/80 backdrop-blur-md border border-white/[0.08] hover:border-white/[0.15] flex items-center justify-center transition-all cursor-pointer shadow-lg"
+            className="shrink-0 w-9 h-[72px] rounded-xl bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-field)] border border-[var(--dk-separator)] flex items-center justify-center transition-all cursor-pointer shadow-lg text-foreground"
           >
-            <ChevronLeft size={16} className="text-white/80" />
+            <ChevronLeft size={16} />
           </button>
         )}
 
@@ -214,8 +214,8 @@ export const LauncherScreenshotGallery = ({ screenshots, onHoverScreenshot, auto
               onMouseLeave={handleThumbLeave}
               className={`shrink-0 rounded-xl overflow-hidden transition-all duration-300 cursor-pointer group relative shadow-md hover:shadow-[0_8px_24px_rgba(0,0,0,0.3)] hover:-translate-y-0.5 aspect-video snap-start ${
                 idx === activeIdx
-                  ? 'border-2 border-white/40 shadow-[0_0_16px_rgba(255,255,255,0.1)]'
-                  : 'border border-white/[0.08] hover:border-white/30'
+                  ? 'border-2 border-primary shadow-[var(--dk-shadow-glass)]'
+                  : 'border border-[var(--dk-separator)] hover:border-foreground/30'
               }`}
               style={{ width: 'calc((100% - 48px) / 5)' }}
             >
@@ -226,7 +226,7 @@ export const LauncherScreenshotGallery = ({ screenshots, onHoverScreenshot, auto
                 loading="lazy"
               />
               {/* Gloss reflection sheen */}
-              <div className="absolute inset-0 pointer-events-none bg-gradient-to-r from-transparent via-white/15 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-out" />
+              <div className="absolute inset-0 pointer-events-none bg-gradient-to-r from-transparent via-foreground/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-out" />
             </button>
           ))}
         </div>
@@ -234,9 +234,9 @@ export const LauncherScreenshotGallery = ({ screenshots, onHoverScreenshot, auto
         {validScreenshots.length > 5 && (
           <button
             onClick={() => handleScroll('right')}
-            className="shrink-0 w-9 h-[72px] rounded-xl bg-black/40 hover:bg-black/60 active:bg-black/80 backdrop-blur-md border border-white/[0.08] hover:border-white/[0.15] flex items-center justify-center transition-all cursor-pointer shadow-lg"
+            className="shrink-0 w-9 h-[72px] rounded-xl bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-field)] border border-[var(--dk-separator)] flex items-center justify-center transition-all cursor-pointer shadow-lg text-foreground"
           >
-            <ChevronRight size={16} className="text-white/80" />
+            <ChevronRight size={16} />
           </button>
         )}
       </div>

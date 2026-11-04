@@ -7,7 +7,7 @@ from django.core.cache import cache
 from rest_framework import status
 from rest_framework.test import APITestCase
 
-from apps.library.models import UserGameServer, UserNodeShare
+from apps.library.models import UserNode, UserNodeShare
 from apps.library.services.media_activity import get_user_media_activity
 
 
@@ -18,7 +18,7 @@ class MediaActivityTests(APITestCase):
         self.alice = user_model.objects.create_user(username="alice", password="password123")
         self.bob = user_model.objects.create_user(username="bob", password="password123")
 
-        self.alice_node = UserGameServer.objects.create(
+        self.alice_node = UserNode.objects.create(
             user=self.alice,
             name="Alice Node",
             local_url="http://192.168.1.50:8090",
@@ -27,7 +27,7 @@ class MediaActivityTests(APITestCase):
             is_online=True,
         )
 
-        self.bob_node = UserGameServer.objects.create(
+        self.bob_node = UserNode.objects.create(
             user=self.bob,
             name="Bob Node",
             local_url="http://192.168.1.60:8090",

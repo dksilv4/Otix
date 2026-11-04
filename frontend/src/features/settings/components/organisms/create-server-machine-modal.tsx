@@ -35,8 +35,11 @@ import {
 } from '../../hooks/use-server-machines'
 
 export interface CreateServerMachineModalProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
+  open?: boolean
+  isOpen?: boolean
+  onOpenChange?: (open: boolean) => void
+  onClose?: () => void
+  isExiting?: boolean
   homes: UserHome[]
   nodes: GameServer[]
   defaultHomeId?: number | null
@@ -45,12 +48,20 @@ export interface CreateServerMachineModalProps {
 
 export const CreateServerMachineModal = ({
   open,
+  isOpen,
   onOpenChange,
+  onClose,
+  isExiting,
   homes,
   nodes,
   defaultHomeId,
   onSuccess,
 }: CreateServerMachineModalProps) => {
+  const isModalOpen = (open ?? isOpen ?? true) && !isExiting
+  const handleClose = () => {
+    onOpenChange?.(false)
+    onClose?.()
+  }
   const { toast } = useToast()
   const createMutation = useCreateServerMachine()
   const detectMutation = useDetectServerDrives()
@@ -63,11 +74,11 @@ export const CreateServerMachineModal = ({
   const [activeTab, setActiveTab] = useState<'general' | 'storage' | 'smb'>('general')
 
   useEffect(() => {
-    if (open) {
+    if (isModalOpen) {
       setFormData(createDefaultServerInput(defaultHomeId))
       setActiveTab('general')
     }
-  }, [defaultHomeId, open])
+  }, [defaultHomeId, isModalOpen])
 
   const handleFieldChange = <K extends keyof ServerMachineInput>(key: K, value: ServerMachineInput[K]) => {
     setFormData((prev) => ({ ...prev, [key]: value }))
@@ -187,7 +198,7 @@ export const CreateServerMachineModal = ({
         description: `Added ${formData.name} to your homelab.`,
         variant: 'success',
       })
-      onOpenChange(false)
+      handleClose()
       onSuccess?.(created)
     } catch (err: unknown) {
       toast({
@@ -204,8 +215,10 @@ export const CreateServerMachineModal = ({
 
   return (
     <DkDialog
-      open={open}
-      onOpenChange={onOpenChange}
+      open={isModalOpen}
+      onOpenChange={(next) => {
+        if (!next) handleClose()
+      }}
       className="max-w-2xl max-h-[90vh] overflow-y-auto"
       title="Add Server Machine"
       description="Configure homelab computer, OS, node hosting, hard drives, and SMB access."
@@ -626,7 +639,7 @@ export const CreateServerMachineModal = ({
           <DkButton
             type="button"
             variant="ghost"
-            onClick={() => onOpenChange(false)}
+            onClick={handleClose}
             disabled={isSaving}
           >
             Cancel

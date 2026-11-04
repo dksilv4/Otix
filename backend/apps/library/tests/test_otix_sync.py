@@ -4,7 +4,7 @@ from django.test import TestCase
 from rest_framework.test import APIClient
 
 from apps.accounts.models import User
-from apps.library.models import UserGameServer
+from apps.library.models import UserNode
 from apps.library.services.otix_sync import sync_otix_sidecars
 from apps.media.models import MediaItem
 
@@ -12,7 +12,7 @@ from apps.media.models import MediaItem
 class OtixSyncTests(TestCase):
     def setUp(self):
         self.user = User.objects.create_user(username="otixsync", password="pass")
-        self.server = UserGameServer.objects.create(
+        self.server = UserNode.objects.create(
             user=self.user,
             name="Living Room",
             local_url="http://127.0.0.1:8090",
@@ -126,7 +126,7 @@ class OtixSyncTests(TestCase):
         client = APIClient()
         client.force_authenticate(user=self.user)
         resp = client.post(
-            f"/api/v1/library/servers/{self.server.id}/otix/match",
+            f"/api/v1/library/nodes/{self.server.id}/otix/match",
             {
                 "media_id": self.media.id,
                 "file_id": "file_hl2",

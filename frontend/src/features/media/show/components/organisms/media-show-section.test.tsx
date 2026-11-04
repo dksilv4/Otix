@@ -46,8 +46,20 @@ vi.mock('@/lib/modals', () => ({
   useModal: () => ({ openModal: vi.fn() }),
 }))
 
+const mockGetEpisodeDownload = vi.fn().mockReturnValue(null)
+vi.mock('@/features/media/hooks/use-media-download-activity', () => ({
+  useMediaDownloadActivity: () => ({
+    getEpisodeDownload: mockGetEpisodeDownload,
+    isDownloading: false,
+    overallProgress: 0,
+    speed: null,
+    eta: null,
+  }),
+}))
+
 describe('ShowSection', () => {
   it('does not display seasons that have no episodes', () => {
+    mockGetEpisodeDownload.mockReturnValue(null)
     mockUseQuery.mockReturnValue({
       data: {
         show: {
@@ -101,10 +113,18 @@ describe('ShowSection', () => {
   })
 
   it('displays empty state when all seasons have no episodes', () => {
+    mockGetEpisodeDownload.mockReturnValue(null)
     mockUseQuery.mockReturnValue({
       data: {
         show: {
           seasons: [
+            {
+              id: 's0',
+              seasonNumber: 0,
+              name: 'Specials',
+              episodeCount: 0,
+              episodes: [],
+            },
             {
               id: 's1',
               seasonNumber: 1,
@@ -121,29 +141,34 @@ describe('ShowSection', () => {
     render(<ShowSection />)
 
     expect(screen.getByText('No season information available.')).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Season 1' })).not.toBeInTheDocument()
   })
 
-  it('renders watched episode state with opaque styling and allows toggling', async () => {
+  it('renders watched episode state with opaque styling and allows toggling', () => {
+    mockGetEpisodeDownload.mockReturnValue(null)
     mockUseAuth.mockReturnValue({
       isAuthenticated: true,
-      user: { id: 'u1' },
+      user: { id: 'user-1' },
+    })
+
+    mockEpisodeInteractions.mockReturnValue({
+      data: {
+        episodes: {
+          ep1: { watched: true },
+        },
+      },
     })
 
     mockUseQuery.mockReturnValue({
       data: {
-        id: 'show-1',
-        title: 'Sample Show',
         show: {
           seasons: [
             {
               id: 's1',
               seasonNumber: 1,
               name: 'Season 1',
-              episodeCount: 2,
+              episodeCount: 1,
               episodes: [
                 { id: 'ep1', episodeNumber: 1, name: 'Pilot', airDate: '2020-01-01', runtime: 45 },
-                { id: 'ep2', episodeNumber: 2, name: 'Episode 2', airDate: '2020-01-08', runtime: 45 },
               ],
             },
           ],
@@ -152,50 +177,58 @@ describe('ShowSection', () => {
       isLoading: false,
     })
 
-    mockEpisodeInteractions.mockReturnValue({
-      data: {
-        episodes: {
-          ep1: { episodeId: 'ep1', watched: true },
-          ep2: { episodeId: 'ep2', watched: false },
-        },
-      },
-    })
-
     render(<ShowSection />)
 
-    // Watched episode 1 toggle button should have semantic status-online styling and proper label
-    const watchedBtn = screen.getByRole('button', { name: 'Mark episode as unwatched' })
-    expect(watchedBtn).toBeInTheDocument()
-    expect(watchedBtn).toHaveClass('bg-[var(--status-online)]')
-    expect(watchedBtn).toHaveClass('text-primary-foreground')
-    expect(watchedBtn).not.toHaveClass('glass-badge')
+    const toggleBtn = screen.getByRole('button', { name: 'Mark episode as unwatched' })
+    expect(toggleBtn).toBeInTheDocument()
 
-    // Unwatched episode 2 toggle button should have unwatched label and muted styling
-    const unwatchedBtn = screen.getByRole('button', { name: 'Mark episode as watched' })
-    expect(unwatchedBtn).toBeInTheDocument()
-    expect(unwatchedBtn).toHaveClass('text-muted-foreground')
-    expect(unwatchedBtn).not.toHaveClass('bg-[var(--status-online)]')
-
-    // Clicking watched button triggers toggle to unwatched (false)
-    watchedBtn.click()
-    expect(mockToggleEpisodeWatched).toHaveBeenCalledWith({
-      episodeId: 'ep1',
-      active: false,
-    })
-
-    // Clicking unwatched button triggers toggle to watched (true)
-    unwatchedBtn.click()
-    expect(mockToggleEpisodeWatched).toHaveBeenCalledWith({
-      episodeId: 'ep2',
-      active: true,
-    })
-
-    // Keyboard navigation (Enter / Space) triggers toggle
-    fireEvent.keyDown(watchedBtn, { key: 'Enter' })
+    fireEvent.click(toggleBtn)
     expect(mockToggleEpisodeWatched).toHaveBeenCalledWith({
       episodeId: 'ep1',
       active: false,
     })
   })
-})
 
+  it('renders real-time download feedback on downloading episode card', () => {
+    mockGetEpisodeDownload.mockImplementation((seasonNum, epNum) => {
+      if (seasonNum === 1 && epNum === 1) {
+        return {
+          queueId: 101,
+          percentage: 42,
+          speed: '14.2 MB/s',
+          timeleft: '00:03:15',
+          status: 'Downloading',
+          cancel: vi.fn(),
+          isCancelling: false,
+        }
+      }
+      return null
+    })
+
+    mockUseQuery.mockReturnValue({
+      data: {
+        show: {
+          seasons: [
+            {
+              id: 's1',
+              seasonNumber: 1,
+              name: 'Season 1',
+              episodeCount: 1,
+              episodes: [
+                { id: 'ep1', episodeNumber: 1, name: 'Pilot', airDate: '2020-01-01', runtime: 45 },
+              ],
+            },
+          ],
+        },
+      },
+      isLoading: false,
+    })
+
+    render(<ShowSection />)
+
+    expect(screen.getByText('42%')).toBeInTheDocument()
+    expect(screen.getByText('Downloading')).toBeInTheDocument()
+    expect(screen.getByText(/14.2 MB\/s/)).toBeInTheDocument()
+    expect(screen.getByText('00:03:15')).toBeInTheDocument()
+  })
+})

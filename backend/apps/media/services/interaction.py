@@ -104,6 +104,14 @@ def set_interaction(
             award_xp(user.id, amount, reason=f"interaction_{interaction_type}")
         update_login_streak(user.id)
 
+        if interaction_type == "watchlisted":
+            try:
+                from apps.library.services.media_requests import auto_request_watchlist_item
+
+                auto_request_watchlist_item(user, media_item_id)
+            except Exception:
+                pass
+
     return interaction
 
 

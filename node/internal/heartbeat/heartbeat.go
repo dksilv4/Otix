@@ -13,6 +13,7 @@ import (
 
 	"github.com/dksilv4/otix/node/internal/claim"
 	"github.com/dksilv4/otix/node/internal/config"
+	"github.com/google/uuid"
 )
 
 var LoopbackHosts = map[string]bool{
@@ -23,18 +24,205 @@ var LoopbackHosts = map[string]bool{
 
 const DockerRegistry = "http://api:8000/api"
 
-func GetLocalIP() string {
-	conn, err := net.Dial("udp", "8.8.8.8:80")
-	if err != nil {
-		return "127.0.0.1"
-	}
-	defer conn.Close()
+var (
+	tailscaleCIDR = mustParseCIDR("100.64.0.0/10")
+	lan10CIDR     = mustParseCIDR("10.0.0.0/8")
+	lan172CIDR    = mustParseCIDR("172.16.0.0/12")
+	lan192CIDR    = mustParseCIDR("192.168.0.0/16")
+	docker172CIDR = mustParseCIDR("172.17.0.0/16")
+)
 
-	localAddr := conn.LocalAddr().(*net.UDPAddr)
-	return localAddr.IP.String()
+func mustParseCIDR(s string) *net.IPNet {
+	_, ipnet, err := net.ParseCIDR(s)
+	if err != nil {
+		panic(err)
+	}
+	return ipnet
 }
 
-const DefaultRegistryURL = "https://otix.app/api"
+type NetworkInterface struct {
+	Name string   `json:"name"`
+	Type string   `json:"type"` // "lan", "tailscale", "docker", "loopback", "other"
+	IPs  []string `json:"ips"`
+}
+
+func ClassifyInterface(name string, ip net.IP, isLoopback bool) string {
+	if isLoopback || (ip != nil && ip.IsLoopback()) {
+		return "loopback"
+	}
+	lowerName := strings.ToLower(name)
+
+	// Tailscale / VPN: 100.64.0.0/10 or interface names tailscale*, utun*, wg*, tun*, tap*
+	if (ip != nil && tailscaleCIDR.Contains(ip)) ||
+		strings.HasPrefix(lowerName, "tailscale") ||
+		strings.HasPrefix(lowerName, "utun") ||
+		strings.HasPrefix(lowerName, "wg") ||
+		strings.HasPrefix(lowerName, "tun") ||
+		strings.HasPrefix(lowerName, "tap") {
+		return "tailscale"
+	}
+
+	// Docker / bridge: docker0, br-*, veth*, cni*, 172.17.0.0/16
+	if strings.HasPrefix(lowerName, "docker") ||
+		strings.HasPrefix(lowerName, "br-") ||
+		strings.HasPrefix(lowerName, "veth") ||
+		strings.HasPrefix(lowerName, "cni") ||
+		(ip != nil && docker172CIDR.Contains(ip) && strings.Contains(lowerName, "docker")) {
+		return "docker"
+	}
+
+	// LAN: 192.168.0.0/16, 10.0.0.0/8, 172.16.0.0/12
+	if ip != nil && (lan10CIDR.Contains(ip) || lan172CIDR.Contains(ip) || lan192CIDR.Contains(ip)) {
+		return "lan"
+	}
+
+	return "other"
+}
+
+func EnumerateInterfaces() []NetworkInterface {
+	ifaces, err := net.Interfaces()
+	if err != nil {
+		return nil
+	}
+
+	var results []NetworkInterface
+	for _, iface := range ifaces {
+		if iface.Flags&net.FlagUp == 0 {
+			continue
+		}
+
+		addrs, err := iface.Addrs()
+		if err != nil || len(addrs) == 0 {
+			continue
+		}
+
+		var ips []string
+		primaryType := ""
+		isLoopback := (iface.Flags & net.FlagLoopback) != 0
+
+		for _, addr := range addrs {
+			var ip net.IP
+			switch v := addr.(type) {
+			case *net.IPNet:
+				ip = v.IP
+			case *net.IPAddr:
+				ip = v.IP
+			}
+			if ip == nil {
+				continue
+			}
+
+			ipv4 := ip.To4()
+			if ipv4 != nil {
+				ips = append(ips, ipv4.String())
+				if primaryType == "" {
+					primaryType = ClassifyInterface(iface.Name, ipv4, isLoopback)
+				}
+			} else if !ip.IsLinkLocalUnicast() {
+				ips = append(ips, ip.String())
+				if primaryType == "" {
+					primaryType = ClassifyInterface(iface.Name, ip, isLoopback)
+				}
+			}
+		}
+
+		if len(ips) > 0 {
+			if primaryType == "" {
+				primaryType = "other"
+			}
+			results = append(results, NetworkInterface{
+				Name: iface.Name,
+				Type: primaryType,
+				IPs:  ips,
+			})
+		}
+	}
+	return results
+}
+
+func GetRoutableEndpoints(port int) []string {
+	interfaces := EnumerateInterfaces()
+	var lanEndpoints []string
+	var tailscaleEndpoints []string
+	var dockerEndpoints []string
+
+	for _, iface := range interfaces {
+		for _, ipStr := range iface.IPs {
+			ip := net.ParseIP(ipStr)
+			if ip == nil || ip.IsLoopback() {
+				continue
+			}
+			endpoint := fmt.Sprintf("http://%s", net.JoinHostPort(ipStr, fmt.Sprintf("%d", port)))
+			switch iface.Type {
+			case "lan":
+				lanEndpoints = append(lanEndpoints, endpoint)
+			case "tailscale":
+				tailscaleEndpoints = append(tailscaleEndpoints, endpoint)
+			case "docker":
+				dockerEndpoints = append(dockerEndpoints, endpoint)
+			}
+		}
+	}
+
+	var endpoints []string
+	endpoints = append(endpoints, lanEndpoints...)
+	endpoints = append(endpoints, tailscaleEndpoints...)
+
+	if len(endpoints) == 0 && len(dockerEndpoints) > 0 {
+		endpoints = append(endpoints, dockerEndpoints...)
+	}
+
+	if len(endpoints) == 0 {
+		endpoints = append(endpoints, fmt.Sprintf("http://127.0.0.1:%d", port))
+	}
+
+	return endpoints
+}
+
+func GetLocalIP() string {
+	interfaces := EnumerateInterfaces()
+	for _, iface := range interfaces {
+		if iface.Type == "lan" {
+			for _, ip := range iface.IPs {
+				if parsed := net.ParseIP(ip); parsed != nil && parsed.To4() != nil {
+					return ip
+				}
+			}
+		}
+	}
+	for _, iface := range interfaces {
+		if iface.Type == "tailscale" {
+			for _, ip := range iface.IPs {
+				if parsed := net.ParseIP(ip); parsed != nil && parsed.To4() != nil {
+					return ip
+				}
+			}
+		}
+	}
+
+	conn, err := net.DialTimeout("udp", "8.8.8.8:80", 500*time.Millisecond)
+	if err == nil {
+		defer conn.Close()
+		localAddr, ok := conn.LocalAddr().(*net.UDPAddr)
+		if ok && localAddr != nil && !localAddr.IP.IsLoopback() {
+			return localAddr.IP.String()
+		}
+	}
+	return "127.0.0.1"
+}
+
+func NormalizeBaseAPI(rawURL string) string {
+	u := strings.TrimRight(strings.TrimSpace(rawURL), "/")
+	if strings.HasSuffix(u, "/api/v1") {
+		return strings.TrimSuffix(u, "/v1")
+	}
+	if strings.HasSuffix(u, "/api") {
+		return u
+	}
+	return u + "/api"
+}
+
+var DefaultRegistryURL = "https://otix.app/api"
 
 func ResolveRegistryURL(cfg *config.AppConfig) string {
 	override := strings.TrimSpace(os.Getenv("OTIX_REGISTRY_URL"))
@@ -61,14 +249,16 @@ func ResolveRegistryURL(cfg *config.AppConfig) string {
 }
 
 type HeartbeatPayload struct {
-	ServerName     string      `json:"server_name"`
-	LocalEndpoints []string    `json:"local_endpoints"`
-	Port           int         `json:"port"`
-	AuthToken      string      `json:"auth_token"`
-	ClaimCode      string      `json:"claim_code,omitempty"`
-	Claimed        bool        `json:"claimed"`
-	ClaimedBy      string      `json:"claimed_by,omitempty"`
-	RunningGame    interface{} `json:"running_game,omitempty"`
+	NodeID            string             `json:"node_id"`
+	ServerName        string             `json:"server_name"`
+	LocalEndpoints    []string           `json:"local_endpoints"`
+	NetworkInterfaces []NetworkInterface `json:"network_interfaces"`
+	Port              int                `json:"port"`
+	AuthToken         string             `json:"auth_token"`
+	ClaimCode         string             `json:"claim_code,omitempty"`
+	Claimed           bool               `json:"claimed"`
+	ClaimedBy         string             `json:"claimed_by,omitempty"`
+	RunningGame       interface{}        `json:"running_game,omitempty"`
 }
 
 type HeartbeatRunner struct {
@@ -118,20 +308,24 @@ func (h *HeartbeatRunner) SendOnce() (time.Duration, error) {
 		return 30 * time.Second, nil
 	}
 
-	localIP := GetLocalIP()
 	port := h.cfg.Server.Port
+	nodeID := strings.TrimSpace(h.cfg.Server.NodeID)
+	if nodeID == "" {
+		nodeID = uuid.New().String()
+		h.cfg.Server.NodeID = nodeID
+		_ = h.cfg.Save("")
+	}
 
 	payload := HeartbeatPayload{
-		ServerName: h.cfg.Server.Name,
-		LocalEndpoints: []string{
-			fmt.Sprintf("http://127.0.0.1:%d", port),
-			fmt.Sprintf("http://%s:%d", localIP, port),
-		},
-		Port:      port,
-		AuthToken: h.cfg.Server.AuthToken,
-		ClaimCode: h.claimMgr.CurrentCode(),
-		Claimed:   h.claimMgr.IsClaimed(),
-		ClaimedBy: h.cfg.Server.ClaimedBy,
+		NodeID:            nodeID,
+		ServerName:        h.cfg.Server.Name,
+		LocalEndpoints:    GetRoutableEndpoints(port),
+		NetworkInterfaces: EnumerateInterfaces(),
+		Port:              port,
+		AuthToken:         h.cfg.Server.AuthToken,
+		ClaimCode:         h.claimMgr.CurrentCode(),
+		Claimed:           h.claimMgr.IsClaimed(),
+		ClaimedBy:         h.cfg.Server.ClaimedBy,
 	}
 	if h.runningGameProvider != nil {
 		payload.RunningGame = h.runningGameProvider()
@@ -142,7 +336,8 @@ func (h *HeartbeatRunner) SendOnce() (time.Duration, error) {
 		return 15 * time.Second, err
 	}
 
-	targetURL := fmt.Sprintf("%s/v1/servers/heartbeat", registryURL)
+	baseAPI := NormalizeBaseAPI(registryURL)
+	targetURL := fmt.Sprintf("%s/v1/nodes/%s/heartbeat/", baseAPI, nodeID)
 	resp, err := h.client.Post(targetURL, "application/json", bytes.NewReader(data))
 	if err != nil {
 		fmt.Printf("[Heartbeat] Failed to reach %s: %v\n", targetURL, err)

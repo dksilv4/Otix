@@ -54,6 +54,7 @@ export function openOAuthWindow(
       webPreferences: {
         nodeIntegration: false,
         contextIsolation: true,
+        sandbox: false,
       },
     })
 

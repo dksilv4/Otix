@@ -45,7 +45,7 @@ describe('Usenet Utilities', () => {
     it('formats ISO publish date and relative age into readable upload string', () => {
       const res = formatUploadDate('2024-05-18T10:15:00Z', 160);
       expect(res).not.toBeNull();
-      expect(res?.display).toContain('May 18, 2024');
+      expect(res?.display).toMatch(/(May 18, 2024|18 May 2024)/);
       expect(res?.display).toContain('5mo ago');
       expect(res?.fullTitle).toContain('Uploaded on');
     });

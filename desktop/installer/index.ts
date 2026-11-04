@@ -14,6 +14,7 @@ function installDb(): Database.Database {
 import { tmpdir } from 'os';
 import { createWriteStream, existsSync, readdirSync } from 'fs';
 import { cleanGameTitle } from '../game/parser';
+import { resolveUncPath } from '../unc-resolver';
 
 function execPromise(cmd: string): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -598,7 +599,7 @@ function isProtectedVolumeOrRoot(p: string): boolean {
 }
 
 async function cleanEmptyDirsUp(dir: string, maxLevels = 4) {
-  let curr = path.resolve(dir);
+  let curr = resolveUncPath(path.resolve(dir));
   for (let i = 0; i < maxLevels; i++) {
     if (isProtectedVolumeOrRoot(curr)) break;
     try {
@@ -658,11 +659,14 @@ export async function executeOrganization(
       continue;
     }
 
+    const actualSrc = resolveUncPath(cleanSrc);
+    const actualDst = resolveUncPath(cleanDst);
+
     // Protection against overwriting or merging into existing directories/files
     try {
-      const dstStat = await fs.stat(cleanDst);
+      const dstStat = await fs.stat(actualDst);
       if (dstStat.isDirectory()) {
-        const dstEntries = await fs.readdir(cleanDst);
+        const dstEntries = await fs.readdir(actualDst);
         if (dstEntries.length > 0) {
           results.push({
             sourcePath: src,
@@ -673,7 +677,7 @@ export async function executeOrganization(
           continue;
         } else {
           // Empty directory, remove it so atomic rename can succeed
-          await fs.rmdir(cleanDst);
+          await fs.rmdir(actualDst);
         }
       } else {
         results.push({
@@ -698,14 +702,15 @@ export async function executeOrganization(
 
     try {
       const targetDir = path.dirname(dst);
-      await fs.mkdir(targetDir, { recursive: true });
+      const actualTargetDir = path.dirname(actualDst);
+      await fs.mkdir(actualTargetDir, { recursive: true });
       try {
-        await fs.rename(src, dst);
+        await fs.rename(actualSrc, actualDst);
       } catch (renameErr: any) {
         if (renameErr && (renameErr.code === 'EXDEV' || renameErr.code === 'EPERM')) {
           // Cross-device fallback: copy then remove source
-          await fs.cp(src, dst, { recursive: true });
-          await fs.rm(src, { recursive: true, force: true });
+          await fs.cp(actualSrc, actualDst, { recursive: true });
+          await fs.rm(actualSrc, { recursive: true, force: true });
         } else {
           throw renameErr;
         }

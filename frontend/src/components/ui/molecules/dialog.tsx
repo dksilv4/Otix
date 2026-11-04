@@ -10,11 +10,20 @@ interface DkDialogProps {
   description?: ReactNode
   children: ReactNode
   className?: string
+  closeLabel?: string
   /** @deprecated Ambient orbs have been removed from modals. */
   showAmbient?: boolean
 }
 
-const DkDialog = ({ open, onOpenChange, title, description, children, className }: DkDialogProps) => {
+const DkDialog = ({
+  open,
+  onOpenChange,
+  title,
+  description,
+  children,
+  className,
+  closeLabel = 'Close dialog',
+}: DkDialogProps) => {
   const overlayRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -35,6 +44,8 @@ const DkDialog = ({ open, onOpenChange, title, description, children, className 
   }, [open, onOpenChange])
 
   if (!open) return null
+
+  const effectiveCloseLabel = closeLabel || 'Close dialog'
 
   return createPortal(
     <div className="fixed inset-0 z-[var(--dk-z-modal)] flex items-center justify-center p-4">
@@ -70,8 +81,8 @@ const DkDialog = ({ open, onOpenChange, title, description, children, className 
             <button
               type="button"
               onClick={() => onOpenChange(false)}
-              className="shrink-0 rounded-xl p-2 transition-all text-muted-foreground hover:bg-[var(--dk-surface-ghost-hover)] hover:text-foreground cursor-pointer"
-              aria-label="Close dialog"
+              className="shrink-0 z-50 rounded-xl p-2 transition-all text-muted-foreground hover:bg-[var(--dk-surface-ghost-hover)] hover:text-foreground cursor-pointer"
+              aria-label={effectiveCloseLabel}
             >
               <X className="h-4 w-4" />
             </button>
@@ -82,8 +93,8 @@ const DkDialog = ({ open, onOpenChange, title, description, children, className 
           <button
             type="button"
             onClick={() => onOpenChange(false)}
-            className="absolute top-4 right-4 rounded-xl p-2 transition-all text-muted-foreground hover:bg-[var(--dk-surface-ghost-hover)] hover:text-foreground cursor-pointer"
-            aria-label="Close dialog"
+            className="absolute top-4 right-4 z-50 rounded-xl p-2 transition-all text-muted-foreground hover:bg-[var(--dk-surface-ghost-hover)] hover:text-foreground cursor-pointer"
+            aria-label={effectiveCloseLabel}
           >
             <X className="h-4 w-4" />
           </button>

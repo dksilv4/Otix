@@ -14,6 +14,7 @@ vi.mock('@/features/launcher', () => ({
 
 vi.mock('@tanstack/react-router', () => ({
   Link: ({ children, ...props }: any) => <a {...props}>{children}</a>,
+  useLocation: () => ({ href: '/movies', pathname: '/movies' }),
 }))
 
 vi.mock('@/features/friends', () => ({
@@ -148,6 +149,9 @@ describe('UserMenu with XPProgressRing and Friends integration', () => {
 
     renderWithContext(<UserMenu bare />)
 
-    expect(screen.getByText('Sign In')).toBeInTheDocument()
+    const signInLink = screen.getByText('Sign In')
+    expect(signInLink).toBeInTheDocument()
+    expect(signInLink.closest('a')).toHaveAttribute('to', '/auth/login')
+    expect(signInLink.closest('a')).toHaveAttribute('search', expect.anything())
   })
 })

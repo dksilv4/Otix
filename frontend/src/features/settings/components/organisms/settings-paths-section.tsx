@@ -26,6 +26,8 @@ import { PathFolderRow } from '../molecules/path-folder-row'
 import { useScanProgress } from '../../hooks/use-scan-progress'
 import { AddPathFolderCard } from '../molecules/add-path-folder-card'
 import { ScannedFilesSummary } from '../molecules/scanned-files-summary'
+import { MatchingProgressCard } from '../molecules/matching-progress-card'
+import { useMatchingProgress } from '../../hooks/use-matching-progress'
 import { ViewScannedGamesModal } from './view-scanned-games-modal'
 import { MatchReviewCenterModal } from './match-review-center-modal'
 import {
@@ -45,6 +47,7 @@ import {
   type PathsFilterTab,
   normalizePath,
   getBaseFolderName,
+  normalizeScanPathItems,
   buildConfiguredFolderList,
   filterFolderItems,
   loadStoredPathsViewMode,
@@ -54,6 +57,7 @@ import {
 } from '../../utils/paths'
 import { cn } from '@/lib/utils'
 import { formatScanError } from '@/lib/utils/scan-errors'
+import { uploadNodeManifestInChunks, uploadScannedGamesManifest } from '@/lib/utils/manifest'
 
 export interface SettingsPathsSectionProps {
   onScanComplete?: () => void
@@ -83,12 +87,20 @@ export const SettingsPathsSection = ({
   const claimServerMutation = useClaimGameServer()
   const [isClaimingDiscovered, setIsClaimingDiscovered] = useState(false)
   const unclaimedNodes = useMemo(() => pendingNodesToClaim(pendingNodes, servers), [pendingNodes, servers])
+  const desktop = isDesktop()
   const nodeId = nodeIdProp !== undefined ? nodeIdProp : (selectedNode?.id ?? null)
   const activeNode = servers?.find((s) => s.id === nodeId) ?? (selectedNode?.id === nodeId ? selectedNode : null)
-  const isLocalNode = isLocalDesktopNode(activeNode) || isLocalDesktopNodeId(nodeId)
   const isGlobalProfile = nodeId === 0
-  const remoteNodeId = isLocalNode || isGlobalProfile ? null : nodeId
-  const desktop = isDesktop()
+  const effectiveServerId =
+    nodeIdProp !== undefined && nodeIdProp !== null && nodeIdProp > 0
+      ? nodeIdProp
+      : activeNode?.id && activeNode.id > 0
+        ? activeNode.id
+        : selectedNode?.id && selectedNode.id > 0
+          ? selectedNode.id
+          : null
+  const isLocalNode = desktop && ((nodeId != null && isLocalDesktopNodeId(nodeId)) || isLocalDesktopNode(activeNode))
+  const remoteNodeId = !desktop ? (isGlobalProfile ? null : effectiveServerId) : (isLocalNode ? null : effectiveServerId)
   const folderTarget = remoteNodeId ? 'server' : desktop ? 'local' : 'server'
 
   // ── State ──
@@ -98,7 +110,8 @@ export const SettingsPathsSection = ({
       const raw = localStorage.getItem(key)
       if (raw) {
         const parsed = JSON.parse(raw)
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed
+        const normalized = normalizeScanPathItems(parsed)
+        if (normalized.length > 0) return normalized
       }
       if (!remoteNodeId) {
         const storedGames = localStorage.getItem('otix:scan-paths')
@@ -106,13 +119,20 @@ export const SettingsPathsSection = ({
         const items: ScanPathItem[] = []
         if (storedGames) {
           const parsed = JSON.parse(storedGames)
-          if (Array.isArray(parsed)) items.push(...parsed.map((p: string) => ({ path: p, type: 'game' as const })))
+          items.push(...normalizeScanPathItems(parsed))
         }
         if (storedIsos) {
           const parsed = JSON.parse(storedIsos)
-          if (Array.isArray(parsed)) items.push(...parsed.map((p: string) => ({ path: p, type: 'iso' as const })))
+          if (Array.isArray(parsed)) {
+            for (const p of parsed) {
+              const rawStr = typeof p === 'string' ? p : p?.path
+              if (typeof rawStr === 'string' && rawStr.trim()) {
+                items.push({ path: rawStr.trim(), type: 'iso' })
+              }
+            }
+          }
         }
-        if (items.length > 0) return items
+        if (items.length > 0) return normalizeScanPathItems(items)
       }
     } catch {
       // ignore
@@ -173,8 +193,10 @@ export const SettingsPathsSection = ({
   const [writeOtixAfterScan, setWriteOtixAfterScan] = useState(false)
   const [downloadOtixImages, setDownloadOtixImages] = useState(false)
   const [matchCenterOpen, setMatchCenterOpen] = useState(false)
+  const matching = useMatchingProgress()
+  const isMatching = isSyncingOtix || scanProgress.phase === 'matching' || matching.isMatching
 
-  const { data: gameMatches = [] } = useGameMatches()
+  const { data: gameMatches = [] } = useGameMatches(undefined, undefined, remoteNodeId ?? 0)
   const pendingMatchesCount = useMemo(
     () => (Array.isArray(gameMatches) ? gameMatches.filter((m) => m?.matchStatus === 'needs_review' || m?.matchStatus === 'unmatched').length : 0),
     [gameMatches],
@@ -220,9 +242,11 @@ export const SettingsPathsSection = ({
     window.addEventListener('scanned-games-updated', handleUpdated)
     const api = getDesktopAPI() ?? (typeof window !== 'undefined' ? (window as any).desktopAPI : null)
     const unsub = api?.onGamesUpdated?.(() => void loadSummary())
+    const unsubDb = api?.onGamesDbChanged?.(() => void loadSummary())
     return () => {
       window.removeEventListener('scanned-games-updated', handleUpdated)
       unsub?.()
+      unsubDb?.()
     }
   }, [loadSummary])
 
@@ -257,20 +281,27 @@ export const SettingsPathsSection = ({
       const cachedScan = localStorage.getItem(scanKey)
       if (cachedScan) {
         const parsed = JSON.parse(cachedScan)
-        if (Array.isArray(parsed)) setScanPaths(parsed)
+        setScanPaths(normalizeScanPathItems(parsed))
       } else if (!remoteNodeId) {
         const storedGames = localStorage.getItem('otix:scan-paths')
         const storedIsos = localStorage.getItem('otix:iso-scan-paths')
         const items: ScanPathItem[] = []
         if (storedGames) {
           const parsed = JSON.parse(storedGames)
-          if (Array.isArray(parsed)) items.push(...parsed.map((p: string) => ({ path: p, type: 'game' as const })))
+          items.push(...normalizeScanPathItems(parsed))
         }
         if (storedIsos) {
           const parsed = JSON.parse(storedIsos)
-          if (Array.isArray(parsed)) items.push(...parsed.map((p: string) => ({ path: p, type: 'iso' as const })))
+          if (Array.isArray(parsed)) {
+            for (const p of parsed) {
+              const rawStr = typeof p === 'string' ? p : p?.path
+              if (typeof rawStr === 'string' && rawStr.trim()) {
+                items.push({ path: rawStr.trim(), type: 'iso' })
+              }
+            }
+          }
         }
-        setScanPaths(items)
+        setScanPaths(normalizeScanPathItems(items))
       } else {
         setScanPaths([])
       }
@@ -283,7 +314,7 @@ export const SettingsPathsSection = ({
   const loadScanPaths = useCallback(async () => {
     if (remoteNodeId) {
       try {
-        const { data } = await apiClient.get(`/library/servers/${remoteNodeId}/libraries`)
+        const { data } = await apiClient.get(`/library/nodes/${remoteNodeId}/libraries`)
         const rows = Array.isArray(data) ? data : data?.libraries || []
         const items: ScanPathItem[] = rows
           .map((row: any) => ({
@@ -308,15 +339,15 @@ export const SettingsPathsSection = ({
     if (api?.getScanPaths) {
       try {
         const raw = await api.getScanPaths()
-        if (Array.isArray(raw)) {
-          const items: ScanPathItem[] = raw.map((p: any) => ({
-            path: p.path,
-            type: p.type === 'iso' ? 'iso' : 'game',
-          }))
+        if (Array.isArray(raw) && raw.length > 0) {
+          const items: ScanPathItem[] = normalizeScanPathItems(raw)
           setScanPaths(items)
           try {
             localStorage.setItem('otix:scan-paths', JSON.stringify(items.filter((p) => p.type === 'game').map((p) => p.path)))
             localStorage.setItem('otix:iso-scan-paths', JSON.stringify(items.filter((p) => p.type === 'iso').map((p) => p.path)))
+            if (effectiveServerId) {
+              localStorage.setItem(`otix:scan-paths:node:${effectiveServerId}`, JSON.stringify(items))
+            }
           } catch {
             // ignore
           }
@@ -327,6 +358,32 @@ export const SettingsPathsSection = ({
       }
     }
 
+    if (effectiveServerId) {
+      try {
+        const { data } = await apiClient.get(`/library/nodes/${effectiveServerId}/libraries`)
+        const rows = Array.isArray(data) ? data : data?.libraries || []
+        if (rows.length > 0) {
+          const items: ScanPathItem[] = rows
+            .map((row: any) => ({
+              path: String(row.path || '').trim(),
+              type: row.kind === 'iso' || row.type === 'iso' ? ('iso' as const) : ('game' as const),
+            }))
+            .filter((row: ScanPathItem) => row.path)
+          setScanPaths(items)
+          if (api?.saveScanPaths) {
+            try {
+              await api.saveScanPaths(items)
+            } catch {
+              // ignore
+            }
+          }
+          return
+        }
+      } catch {
+        // ignore
+      }
+    }
+
     // Fallback to localStorage
     try {
       const storedGames = localStorage.getItem('otix:scan-paths')
@@ -334,20 +391,27 @@ export const SettingsPathsSection = ({
       const items: ScanPathItem[] = []
       if (storedGames) {
         const parsed = JSON.parse(storedGames)
-        if (Array.isArray(parsed)) items.push(...parsed.map((p: string) => ({ path: p, type: 'game' as const })))
+        items.push(...normalizeScanPathItems(parsed))
       }
       if (storedIsos) {
         const parsed = JSON.parse(storedIsos)
-        if (Array.isArray(parsed)) items.push(...parsed.map((p: string) => ({ path: p, type: 'iso' as const })))
+        if (Array.isArray(parsed)) {
+          for (const p of parsed) {
+            const rawStr = typeof p === 'string' ? p : p?.path
+            if (typeof rawStr === 'string' && rawStr.trim()) {
+              items.push({ path: rawStr.trim(), type: 'iso' })
+            }
+          }
+        }
       }
-      setScanPaths(items)
+      setScanPaths(normalizeScanPathItems(items))
     } catch {
       // ignore
     }
-  }, [remoteNodeId])
+  }, [remoteNodeId, effectiveServerId])
 
   useEffect(() => {
-    loadScanPaths()
+    void loadScanPaths()
   }, [loadScanPaths])
 
   // ── Load node otix settings ──
@@ -363,7 +427,7 @@ export const SettingsPathsSection = ({
         const { data } = await apiClient.get<{
           writeOtixAfterScan?: boolean
           downloadOtixImages?: boolean
-        }>(`/library/servers/${remoteNodeId}/otix/settings`)
+        }>(`/library/nodes/${remoteNodeId}/otix/settings`)
         if (cancelled) return
         if (typeof data?.writeOtixAfterScan === 'boolean') {
           setWriteOtixAfterScan(data.writeOtixAfterScan)
@@ -389,7 +453,7 @@ export const SettingsPathsSection = ({
     const { data } = await apiClient.post<{
       writeOtixAfterScan?: boolean
       downloadOtixImages?: boolean
-    }>(`/library/servers/${remoteNodeId}/otix/settings`, next)
+    }>(`/library/nodes/${remoteNodeId}/otix/settings`, next)
     if (typeof data?.writeOtixAfterScan === 'boolean') {
       setWriteOtixAfterScan(data.writeOtixAfterScan)
     }
@@ -405,8 +469,8 @@ export const SettingsPathsSection = ({
       if (remoteNodeId) {
         try {
           const [desktopRes, organizeRes] = await Promise.allSettled([
-            apiClient.get<any>(`/library/servers/${remoteNodeId}/desktop`),
-            apiClient.get<any>(`/library/servers/${remoteNodeId}/organize`),
+            apiClient.get<any>(`/library/nodes/${remoteNodeId}/desktop`),
+            apiClient.get<any>(`/library/nodes/${remoteNodeId}/organize`),
           ])
           if (cancelled) return
 
@@ -463,12 +527,14 @@ export const SettingsPathsSection = ({
       }
 
       const api = getDesktopAPI() ?? (typeof window !== 'undefined' ? (window as any).desktopAPI : null)
+      let foundSettings = false
       if (api?.getDesktopSettings) {
         try {
           const ds = await api.getDesktopSettings()
           if (!cancelled && ds) {
             if (ds.gamesDownloadPath) {
               setGamesDownloadPath(ds.gamesDownloadPath)
+              foundSettings = true
               try {
                 localStorage.setItem('otix:games-download-dir', ds.gamesDownloadPath)
               } catch {
@@ -477,6 +543,7 @@ export const SettingsPathsSection = ({
             }
             if (ds.gamesInstallPath) {
               setGamesInstallPath(ds.gamesInstallPath)
+              foundSettings = true
               try {
                 localStorage.setItem('otix:games-install-dir', ds.gamesInstallPath)
               } catch {
@@ -485,6 +552,7 @@ export const SettingsPathsSection = ({
             }
             if (ds.isoDownloadPath) {
               setServerDownloadPath(ds.isoDownloadPath)
+              foundSettings = true
               try {
                 localStorage.setItem('otix:iso-download-dir', ds.isoDownloadPath)
               } catch {
@@ -496,12 +564,36 @@ export const SettingsPathsSection = ({
           // ignore
         }
       }
+
+      if (!foundSettings && effectiveServerId) {
+        try {
+          const [desktopRes, organizeRes] = await Promise.allSettled([
+            apiClient.get<any>(`/library/nodes/${effectiveServerId}/desktop`),
+            apiClient.get<any>(`/library/nodes/${effectiveServerId}/organize`),
+          ])
+          if (cancelled) return
+          if (desktopRes.status === 'fulfilled') {
+            const d = desktopRes.value?.data
+            const gamesPath = d?.gamesDownloadPath || d?.games_download_path || ''
+            const installPath = d?.gamesInstallPath || d?.games_install_path || ''
+            if (gamesPath) setGamesDownloadPath(gamesPath)
+            if (installPath) setGamesInstallPath(installPath)
+          }
+          if (organizeRes.status === 'fulfilled') {
+            const org = organizeRes.value?.data
+            const isoPath = org?.isoDownloadPath || org?.iso_download_path || ''
+            if (isoPath) setServerDownloadPath(isoPath)
+          }
+        } catch {
+          // ignore
+        }
+      }
     }
     void loadDestinations()
     return () => {
       cancelled = true
     }
-  }, [remoteNodeId])
+  }, [remoteNodeId, effectiveServerId])
 
   // Keep ISO destination in sync with download config for local desktop
   useEffect(() => {
@@ -520,16 +612,18 @@ export const SettingsPathsSection = ({
 
   // Helper to persist scan paths
   const persistScanPaths = async (updated: ScanPathItem[]) => {
-    setScanPaths(updated)
+    const normalized = normalizeScanPathItems(updated)
+    setScanPaths(normalized)
+    const syncTargetId = remoteNodeId || effectiveServerId
     if (remoteNodeId) {
       try {
-        localStorage.setItem(`otix:scan-paths:node:${remoteNodeId}`, JSON.stringify(updated))
+        localStorage.setItem(`otix:scan-paths:node:${remoteNodeId}`, JSON.stringify(normalized))
       } catch {
         // ignore
       }
       try {
-        await apiClient.put(`/library/servers/${remoteNodeId}/libraries`, {
-          libraries: updated.map((item) => ({
+        await apiClient.put(`/library/nodes/${remoteNodeId}/libraries`, {
+          libraries: normalized.map((item) => ({
             name: item.path.split(/[\\/]/).filter(Boolean).pop() || item.type,
             path: item.path,
             kind: item.type,
@@ -543,16 +637,44 @@ export const SettingsPathsSection = ({
     const api = getDesktopAPI() ?? (typeof window !== 'undefined' ? (window as any).desktopAPI : null)
     if (api?.saveScanPaths) {
       try {
-        await api.saveScanPaths(updated)
+        await api.saveScanPaths(
+          normalized.map((item) => ({
+            path: item.path,
+            type: item.type === 'provider' || item.type === 'iso' ? 'iso' : 'game',
+          })),
+        )
       } catch (err) {
         console.error('Failed to save scan paths:', err)
       }
     }
     try {
-      localStorage.setItem('otix:scan-paths', JSON.stringify(updated.filter((i) => i.type === 'game').map((i) => i.path)))
-      localStorage.setItem('otix:iso-scan-paths', JSON.stringify(updated.filter((i) => i.type === 'iso').map((i) => i.path)))
+      localStorage.setItem(
+        'otix:scan-paths',
+        JSON.stringify(normalized.filter((i) => i.type === 'game' || i.type === 'installed').map((i) => i.path)),
+      )
+      localStorage.setItem(
+        'otix:iso-scan-paths',
+        JSON.stringify(normalized.filter((i) => i.type === 'iso' || i.type === 'provider').map((i) => i.path)),
+      )
+      if (syncTargetId) {
+        localStorage.setItem(`otix:scan-paths:node:${syncTargetId}`, JSON.stringify(normalized))
+      }
     } catch {
       // ignore
+    }
+
+    if (syncTargetId) {
+      try {
+        await apiClient.put(`/library/nodes/${syncTargetId}/libraries`, {
+          libraries: normalized.map((item) => ({
+            name: item.path.split(/[\\/]/).filter(Boolean).pop() || item.type,
+            path: item.path,
+            kind: item.type === 'provider' || item.type === 'iso' ? 'provider' : 'installed',
+          })),
+        })
+      } catch (err) {
+        console.warn('Failed to sync scan paths to backend server:', err)
+      }
     }
   }
 
@@ -575,7 +697,7 @@ export const SettingsPathsSection = ({
           // ignore
         }
         try {
-          await apiClient.post(`/library/servers/${remoteNodeId}/desktop`, { gamesInstallPath: trimmed })
+          await apiClient.post(`/library/nodes/${remoteNodeId}/desktop`, { gamesInstallPath: trimmed })
         } catch (err) {
           console.warn('Node is disconnected or unreachable while updating gamesInstallPath:', err)
           remoteFailed = true
@@ -591,8 +713,22 @@ export const SettingsPathsSection = ({
           } else {
             localStorage.setItem('otix:games-install-dir', trimmed)
           }
+          if (effectiveServerId) {
+            if (isClearing) {
+              localStorage.removeItem(`otix:games-install-dir:node:${effectiveServerId}`)
+            } else {
+              localStorage.setItem(`otix:games-install-dir:node:${effectiveServerId}`, trimmed)
+            }
+          }
         } catch {
           // ignore
+        }
+        if (effectiveServerId) {
+          try {
+            await apiClient.post(`/library/nodes/${effectiveServerId}/desktop`, { gamesInstallPath: trimmed })
+          } catch {
+            // ignore
+          }
         }
       }
 
@@ -650,7 +786,7 @@ export const SettingsPathsSection = ({
           // ignore
         }
         try {
-          await apiClient.post(`/library/servers/${remoteNodeId}/desktop`, { gamesDownloadPath: trimmed })
+          await apiClient.post(`/library/nodes/${remoteNodeId}/desktop`, { gamesDownloadPath: trimmed })
         } catch (err) {
           console.warn('Node is disconnected or unreachable while updating gamesDownloadPath:', err)
           remoteFailed = true
@@ -666,8 +802,22 @@ export const SettingsPathsSection = ({
           } else {
             localStorage.setItem('otix:games-download-dir', trimmed)
           }
+          if (effectiveServerId) {
+            if (isClearing) {
+              localStorage.removeItem(`otix:games-download-dir:node:${effectiveServerId}`)
+            } else {
+              localStorage.setItem(`otix:games-download-dir:node:${effectiveServerId}`, trimmed)
+            }
+          }
         } catch {
           // ignore
+        }
+        if (effectiveServerId) {
+          try {
+            await apiClient.post(`/library/nodes/${effectiveServerId}/desktop`, { gamesDownloadPath: trimmed })
+          } catch {
+            // ignore
+          }
         }
       }
 
@@ -725,7 +875,7 @@ export const SettingsPathsSection = ({
           // ignore
         }
         try {
-          await apiClient.post(`/library/servers/${remoteNodeId}/organize`, { isoDownloadPath: trimmed || '' })
+          await apiClient.post(`/library/nodes/${remoteNodeId}/organize`, { isoDownloadPath: trimmed || '' })
         } catch (err) {
           console.warn('Node is disconnected or unreachable while updating isoDownloadPath:', err)
           remoteFailed = true
@@ -741,8 +891,23 @@ export const SettingsPathsSection = ({
           } else {
             localStorage.setItem('otix:iso-download-dir', trimmed)
           }
+          if (effectiveServerId) {
+            if (isClearing) {
+              localStorage.removeItem(`otix:iso-download-dir:node:${effectiveServerId}`)
+            } else {
+              localStorage.setItem(`otix:iso-download-dir:node:${effectiveServerId}`, trimmed)
+            }
+          }
         } catch {
           // ignore
+        }
+
+        if (effectiveServerId) {
+          try {
+            await apiClient.post(`/library/nodes/${effectiveServerId}/organize`, { isoDownloadPath: trimmed || '' })
+          } catch {
+            // ignore
+          }
         }
 
         if (user && saveConfig && dlConfig) {
@@ -867,6 +1032,15 @@ export const SettingsPathsSection = ({
     const updated = scanPaths.filter((p) => normalizePath(p.path) !== norm)
     await persistScanPaths(updated)
 
+    const api = getDesktopAPI() ?? (typeof window !== 'undefined' ? (window as any).desktopAPI : null)
+    if (api?.deleteGamesByDirectory) {
+      try {
+        await api.deleteGamesByDirectory(pathToRemove)
+      } catch (err) {
+        console.warn('Failed to delete games by directory:', err)
+      }
+    }
+
     if (normalizePath(gamesInstallPath) === norm) {
       void handleSaveGamesInstallPath('')
     }
@@ -882,6 +1056,10 @@ export const SettingsPathsSection = ({
       description: `Removed ${pathToRemove}.`,
       variant: 'default',
     })
+    window.dispatchEvent(new Event('scanned-games-updated'))
+    queryClient.invalidateQueries({ queryKey: ['library', 'server-games'] })
+    queryClient.invalidateQueries({ queryKey: ['library', 'matches'] })
+    await loadSummary()
   }
 
   // ── Copy Path to Clipboard ──
@@ -994,7 +1172,7 @@ export const SettingsPathsSection = ({
         scanProgress.reportProgress(10, 'Starting library scan on node...', 'scanning')
         // Trigger scan start
         await apiClient.post<{ count?: number; status?: string }>(
-          `/library/servers/${remoteNodeId}/scan`,
+          `/library/nodes/${remoteNodeId}/scan`,
           specificPath ? { path: specificPath } : undefined,
         )
 
@@ -1014,7 +1192,7 @@ export const SettingsPathsSection = ({
               currentDirectory?: string
               is_scanning?: boolean
               isScanning?: boolean
-            }>(`/library/servers/${remoteNodeId}/scan`)
+            }>(`/library/nodes/${remoteNodeId}/scan`)
 
             const count = data?.totalFiles || data?.total_files || data?.filesScanned || data?.files_scanned || 0
             if (count > 0) scannedCount = count
@@ -1029,7 +1207,7 @@ export const SettingsPathsSection = ({
             }
           } catch (pollErr: any) {
             const { isUnreachable } = formatScanError(pollErr)
-            if (isUnreachable || (pollErr?.response?.status && pollErr.response.status >= 500)) {
+            if (isUnreachable || (pollErr?.response?.status && pollErr.response.status >= 400)) {
               throw pollErr
             }
             break
@@ -1045,7 +1223,7 @@ export const SettingsPathsSection = ({
               matched?: number
               status?: string
               reason?: string
-            }>(`/library/servers/${remoteNodeId}/otix/sync`, {
+            }>(`/library/nodes/${remoteNodeId}/otix/sync`, {
               writeOtix: true,
               downloadImages: downloadOtixImages,
               path: specificPath,
@@ -1087,31 +1265,62 @@ export const SettingsPathsSection = ({
             variant: 'success',
           })
         }
+        // Ingest latest node files into Match Review Center manifest
+        try {
+          const { data: serverFiles } = await apiClient.get<any[]>(`/library/nodes/${remoteNodeId}/files`)
+          if (Array.isArray(serverFiles) && serverFiles.length > 0) {
+            await uploadNodeManifestInChunks(remoteNodeId, serverFiles)
+          }
+        } catch {
+          // non-fatal
+        }
       } else {
         const api = getDesktopAPI() ?? (typeof window !== 'undefined' ? (window as any).desktopAPI : null)
         if (api?.scanPaths) {
           const isIsoPath = specificPath && scanPaths.some((p) => p.path === specificPath && p.type === 'iso')
+          const configuredGameDirs = scanPaths.filter((p) => p.type === 'game').map((p) => p.path)
+          const allGameDirs = Array.from(
+            new Set([
+              ...configuredGameDirs,
+              ...(gamesInstallPath ? [gamesInstallPath] : []),
+            ]),
+          )
           const gameDirs = specificPath
             ? isIsoPath
               ? []
               : [specificPath]
-            : scanPaths.filter((p) => p.type === 'game').map((p) => p.path)
+            : allGameDirs
           const isoDirs = specificPath
             ? isIsoPath
               ? [specificPath]
               : []
             : scanPaths.filter((p) => p.type === 'iso').map((p) => p.path)
           scanProgress.reportProgress(15, `Scanning ${specificPath ? getBaseFolderName(specificPath) : 'configured local directories'}...`, 'scanning')
-          await api.scanPaths(gameDirs, isoDirs)
+          const clientToken = localStorage.getItem('otix-access-token') || localStorage.getItem('otix_access_token') || ''
+          const scanned = clientToken
+            ? await api.scanPaths(gameDirs, isoDirs, clientToken)
+            : await api.scanPaths(gameDirs, isoDirs)
+          const foundCount = Array.isArray(scanned) ? scanned.length : 0
+          if (Array.isArray(scanned) && scanned.length > 0) {
+            try {
+              await uploadScannedGamesManifest(0, scanned)
+            } catch {
+              // non-fatal
+            }
+          }
+          scanProgress.finishScan(
+            specificPath
+              ? `Scanned ${getBaseFolderName(specificPath)}: found ${foundCount} game${foundCount === 1 ? '' : 's'}`
+              : `Local library scan complete: found ${foundCount} game${foundCount === 1 ? '' : 's'}`
+          )
+          toast({
+            title: 'Library Scanned',
+            description: specificPath
+              ? `Completed scanning ${getBaseFolderName(specificPath)}: found ${foundCount} game${foundCount === 1 ? '' : 's'}.`
+              : `Completed scanning library paths: found ${foundCount} game${foundCount === 1 ? '' : 's'}.`,
+            variant: 'success',
+          })
         }
-        scanProgress.finishScan(specificPath ? `Scanned ${getBaseFolderName(specificPath)} and matched metadata` : 'Local library scan complete')
-        toast({
-          title: 'Library Scanned',
-          description: specificPath
-            ? `Completed scanning and metadata matching for ${getBaseFolderName(specificPath)}.`
-            : 'Completed scanning configured library and download paths.',
-          variant: 'success',
-        })
       }
       queryClient.invalidateQueries({ queryKey: ['local-games'] })
       queryClient.invalidateQueries({ queryKey: ['server-games'] })
@@ -1141,12 +1350,21 @@ export const SettingsPathsSection = ({
 
   // ── Clear Indexed Scan List ──
   const handleClearScannedList = async () => {
-    if (!remoteNodeId) return
     setIsClearingScan(true)
     try {
-      await apiClient.post(`/library/servers/${remoteNodeId}/scan/clear`)
+      if (remoteNodeId) {
+        await apiClient.post(`/library/nodes/${remoteNodeId}/scan/clear`)
+      } else {
+        const api = getDesktopAPI() ?? (typeof window !== 'undefined' ? (window as any).desktopAPI : null)
+        if (api?.resetGameData) {
+          await api.resetGameData()
+        }
+      }
+      queryClient.invalidateQueries({ queryKey: ['library', 'matches'] })
+      queryClient.invalidateQueries({ queryKey: ['library', 'server-games'] })
+      queryClient.invalidateQueries({ queryKey: ['local-games'] })
       onScanComplete?.()
-      setSummary({
+      const emptySummary: ScannedFilesSummaryData = {
         totalCount: 0,
         organizedCount: 0,
         unorganizedCount: 0,
@@ -1155,23 +1373,13 @@ export const SettingsPathsSection = ({
         installedCount: 0,
         organizedPercentage: 0,
         lastScannedAt: new Date().toISOString(),
-      })
-      saveStoredScannedSummary(
-        {
-          totalCount: 0,
-          organizedCount: 0,
-          unorganizedCount: 0,
-          matchedCount: 0,
-          isoCount: 0,
-          installedCount: 0,
-          organizedPercentage: 0,
-          lastScannedAt: new Date().toISOString(),
-        },
-        remoteNodeId,
-      )
+      }
+      setSummary(emptySummary)
+      saveStoredScannedSummary(emptySummary, remoteNodeId)
+      window.dispatchEvent(new Event('scanned-games-updated'))
       toast({
         title: 'Scan list cleared',
-        description: 'Indexed hosted files were cleared. Files on disk were not deleted.',
+        description: 'Indexed files were cleared. Files on disk were not deleted.',
         variant: 'success',
       })
     } catch (err: unknown) {
@@ -1188,6 +1396,47 @@ export const SettingsPathsSection = ({
       }
     } finally {
       setIsClearingScan(false)
+    }
+  }
+
+  // ── Run Catalog Matching ──
+  const handleRunCatalogMatching = async () => {
+    if (remoteNodeId) {
+      setIsSyncingOtix(true)
+      try {
+        await apiClient.post(`/library/nodes/${remoteNodeId}/otix/sync`, {
+          writeOtix: true,
+          downloadImages: downloadOtixImages,
+        })
+        toast({
+          title: 'Matching started',
+          description: 'Catalog metadata sync initiated on node.',
+          variant: 'success',
+        })
+      } catch (err: unknown) {
+        toast({
+          title: 'Matching failed',
+          description: (err as { message?: string })?.message || 'Could not start matching on node.',
+          variant: 'error',
+        })
+      } finally {
+        setIsSyncingOtix(false)
+      }
+    } else {
+      try {
+        await matching.startMatching({ forceAll: false })
+        toast({
+          title: 'Matching started',
+          description: 'Running catalog matching in the background…',
+          variant: 'success',
+        })
+      } catch (err: unknown) {
+        toast({
+          title: 'Matching failed',
+          description: (err as { message?: string })?.message || 'Could not start matching.',
+          variant: 'error',
+        })
+      }
     }
   }
 
@@ -1231,10 +1480,16 @@ export const SettingsPathsSection = ({
         </div>
       )}
 
+      {/* ── Dedicated Matching Progress Bar & Live Status ── */}
+      <MatchingProgressCard
+        data={matching}
+        onCancel={matching.cancelMatching}
+      />
+
       {/* ── Scanned Files Quick Summary with Integrated Real-time Progress ── */}
       <ScannedFilesSummary
         summary={summary}
-        isLoading={isSummaryLoading || isScanning || isSyncingOtix}
+        isLoading={isSummaryLoading || isScanning || isMatching}
         scanProgress={scanProgress.progress}
         scanCurrentDir={scanProgress.currentDir}
         scanPhase={scanProgress.phase}
@@ -1253,7 +1508,7 @@ export const SettingsPathsSection = ({
             <div className="flex items-center gap-2">
               <h3 className="text-sm font-semibold text-foreground">Game Match Review Center</h3>
               {pendingMatchesCount > 0 && (
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500/10 text-amber-400">
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-primary/10 text-primary border border-primary/20">
                   {pendingMatchesCount} need review
                 </span>
               )}
@@ -1455,13 +1710,25 @@ export const SettingsPathsSection = ({
             ) : null}
             <DkButton
               size="sm"
+              variant="outline"
+              onClick={handleRunCatalogMatching}
+              disabled={isScanning || isClearingScan || matching.isMatching}
+              loading={matching.isMatching}
+              className="h-8 shrink-0 cursor-pointer text-xs"
+              title="Run catalog metadata matcher"
+            >
+              <Sparkles className="h-3.5 w-3.5 text-primary" />
+              <span>{matching.isMatching ? 'Matching…' : 'Match Catalog'}</span>
+            </DkButton>
+            <DkButton
+              size="sm"
               onClick={handleTriggerScan}
-              disabled={isScanning || isClearingScan || isSyncingOtix}
-              loading={isScanning || isSyncingOtix}
+              disabled={isScanning || isClearingScan || matching.isMatching}
+              loading={isScanning}
               className="h-8 shrink-0 cursor-pointer text-xs"
             >
               <RefreshCw className="h-3.5 w-3.5" />
-              {isSyncingOtix ? 'Matching…' : isScanning ? 'Scanning...' : 'Scan Now'}
+              <span>{isScanning ? 'Scanning...' : 'Scan Now'}</span>
             </DkButton>
           </div>
         </div>
@@ -1501,7 +1768,7 @@ export const SettingsPathsSection = ({
                 onRemove={handleRemoveFolder}
                 onCopyPath={handleCopyPath}
                 onRescan={(path) => handleTriggerScan(path)}
-                isScanning={isScanning}
+                isScanning={isScanning || isMatching}
               />
             ))}
             {filteredFolders.length === 0 && searchQuery && (
@@ -1573,6 +1840,7 @@ export const SettingsPathsSection = ({
         <MatchReviewCenterModal
           open={matchCenterOpen}
           onOpenChange={setMatchCenterOpen}
+          nodeId={remoteNodeId ?? 0}
         />
       )}
     </div>

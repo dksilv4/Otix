@@ -22,7 +22,6 @@ vi.mock('@tanstack/react-router', () => ({
   useNavigate: () => vi.fn(),
 }))
 
-
 const mockMovie = {
   id: 'movie-1',
   title: 'Interstellar Odyssey',
@@ -97,13 +96,9 @@ vi.mock('@media/queries/media-queries', () => ({
 }))
 
 describe('DiscoverHero', () => {
-  it('renders clean multi-media switcher with Movies, TV Shows, and Games', async () => {
+  it('renders clean switcher with Movies, TV Shows, and Games without overview tab', async () => {
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
 
-    queryClient.setQueryData(['discover', 'hero'], {
-      pages: [{ items: [mockMovie, mockShow, mockGame] }],
-      pageParams: [''],
-    })
     queryClient.setQueryData(['discover', 'list', 'movie'], {
       pages: [{ items: [mockMovie] }],
       pageParams: [''],
@@ -123,33 +118,55 @@ describe('DiscoverHero', () => {
       </QueryClientProvider>,
     )
 
-    // Category switcher buttons (without 'featured')
-    expect(screen.getByRole('button', { name: /^all$/i })).toBeInTheDocument()
+    // Ensure overview tab is completely removed
+    expect(screen.queryByRole('button', { name: /^overview$/i })).not.toBeInTheDocument()
+
+    // Category switcher buttons
     expect(screen.getByRole('button', { name: /movies/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /tv shows/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /games/i })).toBeInTheDocument()
 
-    // Title, actions, and meta pill
+    // Default movie content is rendered
     expect(screen.getByText('Interstellar Odyssey')).toBeInTheDocument()
-    expect(screen.getByText(/View Details/i)).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /view details/i })).toBeInTheDocument()
     expect(screen.getByText('2024')).toBeInTheDocument()
     expect(screen.getByText('88%')).toBeInTheDocument()
   })
 
-  it('switches to games when games category button is clicked', async () => {
+  it('switches to shows and displays show details', async () => {
     const user = userEvent.setup()
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
 
-    queryClient.setQueryData(['discover', 'hero'], {
-      pages: [{ items: [mockMovie, mockShow, mockGame] }],
-      pageParams: [''],
-    })
     queryClient.setQueryData(['discover', 'list', 'movie'], {
       pages: [{ items: [mockMovie] }],
       pageParams: [''],
     })
     queryClient.setQueryData(['discover', 'list', 'show'], {
       pages: [{ items: [mockShow] }],
+      pageParams: [''],
+    })
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <DiscoverHero />
+      </QueryClientProvider>,
+    )
+
+    const showsBtn = screen.getByRole('button', { name: /tv shows/i })
+    await user.click(showsBtn)
+
+    expect(screen.getByText('Arcane Chrono')).toBeInTheDocument()
+    const detailsLink = screen.getByRole('link', { name: /view details/i })
+    expect(detailsLink).toBeInTheDocument()
+    expect(detailsLink).toHaveAttribute('href', '/media/show/show-1')
+  })
+
+  it('switches to games when games category button is clicked', async () => {
+    const user = userEvent.setup()
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+
+    queryClient.setQueryData(['discover', 'list', 'movie'], {
+      pages: [{ items: [mockMovie] }],
       pageParams: [''],
     })
     queryClient.setQueryData(['discover', 'list', 'game'], {
@@ -170,23 +187,5 @@ describe('DiscoverHero', () => {
     expect(screen.getByLabelText('PC')).toBeInTheDocument()
     expect(screen.getByTitle('PC')).toBeInTheDocument()
     expect(screen.queryByText(/^pc$/i)).not.toBeInTheDocument()
-  })
-
-  it('renders View Details link targeting the active item', async () => {
-    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-    queryClient.setQueryData(['discover', 'hero'], {
-      pages: [{ items: [mockMovie] }],
-      pageParams: [''],
-    })
-
-    render(
-      <QueryClientProvider client={queryClient}>
-        <DiscoverHero />
-      </QueryClientProvider>,
-    )
-
-    const detailsLink = screen.getByRole('link', { name: /view details/i })
-    expect(detailsLink).toBeInTheDocument()
-    expect(detailsLink).toHaveAttribute('href', '/media/movie/movie-1')
   })
 })

@@ -13,6 +13,9 @@ import {
   ExternalLink,
   ShieldAlert,
   Link2,
+  Cpu,
+  SlidersHorizontal,
+  Users,
 } from 'lucide-react'
 import { DkButton } from '@ui/atoms/button'
 import { DkDialog } from '@ui/molecules/dialog'
@@ -46,17 +49,6 @@ export const SettingsNodeDetailPage = () => {
     }
   }, [nodeId, setSelectedNodeId])
 
-  if (!isAuthenticated) {
-    return (
-      <SettingsLockedState
-        title="Sign in required"
-        description="Sign in to inspect and configure individual node details."
-        icon={ShieldAlert}
-        action={<span />}
-      />
-    )
-  }
-
   if (!node) {
     return (
       <div className="space-y-4">
@@ -84,6 +76,14 @@ export const SettingsNodeDetailPage = () => {
   }
 
   const handleDelete = async () => {
+    if (node.isLocalDesktop) {
+      toast({
+        title: 'Cannot Disconnect',
+        description: 'The local desktop node cannot be disconnected.',
+        variant: 'error',
+      })
+      return
+    }
     try {
       await deleteServerMutation.mutateAsync(node.id)
       toast({
@@ -130,7 +130,7 @@ export const SettingsNodeDetailPage = () => {
               </span>
               {node.isLocalDesktop && (
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-primary/10 text-primary">
-                  Companion Node
+                  Otix App
                 </span>
               )}
             </div>
@@ -271,6 +271,72 @@ export const SettingsNodeDetailPage = () => {
               </h3>
               <p className="text-xs text-muted-foreground">
                 Configure SABnzbd, Prowlarr, Radarr, and Sonarr service integrations for this node.
+              </p>
+            </div>
+          </div>
+          <ExternalLink className="h-4 w-4 text-muted-foreground/60 group-hover:text-foreground transition-colors shrink-0" />
+        </Link>
+
+        <Link
+          to="/settings/nodes"
+          hash="machine"
+          onClick={() => setSelectedNodeId(node.id)}
+          className="flex items-center justify-between p-4 rounded-2xl bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)] border border-white/[0.04] transition-all cursor-pointer group"
+        >
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-primary/10 text-primary group-hover:scale-105 transition-transform shadow-xs">
+              <Cpu className="h-5 w-5" />
+            </div>
+            <div>
+              <h3 className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors">
+                Machine & Hardware
+              </h3>
+              <p className="text-xs text-muted-foreground">
+                Inspect CPU, GPU, memory, disks telemetry, and attached displays arrangement.
+              </p>
+            </div>
+          </div>
+          <ExternalLink className="h-4 w-4 text-muted-foreground/60 group-hover:text-foreground transition-colors shrink-0" />
+        </Link>
+
+        <Link
+          to="/settings/nodes"
+          hash="software"
+          onClick={() => setSelectedNodeId(node.id)}
+          className="flex items-center justify-between p-4 rounded-2xl bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)] border border-white/[0.04] transition-all cursor-pointer group"
+        >
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-primary/10 text-primary group-hover:scale-105 transition-transform shadow-xs">
+              <SlidersHorizontal className="h-5 w-5" />
+            </div>
+            <div>
+              <h3 className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors">
+                Services & Sharing
+              </h3>
+              <p className="text-xs text-muted-foreground">
+                Configure node daemon autostart, automated save backups, and network sharing.
+              </p>
+            </div>
+          </div>
+          <ExternalLink className="h-4 w-4 text-muted-foreground/60 group-hover:text-foreground transition-colors shrink-0" />
+        </Link>
+
+        <Link
+          to="/settings/nodes"
+          hash="overlay"
+          onClick={() => setSelectedNodeId(node.id)}
+          className="flex items-center justify-between p-4 rounded-2xl bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)] border border-white/[0.04] transition-all cursor-pointer group"
+        >
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-primary/10 text-primary group-hover:scale-105 transition-transform shadow-xs">
+              <Sparkles className="h-5 w-5" />
+            </div>
+            <div>
+              <h3 className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors">
+                In-Game Overlay & HUD
+              </h3>
+              <p className="text-xs text-muted-foreground">
+                Configure transparent FPS HUD overlay, layout docking style, and game process detection.
               </p>
             </div>
           </div>

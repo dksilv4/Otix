@@ -2,6 +2,7 @@ package providers
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -33,19 +34,23 @@ func NewProviderManager(cfg *config.AppConfig) *ProviderManager {
 
 func InferDownloadProtocol(downloadURL string) string {
 	lower := strings.ToLower(strings.TrimSpace(downloadURL))
+	if lower == "" {
+		return "usenet"
+	}
 	if strings.HasPrefix(lower, "magnet:") || strings.HasSuffix(lower, ".torrent") || strings.Contains(lower, ".torrent?") {
 		return "torrent"
 	}
-	if strings.HasSuffix(lower, ".nzb") || strings.Contains(lower, ".nzb?") {
+	if strings.HasSuffix(lower, ".nzb") || strings.Contains(lower, ".nzb?") || strings.Contains(lower, "?t=get") || strings.Contains(lower, "&t=get") {
 		return "usenet"
 	}
-	// Direct download links / cyberlockers / containers / DLC
+	// Direct download links / cyberlockers / containers / DLC / DDownload
 	if strings.HasSuffix(lower, ".dlc") || strings.Contains(lower, "rapidgator.net") || strings.Contains(lower, "1fichier.com") ||
 		strings.Contains(lower, "mega.nz") || strings.Contains(lower, "mediafire.com") || strings.Contains(lower, "ddownload.com") ||
-		strings.Contains(lower, "pixeldrain.com") || strings.Contains(lower, "gdrive") || strings.Contains(lower, "drive.google.com") {
+		strings.Contains(lower, "pixeldrain.com") || strings.Contains(lower, "gdrive") || strings.Contains(lower, "drive.google.com") ||
+		strings.Contains(lower, "turbobit.net") || strings.Contains(lower, "nitroflare.com") || strings.Contains(lower, "katfile.com") {
 		return "direct"
 	}
-	return "usenet"
+	return "direct"
 }
 
 func (pm *ProviderManager) ListProviders() map[string]interface{} {
@@ -60,7 +65,7 @@ func (pm *ProviderManager) ListProviders() map[string]interface{} {
 	}
 
 	jdClient := jdownloader.NewClient(pm.cfg.JDownloader)
-	jdConfigured := pm.cfg.JDownloader.Enabled || pm.cfg.JDownloader.Email != "" || (pm.cfg.JDownloader.DirectHost != "" && pm.cfg.JDownloader.DirectPort > 0)
+	jdConfigured := (pm.cfg.JDownloader.Enabled && (pm.cfg.JDownloader.Email != "" || (pm.cfg.JDownloader.DirectHost != "" && pm.cfg.JDownloader.DirectPort > 0))) || (pm.cfg.JDownloader.Email != "" && pm.cfg.JDownloader.Password != "")
 	jdConnected, jdMsg := false, "Not configured"
 	if jdConfigured {
 		jdConnected, jdMsg = jdClient.TestConnection()
@@ -240,17 +245,39 @@ func (pm *ProviderManager) AddDownload(downloadURL, title, category, protocol st
 	if proto == "torrent" {
 		return "", fmt.Errorf("no torrent download client configured on this node")
 	}
+	pm.mu.RLock()
+	sabCfg := pm.cfg.Usenet.Sabnzbd
+	sabConfigured := sabCfg.Host != "" && sabCfg.APIKey != ""
+	jdCfg := pm.cfg.JDownloader
+	jdConfigured := (jdCfg.Enabled && (jdCfg.Email != "" || (jdCfg.DirectHost != "" && jdCfg.DirectPort > 0))) || (jdCfg.Email != "" && jdCfg.Password != "")
+	pm.mu.RUnlock()
+
 	if proto == "direct" || proto == "ddl" || proto == "jdownloader" {
-		pm.mu.RLock()
-		client := jdownloader.NewClient(pm.cfg.JDownloader)
-		pm.mu.RUnlock()
+		if !jdConfigured {
+			return "", fmt.Errorf("JDownloader is not configured on this node for direct downloads")
+		}
+		client := jdownloader.NewClient(jdCfg)
 		return client.AddDownload(downloadURL, title, category)
 	}
 
-	pm.mu.RLock()
-	client := usenet.NewSabnzbdClient(pm.cfg.Usenet.Sabnzbd)
-	pm.mu.RUnlock()
-	return client.AddDownload(downloadURL, title, category)
+	if proto == "usenet" {
+		if !sabConfigured {
+			return "", fmt.Errorf("SABnzbd is not configured on this node for Usenet (NZB) releases")
+		}
+		client := usenet.NewSabnzbdClient(sabCfg)
+		return client.AddDownload(downloadURL, title, category)
+	}
+
+	if jdConfigured {
+		client := jdownloader.NewClient(jdCfg)
+		return client.AddDownload(downloadURL, title, category)
+	}
+	if sabConfigured {
+		client := usenet.NewSabnzbdClient(sabCfg)
+		return client.AddDownload(downloadURL, title, category)
+	}
+
+	return "", fmt.Errorf("no download client configured on this node")
 }
 
 func (pm *ProviderManager) GetQueue() (*usenet.ServerDownloadQueue, error) {
@@ -279,7 +306,7 @@ func (pm *ProviderManager) GetQueue() (*usenet.ServerDownloadQueue, error) {
 		}
 	}
 
-	jdConfigured := jdCfg.Enabled || jdCfg.Email != "" || (jdCfg.DirectHost != "" && jdCfg.DirectPort > 0)
+	jdConfigured := (jdCfg.Enabled && (jdCfg.Email != "" || (jdCfg.DirectHost != "" && jdCfg.DirectPort > 0))) || (jdCfg.Email != "" && jdCfg.Password != "")
 	if jdConfigured {
 		jdClient := jdownloader.NewClient(jdCfg)
 		if q, err := jdClient.GetQueue(); err == nil && q != nil {
@@ -315,7 +342,7 @@ func (pm *ProviderManager) GetHistory(limit int) (*usenet.ServerDownloadHistory,
 		}
 	}
 
-	jdConfigured := jdCfg.Enabled || jdCfg.Email != "" || (jdCfg.DirectHost != "" && jdCfg.DirectPort > 0)
+	jdConfigured := (jdCfg.Enabled && (jdCfg.Email != "" || (jdCfg.DirectHost != "" && jdCfg.DirectPort > 0))) || (jdCfg.Email != "" && jdCfg.Password != "")
 	if jdConfigured {
 		jdClient := jdownloader.NewClient(jdCfg)
 		if h, err := jdClient.GetHistory(limit); err == nil && h != nil {
@@ -331,6 +358,12 @@ func (pm *ProviderManager) DeleteDownload(id string) error {
 	sabClient := usenet.NewSabnzbdClient(pm.cfg.Usenet.Sabnzbd)
 	jdClient := jdownloader.NewClient(pm.cfg.JDownloader)
 	pm.mu.RUnlock()
+
+	if _, err := strconv.ParseInt(id, 10, 64); err == nil {
+		if errJD := jdClient.DeleteSlot(id); errJD == nil {
+			return nil
+		}
+	}
 
 	errSab := sabClient.DeleteSlot(id)
 	if errSab == nil {

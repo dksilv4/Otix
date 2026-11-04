@@ -331,11 +331,7 @@ export function useDownloadGame(): DownloadGameState {
       const results = await Promise.all(
         queries.map(async (searchQuery, idx) => {
           try {
-            const { data: resData } = await apiClient.get<unknown>(
-              `/library/servers/${activeServer.id}/usenet/search`,
-              { params: { query: searchQuery } },
-            )
-            return Array.isArray(resData) ? resData : []
+            return await searchNodeIndexersDirect(activeServer.id, searchQuery)
           } catch (err) {
             if (idx === 0) throw err
             return []
@@ -385,7 +381,7 @@ export function useDownloadGame(): DownloadGameState {
       const downloadUrl = releaseDownloadUrl(match.baseRelease)
       const protocol = inferReleaseProtocol(match.baseRelease)
       const dlRes = await apiClient.post<{ nzo_id?: string }>(
-        `/library/servers/${activeServer.id}/usenet/download`,
+        `/library/nodes/${activeServer.id}/usenet/download`,
         {
           title: match.baseRelease.title,
           download_url: downloadUrl,
@@ -401,7 +397,7 @@ export function useDownloadGame(): DownloadGameState {
         const updUrl = releaseDownloadUrl(update)
         try {
           await apiClient.post(
-            `/library/servers/${activeServer.id}/usenet/download`,
+            `/library/nodes/${activeServer.id}/usenet/download`,
             {
               title: update.title,
               download_url: updUrl,

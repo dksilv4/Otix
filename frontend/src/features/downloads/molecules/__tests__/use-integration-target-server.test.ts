@@ -40,6 +40,11 @@ describe('connection target nodes', () => {
     expect(pickConnectionNode([worker, worker2], 5)?.id).toBe(5)
   })
 
+  it('honors preferredId even when the node is a local desktop companion daemon', () => {
+    const localDaemon = node(106, { name: 'Otix Node', isLocalDesktop: true, isOnline: true })
+    expect(pickConnectionNode([desktop, worker, localDaemon], 106)?.id).toBe(106)
+  })
+
   it('labels the selected node rather than claiming a sync fan-out', () => {
     expect(connectionSyncLabel([worker], 'Home NAS')).toBe('On Home NAS')
     expect(connectionSyncLabel([])).toBe('Select an Otix node')

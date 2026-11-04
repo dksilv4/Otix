@@ -7,7 +7,9 @@ import (
 	"runtime"
 	"strings"
 	"sync"
+	"time"
 
+	"github.com/google/uuid"
 	"gopkg.in/yaml.v3"
 )
 
@@ -36,6 +38,7 @@ func DefaultAllowedExtensions(kind string) []string {
 }
 
 type ServerSettings struct {
+	NodeID             string `yaml:"node_id" json:"node_id"`
 	Name               string `yaml:"name" json:"name"`
 	Port               int    `yaml:"port" json:"port"`
 	Host               string `yaml:"host" json:"host"`
@@ -145,6 +148,8 @@ type RadarrInstance struct {
 	ID                  string `yaml:"id" json:"id"`
 	Name                string `yaml:"name" json:"name"`
 	Enabled             bool   `yaml:"enabled" json:"enabled"`
+	Configured          bool   `yaml:"-" json:"configured"`
+	HasAPIKey           bool   `yaml:"-" json:"has_api_key"`
 	Host                string `yaml:"host" json:"host"`
 	Port                int    `yaml:"port" json:"port"`
 	URLBase             string `yaml:"url_base" json:"url_base"`
@@ -153,10 +158,13 @@ type RadarrInstance struct {
 	QualityProfileID    *int   `yaml:"quality_profile_id" json:"quality_profile_id"`
 	RootFolderPath      string `yaml:"root_folder_path" json:"root_folder_path"`
 	MinimumAvailability string `yaml:"minimum_availability" json:"minimum_availability"`
+	AutoRequestWatchlist bool   `yaml:"auto_request_watchlist" json:"auto_request_watchlist"`
 }
 
 type RadarrConfig struct {
 	Enabled             bool             `yaml:"enabled" json:"enabled"`
+	Configured          bool             `yaml:"-" json:"configured"`
+	HasAPIKey           bool             `yaml:"-" json:"has_api_key"`
 	Host                string           `yaml:"host" json:"host"`
 	Port                int              `yaml:"port" json:"port"`
 	URLBase             string           `yaml:"url_base" json:"url_base"`
@@ -165,6 +173,7 @@ type RadarrConfig struct {
 	QualityProfileID    *int             `yaml:"quality_profile_id" json:"quality_profile_id"`
 	RootFolderPath      string           `yaml:"root_folder_path" json:"root_folder_path"`
 	MinimumAvailability string           `yaml:"minimum_availability" json:"minimum_availability"`
+	AutoRequestWatchlist bool             `yaml:"auto_request_watchlist" json:"auto_request_watchlist"`
 	Instances           []RadarrInstance `yaml:"instances" json:"instances"`
 }
 
@@ -182,6 +191,7 @@ func (r *RadarrConfig) Resolve(instanceID string) RadarrInstance {
 			QualityProfileID:    r.QualityProfileID,
 			RootFolderPath:      r.RootFolderPath,
 			MinimumAvailability: r.MinimumAvailability,
+			AutoRequestWatchlist: r.AutoRequestWatchlist,
 		}
 	}
 	if instanceID != "" {
@@ -203,6 +213,8 @@ type SonarrInstance struct {
 	ID                string `yaml:"id" json:"id"`
 	Name              string `yaml:"name" json:"name"`
 	Enabled           bool   `yaml:"enabled" json:"enabled"`
+	Configured        bool   `yaml:"-" json:"configured"`
+	HasAPIKey         bool   `yaml:"-" json:"has_api_key"`
 	Host              string `yaml:"host" json:"host"`
 	Port              int    `yaml:"port" json:"port"`
 	URLBase           string `yaml:"url_base" json:"url_base"`
@@ -213,10 +225,13 @@ type SonarrInstance struct {
 	SeriesType        string `yaml:"series_type" json:"series_type"`
 	SeasonFolder      bool   `yaml:"season_folder" json:"season_folder"`
 	LanguageProfileID *int   `yaml:"language_profile_id" json:"language_profile_id"`
+	AutoRequestWatchlist bool   `yaml:"auto_request_watchlist" json:"auto_request_watchlist"`
 }
 
 type SonarrConfig struct {
 	Enabled           bool             `yaml:"enabled" json:"enabled"`
+	Configured        bool             `yaml:"-" json:"configured"`
+	HasAPIKey         bool             `yaml:"-" json:"has_api_key"`
 	Host              string           `yaml:"host" json:"host"`
 	Port              int              `yaml:"port" json:"port"`
 	URLBase           string           `yaml:"url_base" json:"url_base"`
@@ -227,6 +242,7 @@ type SonarrConfig struct {
 	SeriesType        string           `yaml:"series_type" json:"series_type"`
 	SeasonFolder      bool             `yaml:"season_folder" json:"season_folder"`
 	LanguageProfileID *int             `yaml:"language_profile_id" json:"language_profile_id"`
+	AutoRequestWatchlist bool             `yaml:"auto_request_watchlist" json:"auto_request_watchlist"`
 	Instances         []SonarrInstance `yaml:"instances" json:"instances"`
 }
 
@@ -246,6 +262,7 @@ func (s *SonarrConfig) Resolve(instanceID string) SonarrInstance {
 			SeriesType:        s.SeriesType,
 			SeasonFolder:      s.SeasonFolder,
 			LanguageProfileID: s.LanguageProfileID,
+			AutoRequestWatchlist: s.AutoRequestWatchlist,
 		}
 	}
 	if instanceID != "" {
@@ -411,6 +428,7 @@ func DefaultConfig() *AppConfig {
 	storageBase := DefaultStorageDir()
 	return &AppConfig{
 		Server: ServerSettings{
+			NodeID:             "",
 			Name:               "Otix Node",
 			Port:               8090,
 			Host:               "0.0.0.0",
@@ -419,7 +437,7 @@ func DefaultConfig() *AppConfig {
 			EnableUPnP:         false,
 			EnableHeartbeat:    true,
 			DownloadsPath:      filepath.Join(storageBase, "downloads"),
-			WriteOtixAfterScan: true,
+			WriteOtixAfterScan: false,
 			DownloadOtixImages: false,
 		},
 		GameLibraries: []LibraryConfig{},
@@ -447,8 +465,8 @@ func DefaultConfig() *AppConfig {
 		},
 		JDownloader: JDownloaderConfig{
 			Enabled:    false,
-			DirectHost: "127.0.0.1",
-			DirectPort: 10025,
+			DirectHost: "",
+			DirectPort: 0,
 		},
 		Radarr: RadarrConfig{
 			Host:                "127.0.0.1",
@@ -544,7 +562,12 @@ func FindDefaultConfigPath() string {
 	return "config.yaml"
 }
 
+var configIOMu sync.Mutex
+
 func LoadConfig(customPath string) *AppConfig {
+	configIOMu.Lock()
+	defer configIOMu.Unlock()
+
 	path := customPath
 	if path == "" {
 		path = FindDefaultConfigPath()
@@ -567,17 +590,27 @@ func LoadConfig(customPath string) *AppConfig {
 		} else if data, err := os.ReadFile("config.example.yaml"); err == nil {
 			_ = yaml.Unmarshal(data, cfg)
 		}
+		if strings.TrimSpace(cfg.Server.NodeID) == "" {
+			cfg.Server.NodeID = uuid.New().String()
+			_ = cfg.saveLocked(path)
+		}
 		return cfg
 	}
 
 	data, err := os.ReadFile(path)
 	if err != nil {
 		fmt.Printf("[Warning] Failed to read config from %s: %v. Using defaults.\n", path, err)
+		if strings.TrimSpace(cfg.Server.NodeID) == "" {
+			cfg.Server.NodeID = uuid.New().String()
+		}
 		return cfg
 	}
 
 	if err := yaml.Unmarshal(data, cfg); err != nil {
 		fmt.Printf("[Warning] Failed to parse config YAML: %v. Using defaults.\n", err)
+		if strings.TrimSpace(cfg.Server.NodeID) == "" {
+			cfg.Server.NodeID = uuid.New().String()
+		}
 		return cfg
 	}
 
@@ -590,6 +623,12 @@ func LoadConfig(customPath string) *AppConfig {
 	}
 
 	cfg.configPath = path
+
+	if strings.TrimSpace(cfg.Server.NodeID) == "" {
+		cfg.Server.NodeID = uuid.New().String()
+		_ = cfg.saveLocked(path)
+	}
+
 	return cfg
 }
 
@@ -600,6 +639,12 @@ func (c *AppConfig) SetConfigPath(p string) {
 }
 
 func (c *AppConfig) Save(customPath string) error {
+	configIOMu.Lock()
+	defer configIOMu.Unlock()
+	return c.saveLocked(customPath)
+}
+
+func (c *AppConfig) saveLocked(customPath string) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -638,8 +683,16 @@ func (c *AppConfig) Save(customPath string) error {
 		return fmt.Errorf("failed to marshal config to yaml: %w", err)
 	}
 
-	if err := os.WriteFile(targetPath, data, 0644); err != nil {
-		return fmt.Errorf("failed to write config file %s: %w", targetPath, err)
+	tmpPath := fmt.Sprintf("%s.tmp.%d", targetPath, time.Now().UnixNano())
+	if err := os.WriteFile(tmpPath, data, 0644); err != nil {
+		return fmt.Errorf("failed to write config temp file: %w", err)
+	}
+
+	if err := os.Rename(tmpPath, targetPath); err != nil {
+		_ = os.Remove(tmpPath)
+		if writeErr := os.WriteFile(targetPath, data, 0644); writeErr != nil {
+			return fmt.Errorf("failed to write config file %s: %w", targetPath, writeErr)
+		}
 	}
 
 	c.configPath = targetPath

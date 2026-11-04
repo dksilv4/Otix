@@ -1,0 +1,10 @@
+// desktop/game/achievements/index.ts
+export * from './types'
+export * from './vdf-parser'
+export * from './appid-resolver'
+export * from './schema-fetcher'
+export * from './adapters/steam-local'
+export * from './adapters/goldberg'
+export * from './adapters/codex-rune'
+export * from './adapters/retroachievements'
+export * from './tracker'

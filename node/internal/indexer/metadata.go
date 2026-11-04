@@ -173,6 +173,16 @@ func DeterminePlatform(filename string, folderOrPath ...string) PlatformType {
 		return PlatformPSP
 	case "md", "gen", "smd":
 		return PlatformGenesis
+	case "bin":
+		if strings.EqualFold(filename, "eboot.bin") {
+			if strings.Contains(combinedContext, "ps4") || strings.Contains(combinedContext, "cusa") {
+				return PlatformPS4
+			}
+			if strings.Contains(combinedContext, "ps3") || strings.Contains(combinedContext, "bcus") || strings.Contains(combinedContext, "bles") || strings.Contains(combinedContext, "blus") {
+				return PlatformPS3
+			}
+			return PlatformPS5
+		}
 	}
 
 	// 2. Check for bracketed platform identifiers (e.g. [Switch], [PS2], [SNES], [N64])

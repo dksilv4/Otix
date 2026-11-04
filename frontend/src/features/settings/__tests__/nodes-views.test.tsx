@@ -272,7 +272,7 @@ describe('NodesSecondarySettingsMenu & Dropdown', () => {
 
     render(
       <QueryClientProvider client={queryClient}>
-        <NodesViewProvider>
+        <NodesViewProvider initialTab="infrastructure">
           <NodesSecondarySettingsMenu onBackToSettings={handleBack} />
           <Consumer />
         </NodesViewProvider>
@@ -315,7 +315,7 @@ describe('NodesSecondarySettingsMenu & Dropdown', () => {
 
     render(
       <QueryClientProvider client={queryClient}>
-        <NodesViewProvider>
+        <NodesViewProvider initialTab="infrastructure">
           <NodesSecondarySettingsMenu onBackToSettings={vi.fn()} />
           <Consumer />
         </NodesViewProvider>
@@ -328,7 +328,7 @@ describe('NodesSecondarySettingsMenu & Dropdown', () => {
     expect(screen.getByTestId('search-query')).toHaveTextContent('vault')
 
     // Select category
-    const serverCategoryBtn = screen.getByRole('button', { name: /server machines/i })
+    const serverCategoryBtn = screen.getByRole('button', { name: /^(server )?machines$/i })
     await user.click(serverCategoryBtn)
     expect(screen.getByTestId('category-filter')).toHaveTextContent('machines')
 
@@ -344,7 +344,7 @@ describe('NodesSecondarySettingsMenu & Dropdown', () => {
 
     render(
       <QueryClientProvider client={queryClient}>
-        <NodesViewProvider>
+        <NodesViewProvider initialTab="infrastructure">
           <NodesMenuDropdownButton onBackToSettings={handleBack} />
         </NodesViewProvider>
       </QueryClientProvider>,
@@ -368,7 +368,7 @@ describe('NodesSecondarySettingsMenu & Dropdown', () => {
 
     render(
       <QueryClientProvider client={queryClient}>
-        <NodesViewProvider>
+        <NodesViewProvider initialTab="infrastructure">
           <NodesSecondarySettingsMenu />
         </NodesViewProvider>
       </QueryClientProvider>,

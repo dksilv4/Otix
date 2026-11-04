@@ -70,6 +70,7 @@ export class PluginManager {
   public readonly freeGames: FreeGamesAggregator
   private pluginWatcher: fs.FSWatcher | null = null
   private pluginReloadTimers: Map<string, NodeJS.Timeout> = new Map()
+  private userDataPath: string
 
   constructor(
     extensionsDir: string,
@@ -80,6 +81,7 @@ export class PluginManager {
     this.extensionsDir = extensionsDir
     this.devExtensionsDir = devExtensionsDir
     this.pluginsRepo = pluginsRepo
+    this.userDataPath = _userDataPath
     this.freeGames = new FreeGamesAggregator(this)
     initPluginsDb(_userDataPath)
   }
@@ -279,6 +281,7 @@ export class PluginManager {
           return targetRuntime.callMethod(method, [args])
         },
         this.serviceRegistry,
+        this.userDataPath,
       )
 
       await runtime.start()

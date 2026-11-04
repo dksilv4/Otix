@@ -12,8 +12,11 @@ import type { SambaShareConfig } from '../../types/node-map'
 import { useUpdateServerMachine } from '../../hooks/use-server-machines'
 
 export interface EditSambaShareModalProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
+  open?: boolean
+  isOpen?: boolean
+  onOpenChange?: (open: boolean) => void
+  onClose?: () => void
+  isExiting?: boolean
   samba?: SambaShareConfig | null
   share?: SambaShareConfig | null
   serverMachines: UserServerMachine[]
@@ -23,13 +26,21 @@ export interface EditSambaShareModalProps {
 
 export const EditSambaShareModal = ({
   open,
+  isOpen,
   onOpenChange,
+  onClose,
+  isExiting,
   samba,
   share,
   serverMachines,
   onSaveCustom,
   onDeleteCustom,
 }: EditSambaShareModalProps) => {
+  const isModalOpen = (open ?? isOpen ?? true) && !isExiting
+  const handleClose = () => {
+    onOpenChange?.(false)
+    onClose?.()
+  }
   const activeSamba = samba ?? share ?? null
   const { toast } = useToast()
   const updateServerMutation = useUpdateServerMachine()
@@ -186,7 +197,7 @@ export const EditSambaShareModal = ({
         })
       }
 
-      onOpenChange(false)
+      handleClose()
     } catch {
       toast({
         title: 'Save Failed',
@@ -203,7 +214,7 @@ export const EditSambaShareModal = ({
       if (activeSamba.id && onDeleteCustom) {
         onDeleteCustom(activeSamba.id)
       }
-      onOpenChange(false)
+      handleClose()
       return
     }
 
@@ -235,7 +246,7 @@ export const EditSambaShareModal = ({
         description: `Removed "/${activeSamba.shareName}" from server machine.`,
         variant: 'default',
       })
-      onOpenChange(false)
+      handleClose()
     } catch {
       toast({
         title: 'Action Failed',
@@ -257,8 +268,10 @@ export const EditSambaShareModal = ({
 
   return (
     <DkDialog
-      open={open}
-      onOpenChange={onOpenChange}
+      open={isModalOpen}
+      onOpenChange={(next) => {
+        if (!next) handleClose()
+      }}
       title="Configure Samba Share"
       description={`Configure SMB credentials, server host, and mount directory for /${activeSamba.shareName}.`}
       className="max-w-md"
@@ -411,7 +424,7 @@ export const EditSambaShareModal = ({
               type="button"
               variant="ghost"
               size="sm"
-              onClick={() => onOpenChange(false)}
+              onClick={handleClose}
               disabled={isSaving}
             >
               Cancel

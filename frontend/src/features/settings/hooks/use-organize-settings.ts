@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef, useContext } from 'react'
 import { AuthContext } from '@/features/auth/hooks/use-auth'
 import { useDownloadConfig } from '@/features/downloads/use-downloads'
-import { getDesktopAPI, type DesktopSettingsData } from '@/lib/desktop/api'
+import { getDesktopAPI, isDesktop, type DesktopSettingsData } from '@/lib/desktop/api'
 import { apiClient } from '@/lib/api/client'
 import { useSettingsNode } from '../context/settings-node-context'
 import { isLocalDesktopNodeId } from '../local-desktop-node'
@@ -30,7 +30,8 @@ export const useOrganizeSettings = ({ nodeId: nodeIdProp }: UseOrganizeSettingsO
   const { selectedNode, servers } = useSettingsNode()
   const nodeId = nodeIdProp !== undefined ? nodeIdProp : (selectedNode?.id ?? null)
   const isGlobalProfile = nodeId === 0
-  const remoteNodeId = isLocalDesktopNodeId(nodeId) || isGlobalProfile ? null : nodeId
+  const desktop = isDesktop()
+  const remoteNodeId = (!desktop || !isLocalDesktopNodeId(nodeId)) && !isGlobalProfile && nodeId && nodeId > 0 ? nodeId : null
 
   const [reloadNonce, setReloadNonce] = useState(0)
   const refreshSettings = useCallback(() => {
@@ -64,7 +65,7 @@ export const useOrganizeSettings = ({ nodeId: nodeIdProp }: UseOrganizeSettingsO
 
     if (remoteNodeId) {
       apiClient
-        .get<any>(`/library/servers/${remoteNodeId}/libraries`)
+        .get<any>(`/library/nodes/${remoteNodeId}/libraries`)
         .then((res) => {
           if (cancelled) return
           const rows = Array.isArray(res?.data) ? res.data : res?.data?.libraries || []
@@ -117,7 +118,7 @@ export const useOrganizeSettings = ({ nodeId: nodeIdProp }: UseOrganizeSettingsO
     }
     let cancelled = false
     apiClient
-      .get<Record<string, unknown>>(`/library/servers/${remoteNodeId}/organize`)
+      .get<Record<string, unknown>>(`/library/nodes/${remoteNodeId}/organize`)
       .then((res) => {
         const data = res?.data
         if (cancelled || !data) return
@@ -247,7 +248,7 @@ export const useOrganizeSettings = ({ nodeId: nodeIdProp }: UseOrganizeSettingsO
 
   const handleSave = useCallback(async () => {
     if (remoteNodeId) {
-      await apiClient.post(`/library/servers/${remoteNodeId}/organize`, {
+      await apiClient.post(`/library/nodes/${remoteNodeId}/organize`, {
         postProcessEnabled,
         autoSearchWishlist: autoSearch,
         wishlistIntervalHours: intervalHours,
@@ -310,6 +311,26 @@ export const useOrganizeSettings = ({ nodeId: nodeIdProp }: UseOrganizeSettingsO
     saveStoredDirectoryRules(directoryRules, nodeId)
 
     if (!isGlobalProfile) {
+      if (nodeId && nodeId > 0) {
+        try {
+          await apiClient.post(`/library/nodes/${nodeId}/organize`, {
+            postProcessEnabled,
+            autoSearchWishlist: autoSearch,
+            wishlistIntervalHours: intervalHours,
+            allowHypervisor,
+            autoOrganizeEnabled,
+            namingTemplate: baseNamingTemplate || '',
+            isoDownloadPath: isoDownloadPath.trim(),
+            preferredRepackers: preferredRepackers.trim(),
+            scanOnLaunch,
+            directoryRules,
+            deleteEmptyFolders,
+            delete_empty_folders: deleteEmptyFolders,
+          })
+        } catch {
+          // ignore
+        }
+      }
       try {
         localStorage.setItem(SCAN_ON_LAUNCH_KEY, String(scanOnLaunch))
       } catch {

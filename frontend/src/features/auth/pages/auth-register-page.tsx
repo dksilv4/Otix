@@ -1,6 +1,7 @@
 import { useCallback, useEffect } from 'react'
 import { Helmet } from 'react-helmet-async'
-import { useNavigate } from '@tanstack/react-router'
+import { useNavigate, useSearch } from '@tanstack/react-router'
+import { getSafeRedirectUrl } from '@auth/utils'
 import { useAuth } from '@auth/hooks/use-auth'
 import { AuthBackground } from '@auth/components/atoms/auth-background'
 import { AuthCard } from '@auth/components/molecules/auth-card'
@@ -16,9 +17,15 @@ import { Logo } from '@ui/atoms/logo'
 export const RegisterPage = () => {
   const navigate = useNavigate()
   const { isAuthenticated } = useAuth()
-  const redirect = typeof window !== 'undefined'
-    ? new URLSearchParams(window.location.search).get('redirect') || '/'
-    : '/'
+  const search = useSearch({ strict: false }) as { redirect?: string }
+  const rawRedirect = search?.redirect ?? (typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('redirect') : undefined)
+  const redirect = getSafeRedirectUrl(rawRedirect)
+
+  useEffect(() => {
+    if (redirect && redirect !== '/') {
+      try { sessionStorage.setItem('auth_redirect', redirect) } catch { /* ignore */ }
+    }
+  }, [redirect])
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -26,7 +33,10 @@ export const RegisterPage = () => {
     }
   }, [isAuthenticated, navigate, redirect])
 
-  const handleSuccess = useCallback(() => navigate({ to: redirect }), [navigate, redirect])
+  const handleSuccess = useCallback(() => {
+    try { sessionStorage.removeItem('auth_redirect') } catch { /* ignore */ }
+    void navigate({ to: redirect })
+  }, [navigate, redirect])
 
   return (
     <div id="auth-register-page" className="relative flex min-h-screen flex-col items-center justify-center gap-4 p-4 py-8">
@@ -54,7 +64,13 @@ export const RegisterPage = () => {
           Already have an account?{' '}
           <a
             href="/auth/login"
-            onClick={(e) => { e.preventDefault(); navigate({ to: '/auth/login' }) }}
+            onClick={(e) => {
+              e.preventDefault();
+              navigate({
+                to: '/auth/login',
+                search: redirect && redirect !== '/' ? { redirect } : undefined,
+              })
+            }}
             className="text-primary transition-colors hover:text-primary/80"
           >
             Sign in

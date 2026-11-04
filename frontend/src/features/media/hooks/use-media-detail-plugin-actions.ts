@@ -116,7 +116,7 @@ export function useMediaDetailPluginActions(
         const term = numId && !isNaN(numId) ? lookupTmdbTerm(numId) : (mediaTitle || requestId)
         if (mediaType === 'movie') {
           const { data } = await apiClient.get<ArrLookupItem[]>(
-            `/library/servers/${activeServer.id}/radarr/lookup`,
+            `/library/nodes/${activeServer.id}/radarr/lookup`,
             { params: { term } },
           )
           const results = data || []
@@ -141,7 +141,7 @@ export function useMediaDetailPluginActions(
           })
         } else if (mediaType === 'show') {
           const { data } = await apiClient.get<ArrLookupItem[]>(
-            `/library/servers/${activeServer.id}/sonarr/lookup`,
+            `/library/nodes/${activeServer.id}/sonarr/lookup`,
             { params: { term } },
           )
           const results = data || []
@@ -275,14 +275,14 @@ export function useMediaDetailPluginActions(
 
       try {
         if (pluginId === 'server-radarr') {
-          await apiClient.post(`/library/servers/${serverId}/radarr/movies`, {
+          await apiClient.post(`/library/nodes/${serverId}/radarr/movies`, {
             title: requestId,
             tmdb_id: Number(requestId),
             monitored: true,
             search_for_movie: true,
           })
         } else {
-          await apiClient.post(`/library/servers/${serverId}/sonarr/series`, {
+          await apiClient.post(`/library/nodes/${serverId}/sonarr/series`, {
             title: requestId,
             tmdb_id: Number(requestId),
             monitored: true,

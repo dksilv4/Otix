@@ -1,5 +1,6 @@
 import { Link } from '@tanstack/react-router'
 import { Users, Gamepad2, Film, ChevronRight } from 'lucide-react'
+import { useAuth } from '@/lib/providers/auth'
 import { useFriends } from '@/features/friends/hooks/use-friends'
 import { useFriendRequests } from '@/features/friends/hooks/use-friend-requests'
 import { FriendAvatar } from '@/features/friends/components/atoms/friend-avatar'
@@ -11,8 +12,9 @@ interface ActivityModuleFriendsProps {
 
 /** Activity panel section showing friends currently active and pending requests. */
 export const ActivityModuleFriends = ({ onClose }: ActivityModuleFriendsProps) => {
-  const { activeNowFriends, activeCount } = useFriends()
-  const { incomingCount } = useFriendRequests()
+  const { user } = useAuth()
+  const { activeNowFriends, activeCount } = useFriends({ enabled: !!user })
+  const { incomingCount } = useFriendRequests({ enabled: !!user })
 
   if (activeNowFriends.length === 0 && incomingCount === 0) return null
 

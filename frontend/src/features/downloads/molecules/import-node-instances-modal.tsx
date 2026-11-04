@@ -13,17 +13,26 @@ import { importEligibleNodes, pickDefaultPair } from '../utils'
 
 export interface ImportNodeInstancesModalProps {
   dest?: GameServer
+  open?: boolean
   isOpen?: boolean
   isExiting?: boolean
-  onClose: () => void
+  onClose?: () => void
+  onOpenChange?: (open: boolean) => void
 }
 
 export const ImportNodeInstancesModal = ({
   dest,
+  open,
   isOpen,
   isExiting,
   onClose,
+  onOpenChange,
 }: ImportNodeInstancesModalProps) => {
+  const isModalOpen = (open ?? isOpen ?? true) && !isExiting
+  const handleClose = () => {
+    onClose?.()
+    onOpenChange?.(false)
+  }
   const { toast } = useToast()
   const { servers } = useSettingsNode()
   const importMutation = useImportNodeInstances()
@@ -77,9 +86,9 @@ export const ImportNodeInstancesModal = ({
 
   return (
     <DkDialog
-      open={isOpen !== false && !isExiting}
+      open={isModalOpen}
       onOpenChange={(next) => {
-        if (!next) onClose()
+        if (!next) handleClose()
       }}
       title="Import instances"
       description="Copy SABnzbd, Prowlarr, Radarr, and Sonarr from one Otix node onto another. API keys stay on the server during the copy."
@@ -121,7 +130,7 @@ export const ImportNodeInstancesModal = ({
       )}
 
       <div className="mt-5 flex items-center justify-end gap-3">
-        <DkButton type="button" variant="ghost" size="md" onClick={onClose}>
+        <DkButton type="button" variant="ghost" size="md" onClick={handleClose}>
           Cancel
         </DkButton>
         <DkButton type="button" size="md" onClick={() => void handleImport()} disabled={!canImport}>

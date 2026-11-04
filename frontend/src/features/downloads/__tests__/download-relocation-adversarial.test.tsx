@@ -444,7 +444,7 @@ describe('Adversarial & Empirical Challenger: Download Relocation & Queue', () =
         expect(screen.getByTestId('node-error')).toHaveTextContent('500')
         expect(screen.getByTestId('node-item-status')).toHaveTextContent('failed')
       })
-      expect(postMock).toHaveBeenCalledWith('/library/servers/42/organize/execute', expect.anything())
+      expect(postMock).toHaveBeenCalledWith('/library/nodes/42/organize/execute', expect.anything())
     })
 
     it('handles desktopAPI structured error response ({ success: false, error: ... }) without dropping item', async () => {

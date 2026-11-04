@@ -138,7 +138,7 @@ class ServerMachinesTestCase(APITestCase):
         self.assertEqual(orphan_node.effective_home, self.home)
 
         # Verify serializer output returns inherited home
-        node_res = self.client.get("/api/v1/library/servers")
+        node_res = self.client.get("/api/v1/nodes")
         matching = next(n for n in node_res.data if n["id"] == orphan_node.id)
         self.assertEqual(matching["home_id"], self.home.id)
         self.assertEqual(matching["home_name"], self.home.name)

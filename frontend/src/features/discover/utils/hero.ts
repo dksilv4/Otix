@@ -118,23 +118,62 @@ export const formatAudienceMetric = (
   return `${Math.round(raw)}+`
 }
 
+const YOUTUBE_ID_REGEX = /^[a-zA-Z0-9_-]{11}$/
+
+export const extractYoutubeIdFromUrl = (url?: string | null): string | null => {
+  if (!url) return null
+  const trimmed = url.trim()
+  if (YOUTUBE_ID_REGEX.test(trimmed)) return trimmed
+  try {
+    const u = new URL(trimmed)
+    if (u.hostname.includes('youtube.com') || u.hostname.includes('youtu.be')) {
+      if (u.pathname === '/watch') {
+        const v = u.searchParams.get('v')
+        if (v && YOUTUBE_ID_REGEX.test(v)) return v
+      }
+      const parts = u.pathname.split('/').filter(Boolean)
+      const last = parts.pop()
+      if (last && YOUTUBE_ID_REGEX.test(last)) return last
+    }
+  } catch {
+    /* fallback to regex for non-standard urls */
+  }
+  const match = trimmed.match(/(?:youtu\.be\/|v\/|u\/\w\/|embed\/|watch\?v=)([a-zA-Z0-9_-]{11})/)
+  return match?.[1] ?? null
+}
+
 export const extractTrailerYoutubeId = (
   youtubeVideoId?: string | null,
-  videos?: Array<{ videoType?: string | null; url: string; providerId?: string | null }> | null,
+  videos?: Array<{ videoType?: string | null; url?: string | null; providerId?: string | null }> | null,
 ): string | null => {
-  if (youtubeVideoId) return youtubeVideoId
+  const directId = extractYoutubeIdFromUrl(youtubeVideoId)
+  if (directId) return directId
+
   if (!videos || videos.length === 0) return null
-  const trailer = videos.find(
-    (v) =>
-      v.videoType?.toLowerCase().includes('trailer') ||
-      v.url?.includes('youtube') ||
-      v.url?.includes('youtu.be'),
-  )
-  if (trailer?.providerId) return trailer.providerId
-  if (trailer?.url) {
-    const match = trailer.url.match(/(?:youtu\.be\/|v\/|u\/\w\/|embed\/|watch\?v=)([^#&?]*)/)
-    return match?.[1] ?? null
+
+  // Priority order: official trailers, teasers, game videos / gameplay, clips
+  const priorityTypes = ['trailer', 'teaser', 'game_video', 'gameplay', 'clip']
+
+  for (const p of priorityTypes) {
+    const matched = videos.find((v) => v.videoType?.toLowerCase().includes(p))
+    if (matched) {
+      const fromUrl = extractYoutubeIdFromUrl(matched.url)
+      if (fromUrl) return fromUrl
+      if (matched.providerId && YOUTUBE_ID_REGEX.test(matched.providerId)) {
+        return matched.providerId
+      }
+    }
   }
+
+  // Fallback: check any remaining video that has a valid YouTube ID
+  for (const v of videos) {
+    const fromUrl = extractYoutubeIdFromUrl(v.url)
+    if (fromUrl) return fromUrl
+    if (v.providerId && YOUTUBE_ID_REGEX.test(v.providerId)) {
+      return v.providerId
+    }
+  }
+
   return null
 }
 

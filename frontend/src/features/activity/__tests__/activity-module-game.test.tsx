@@ -173,4 +173,87 @@ describe('ActivityModuleGame', () => {
     expect(screen.getByText('CT 8 : 6 T')).toBeInTheDocument()
     expect(screen.getByText('17K / 7D')).toBeInTheDocument()
   })
+
+  it('renders all running games directly in full containers when multiple games are running', () => {
+    const setActiveGameMock = vi.fn()
+    vi.mocked(launcherHooks.useMatchedRunningGame).mockReturnValue({
+      runningGame: {
+        game: { id: 'game-1', title: 'Cyberpunk 2077' },
+        startTime: Date.now() - 3600000,
+        launchedByOtix: false,
+        fpsSnapshot: { currentFps: 120, frameCount: 100, captureDurationMs: 1000, gameId: 'game-1' },
+      },
+      runningGames: [
+        {
+          game: { id: 'game-1', title: 'Cyberpunk 2077' },
+          startTime: Date.now() - 3600000,
+          launchedByOtix: false,
+          fpsSnapshot: { currentFps: 120, frameCount: 100, captureDurationMs: 1000, gameId: 'game-1' },
+        },
+        {
+          game: { id: 'game-2', title: 'Balatro' },
+          startTime: Date.now() - 1800000,
+          launchedByOtix: false,
+          fpsSnapshot: { currentFps: 60, frameCount: 50, captureDurationMs: 1000, gameId: 'game-2' },
+        },
+      ],
+      elapsedMs: 3600000,
+      matchedGame: null,
+      isMatching: false,
+      cycleActiveGame: vi.fn(),
+      setActiveGame: setActiveGameMock,
+    })
+
+    render(<ActivityModuleGame />)
+
+    expect(screen.getByText('Cyberpunk 2077')).toBeInTheDocument()
+    expect(screen.getByText('Balatro')).toBeInTheDocument()
+    expect(screen.getByText('120 FPS')).toBeInTheDocument()
+    expect(screen.getByText('60 FPS')).toBeInTheDocument()
+    expect(screen.getByText('Focused')).toBeInTheDocument()
+    expect(screen.getByText('Background')).toBeInTheDocument()
+  })
+
+  it('cycles active game when clicking cycle button and focuses background game', () => {
+    const cycleMock = vi.fn()
+    const setActiveMock = vi.fn()
+
+    vi.mocked(launcherHooks.useMatchedRunningGame).mockReturnValue({
+      runningGame: {
+        game: { id: 'game-1', title: 'Cyberpunk 2077' },
+        startTime: Date.now() - 3600000,
+        launchedByOtix: false,
+        fpsSnapshot: { currentFps: 120, frameCount: 100, captureDurationMs: 1000, gameId: 'game-1' },
+      },
+      runningGames: [
+        {
+          game: { id: 'game-1', title: 'Cyberpunk 2077' },
+          startTime: Date.now() - 3600000,
+          launchedByOtix: false,
+          fpsSnapshot: { currentFps: 120, frameCount: 100, captureDurationMs: 1000, gameId: 'game-1' },
+        },
+        {
+          game: { id: 'game-2', title: 'Balatro' },
+          startTime: Date.now() - 1800000,
+          launchedByOtix: false,
+          fpsSnapshot: { currentFps: 60, frameCount: 50, captureDurationMs: 1000, gameId: 'game-2' },
+        },
+      ],
+      elapsedMs: 3600000,
+      matchedGame: null,
+      isMatching: false,
+      cycleActiveGame: cycleMock,
+      setActiveGame: setActiveMock,
+    })
+
+    render(<ActivityModuleGame />)
+
+    const cycleBtn = screen.getByRole('button', { name: /cycle/i })
+    cycleBtn.click()
+    expect(cycleMock).toHaveBeenCalledTimes(1)
+
+    const focusBtn = screen.getByRole('button', { name: /focus/i })
+    focusBtn.click()
+    expect(setActiveMock).toHaveBeenCalledWith('game-2')
+  })
 })

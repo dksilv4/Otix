@@ -7,7 +7,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.test import TestCase
 from rest_framework.test import APIClient
 
-from apps.library.models import UserGameServer, UserGameSession
+from apps.library.models import UserGameSession, UserNode
 from apps.media.models import ExternalID, MediaAsset, MediaItem
 
 User = get_user_model()
@@ -21,7 +21,7 @@ class GameSessionsProxyApiTests(TestCase):
         self.other_user = User.objects.create_user(
             username="gamer_bob", email="bob@example.com", password="password123"
         )
-        self.server = UserGameServer.objects.create(
+        self.server = UserNode.objects.create(
             user=self.user,
             name="Main Gaming PC",
             local_url="http://127.0.0.1:8090",
@@ -31,7 +31,7 @@ class GameSessionsProxyApiTests(TestCase):
         self.client = APIClient()
 
     def test_anonymous_access_denied(self):
-        resp1 = self.client.get(f"/api/v1/library/servers/{self.server.id}/sessions")
+        resp1 = self.client.get(f"/api/v1/nodes/{self.server.id}/sessions")
         self.assertEqual(resp1.status_code, 401)
 
         resp2 = self.client.get("/api/v1/library/game-sessions")
@@ -62,7 +62,7 @@ class GameSessionsProxyApiTests(TestCase):
         ]
         mock_get_sessions.return_value = (200, mock_sessions)
 
-        resp = self.client.get(f"/api/v1/library/servers/{self.server.id}/sessions")
+        resp = self.client.get(f"/api/v1/nodes/{self.server.id}/sessions")
         self.assertEqual(resp.status_code, 200)
         data = resp.json()
         self.assertEqual(len(data), 1)
@@ -72,7 +72,7 @@ class GameSessionsProxyApiTests(TestCase):
     @mock.patch("apps.library.views.nodes.node_get_sessions")
     def test_get_user_game_sessions_aggregated(self, mock_get_sessions):
         self.client.force_authenticate(user=self.user)
-        server2 = UserGameServer.objects.create(
+        server2 = UserNode.objects.create(
             user=self.user,
             name="Living Room PC",
             local_url="http://192.168.1.150:8090",
@@ -275,7 +275,7 @@ class GameSessionsProxyApiTests(TestCase):
         self.assertEqual(data[0]["slug"], "counter-strike-2")
 
     def test_anonymous_access_denied_running(self):
-        resp1 = self.client.get(f"/api/v1/library/servers/{self.server.id}/running")
+        resp1 = self.client.get(f"/api/v1/nodes/{self.server.id}/running")
         self.assertEqual(resp1.status_code, 401)
 
         resp2 = self.client.get("/api/v1/library/game-running")
@@ -305,7 +305,7 @@ class GameSessionsProxyApiTests(TestCase):
             },
         )
 
-        resp = self.client.get(f"/api/v1/library/servers/{self.server.id}/running")
+        resp = self.client.get(f"/api/v1/nodes/{self.server.id}/running")
         self.assertEqual(resp.status_code, 200)
         data = resp.json()
         self.assertTrue(data["running"])

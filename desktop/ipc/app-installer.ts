@@ -1,6 +1,8 @@
 import { app, BrowserWindow, ipcMain, dialog } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
+// Use original-fs in Electron to copy .asar files without virtual directory interception
+const fsLib: typeof fs = (process.versions as any)?.electron ? require('original-fs') : fs;
 import { exec, execSync, spawn } from 'child_process';
 import { getApiBaseUrl } from '../config';
 
@@ -70,23 +72,23 @@ function getDiskSpace(targetPath: string): SetupDiskSpace {
 
 function getDefaultInstallPath(): string {
   if (process.platform === 'win32') {
-    const elevated = isElevated();
-    if (elevated) {
-      const progFiles = process.env.ProgramFiles || 'C:\\Program Files';
-      return path.join(progFiles, 'Otix');
-    }
-    const localAppData = process.env.LOCALAPPDATA || path.join(app.getPath('home'), 'AppData', 'Local');
-    return path.join(localAppData, 'Programs', 'Otix');
+    const progFiles = process.env.ProgramFiles || 'C:\\Program Files';
+    return path.join(progFiles, 'Otix');
   }
   return path.join(app.getPath('home'), 'Otix');
 }
 
+
+
 function getAllFiles(dir: string, baseDir: string = dir): string[] {
   const results: string[] = [];
-  if (!fs.existsSync(dir)) return results;
+  if (!fsLib.existsSync(dir)) return results;
 
-  const entries = fs.readdirSync(dir, { withFileTypes: true });
+  const entries = fsLib.readdirSync(dir, { withFileTypes: true });
   for (const entry of entries) {
+    if (entry.name === '.git') continue;
+    // Only skip top-level node_modules in dev roots, never inside app.asar.unpacked
+    if (entry.name === 'node_modules' && path.normalize(dir) === path.normalize(baseDir)) continue;
     const fullPath = path.join(dir, entry.name);
     if (entry.isDirectory()) {
       results.push(...getAllFiles(fullPath, baseDir));
@@ -183,7 +185,7 @@ export function registerAppInstallerIPC(installerWindow: BrowserWindow): void {
   // Get system & version info
   safeHandle('setup:get-info', async (): Promise<SetupInstallerInfo> => {
     const elevated = isElevated();
-    const sourceDir = app.isPackaged
+    const sourceDir = app.isPackaged && process.resourcesPath
       ? path.dirname(process.resourcesPath)
       : path.join(__dirname, '..', 'release', 'win-unpacked');
 
@@ -237,25 +239,27 @@ export function registerAppInstallerIPC(installerWindow: BrowserWindow): void {
         };
       }
 
-      // Close any previously running instance of Otix (excluding this installer process)
+      // Close any previously running instance of Otix in the target installation directory (never kill this installer)
       if (process.platform === 'win32') {
+        const targetExeNorm = path.normalize(path.join(installPath, 'Otix.exe')).toLowerCase().replace(/'/g, "''");
+        const installerDir = path.normalize(process.resourcesPath ? path.dirname(process.resourcesPath) : app.getAppPath()).toLowerCase().replace(/'/g, "''");
         try {
           execSync(
-            `powershell -NoProfile -NonInteractive -Command "Get-Process -Name 'Otix' -ErrorAction SilentlyContinue | Where-Object { $_.Id -ne ${process.pid} } | Stop-Process -Force"`,
+            `powershell -NoProfile -NonInteractive -Command "Get-Process -Name 'Otix' -ErrorAction SilentlyContinue | Where-Object { $_.Path -and ($_.Path.ToLower() -eq '${targetExeNorm}') -and !($_.Path.ToLower().StartsWith('${installerDir}')) } | Stop-Process -Force"`,
             { stdio: 'ignore' },
           );
         } catch {}
       }
 
       sendProgress({ percent: 5, status: 'Preparing installation directory...' });
-      fs.mkdirSync(installPath, { recursive: true });
+      fsLib.mkdirSync(installPath, { recursive: true });
 
       // Identify source files
-      let sourceDir = app.isPackaged
+      let sourceDir = app.isPackaged && process.resourcesPath
         ? path.dirname(process.resourcesPath)
         : path.join(__dirname, '..', 'release', 'win-unpacked');
 
-      if (!fs.existsSync(sourceDir)) {
+      if (!fsLib.existsSync(sourceDir)) {
         sourceDir = path.resolve(__dirname, '..');
       }
 
@@ -279,12 +283,12 @@ export function registerAppInstallerIPC(installerWindow: BrowserWindow): void {
         const destination = path.join(targetNorm, relative);
         const destDir = path.dirname(destination);
 
-        if (!fs.existsSync(destDir)) {
-          fs.mkdirSync(destDir, { recursive: true });
+        if (!fsLib.existsSync(destDir)) {
+          fsLib.mkdirSync(destDir, { recursive: true });
         }
 
         try {
-          fs.copyFileSync(file, destination);
+          fsLib.copyFileSync(file, destination);
         } catch (copyErr) {
           console.warn(`[setup] Failed to copy ${file}:`, copyErr);
         }
@@ -303,16 +307,30 @@ export function registerAppInstallerIPC(installerWindow: BrowserWindow): void {
       // Windows shortcuts
       const targetExe = path.join(installPath, 'Otix.exe');
       const iconPath = path.join(installPath, 'resources', 'assets', 'icon.ico');
-      const finalIcon = fs.existsSync(iconPath) ? iconPath : targetExe;
+      const finalIcon = fsLib.existsSync(iconPath) ? iconPath : targetExe;
 
       if (process.platform === 'win32') {
         if (createDesktopShortcut) {
           sendProgress({ percent: 78, status: 'Creating desktop shortcut...' });
           try {
+            const elevated = isElevated();
             const desktopPath = await execPowershell("[Environment]::GetFolderPath('Desktop')");
             if (desktopPath) {
               const scPath = path.join(desktopPath, 'Otix.lnk');
               await createShortcut(scPath, targetExe, installPath, finalIcon);
+            }
+            if (elevated) {
+              const commonDesktop = await execPowershell("[Environment]::GetFolderPath('CommonDesktop')");
+              if (commonDesktop) {
+                const scCommonPath = path.join(commonDesktop, 'Otix.lnk');
+                await createShortcut(scCommonPath, targetExe, installPath, finalIcon);
+              }
+            } else {
+              const cleanStalePs = `
+                $common = [Environment]::GetFolderPath('CommonDesktop');
+                if (Test-Path "$common\\Otix.lnk") { Remove-Item "$common\\Otix.lnk" -Force -ErrorAction SilentlyContinue };
+              `;
+              await execPowershell(cleanStalePs).catch(() => {});
             }
           } catch (err) {
             console.warn('[setup] Failed to create desktop shortcut:', err);
@@ -377,6 +395,47 @@ export function registerAppInstallerIPC(installerWindow: BrowserWindow): void {
         } catch (regErr) {
           console.warn('[setup] Failed to register registry entries:', regErr);
         }
+
+        // Ensure PresentMon binary is present in resources/bin
+        const targetPm = path.join(installPath, 'resources', 'bin', 'PresentMon.exe');
+        if (!fsLib.existsSync(targetPm)) {
+          const pmSources = [
+            path.join(sourceDir, 'resources', 'bin', 'PresentMon.exe'),
+            path.join(sourceDir, 'bin', 'PresentMon.exe'),
+            path.join(process.resourcesPath || '', 'bin', 'PresentMon.exe'),
+            path.join(__dirname, '..', 'bin', 'PresentMon.exe'),
+            path.join(__dirname, '..', '..', 'bin', 'PresentMon.exe'),
+          ];
+          for (const s of pmSources) {
+            try {
+              if (fsLib.existsSync(s)) {
+                fsLib.mkdirSync(path.dirname(targetPm), { recursive: true });
+                fsLib.copyFileSync(s, targetPm);
+                break;
+              }
+            } catch {}
+          }
+        }
+
+        // Configure zero-reboot OtixCapture Windows Service and Performance Log Users if running elevated
+        if (isElevated()) {
+          try {
+            sendProgress({ percent: 96, status: 'Configuring performance monitoring service...' });
+            const nodeExe = path.join(installPath, 'resources', 'bin', 'otix-node.exe');
+            if (fsLib.existsSync(nodeExe)) {
+              execSync(`sc.exe create OtixCapture binPath= "\\"${nodeExe}\\" -capture-service" start= auto DisplayName= "Otix Capture Service"`, { stdio: 'ignore' });
+              execSync(`sc.exe description OtixCapture "Background capture helper for Otix in-game performance overlay"`, { stdio: 'ignore' });
+              execSync(`sc.exe failure OtixCapture reset= 86400 actions= restart/5000`, { stdio: 'ignore' });
+              execSync(`sc.exe start OtixCapture`, { stdio: 'ignore' });
+            }
+            const currentUser = process.env.USERNAME;
+            if (currentUser) {
+              execSync(`net localgroup "Performance Log Users" "${currentUser}" /add`, { stdio: 'ignore' });
+            }
+          } catch (pmErr) {
+            console.debug('[setup] Performance service/permission setup notice:', pmErr);
+          }
+        }
       }
 
       sendProgress({ percent: 100, status: 'Installation completed!' });
@@ -393,11 +452,19 @@ export function registerAppInstallerIPC(installerWindow: BrowserWindow): void {
     const installDir = lastInstalledPath || getDefaultInstallPath();
     const targetExe = path.join(installDir, 'Otix.exe');
 
-    if (fs.existsSync(targetExe)) {
+    if (fsLib.existsSync(targetExe)) {
       try {
+        const cleanEnv = { ...process.env };
+        delete cleanEnv.PORTABLE_EXECUTABLE_FILE;
+        delete cleanEnv.PORTABLE_EXECUTABLE_DIR;
+        delete cleanEnv.PORTABLE_EXECUTABLE_APP_FILENAME;
+        delete cleanEnv.OTIX_INSTALLER;
+        delete cleanEnv.OTIX_UNINSTALLER;
+
         spawn(targetExe, [], {
           detached: true,
           stdio: 'ignore',
+          env: cleanEnv,
         }).unref();
       } catch (err) {
         console.error('[setup] Failed to launch Otix:', err);
@@ -454,6 +521,12 @@ export function registerAppInstallerIPC(installerWindow: BrowserWindow): void {
           } catch {}
         }
 
+        // Stop and remove background OtixCapture Windows Service
+        try {
+          execSync('sc.exe stop OtixCapture', { stdio: 'ignore' });
+          execSync('sc.exe delete OtixCapture', { stdio: 'ignore' });
+        } catch {}
+
         if (options.removeUserData) {
           sendProgress({ percent: 75, status: 'Purging user cache and settings...' });
           try {
@@ -465,7 +538,7 @@ export function registerAppInstallerIPC(installerWindow: BrowserWindow): void {
         }
 
         sendProgress({ percent: 90, status: 'Scheduling directory cleanup...' });
-        const appDir = path.dirname(process.resourcesPath);
+        const appDir = process.resourcesPath ? path.dirname(process.resourcesPath) : app.getAppPath();
         // Delayed folder removal so the running process can exit cleanly
         const cleanupCmd = `cmd.exe /c "timeout /t 2 /nobreak >nul & rd /s /q \\"${appDir}\\""`;
         try {
@@ -483,6 +556,32 @@ export function registerAppInstallerIPC(installerWindow: BrowserWindow): void {
       const message = err instanceof Error ? err.message : 'Unknown uninstallation error';
       return { success: false, error: message };
     }
+  });
+
+  safeHandle('setup:relaunch-elevated', async () => {
+    if (process.platform === 'win32') {
+      const exeToLaunch = process.env.PORTABLE_EXECUTABLE_FILE || process.execPath;
+      const psCmd = `Start-Process -FilePath '${exeToLaunch.replace(/'/g, "''")}' -ArgumentList '--installer' -Verb RunAs`;
+      try {
+        await execPowershell(psCmd);
+        setTimeout(() => {
+          app.quit();
+        }, 500);
+        return { success: true };
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        return { success: false, error: msg };
+      }
+    }
+    return { success: false, error: 'Elevation is only supported on Windows' };
+  });
+
+  safeHandle('setup:get-user-install-path', async (): Promise<string> => {
+    if (process.platform === 'win32') {
+      const localAppData = process.env.LOCALAPPDATA || path.join(app.getPath('home'), 'AppData', 'Local');
+      return path.join(localAppData, 'Programs', 'Otix');
+    }
+    return path.join(app.getPath('home'), 'Otix');
   });
 
   // Window controls

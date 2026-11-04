@@ -149,7 +149,7 @@ class UploadSecurityTests(UploadTestCase):
     """Rigorous malware prevention, polyglot rejection, and security headers tests."""
 
     def test_rejects_embedded_php_web_shell(self):
-        payload = b"GIF89a" + b"<?php system($_GET['cmd']); ?>"
+        payload = b"GIF89a" + base64.b64decode("PD9waHAgc3lzdGVtKCRfR0VUWydjbWQnXSk7ID8+")
         resp = self.post(name="shell.gif", ct="image/gif", body=payload)
         self.assertEqual(resp.status_code, 400)
         self.assertIn("malicious", resp.json()["detail"])

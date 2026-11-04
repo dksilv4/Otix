@@ -80,7 +80,7 @@ export const WelcomePage = () => {
         />
       </Helmet>
 
-      <div className="mx-auto max-w-6xl space-y-8 px-4 py-8 sm:px-6 lg:px-8">
+      <div className="w-full space-y-8 px-4 py-8 sm:px-6 lg:px-8">
         {/* Hero Greeting */}
         <WelcomeHero onStartTour={handleStartTour} onStartSetup={openSetupWizard} />
 

@@ -2,11 +2,11 @@ import { useParams, useNavigate } from '@tanstack/react-router'
 import { FolderOpen, Server, Pause, Play, X } from 'lucide-react'
 import { formatBytes } from '@/lib/utils'
 import { isTitleMatch } from '@media/utils'
-import { useLocalGame } from '@/features/launcher/data/game-queries'
+import { useLauncherGame } from '@/features/launcher/hooks/use-launcher-game'
 import { useInstallProgress } from '@/features/launcher/data/install-store'
 import { useRunningGame } from '@/features/launcher/hooks/use-running-game'
 import { useServerGames, useRemoteDownloads } from '@/features/downloads/use-server-downloads'
-import { matchServerGameFile } from '@/features/downloads/server-availability'
+import { matchNodeGameFile } from '@/features/downloads/node-availability'
 import { gameInstallCompatibility, treatInstallAsAvailable } from '@/features/downloads/os-compatibility'
 import { PlayGameButton } from '@/features/launcher/components/atoms/launcher-play-game-button'
 import { IncompatibleButton } from '@/features/launcher/components/atoms/launcher-incompatible-button'
@@ -16,16 +16,19 @@ import { MatchedPlayButton } from '@/features/launcher/components/atoms/launcher
 import { MatchGameButton } from '@/features/launcher/components/atoms/launcher-match-game-button'
 import { RejectSuggestionButton } from '@/features/launcher/components/atoms/launcher-reject-suggestion-button'
 import { OTIX_DEFAULT_GAME_ID } from '@/features/launcher/data/otix-default-game'
+import type { LocalGame } from '@/features/launcher/types'
 
 interface LauncherPlayButtonProps {
   onOpenInstaller: () => void
+  game?: LocalGame
 }
 
-export const LauncherPlayButton = ({ onOpenInstaller }: LauncherPlayButtonProps) => {
+export const LauncherPlayButton = ({ onOpenInstaller, game: propGame }: LauncherPlayButtonProps) => {
   const navigate = useNavigate()
   const p = useParams({ strict: false })
   const gameId = (p as Record<string, string>).gameId
-  const { data: g } = useLocalGame(gameId)
+  const { game: launcherGame } = useLauncherGame(propGame ? undefined : gameId)
+  const g = propGame ?? launcherGame
   const { runningGames } = useRunningGame()
   const { activeInstalls, cancelInstall } = useInstallProgress()
   const { data: serverGamesData } = useServerGames()
@@ -95,7 +98,7 @@ export const LauncherPlayButton = ({ onOpenInstaller }: LauncherPlayButtonProps)
           )}
           <div className="flex flex-col">
             <div className="flex items-center gap-2 text-xs font-bold text-foreground">
-              <span>{isDownloading ? 'Streaming from Server' : 'Paused'}</span>
+              <span>{isDownloading ? 'Downloading from Node' : 'Paused'}</span>
               <span className="text-primary tabular-nums font-mono">{activeTransfer.percentage}%</span>
               {speedMBps > 0 && isDownloading && (
                 <span className="text-[10px] text-muted-foreground font-mono">({speedMBps.toFixed(1)} MB/s)</span>
@@ -171,10 +174,10 @@ export const LauncherPlayButton = ({ onOpenInstaller }: LauncherPlayButtonProps)
     return <IsoInstallButton onClick={onOpenInstaller} />
   }
 
-  // ── Available on Remote Game Server ──
-  const matchingServerFile = matchServerGameFile(serverGamesData?.files, mediaId, g.title)
+  // ── Available on Remote Game Node ──
+  const matchingNodeFile = matchNodeGameFile(serverGamesData?.files, mediaId, g.title)
 
-  if (matchingServerFile) {
+  if (matchingNodeFile) {
     if (!treatAsAvailable) {
       return (
         <IncompatibleButton
@@ -186,10 +189,10 @@ export const LauncherPlayButton = ({ onOpenInstaller }: LauncherPlayButtonProps)
     return (
       <button
         onClick={async () => {
-          await startDownload(matchingServerFile, mediaId)
+          await startDownload(matchingNodeFile, mediaId)
         }}
         className="h-10 px-5 bg-primary hover:bg-primary/90 text-primary-foreground font-black rounded-xl text-xs uppercase tracking-wider flex items-center gap-2 transition-all cursor-pointer shadow-lg active:scale-95 shrink-0"
-        title={`On ${matchingServerFile.serverName}, not installed on this device (${formatBytes(matchingServerFile.filesize)})`}
+        title={`On ${matchingNodeFile.nodeName || matchingNodeFile.serverName}, not installed on this device (${formatBytes(matchingNodeFile.filesize)})`}
       >
         <Server size={15} className="stroke-[2.5]" />
         <span>Install</span>

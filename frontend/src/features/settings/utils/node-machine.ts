@@ -103,6 +103,12 @@ export interface NodeMachineData extends DesktopSettingsData {
   overlayMonitor?: string
   overlayMonitors?: Array<{ id: string; name: string; is_primary?: boolean; isPrimary?: boolean; width?: number; height?: number }>
   overlayHotkey?: string
+  overlayShowFps?: boolean
+  overlayShowPercentiles?: boolean
+  overlayShowPlaytime?: boolean
+  overlayShowTitle?: boolean
+  overlayOpacity?: number
+  onlyTrackScannedGames?: boolean
   autoBackupOnExit?: boolean
 }
 
@@ -112,16 +118,23 @@ export const DEFAULT_SETTINGS: NodeMachineData = {
   closeToTray: false,
   alwaysOnTop: false,
   startMinimized: false,
+  hardwareAcceleration: true,
   scanOnLaunch: false,
   autoBackupOnExit: true,
   gameTracking: true,
-  overlayEnabled: false,
+  onlyTrackScannedGames: true,
+  overlayEnabled: true,
   overlayCorner: 'top-wide',
   overlayMonitor: 'auto',
   overlayHotkey: 'Ctrl+`',
+  overlayShowFps: true,
+  overlayShowPercentiles: true,
+  overlayShowPlaytime: true,
+  overlayShowTitle: true,
+  overlayOpacity: 0.92,
   capabilities: {
     game_tracking: true,
-    in_game_overlay: false,
+    in_game_overlay: true,
     web_overlay: true,
     silent_install: false,
     saves_backup: true,
@@ -153,6 +166,9 @@ export const mapNodeSettings = (
     closeToTray: Boolean(fetched.closeToTray ?? fetched.close_to_tray ?? fallback?.closeToTray),
     alwaysOnTop: Boolean(fetched.alwaysOnTop ?? fetched.always_on_top ?? fallback?.alwaysOnTop),
     startMinimized: Boolean(fetched.startMinimized ?? fetched.start_minimized ?? fallback?.startMinimized),
+    hardwareAcceleration: Boolean(
+      fetched.hardwareAcceleration ?? fetched.hardware_acceleration ?? fallback?.hardwareAcceleration ?? true,
+    ),
     gamesDownloadPath: String(fetched.gamesDownloadPath || fetched.games_download_path || fallback?.gamesDownloadPath || ''),
     gamesInstallPath: String(fetched.gamesInstallPath || fetched.games_install_path || fallback?.gamesInstallPath || ''),
     scanOnLaunch: Boolean(fetched.scanOnLaunch ?? fetched.scan_on_launch ?? fallback?.scanOnLaunch),
@@ -160,11 +176,29 @@ export const mapNodeSettings = (
       fetched.autoBackupOnExit ?? fetched.auto_backup_on_exit ?? fallback?.autoBackupOnExit ?? true,
     ),
     gameTracking: Boolean(fetched.gameTracking ?? fetched.game_tracking ?? fallback?.gameTracking ?? true),
-    overlayEnabled: Boolean(fetched.overlayEnabled ?? fetched.overlay_enabled ?? fallback?.overlayEnabled ?? false),
+    overlayEnabled: Boolean(fetched.overlayEnabled ?? fetched.overlay_enabled ?? fallback?.overlayEnabled ?? true),
     overlayCorner: String(fetched.overlayCorner ?? fetched.overlay_corner ?? fallback?.overlayCorner ?? 'top-wide'),
     overlayMonitor: String(fetched.overlayMonitor ?? fetched.overlay_monitor ?? fallback?.overlayMonitor ?? 'auto'),
     overlayMonitors: (fetched.overlayMonitors ?? fetched.overlay_monitors ?? fallback?.overlayMonitors) as NodeMachineData['overlayMonitors'],
     overlayHotkey: String(fetched.overlayHotkey ?? fetched.overlay_hotkey ?? fallback?.overlayHotkey ?? 'Ctrl+`'),
+    overlayShowFps: Boolean(fetched.overlayShowFps ?? fetched.overlay_show_fps ?? fallback?.overlayShowFps ?? true),
+    overlayShowPercentiles: Boolean(
+      fetched.overlayShowPercentiles ?? fetched.overlay_show_percentiles ?? fallback?.overlayShowPercentiles ?? true,
+    ),
+    overlayShowPlaytime: Boolean(
+      fetched.overlayShowPlaytime ?? fetched.overlay_show_playtime ?? fallback?.overlayShowPlaytime ?? true,
+    ),
+    overlayShowTitle: Boolean(
+      fetched.overlayShowTitle ?? fetched.overlay_show_title ?? fallback?.overlayShowTitle ?? true,
+    ),
+    overlayOpacity: Number(fetched.overlayOpacity ?? fetched.overlay_opacity ?? fallback?.overlayOpacity ?? 0.92),
+    onlyTrackScannedGames: Boolean(
+      fetched.onlyTrackScannedGames ??
+        fetched.only_track_scanned_games ??
+        fetched.only_track_scanned ??
+        fallback?.onlyTrackScannedGames ??
+        true,
+    ),
     hostname: String(fetched.hostname || fallback?.hostname || ''),
     arch: String(fetched.arch || fallback?.arch || 'amd64'),
     numCpu: Number(fetched.numCpu ?? fetched.num_cpu ?? fallback?.numCpu ?? 0),
@@ -228,4 +262,69 @@ export const generateDuplicateNodeToken = (): string => {
     return crypto.randomUUID().replace(/-/g, '')
   }
   return Math.random().toString(36).substring(2) + Date.now().toString(36)
+}
+
+export const formatDisplayTitle = (d?: Partial<MachineDisplay> | null): string => {
+  if (!d) return 'Display'
+
+  let name = (d.name || '').trim()
+  // Strip raw Win32 / device paths like (\.\DISPLAY1) or \.\DISPLAY1
+  name = name.replace(/\s*\(\\+[.\\].*?\)/gi, '').replace(/\s*\\+[.\\].*$/gi, '').trim()
+
+  // If name has an index like "Display 1", parse it as fallback index
+  const nameIdxMatch = name.match(/display\s*(\d+)/i)
+  const displayIndex = d.index ?? (nameIdxMatch ? Number(nameIdxMatch[1]) : undefined)
+
+  const isGeneric =
+    !name ||
+    /^generic\s+pnp\s+monitor$/i.test(name) ||
+    /^generic\s+display$/i.test(name) ||
+    /^display\s*\d*$/i.test(name)
+
+  if (isGeneric) {
+    let model = (d.model || '').trim()
+    model = model.replace(/\s*\(\\+[.\\].*?\)/gi, '').replace(/\s*\\+[.\\].*$/gi, '').trim()
+    const isModelGeneric =
+      !model ||
+      /^generic\s+pnp\s+monitor$/i.test(model) ||
+      /^generic\s+display$/i.test(model) ||
+      /^\d+x\d+\s+display$/i.test(model)
+
+    if (!isModelGeneric) {
+      if (d.manufacturer && !model.toLowerCase().includes(d.manufacturer.toLowerCase())) {
+        return `${d.manufacturer} ${model}`
+      }
+      return model
+    }
+
+    if (d.manufacturer && !/^generic/i.test(d.manufacturer)) {
+      return `${d.manufacturer} Display ${displayIndex ?? ''}`.trim()
+    }
+
+    if (name && !/^generic/i.test(name)) {
+      return name
+    }
+
+    return displayIndex != null ? `Display ${displayIndex}` : 'Display'
+  }
+
+  return name
+}
+
+export const formatDisplayResolution = (d?: Partial<MachineDisplay> | null): string => {
+  if (!d) return ''
+  const res = d.resolution || (d.width && d.height ? `${d.width}x${d.height}` : '')
+  if (!res) return ''
+  return d.refreshRate && d.refreshRate > 0 ? `${res} @ ${d.refreshRate}Hz` : res
+}
+
+export const getInternalStorageDisks = (storage?: MachineStorage[] | null): MachineStorage[] => {
+  if (!storage || !Array.isArray(storage)) return []
+  return storage.filter(
+    (d) =>
+      !/usb/i.test(d.drive) &&
+      !/usb/i.test(d.label || '') &&
+      !/removable/i.test(d.label || '') &&
+      !/flash/i.test(d.label || ''),
+  )
 }

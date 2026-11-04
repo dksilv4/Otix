@@ -95,7 +95,7 @@ export const MediaHeroLibraryActions = () => {
       {(mediaType === 'movie' || mediaType === 'show') && (
         <RequestMediaButton
           state={requestMedia}
-          hideIfAvailable={hasPlayWidgets}
+          hideIfAvailable={hasPlayWidgets && !requestMedia.queueItem}
           onWatch={handleWatchAvailable}
         />
       )}

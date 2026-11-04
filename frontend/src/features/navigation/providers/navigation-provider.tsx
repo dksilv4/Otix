@@ -7,11 +7,16 @@ import {
   computePillsVisibility,
   type NavPillsConfig,
 } from '../hooks/use-nav-pills-visibility'
+import {
+  NavCenterContext,
+  type NavCenterConfig,
+} from '../hooks/use-nav-center'
 
 export const NavigationProvider = ({ children }: { children: ReactNode }) => {
   const location = useLocation()
   const [isOpen, setIsOpen] = useState(false)
   const [override, setOverride] = useState<NavPillsConfig | null>(null)
+  const [centerConfig, setCenterConfig] = useState<NavCenterConfig | null>(null)
 
   const open = useCallback(() => setIsOpen(true), [])
   const close = useCallback(() => setIsOpen(false), [])
@@ -25,7 +30,9 @@ export const NavigationProvider = ({ children }: { children: ReactNode }) => {
   return (
     <NavigationContext.Provider value={{ isOpen, open, close, toggle }}>
       <NavPillsContext.Provider value={{ showLeft, showRight, setOverride }}>
-        {children}
+        <NavCenterContext.Provider value={{ centerConfig, setCenterConfig }}>
+          {children}
+        </NavCenterContext.Provider>
       </NavPillsContext.Provider>
     </NavigationContext.Provider>
   )

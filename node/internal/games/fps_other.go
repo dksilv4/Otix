@@ -16,3 +16,9 @@ func isProcessInForeground(pid int) bool {
 func getForegroundProcessPID() int {
 	return 0
 }
+
+func cleanupInterferingEtwSessions() {}
+
+func FixFpsPermissions() (bool, error) {
+	return false, nil
+}

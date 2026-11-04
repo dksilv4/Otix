@@ -9,7 +9,7 @@ server:
     downloads_path: C:\Users\diogo\AppData\Local\Otix\storage\downloads
     claimed: true
     claimed_by: admin
-    write_otix_after_scan: true
+    write_otix_after_scan: false
     download_otix_images: false
 game_libraries:
     - name: Games

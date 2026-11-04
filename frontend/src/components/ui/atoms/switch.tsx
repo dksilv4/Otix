@@ -7,11 +7,12 @@ export interface DkSwitchProps {
   onCheckedChange?: (checked: boolean) => void
   disabled?: boolean
   label?: string
+  'aria-label'?: string
   className?: string
 }
 
 const DkSwitch = forwardRef<HTMLButtonElement, DkSwitchProps>(
-  ({ id, checked, onCheckedChange, disabled, label, className }, ref) => {
+  ({ id, checked, onCheckedChange, disabled, label, 'aria-label': ariaLabel, className }, ref) => {
     const trackTransition = 'all var(--dk-duration-fast) var(--dk-ease-out)'
 
     return (
@@ -22,6 +23,7 @@ const DkSwitch = forwardRef<HTMLButtonElement, DkSwitchProps>(
           type="button"
           role="switch"
           aria-checked={checked}
+          aria-label={ariaLabel || label}
           disabled={disabled}
           onClick={() => onCheckedChange?.(!checked)}
           className={cn(

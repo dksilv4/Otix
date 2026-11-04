@@ -216,4 +216,74 @@ describe('UserProfileNowPlaying', () => {
     render(<UserProfileNowPlaying />)
     expect(screen.getByText('In Lobby (Waiting for match)')).toBeInTheDocument()
   })
+
+  it('renders multi-game count badge when multiple games are running', () => {
+    vi.mocked(launcherHooks.useMatchedRunningGame).mockReturnValue({
+      runningGame: {
+        game: { id: 'game-1', title: 'Cyberpunk 2077' },
+        startTime: Date.now() - 3600000,
+        launchedByOtix: false,
+      },
+      runningGames: [
+        {
+          game: { id: 'game-1', title: 'Cyberpunk 2077' },
+          startTime: Date.now() - 3600000,
+          launchedByOtix: false,
+        },
+        {
+          game: { id: 'game-2', title: 'Balatro' },
+          startTime: Date.now() - 1800000,
+          launchedByOtix: false,
+        },
+      ],
+      elapsedMs: 3600000,
+      matchedGame: null,
+      isMatching: false,
+      cycleActiveGame: vi.fn(),
+      setActiveGame: vi.fn(),
+    })
+
+    render(<UserProfileNowPlaying />)
+    expect(screen.getByText('+1 more')).toBeInTheDocument()
+  })
+
+  it('cycles active game when clicking the multi-game badge', () => {
+    const cycleMock = vi.fn()
+    const setActiveMock = vi.fn()
+
+    vi.mocked(launcherHooks.useMatchedRunningGame).mockReturnValue({
+      runningGame: {
+        game: { id: 'game-1', title: 'Cyberpunk 2077' },
+        startTime: Date.now() - 3600000,
+        launchedByOtix: false,
+      },
+      runningGames: [
+        {
+          game: { id: 'game-1', title: 'Cyberpunk 2077' },
+          startTime: Date.now() - 3600000,
+          launchedByOtix: false,
+        },
+        {
+          game: { id: 'game-2', title: 'Balatro' },
+          startTime: Date.now() - 1800000,
+          launchedByOtix: false,
+          fpsSnapshot: { currentFps: 60 } as any,
+        },
+      ],
+      elapsedMs: 3600000,
+      matchedGame: null,
+      isMatching: false,
+      cycleActiveGame: cycleMock,
+      setActiveGame: setActiveMock,
+    })
+
+    render(<UserProfileNowPlaying />)
+    const badge = screen.getByText('+1 more').closest('button')
+    badge?.click()
+    expect(cycleMock).toHaveBeenCalledTimes(1)
+
+    const secondaryBtn = screen.getByText('Balatro').closest('button')
+    secondaryBtn?.click()
+    expect(setActiveMock).toHaveBeenCalledWith('game-2')
+  })
 })

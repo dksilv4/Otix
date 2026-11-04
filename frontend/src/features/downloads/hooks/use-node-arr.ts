@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api/client';
+import { isValidNodeId } from './use-node-usenet';
 import type {
   AddRadarrMoviePayload,
   AddSonarrSeriesPayload,
@@ -46,12 +47,22 @@ export function useNodeRadarrConfig(nodeId?: number) {
     queryKey: arrKeys.radarr.config(nodeId),
     queryFn: async () => {
       if (!nodeId) throw new Error('No node selected');
-      const { data } = await apiClient.get<ServerRadarrConfig>(
-        `/library/servers/${nodeId}/radarr/config`
-      );
-      return data;
+      try {
+        const { data } = await apiClient.get<ServerRadarrConfig>(
+          `/library/nodes/${nodeId}/radarr/config`
+        );
+        return data;
+      } catch {
+        return {
+          enabled: false,
+          configured: false,
+          host: '',
+          port: 7878,
+          apiKey: '',
+        } as ServerRadarrConfig;
+      }
     },
-    enabled: !!nodeId,
+    enabled: isValidNodeId(nodeId),
     staleTime: 30_000,
     meta: { suppressToast: true },
   });
@@ -65,12 +76,25 @@ export function useSaveNodeRadarrConfig(nodeId?: number) {
     mutationFn: async (payload: Partial<ServerRadarrConfig>) => {
       if (!nodeId) throw new Error('No node selected');
       const { data } = await apiClient.post(
-        `/library/servers/${nodeId}/radarr/config`,
+        `/library/nodes/${nodeId}/radarr/config`,
         payload
       );
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
+      const nextChecked = Boolean(
+        variables.autoRequestWatchlist ?? variables.auto_request_watchlist
+      );
+      queryClient.setQueryData(arrKeys.radarr.config(nodeId), (prev: any) =>
+        prev
+          ? {
+              ...prev,
+              ...variables,
+              autoRequestWatchlist: nextChecked,
+              auto_request_watchlist: nextChecked,
+            }
+          : prev
+      );
       queryClient.invalidateQueries({ queryKey: arrKeys.radarr.all });
     },
   });
@@ -84,13 +108,17 @@ export function useTestRadarr(nodeId?: number) {
       host?: string;
       port?: number;
       api_key?: string;
+      apiKey?: string;
       use_ssl?: boolean;
+      useSsl?: boolean;
       url_base?: string;
+      urlBase?: string;
       instance_id?: string;
+      instanceId?: string;
     }) => {
       if (!nodeId) throw new Error('No node selected');
       const { data } = await apiClient.post<ArrConnectionTestResult>(
-        `/library/servers/${nodeId}/radarr/test`,
+        `/library/nodes/${nodeId}/radarr/test`,
         payload || {}
       );
       return data;
@@ -108,7 +136,7 @@ export function useNodeRadarrRootFolders(
     queryFn: async () => {
       if (!nodeId) return [];
       const { data } = await apiClient.get<ArrRootFolder[]>(
-        `/library/servers/${nodeId}/radarr/rootfolders`,
+        `/library/nodes/${nodeId}/radarr/rootfolders`,
         { params: instanceId ? { instance_id: instanceId } : undefined }
       );
       return data || [];
@@ -130,7 +158,7 @@ export function useNodeRadarrQualityProfiles(
     queryFn: async () => {
       if (!nodeId) return [];
       const { data } = await apiClient.get<ArrQualityProfile[]>(
-        `/library/servers/${nodeId}/radarr/qualityprofiles`,
+        `/library/nodes/${nodeId}/radarr/qualityprofiles`,
         { params: instanceId ? { instance_id: instanceId } : undefined }
       );
       return data || [];
@@ -148,11 +176,11 @@ export function useNodeRadarrMovies(nodeId?: number) {
     queryFn: async () => {
       if (!nodeId) return [];
       const { data } = await apiClient.get<ServerRadarrMovie[]>(
-        `/library/servers/${nodeId}/radarr/movies`
+        `/library/nodes/${nodeId}/radarr/movies`
       );
       return data || [];
     },
-    enabled: !!nodeId,
+    enabled: isValidNodeId(nodeId),
     staleTime: 30_000,
   });
 }
@@ -165,7 +193,7 @@ export function useNodeRadarrLookup(nodeId?: number, term?: string) {
     queryFn: async () => {
       if (!nodeId || !term?.trim()) return [];
       const { data } = await apiClient.get<unknown[]>(
-        `/library/servers/${nodeId}/radarr/lookup`,
+        `/library/nodes/${nodeId}/radarr/lookup`,
         { params: { term: term.trim() } }
       );
       return data || [];
@@ -183,7 +211,7 @@ export function useAddNodeRadarrMovie(nodeId?: number) {
     mutationFn: async (payload: AddRadarrMoviePayload) => {
       if (!nodeId) throw new Error('No node selected');
       const { data } = await apiClient.post(
-        `/library/servers/${nodeId}/radarr/movies`,
+        `/library/nodes/${nodeId}/radarr/movies`,
         payload
       );
       return data;
@@ -198,18 +226,23 @@ export function useAddNodeRadarrMovie(nodeId?: number) {
 
 export const useAddServerRadarrMovie = useAddNodeRadarrMovie;
 
-export function useNodeRadarrQueue(nodeId?: number, page: number = 1, pageSize: number = 50, pollingIntervalMs: number | false = 5000) {
+export function useNodeRadarrQueue(
+  nodeId?: number,
+  page: number = 1,
+  pageSize: number = 50,
+  pollingIntervalMs: number | false = 5000,
+) {
   return useQuery<ServerArrQueueResponse>({
     queryKey: arrKeys.radarr.queue(nodeId),
     queryFn: async () => {
       if (!nodeId) return { page: 1, pageSize: 50, totalRecords: 0, records: [] };
       const { data } = await apiClient.get<ServerArrQueueResponse>(
-        `/library/servers/${nodeId}/radarr/queue`,
+        `/library/nodes/${nodeId}/radarr/queue`,
         { params: { page, page_size: pageSize } }
       );
       return data || { page: 1, pageSize: 50, totalRecords: 0, records: [] };
     },
-    enabled: !!nodeId,
+    enabled: isValidNodeId(nodeId),
     refetchInterval: pollingIntervalMs,
     staleTime: 3000,
     meta: { suppressToast: true },
@@ -232,7 +265,7 @@ export function useCancelNodeRadarrQueueItem(nodeId?: number) {
     }) => {
       if (!nodeId) throw new Error('No node selected');
       const { data } = await apiClient.delete(
-        `/library/servers/${nodeId}/radarr/queue/${queueId}`,
+        `/library/nodes/${nodeId}/radarr/queue/${queueId}`,
         { params: { remove_from_client: removeFromClient, blocklist } }
       );
       return data;
@@ -252,12 +285,22 @@ export function useNodeSonarrConfig(nodeId?: number) {
     queryKey: arrKeys.sonarr.config(nodeId),
     queryFn: async () => {
       if (!nodeId) throw new Error('No node selected');
-      const { data } = await apiClient.get<ServerSonarrConfig>(
-        `/library/servers/${nodeId}/sonarr/config`
-      );
-      return data;
+      try {
+        const { data } = await apiClient.get<ServerSonarrConfig>(
+          `/library/nodes/${nodeId}/sonarr/config`
+        );
+        return data;
+      } catch {
+        return {
+          enabled: false,
+          configured: false,
+          host: '',
+          port: 8989,
+          apiKey: '',
+        } as ServerSonarrConfig;
+      }
     },
-    enabled: !!nodeId,
+    enabled: isValidNodeId(nodeId),
     staleTime: 30_000,
     meta: { suppressToast: true },
   });
@@ -271,12 +314,25 @@ export function useSaveNodeSonarrConfig(nodeId?: number) {
     mutationFn: async (payload: Partial<ServerSonarrConfig>) => {
       if (!nodeId) throw new Error('No node selected');
       const { data } = await apiClient.post(
-        `/library/servers/${nodeId}/sonarr/config`,
+        `/library/nodes/${nodeId}/sonarr/config`,
         payload
       );
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
+      const nextChecked = Boolean(
+        variables.autoRequestWatchlist ?? variables.auto_request_watchlist
+      );
+      queryClient.setQueryData(arrKeys.sonarr.config(nodeId), (prev: any) =>
+        prev
+          ? {
+              ...prev,
+              ...variables,
+              autoRequestWatchlist: nextChecked,
+              auto_request_watchlist: nextChecked,
+            }
+          : prev
+      );
       queryClient.invalidateQueries({ queryKey: arrKeys.sonarr.all });
     },
   });
@@ -290,13 +346,17 @@ export function useTestSonarr(nodeId?: number) {
       host?: string;
       port?: number;
       api_key?: string;
+      apiKey?: string;
       use_ssl?: boolean;
+      useSsl?: boolean;
       url_base?: string;
+      urlBase?: string;
       instance_id?: string;
+      instanceId?: string;
     }) => {
       if (!nodeId) throw new Error('No node selected');
       const { data } = await apiClient.post<ArrConnectionTestResult>(
-        `/library/servers/${nodeId}/sonarr/test`,
+        `/library/nodes/${nodeId}/sonarr/test`,
         payload || {}
       );
       return data;
@@ -314,7 +374,7 @@ export function useNodeSonarrRootFolders(
     queryFn: async () => {
       if (!nodeId) return [];
       const { data } = await apiClient.get<ArrRootFolder[]>(
-        `/library/servers/${nodeId}/sonarr/rootfolders`,
+        `/library/nodes/${nodeId}/sonarr/rootfolders`,
         { params: instanceId ? { instance_id: instanceId } : undefined }
       );
       return data || [];
@@ -336,7 +396,7 @@ export function useNodeSonarrQualityProfiles(
     queryFn: async () => {
       if (!nodeId) return [];
       const { data } = await apiClient.get<ArrQualityProfile[]>(
-        `/library/servers/${nodeId}/sonarr/qualityprofiles`,
+        `/library/nodes/${nodeId}/sonarr/qualityprofiles`,
         { params: instanceId ? { instance_id: instanceId } : undefined }
       );
       return data || [];
@@ -354,11 +414,11 @@ export function useNodeSonarrSeries(nodeId?: number) {
     queryFn: async () => {
       if (!nodeId) return [];
       const { data } = await apiClient.get<ServerSonarrSeries[]>(
-        `/library/servers/${nodeId}/sonarr/series`
+        `/library/nodes/${nodeId}/sonarr/series`
       );
       return data || [];
     },
-    enabled: !!nodeId,
+    enabled: isValidNodeId(nodeId),
     staleTime: 30_000,
   });
 }
@@ -371,7 +431,7 @@ export function useNodeSonarrLookup(nodeId?: number, term?: string) {
     queryFn: async () => {
       if (!nodeId || !term?.trim()) return [];
       const { data } = await apiClient.get<unknown[]>(
-        `/library/servers/${nodeId}/sonarr/lookup`,
+        `/library/nodes/${nodeId}/sonarr/lookup`,
         { params: { term: term.trim() } }
       );
       return data || [];
@@ -389,7 +449,7 @@ export function useAddNodeSonarrSeries(nodeId?: number) {
     mutationFn: async (payload: AddSonarrSeriesPayload) => {
       if (!nodeId) throw new Error('No node selected');
       const { data } = await apiClient.post(
-        `/library/servers/${nodeId}/sonarr/series`,
+        `/library/nodes/${nodeId}/sonarr/series`,
         payload
       );
       return data;
@@ -404,18 +464,23 @@ export function useAddNodeSonarrSeries(nodeId?: number) {
 
 export const useAddServerSonarrSeries = useAddNodeSonarrSeries;
 
-export function useNodeSonarrQueue(nodeId?: number, page: number = 1, pageSize: number = 50, pollingIntervalMs: number | false = 5000) {
+export function useNodeSonarrQueue(
+  nodeId?: number,
+  page: number = 1,
+  pageSize: number = 50,
+  pollingIntervalMs: number | false = 5000,
+) {
   return useQuery<ServerArrQueueResponse>({
     queryKey: arrKeys.sonarr.queue(nodeId),
     queryFn: async () => {
       if (!nodeId) return { page: 1, pageSize: 50, totalRecords: 0, records: [] };
       const { data } = await apiClient.get<ServerArrQueueResponse>(
-        `/library/servers/${nodeId}/sonarr/queue`,
+        `/library/nodes/${nodeId}/sonarr/queue`,
         { params: { page, page_size: pageSize } }
       );
       return data || { page: 1, pageSize: 50, totalRecords: 0, records: [] };
     },
-    enabled: !!nodeId,
+    enabled: isValidNodeId(nodeId),
     refetchInterval: pollingIntervalMs,
     staleTime: 3000,
     meta: { suppressToast: true },
@@ -438,7 +503,7 @@ export function useCancelNodeSonarrQueueItem(nodeId?: number) {
     }) => {
       if (!nodeId) throw new Error('No node selected');
       const { data } = await apiClient.delete(
-        `/library/servers/${nodeId}/sonarr/queue/${queueId}`,
+        `/library/nodes/${nodeId}/sonarr/queue/${queueId}`,
         { params: { remove_from_client: removeFromClient, blocklist } }
       );
       return data;

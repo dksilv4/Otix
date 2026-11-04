@@ -5,6 +5,7 @@ export interface MediaPreviewData {
   title?: string | null
   logoUrl?: string | null
   logoColorGuess?: string | null
+  dominantColor?: string | null
   backdropUrl?: string | null
   posterUrl?: string | null
   releaseDate?: string | null
@@ -36,6 +37,7 @@ export function findMediaPreview(
         backdropUrl: cachedDetail.backdropUrl,
         posterUrl: cachedDetail.posterUrl,
         releaseDate: cachedDetail.releaseDate,
+        ...(cachedDetail.dominantColor != null ? { dominantColor: cachedDetail.dominantColor } : {}),
       }
     }
   } catch {
@@ -87,6 +89,7 @@ export function findMediaPreview(
               backdropUrl: item.backdropUrl ?? item.textlessPosterUrl ?? null,
               posterUrl: item.posterUrl ?? null,
               releaseDate: item.releaseDate ?? null,
+              ...(item.dominantColor != null ? { dominantColor: item.dominantColor } : {}),
             }
           }
         }

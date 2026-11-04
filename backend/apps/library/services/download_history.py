@@ -7,7 +7,7 @@ from datetime import UTC, datetime, timedelta
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 
-from apps.library.models import GameServerDownload, UserGameServer
+from apps.library.models import NodeDownload, UserNode
 from apps.media.models import MediaItem
 
 PROXY_DOWNLOAD_KEYS = ("title", "download_url", "category", "protocol")
@@ -22,20 +22,20 @@ def proxy_download_payload(payload: dict | None) -> dict:
 def normalize_download_status(raw: str | None) -> str:
     status = (raw or "").strip().lower()
     if status in ("completed", "complete"):
-        return GameServerDownload.STATUS_COMPLETED
+        return NodeDownload.STATUS_COMPLETED
     if status in ("failed", "fail"):
-        return GameServerDownload.STATUS_FAILED
+        return NodeDownload.STATUS_FAILED
     if status in ("cancelled", "canceled", "deleted"):
-        return GameServerDownload.STATUS_CANCELLED
+        return NodeDownload.STATUS_CANCELLED
     if any(token in status for token in ("extract", "repair", "verif", "unpack", "post")):
-        return GameServerDownload.STATUS_PROCESSING
+        return NodeDownload.STATUS_PROCESSING
     if "pause" in status:
-        return GameServerDownload.STATUS_PAUSED
+        return NodeDownload.STATUS_PAUSED
     if "queue" in status:
-        return GameServerDownload.STATUS_QUEUED
+        return NodeDownload.STATUS_QUEUED
     if any(token in status for token in ("download", "grab", "fetch", "running")):
-        return GameServerDownload.STATUS_DOWNLOADING
-    return status or GameServerDownload.STATUS_QUEUED
+        return NodeDownload.STATUS_DOWNLOADING
+    return status or NodeDownload.STATUS_QUEUED
 
 
 def is_download_id(name: str | None, nzo_id: str | None = None) -> bool:
@@ -79,11 +79,11 @@ def _size_from_payload(payload: dict | None) -> int:
 
 
 def record_queued_download(
-    server: UserGameServer,
+    server: UserNode,
     payload: dict | None,
     result: object,
     user=None,
-) -> GameServerDownload | None:
+) -> NodeDownload | None:
     """Create or refresh a history row after a successful queue request."""
     nzo_id = _nzo_id_from_result(result)
     data = payload if isinstance(payload, dict) else {}
@@ -99,7 +99,7 @@ def record_queued_download(
         "user": owner,
         "title": title[:1000],
         "protocol": protocol[:20],
-        "status": GameServerDownload.STATUS_QUEUED,
+        "status": NodeDownload.STATUS_QUEUED,
         "percentage": 0,
         "error_message": None,
     }
@@ -110,15 +110,15 @@ def record_queued_download(
     if media_item is not None:
         defaults["media_item"] = media_item
 
-    row, _created = GameServerDownload.objects.update_or_create(
-        server=server,
+    row, _created = NodeDownload.objects.update_or_create(
+        node=server,
         nzo_id=nzo_id[:128],
         defaults=defaults,
     )
     return row
 
 
-def apply_queue_progress(server: UserGameServer, queue_data: object) -> None:
+def apply_queue_progress(server: UserNode, queue_data: object) -> None:
     """Refresh in-progress rows from a live SABnzbd queue payload."""
     if not isinstance(queue_data, dict):
         return
@@ -132,7 +132,7 @@ def apply_queue_progress(server: UserGameServer, queue_data: object) -> None:
             continue
         active_ids.add(nzo_id)
         filename = str(item.get("filename") or "").strip() or nzo_id
-        existing = GameServerDownload.objects.filter(server=server, nzo_id=nzo_id).first()
+        existing = NodeDownload.objects.filter(node=server, nzo_id=nzo_id).first()
         title = filename
         if is_download_id(filename, nzo_id):
             if existing and existing.title and not is_download_id(existing.title, nzo_id):
@@ -150,11 +150,11 @@ def apply_queue_progress(server: UserGameServer, queue_data: object) -> None:
         size_bytes = int(size_mb * 1024 * 1024) if size_mb else 0
         status = normalize_download_status(str(item.get("status") or "Downloading"))
         if status in (
-            GameServerDownload.STATUS_COMPLETED,
-            GameServerDownload.STATUS_FAILED,
-            GameServerDownload.STATUS_CANCELLED,
+            NodeDownload.STATUS_COMPLETED,
+            NodeDownload.STATUS_FAILED,
+            NodeDownload.STATUS_CANCELLED,
         ):
-            status = GameServerDownload.STATUS_DOWNLOADING
+            status = NodeDownload.STATUS_DOWNLOADING
         defaults = {
             "title": title[:1000],
             "status": status,
@@ -163,22 +163,22 @@ def apply_queue_progress(server: UserGameServer, queue_data: object) -> None:
         }
         if size_bytes:
             defaults["size_bytes"] = size_bytes
-        GameServerDownload.objects.update_or_create(
-            server=server,
+        NodeDownload.objects.update_or_create(
+            node=server,
             nzo_id=nzo_id[:128],
             defaults=defaults,
         )
 
     leaving_queue = (
-        GameServerDownload.STATUS_QUEUED,
-        GameServerDownload.STATUS_DOWNLOADING,
-        GameServerDownload.STATUS_PAUSED,
+        NodeDownload.STATUS_QUEUED,
+        NodeDownload.STATUS_DOWNLOADING,
+        NodeDownload.STATUS_PAUSED,
     )
-    stale = GameServerDownload.objects.filter(server=server, status__in=leaving_queue)
+    stale = NodeDownload.objects.filter(node=server, status__in=leaving_queue)
     if active_ids:
         stale = stale.exclude(nzo_id__in=active_ids)
     stale.filter(updated_at__lte=timezone.now() - timedelta(seconds=20)).update(
-        status=GameServerDownload.STATUS_COMPLETED,
+        status=NodeDownload.STATUS_COMPLETED,
         percentage=100,
         completed_at=timezone.now(),
     )
@@ -199,7 +199,7 @@ def _parse_completed_at(value: object):
         return None
 
 
-def apply_history_slots(server: UserGameServer, history_data: object) -> None:
+def apply_history_slots(server: UserNode, history_data: object) -> None:
     """Upsert completed/failed SAB history into Otix records."""
     if not isinstance(history_data, dict):
         return
@@ -211,8 +211,8 @@ def apply_history_slots(server: UserGameServer, history_data: object) -> None:
         filename = str(item.get("filename") or "").strip()
         if not nzo_id or not filename:
             continue
-        existing = GameServerDownload.objects.filter(server=server, nzo_id=nzo_id).first()
-        if existing and existing.status == GameServerDownload.STATUS_CANCELLED:
+        existing = NodeDownload.objects.filter(node=server, nzo_id=nzo_id).first()
+        if existing and existing.status == NodeDownload.STATUS_CANCELLED:
             continue
         title = filename
         if is_download_id(filename, nzo_id):
@@ -222,12 +222,12 @@ def apply_history_slots(server: UserGameServer, history_data: object) -> None:
                 title = existing.media_item.title
         status = normalize_download_status(str(item.get("status") or "Completed"))
         if status not in (
-            GameServerDownload.STATUS_COMPLETED,
-            GameServerDownload.STATUS_FAILED,
-            GameServerDownload.STATUS_CANCELLED,
-            GameServerDownload.STATUS_PROCESSING,
+            NodeDownload.STATUS_COMPLETED,
+            NodeDownload.STATUS_FAILED,
+            NodeDownload.STATUS_CANCELLED,
+            NodeDownload.STATUS_PROCESSING,
         ):
-            status = GameServerDownload.STATUS_COMPLETED
+            status = NodeDownload.STATUS_COMPLETED
         try:
             size_bytes = max(0, int(float(item.get("size_bytes") or 0)))
         except (TypeError, ValueError):
@@ -237,31 +237,31 @@ def apply_history_slots(server: UserGameServer, history_data: object) -> None:
         defaults = {
             "title": title[:1000],
             "status": status,
-            "percentage": 100 if status == GameServerDownload.STATUS_COMPLETED else 0,
+            "percentage": 100 if status == NodeDownload.STATUS_COMPLETED else 0,
             "user": server.user,
             "error_message": fail_message,
             "completed_at": completed_at,
         }
         if size_bytes:
             defaults["size_bytes"] = size_bytes
-        if status == GameServerDownload.STATUS_COMPLETED:
+        if status == NodeDownload.STATUS_COMPLETED:
             defaults["percentage"] = 100
-        GameServerDownload.objects.update_or_create(
-            server=server,
+        NodeDownload.objects.update_or_create(
+            node=server,
             nzo_id=nzo_id[:128],
             defaults=defaults,
         )
 
 
-def mark_download_cancelled(server: UserGameServer, nzo_id: str) -> None:
-    row = GameServerDownload.objects.filter(server=server, nzo_id=nzo_id).first()
+def mark_download_cancelled(server: UserNode, nzo_id: str) -> None:
+    row = NodeDownload.objects.filter(node=server, nzo_id=nzo_id).first()
     if not row:
         return
-    row.status = GameServerDownload.STATUS_CANCELLED
+    row.status = NodeDownload.STATUS_CANCELLED
     row.save(update_fields=["status", "updated_at"])
 
 
-def serialize_download(row: GameServerDownload) -> dict:
+def serialize_download(row: NodeDownload) -> dict:
     title = row.title
     if is_download_id(title, row.nzo_id) and row.media_item and row.media_item.title:
         title = row.media_item.title
@@ -281,16 +281,16 @@ def serialize_download(row: GameServerDownload) -> dict:
     }
 
 
-def list_download_history(server: UserGameServer, limit: int = 50) -> list[dict]:
+def list_download_history(server: UserNode, limit: int = 50) -> list[dict]:
     rows = (
-        GameServerDownload.objects.filter(server=server)
+        NodeDownload.objects.filter(node=server)
         .select_related("media_item")
         .order_by("-created_at")[: max(1, min(int(limit), 200))]
     )
     return [serialize_download(row) for row in rows]
 
 
-def enrich_queue_items(server: UserGameServer, queue_data: object) -> None:
+def enrich_queue_items(server: UserNode, queue_data: object) -> None:
     """Enrich live SABnzbd queue items with human-readable titles from database records."""
     if not isinstance(queue_data, dict):
         return
@@ -303,8 +303,8 @@ def enrich_queue_items(server: UserGameServer, queue_data: object) -> None:
         return
     rows = {
         row.nzo_id: row
-        for row in GameServerDownload.objects.filter(
-            server=server, nzo_id__in=nzo_ids
+        for row in NodeDownload.objects.filter(
+            node=server, nzo_id__in=nzo_ids
         ).select_related("media_item")
     }
     for item in items:

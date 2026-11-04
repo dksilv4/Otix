@@ -112,7 +112,12 @@ def _match_or_seed(
     return None, False
 
 
-def _page_json(url: str, token: str, extra_headers: dict | None = None) -> dict | None:
+def _page_json(
+    url: str,
+    token: str,
+    extra_headers: dict | None = None,
+    timeout: float = 15.0,
+) -> dict | None:
     """GET one Plex page, returning parsed JSON (``None`` on any failure).
 
     Paged ``/all`` responses are often ``206 Partial Content``; discovery already
@@ -123,7 +128,7 @@ def _page_json(url: str, token: str, extra_headers: dict | None = None) -> dict 
         status, raw = _plex._request(
             _plex._with_token(url, token),
             headers=headers,
-            timeout=60.0,
+            timeout=timeout,
         )
     except Exception:  # noqa: BLE001 - a fetch failure just skips the library
         logger.warning("plex library page request failed url=%s", url, exc_info=True)

@@ -38,8 +38,11 @@ import {
 } from '../../hooks/use-server-machines'
 
 export interface EditServerMachineModalProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
+  open?: boolean
+  isOpen?: boolean
+  onOpenChange?: (open: boolean) => void
+  onClose?: () => void
+  isExiting?: boolean
   server: UserServerMachine | null
   homes: UserHome[]
   nodes: GameServer[]
@@ -49,13 +52,21 @@ export interface EditServerMachineModalProps {
 
 export const EditServerMachineModal = ({
   open,
+  isOpen,
   onOpenChange,
+  onClose,
+  isExiting,
   server,
   homes,
   nodes,
   onSuccess,
   onDelete,
 }: EditServerMachineModalProps) => {
+  const isModalOpen = (open ?? isOpen ?? true) && !isExiting
+  const handleClose = () => {
+    onOpenChange?.(false)
+    onClose?.()
+  }
   const { toast } = useToast()
   const updateMutation = useUpdateServerMachine()
   const detectMutation = useDetectServerDrives()
@@ -196,7 +207,7 @@ export const EditServerMachineModal = ({
         description: `Saved changes to ${formData.name}.`,
         variant: 'success',
       })
-      onOpenChange(false)
+      handleClose()
       onSuccess?.()
     } catch (err: unknown) {
       toast({
@@ -220,7 +231,7 @@ export const EditServerMachineModal = ({
         })
       }
       setConfirmDelete(false)
-      onOpenChange(false)
+      handleClose()
       onSuccess?.()
     } catch (err: unknown) {
       toast({
@@ -238,8 +249,10 @@ export const EditServerMachineModal = ({
   return (
     <>
       <DkDialog
-        open={open}
-        onOpenChange={onOpenChange}
+        open={isModalOpen}
+        onOpenChange={(next) => {
+          if (!next) handleClose()
+        }}
         className="max-w-2xl max-h-[90vh] overflow-y-auto"
         title={`Configure ${server.name}`}
         description="Configure homelab computer, OS, node hosting, hard drives, and SMB access."
@@ -693,7 +706,7 @@ export const EditServerMachineModal = ({
               <DkButton
                 type="button"
                 variant="ghost"
-                onClick={() => onOpenChange(false)}
+                onClick={handleClose}
                 disabled={isSaving}
               >
                 Cancel

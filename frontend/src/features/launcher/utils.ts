@@ -86,6 +86,17 @@ export const formatTimeToBeat = (ttb: Record<string, unknown> | undefined): stri
   return null
 }
 
+export const isCatalogId = (id?: string | null): boolean => {
+  if (!id) return false
+  if (/^\d+$/.test(id)) return true
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)
+}
+
+export const isInstalledGame = (game: Pick<LocalGame, 'exePath' | 'platform'> | null | undefined): boolean => {
+  if (!game) return false
+  return Boolean(game.exePath && game.platform !== 'iso' && game.platform !== 'server')
+}
+
 export const asLocal = (game: LauncherCardGame): LocalGame | null => {
   if ('rawGame' in game && game.rawGame) return game.rawGame
   if ('exePath' in game && 'installDir' in game && 'platform' in game) return game
@@ -158,3 +169,111 @@ export const formatElapsed = (ms: number): string => {
   }
   return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
 }
+
+
+export const formatMultiGameBadge = (index: number, total: number): string => {
+  if (total <= 1) return ''
+  return `[${index + 1}/${total}]`
+}
+
+export const titleToGradient = (title: string): string => {
+  let hash = 0
+  for (let i = 0; i < title.length; i++) {
+    hash = title.charCodeAt(i) + ((hash << 5) - hash)
+  }
+  const hue = Math.abs(hash) % 360
+  const gradient = `oklch(0.25 0.08 ${hue})`
+  const gradient2 = `oklch(0.18 0.06 ${(hue + 40) % 360})`
+  return `linear-gradient(135deg, ${gradient}, ${gradient2})`
+}
+
+export const PLATFORM_BADGES: Record<
+  string,
+  { variant: 'default' | 'success' | 'warning' | 'secondary' | 'muted'; label: string }
+> = {
+  steam: { variant: 'default', label: 'Steam' },
+  pc: { variant: 'success', label: 'PC' },
+  iso: { variant: 'warning', label: 'ISO' },
+  epic: { variant: 'muted', label: 'Epic' },
+  gog: { variant: 'secondary', label: 'GOG' },
+  battlenet: { variant: 'default', label: 'Battle.net' },
+  ubisoft: { variant: 'muted', label: 'Ubisoft' },
+  ea: { variant: 'secondary', label: 'EA' },
+  riot: { variant: 'default', label: 'Riot' },
+  xbox: { variant: 'success', label: 'Xbox' },
+  itch: { variant: 'muted', label: 'Itch' },
+  server: { variant: 'secondary', label: 'Network Share' },
+  ambiguous: { variant: 'warning', label: 'Select System' },
+}
+
+export const isRemoteOnly = (game: LocalGame): boolean => {
+  return (
+    game.platform === 'server' ||
+    (!game.exePath && Boolean(game.serverId || game.serverName || game.serverFilePath))
+  )
+}
+
+export const getGameAvailabilityBadge = (
+  game: LocalGame,
+): { variant: 'default' | 'success' | 'warning' | 'secondary' | 'muted'; label: string } => {
+  const remote = isRemoteOnly(game)
+  const isInstalled = Boolean(game.exePath && game.platform !== 'server')
+  const serverArchiveLabel = game.serverName ? `Archived on ${game.serverName}` : 'Network Share'
+
+  if (
+    isInstalled &&
+    (game.serverName ||
+      (game.sources &&
+        game.sources.some(
+          (s) => s === 'server' || (typeof s === 'object' && s?.sourceType === 'server'),
+        )))
+  ) {
+    return {
+      variant: 'default',
+      label: `Installed on Desktop · ${serverArchiveLabel}`,
+    }
+  }
+
+  if (game.sources && game.sources.length > 1) {
+    const platformStrings = game.sources.filter((s): s is string => typeof s === 'string')
+    const rawTokens =
+      platformStrings.length > 0
+        ? platformStrings
+        : game.sources
+            .map((s) => (typeof s === 'string' ? s : s?.format || s?.sourceType || ''))
+            .filter(Boolean)
+    const labels = rawTokens
+      .map((s) => (typeof s === 'string' && PLATFORM_BADGES[s.toLowerCase()]?.label ? PLATFORM_BADGES[s.toLowerCase()].label : s))
+      .filter(Boolean)
+      .filter((val, idx, arr) => arr.indexOf(val) === idx)
+    if (labels.length > 1) {
+      return {
+        variant: 'default',
+        label: labels.join(' + '),
+      }
+    }
+  }
+
+  if (remote) {
+    return {
+      variant: 'secondary',
+      label: serverArchiveLabel,
+    }
+  }
+
+  if (isInstalled && game.platform === 'pc') {
+    return {
+      variant: 'success',
+      label: 'Installed on Desktop',
+    }
+  }
+
+  return (
+    PLATFORM_BADGES[game.platform] ?? {
+      variant: 'default',
+      label: (game.platform || 'pc').toUpperCase(),
+    }
+  )
+}
+
+export { isCs2Game } from './utils/cs2-gsi'

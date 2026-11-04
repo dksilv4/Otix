@@ -20,9 +20,9 @@ class NodeDownload(TimestampedModel):
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
-        related_name="game_server_downloads",
+        related_name="node_downloads",
     )
-    server = models.ForeignKey(
+    node = models.ForeignKey(
         "library.UserNode",
         on_delete=models.CASCADE,
         related_name="downloads",
@@ -32,7 +32,7 @@ class NodeDownload(TimestampedModel):
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name="game_server_downloads",
+        related_name="node_downloads",
     )
     nzo_id = models.CharField(max_length=128)
     title = models.CharField(max_length=1000)
@@ -43,18 +43,23 @@ class NodeDownload(TimestampedModel):
     error_message = models.TextField(null=True, blank=True)
     completed_at = models.DateTimeField(null=True, blank=True)
 
+    @property
+    def server(self):
+        """Backwards compatibility alias for node."""
+        return self.node
+
+    @server.setter
+    def server(self, value):
+        self.node = value
+
     class Meta(TimestampedModel.Meta):
-        db_table = "game_server_downloads"
+        db_table = "node_downloads"
         ordering = ["-created_at"]
         constraints = [
             models.UniqueConstraint(
-                fields=("server", "nzo_id"), name="uq_game_server_download_nzo"
+                fields=("node", "nzo_id"), name="uq_node_download_nzo"
             ),
         ]
 
     def __str__(self) -> str:
         return f"{self.title} ({self.status})"
-
-
-# Backward compatibility alias
-GameServerDownload = NodeDownload

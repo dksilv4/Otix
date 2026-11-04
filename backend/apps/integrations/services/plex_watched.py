@@ -11,6 +11,8 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+from django.core.cache import cache
+
 from apps.integrations.models import UserPlexItem, UserPlexLibrary, UserPlexServer
 from apps.integrations.services import plex as _plex
 from apps.integrations.services.plex_sync import _media_type, _page_json, _upsert_item
@@ -31,6 +33,10 @@ _PAGE_SIZE = 200
 
 def _get_working_base(server: UserPlexServer, user) -> str | None:
     """Resolve a reachable base URL for the Plex server."""
+    if server.pk:
+        cached_working = cache.get(f"plex_server_working_base:{server.pk}")
+        if cached_working:
+            return cached_working
     if server.base_url:
         return server.base_url
     alt_urls = _plex._get_alternative_plex_urls(server, user)

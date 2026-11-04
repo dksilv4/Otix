@@ -63,23 +63,40 @@ export const syncPlexWatched = async (): Promise<PlexWatchedSyncResult> => {
 
 export const executePlexSync = async (options: PlexSyncOptions): Promise<PlexSyncExecutionResult> => {
   const result: PlexSyncExecutionResult = {}
+  const tasks: Promise<void>[] = []
+  const errors: unknown[] = []
 
   if (options.syncWatchlist) {
-    try {
-      result.watchlist = await syncPlexWatchlist()
-    } catch (err) {
-      console.error('[PlexSync] Watchlist sync failed:', err)
-      throw err
-    }
+    tasks.push(
+      syncPlexWatchlist()
+        .then((data) => {
+          result.watchlist = data
+        })
+        .catch((err) => {
+          console.error('[PlexSync] Watchlist sync failed:', err)
+          errors.push(err)
+        }),
+    )
   }
 
   if (options.syncWatched) {
-    try {
-      result.watched = await syncPlexWatched()
-    } catch (err) {
-      console.error('[PlexSync] Watched media sync failed:', err)
-      throw err
-    }
+    tasks.push(
+      syncPlexWatched()
+        .then((data) => {
+          result.watched = data
+        })
+        .catch((err) => {
+          console.error('[PlexSync] Watched media sync failed:', err)
+          errors.push(err)
+        }),
+    )
+  }
+
+  await Promise.all(tasks)
+
+  // If all requested sync tasks failed, re-throw the first error so the caller can report it
+  if (errors.length > 0 && !result.watchlist && !result.watched) {
+    throw errors[0]
   }
 
   return result

@@ -10,9 +10,10 @@ export const IsoInstallButton = ({ onClick }: Props) => {
   return (
     <button
       onClick={onClick}
-      className="px-5.5 py-2.5 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-400 hover:to-indigo-500 text-white rounded-xl text-[11px] font-black flex items-center gap-1.5 transition-all cursor-pointer shadow-lg active:scale-95"
+      className="h-10 px-5 bg-primary hover:bg-primary/90 text-primary-foreground font-black rounded-xl text-xs uppercase tracking-wider flex items-center gap-2 transition-all cursor-pointer shadow-lg active:scale-95 shrink-0"
     >
-      <Disc size={14} /> Install
+      <Disc size={15} className="stroke-[2.5]" />
+      <span>Install</span>
     </button>
   )
 };

@@ -290,3 +290,42 @@ func TestSonarrClient(t *testing.T) {
 		t.Fatalf("GetHistory failed: %v", err)
 	}
 }
+
+
+func TestRadarrClientRedirectAndDetectedURLBase(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/api/v3/system/status" {
+			http.Redirect(w, r, "/radarr/main/api/v3/system/status", http.StatusTemporaryRedirect)
+			return
+		}
+		if r.URL.Path == "/radarr/main/api/v3/system/status" {
+			if r.Header.Get("X-Api-Key") != "radarr-key" && r.URL.Query().Get("apikey") != "radarr-key" {
+				w.WriteHeader(http.StatusUnauthorized)
+				return
+			}
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
+				"version": "7.0.0.10815",
+				"urlBase": "/radarr/main",
+			})
+			return
+		}
+		http.NotFound(w, r)
+	}))
+	defer srv.Close()
+
+	inst := config.RadarrInstance{
+		Host:   srv.URL,
+		APIKey: "radarr-key",
+	}
+	client := NewRadarrClient(inst)
+	res := client.TestConnection()
+	if !res.OK {
+		t.Fatalf("expected test connection to succeed, got: %+v", res)
+	}
+	if res.DetectedURLBase != "/radarr/main" {
+		t.Fatalf("expected detected URL base '/radarr/main', got %q", res.DetectedURLBase)
+	}
+	if res.Version != "7.0.0.10815" {
+		t.Fatalf("expected version '7.0.0.10815', got %q", res.Version)
+	}
+}

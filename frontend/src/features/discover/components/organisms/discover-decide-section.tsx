@@ -10,7 +10,7 @@ export const DiscoverDecideSection = ({ className }: DiscoverDecideSectionProps)
     <section
       id="discover-decide-section"
       aria-label="Decide for Me"
-      className={`w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 ${className || ''}`}
+      className={`w-full px-4 sm:px-6 lg:px-8 ${className || ''}`}
     >
       <div className="relative rounded-3xl overflow-hidden bg-[var(--dk-surface-base)] p-6 sm:p-8 md:p-10 shadow-xl">
         {/* Ambient radial accent lighting */}

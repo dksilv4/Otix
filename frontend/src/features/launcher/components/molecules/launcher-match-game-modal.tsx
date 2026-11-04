@@ -52,7 +52,7 @@ export const MatchGameModal = ({ game, onClose, isExiting }: Props) => {
 
     if (serverId) {
       try {
-        await apiClient.post(`/library/servers/${serverId}/otix/match`, {
+        await apiClient.post(`/library/nodes/${serverId}/otix/match`, {
           mediaId,
           fileId,
           filepath,

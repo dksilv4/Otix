@@ -2,8 +2,7 @@ import type { ReactNode } from "react"
 import { NavigationProvider } from "@navigation/providers/navigation-provider"
 import { NavPillLeft } from "../molecules/navigation-pill-left"
 import { NavPillRight } from "../molecules/navigation-pill-right"
-import { MenuDropdown } from "./navigation-sidebar"
-
+import { NavPillCenter } from "../molecules/navigation-pill-center"
 import { useNavPillsVisibility } from "../../hooks/use-nav-pills-visibility"
 
 interface NavShellProps {
@@ -26,7 +25,7 @@ const NavShellInner = ({
   return (
     <>
       {showLeft && <NavPillLeft />}
-      {showLeft && <MenuDropdown />}
+      <NavPillCenter />
       {showRight && (
         <NavPillRight
           isPinned={isPinned}

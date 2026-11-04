@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import IntegrityError
-from rest_framework import status
+from rest_framework import permissions, status
 from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -77,6 +77,8 @@ class RehydrateStreamView(APIView):
 class ImportView(APIView):
     """``POST /media/import`` — tmdb/igdb import (short-circuit only)."""
 
+    permission_classes = (permissions.AllowAny,)
+
     def post(self, request) -> Response:
         provider = (request.data.get("provider") or "").lower()
         provider_id = str(request.data.get("provider_id") or "")
@@ -96,8 +98,10 @@ class ImportView(APIView):
 class ImportIgdbView(APIView):
     """``POST /media/import/igdb?igdb_id=...`` — seed from IGDB when missing."""
 
+    permission_classes = (permissions.AllowAny,)
+
     def post(self, request) -> Response:
-        raw = request.query_params.get("igdb_id")
+        raw = request.query_params.get("igdb_id") or (request.data.get("igdb_id") if isinstance(request.data, dict) else None)
         try:
             igdb_id = int(raw) if raw else None
         except (TypeError, ValueError):
@@ -113,6 +117,8 @@ class ImportIgdbView(APIView):
 class MatchGameView(APIView):
     """``POST /media/match`` — resolve one scanned/local title to the catalog."""
 
+    permission_classes = (permissions.AllowAny,)
+
     def post(self, request) -> Response:
         game = request.data if isinstance(request.data, dict) else {}
         return Response(import_service.match_game_payload(game))
@@ -120,6 +126,8 @@ class MatchGameView(APIView):
 
 class MatchBatchView(APIView):
     """``POST /media/match/batch`` — resolve scanned/local titles to the catalog."""
+
+    permission_classes = (permissions.AllowAny,)
 
     def post(self, request) -> Response:
         games = request.data.get("games") if isinstance(request.data, dict) else None
@@ -135,6 +143,8 @@ class MatchStreamView(MatchBatchView):
 class MatchScanView(APIView):
     """``POST /media/match/scan`` — resolve scanned/local titles to the catalog."""
 
+    permission_classes = (permissions.AllowAny,)
+
     def post(self, request) -> Response:
         games = request.data.get("games") if isinstance(request.data, dict) else None
         if not isinstance(games, list):
@@ -144,6 +154,8 @@ class MatchScanView(APIView):
 
 class MatchConfirmView(APIView):
     """``POST /media/match/confirm`` — link a local, Steam, or Epic game to a catalog item."""
+
+    permission_classes = (permissions.AllowAny,)
 
     def post(self, request) -> Response:
         from django.contrib.contenttypes.models import ContentType
@@ -163,10 +175,14 @@ class MatchConfirmView(APIView):
 
         media_item = None
         if media_item_id is not None:
-            try:
-                media_item = MediaItem.objects.filter(pk=int(media_item_id)).first()
-            except (TypeError, ValueError):
-                pass
+            raw_id_str = str(media_item_id).strip()
+            if raw_id_str.startswith("igdb:"):
+                igdb_id = raw_id_str.split(":", 1)[1]
+            else:
+                try:
+                    media_item = MediaItem.objects.filter(pk=int(media_item_id)).first()
+                except (TypeError, ValueError):
+                    pass
 
         if media_item is None and igdb_id is not None:
             try:
@@ -184,6 +200,9 @@ class MatchConfirmView(APIView):
             )
 
         content_type = ContentType.objects.get_for_model(MediaItem)
+
+        if not getattr(request.user, "is_authenticated", False):
+            return Response({"success": True, "media_item_id": str(media_item.id)})
 
         # 1. Steam matching
         if query_id.startswith("steam:"):
@@ -294,7 +313,12 @@ class MatchConfirmView(APIView):
 class MatchUnlinkView(APIView):
     """``POST /media/match/unlink?query_id=...`` — unlink a game from catalog."""
 
+    permission_classes = (permissions.AllowAny,)
+
     def post(self, request) -> Response:
+        if not getattr(request.user, "is_authenticated", False):
+            return Response({"success": True, "media_item_id": None})
+
         from apps.integrations.models import UserEpicGame, UserSteamGame
 
         query_id = request.query_params.get("query_id") or request.data.get("query_id")
@@ -339,7 +363,12 @@ class MatchUnlinkView(APIView):
 class SyncLocalGamesView(APIView):
     """``POST /media/sync-local-games`` — upsert/delete local game rows."""
 
+    permission_classes = (permissions.AllowAny,)
+
     def post(self, request) -> Response:
+        if not getattr(request.user, "is_authenticated", False):
+            return Response({"upserted": 0, "deleted": 0}, status=status.HTTP_200_OK)
+
         games = request.data.get("games") if isinstance(request.data, dict) else None
         if not isinstance(games, list):
             raise ValidationError("games list is required")

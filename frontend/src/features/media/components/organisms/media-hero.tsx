@@ -23,6 +23,7 @@ import { useAuth } from '@auth/hooks/use-auth'
 import { MediaLogo } from '@/lib/media/media-logo'
 import { useModal } from '@/lib/modals'
 import { useMediaActivity } from '@/features/media/hooks/use-media-activity'
+import { useMediaDownloadActivity } from '@/features/media/hooks/use-media-download-activity'
 import { MediaActivityModal } from '@/features/media/components/organisms/media-activity-modal'
 import { useGameFreePromotions } from '@media/game/hooks/use-game-free-promotions'
 import { TrailerVideoModal } from '@/features/discover/components/molecules/trailer-video-modal'
@@ -66,6 +67,11 @@ export const MediaHero = ({ className = '' }: MediaHeroProps) => {
 
   const activeMediaId = detail?.id ? String(detail.id) : (detail?.slug || mediaId)
   const activity = useMediaActivity(mediaType, detail?.tmdbId, activeMediaId)
+  const downloadActivity = useMediaDownloadActivity(mediaType, activeMediaId, {
+    tmdbId: detail?.tmdbId,
+    tvdbId: (detail as any)?.tvdbId,
+    title: detail?.title,
+  })
 
   const { data: userInteractions } = useUserInteractions(mediaType, activeMediaId, {
     enabled: isAuthenticated && Boolean(activeMediaId),
@@ -206,7 +212,7 @@ export const MediaHero = ({ className = '' }: MediaHeroProps) => {
       </div>
 
       {/* ── Hero Foreground Content ── */}
-      <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pt-16 sm:pt-22 pb-2">
+      <div className="relative z-10 w-full px-4 sm:px-6 lg:px-8 pt-16 sm:pt-22 pb-2">
         <div className="flex flex-col items-center sm:flex-row sm:items-center lg:items-end gap-6 sm:gap-8 lg:gap-10">
           {/* Poster with subtle ambient glow */}
           <div className="w-36 shrink-0 sm:w-44 lg:w-56 xl:w-60 group">
@@ -347,7 +353,7 @@ export const MediaHero = ({ className = '' }: MediaHeroProps) => {
                 </Badge>
               )}
 
-              {activity && (
+              {activity ? (
                 <button
                   type="button"
                   onClick={() => {
@@ -372,13 +378,25 @@ export const MediaHero = ({ className = '' }: MediaHeroProps) => {
                   {activity.status === 'requested' && <Clock className="h-3 w-3" />}
                   <span>
                     {activity.status === 'processing'
-                      ? `Downloading (${activity.progress?.toFixed(0)}%) · ${activity.nodeName}`
+                      ? `Downloading (${downloadActivity.isDownloading ? downloadActivity.overallProgress.toFixed(0) : activity.progress?.toFixed(0)}%) · ${activity.nodeName}`
                       : activity.status === 'requested'
                         ? `Requested · ${activity.nodeName}`
                         : `Available · ${activity.nodeName}`}
                   </span>
                 </button>
-              )}
+              ) : downloadActivity.isDownloading ? (
+                <div
+                  className={cn(
+                    GLASS_PILL,
+                    'inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-xs font-semibold bg-sky-500/20 text-sky-400',
+                  )}
+                >
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  <span>
+                    {`Downloading (${downloadActivity.overallProgress.toFixed(0)}%)${downloadActivity.speed ? ` · ${downloadActivity.speed}` : ''}`}
+                  </span>
+                </div>
+              ) : null}
             </div>
 
             {/* ── Action Command Row with Icon-Based Action Cluster ── */}

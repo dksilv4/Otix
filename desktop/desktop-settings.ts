@@ -8,6 +8,8 @@ export interface DesktopSettings {
   closeToTray: boolean;
   alwaysOnTop: boolean;
   startMinimized: boolean;
+  /** Whether GPU hardware acceleration is enabled (default: true). */
+  hardwareAcceleration?: boolean;
   gamesDownloadPath?: string;
   gamesInstallPath?: string;
   isoDownloadPath?: string;
@@ -29,6 +31,30 @@ export interface DesktopSettings {
   allowPrerelease?: boolean;
   /** Personal Access Token for private GitHub updates. */
   githubToken?: string;
+  /** In-game performance HUD overlay enabled (default: true). */
+  overlayEnabled?: boolean;
+  /** In-game performance HUD layout style (default: 'top-wide'). */
+  overlayCorner?: string;
+  /** In-game performance HUD assigned monitor (default: 'auto'). */
+  overlayMonitor?: string;
+  /** In-game performance HUD global toggle hotkey (default: 'Ctrl+`'). */
+  overlayHotkey?: string;
+  /** Show live FPS counter on HUD (default: true). */
+  overlayShowFps?: boolean;
+  /** Show 1% Low & Average framerates on HUD (default: true). */
+  overlayShowPercentiles?: boolean;
+  /** Show active session playtime clock on HUD (default: true). */
+  overlayShowPlaytime?: boolean;
+  /** Show game title and brand on HUD (default: true). */
+  overlayShowTitle?: boolean;
+  /** HUD opacity 0.0 - 1.0 (default: 0.92). */
+  overlayOpacity?: number;
+  /** Attached display monitors enumerated by the local node daemon. */
+  overlayMonitors?: Array<{ id: string; name: string; device?: string; width?: number; height?: number; is_primary?: boolean; isPrimary?: boolean; left?: number; top?: number }>;
+  /** Only detect and track FPS/sessions for games scanned in library or mapped in custom mappings (default: true). */
+  onlyTrackScannedGames?: boolean;
+  /** Backend API base URL override (e.g. http://127.0.0.1:8000 or https://otix.app). */
+  apiBaseUrl?: string;
 }
 
 export function getDefaultGamesInstallPath(): string {
@@ -49,6 +75,7 @@ const DEFAULT_SETTINGS: DesktopSettings = {
   closeToTray: false,
   alwaysOnTop: false,
   startMinimized: false,
+  hardwareAcceleration: true,
   gamesDownloadPath: '',
   gamesInstallPath: getDefaultGamesInstallPath(),
   isoDownloadPath: '',
@@ -59,6 +86,16 @@ const DEFAULT_SETTINGS: DesktopSettings = {
   autoDownloadUpdates: true,
   allowPrerelease: false,
   githubToken: '',
+  overlayEnabled: true,
+  overlayCorner: 'top-wide',
+  overlayMonitor: 'auto',
+  overlayHotkey: 'Ctrl+`',
+  overlayShowFps: true,
+  overlayShowPercentiles: true,
+  overlayShowPlaytime: true,
+  overlayShowTitle: true,
+  overlayOpacity: 0.92,
+  onlyTrackScannedGames: true,
   emulatorPaths: {},
   defaultPlatformEmulators: {
     snes: 'retroarch',

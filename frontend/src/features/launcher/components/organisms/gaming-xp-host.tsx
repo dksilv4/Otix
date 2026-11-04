@@ -1,5 +1,7 @@
 import { useEffect, useRef } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { apiClient } from '@/lib/api/client'
+import { localGameKeys } from '@/features/launcher/data/game-queries'
 import { showXPToast } from '@/components/ui/atoms/xp-toast'
 import { useAuth } from '@/features/auth/hooks/use-auth'
 import { useRunningGame } from '../../hooks/use-running-game'
@@ -33,6 +35,13 @@ interface HeartbeatResponse {
 
 /** Headless host component that tracks active gaming duration, match outcomes, and awards session XP. */
 export const GamingXpHost = () => {
+  let queryClient: ReturnType<typeof useQueryClient> | null = null
+  try {
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    queryClient = useQueryClient()
+  } catch {
+    // Isolated unit test environment without QueryClientProvider
+  }
   const { runningGame, elapsedMs } = useRunningGame()
   const isCs2 = Boolean(
     runningGame &&
@@ -202,21 +211,63 @@ export const GamingXpHost = () => {
     }
   }, [runningGame, elapsedMs])
 
-  // 2. Final heartbeat when game stops
+  // 2. Final heartbeat & save play session to user account when game stops
   const prevRunningGameRef = useRef(runningGame)
   const prevElapsedMsRef = useRef(elapsedMs)
   useEffect(() => {
-    if (prevRunningGameRef.current && !runningGame && userRef.current && sessionRef.current) {
+    if (prevRunningGameRef.current && !runningGame && userRef.current) {
+      const finishedGame = prevRunningGameRef.current
       const activeSession = sessionRef.current
-      const durationSeconds = Math.floor(prevElapsedMsRef.current / 1000)
-      const sessionId = `sess-${activeSession.gameId}-${activeSession.startTime}`
+      const durationSeconds = Math.max(1, Math.floor(prevElapsedMsRef.current / 1000))
+      const gameId = activeSession?.gameId || finishedGame.game.id
+      const gameTitle = activeSession?.gameTitle || finishedGame.game.title
+      const startTime = activeSession?.startTime || finishedGame.startTime
+      const sessionId = `sess-${gameId}-${startTime}`
       const latestStats = matchStatsRef.current
+      const isCs2Finished = isCs2Game(gameTitle || finishedGame.game.exePath || finishedGame.game.processName)
 
       void (async () => {
+        // 1. Save game play session to user account
+        try {
+          await apiClient.post('/library/game-sessions', {
+            gameId,
+            gameTitle,
+            sessionId,
+            startTime: new Date(startTime).toISOString(),
+            endTime: new Date().toISOString(),
+            durationSeconds,
+            platform: finishedGame.game.platform || 'pc',
+            processName: finishedGame.game.processName,
+            otixMediaId: finishedGame.game.otixMediaId,
+            posterUrl: finishedGame.game.posterUrl,
+            backdropUrl: finishedGame.game.backdropUrl,
+            fpsStats: finishedGame.fpsSnapshot ? {
+              avgFps: finishedGame.fpsSnapshot.currentFps,
+              totalFrames: finishedGame.fpsSnapshot.frameCount,
+              ...(isCs2Finished ? {
+                kills: latestStats.kills,
+                deaths: latestStats.deaths,
+                assists: latestStats.assists,
+                won: latestStats.isWin,
+                completed: latestStats.isCompleted,
+              } : {}),
+            } : (isCs2Finished ? {
+              kills: latestStats.kills,
+              deaths: latestStats.deaths,
+              assists: latestStats.assists,
+              won: latestStats.isWin,
+              completed: latestStats.isCompleted,
+            } : undefined),
+          })
+        } catch {
+          // ignore network or offline errors
+        }
+
+        // 2. Report final heartbeat and award XP
         try {
           const res = await apiClient.post<HeartbeatResponse>('/users/me/gaming-heartbeat', {
-            gameId: activeSession.gameId,
-            gameTitle: activeSession.gameTitle,
+            gameId,
+            gameTitle,
             sessionId,
             durationSeconds,
             isFinal: true,
@@ -228,9 +279,9 @@ export const GamingXpHost = () => {
           })
           const data = res?.data
           if (data && data.status === 'ok' && data.xpAwarded > 0) {
-            let reasonLabel = activeSession.gameTitle
+            let reasonLabel = gameTitle
             if (data.breakdown) {
-              const parts: string[] = [activeSession.gameTitle]
+              const parts: string[] = [gameTitle]
               if (data.breakdown.winXp > 0) parts.push('Victory')
               if (data.breakdown.kdrMultiplier > 1.0) parts.push(`${data.breakdown.kdrMultiplier}x KDR`)
               reasonLabel = parts.join(' · ')
@@ -243,13 +294,15 @@ export const GamingXpHost = () => {
           resetGamingSessionState()
           sessionRef.current = null
           lastAwardedMatchKeyRef.current = null
+          queryClient?.invalidateQueries({ queryKey: ['user-game-sessions'] })
+          queryClient?.invalidateQueries({ queryKey: localGameKeys.all })
         }
       })()
     }
 
     prevRunningGameRef.current = runningGame
     prevElapsedMsRef.current = elapsedMs
-  }, [runningGame, elapsedMs])
+  }, [runningGame, elapsedMs, queryClient])
 
   return null
 };

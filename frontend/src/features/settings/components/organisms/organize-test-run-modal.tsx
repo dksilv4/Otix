@@ -513,7 +513,7 @@ export const OrganizeTestRunModal = ({
         if (nodeId && nodeId > 0) {
           try {
             const res = await apiClient.post<PreviewItem[]>(
-              `/library/servers/${nodeId}/organize/preview`,
+              `/library/nodes/${nodeId}/organize/preview`,
               {
                 directory: folderToScan,
                 template,
@@ -567,10 +567,17 @@ export const OrganizeTestRunModal = ({
             rawMessage = err.response.data
           }
         }
-        const cleanMessage = String(rawMessage)
+        let cleanMessage = String(rawMessage)
           .replace(/Error invoking remote method '[^']+':\s*/gi, '')
           .replace(/^Error:\s*/gi, '')
           .trim()
+
+        if (/UNKNOWN:\s*unknown error,\s*stat/i.test(cleanMessage) || /errno:\s*-4094/i.test(cleanMessage)) {
+          const isNetwork = folderToScan.startsWith('\\\\') || folderToScan.startsWith('//')
+          cleanMessage = isNetwork
+            ? `Network share is offline or unreachable: ${folderToScan}. Check if the server is powered on and accessible on your network.`
+            : `Folder path is inaccessible: ${folderToScan}. Verify that the path exists and is readable.`
+        }
 
         const errorMsg =
           cleanMessage ||
@@ -724,7 +731,7 @@ export const OrganizeTestRunModal = ({
           }
           try {
             const res = await apiClient.post<any>(
-              `/library/servers/${nodeId}/organize/execute`,
+              `/library/nodes/${nodeId}/organize/execute`,
               payload,
               { timeout: 120_000 },
             )
@@ -843,7 +850,7 @@ export const OrganizeTestRunModal = ({
           window.dispatchEvent(new Event('scanned-games-updated'))
         }
         if (nodeId && nodeId > 0) {
-          void apiClient.post(`/library/servers/${nodeId}/scan`).catch(() => {})
+          void apiClient.post(`/library/nodes/${nodeId}/scan`).catch(() => {})
         }
       }
     } catch (err: any) {

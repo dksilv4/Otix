@@ -29,8 +29,11 @@ import { isLocalDesktopNode } from '../../local-desktop-node'
 import { isProbeReachable, formatProbeLatency } from '../../utils/node-probe'
 
 export interface EditWorkerNodeModalProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
+  open?: boolean
+  isOpen?: boolean
+  onOpenChange?: (open: boolean) => void
+  onClose?: () => void
+  isExiting?: boolean
   server?: GameServer | null
   node?: GameServer | null
   homes?: UserHome[]
@@ -42,7 +45,10 @@ export interface EditWorkerNodeModalProps {
 
 export const EditWorkerNodeModal = ({
   open,
+  isOpen,
   onOpenChange,
+  onClose,
+  isExiting,
   server,
   node,
   homes = [],
@@ -51,6 +57,11 @@ export const EditWorkerNodeModal = ({
   onOpenFullSettings,
   onDisconnectSuccess,
 }: EditWorkerNodeModalProps) => {
+  const isModalOpen = (open ?? isOpen ?? true) && !isExiting
+  const handleClose = () => {
+    onOpenChange?.(false)
+    onClose?.()
+  }
   const activeServer = server ?? node ?? null
   const { toast } = useToast()
   const updateServerMutation = useUpdateGameServer()
@@ -87,7 +98,7 @@ export const EditWorkerNodeModal = ({
       setAuthToken(activeServer.authToken || '')
       setProbeResult(null)
     }
-  }, [activeServer, serverMachines, open])
+  }, [activeServer, serverMachines, isModalOpen])
 
   if (!activeServer) return null
 
@@ -178,7 +189,7 @@ export const EditWorkerNodeModal = ({
         description: `Saved changes to ${trimmedName}.`,
         variant: 'default',
       })
-      onOpenChange(false)
+      handleClose()
       onSuccess?.()
     } catch (err: unknown) {
       toast({
@@ -200,7 +211,7 @@ export const EditWorkerNodeModal = ({
         variant: 'default',
       })
       setConfirmDisconnect(false)
-      onOpenChange(false)
+      handleClose()
       onDisconnectSuccess?.()
     } catch (err: unknown) {
       toast({
@@ -230,8 +241,10 @@ export const EditWorkerNodeModal = ({
   return (
     <>
       <DkDialog
-        open={open}
-        onOpenChange={onOpenChange}
+        open={isModalOpen}
+        onOpenChange={(next) => {
+          if (!next) handleClose()
+        }}
         className="max-w-md"
         title={`Edit ${activeServer.name}`}
         description="Configure node name, assigned home environment, hosted machine, and connectivity."
@@ -384,7 +397,7 @@ export const EditWorkerNodeModal = ({
                 variant="outline"
                 size="sm"
                 onClick={() => {
-                  onOpenChange(false)
+                  handleClose()
                   onOpenFullSettings(activeServer)
                 }}
                 className="h-7 text-xs gap-1.5 shrink-0"
@@ -417,7 +430,7 @@ export const EditWorkerNodeModal = ({
               <DkButton
                 type="button"
                 variant="ghost"
-                onClick={() => onOpenChange(false)}
+                onClick={handleClose}
                 disabled={isSaving}
               >
                 Cancel

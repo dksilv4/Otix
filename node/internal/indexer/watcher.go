@@ -126,9 +126,10 @@ func (w *Watcher) eventLoop() {
 				}
 			}
 
-			// Skip temporary or hidden files
+			// Skip temporary, hidden, or metadata sidecar files
 			base := filepath.Base(event.Name)
-			if strings.HasPrefix(base, ".") || strings.HasSuffix(base, ".tmp") || strings.HasSuffix(base, ".crdownload") {
+			lower := strings.ToLower(base)
+			if strings.HasPrefix(base, ".") || strings.HasSuffix(lower, ".tmp") || strings.HasSuffix(lower, ".crdownload") || strings.HasSuffix(lower, ".otix") || strings.HasSuffix(lower, ".otixmeta") {
 				continue
 			}
 

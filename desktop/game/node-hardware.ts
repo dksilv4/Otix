@@ -73,6 +73,54 @@ export function httpGetJson<T = any>(urlStr: string, timeoutMs = 800): Promise<T
   });
 }
 
+export function httpPostJson<T = any>(urlStr: string, payload: unknown, timeoutMs = 1500): Promise<T | null> {
+  return new Promise((resolve) => {
+    try {
+      const parsed = new URL(urlStr);
+      const data = JSON.stringify(payload);
+      const req = http.request(
+        {
+          hostname: parsed.hostname,
+          port: parsed.port,
+          path: parsed.pathname + parsed.search,
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Content-Length': Buffer.byteLength(data),
+          },
+          timeout: timeoutMs,
+        },
+        (res) => {
+          if (res.statusCode && res.statusCode >= 200 && res.statusCode < 300) {
+            let body = '';
+            res.on('data', (chunk) => {
+              body += chunk;
+            });
+            res.on('end', () => {
+              try {
+                resolve(JSON.parse(body) as T);
+              } catch {
+                resolve(null);
+              }
+            });
+          } else {
+            resolve(null);
+          }
+        },
+      );
+      req.on('error', () => resolve(null));
+      req.on('timeout', () => {
+        req.destroy();
+        resolve(null);
+      });
+      req.write(data);
+      req.end();
+    } catch {
+      resolve(null);
+    }
+  });
+}
+
 /** Check known filesystem locations to verify if an Otix Node is installed. */
 export function checkNodeInstalledOnDisk(): { installed: boolean; name?: string } {
   const candidates: string[] = [];

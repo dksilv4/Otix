@@ -58,7 +58,7 @@ export const FriendsPage = () => {
     .map((a) => a.friend)
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-20 space-y-8">
+    <div className="w-full px-4 sm:px-6 lg:px-8 pt-6 pb-20 space-y-8">
       <Helmet>
         <title>Friends — Otix</title>
       </Helmet>

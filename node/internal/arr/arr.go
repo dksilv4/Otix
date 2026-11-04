@@ -16,9 +16,11 @@ import (
 )
 
 type ConnectionTestResult struct {
-	OK      bool   `json:"ok"`
-	Message string `json:"message"`
-	Version string `json:"version,omitempty"`
+	OK              bool   `json:"ok"`
+	Message         string `json:"message"`
+	Version         string `json:"version,omitempty"`
+	URLBase         string `json:"url_base,omitempty"`
+	DetectedURLBase string `json:"detected_url_base,omitempty"`
 }
 
 type RootFolder struct {
@@ -51,7 +53,13 @@ func BuildBaseURL(host string, port int, useSSL bool, urlBase string) string {
 		u, err := url.Parse(rawHost)
 		if err == nil {
 			scheme := u.Scheme
+			if useSSL {
+				scheme = "https"
+			}
 			netloc := u.Host
+			if u.Port() == "" && port > 0 && port != 80 && port != 443 {
+				netloc = fmt.Sprintf("%s:%d", u.Hostname(), port)
+			}
 			existingPath := strings.TrimRight(u.Path, "/")
 			if cleanSubpath != "" && !strings.HasSuffix(existingPath, cleanSubpath) {
 				existingPath = strings.TrimRight(existingPath+"/"+cleanSubpath, "/")
@@ -71,6 +79,9 @@ func BuildBaseURL(host string, port int, useSSL bool, urlBase string) string {
 		scheme := "http"
 		if useSSL {
 			scheme = "https"
+		}
+		if !strings.Contains(hostDomain, ":") && port > 0 && port != 80 && port != 443 && !useSSL {
+			hostDomain = fmt.Sprintf("%s:%d", hostDomain, port)
 		}
 		return fmt.Sprintf("%s://%s%s", scheme, hostDomain, extraPath)
 	}
@@ -104,6 +115,9 @@ type RadarrClient struct {
 }
 
 func NewRadarrClient(inst config.RadarrInstance) *RadarrClient {
+	inst.Host = strings.TrimSpace(inst.Host)
+	inst.APIKey = strings.TrimSpace(inst.APIKey)
+	inst.URLBase = strings.TrimSpace(inst.URLBase)
 	return &RadarrClient{
 		BaseURL:  BuildBaseURL(inst.Host, inst.Port, inst.UseSSL, inst.URLBase),
 		APIKey:   inst.APIKey,
@@ -114,6 +128,13 @@ func NewRadarrClient(inst config.RadarrInstance) *RadarrClient {
 
 func (c *RadarrClient) do(method, path string, body interface{}, out interface{}) error {
 	reqURL := fmt.Sprintf("%s%s", c.BaseURL, path)
+	if c.APIKey != "" {
+		separator := "?"
+		if strings.Contains(reqURL, "?") {
+			separator = "&"
+		}
+		reqURL = fmt.Sprintf("%s%sapikey=%s", reqURL, separator, url.QueryEscape(c.APIKey))
+	}
 	var bodyReader io.Reader
 	if body != nil {
 		data, err := json.Marshal(body)
@@ -140,6 +161,9 @@ func (c *RadarrClient) do(method, path string, body interface{}, out interface{}
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		respBytes, _ := io.ReadAll(resp.Body)
+		if resp.StatusCode == http.StatusUnauthorized {
+			return fmt.Errorf("Radarr authentication failed (HTTP 401 Unauthorized): Check API key")
+		}
 		return fmt.Errorf("HTTP %d: %s", resp.StatusCode, string(respBytes))
 	}
 
@@ -154,17 +178,69 @@ func (c *RadarrClient) do(method, path string, body interface{}, out interface{}
 }
 
 func (c *RadarrClient) TestConnection() ConnectionTestResult {
-	if c.APIKey == "" {
+	if strings.TrimSpace(c.APIKey) == "" {
 		return ConnectionTestResult{OK: false, Message: "Radarr API key is missing"}
 	}
 	var res struct {
 		Version string `json:"version"`
+		URLBase string `json:"urlBase"`
 	}
-	err := c.do("GET", "/api/v3/system/status", nil, &res)
+	reqURL := fmt.Sprintf("%s/api/v3/system/status", c.BaseURL)
+	if c.APIKey != "" {
+		separator := "?"
+		if strings.Contains(reqURL, "?") {
+			separator = "&"
+		}
+		reqURL = fmt.Sprintf("%s%sapikey=%s", reqURL, separator, url.QueryEscape(c.APIKey))
+	}
+	req, err := http.NewRequest("GET", reqURL, nil)
 	if err != nil {
 		return ConnectionTestResult{OK: false, Message: err.Error()}
 	}
-	return ConnectionTestResult{OK: true, Message: "Connection successful", Version: res.Version}
+	req.Header.Set("X-Api-Key", c.APIKey)
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return ConnectionTestResult{OK: false, Message: err.Error()}
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		respBytes, _ := io.ReadAll(resp.Body)
+		if resp.StatusCode == http.StatusUnauthorized {
+			return ConnectionTestResult{OK: false, Message: "Radarr authentication failed (HTTP 401 Unauthorized): Check API key"}
+		}
+		return ConnectionTestResult{OK: false, Message: fmt.Sprintf("HTTP %d: %s", resp.StatusCode, string(respBytes))}
+	}
+
+	respBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return ConnectionTestResult{OK: false, Message: err.Error()}
+	}
+	_ = json.Unmarshal(respBytes, &res)
+
+	detectedURLBase := ""
+	if resp.Request != nil && resp.Request.URL != nil {
+		finalPath := resp.Request.URL.Path
+		if idx := strings.Index(finalPath, "/api/v3"); idx > 0 {
+			detectedURLBase = strings.TrimRight(finalPath[:idx], "/")
+		}
+	}
+	if detectedURLBase == "" && res.URLBase != "" {
+		detectedURLBase = "/" + strings.Trim(res.URLBase, "/")
+	}
+
+	if detectedURLBase != "" && c.Instance.URLBase == "" {
+		c.BaseURL = BuildBaseURL(c.Instance.Host, c.Instance.Port, c.Instance.UseSSL, detectedURLBase)
+	}
+
+	return ConnectionTestResult{
+		OK:              true,
+		Message:         "Connection successful",
+		Version:         res.Version,
+		URLBase:         detectedURLBase,
+		DetectedURLBase: detectedURLBase,
+	}
 }
 
 func (c *RadarrClient) GetRootFolders() ([]RootFolder, error) {
@@ -393,7 +469,7 @@ func (c *RadarrClient) AddMovie(payload interface{}) (interface{}, error) {
 }
 
 func (c *RadarrClient) GetQueue(page, pageSize int) (*QueueResponse, error) {
-	path := fmt.Sprintf("/api/v3/queue?page=%d&pageSize=%d&includeUnknownMovieItems=true", page, pageSize)
+	path := fmt.Sprintf("/api/v3/queue?page=%d&pageSize=%d&includeUnknownMovieItems=true&includeMovie=true", page, pageSize)
 	var res QueueResponse
 	err := c.do("GET", path, nil, &res)
 	return &res, err
@@ -421,6 +497,9 @@ type SonarrClient struct {
 }
 
 func NewSonarrClient(inst config.SonarrInstance) *SonarrClient {
+	inst.Host = strings.TrimSpace(inst.Host)
+	inst.APIKey = strings.TrimSpace(inst.APIKey)
+	inst.URLBase = strings.TrimSpace(inst.URLBase)
 	return &SonarrClient{
 		BaseURL:  BuildBaseURL(inst.Host, inst.Port, inst.UseSSL, inst.URLBase),
 		APIKey:   inst.APIKey,
@@ -431,6 +510,13 @@ func NewSonarrClient(inst config.SonarrInstance) *SonarrClient {
 
 func (c *SonarrClient) do(method, path string, body interface{}, out interface{}) error {
 	reqURL := fmt.Sprintf("%s%s", c.BaseURL, path)
+	if c.APIKey != "" {
+		separator := "?"
+		if strings.Contains(reqURL, "?") {
+			separator = "&"
+		}
+		reqURL = fmt.Sprintf("%s%sapikey=%s", reqURL, separator, url.QueryEscape(c.APIKey))
+	}
 	var bodyReader io.Reader
 	if body != nil {
 		data, err := json.Marshal(body)
@@ -457,6 +543,9 @@ func (c *SonarrClient) do(method, path string, body interface{}, out interface{}
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		respBytes, _ := io.ReadAll(resp.Body)
+		if resp.StatusCode == http.StatusUnauthorized {
+			return fmt.Errorf("Sonarr authentication failed (HTTP 401 Unauthorized): Check API key")
+		}
 		return fmt.Errorf("HTTP %d: %s", resp.StatusCode, string(respBytes))
 	}
 
@@ -471,17 +560,69 @@ func (c *SonarrClient) do(method, path string, body interface{}, out interface{}
 }
 
 func (c *SonarrClient) TestConnection() ConnectionTestResult {
-	if c.APIKey == "" {
+	if strings.TrimSpace(c.APIKey) == "" {
 		return ConnectionTestResult{OK: false, Message: "Sonarr API key is missing"}
 	}
 	var res struct {
 		Version string `json:"version"`
+		URLBase string `json:"urlBase"`
 	}
-	err := c.do("GET", "/api/v3/system/status", nil, &res)
+	reqURL := fmt.Sprintf("%s/api/v3/system/status", c.BaseURL)
+	if c.APIKey != "" {
+		separator := "?"
+		if strings.Contains(reqURL, "?") {
+			separator = "&"
+		}
+		reqURL = fmt.Sprintf("%s%sapikey=%s", reqURL, separator, url.QueryEscape(c.APIKey))
+	}
+	req, err := http.NewRequest("GET", reqURL, nil)
 	if err != nil {
 		return ConnectionTestResult{OK: false, Message: err.Error()}
 	}
-	return ConnectionTestResult{OK: true, Message: "Connection successful", Version: res.Version}
+	req.Header.Set("X-Api-Key", c.APIKey)
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return ConnectionTestResult{OK: false, Message: err.Error()}
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		respBytes, _ := io.ReadAll(resp.Body)
+		if resp.StatusCode == http.StatusUnauthorized {
+			return ConnectionTestResult{OK: false, Message: "Sonarr authentication failed (HTTP 401 Unauthorized): Check API key"}
+		}
+		return ConnectionTestResult{OK: false, Message: fmt.Sprintf("HTTP %d: %s", resp.StatusCode, string(respBytes))}
+	}
+
+	respBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return ConnectionTestResult{OK: false, Message: err.Error()}
+	}
+	_ = json.Unmarshal(respBytes, &res)
+
+	detectedURLBase := ""
+	if resp.Request != nil && resp.Request.URL != nil {
+		finalPath := resp.Request.URL.Path
+		if idx := strings.Index(finalPath, "/api/v3"); idx > 0 {
+			detectedURLBase = strings.TrimRight(finalPath[:idx], "/")
+		}
+	}
+	if detectedURLBase == "" && res.URLBase != "" {
+		detectedURLBase = "/" + strings.Trim(res.URLBase, "/")
+	}
+
+	if detectedURLBase != "" && c.Instance.URLBase == "" {
+		c.BaseURL = BuildBaseURL(c.Instance.Host, c.Instance.Port, c.Instance.UseSSL, detectedURLBase)
+	}
+
+	return ConnectionTestResult{
+		OK:              true,
+		Message:         "Connection successful",
+		Version:         res.Version,
+		URLBase:         detectedURLBase,
+		DetectedURLBase: detectedURLBase,
+	}
 }
 
 func (c *SonarrClient) GetRootFolders() ([]RootFolder, error) {
@@ -632,7 +773,7 @@ func (c *SonarrClient) AddSeries(payload interface{}) (interface{}, error) {
 }
 
 func (c *SonarrClient) GetQueue(page, pageSize int) (*QueueResponse, error) {
-	path := fmt.Sprintf("/api/v3/queue?page=%d&pageSize=%d&includeUnknownSeriesItems=true", page, pageSize)
+	path := fmt.Sprintf("/api/v3/queue?page=%d&pageSize=%d&includeUnknownSeriesItems=true&includeSeries=true&includeEpisode=true", page, pageSize)
 	var res QueueResponse
 	err := c.do("GET", path, nil, &res)
 	return &res, err

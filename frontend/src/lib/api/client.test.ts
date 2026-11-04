@@ -194,7 +194,7 @@ describe('apiClient', () => {
     apiClient.defaults.adapter = testAdapter
     axios.defaults.adapter = testAdapter
 
-    await expect(apiClient.get('/library/servers')).rejects.toMatchObject({ response: { status: 401 } })
+    await expect(apiClient.get('/library/nodes')).rejects.toMatchObject({ response: { status: 401 } })
     expect(refreshCalls).toBe(0)
     expect(sessionExpiredDispatched).toBe(false)
   })

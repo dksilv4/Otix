@@ -2,6 +2,17 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { DownloadQueuePage } from '../download-queue'
 
+vi.mock('@tanstack/react-router', () => ({
+  Link: ({ children, to, params, className }: any) => (
+    <a href={`${to}/${params?.mediaId ?? ''}`} className={className}>
+      {children}
+    </a>
+  ),
+  useNavigate: () => vi.fn(),
+}))
+
+
+
 vi.mock('@/lib/providers/auth', () => ({
   useAuth: () => ({
     user: { id: 1, username: 'testuser', isAdmin: true },
@@ -100,6 +111,28 @@ vi.mock('../../use-server-usenet', () => ({
   }),
 }))
 
+let mockSonarrRecords: any[] = []
+let mockRadarrRecords: any[] = []
+
+vi.mock('../../use-server-arr', () => ({
+  useServerSonarrQueue: () => ({
+    data: { records: mockSonarrRecords },
+    refetch: vi.fn(),
+  }),
+  useServerRadarrQueue: () => ({
+    data: { records: mockRadarrRecords },
+    refetch: vi.fn(),
+  }),
+  useCancelServerSonarrQueueItem: () => ({
+    mutate: vi.fn(),
+    isPending: false,
+  }),
+  useCancelServerRadarrQueueItem: () => ({
+    mutate: vi.fn(),
+    isPending: false,
+  }),
+}))
+
 vi.mock('../../use-media-requests', () => ({
   useMediaRequests: () => ({
     data: {
@@ -130,6 +163,37 @@ vi.mock('../../use-media-requests', () => ({
 describe('DownloadQueuePage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockSonarrRecords = []
+    mockRadarrRecords = []
+  })
+
+  it('renders active Sonarr episode downloads as rich episode cards with images and formatted data', () => {
+    mockSonarrRecords = [
+      {
+        id: 991,
+        title: 'Brothers.2026.S01E02.The.Hunt.2160p.ATVP.WEB-DL.x265',
+        status: 'downloading',
+        showTitle: 'Brothers',
+        seasonNumber: 1,
+        episodeNumber: 2,
+        episodeName: 'The Hunt',
+        episodeStillUrl: 'https://image.tmdb.org/t/p/w300/still.jpg',
+        mediaItemId: 255737,
+        size: 6_000_000_000,
+        sizeLeft: 3_000_000_000,
+        timeleft: '00:15:30',
+        protocol: 'usenet',
+        downloadClient: 'SABnzbd',
+      },
+    ]
+
+    render(<DownloadQueuePage />)
+
+    expect(screen.getByText('TV Downloads (Sonarr)')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Brothers' })).toBeInTheDocument()
+    expect(screen.getByText('The Hunt')).toBeInTheDocument()
+    expect(screen.getByText('S01E02')).toBeInTheDocument()
+    expect(screen.getByText('50.0%')).toBeInTheDocument()
   })
 
   it('renders Active Downloads on the main tab and does not show history items', () => {

@@ -39,7 +39,7 @@ import { useToast } from '@ui/molecules/toast'
 import { Link } from '@tanstack/react-router'
 import { ManageDownloadersModal } from '@/features/downloads/molecules/manage-downloaders-modal'
 import { useSettingsNode } from '../context/settings-node-context'
-import { isLocalDesktopNode } from '../local-desktop-node'
+import { isLocalDesktopNode, isVirtualDesktopNode } from '../local-desktop-node'
 import { nodeSettingsNavigateOptions } from '../node-settings'
 import { SectionHeader } from '../components/molecules/settings-section-header'
 import { SettingsCard } from '../components/molecules/settings-card'
@@ -199,7 +199,7 @@ export const SettingsDownloadsPage = ({
     try {
       await Promise.all(
         gameServers
-          .filter((server) => !isLocalDesktopNode(server))
+          .filter((server) => Number(server.id) > 0 && !server.localUrl?.startsWith('otix://') && !server.primaryUrl?.startsWith('otix://'))
           .map((server) =>
           updateServerMutation.mutateAsync({
             id: server.id,
@@ -766,7 +766,7 @@ export const SettingsDownloadsPage = ({
           {gameServers.length > 0 ? (
             gameServers.map((server) => {
               const local = isLocalDesktopNode(server)
-              const reserved = local
+              const reserved = isVirtualDesktopNode(server)
               return (
               <div
                 key={server.id}
@@ -919,18 +919,20 @@ export const SettingsDownloadsPage = ({
                       <Radio size={12} />
                       <span>Ping</span>
                     </button>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        e.preventDefault()
-                        setNodeToDelete({ id: server.id, name: server.name })
-                      }}
-                      className="pointer-events-auto p-1.5 rounded-lg bg-[var(--dk-surface-field)] hover:bg-rose-500/20 text-muted-foreground hover:text-rose-500 transition-colors cursor-pointer"
-                      title="Disconnect Node"
-                    >
-                      <Trash2 size={13} />
-                    </button>
+                    {!local && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          e.preventDefault()
+                          setNodeToDelete({ id: server.id, name: server.name })
+                        }}
+                        className="pointer-events-auto p-1.5 rounded-lg bg-[var(--dk-surface-field)] hover:bg-destructive/15 text-muted-foreground hover:text-destructive transition-colors cursor-pointer"
+                        title="Disconnect Node"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    )}
                   </>
                   )}
                     <span

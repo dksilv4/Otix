@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link, useLocation } from '@tanstack/react-router'
 import { Star, Pencil, Sparkles, ExternalLink, LogIn } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '@auth/hooks/use-auth'
@@ -39,6 +40,8 @@ const SCORE_LABELS: Record<number, string> = {
 }
 
 export const RatingsHub = ({
+  /* router location */
+
   mediaId,
   mediaType,
   overallRating,
@@ -265,13 +268,19 @@ export const RatingsHub = ({
             </div>
           </div>
         ) : (
-          <div className="glass-inset p-3.5 rounded-2xl flex items-center justify-between gap-3 text-xs">
-            <span className="text-muted-foreground">Sign in to rate and log your watched media</span>
+          <Link
+            to="/auth/login"
+            search={!location.pathname.startsWith('/auth') && location.href ? { redirect: location.href } : undefined}
+            className="glass-inset p-3.5 rounded-2xl flex items-center justify-between gap-3 text-xs hover:bg-[var(--dk-surface-glass-hover)] transition-colors group cursor-pointer"
+          >
+            <span className="text-muted-foreground group-hover:text-foreground transition-colors">
+              Sign in to rate and log your watched media
+            </span>
             <div className="flex items-center gap-1 text-primary font-semibold shrink-0">
               <LogIn className="h-3.5 w-3.5" />
               <span>Sign In</span>
             </div>
-          </div>
+          </Link>
         )}
       </div>
 

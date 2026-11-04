@@ -1,16 +1,15 @@
 import { useState } from 'react'
 import { useNavigate, Link } from '@tanstack/react-router'
 import { useAuth } from '@/lib/providers/auth'
-import { useDownloadConfig } from '@/features/downloads/use-downloads'
 import { useDeleteGameServer } from '@/features/downloads/use-server-downloads'
 import { useSettingsNode } from '../context/settings-node-context'
-import { SettingsNodeSwitcherBar } from '../components/molecules/settings-node-switcher-bar'
 import { SettingsPathsSection } from '../components/organisms/settings-paths-section'
 import { GLOBAL_PROFILE_NODE_ID } from '../utils/node-switcher'
-import { FolderOpen, Server, Trash2, ExternalLink, AlertTriangle } from 'lucide-react'
+import { FolderOpen, Server, Trash2, ExternalLink, AlertTriangle, HardDrive } from 'lucide-react'
 import { DkButton } from '@ui/atoms/button'
 import { DkDialog } from '@ui/molecules/dialog'
 import { useToast } from '@ui/molecules/toast'
+import { cn } from '@/lib/utils'
 
 export interface SettingsPathsPageProps {
   onNavigateToOrganize?: () => void
@@ -23,9 +22,7 @@ export const SettingsPathsPage = ({
 }: SettingsPathsPageProps = {}) => {
   const navigate = useNavigate()
   const { toast } = useToast()
-  const { user } = useAuth()
   const { servers, selectedNode, selectedNodeId, setSelectedNodeId } = useSettingsNode()
-  const { config: dlConfig } = useDownloadConfig(user?.id)
   const deleteServerMutation = useDeleteGameServer()
   const [nodeToDelete, setNodeToDelete] = useState<{ id: number; name: string } | null>(null)
 
@@ -78,7 +75,7 @@ export const SettingsPathsPage = ({
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-xl font-bold tracking-tight text-foreground">Paths</h1>
+              <h1 className="text-xl font-bold tracking-tight text-foreground">Drive Locations</h1>
               {selectedNode && (
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-[var(--dk-surface-ghost)] border border-white/[0.04] text-muted-foreground">
                   {selectedNode.name}
@@ -86,7 +83,7 @@ export const SettingsPathsPage = ({
               )}
             </div>
             <p className="text-xs text-muted-foreground">
-              Manage library scan locations, games install paths, and storage directories per node.
+              Manage monitored folders and drive storage locations across your devices.
             </p>
           </div>
         </div>
@@ -94,16 +91,29 @@ export const SettingsPathsPage = ({
         {/* Node Actions */}
         {selectedNode && (
           <div className="flex items-center gap-2 self-start sm:self-center">
-            <Link
-              to="/settings/nodes"
-              hash="infrastructure"
-              onClick={handleGoToInfrastructure}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)] border border-white/[0.04] text-muted-foreground hover:text-foreground transition-all cursor-pointer shadow-xs"
-            >
-              <Server className="h-3.5 w-3.5 text-primary" />
-              <span>Manage Nodes</span>
-              <ExternalLink className="h-3 w-3 text-muted-foreground/60" />
-            </Link>
+            {onNavigateToInfrastructure ? (
+              <DkButton
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={onNavigateToInfrastructure}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)] border border-white/[0.04] text-muted-foreground hover:text-foreground transition-all cursor-pointer shadow-xs h-8"
+              >
+                <Server className="h-3.5 w-3.5 text-primary" />
+                <span>Manage Nodes</span>
+                <ExternalLink className="h-3 w-3 text-muted-foreground/60" />
+              </DkButton>
+            ) : (
+              <Link
+                to="/settings/nodes"
+                hash="infrastructure"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)] border border-white/[0.04] text-muted-foreground hover:text-foreground transition-all cursor-pointer shadow-xs"
+              >
+                <Server className="h-3.5 w-3.5 text-primary" />
+                <span>Manage Nodes</span>
+                <ExternalLink className="h-3 w-3 text-muted-foreground/60" />
+              </Link>
+            )}
 
             <DkButton
               type="button"
@@ -120,13 +130,41 @@ export const SettingsPathsPage = ({
         )}
       </div>
 
-      {/* Node Selector Tabs */}
-      <SettingsNodeSwitcherBar
-        activeNodeId={activeNodeId}
-        onSelectNodeId={(id) => setSelectedNodeId(id)}
-        servers={servers}
-        dlConfig={dlConfig}
-      />
+      {/* Device Switcher (This PC, Remote Machines) */}
+      {servers.length > 0 && (
+        <div className="flex items-center gap-1.5 p-1 rounded-xl bg-[var(--dk-surface-ghost)] border border-white/[0.04] w-fit">
+          <button
+            type="button"
+            onClick={() => setSelectedNodeId(0)}
+            className={cn(
+              'flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer',
+              activeNodeId === 0 || activeNodeId === GLOBAL_PROFILE_NODE_ID
+                ? 'bg-primary text-primary-foreground shadow-xs'
+                : 'text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-ghost-hover)]',
+            )}
+          >
+            <HardDrive className="h-3.5 w-3.5" />
+            <span>This PC</span>
+          </button>
+          {servers.map((server) => (
+            <button
+              key={server.id}
+              type="button"
+              onClick={() => setSelectedNodeId(server.id)}
+              className={cn(
+                'flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer',
+                activeNodeId === server.id
+                  ? 'bg-primary text-primary-foreground shadow-xs'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-ghost-hover)]',
+              )}
+            >
+              <Server className="h-3.5 w-3.5" />
+              <span>{server.name}</span>
+              <span className={cn('h-1.5 w-1.5 rounded-full', server.status === 'online' ? 'bg-primary' : 'bg-muted-foreground/40')} />
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Paths Section */}
       <SettingsPathsSection

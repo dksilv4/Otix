@@ -8,9 +8,9 @@ from django.contrib.contenttypes.models import ContentType
 
 from apps.integrations.models import UserEpicGame
 from apps.integrations.services import epic_client
-from apps.library.services.game_server import (
+from apps.library.services.node import (
     NO_EPIC_NODE,
-    pick_online_game_server,
+    pick_online_node,
     proxy_epic_scan,
 )
 from apps.media.models import ExternalID, MediaItem
@@ -42,7 +42,7 @@ def scan_epic_library(user, server=None) -> dict:
     app_name. Does not call IGDB.
     """
     if server is None:
-        server = pick_online_game_server(user)
+        server = pick_online_node(user)
 
     games: list[dict] = []
     scanned = False

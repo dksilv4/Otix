@@ -1,10 +1,14 @@
-import { isLocalDesktopNode } from '@/features/settings/local-desktop-node'
 import type { OtixNode } from '../types'
 import { useGameServers, useNodes } from '@/features/downloads/use-server-downloads'
 
-/** Otix worker nodes that run services and downloaders. */
+/** Otix nodes that run services and downloaders. */
 export function remoteConnectionNodes(nodes: OtixNode[]): OtixNode[] {
-  return nodes.filter((node) => !isLocalDesktopNode(node) && Number(node.id) > 0)
+  return nodes.filter(
+    (node) =>
+      Number(node.id) > 0 &&
+      !node.primaryUrl?.startsWith('otix://') &&
+      !node.localUrl?.startsWith('otix://'),
+  )
 }
 
 /** Worker machines. */
@@ -13,11 +17,17 @@ export function workerConnectionNodes(nodes: OtixNode[]): OtixNode[] {
 }
 
 export function pickConnectionNode(nodes: OtixNode[], preferredId?: number): OtixNode | undefined {
+  if (preferredId != null && Number(preferredId) > 0) {
+    const match = nodes.find((node) => Number(node.id) === Number(preferredId))
+    if (match) return match
+  }
   const remotes = remoteConnectionNodes(nodes)
   return (
-    remotes.find((node) => node.id === preferredId) ||
     remotes.find((node) => node.isOnline) ||
-    remotes[0]
+    remotes[0] ||
+    nodes.find((node) => Number(node.id) > 0 && node.isOnline && !node.primaryUrl?.startsWith('otix://')) ||
+    nodes.find((node) => Number(node.id) > 0 && !node.primaryUrl?.startsWith('otix://')) ||
+    nodes[0]
   )
 }
 
@@ -31,14 +41,11 @@ export function connectionSyncLabel(nodes: OtixNode[], targetName?: string): str
 export function useIntegrationTargetNode(nodeId?: number, nodeName?: string) {
   const fetcher = typeof useGameServers === 'function' ? useGameServers : useNodes
   const { data: nodes = [] } = fetcher()
-  const effectiveNode = pickConnectionNode(nodes, nodeId) || (
-    nodeId != null && !isLocalDesktopNode({ id: nodeId })
-      ? { id: nodeId, name: nodeName }
-      : undefined
-  )
-  const targetNodeId =
-    effectiveNode?.id ??
-    (nodeId != null && !isLocalDesktopNode({ id: nodeId }) ? nodeId : undefined)
+  const effectiveNode =
+    (nodeId != null && Number(nodeId) > 0 ? nodes.find((n) => Number(n.id) === Number(nodeId)) : undefined) ||
+    pickConnectionNode(nodes, nodeId) ||
+    (nodeId != null && Number(nodeId) > 0 ? { id: nodeId, name: nodeName } : undefined)
+  const targetNodeId = effectiveNode?.id ?? (nodeId != null && Number(nodeId) > 0 ? nodeId : undefined)
   const targetNodeName = effectiveNode?.name || nodeName || 'Otix node'
   return {
     targetNodeId,

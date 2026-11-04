@@ -9,7 +9,7 @@ from rest_framework.authtoken.models import Token
 from rest_framework.test import APIClient
 
 from apps.integrations.models import UserGOGGame
-from apps.library.models import UserGameServer
+from apps.library.models import UserNode
 from apps.media.models import ExternalID, Game, MediaItem
 
 User = get_user_model()
@@ -27,7 +27,7 @@ def _node(user, **kwargs):
         last_seen_at=timezone.now(),
     )
     defaults.update(kwargs)
-    return UserGameServer.objects.create(user=user, **defaults)
+    return UserNode.objects.create(user=user, **defaults)
 
 
 def _catalog_game(*, external_id: str, title: str):

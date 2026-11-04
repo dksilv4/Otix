@@ -10,15 +10,28 @@ import {
 } from 'lucide-react'
 
 export interface DownloadNodeModalProps {
+  open?: boolean
   isOpen?: boolean
   isExiting?: boolean
-  onClose: () => void
+  onClose?: () => void
+  onOpenChange?: (open: boolean) => void
 }
 
 const GITHUB_RELEASE_BASE = 'https://github.com/dksilv4/Otix/releases/latest/download'
 const GITHUB_RELEASE_PAGE = 'https://github.com/dksilv4/Otix/releases/latest'
 
-export const DownloadNodeModal = ({ isOpen, isExiting, onClose }: DownloadNodeModalProps) => {
+export const DownloadNodeModal = ({
+  open,
+  isOpen,
+  isExiting,
+  onClose,
+  onOpenChange,
+}: DownloadNodeModalProps) => {
+  const isModalOpen = (open ?? isOpen ?? true) && !isExiting
+  const handleClose = () => {
+    onClose?.()
+    onOpenChange?.(false)
+  }
   const downloadOptions = [
     {
       platform: 'macOS',
@@ -64,9 +77,9 @@ export const DownloadNodeModal = ({ isOpen, isExiting, onClose }: DownloadNodeMo
 
   return (
     <DkDialog
-      open={isOpen !== false && !isExiting}
+      open={isModalOpen}
       onOpenChange={(next) => {
-        if (!next) onClose()
+        if (!next) handleClose()
       }}
       title="Download Otix Node"
       description="Run the Otix companion daemon on your computer or NAS to host games, sync saves, and enable remote access."

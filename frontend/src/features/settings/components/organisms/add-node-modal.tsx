@@ -4,8 +4,11 @@ import { DkButton } from '@ui/atoms/button'
 import type { PendingNode } from '@/features/downloads/pending-nodes'
 
 export interface AddNodeModalProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
+  open?: boolean
+  isOpen?: boolean
+  onOpenChange?: (open: boolean) => void
+  onClose?: () => void
+  isExiting?: boolean
   unclaimedNodes?: PendingNode[]
   onSelectType: (type: 'worker' | 'server' | 'home' | 'samba' | 'game_server') => void
   onClaimNode?: (node: PendingNode) => void
@@ -13,25 +16,36 @@ export interface AddNodeModalProps {
 
 export const AddNodeModal = ({
   open,
+  isOpen,
   onOpenChange,
+  onClose,
+  isExiting,
   unclaimedNodes = [],
   onSelectType,
   onClaimNode,
 }: AddNodeModalProps) => {
+  const isModalOpen = (open ?? isOpen ?? true) && !isExiting
+  const handleClose = () => {
+    onOpenChange?.(false)
+    onClose?.()
+  }
+
   const handleSelect = (type: 'worker' | 'server' | 'home' | 'samba' | 'game_server') => {
-    onOpenChange(false)
+    handleClose()
     onSelectType(type)
   }
 
   const handleClaim = (node: PendingNode) => {
-    onOpenChange(false)
+    handleClose()
     onClaimNode?.(node)
   }
 
   return (
     <DkDialog
-      open={open}
-      onOpenChange={onOpenChange}
+      open={isModalOpen}
+      onOpenChange={(next) => {
+        if (!next) handleClose()
+      }}
       title="Add Node"
       description="Choose which node or resource to add to your homelab topology."
       className="max-w-xl"

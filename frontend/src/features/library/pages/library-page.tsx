@@ -32,7 +32,7 @@ export const LibraryPage = () => {
   const [activeTab, setActiveTab] = useState('lists')
 
   return (
-    <div id="library-page" className="p-6 max-w-7xl mx-auto">
+    <div id="library-page" className="p-6 w-full">
       <h1 className="text-2xl font-bold text-foreground mb-6">Library</h1>
 
       {/* Tabs */}
@@ -131,7 +131,7 @@ const ArrTab = ({
             title: string
             year?: number
             images?: Array<{ coverType?: string; remoteUrl?: string; url?: string }>
-          }>>(`/library/servers/${activeServer.id}/radarr/movies`)
+          }>>(`/library/nodes/${activeServer.id}/radarr/movies`)
           const movies = data || []
           setLibraries([
             {
@@ -158,7 +158,7 @@ const ArrTab = ({
             title: string
             year?: number
             images?: Array<{ coverType?: string; remoteUrl?: string; url?: string }>
-          }>>(`/library/servers/${activeServer.id}/sonarr/series`)
+          }>>(`/library/nodes/${activeServer.id}/sonarr/series`)
           const series = data || []
           setLibraries([
             {

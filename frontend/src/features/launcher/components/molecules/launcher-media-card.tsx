@@ -33,15 +33,25 @@ export const LauncherMediaCard = ({
   }
 
   return (
-    <button
-      type="button"
+    <div
+      role="button"
+      tabIndex={0}
       onClick={open}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          open()
+        }
+      }}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
       data-context-type="game"
       data-game-id={game.id}
       data-media-title={art.title}
-      className={cn('block text-left cursor-pointer', className)}
+      className={cn(
+        'block text-left cursor-pointer select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-lg transition-transform duration-200 active:scale-[0.98]',
+        className,
+      )}
       title={raw?.description || art.title}
     >
       <MediaCard
@@ -57,9 +67,10 @@ export const LauncherMediaCard = ({
         ratingCount={art.ratingCount}
         releaseDate={art.releaseDate}
         interactive={false}
+        hideStreamBadge={true}
         showTypeBadge={showTypeBadge}
-        className="w-full"
+        className="w-full pointer-events-none"
       />
-    </button>
+    </div>
   )
 };

@@ -12,8 +12,11 @@ import { isLocalDesktopNode } from '../../local-desktop-node'
 import { cn } from '@/lib/utils'
 
 export interface CopyNodeSettingsModalProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
+  open?: boolean
+  isOpen?: boolean
+  onOpenChange?: (open: boolean) => void
+  onClose?: () => void
+  isExiting?: boolean
   sourceNodeId: number
   sourceNodeName: string
   servers: GameServer[]
@@ -23,13 +26,21 @@ export interface CopyNodeSettingsModalProps {
 
 export const CopyNodeSettingsModal = ({
   open,
+  isOpen,
   onOpenChange,
+  onClose,
+  isExiting,
   sourceNodeId,
   sourceNodeName,
   servers,
   dlConfig,
   onSuccess,
 }: CopyNodeSettingsModalProps) => {
+  const isModalOpen = (open ?? isOpen ?? true) && !isExiting
+  const handleClose = () => {
+    onOpenChange?.(false)
+    onClose?.()
+  }
   const { toast } = useToast()
   const copyOrganizeId = useId()
   const copyPathsId = useId()
@@ -91,7 +102,7 @@ export const CopyNodeSettingsModal = ({
           description: `Successfully replicated settings to ${result.successCount} node${result.successCount > 1 ? 's' : ''}.`,
           variant: 'success',
         })
-        onOpenChange(false)
+        handleClose()
         onSuccess?.()
       } else {
         toast({
@@ -113,8 +124,10 @@ export const CopyNodeSettingsModal = ({
 
   return (
     <DkDialog
-      open={open}
-      onOpenChange={onOpenChange}
+      open={isModalOpen}
+      onOpenChange={(next) => {
+        if (!next) handleClose()
+      }}
       title="Copy Node Settings"
       description={`Replicate configuration from ${sourceNodeName} to other connected nodes.`}
       className="max-w-lg"
@@ -258,7 +271,7 @@ export const CopyNodeSettingsModal = ({
             variant="ghost"
             size="sm"
             disabled={isCopying}
-            onClick={() => onOpenChange(false)}
+            onClick={handleClose}
           >
             Cancel
           </DkButton>

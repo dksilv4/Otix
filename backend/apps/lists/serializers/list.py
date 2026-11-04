@@ -17,7 +17,7 @@ from apps.accounts.models import User
 from apps.lists.models import ListItemRankHistory, MediaListCollaborator, UserList
 from apps.lists.models.user_list import LIST_COLLABORATOR_PERMISSIONS
 from apps.media.models import MediaItem
-from apps.media.services.catalog import _logo_color_guess, _pick_asset, _pick_backdrop
+from apps.media.services.catalog import _dominant_color, _logo_color_guess, _pick_asset, _pick_backdrop
 
 _COLLABORATOR_CHOICES = [(permission, permission) for permission in LIST_COLLABORATOR_PERMISSIONS]
 
@@ -44,6 +44,7 @@ class MediaItemSummarySerializer(serializers.ModelSerializer):
     backdrop_url = serializers.SerializerMethodField()
     logo_url = serializers.SerializerMethodField()
     logo_color_guess = serializers.SerializerMethodField()
+    dominant_color = serializers.SerializerMethodField()
     tmdb_id = serializers.SerializerMethodField()
 
     class Meta:
@@ -71,6 +72,7 @@ class MediaItemSummarySerializer(serializers.ModelSerializer):
             "backdrop_url",
             "logo_url",
             "logo_color_guess",
+            "dominant_color",
             "tmdb_id",
         )
         read_only_fields = fields
@@ -86,6 +88,9 @@ class MediaItemSummarySerializer(serializers.ModelSerializer):
 
     def get_logo_color_guess(self, obj: MediaItem) -> str | None:
         return _logo_color_guess(obj, "general")
+
+    def get_dominant_color(self, obj: MediaItem) -> str | None:
+        return _dominant_color(obj, "general")
 
     def get_tmdb_id(self, obj: MediaItem) -> str | None:
         return next(

@@ -28,15 +28,17 @@ export const LauncherGameButtons = () => {
     )
   }
 
+  const mediaId = g.data?.id || g.otixMediaId
+
   return (
     <>
       <div id="launcher-game-buttons" className="flex gap-2.5 items-center justify-end flex-wrap">
-        <LauncherPlayButton onOpenInstaller={handleOpenInstaller} />
+        <LauncherPlayButton game={g} onOpenInstaller={handleOpenInstaller} />
 
         {!!g.exePath && g.platform !== 'iso' && (
           <>
-            <OpenFolderButton />
-            <PickExeButton />
+            <OpenFolderButton path={g.exePath} />
+            <PickExeButton gameId={g.id} installDir={g.installDir} />
           </>
         )}
 
@@ -49,7 +51,7 @@ export const LauncherGameButtons = () => {
           <SlidersHorizontal size={16} />
         </button>
 
-        <GameDetailButton />
+        <GameDetailButton mediaId={mediaId} />
       </div>
 
       {showProperties && (

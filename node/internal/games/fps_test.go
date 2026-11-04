@@ -76,12 +76,16 @@ func TestComputeFinalStats(t *testing.T) {
 
 func TestComputeLiveSnapshot(t *testing.T) {
 	collector := NewPresentMonCollector("")
+	_ = collector.Start(1234, "game.exe", "test-game")
 
 	// Add 60 frames of 16.666ms (totaling ~1000ms)
 	now := time.Now().UnixMilli()
 	collector.mu.Lock()
+	buf := collector.buffers[1234]
+	buf.CachedForeground = true
+	buf.LastForegroundCheck = time.Now().Add(1 * time.Hour)
 	for i := 0; i < 60; i++ {
-		collector.samples = append(collector.samples, FrameSample{
+		buf.Samples = append(buf.Samples, FrameSample{
 			MsBetweenPresents: 16.66666,
 			TimestampMs:       now,
 			IsBackground:      false,
@@ -269,5 +273,107 @@ func TestBackgroundFiltering(t *testing.T) {
 	}
 	if stats.TotalFrames != 750 {
 		t.Fatalf("expected 750 total frames, got %d", stats.TotalFrames)
+	}
+}
+
+func TestLobbyFiltering_ExplicitTag(t *testing.T) {
+	// CS2 scenario: 600 frames at 120 FPS (8.33ms) in lobby tagged as IsLobby = true
+	// Followed by 1800 frames at 280 FPS (3.57ms) in-game
+	startTime := time.Now().Add(-60 * time.Second)
+	currTime := startTime
+
+	samples := make([]FrameSample, 0, 2400)
+	for i := 0; i < 600; i++ {
+		currTime = currTime.Add(8330 * time.Microsecond)
+		samples = append(samples, FrameSample{
+			MsBetweenPresents: 8.33,
+			TimestampMs:       currTime.UnixMilli(),
+			IsBackground:      false,
+			IsLobby:           true,
+		})
+	}
+
+	for i := 0; i < 1800; i++ {
+		currTime = currTime.Add(3570 * time.Microsecond)
+		samples = append(samples, FrameSample{
+			MsBetweenPresents: 3.57,
+			TimestampMs:       currTime.UnixMilli(),
+			IsBackground:      false,
+			IsLobby:           false,
+		})
+	}
+
+	stats := ComputeFinalStatsFromSamples(samples, 12, startTime)
+	if stats == nil {
+		t.Fatal("expected non-nil stats")
+	}
+
+	// Lobby frames must be excluded: AvgFPS should be pure in-game (~280 FPS)
+	if stats.AvgFPS < 270.0 || stats.AvgFPS > 290.0 {
+		t.Fatalf("expected pure in-game AvgFPS ~280, got %f", stats.AvgFPS)
+	}
+	if stats.GameplayFrames != 1800 {
+		t.Fatalf("expected 1800 gameplay frames, got %d", stats.GameplayFrames)
+	}
+	if stats.TotalFrames != 2400 {
+		t.Fatalf("expected 2400 total frames, got %d", stats.TotalFrames)
+	}
+	if stats.LobbySeconds < 4 {
+		t.Fatalf("expected at least 4s lobby time, got %d", stats.LobbySeconds)
+	}
+}
+
+func TestLobbyFiltering_StatisticalHeuristic(t *testing.T) {
+	// Generic shooter scenario without explicit GSI tag:
+	// 200 frames at a locked 60 FPS menu cap (16.67ms with virtually zero variance)
+	// Followed by 800 frames of active 200 FPS gameplay (5.0ms)
+	startTime := time.Now().Add(-60 * time.Second)
+	currTime := startTime
+
+	samples := make([]FrameSample, 0, 1000)
+	for i := 0; i < 200; i++ {
+		currTime = currTime.Add(16670 * time.Microsecond)
+		samples = append(samples, FrameSample{
+			MsBetweenPresents: 16.67,
+			TimestampMs:       currTime.UnixMilli(),
+			IsBackground:      false,
+			IsLobby:           false, // No GSI tag
+		})
+	}
+
+	for i := 0; i < 800; i++ {
+		jitter := float64((i%5))*0.15 - 0.3
+		ms := 5.0 + jitter
+		currTime = currTime.Add(time.Duration(ms * float64(time.Millisecond)))
+		samples = append(samples, FrameSample{
+			MsBetweenPresents: ms,
+			TimestampMs:       currTime.UnixMilli(),
+			IsBackground:      false,
+			IsLobby:           false,
+		})
+	}
+
+	res := FilterFrameSamples(samples, startTime, 8)
+	t.Logf("FilterResult: GameplayFrames=%d, TotalFrames=%d, LobbySeconds=%d", res.GameplayFramesCount, res.TotalFrames, res.LobbySeconds)
+	stats := ComputeFinalStatsFromSamples(samples, 8, startTime)
+	if stats == nil {
+		t.Fatal("expected non-nil stats")
+	}
+	t.Logf("Stats: AvgFPS=%f, MinFPS=%f, MaxFPS=%f, LobbySeconds=%d", stats.AvgFPS, stats.MinFPS, stats.MaxFPS, stats.LobbySeconds)
+
+	if stats.AvgFPS < 185.0 {
+		t.Fatalf("statistical heuristic failed to filter 60 FPS menu cap: got %f, expected > 185", stats.AvgFPS)
+	}
+	if stats.LobbySeconds < 3 {
+		t.Fatalf("expected at least 3s lobby time, got %d", stats.LobbySeconds)
+	}
+}
+
+func TestFindPresentMon(t *testing.T) {
+	collector := NewPresentMonCollector("")
+	pm := collector.FindPresentMon()
+	t.Logf("Found PresentMon at: %s", pm)
+	if pm == "" {
+		t.Fatal("expected to find PresentMon binary")
 	}
 }

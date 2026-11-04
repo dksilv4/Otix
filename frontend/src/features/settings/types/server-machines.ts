@@ -83,7 +83,12 @@ export interface ServerMachineInput {
 export interface DetectDrivesResponse {
   success: boolean
   server?: UserServerMachine
+  machine?: UserServerMachine
   detectedDrives: ServerDriveConfig[]
   detectedOs?: { name?: string; platform?: string; version?: string; build?: string }
   detectedOsCode?: string
 }
+
+export type UserMachine = UserServerMachine
+export type MachineDriveConfig = ServerDriveConfig
+export type MachineInput = ServerMachineInput

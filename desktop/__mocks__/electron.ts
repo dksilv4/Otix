@@ -14,6 +14,7 @@ mockApp.isPackaged = false
 mockApp.requestSingleInstanceLock = () => true
 mockApp.setAsDefaultProtocolClient = () => {}
 mockApp.commandLine = { appendSwitch: () => {} }
+mockApp.disableHardwareAcceleration = () => {}
 
 const mockIpcMain = new EventEmitter() as any
 const ipcHandlers = new Map<string, Function>()

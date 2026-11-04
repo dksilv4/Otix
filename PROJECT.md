@@ -1,75 +1,92 @@
-# Project: Otix Full-Stack Performance Audit, Scientific Benchmarking & Architectural Consolidation
+# Project: Otix Nodes Full-Stack Architecture Overhaul
 
 ## Architecture
-- **Frontend (`frontend/`):** React 18/19, Vite 5, TypeScript, Tailwind CSS, TanStack Query, Radix UI primitives. Automated `apiClient` interceptors with snake_case ↔ camelCase bidirectional translation.
-- **Backend (`backend/`):** Django 5.2, Django REST Framework 3.16, SQLite (`:memory:` for testing) / PostgreSQL + pgvector, Celery, Redis. REST API output contract strictly in snake_case.
-- **Desktop (`desktop/`):** Electron 35/42, TypeScript, Node.js IPC bridge with `contextBridge.exposeInMainWorld`, Electron-Builder packaging.
-- **Node Companion Daemon (`node/`):** Go 1.24+, local HTTP server on loopback, pure-Go SQLite persistence, system tray, game process tracker, and file organizer.
-- **Unified Build & Packaging Topology:** Centralized distribution under repository root `dist/`:
-  - `dist/desktop/` (Electron installer, portable executable, desktop bundle)
-  - `dist/frontend/` (Production Vite web bundle)
-  - `dist/node/` (Compiled Go companion daemon binaries and archives)
+- **Daemon (`node/`):** Go 1.24 companion daemon. Persistent UUID `NodeID`, hybrid file change detection (debounced fsnotify on local SSDs vs periodic polling/mtime on network shares/ROMs), modular file reorganization (<300 LOC per subsystem, dry-run safety tokens, zero hardcoded IPs), unified parser package, SSE progress streaming, and zero `.otix` sidecar writeback.
+- **Backend (`backend/`):** Django 5.2 / DRF 3.16. Clean-break unification to `UserNode` model and `/api/v1/nodes/*` namespace (purging all `/api/v1/servers/*` legacy routes). Relational multi-source schema: canonical `UserGame` with 1-to-many `NodeGameSource` records. Database-only metadata persistence via manifest ingest. Multi-node emulation platform models and bidirectional cloud save snapshotting.
+- **Desktop Companion (`desktop/`):** Electron 35/42, TypeScript IPC bridge. Local emulator detection and launch argument interpolation (%ROM%, %BIOS%), process tracking hooks, save directory snapshotting on process exit, and zero reliance on legacy `/servers/*` endpoints.
+- **Frontend (`frontend/`):** React 18/19, Vite 5, Tailwind CSS. Pure camelCase client code via automated `apiClient` casing interceptors. Multi-source library cards with availability badges ("Installed on Desktop", "Archived on NAS", "Network Share") and contextual actions (direct launch vs 1-click download & install). Overhauled Node Settings with soft glassmorphism, semantic theme tokens, arrow functions only, zero non-component helpers in `.tsx` files, and zero arbitrary dot bubbles.
+- **Shared Parser Specification (`fixtures/`):** 105+ shared JSON test fixtures (`fixtures/parser_fixtures.json`) establishing 100% parser output parity across Go, TypeScript, and Python.
 
 ## Feature Inventory
 | # | Feature | Description | Milestone | Source |
 |---|---------|-------------|-----------|--------|
-| F1 | Multi-Tier Baseline Diagnostic Report | Comprehensive report documenting baseline execution times, memory, query counts, IPC frequency across all 4 tiers | M1 | ORIGINAL_REQUEST §R1 |
-| F2 | Automated Scientific Benchmark Harnesses | Automated micro-benchmark scripts measuring latency, queries, allocations for frontend utilities, backend endpoints, and daemons | M1 | ORIGINAL_REQUEST §R1, Acceptance Criteria |
-| F3 | Go Daemon Windows Compilation Fix | Fix `main.go:94` `syscall.Handle` conversion and `challenger_m3_test.go` Unix build tag to ensure clean compilation on Windows | M2 | Survey 3, ORIGINAL_REQUEST §R4 |
-| F4 | Go Daemon Organizer Windows Temp Fix | Fix path segment filtering in `internal/organize/organize.go` to avoid false-positive noise classification of `AppData\Local\Temp` | M2 | Survey 3, ORIGINAL_REQUEST §R4 |
-| F5 | Go Daemon Lifecycle & Idle Optimization | Implement `Server.Stop()` cleanup hooks to stop background goroutines and eliminate 300ms idle Win32 polling overhead | M2 | Survey 3, ORIGINAL_REQUEST §R4 |
-| F6 | Desktop Vitest & IPC Hardening | Resolve 3 failing desktop Vitest tests (`node-daemon-adversarial.test.ts` SIGTERM parameter and `updater.test.ts` fixture), optimize IPC bridge | M2 | Survey 1, ORIGINAL_REQUEST §R4 |
-| F7 | Frontend Utility Benchmarking & Consolidation | Scientifically benchmark and deduplicate utilities: consolidate 9 `formatBytes`/`formatFileSize` functions and duplicate date/time formatters into `src/lib/utils/` | M3 | Survey 1, ORIGINAL_REQUEST §R2 |
-| F8 | Frontend Custom Hook Optimization | Audit and optimize custom hooks (`use-media-stream-player`, `use-claimed-free-games`, etc.) to eliminate unnecessary re-renders and memory leaks | M3 | Survey 1, ORIGINAL_REQUEST §R2 |
-| F9 | Frontend Architectural Rule Compliance | Convert non-arrow component (`SettingsSaveProvider`), extract hooks from provider files, move non-component helpers out of `.tsx` files | M3 | Survey 1, ORIGINAL_REQUEST §R2 |
-| F10 | Frontend Theming & Design System Enforcement | Replace hardcoded colors with semantic CSS tokens, eliminate arbitrary dots/bubbles before text, align custom overlays with modal framework | M3 | Survey 1, ORIGINAL_REQUEST §R2 |
-| F11 | Frontend ESLint Fixes | Resolve 31 ESLint errors (4 conditional hooks in path picker modals, render-time ref mutation in `use-game-servers-refresh.ts`, unused variables) | M3 | Survey 1, ORIGINAL_REQUEST §R2 |
-| F12 | Backend Query Optimization: `/friends/activity` | Replace $1 + 3N$ friend activity loop with batched `__in` queries to reduce DB query count and latency | M4 | Survey 2, ORIGINAL_REQUEST §R3 |
-| F13 | Backend Query Optimization: `/media` & Catalog | Add `movie__collection` and collection movie prefetching in `list_media` to resolve N+1 queries in `enrich_summaries` | M4 | Survey 2, ORIGINAL_REQUEST §R3 |
-| F14 | Backend Serialization Optimization | Eliminate redundant queries in `MediaItemDetailSerializer.get_game` and avoid duplicate re-queries on rehydration | M4 | Survey 2, ORIGINAL_REQUEST §R3 |
-| F15 | Backend Query Optimization: `/chat/conversations` | Batch unread count computation and constrain message prefetching to eliminate unbounded memory loads and N+1 queries | M4 | Survey 2, ORIGINAL_REQUEST §R3 |
-| F16 | Backend Indexing & Ranking Optimization | Add index on `accounts.User.total_xp` and streamline ranking calculation queries | M4 | Survey 2, ORIGINAL_REQUEST §R3 |
-| F17 | Backend Snake_Case Contract Guarantee | Ensure 100% API contract fidelity and pure snake_case response serialization for `apiClient` compatibility | M4 | Survey 2, ORIGINAL_REQUEST §R3 |
-| F18 | Centralized Root Build Configuration | Reconfigure root `package.json`, `desktop/electron-builder.json5`, and packaging scripts to target `dist/desktop`, `dist/frontend`, `dist/node` | M5 | Survey 3, ORIGINAL_REQUEST §R5 |
-| F19 | Build Pipeline Documentation & Clean Root | Document centralized build pipeline topology; verify zero scripts in root directory and clean `.gitignore` | M5 | Survey 3, ORIGINAL_REQUEST §R5 |
-| F20 | Full-Stack Regression Verification & Gate | Run complete test suites (Frontend Vitest, Desktop Vitest, Django tests, Go daemon tests), typechecks (`tsc --noEmit`), and adversarial benchmarks | M6 | ORIGINAL_REQUEST §Acceptance Criteria |
+| F1 | Shared Parser Test Fixtures (105+ cases) | Shared JSON test fixtures covering PC releases, scene tags, multi-part repacks, updates/DLCs, and 11 console platforms | M4 / E2E | ORIGINAL_REQUEST §R4 |
+| F2 | UserNode Model & Namespace Unification | Unify server/node models into `UserNode` with immutable UUID, network interface classification (loopback, LAN, Tailscale, Docker), and purge `/api/v1/servers/*` | M1 | ORIGINAL_REQUEST §R1 |
+| F3 | Daemon Persistent NodeID & Interface Detection | Go daemon persistent UUID in `config.yaml`, smart interface detection avoiding loopback broadcasting, update heartbeat to `/api/v1/nodes/*` | M1 | ORIGINAL_REQUEST §R1 |
+| F4 | Desktop & Frontend Legacy Route Purge | Purge `LOCAL_DESKTOP_NODE_ID`, `otix:cached-servers`, and all `/api/v1/servers/*` calls across Desktop and Frontend | M1 | ORIGINAL_REQUEST §R1, §R10 |
+| F5 | Relational Multi-Source Backend Schema | Implement canonical `UserGame` with 1-to-many `NodeGameSource` records (node, path, share, state, size, reachability) | M2 | ORIGINAL_REQUEST §R2 |
+| F6 | Multi-Source Query Aggregation & Serialization | Backend queries and serializers aggregating sources into canonical game envelope in pure snake_case | M2 | ORIGINAL_REQUEST §R2 |
+| F7 | Database-Only Metadata Persistence | Eliminate `.otix` sidecar writing across backend and daemon; route scan manifests directly to DB (`POST /api/v1/nodes/<node_id>/manifest`) | M2 | ORIGINAL_REQUEST §R5 |
+| F8 | Daemon Hybrid File Change Detection | Debounced fsnotify for local SSDs; lightweight periodic mtime/size polling for network shares & ROMs; prevent handle exhaustion | M3 | ORIGINAL_REQUEST §R3 |
+| F9 | Daemon Incremental Rescan & SSE Streaming | Targeted `ScanFolder(path)` incremental rescan without full library reload; stream scan progress via SSE | M3 | ORIGINAL_REQUEST §R3 |
+| F10 | Go Unified Parser Implementation | Consolidate `indexer.go` and `organize/parser.go` into `node/internal/parser/` passing 100% of shared fixtures | M4 | ORIGINAL_REQUEST §R4 |
+| F11 | TypeScript Parser Parity | Align `desktop/game/parser.ts` to pass 100% of shared fixtures with normalized attributes (`region`, `releaseGroup`) | M4 | ORIGINAL_REQUEST §R4 |
+| F12 | Python Parser Parity | Implement `ParsedRelease` and parser parity in `backend/apps/library/services/server_catalog.py` passing 100% of shared fixtures | M4 | ORIGINAL_REQUEST §R4 |
+| F13 | Organize IP Purge & Static Map Removal | Completely excise hardcoded IP `192.168.1.58` and static lookup maps from `node/internal/organize/` | M5 | ORIGINAL_REQUEST §R9 |
+| F14 | Modular Organize Engine Decomposition | Decouple `organize.go` into 5 single-responsibility modules (<300 LOC): `planning.go`, `execution.go`, `cleanup.go`, `unc.go`, `classify.go` | M5 | ORIGINAL_REQUEST §R9 |
+| F15 | Zero-Data-Loss Organize Safety Guardrails | Mandatory dry-run preview tokens, atomic moves, collision skipping, non-empty directory pruning protection | M5 | ORIGINAL_REQUEST §R9 |
+| F16 | First-Class Emulation Backend Models | Backend models and configs for console platforms, emulator launch templates, ROM cue sheets, and BIOS requirements | M6 | ORIGINAL_REQUEST §R7 |
+| F17 | Desktop Emulator Detection & CLI Launch Templates | Detect 13 emulator profiles, interpolate CLI templates (%ROM%, %BIOS%), hybrid execution (SMB direct launch vs WAN caching) | M6 | ORIGINAL_REQUEST §R7 |
+| F18 | Automated Process Tracking & Save Snapshotting | Track game and emulator execution, detect process exit, snapshot save directories with checksums | M6 | ORIGINAL_REQUEST §R8 |
+| F19 | Bidirectional Cloud Save Sync Engine | Cloud save sync with newest-timestamp conflict resolution (HTTP 409 Conflict with head metadata) | M6 | ORIGINAL_REQUEST §R8 |
+| F20 | Contextual Path Rendering & Multi-Source Cards | Aggregate multi-source games into a single card with availability badges ("Installed on Desktop", "Archived on NAS", "Network Share") | M7 | ORIGINAL_REQUEST §R6 |
+| F21 | Contextual Launch & 1-Click Install Actions | Contextual action buttons: direct "Play", 1-click "Download & Install to PC" for remote packages, or hybrid emulation | M7 | ORIGINAL_REQUEST §R6 |
+| F22 | Node Settings & Management UI Overhaul | Overhaul Node connection health, storage share configuration, node file browsing, and emulated platform libraries | M7 | ORIGINAL_REQUEST §R10 |
+| F23 | Frontend Design Rules & Glassmorphism Enforcement | Strict arrow functions, zero helpers in component files, semantic theme tokens, soft glassmorphism, no arbitrary dot bubbles | M7 | ORIGINAL_REQUEST §R10, AGENTS.md |
+| F24 | E2E Integration Suite & Tier 1-4 Verification | 100% pass across Go daemon tests, Desktop Vitest, Frontend Vitest, and Django pytest | M8 | ORIGINAL_REQUEST Acceptance Criteria |
+| F25 | Adversarial Coverage Hardening & Forensic Audit | Adversarial stress testing (Tier 5) and forensic integrity audit (zero mock data, zero hardcoded strings) | M8 | ORIGINAL_REQUEST Acceptance Criteria |
 
 ## Milestones
 | # | Name | Scope | Dependencies | Status |
 |---|------|-------|-------------|--------|
-| M1 | Baseline Diagnostic & Benchmark Suite | Full-stack baseline profiling across 4 tiers; automated benchmark scripts; diagnostic report | None | DONE |
-| M2 | Desktop & Go Companion Daemon Efficiency | Windows build & test fixes in `node/`; daemon lifecycle & idle optimization; desktop test fixes & IPC streamlining | M1 | DONE |
-| M3 | Frontend Consolidation & Rule Compliance | Utility deduplication with micro-benchmarks; hook optimization; ESLint fixes; component purity & semantic theme tokens | M1 | DONE |
-| M4 | Backend REST Optimization & Query Hardening | Fix N+1 queries in activity, media, chat, and xp; optimize serializers; preserve snake_case contract | M1 | IN_PROGRESS |
-| M5 | Centralized Root Build & Distribution (`dist/`) | Consolidate outputs into `dist/desktop/`, `dist/frontend/`, `dist/node/`; update packaging scripts; document topology | M2, M3, M4 | DONE |
-| M6 | Regression Verification, Adversarial Hardening & Audit | 100% test pass across all 4 tiers; typechecks; linter checks; adversarial benchmark confirmation; audit verification | M5 | PLANNED |
+| M1 | Clean-Break Node Lifecycle & Legacy Purge | F2, F3, F4 (Backend UserNode migration, Go daemon NodeID & interface classification, Desktop/Frontend /servers/* purge) | None | DONE |
+| M2 | Relational Multi-Source Architecture & DB Persistence | F5, F6, F7 (Canonical UserGame + NodeGameSource schema, manifest ingest, zero .otix sidecar writeback) | M1 | DONE |
+| M3 | Hybrid File Change Detection & SSE Streaming | F8, F9 (Go daemon debounced fsnotify on local SSDs, periodic polling on network shares/ROMs, SSE progress) | M1 | DONE |
+| M4 | Specification-Driven Cross-Language Parser Parity | F1, F10, F11, F12 (105+ shared JSON fixtures, Go/TS/Python deterministic parser implementations) | None | DONE |
+| M5 | Zero-Data-Loss Modular Organize Engine | F13, F14, F15 (Decouple organize.go into <300 LOC modules, purge 192.168.1.58, dry-run safety tokens, atomic moves) | M1 | DONE |
+| M6 | Multi-Node Emulation, Process Tracking & Save Sync | F16, F17, F18, F19 (Backend emulator models, desktop emulator detection & CLI templates, save sync with conflict resolution) | M2 | DONE |
+| M7 | Multi-Source Cards, Contextual Actions & Settings UI | F20, F21, F22, F23 (Multi-source library cards, availability badges, contextual launch/download, Node settings overhaul) | M2, M6 | DONE |
+| M8 | Full-Stack E2E Verification, Adversarial Hardening & Audit | F24, F25 (Pass 100% tests across all 4 tiers, Tier 5 adversarial stress testing, clean forensic audit) | M1-M7 | DONE |
 
 ## Interface Contracts
-### Frontend ↔ Backend (REST API via `apiClient`)
-- Backend MUST emit pure `snake_case` JSON.
-- Frontend `apiClient` (`frontend/src/lib/api/client.ts`) converts request params/body from `camelCase` to `snake_case` and response keys from `snake_case` to `camelCase`.
-- Endpoint URLs must not rely on `APPEND_SLASH` (`APPEND_SLASH = False` in Django settings).
-- Pagination envelope: `{ count: number, next: string | null, previous: string | null, results: T[] }`.
+### Unified Node REST API (`/api/v1/nodes/*`)
+- `GET /api/v1/nodes/`: List user nodes with availability, interface classifications, and storage shares.
+- `POST /api/v1/nodes/claim-pin/` & `POST /api/v1/nodes/claim-direct/`: Pair node via PIN or token; assigns permanent UUID `machine_id`.
+- `POST /api/v1/nodes/<node_id>/heartbeat/`: Daemon heartbeat reporting status, CPU, memory, and classified IP endpoints.
+- `POST /api/v1/nodes/<node_id>/manifest/`: Ingest discovered file records and matches directly into database without disk sidecars.
+- `POST /api/v1/nodes/<node_id>/unclaim/`: Graceful node unpairing without orphaned records.
+- All endpoints emit pure `snake_case` JSON; frontend `apiClient` converts automatically to `camelCase`.
 
-### Desktop ↔ Node Companion Daemon (HTTP & IPC)
-- Electron discovers daemon via binary paths in priority order: production bundled path, local repo root `dist/node/`, and development fallback.
-- Health check: `GET http://127.0.0.1:<port>/api/health` with `X-Otix-Node-Key` token header.
-- Daemon graceful shutdown: SIGTERM or POST `/api/shutdown`.
+### Relational Multi-Source Schema Contract
+- `UserGame`: Canonical game representation (`user_id`, `media_item_id`, `clean_title`, `platform`, `cover_image_url`).
+- `NodeGameSource`: Physical representation (`user_game_id`, `node_id`, `canonical_path`, `storage_share`, `source_state` [installed/installer/iso/rom/archive], `file_size`, `sha256_head`, `is_available`, `format_details`).
+- Serialized output groups all physical sources under `sources: NodeGameSource[]` on the canonical game card.
 
-### Build & Packaging Distribution
-- All final distribution outputs MUST reside under root `dist/`:
-  - `dist/desktop/`: Windows installer executable (`Otix-Setup-*.exe`), portable executable (`Otix-*.exe`), unpackaged app.
-  - `dist/frontend/`: Static Vite production distribution assets (`index.html`, `assets/*`).
-  - `dist/node/`: Compiled Go companion daemon binaries (`otix-node-windows-*.exe`, archives).
-- No scripts in repository root directory.
+### Cross-Language Parser Parity Specification
+- Fixture path: `fixtures/parser_fixtures.json`.
+- Structure: `{ "cases": [ { "input": string, "ext_hint"?: string, "parent_dir"?: string, "expected": { "title": string, "clean_title": string, "year"?: string, "edition"?: string, "platform"?: string, "release_group"?: string, "region"?: string, "version"?: string, "title_id"?: string, "is_scene": boolean } } ] }`.
+- Deterministic behavior: Go, TypeScript, and Python must yield identical normalized outputs for all cases.
+
+### Organize Engine Safety Contract
+- Two-phase execution: `POST /api/v1/organize/preview` returns a cryptographic preview token and plan; `POST /api/v1/organize/apply` requires the valid token.
+- Atomic moves: file copy-then-verify before source deletion, or atomic rename on same volume.
+- Collisions: skip existing destination files; never overwrite without explicit collision strategy.
+- Directory cleanup: verify directory is strictly empty before pruning; never prune non-empty paths.
+- Zero hardcoded network IPs: dynamic node IP and UNC path resolution exclusively.
 
 ## Code Layout
-- `frontend/src/lib/utils/`: Shared cross-feature utilities.
-- `frontend/src/features/<feature>/utils/`: Feature-specific utilities.
-- `frontend/src/features/<feature>/hooks/`: Feature-specific custom hooks.
-- `backend/apps/<app>/services/`: Domain business logic and query orchestration.
-- `backend/apps/<app>/serializers/`: DRF serializers (snake_case output).
-- `desktop/src/main/`: Electron main process logic.
-- `node/cmd/` & `node/internal/`: Go companion daemon packages.
-- `scripts/`: Central automation and packaging scripts (Powershell and Bash).
-- `dist/`: Central root distribution directory for all package outputs.
+- `fixtures/`: Shared cross-platform test fixtures (`fixtures/parser_fixtures.json`).
+- `backend/apps/library/models/user_node.py`: Unified `UserNode` model.
+- `backend/apps/library/models/game_source.py`: `UserGame` and `NodeGameSource` models.
+- `backend/apps/library/views/nodes.py`: Unified `/api/v1/nodes/*` endpoints.
+- `backend/apps/library/services/server_catalog.py`: Python catalog matching and parser.
+- `node/cmd/`: Go companion daemon entrypoints.
+- `node/internal/indexer/`: Go indexing, watcher, mtime polling, SSE progress.
+- `node/internal/parser/`: Consolidated Go title and release parser.
+- `node/internal/organize/`: Modular organize engine (`planning.go`, `execution.go`, `cleanup.go`, `unc.go`, `classify.go`).
+- `node/internal/process/`: Process tracking and save synchronization.
+- `desktop/src/main/`: Electron main process & IPC handlers.
+- `desktop/game/`: Desktop scanner, emulator detection, CLI templates, Vitest suites.
+- `frontend/src/features/library/`: Multi-source library cards and contextual launch actions.
+- `frontend/src/features/settings/`: Overhauled Node settings, connection health, and storage shares.
+- `frontend/src/features/downloads/`: Download manager consuming `/api/v1/nodes/*`.

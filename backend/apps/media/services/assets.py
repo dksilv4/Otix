@@ -142,13 +142,22 @@ def download_asset(asset: MediaAsset) -> int | None:
         asset.local_size = len(response.content)
         asset.downloaded_at = timezone.now()
         update_fields = ["local_name", "local_size", "downloaded_at"]
-        if not asset.color_guess:
-            from apps.media.services.color_analyzer import analyze_image_bytes
+        if not asset.color_guess or not asset.dominant_color:
+            from apps.media.services.color_analyzer import (
+                analyze_image_bytes,
+                extract_dominant_color_bytes,
+            )
 
-            guess = analyze_image_bytes(response.content, asset.asset_type)
-            if guess:
-                asset.color_guess = guess
-                update_fields.append("color_guess")
+            if not asset.color_guess:
+                guess = analyze_image_bytes(response.content, asset.asset_type)
+                if guess:
+                    asset.color_guess = guess
+                    update_fields.append("color_guess")
+            if not asset.dominant_color:
+                dom = extract_dominant_color_bytes(response.content)
+                if dom:
+                    asset.dominant_color = dom
+                    update_fields.append("dominant_color")
         asset.save(update_fields=update_fields)
         logger.info("mirrored %s -> %s (%d bytes)", asset.url, filename, len(response.content))
         return len(response.content)
@@ -716,6 +725,7 @@ def set_textless_pick(media_item: MediaItem, asset: MediaAsset, on: bool = True)
                 score=asset.score,
                 provider=asset.provider,
                 color_guess=asset.color_guess,
+                dominant_color=asset.dominant_color,
                 label=MATERIALIZED_TEXTLESS_LABEL,
             )
         select_asset(media_item, row, "general")

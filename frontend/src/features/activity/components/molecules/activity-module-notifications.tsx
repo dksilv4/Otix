@@ -34,7 +34,7 @@ export const ActivityModuleNotifications = ({ onClose }: ActivityModuleNotificat
 
   const { data: unreadData } = useQuery({
     ...notificationQueries.unreadCount(),
-    enabled: hasSession,
+    enabled: isAuthenticated,
   })
   const unreadCount = unreadData?.count ?? 0
 

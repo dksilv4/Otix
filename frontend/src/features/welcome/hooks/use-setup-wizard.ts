@@ -90,7 +90,7 @@ export const useSetupWizard = (initialStep: SetupWizardStep = 1): UseSetupWizard
         let orphaned = true
         if (isAuthenticated) {
           try {
-            const { data } = await apiClient.get<Array<{ primaryUrl?: string; localUrl?: string | null; authToken?: string | null }>>('/library/servers')
+            const { data } = await apiClient.get<Array<{ primaryUrl?: string; localUrl?: string | null; authToken?: string | null }>>('/library/nodes')
             const list = Array.isArray(data) ? data : []
             orphaned = isNodeOrphaned(found, list)
           } catch {

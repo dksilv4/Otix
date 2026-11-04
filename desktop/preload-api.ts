@@ -18,10 +18,14 @@ export interface LocalGame {
   exePath: string;
   localExePath?: string;
   installDir: string;
+  version?: string | null;
   platform: 'steam' | 'pc' | 'iso' | 'epic' | 'gog' | 'battlenet' | 'ubisoft' | 'origin' | 'ea' | 'riot' | 'xbox' | 'itch' | 'server' | 'unknown' | string;
   localIconUrl?: string; // base64 data URL from .exe icon
   iconUrl?: string; // Icon URL from plugin enrichment
   posterUrl?: string; // Poster URL from plugin enrichment
+  backdropUrl?: string;
+  logoUrl?: string;
+  overview?: string;
   updateFiles?: { name: string; path: string; kind?: 'update' | 'dlc'; version?: string | null; filesize?: number }[];
   isDlc?: boolean;
   dlcOf?: string;
@@ -35,14 +39,26 @@ export interface LocalGame {
   otixMediaSlug?: string;
   otixConfidence?: number;
   otixMatchSuggestion?: {
-    mediaId: string;
-    title: string;
-    slug: string;
+    mediaId?: string;
+    title?: string;
+    slug?: string;
+    id?: string;
+    platform?: string;
+    iconUrl?: string;
+    posterUrl?: string;
+    _candidates?: any[];
   };
   otixPosterUrl?: string | null;
+  otixBackdropUrl?: string | null;
   otixTextlessPosterUrl?: string | null;
   otixLogoUrl?: string | null;
+  otixIconUrl?: string | null;
   sources?: (string | Record<string, unknown>)[];
+  sizeBytes?: number;
+  modifiedAt?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  data?: Record<string, any>;
 }
 
 export interface CurrentNetworkInfo {
@@ -174,6 +190,12 @@ export interface FpsStats {
   minFps: number;
   totalFrames: number;
   captureDurationMs: number;
+  gameplayFrames?: number;
+  loadingDurationMs?: number;
+  gameplayDurationMs?: number;
+  backgroundDurationMs?: number;
+  lobbyDurationMs?: number;
+  unfilteredAvgFps?: number;
 }
 
 export interface LiveFpsSnapshot {
@@ -183,6 +205,8 @@ export interface LiveFpsSnapshot {
   node?: SessionNodeInfo | null;
   hardware?: SessionHardwareInfo | null;
   shareEligible?: boolean;
+  isFocused?: boolean;
+  inLobby?: boolean;
 }
 
 export interface PlaySession {
@@ -497,6 +521,7 @@ export interface DesktopSettings {
   closeToTray: boolean;
   alwaysOnTop: boolean;
   startMinimized: boolean;
+  hardwareAcceleration?: boolean;
   gamesDownloadPath?: string;
   gamesInstallPath?: string;
   isoDownloadPath?: string;
@@ -504,6 +529,7 @@ export interface DesktopSettings {
   autoDownloadUpdates?: boolean;
   allowPrerelease?: boolean;
   githubToken?: string;
+  onlyTrackScannedGames?: boolean;
 }
 
 export interface IDesktopAPI {
@@ -564,7 +590,7 @@ export interface IDesktopAPI {
   openSessionWindow: (url: string) => Promise<void>;
   selectDirectory: () => Promise<string | null>;
   onDeepLink: (callback: (data: { action: string; params: Record<string, string> }) => void) => () => void;
-  scanPaths: (paths: string[], isoPaths: string[]) => Promise<LocalGame[]>;
+  scanPaths: (paths: string[], isoPaths: string[], authToken?: string) => Promise<LocalGame[]>;
   scanLaunchers: () => Promise<LauncherScanResult[]>;
   launchGame: (game: LocalGame) => Promise<boolean>;
   selectIso: () => Promise<string | null>;
@@ -583,6 +609,8 @@ export interface IDesktopAPI {
   onGamesUpdated: (callback: () => void) => () => void;
   getLocalGames: (filter?: GameFilter) => Promise<LocalGame[]>;
   saveScannedGames: (games: LocalGame[]) => Promise<void>;
+  syncMachineMappings?: (mappings: Array<{ name?: string; host?: string; smbHost?: string; localUrl?: string }>) => Promise<boolean>;
+  getMachineMappings?: () => Promise<Record<string, string>>;
   pickExecutable: (defaultPath?: string) => Promise<string | null>;
   pickFolder: (defaultPath?: string) => Promise<string | null>;
   openDirectoryDialog: (defaultPath?: string) => Promise<string | null>;
@@ -598,6 +626,8 @@ export interface IDesktopAPI {
   acceptSuggestion: (gameId: string, suggestion: unknown) => Promise<void>;
   unmatchGame: (gameId: string) => Promise<void>;
   rejectSuggestion: (gameId: string, suggestionMediaId: string) => Promise<void>;
+  searchCatalog?: (query: string) => Promise<any[]>;
+  importCatalogIgdb?: (igdbId: string) => Promise<any | null>;
   resetPlatformGames: (platforms: string[]) => Promise<void>;
   resetGameData: () => Promise<void>;
   onGamesDbChanged: (callback: () => void) => () => void;

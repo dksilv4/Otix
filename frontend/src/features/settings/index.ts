@@ -7,6 +7,7 @@ export { SettingsIntegrationsPage } from './pages/settings-integrations-page'
 export { SettingsLibraryPage } from './pages/settings-library-page'
 export { SettingsOrganizePage } from './pages/settings-organize-page'
 export { SettingsPathsPage } from './pages/settings-paths-page'
+export { SettingsNewNodeScanFilesPage } from './pages/settings-node-scan-files-page'
 export { SettingsPluginsPage } from '@/features/plugins'
 export { createSettingsRoutes } from './router'
 export {

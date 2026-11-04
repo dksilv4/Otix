@@ -27,7 +27,7 @@ export const useLaunchGame = () => {
           description: `Streaming from remote node #${remoteNodeId}...`,
         })
         if (typeof window !== 'undefined') {
-          window.open(`/api/v1/library/servers/${remoteNodeId}/stream?game_id=${encodeURIComponent(game.id)}`, '_blank')
+          window.open(`/api/v1/library/nodes/${remoteNodeId}/stream?game_id=${encodeURIComponent(game.id)}`, '_blank')
         }
         return
       }

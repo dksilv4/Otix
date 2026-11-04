@@ -1,6 +1,7 @@
 // TODO: Review this file
 import axios, { AxiosError, type InternalAxiosRequestConfig } from 'axios'
-import { ACCESS_TOKEN_KEY, API_BASE_URL } from '@/lib/config/config'
+import { ACCESS_TOKEN_KEY, API_BASE_URL, resolveApiBaseUrl } from '@/lib/config/config'
+import { isDesktop } from '@/lib/desktop/api'
 import { getInitialTheme, resolveTheme } from '@/lib/theme/theme-utils'
 import { refreshAccessToken } from './session-refresh'
 
@@ -118,6 +119,16 @@ export function getResolvedTheme(): 'light' | 'dark' {
 }
 
 apiClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
+  if (isDesktop() || (typeof window !== 'undefined' && window.location.port === '5174')) {
+    const activeBase = resolveApiBaseUrl()
+    if (activeBase && config.baseURL !== activeBase) {
+      config.baseURL = activeBase
+    }
+  }
+  // Strip redundant /api/v1 prefix if a caller passed it directly (since baseURL already includes /api/v1)
+  if (config.url?.startsWith('/api/v1/')) {
+    config.url = config.url.replace(/^\/api\/v1/, '')
+  }
   // Attach Bearer token
   const token = localStorage.getItem(ACCESS_TOKEN_KEY)
   if (token && config.headers) {
@@ -224,10 +235,19 @@ apiClient.interceptors.response.use(
     // was in flight. Retry with the new token instead of rotating again —
     // a second /auth/refresh would replay the old cookie and revoke the session.
     const currentToken = localStorage.getItem(ACCESS_TOKEN_KEY)
-    // Anonymous 401s (e.g. /library/servers on the public media page) must not
+    // Anonymous 401s (e.g. /library/nodes on the public media page) must not
     // attempt refresh — a failed refresh fires auth:sessionExpired, which
     // queryClient.clear()s in-flight catalog fetches and leaves observers stuck.
+    const isPublicGet =
+      originalRequest.method?.toLowerCase() === 'get' &&
+      ['/discover', '/media', '/search', '/freegames', '/lists'].some((p) => originalRequest.url?.includes(p))
+
     if (!currentToken) {
+      if (isPublicGet && originalRequest.headers && (originalRequest.headers.Authorization || (originalRequest.headers as Record<string, unknown>).authorization)) {
+        delete originalRequest.headers.Authorization
+        delete (originalRequest.headers as Record<string, unknown>).authorization
+        return apiClient(originalRequest)
+      }
       return Promise.reject(error)
     }
     const sentToken = readBearerToken(originalRequest.headers)
@@ -247,6 +267,13 @@ apiClient.interceptors.response.use(
       }
       return apiClient(originalRequest)
     } catch (refreshError) {
+      if (isPublicGet) {
+        if (originalRequest.headers) {
+          delete originalRequest.headers.Authorization
+          delete (originalRequest.headers as Record<string, unknown>).authorization
+        }
+        return apiClient(originalRequest)
+      }
       return Promise.reject(refreshError)
     }
   },

@@ -109,7 +109,7 @@ export const ListDetailPage = () => {
 
   if (isLoading) {
     return (
-      <div className="animate-fade-in pb-20 pt-4 sm:pt-6 px-4 sm:px-8 max-w-7xl mx-auto space-y-8">
+      <div className="animate-fade-in pb-20 pt-4 sm:pt-6 px-4 sm:px-8 w-full space-y-8">
         <div className="glass-card px-6 py-6 sm:px-8 sm:py-7">
           <div className="h-8 w-48 rounded-lg bg-[var(--dk-surface-glass)] animate-pulse mb-6" />
           <div className="h-10 w-full max-w-md rounded-lg bg-[var(--dk-surface-glass)] animate-pulse" />
@@ -154,7 +154,7 @@ export const ListDetailPage = () => {
   }
 
   return (
-    <div className="animate-fade-in pb-20 pt-4 sm:pt-6 px-4 sm:px-8 max-w-7xl mx-auto space-y-8">
+    <div className="animate-fade-in pb-20 pt-4 sm:pt-6 px-4 sm:px-8 w-full space-y-8">
       <Helmet>
         <title>{`${list.name} - List - Otix`}</title>
         {list.description && <meta name="description" content={list.description.slice(0, 200)} />}

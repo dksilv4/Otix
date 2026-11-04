@@ -14,15 +14,41 @@ import {
 } from './updater';
 
 import type { NodeDaemonManager } from '../node-daemon';
-import { getHostNodeAndHardware, httpGetJson } from '../game/node-hardware';
+import { getHostNodeAndHardware, httpGetJson, httpPostJson } from '../game/node-hardware';
 
 export function registerDesktopSettingsIPC(
   mainWindow: BrowserWindow,
   tray: Tray | null,
   nodeDaemon?: NodeDaemonManager | null,
 ): void {
-  ipcMain.handle('desktop-settings:get', (): DesktopSettings => {
-    return getSettings();
+  ipcMain.handle('desktop-settings:get', async (): Promise<DesktopSettings> => {
+    const settings = { ...getSettings() };
+    const port = settings.embeddedNodePort || 8090;
+    try {
+      const monitors = await httpGetJson<any[]>(`http://127.0.0.1:${port}/api/v1/games/overlay/monitors`, 1500);
+      if (Array.isArray(monitors)) {
+        settings.overlayMonitors = monitors;
+      }
+    } catch {
+      // ignore
+    }
+    try {
+      const nodeOverlay = await httpGetJson<any>(`http://127.0.0.1:${port}/api/v1/games/overlay/settings`, 1500);
+      if (nodeOverlay) {
+        if (typeof nodeOverlay.enabled === 'boolean') settings.overlayEnabled = nodeOverlay.enabled;
+        if (nodeOverlay.corner) settings.overlayCorner = nodeOverlay.corner;
+        if (nodeOverlay.monitor) settings.overlayMonitor = nodeOverlay.monitor;
+        if (nodeOverlay.hotkey) settings.overlayHotkey = nodeOverlay.hotkey;
+        if (typeof nodeOverlay.show_fps === 'boolean') settings.overlayShowFps = nodeOverlay.show_fps;
+        if (typeof nodeOverlay.show_percentiles === 'boolean') settings.overlayShowPercentiles = nodeOverlay.show_percentiles;
+        if (typeof nodeOverlay.show_playtime === 'boolean') settings.overlayShowPlaytime = nodeOverlay.show_playtime;
+        if (typeof nodeOverlay.show_title === 'boolean') settings.overlayShowTitle = nodeOverlay.show_title;
+        if (typeof nodeOverlay.opacity === 'number' && nodeOverlay.opacity > 0) settings.overlayOpacity = nodeOverlay.opacity;
+      }
+    } catch {
+      // ignore
+    }
+    return settings;
   });
 
   ipcMain.handle('desktop-hardware:get', async (_event, refresh = false) => {
@@ -93,6 +119,41 @@ export function registerDesktopSettingsIPC(
           void nodeDaemon.start({ port: merged.embeddedNodePort });
         } else {
           void nodeDaemon.stop();
+        }
+      }
+
+      // Sync overlay settings to running node daemon
+      const hasOverlayProps =
+        partial.overlayEnabled !== undefined ||
+        partial.overlayCorner !== undefined ||
+        partial.overlayMonitor !== undefined ||
+        partial.overlayHotkey !== undefined ||
+        partial.overlayShowFps !== undefined ||
+        partial.overlayShowPercentiles !== undefined ||
+        partial.overlayShowPlaytime !== undefined ||
+        partial.overlayShowTitle !== undefined ||
+        partial.overlayOpacity !== undefined ||
+        partial.onlyTrackScannedGames !== undefined;
+
+      if (hasOverlayProps) {
+        const port = merged.embeddedNodePort || 8090;
+        const payload = {
+          enabled: merged.overlayEnabled ?? true,
+          corner: merged.overlayCorner ?? 'top-wide',
+          monitor: merged.overlayMonitor ?? 'auto',
+          hotkey: merged.overlayHotkey ?? 'Ctrl+`',
+          show_fps: merged.overlayShowFps ?? true,
+          show_percentiles: merged.overlayShowPercentiles ?? true,
+          show_playtime: merged.overlayShowPlaytime ?? true,
+          show_title: merged.overlayShowTitle ?? true,
+          opacity: merged.overlayOpacity ?? 0.92,
+          only_track_scanned: merged.onlyTrackScannedGames ?? true,
+          scale: 1.0,
+        };
+        try {
+          await httpPostJson(`http://127.0.0.1:${port}/api/v1/games/overlay/settings`, payload, 2000);
+        } catch (err) {
+          console.warn('[desktop-settings] Failed to sync overlay settings to node:', err);
         }
       }
 

@@ -6,7 +6,7 @@ import logging
 from collections.abc import Callable
 from typing import Any
 
-from apps.library.models import UserGameServer, UserNodeConnection
+from apps.library.models import UserNode, UserNodeConnection
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +30,7 @@ DROP_KEYS = {
 }
 SECRET_KEYS = {"api_key", "apiKey"}
 
-SaveFn = Callable[[UserGameServer, dict], tuple[int, dict | list]]
+SaveFn = Callable[[UserNode, dict], tuple[int, dict | list]]
 
 
 def get_or_create_connections(user) -> UserNodeConnection:
@@ -150,8 +150,8 @@ def stored_connection(user, kind: str) -> dict:
     return value if isinstance(value, dict) else {}
 
 
-def user_servers(user) -> list[UserGameServer]:
-    return list(UserGameServer.objects.filter(user=user).order_by("created_at", "id"))
+def user_servers(user) -> list[UserNode]:
+    return list(UserNode.objects.filter(user=user).order_by("created_at", "id"))
 
 
 def configured_map(user) -> dict[str, bool]:
@@ -186,7 +186,7 @@ def store_all(user, payload: dict | None) -> dict[str, Any]:
 
 
 def _kind_save_fns() -> tuple[tuple[str, SaveFn], ...]:
-    from apps.library.services.game_server import (
+    from apps.library.services.node import (
         radarr_save_config,
         sonarr_save_config,
         usenet_save_config,
@@ -199,7 +199,7 @@ def _kind_save_fns() -> tuple[tuple[str, SaveFn], ...]:
     )
 
 
-def push_shared_connections(server: UserGameServer) -> list[str]:
+def push_shared_connections(server: UserNode) -> list[str]:
     """Write stored SABnzbd / *arr settings onto one node. Caller must opt in."""
     user = getattr(server, "user", None)
     if user is None:
@@ -253,7 +253,7 @@ def save_store_and_node(
     user,
     kind: str,
     payload: dict | None,
-    primary: UserGameServer | None,
+    primary: UserNode | None,
     save_fn: SaveFn | None,
 ) -> tuple[int, dict | list]:
     """Write settings to that Otix node."""
@@ -265,8 +265,8 @@ def save_store_and_node(
 def read_with_shared(
     user,
     kind: str,
-    primary: UserGameServer,
-    get_fn: Callable[[UserGameServer], tuple[int, dict | list]],
+    primary: UserNode,
+    get_fn: Callable[[UserNode], tuple[int, dict | list]],
 ) -> tuple[int, dict | list]:
     """Read this node's config."""
     return get_fn(primary)
@@ -289,7 +289,7 @@ def _has_real_secret(value: Any) -> bool:
 
 
 def _kind_io() -> tuple[tuple[str, Callable, SaveFn], ...]:
-    from apps.library.services.game_server import (
+    from apps.library.services.node import (
         radarr_get_config,
         radarr_save_config,
         sonarr_get_config,
@@ -307,8 +307,8 @@ def _kind_io() -> tuple[tuple[str, Callable, SaveFn], ...]:
 
 def import_instances(
     user,
-    dest: UserGameServer,
-    source: UserGameServer,
+    dest: UserNode,
+    source: UserNode,
     kinds: list[str] | None = None,
 ) -> dict[str, Any]:
     """Copy SABnzbd / *arr instances from one node onto another. Keys never go to the client."""

@@ -435,7 +435,7 @@ const SettingsLayoutInner = () => {
                     isNodesPage
                       ? 'h-full w-full p-0 m-0 max-w-none'
                       : cn(
-                          'min-h-full w-full max-w-5xl xl:max-w-6xl mx-auto px-1 sm:px-3 lg:px-4 pb-28',
+                          'min-h-full w-full px-2 sm:px-4 lg:px-8 pb-28',
                           desktop ? 'pt-24 sm:pt-28 lg:pt-32' : 'pt-16 sm:pt-20 lg:pt-24',
                         ),
                   )}

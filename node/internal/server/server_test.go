@@ -8,9 +8,12 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
+	"strconv"
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/dksilv4/otix/node/internal/claim"
 	"github.com/dksilv4/otix/node/internal/config"
@@ -285,7 +288,7 @@ func TestClaimLoginDirect(t *testing.T) {
 				return
 			}
 			http.Error(w, `{"detail":"Invalid email or password"}`, http.StatusUnauthorized)
-		case "/api/v1/library/servers/claim-direct":
+		case "/api/v1/nodes/claim-direct/", "/api/v1/nodes/claim-direct", "/api/v1/library/servers/claim-direct":
 			authHeader := r.Header.Get("Authorization")
 			if authHeader != "Bearer jwt_access_token_abc" {
 				http.Error(w, `{"error":"Unauthorized"}`, http.StatusUnauthorized)
@@ -345,6 +348,103 @@ func TestClaimLoginDirect(t *testing.T) {
 	}
 }
 
+func TestServerClaimDirectAndUnclaimFlow(t *testing.T) {
+	unclaimedChan := make(chan map[string]any, 1)
+	claimChan := make(chan map[string]any, 1)
+
+	mockBackend := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/api/v1/auth/login":
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"access_token":        "jwt_access_token_123",
+				"two_factor_required": false,
+			})
+		case "/api/v1/nodes/claim-direct/", "/api/v1/nodes/claim-direct":
+			var payload map[string]any
+			_ = json.NewDecoder(r.Body).Decode(&payload)
+			claimChan <- payload
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"name":       payload["server_name"],
+				"auth_token": payload["auth_token"],
+				"is_online":  true,
+				"created":    true,
+			})
+		case "/api/v1/nodes/test-custom-node-uuid/unclaim/", "/api/v1/nodes/test-custom-node-uuid/unclaim":
+			var payload map[string]any
+			_ = json.NewDecoder(r.Body).Decode(&payload)
+			unclaimedChan <- payload
+			w.WriteHeader(http.StatusOK)
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer mockBackend.Close()
+
+	srv, cfg, cm := setupTestServer(t)
+	cfg.Server.NodeID = "test-custom-node-uuid"
+	cfg.Server.RegistryURL = mockBackend.URL + "/api"
+	t.Setenv("OTIX_REGISTRY_URL", mockBackend.URL+"/api")
+
+	// 1. Direct claim via login
+	claimBody, _ := json.Marshal(map[string]string{
+		"username":     "alice",
+		"password":     "password123",
+		"registry_url": mockBackend.URL + "/api",
+	})
+	reqClaim := httptest.NewRequest("POST", "/api/v1/claim/login", bytes.NewReader(claimBody))
+	wClaim := httptest.NewRecorder()
+	srv.Router().ServeHTTP(wClaim, reqClaim)
+	if wClaim.Code != http.StatusOK {
+		t.Fatalf("claim failed: %d, body=%s", wClaim.Code, wClaim.Body.String())
+	}
+
+	select {
+	case payload := <-claimChan:
+		if payload["node_id"] != "test-custom-node-uuid" {
+			t.Errorf("expected node_id 'test-custom-node-uuid', got %v", payload["node_id"])
+		}
+		if _, ok := payload["network_interfaces"]; !ok {
+			t.Errorf("expected network_interfaces in claim payload")
+		}
+		if _, ok := payload["local_endpoints"]; !ok {
+			t.Errorf("expected local_endpoints in claim payload")
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("timed out waiting for claim payload at mock backend")
+	}
+
+	if !cm.IsClaimed() {
+		t.Fatal("expected server to be claimed")
+	}
+
+	// 2. Unclaim server
+	reqUnclaim := httptest.NewRequest("POST", "/api/v1/claim/unclaim", nil)
+	reqUnclaim.RemoteAddr = "127.0.0.1:1234"
+	reqUnclaim.Header.Set("Authorization", "Bearer "+cfg.Server.AuthToken)
+	wUnclaim := httptest.NewRecorder()
+	srv.Router().ServeHTTP(wUnclaim, reqUnclaim)
+	if wUnclaim.Code != http.StatusOK {
+		t.Fatalf("unclaim failed: %d, body=%s", wUnclaim.Code, wUnclaim.Body.String())
+	}
+
+	select {
+	case payload := <-unclaimedChan:
+		if payload["node_id"] != "test-custom-node-uuid" {
+			t.Errorf("expected node_id in unclaim payload, got %v", payload["node_id"])
+		}
+		if _, ok := payload["network_interfaces"]; !ok {
+			t.Errorf("expected network_interfaces in unclaim payload")
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("timed out waiting for unclaim payload at mock backend")
+	}
+
+	if cm.IsClaimed() {
+		t.Fatal("expected server to be unclaimed")
+	}
+}
 
 func TestWebUIOnboardingRender(t *testing.T) {
 	srv, _, _ := setupTestServer(t)
@@ -410,6 +510,9 @@ func TestOtixWriteAndSettings(t *testing.T) {
 		Kind: "game",
 	}}
 	srv.Indexer().SetLibraries(cfg.GameLibraries)
+	for srv.Indexer().IsScanning() {
+		time.Sleep(10 * time.Millisecond)
+	}
 	fileID := "file_testotix01"
 	srv.Indexer().UpsertFile(indexer.HostedFile{
 		ID:       fileID,
@@ -457,18 +560,26 @@ func TestOtixWriteAndSettings(t *testing.T) {
 	}
 	var writeRes map[string]any
 	_ = json.Unmarshal(wWrite.Body.Bytes(), &writeRes)
-	if writeRes["written"] != float64(1) {
-		t.Fatalf("expected written=1, got %v", writeRes)
+	if writeRes["written"] != float64(0) {
+		t.Fatalf("expected written=0 for zero-disk sidecars, got %v", writeRes)
 	}
-	if _, err := os.Stat(filepath.Join(gameRoot, ".otix")); err != nil {
-		t.Fatalf("expected .otix file: %v", err)
+	if _, err := os.Stat(filepath.Join(gameRoot, ".otix")); !os.IsNotExist(err) {
+		t.Fatalf("expected .otix file not to exist on disk: %v", err)
 	}
 
 	reqGet := httptest.NewRequest("GET", "/api/v1/files/"+fileID+"/otix", nil)
 	wGet := httptest.NewRecorder()
 	srv.Router().ServeHTTP(wGet, reqGet)
-	if wGet.Code != http.StatusOK {
-		t.Fatalf("get otix status %d: %s", wGet.Code, wGet.Body.String())
+	if wGet.Code != http.StatusNotFound {
+		t.Fatalf("expected 404 when no sidecar exists on disk, got %d: %s", wGet.Code, wGet.Body.String())
+	}
+
+	// Verify backward compatibility: pre-existing .otix file can still be read
+	_ = os.WriteFile(filepath.Join(gameRoot, ".otix"), []byte(`{"version":1,"title":"Game"}`), 0o644)
+	wGetExisting := httptest.NewRecorder()
+	srv.Router().ServeHTTP(wGetExisting, reqGet)
+	if wGetExisting.Code != http.StatusOK {
+		t.Fatalf("expected 200 for existing legacy sidecar, got %d: %s", wGetExisting.Code, wGetExisting.Body.String())
 	}
 }
 
@@ -1022,6 +1133,14 @@ func TestGamesAndOverlayEndpoints(t *testing.T) {
 	if wPostSettings.Code != http.StatusOK {
 		t.Fatalf("expected 200 from post overlay settings, got %d", wPostSettings.Code)
 	}
+
+	// 6. POST /api/v1/games/fps/fix-permissions
+	reqFixPerm := httptest.NewRequest("POST", "/api/v1/games/fps/fix-permissions", nil)
+	wFixPerm := httptest.NewRecorder()
+	srv.Router().ServeHTTP(wFixPerm, reqFixPerm)
+	if wFixPerm.Code != http.StatusOK && wFixPerm.Code != http.StatusInternalServerError {
+		t.Fatalf("expected 200 or 500 from fix-permissions, got %d", wFixPerm.Code)
+	}
 }
 
 
@@ -1051,5 +1170,493 @@ func TestScanStatusAndProgressSSE(t *testing.T) {
 	srv.Router().ServeHTTP(wScan, reqScan)
 	if wScan.Code != http.StatusOK {
 		t.Fatalf("expected 200 from /api/v1/scan, got %d", wScan.Code)
+	}
+}
+
+func TestJDownloaderEndpoints(t *testing.T) {
+	srv, cfg, _ := setupTestServer(t)
+
+	// 1. Initial GET /api/v1/jdownloader/config should be unconfigured
+	reqGet := httptest.NewRequest("GET", "/api/v1/jdownloader/config", nil)
+	wGet := httptest.NewRecorder()
+	srv.Router().ServeHTTP(wGet, reqGet)
+	if wGet.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", wGet.Code)
+	}
+	var resGet map[string]interface{}
+	_ = json.Unmarshal(wGet.Body.Bytes(), &resGet)
+	if resGet["configured"] != false {
+		t.Fatalf("expected configured=false initially, got %v", resGet["configured"])
+	}
+
+	// 2. Save config with camelCase payload
+	savePayload := map[string]interface{}{
+		"email":      "user@test.org",
+		"password":   "testpass123",
+		"deviceName": "MyDevice",
+		"enabled":    true,
+	}
+	body, _ := json.Marshal(savePayload)
+	reqSave := httptest.NewRequest("POST", "/api/v1/jdownloader/config", bytes.NewReader(body))
+	reqSave.Header.Set("Content-Type", "application/json")
+	wSave := httptest.NewRecorder()
+	srv.Router().ServeHTTP(wSave, reqSave)
+	if wSave.Code != http.StatusOK {
+		t.Fatalf("save failed with %d: %s", wSave.Code, wSave.Body.String())
+	}
+
+	if cfg.JDownloader.Email != "user@test.org" {
+		t.Fatalf("expected email user@test.org, got %s", cfg.JDownloader.Email)
+	}
+	if cfg.JDownloader.DeviceName != "MyDevice" {
+		t.Fatalf("expected deviceName MyDevice, got %s", cfg.JDownloader.DeviceName)
+	}
+
+	// 3. Test test endpoint with camelCase payload
+	testPayload := map[string]interface{}{
+		"directHost": "127.0.0.1",
+		"directPort": 99999,
+	}
+	bodyTest, _ := json.Marshal(testPayload)
+	reqTest := httptest.NewRequest("POST", "/api/v1/jdownloader/test", bytes.NewReader(bodyTest))
+	reqTest.Header.Set("Content-Type", "application/json")
+	wTest := httptest.NewRecorder()
+	srv.Router().ServeHTTP(wTest, reqTest)
+	if wTest.Code != http.StatusOK {
+		t.Fatalf("test endpoint failed with %d", wTest.Code)
+	}
+}
+
+func TestRadarrConfigAndTestConnection(t *testing.T) {
+	srv, cfg, _ := setupTestServer(t)
+
+	// Mock Radarr HTTP server
+	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("X-Api-Key") != "valid-radarr-key" {
+			http.Error(w, `{"error":"Unauthorized"}`, http.StatusUnauthorized)
+			return
+		}
+		if r.URL.Path == "/api/v3/system/status" {
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"version":"5.4.0.8654"}`))
+			return
+		}
+		http.NotFound(w, r)
+	}))
+	defer mockServer.Close()
+
+	u, _ := url.Parse(mockServer.URL)
+	mockHost := u.Hostname()
+	mockPort, _ := strconv.Atoi(u.Port())
+
+	// 1. Test test-radarr with empty API key
+	reqEmpty := httptest.NewRequest("POST", "/api/v1/radarr/test", bytes.NewReader([]byte(`{"host":"127.0.0.1","port":7878,"api_key":""}`)))
+	reqEmpty.Header.Set("Content-Type", "application/json")
+	wEmpty := httptest.NewRecorder()
+	srv.Router().ServeHTTP(wEmpty, reqEmpty)
+	var resEmpty map[string]interface{}
+	_ = json.Unmarshal(wEmpty.Body.Bytes(), &resEmpty)
+	if resEmpty["ok"] == true || resEmpty["message"] != "Radarr API key is missing" {
+		t.Fatalf("expected failure with missing key, got %v", resEmpty)
+	}
+
+	// 2. Test test-radarr with valid credentials in request body (even though not saved yet)
+	testPayload := map[string]interface{}{
+		"host":    mockHost,
+		"port":    mockPort,
+		"apiKey":  "valid-radarr-key",
+		"useSsl":  false,
+		"urlBase": "",
+	}
+	bodyTest, _ := json.Marshal(testPayload)
+	reqValid := httptest.NewRequest("POST", "/api/v1/radarr/test", bytes.NewReader(bodyTest))
+	reqValid.Header.Set("Content-Type", "application/json")
+	wValid := httptest.NewRecorder()
+	srv.Router().ServeHTTP(wValid, reqValid)
+	var resValid map[string]interface{}
+	_ = json.Unmarshal(wValid.Body.Bytes(), &resValid)
+	if resValid["ok"] != true || resValid["version"] != "5.4.0.8654" {
+		t.Fatalf("expected successful connection test, got %v", resValid)
+	}
+
+	// 3. Test saving Radarr config with apiKey (camelCase) and autoRequestWatchlist
+	savePayload := map[string]interface{}{
+		"enabled":              true,
+		"host":                 mockHost,
+		"port":                 mockPort,
+		"apiKey":               "valid-radarr-key",
+		"autoRequestWatchlist": true,
+		"instances": []map[string]interface{}{
+			{
+				"id":                   "default",
+				"name":                 "Default",
+				"enabled":              true,
+				"host":                 mockHost,
+				"port":                 mockPort,
+				"apiKey":               "valid-radarr-key",
+				"autoRequestWatchlist": true,
+			},
+		},
+	}
+	bodySave, _ := json.Marshal(savePayload)
+	reqSave := httptest.NewRequest("POST", "/api/v1/radarr/config", bytes.NewReader(bodySave))
+	reqSave.Header.Set("Content-Type", "application/json")
+	wSave := httptest.NewRecorder()
+	srv.Router().ServeHTTP(wSave, reqSave)
+	if wSave.Code != http.StatusOK {
+		t.Fatalf("save failed with %d: %s", wSave.Code, wSave.Body.String())
+	}
+	if cfg.Radarr.APIKey != "valid-radarr-key" {
+		t.Fatalf("expected saved key valid-radarr-key, got %s", cfg.Radarr.APIKey)
+	}
+	if !cfg.Radarr.AutoRequestWatchlist {
+		t.Fatalf("expected AutoRequestWatchlist to be true")
+	}
+
+	// 4. Test re-saving with empty key preserves the existing key!
+	reSavePayload := map[string]interface{}{
+		"enabled": true,
+		"host":    mockHost,
+		"port":    mockPort,
+		"apiKey":  "",
+		"instances": []map[string]interface{}{
+			{
+				"id":      "default",
+				"name":    "Default",
+				"enabled": true,
+				"host":    mockHost,
+				"port":    mockPort,
+				"apiKey":  "",
+			},
+		},
+	}
+	bodyReSave, _ := json.Marshal(reSavePayload)
+	reqReSave := httptest.NewRequest("POST", "/api/v1/radarr/config", bytes.NewReader(bodyReSave))
+	reqReSave.Header.Set("Content-Type", "application/json")
+	wReSave := httptest.NewRecorder()
+	srv.Router().ServeHTTP(wReSave, reqReSave)
+	if cfg.Radarr.APIKey != "valid-radarr-key" {
+		t.Fatalf("expected preserved key valid-radarr-key, got %s", cfg.Radarr.APIKey)
+	}
+
+	// 5. Test GET /api/v1/radarr/config returns configured and has_api_key
+	reqGet := httptest.NewRequest("GET", "/api/v1/radarr/config", nil)
+	wGet := httptest.NewRecorder()
+	srv.Router().ServeHTTP(wGet, reqGet)
+	var resGet map[string]interface{}
+	_ = json.Unmarshal(wGet.Body.Bytes(), &resGet)
+	if resGet["configured"] != true || resGet["has_api_key"] != true {
+		t.Fatalf("expected configured=true and has_api_key=true, got %v", resGet)
+	}
+}
+
+func TestSonarrConfigAndTestConnection(t *testing.T) {
+	srv, cfg, _ := setupTestServer(t)
+
+	// Mock Sonarr HTTP server
+	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("X-Api-Key") != "valid-sonarr-key" {
+			http.Error(w, `{"error":"Unauthorized"}`, http.StatusUnauthorized)
+			return
+		}
+		if r.URL.Path == "/api/v3/system/status" {
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"version":"4.0.1.929"}`))
+			return
+		}
+		http.NotFound(w, r)
+	}))
+	defer mockServer.Close()
+
+	u, _ := url.Parse(mockServer.URL)
+	mockHost := u.Hostname()
+	mockPort, _ := strconv.Atoi(u.Port())
+
+	// 1. Test test-sonarr with empty API key
+	reqEmpty := httptest.NewRequest("POST", "/api/v1/sonarr/test", bytes.NewReader([]byte(`{"host":"127.0.0.1","port":8989,"api_key":""}`)))
+	reqEmpty.Header.Set("Content-Type", "application/json")
+	wEmpty := httptest.NewRecorder()
+	srv.Router().ServeHTTP(wEmpty, reqEmpty)
+	var resEmpty map[string]interface{}
+	_ = json.Unmarshal(wEmpty.Body.Bytes(), &resEmpty)
+	if resEmpty["ok"] == true || resEmpty["message"] != "Sonarr API key is missing" {
+		t.Fatalf("expected failure with missing key, got %v", resEmpty)
+	}
+
+	// 2. Test test-sonarr with valid credentials in request body (even though not saved yet)
+	testPayload := map[string]interface{}{
+		"host":    mockHost,
+		"port":    mockPort,
+		"apiKey":  "valid-sonarr-key",
+		"useSsl":  false,
+		"urlBase": "",
+	}
+	bodyTest, _ := json.Marshal(testPayload)
+	reqValid := httptest.NewRequest("POST", "/api/v1/sonarr/test", bytes.NewReader(bodyTest))
+	reqValid.Header.Set("Content-Type", "application/json")
+	wValid := httptest.NewRecorder()
+	srv.Router().ServeHTTP(wValid, reqValid)
+	var resValid map[string]interface{}
+	_ = json.Unmarshal(wValid.Body.Bytes(), &resValid)
+	if resValid["ok"] != true || resValid["version"] != "4.0.1.929" {
+		t.Fatalf("expected successful connection test, got %v", resValid)
+	}
+
+	// 3. Test saving Sonarr config with apiKey (camelCase)
+	savePayload := map[string]interface{}{
+		"enabled":              true,
+		"host":                 mockHost,
+		"port":                 mockPort,
+		"apiKey":               "valid-sonarr-key",
+		"autoRequestWatchlist": true,
+		"instances": []map[string]interface{}{
+			{
+				"id":                   "default",
+				"name":                 "Default",
+				"enabled":              true,
+				"host":                 mockHost,
+				"port":                 mockPort,
+				"apiKey":               "valid-sonarr-key",
+				"autoRequestWatchlist": true,
+			},
+		},
+	}
+	bodySave, _ := json.Marshal(savePayload)
+	reqSave := httptest.NewRequest("POST", "/api/v1/sonarr/config", bytes.NewReader(bodySave))
+	reqSave.Header.Set("Content-Type", "application/json")
+	wSave := httptest.NewRecorder()
+	srv.Router().ServeHTTP(wSave, reqSave)
+	if wSave.Code != http.StatusOK {
+		t.Fatalf("save failed with %d: %s", wSave.Code, wSave.Body.String())
+	}
+	if cfg.Sonarr.APIKey != "valid-sonarr-key" {
+		t.Fatalf("expected saved key valid-sonarr-key, got %s", cfg.Sonarr.APIKey)
+	}
+	if !cfg.Sonarr.AutoRequestWatchlist {
+		t.Fatalf("expected Sonarr AutoRequestWatchlist to be true")
+	}
+
+	// 4. Test re-saving with empty key preserves the existing key!
+	reSavePayload := map[string]interface{}{
+		"enabled": true,
+		"host":    mockHost,
+		"port":    mockPort,
+		"apiKey":  "",
+		"instances": []map[string]interface{}{
+			{
+				"id":      "default",
+				"name":    "Default",
+				"enabled": true,
+				"host":    mockHost,
+				"port":    mockPort,
+				"apiKey":  "",
+			},
+		},
+	}
+	bodyReSave, _ := json.Marshal(reSavePayload)
+	reqReSave := httptest.NewRequest("POST", "/api/v1/sonarr/config", bytes.NewReader(bodyReSave))
+	reqReSave.Header.Set("Content-Type", "application/json")
+	wReSave := httptest.NewRecorder()
+	srv.Router().ServeHTTP(wReSave, reqReSave)
+	if cfg.Sonarr.APIKey != "valid-sonarr-key" {
+		t.Fatalf("expected preserved key valid-sonarr-key, got %s", cfg.Sonarr.APIKey)
+	}
+
+	// 5. Test GET /api/v1/sonarr/config returns configured and has_api_key
+	reqGet := httptest.NewRequest("GET", "/api/v1/sonarr/config", nil)
+	wGet := httptest.NewRecorder()
+	srv.Router().ServeHTTP(wGet, reqGet)
+	var resGet map[string]interface{}
+	_ = json.Unmarshal(wGet.Body.Bytes(), &resGet)
+	if resGet["configured"] != true || resGet["has_api_key"] != true {
+		t.Fatalf("expected configured=true and has_api_key=true, got %v", resGet)
+	}
+}
+
+func TestDaemonManifestTransmission_Empty(t *testing.T) {
+	var receivedRequests []map[string]any
+	var receivedAuthHeaders []string
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		receivedAuthHeaders = append(receivedAuthHeaders, r.Header.Get("Authorization"))
+		var body map[string]any
+		_ = json.NewDecoder(r.Body).Decode(&body)
+		receivedRequests = append(receivedRequests, body)
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{"status": "ok", "stats": map[string]int{"total_processed": 0}})
+	}))
+	defer ts.Close()
+
+	client := ts.Client()
+	err := server.TransmitManifest(client, ts.URL+"/manifest/", "test-token-xyz", nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(receivedRequests) != 1 {
+		t.Fatalf("expected 1 request, got %d", len(receivedRequests))
+	}
+	if receivedAuthHeaders[0] != "Bearer test-token-xyz" {
+		t.Fatalf("expected Bearer test-token-xyz, got %s", receivedAuthHeaders[0])
+	}
+	files, ok := receivedRequests[0]["files"].([]any)
+	if !ok || len(files) != 0 {
+		t.Fatalf("expected empty files list, got %v", receivedRequests[0]["files"])
+	}
+	if prune, ok := receivedRequests[0]["prune"].(bool); !ok || !prune {
+		t.Fatalf("expected prune=true for empty files, got %v", receivedRequests[0]["prune"])
+	}
+}
+
+func TestDaemonManifestTransmission_Chunking(t *testing.T) {
+	var receivedRequests []map[string]any
+	var receivedAuthHeaders []string
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		receivedAuthHeaders = append(receivedAuthHeaders, r.Header.Get("Authorization"))
+		var body map[string]any
+		_ = json.NewDecoder(r.Body).Decode(&body)
+		receivedRequests = append(receivedRequests, body)
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{"status": "ok"})
+	}))
+	defer ts.Close()
+
+	// Generate 1250 files to verify 500-item chunks (500, 500, 250)
+	totalFiles := 1250
+	files := make([]indexer.HostedFile, totalFiles)
+	for i := 0; i < totalFiles; i++ {
+		files[i] = indexer.HostedFile{
+			ID:             fmt.Sprintf("file-%d", i),
+			Filename:       fmt.Sprintf("Game_%d.iso", i),
+			Filepath:       fmt.Sprintf("C:\\Games\\Game_%d.iso", i),
+			RelativePath:   fmt.Sprintf("Game_%d.iso", i),
+			Filesize:       1024 * 1024,
+			SHA256Head:     "mock-sha256",
+			Extension:      ".iso",
+			FormatCategory: "game",
+			GameTitle:      fmt.Sprintf("Game %d", i),
+		}
+	}
+
+	client := ts.Client()
+	err := server.TransmitManifest(client, ts.URL+"/manifest/", "chunk-token-123", files)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(receivedRequests) != 3 {
+		t.Fatalf("expected 3 chunks for 1250 items, got %d", len(receivedRequests))
+	}
+
+	// Chunk 1: 500 items, append=false, prune=false
+	chunk1Files, _ := receivedRequests[0]["files"].([]any)
+	if len(chunk1Files) != 500 {
+		t.Fatalf("expected chunk 1 to have 500 items, got %d", len(chunk1Files))
+	}
+	if receivedRequests[0]["append"] == true {
+		t.Fatalf("expected chunk 1 append=false, got %v", receivedRequests[0]["append"])
+	}
+	if receivedRequests[0]["prune"] == true {
+		t.Fatalf("expected chunk 1 prune=false, got %v", receivedRequests[0]["prune"])
+	}
+
+	// Chunk 2: 500 items, append=true, prune=false
+	chunk2Files, _ := receivedRequests[1]["files"].([]any)
+	if len(chunk2Files) != 500 {
+		t.Fatalf("expected chunk 2 to have 500 items, got %d", len(chunk2Files))
+	}
+	if receivedRequests[1]["append"] != true {
+		t.Fatalf("expected chunk 2 append=true, got %v", receivedRequests[1]["append"])
+	}
+	if receivedRequests[1]["prune"] == true {
+		t.Fatalf("expected chunk 2 prune=false, got %v", receivedRequests[1]["prune"])
+	}
+
+	// Chunk 3: 250 items, append=true, prune=true
+	chunk3Files, _ := receivedRequests[2]["files"].([]any)
+	if len(chunk3Files) != 250 {
+		t.Fatalf("expected chunk 3 to have 250 items, got %d", len(chunk3Files))
+	}
+	if receivedRequests[2]["append"] != true {
+		t.Fatalf("expected chunk 3 append=true, got %v", receivedRequests[2]["append"])
+	}
+	if receivedRequests[2]["prune"] != true {
+		t.Fatalf("expected chunk 3 prune=true, got %v", receivedRequests[2]["prune"])
+	}
+
+	for i, header := range receivedAuthHeaders {
+		if header != "Bearer chunk-token-123" {
+			t.Fatalf("expected chunk %d auth Bearer chunk-token-123, got %s", i+1, header)
+		}
+	}
+}
+
+func TestTriggerBackendSync_DirectManifest(t *testing.T) {
+	manifestReceived := make(chan struct {
+		path string
+		auth string
+		body map[string]any
+	}, 5)
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var body map[string]any
+		_ = json.NewDecoder(r.Body).Decode(&body)
+		manifestReceived <- struct {
+			path string
+			auth string
+			body map[string]any
+		}{
+			path: r.URL.Path,
+			auth: r.Header.Get("Authorization"),
+			body: body,
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{"status": "ok"})
+	}))
+	defer ts.Close()
+
+	srv, cfg, _ := setupTestServer(t)
+	cfg.Server.RegistryURL = ts.URL
+	cfg.Server.NodeID = "node-manifest-sync-uuid"
+	cfg.Server.AuthToken = "secret-node-token-999"
+
+	for srv.Indexer().IsScanning() {
+		time.Sleep(10 * time.Millisecond)
+	}
+
+	// Upsert file to indexer
+	srv.Indexer().UpsertFile(indexer.HostedFile{
+		ID:             "file-sync-01",
+		Filename:       "SyncGame.exe",
+		Filepath:       "C:\\Games\\SyncGame.exe",
+		RelativePath:   "SyncGame.exe",
+		Filesize:       2048,
+		SHA256Head:     "sha-head-123",
+		Extension:      ".exe",
+		FormatCategory: "game",
+		GameTitle:      "Sync Game",
+	})
+
+	server.ResetLastSyncTimeForTesting()
+	srv.TriggerBackendSync()
+
+	select {
+	case req := <-manifestReceived:
+		expectedPath := "/api/v1/nodes/node-manifest-sync-uuid/manifest/"
+		if req.path != expectedPath {
+			t.Fatalf("expected manifest path %q, got %q", expectedPath, req.path)
+		}
+		if req.auth != "Bearer secret-node-token-999" {
+			t.Fatalf("expected auth Bearer secret-node-token-999, got %q", req.auth)
+		}
+		files, ok := req.body["files"].([]any)
+		if !ok || len(files) != 1 {
+			t.Fatalf("expected 1 file in manifest payload, got %v", req.body["files"])
+		}
+		fileMap, _ := files[0].(map[string]any)
+		if fileMap["filename"] != "SyncGame.exe" {
+			t.Fatalf("expected filename SyncGame.exe, got %v", fileMap["filename"])
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("timed out waiting for manifest transmission on TriggerBackendSync")
 	}
 }

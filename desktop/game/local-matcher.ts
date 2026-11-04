@@ -42,18 +42,33 @@ export class LocalMatcher {
     const byKey = this.buildTitleIndex();
     const results: LocalMatchResult[] = [];
     for (const g of games) {
-      results.push(this.matchOne(g, byKey, catalog));
+      try {
+        results.push(this.matchOne(g, byKey, catalog));
+      } catch (itemErr: any) {
+        console.warn(`[LocalMatcher] Error matching item "${String(g?.title ?? '')}" (${g?.id}):`, itemErr);
+        results.push({
+          queryId: `${g?.platform || 'unknown'}:${String(g?.id ?? '')}`,
+          queryTitle: String(g?.title ?? '').trim(),
+          source: g?.platform || 'unknown',
+          sourceGameId: String(g?.id ?? ''),
+          status: 'unmatched',
+        });
+      }
     }
     return results;
   }
 
   private buildTitleIndex(): Map<string, GameMatch> {
     const byKey = new Map<string, GameMatch>();
-    for (const m of getAllGameMatches()) {
-      if (!m.otixTitle) continue;
-      const key = comparisonKey(m.otixTitle);
-      const cur = byKey.get(key);
-      if (!cur || this.score(m) > this.score(cur)) byKey.set(key, m);
+    try {
+      for (const m of getAllGameMatches()) {
+        if (!m.otixTitle) continue;
+        const key = comparisonKey(m.otixTitle);
+        const cur = byKey.get(key);
+        if (!cur || this.score(m) > this.score(cur)) byKey.set(key, m);
+      }
+    } catch (err: any) {
+      console.warn('[LocalMatcher] Failed to build title index:', err);
     }
     return byKey;
   }
@@ -68,10 +83,11 @@ export class LocalMatcher {
     byKey: Map<string, GameMatch>,
     catalog?: Map<string, CatalogMatchCandidate>,
   ): LocalMatchResult {
-    const source = g.platform || 'unknown';
-    const sourceGameId = String(g.id ?? '');
+    const source = g?.platform || 'unknown';
+    const sourceGameId = String(g?.id ?? '');
     const queryId = `${source}:${sourceGameId}`;
-    const title = (g.title || '').trim();
+    const rawTitle = typeof g?.title === 'string' ? g.title : String(g?.title ?? '');
+    const title = rawTitle.trim();
     const base = { source, sourceGameId, queryId, queryTitle: title };
 
     // 1) Already matched by exact source id — leave untouched.
@@ -138,8 +154,8 @@ export class LocalMatcher {
 
     // 4) Self-match — local identity using the source game's own artwork.
     const mediaId = queryId;
-    const posterUrl = g.posterUrl || null;
-    const logoUrl = g.logoUrl || null;
+    const posterUrl = g?.posterUrl || null;
+    const logoUrl = g?.logoUrl || null;
     this.persistMatch(g, mediaId, title, posterUrl, logoUrl, null, SELF_CONFIDENCE, source, sourceGameId);
     // Register for later games in the same batch.
     byKey.set(key, {
@@ -169,14 +185,18 @@ export class LocalMatcher {
     source: string,
     sourceGameId: string,
   ): void {
-    upsertGameMatch({
-      source, sourceGameId, otixMediaId: mediaId, otixTitle: title,
-      otixPosterUrl: posterUrl || undefined, otixBackdropUrl: backdropUrl || undefined,
-      otixConfidence: confidence, matchType: 'auto', status: 'approved',
-    });
-    const scannedGameId = `${source}_${sourceGameId}`;
-    hydrateGame(scannedGameId, title, logoUrl, posterUrl, {
-      media_item_id: mediaId, title, confidence, poster_url: posterUrl, logo_url: logoUrl,
-    }, confidence, mediaId, backdropUrl || null, null, logoUrl);
+    try {
+      upsertGameMatch({
+        source, sourceGameId, otixMediaId: mediaId, otixTitle: title,
+        otixPosterUrl: posterUrl || undefined, otixBackdropUrl: backdropUrl || undefined,
+        otixConfidence: confidence, matchType: 'auto', status: 'approved',
+      });
+      const scannedGameId = `${source}_${sourceGameId}`;
+      hydrateGame(scannedGameId, title, logoUrl, posterUrl, {
+        media_item_id: mediaId, title, confidence, poster_url: posterUrl, logo_url: logoUrl,
+      }, confidence, mediaId, backdropUrl || null, null, logoUrl);
+    } catch (persistErr: any) {
+      console.warn(`[LocalMatcher] Failed to persist match for ${source}:${sourceGameId}:`, persistErr);
+    }
   }
 }

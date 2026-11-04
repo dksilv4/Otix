@@ -31,13 +31,32 @@ func (m *mockFpsCollector) Stop() *FpsStatsData {
 	}
 }
 
+func (m *mockFpsCollector) StopGame(gameID string) *FpsStatsData {
+	m.stopped = true
+	return &FpsStatsData{
+		AvgFPS:          120.0,
+		TotalFrames:     1200,
+		DurationSeconds: 10,
+	}
+}
+
 func (m *mockFpsCollector) GetSnapshot() *LiveFpsSnapshot {
+	return m.snapshot
+}
+
+func (m *mockFpsCollector) GetSnapshotForGame(gameID string) *LiveFpsSnapshot {
 	return m.snapshot
 }
 
 func (m *mockFpsCollector) IsAvailable() bool {
 	return m.available
 }
+
+func (m *mockFpsCollector) IsPermissionDenied() bool {
+	return false
+}
+
+
 
 func (m *mockFpsCollector) Subscribe() <-chan LiveFpsSnapshot {
 	ch := make(chan LiveFpsSnapshot)
@@ -67,10 +86,17 @@ func TestGameTrackerIdentification(t *testing.T) {
 
 	tracker := NewGameTracker(store, mockCollector, nil)
 
-	// Test known game signature
+	// By default, onlyTrackScanned is true -> unindexed game signature is ignored
+	idUnindexed, _ := tracker.identifyGame("Cyberpunk2077.exe")
+	if idUnindexed != "" {
+		t.Fatalf("expected unindexed game to be rejected when onlyTrackScanned is true, got id=%s", idUnindexed)
+	}
+
+	// When onlyTrackScanned is disabled, known game signature matches
+	tracker.SetOnlyTrackScanned(false)
 	id, title := tracker.identifyGame("Cyberpunk2077.exe")
 	if id == "" || title != "Cyberpunk 2077" {
-		t.Fatalf("expected Cyberpunk 2077 match, got id=%s title=%s", id, title)
+		t.Fatalf("expected Cyberpunk 2077 match when onlyTrackScanned is false, got id=%s title=%s", id, title)
 	}
 
 	// Test noise process

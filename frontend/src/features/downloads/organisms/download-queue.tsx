@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Helmet } from 'react-helmet-async';
 import {
   Download,
@@ -11,6 +11,8 @@ import {
   Search,
   History,
   BookmarkCheck,
+  Tv,
+  Film,
 } from 'lucide-react';
 import { useAuth } from '@/lib/providers/auth';
 import { useFeature } from '@/features/_config';
@@ -20,6 +22,8 @@ import { useRemoteDownloads, useServerGames } from '../use-server-downloads';
 import { useMediaRequests } from '../use-media-requests';
 import { DownloadCard } from '../molecules/download-card';
 import { RemoteDownloadCard } from '../molecules/remote-download-card';
+import { DownloadEpisodeCard } from '../molecules/download-episode-card';
+import { DownloadMovieCard } from '../molecules/download-movie-card';
 import { ServerFileExplorerModal } from '../molecules/server-file-explorer-modal';
 import { ServerSabnzbdSettingsModal } from '../molecules/server-sabnzbd-settings-modal';
 import { ServerJDownloaderSettingsModal } from '../molecules/server-jdownloader-settings-modal';
@@ -27,7 +31,15 @@ import { ServerGameSearchModal } from '../molecules/server-game-search-modal';
 import { DownloadHistoryPanel } from '../molecules/download-history-panel';
 import { DownloadRequestsPanel } from '../molecules/download-requests-panel';
 import { useServerUsenetHistory, useServerUsenetQueue, useCancelServerQueueDownload } from '../use-server-usenet';
+import {
+  useServerSonarrQueue,
+  useServerRadarrQueue,
+  useCancelServerSonarrQueueItem,
+  useCancelServerRadarrQueueItem,
+} from '../use-server-arr';
 import { resolveDownloadDisplayTitle } from '../utils';
+import { parseEpisodeRelease } from '../utils/episode-download';
+import type { ServerArrQueueItem } from '../arr-types';
 import { DkButton } from '@ui/atoms/button';
 import { cn, formatBytes } from '@/lib/utils';
 import { isDesktop } from '@/lib/desktop/api';
@@ -62,7 +74,7 @@ export const DownloadQueuePage = () => {
 
   const activeServer = serverData?.servers?.[0];
   const activeServerId = activeServer?.id;
-  const { data: mediaRequestsData } = useMediaRequests({ serverId: activeServerId });
+  const { data: mediaRequestsData } = useMediaRequests();
   const mediaRequestsCount = mediaRequestsData?.items?.length ?? 0;
 
   const openServerExplorer = () => {
@@ -82,6 +94,41 @@ export const DownloadQueuePage = () => {
   const usenetHistoryItems = usenetHistory.filter((item) => !activeUsenetIds.has(item.nzo_id));
   const usenetActiveItems = usenetQueueData?.items ?? [];
   const usenetActiveCount = usenetActiveItems.length;
+
+  const { data: sonarrQueueData, refetch: refetchSonarrQueue } = useServerSonarrQueue(activeServerId);
+  const { data: radarrQueueData, refetch: refetchRadarrQueue } = useServerRadarrQueue(activeServerId);
+  const cancelSonarrMutation = useCancelServerSonarrQueueItem(activeServerId);
+  const cancelRadarrMutation = useCancelServerRadarrQueueItem(activeServerId);
+
+  const sonarrRecords = useMemo(() => sonarrQueueData?.records ?? [], [sonarrQueueData?.records]);
+  const radarrRecords = useMemo(() => radarrQueueData?.records ?? [], [radarrQueueData?.records]);
+
+  // Usenet live speed lookup map by nzo_id
+  const usenetByNzoId = useMemo(() => {
+    const map = new Map<string, (typeof usenetActiveItems)[0]>();
+    for (const item of usenetActiveItems) {
+      if (item.nzo_id) map.set(item.nzo_id, item);
+    }
+    return map;
+  }, [usenetActiveItems]);
+
+  // Set of nzo_ids claimed by Sonarr or Radarr
+  const claimedNzoIds = useMemo(() => {
+    const set = new Set<string>();
+    for (const r of sonarrRecords) {
+      if (r.downloadId) set.add(r.downloadId);
+      if (r.download_id) set.add(r.download_id);
+    }
+    for (const r of radarrRecords) {
+      if (r.downloadId) set.add(r.downloadId);
+      if (r.download_id) set.add(r.download_id);
+    }
+    return set;
+  }, [sonarrRecords, radarrRecords]);
+
+  const standaloneUsenetItems = useMemo(() => {
+    return usenetActiveItems.filter((item) => !claimedNzoIds.has(item.nzo_id));
+  }, [usenetActiveItems, claimedNzoIds]);
 
   const [gamesDownloadPath, setGamesDownloadPath] = useState<string>(() => {
 
@@ -137,7 +184,12 @@ export const DownloadQueuePage = () => {
   const activeRemoteTransfers = activeTransfers.filter(
     (t) => t.status === 'downloading' || t.status === 'paused' || t.status === 'error',
   );
-  const totalActiveCount = activeDownloads.length + activeRemoteTransfers.length + usenetActiveCount;
+  const totalActiveCount =
+    activeDownloads.length +
+    activeRemoteTransfers.length +
+    standaloneUsenetItems.length +
+    sonarrRecords.length +
+    radarrRecords.length;
 
   return (
     <div id="download-queue" className="dk-downloads__page">
@@ -213,7 +265,18 @@ export const DownloadQueuePage = () => {
               </button>
             </>
           )}
-          <DkButton size="sm" variant="ghost" onClick={pollQueue} loading={loading} className="shadow-none">
+          <DkButton
+            size="sm"
+            variant="ghost"
+            onClick={() => {
+              pollQueue();
+              refetchUsenetQueue();
+              refetchSonarrQueue();
+              refetchRadarrQueue();
+            }}
+            loading={loading}
+            className="shadow-none"
+          >
             <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
             Refresh
           </DkButton>
@@ -321,6 +384,64 @@ export const DownloadQueuePage = () => {
           {/* ── 1-Click Relocation Prompt & Destination Preview ── */}
           <DownloadRelocationPrompt className="mb-5" />
 
+          {/* ── Recent Watchlist & Media Requests Pod ── */}
+          {mediaRequestsCount > 0 && (
+            <div className="mb-5 p-4 rounded-2xl bg-[var(--dk-surface-glass)] backdrop-blur-xl shadow-[var(--dk-shadow-glass)] space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-1.5 rounded-xl bg-primary/15 text-primary">
+                    <BookmarkCheck className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-xs font-bold text-foreground">
+                      Watchlist &amp; Media Requests ({mediaRequestsCount})
+                    </h3>
+                    <p className="text-[11px] text-muted-foreground">
+                      Titles automatically requested on Radarr &amp; Sonarr from your watchlist
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setMainTab('requests')}
+                  className="text-xs font-semibold text-primary hover:underline cursor-pointer"
+                >
+                  View All &rarr;
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 pt-1">
+                {mediaRequestsData?.items?.slice(0, 3).map((item) => (
+                  <div
+                    key={item.id}
+                    onClick={() => setMainTab('requests')}
+                    className="flex items-center gap-3 p-2.5 rounded-xl bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)] transition-colors cursor-pointer"
+                  >
+                    {item.posterUrl ? (
+                      <img
+                        src={item.posterUrl}
+                        alt={item.title}
+                        className="h-11 w-8 rounded-lg object-cover shrink-0"
+                      />
+                    ) : (
+                      <div className="h-11 w-8 rounded-lg bg-muted flex items-center justify-center shrink-0 text-muted-foreground">
+                        <BookmarkCheck className="h-4 w-4" />
+                      </div>
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-semibold text-foreground truncate">{item.title}</p>
+                      <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground mt-0.5">
+                        <span className="capitalize">{item.service}</span>
+                        <span>&bull;</span>
+                        <span className="capitalize">{item.status}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Assigned Save Location Banner */}
           <div className="mb-5 px-3.5 py-2.5 rounded-xl bg-[var(--dk-surface-ghost)] flex items-center justify-between text-xs">
             <div className="flex items-center gap-2 text-muted-foreground min-w-0">
@@ -350,8 +471,80 @@ export const DownloadQueuePage = () => {
             </div>
           </div>
 
+          {/* ── Active Sonarr TV Episode Downloads ── */}
+          {sonarrRecords.length > 0 && (
+            <div className="mb-5 p-4 rounded-2xl bg-[var(--dk-surface-glass)] backdrop-blur-xl shadow-[var(--dk-shadow-glass)] space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-1.5 rounded-xl bg-primary/15 text-primary">
+                    <Tv className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-xs font-bold text-foreground">
+                      TV Downloads (Sonarr)
+                    </h3>
+                    <p className="text-[11px] text-muted-foreground">
+                      {sonarrRecords.length} active episode download{sonarrRecords.length === 1 ? '' : 's'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                {sonarrRecords.map((item) => {
+                  const liveSpeed =
+                    (item.downloadId && usenetByNzoId.get(item.downloadId)?.speed) ||
+                    (item.download_id && usenetByNzoId.get(item.download_id)?.speed) ||
+                    usenetQueueData?.speed ||
+                    null;
+                  return (
+                    <DownloadEpisodeCard
+                      key={item.id}
+                      item={item}
+                      onCancel={(id) => cancelSonarrMutation.mutate({ queueId: id })}
+                      isCancelling={cancelSonarrMutation.isPending}
+                      liveSpeed={liveSpeed}
+                    />
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* ── Active Radarr Movie Downloads ── */}
+          {radarrRecords.length > 0 && (
+            <div className="mb-5 p-4 rounded-2xl bg-[var(--dk-surface-glass)] backdrop-blur-xl shadow-[var(--dk-shadow-glass)] space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-1.5 rounded-xl bg-primary/15 text-primary">
+                    <Film className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-xs font-bold text-foreground">
+                      Movie Downloads (Radarr)
+                    </h3>
+                    <p className="text-[11px] text-muted-foreground">
+                      {radarrRecords.length} active movie download{radarrRecords.length === 1 ? '' : 's'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                {radarrRecords.map((item) => (
+                  <DownloadMovieCard
+                    key={item.id}
+                    item={item}
+                    onCancel={(id) => cancelRadarrMutation.mutate({ queueId: id })}
+                    isCancelling={cancelRadarrMutation.isPending}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* ── Active Server SABnzbd Usenet Queue ── */}
-          {hasGameServers && usenetActiveItems.length > 0 && (
+          {hasGameServers && standaloneUsenetItems.length > 0 && (
             <div className="mb-5 p-4 rounded-2xl bg-[var(--dk-surface-glass)] backdrop-blur-xl shadow-[var(--dk-shadow-glass)] space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
@@ -363,14 +556,39 @@ export const DownloadQueuePage = () => {
                       Server Usenet Downloads (SABnzbd)
                     </h3>
                     <p className="text-[11px] text-muted-foreground">
-                      Speed: <span className="text-primary font-semibold font-mono">{usenetQueueData?.speed || '0 KB/s'}</span> · {usenetActiveItems.length} active item{usenetActiveItems.length === 1 ? '' : 's'}
+                      Speed: <span className="text-primary font-semibold font-mono">{usenetQueueData?.speed || '0 KB/s'}</span> · {standaloneUsenetItems.length} active item{standaloneUsenetItems.length === 1 ? '' : 's'}
                     </p>
                   </div>
                 </div>
               </div>
 
-              <div className="space-y-2">
-                {usenetActiveItems.map((item) => {
+              <div className="space-y-3">
+                {standaloneUsenetItems.map((item) => {
+                  const parsed = parseEpisodeRelease(item.filename || item.title);
+                  if (parsed.seasonNumber != null && parsed.episodeNumber != null) {
+                    const arrItem: ServerArrQueueItem = {
+                      id: Number(item.nzo_id.replace(/\D/g, '')) || 1,
+                      title: item.filename || item.title || 'Episode',
+                      status: item.status || 'Downloading',
+                      size: item.size_mb * 1024 * 1024,
+                      sizeLeft: item.size_left_mb * 1024 * 1024,
+                      timeleft: item.time_left,
+                      protocol: 'usenet',
+                      seasonNumber: parsed.seasonNumber,
+                      episodeNumber: parsed.episodeNumber,
+                      showTitle: parsed.showName || undefined,
+                      episodeName: parsed.episodeTitle || undefined,
+                    };
+                    return (
+                      <DownloadEpisodeCard
+                        key={item.nzo_id}
+                        item={arrItem}
+                        onCancel={() => cancelUsenetDownloadMutation.mutate(item.nzo_id)}
+                        liveSpeed={item.speed || usenetQueueData?.speed}
+                      />
+                    );
+                  }
+
                   const displayTitle = resolveDownloadDisplayTitle(item);
                   const totalBytes = item.size_mb * 1024 * 1024;
                   const downloadedBytes = Math.max(0, (item.size_mb - item.size_left_mb) * 1024 * 1024);
@@ -394,8 +612,9 @@ export const DownloadQueuePage = () => {
                             {item.percentage.toFixed(1)}%
                           </span>
                           <button
+                            type="button"
                             onClick={() => cancelUsenetDownloadMutation.mutate(item.nzo_id)}
-                            className="text-[11px] text-destructive hover:opacity-80 font-medium"
+                            className="text-[11px] text-destructive hover:opacity-80 font-medium cursor-pointer"
                           >
                             Cancel
                           </button>
@@ -490,7 +709,11 @@ export const DownloadQueuePage = () => {
           )}
 
           {/* Local and Remote Active Download list */}
-          {activeDownloads.length === 0 && activeRemoteTransfers.length === 0 && usenetActiveItems.length === 0 ? (
+          {activeDownloads.length === 0 &&
+          activeRemoteTransfers.length === 0 &&
+          standaloneUsenetItems.length === 0 &&
+          sonarrRecords.length === 0 &&
+          radarrRecords.length === 0 ? (
             <div className="dk-downloads__empty">
               <Download className="h-8 w-8 text-muted-foreground/30 mb-3" />
               <p className="dk-downloads__empty-text">No active downloads</p>
@@ -499,32 +722,34 @@ export const DownloadQueuePage = () => {
               </p>
             </div>
           ) : (
-            <div className="dk-downloads__list space-y-3">
-              {activeRemoteTransfers.map((transfer) => (
-                <RemoteDownloadCard
-                  key={transfer.id}
-                  transfer={transfer}
-                  onPause={pauseDownload}
-                  onResume={resumeDownload}
-                  onCancel={cancelRemoteDownload}
-                />
-              ))}
-              {activeDownloads.map((dl) => (
-                <DownloadCard
-                  key={dl.id}
-                  download={dl}
-                  onCancel={cancelDownload}
-                  onDelete={cancelDownload}
-                />
-              ))}
-            </div>
+            (activeDownloads.length > 0 || activeRemoteTransfers.length > 0) && (
+              <div className="dk-downloads__list space-y-3">
+                {activeRemoteTransfers.map((transfer) => (
+                  <RemoteDownloadCard
+                    key={transfer.id}
+                    transfer={transfer}
+                    onPause={pauseDownload}
+                    onResume={resumeDownload}
+                    onCancel={cancelRemoteDownload}
+                  />
+                ))}
+                {activeDownloads.map((dl) => (
+                  <DownloadCard
+                    key={dl.id}
+                    download={dl}
+                    onCancel={cancelDownload}
+                    onDelete={cancelDownload}
+                  />
+                ))}
+              </div>
+            )
           )}
         </>
       )}
 
       {/* Requests Tab: All Media & Download Requests sent from Otix */}
       {mainTab === 'requests' && (
-        <DownloadRequestsPanel serverId={activeServerId} />
+        <DownloadRequestsPanel />
       )}
 
       {/* History Tab: Dedicated SABnzbd & Usenet History */}

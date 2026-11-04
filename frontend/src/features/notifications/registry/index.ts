@@ -1,7 +1,7 @@
 import {
   Bell, UserPlus, UserCheck, UserX, UserMinus, Heart,
   MessageSquareText, Users, Star, Tv, Clapperboard,
-  Unplug,
+  Unplug, BookmarkCheck,
 } from 'lucide-react'
 import type { TypeConfig, NotificationType } from '../types'
 
@@ -254,6 +254,20 @@ export const NOTIFICATION_TYPES: Record<NotificationType, TypeConfig> = {
     description: 'An external integration was disconnected',
     color: 'text-amber-400',
     getLink: () => '/settings/integrations',
+    defaultChannels: { toast: true, desktop: true, web_push: true },
+  },
+  media_request: {
+    type: 'media_request',
+    icon: BookmarkCheck,
+    label: 'Media Request',
+    description: 'A watchlisted item was automatically requested',
+    color: 'text-primary',
+    getLink: (n) => {
+      const meta = n.metadataJson ?? {}
+      const link = (meta.link || meta.url) as string | undefined
+      if (link) return link
+      return '/downloads?tab=requests'
+    },
     defaultChannels: { toast: true, desktop: true, web_push: true },
   },
   system: {

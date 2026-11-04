@@ -51,7 +51,8 @@ func TestHeartbeatRunner(t *testing.T) {
 	var statusToReturn int = http.StatusOK
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/v1/servers/heartbeat" {
+		expectedPath := "/api/v1/nodes/test-node-uuid/heartbeat/"
+		if r.URL.Path != expectedPath && r.URL.Path != "/v1/servers/heartbeat" && r.URL.Path != "/api/v1/nodes/test-node-uuid/heartbeat" {
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
@@ -61,6 +62,7 @@ func TestHeartbeatRunner(t *testing.T) {
 	defer srv.Close()
 
 	cfg := config.DefaultConfig()
+	cfg.Server.NodeID = "test-node-uuid"
 	cfg.Server.Name = "Test-Node"
 	cfg.Server.Port = 8090
 	cfg.Server.AuthToken = "test-token"
@@ -78,6 +80,10 @@ func TestHeartbeatRunner(t *testing.T) {
 	}
 
 	// Registry empty
+	oldDefault := DefaultRegistryURL
+	DefaultRegistryURL = ""
+	defer func() { DefaultRegistryURL = oldDefault }()
+
 	cfg.Server.EnableHeartbeat = true
 	cfg.Server.RegistryURL = ""
 	t.Setenv("OTIX_REGISTRY_URL", "")
@@ -85,6 +91,7 @@ func TestHeartbeatRunner(t *testing.T) {
 	if err != nil || delay != 30*time.Second {
 		t.Errorf("expected 30s delay when registry empty, got %v, err=%v", delay, err)
 	}
+	DefaultRegistryURL = oldDefault
 
 	// Set OTIX_REGISTRY_URL so docker container doesn't rewrite loopback to http://api:8000
 	t.Setenv("OTIX_REGISTRY_URL", srv.URL)
@@ -95,8 +102,11 @@ func TestHeartbeatRunner(t *testing.T) {
 	if err != nil || delay != 30*time.Second {
 		t.Errorf("expected 30s delay on success, got %v, err=%v", delay, err)
 	}
-	if receivedPayload.ServerName != "Test-Node" || receivedPayload.Port != 8090 || receivedPayload.AuthToken != "test-token" {
+	if receivedPayload.ServerName != "Test-Node" || receivedPayload.Port != 8090 || receivedPayload.AuthToken != "test-token" || receivedPayload.NodeID != "test-node-uuid" {
 		t.Errorf("payload mismatch: %+v", receivedPayload)
+	}
+	if len(receivedPayload.LocalEndpoints) == 0 {
+		t.Errorf("expected non-empty LocalEndpoints in payload")
 	}
 
 	// Server error
@@ -110,4 +120,81 @@ func TestHeartbeatRunner(t *testing.T) {
 	runner.Start()
 	time.Sleep(10 * time.Millisecond)
 	runner.Stop()
+}
+
+func TestClassifyInterface(t *testing.T) {
+	tests := []struct {
+		name       string
+		ifaceName  string
+		ip         string
+		isLoopback bool
+		expected   string
+	}{
+		{"loopback flag", "lo", "127.0.0.1", true, "loopback"},
+		{"loopback ip", "eth0", "127.0.0.1", false, "loopback"},
+		{"lan 192.168", "Ethernet", "192.168.1.100", false, "lan"},
+		{"lan 10", "eth0", "10.0.10.5", false, "lan"},
+		{"lan 172.16", "en0", "172.16.50.2", false, "lan"},
+		{"tailscale cgnat", "tailscale0", "100.64.0.1", false, "tailscale"},
+		{"tailscale name", "utun4", "10.200.0.1", false, "tailscale"},
+		{"wireguard", "wg0", "10.0.0.1", false, "tailscale"},
+		{"docker bridge name", "docker0", "172.17.0.1", false, "docker"},
+		{"docker veth", "vethabc123", "172.17.0.5", false, "docker"},
+		{"public wan", "eth0", "8.8.8.8", false, "other"},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			parsed := net.ParseIP(tc.ip)
+			got := ClassifyInterface(tc.ifaceName, parsed, tc.isLoopback)
+			if got != tc.expected {
+				t.Errorf("ClassifyInterface(%s, %s, %t) = %s; want %s", tc.ifaceName, tc.ip, tc.isLoopback, got, tc.expected)
+			}
+		})
+	}
+}
+
+func TestNormalizeBaseAPI(t *testing.T) {
+	cases := []struct {
+		input    string
+		expected string
+	}{
+		{"https://otix.app", "https://otix.app/api"},
+		{"https://otix.app/", "https://otix.app/api"},
+		{"https://otix.app/api", "https://otix.app/api"},
+		{"https://otix.app/api/", "https://otix.app/api"},
+		{"https://otix.app/api/v1", "https://otix.app/api"},
+		{"https://otix.app/api/v1/", "https://otix.app/api"},
+		{"http://127.0.0.1:8000/api", "http://127.0.0.1:8000/api"},
+	}
+
+	for _, c := range cases {
+		got := NormalizeBaseAPI(c.input)
+		if got != c.expected {
+			t.Errorf("NormalizeBaseAPI(%q) = %q; want %q", c.input, got, c.expected)
+		}
+	}
+}
+
+func TestGetRoutableEndpointsNoLoopback(t *testing.T) {
+	endpoints := GetRoutableEndpoints(8090)
+	if len(endpoints) == 0 {
+		t.Fatal("expected at least one endpoint")
+	}
+
+	hasLANorTailscale := false
+	for _, iface := range EnumerateInterfaces() {
+		if iface.Type == "lan" || iface.Type == "tailscale" {
+			hasLANorTailscale = true
+			break
+		}
+	}
+
+	if hasLANorTailscale {
+		for _, ep := range endpoints {
+			if ep == "http://127.0.0.1:8090" || ep == "http://localhost:8090" {
+				t.Errorf("detected loopback leak in GetRoutableEndpoints: %s", ep)
+			}
+		}
+	}
 }

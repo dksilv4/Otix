@@ -21,7 +21,9 @@ import MacLogo from '@/assets/platform-logos/mac.svg?react'
 import LinuxLogo from '@/assets/platform-logos/linux.svg?react'
 import { SectionHeader } from '../components/molecules/settings-section-header'
 import { SettingsCard } from '../components/molecules/settings-card'
-import { isDesktop } from '@/lib/desktop/api'
+import { SettingsRow } from '../components/molecules/settings-row'
+import { useOptionalToast } from '@ui/molecules/toast'
+import { isDesktop, type DesktopSettingsData } from '@/lib/desktop/api'
 import { getDesktopPlatform } from '@/lib/desktop/platform'
 import {
   useAppUpdater,
@@ -40,11 +42,49 @@ import {
 } from '../utils/general'
 
 export const SettingsGeneralPage = () => {
+  const { toast } = useOptionalToast()
   const [defaultPage, setDefaultPage] = useState(readDefaultPage)
   const [cleared, setCleared] = useState(false)
+  const [desktopSettings, setDesktopSettings] = useState<Partial<DesktopSettingsData>>({})
   const desktop = isDesktop()
   const platformInfo = useMemo(() => getDesktopPlatform(), [])
   useSettingsHashScroll()
+
+  useEffect(() => {
+    if (!desktop) return
+    const api = (window as unknown as { desktopAPI?: { getDesktopSettings: () => Promise<DesktopSettingsData> } }).desktopAPI
+    if (api?.getDesktopSettings) {
+      void api.getDesktopSettings().then((ds) => {
+        if (ds) setDesktopSettings(ds)
+      }).catch(() => {})
+    }
+  }, [desktop])
+
+  const handleToggleDesktopSetting = async (key: keyof DesktopSettingsData, value: boolean) => {
+    setDesktopSettings((prev) => ({ ...prev, [key]: value }))
+    const api = (window as unknown as {
+      desktopAPI?: { setDesktopSettings: (p: Partial<DesktopSettingsData>) => Promise<DesktopSettingsData> }
+    }).desktopAPI
+    if (api?.setDesktopSettings) {
+      try {
+        const updated = await api.setDesktopSettings({ [key]: value })
+        if (updated) setDesktopSettings(updated)
+        if (key === 'hardwareAcceleration') {
+          toast({
+            title: 'Restart required',
+            description: 'Please restart Otix for hardware acceleration changes to take effect.',
+            variant: 'default',
+          })
+        }
+      } catch {
+        toast({
+          title: 'Failed to update setting',
+          description: 'Could not update desktop client preference.',
+          variant: 'error',
+        })
+      }
+    }
+  }
   const {
     isAutoEnabled: isSpotlightAutoEnabled,
     setAutoEnabled: setSpotlightAutoEnabled,
@@ -310,6 +350,68 @@ export const SettingsGeneralPage = () => {
             </div>
           </div>
         </SettingsCard>
+
+        {/* Desktop Application Window Behavior */}
+        {desktop && (
+          <SettingsCard id="desktop-window">
+            <SectionHeader
+              title="Desktop Application &amp; System Tray"
+              description="Window state, tray minimize behavior, system startup, and graphics acceleration for the desktop client."
+            />
+            <div className="space-y-2">
+              <SettingsRow
+                label="Launch on system startup"
+                description="Start the Otix desktop application automatically when logging into Windows."
+                action={
+                  <DkSwitch
+                    checked={Boolean(desktopSettings.launchOnStartup)}
+                    onCheckedChange={(checked) => handleToggleDesktopSetting('launchOnStartup', checked)}
+                  />
+                }
+              />
+              <SettingsRow
+                label="Minimize to tray"
+                description="Send the Otix window to the system notification tray when minimized."
+                action={
+                  <DkSwitch
+                    checked={Boolean(desktopSettings.minimizeToTray)}
+                    onCheckedChange={(checked) => handleToggleDesktopSetting('minimizeToTray', checked)}
+                  />
+                }
+              />
+              <SettingsRow
+                label="Close to tray"
+                description="Closing the window keeps Otix running quietly in the background tray."
+                action={
+                  <DkSwitch
+                    checked={Boolean(desktopSettings.closeToTray)}
+                    onCheckedChange={(checked) => handleToggleDesktopSetting('closeToTray', checked)}
+                  />
+                }
+              />
+              <SettingsRow
+                label="Start minimized"
+                description="Launch Otix hidden in the system tray without opening the main window."
+                action={
+                  <DkSwitch
+                    checked={Boolean(desktopSettings.startMinimized)}
+                    onCheckedChange={(checked) => handleToggleDesktopSetting('startMinimized', checked)}
+                  />
+                }
+              />
+              <SettingsRow
+                label="Hardware acceleration"
+                description="Use the GPU for smooth UI rendering. Disable if experiencing driver conflicts."
+                action={
+                  <DkSwitch
+                    checked={Boolean(desktopSettings.hardwareAcceleration ?? true)}
+                    onCheckedChange={(checked) => handleToggleDesktopSetting('hardwareAcceleration', checked)}
+                  />
+                }
+              />
+            </div>
+          </SettingsCard>
+        )}
 
         {/* Software Updates */}
         {desktop && (

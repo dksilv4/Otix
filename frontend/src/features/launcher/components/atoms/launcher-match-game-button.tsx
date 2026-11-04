@@ -1,5 +1,6 @@
 /* ── MatchGameButton — opens match modal for unmatched game ── */
 
+import { Sparkles } from 'lucide-react'
 import { useModal } from '@/lib/modals'
 import { MatchGameModal } from '@/features/launcher/components/molecules/launcher-match-game-modal'
 import type { LocalGame } from '@/features/launcher/types'
@@ -23,9 +24,10 @@ export const MatchGameButton = ({ game }: Props) => {
   return (
     <button
       onClick={handleOpenMatchModal}
-      className="px-5.5 py-2.5 bg-blue-500 hover:bg-blue-400 text-white rounded-xl text-[11px] font-black flex items-center gap-1.5 transition-all cursor-pointer shadow-lg active:scale-95"
+      className="h-10 px-5 bg-primary hover:bg-primary/90 text-primary-foreground font-black rounded-xl text-xs uppercase tracking-wider flex items-center gap-2 transition-all cursor-pointer shadow-lg active:scale-95 shrink-0"
     >
-      Match to Play
+      <Sparkles size={15} className="stroke-[2.5]" />
+      <span>Match to Play</span>
     </button>
   )
 };

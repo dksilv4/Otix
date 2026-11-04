@@ -2,10 +2,12 @@ import { describe, it, expect } from 'vitest'
 import {
   normalizePath,
   getBaseFolderName,
+  normalizeScanPathItems,
   buildConfiguredFolderList,
   filterFolderItems,
   loadStoredPathsViewMode,
   saveStoredPathsViewMode,
+  getSuggestedDefaultPaths,
 } from '../paths'
 
 describe('paths utils', () => {
@@ -13,12 +15,42 @@ describe('paths utils', () => {
     expect(normalizePath('C:\\Games\\Steam\\')).toBe('c:\\games\\steam')
     expect(normalizePath('/media/games///')).toBe('/media/games')
     expect(normalizePath('')).toBe('')
+    expect(normalizePath(null)).toBe('')
+    expect(normalizePath(undefined)).toBe('')
+    expect(normalizePath(123 as any)).toBe('')
   })
 
   it('extracts base folder name', () => {
     expect(getBaseFolderName('C:\\Games\\Steam')).toBe('Steam')
     expect(getBaseFolderName('/media/games/isos/')).toBe('isos')
     expect(getBaseFolderName('D:/Downloads')).toBe('Downloads')
+    expect(getBaseFolderName('')).toBe('')
+    expect(getBaseFolderName(null)).toBe('')
+    expect(getBaseFolderName(undefined)).toBe('')
+  })
+
+  it('normalizes scan path items from various shapes including legacy strings', () => {
+    const raw = [
+      'C:\\Games\\Steam',
+      { path: 'D:\\Games\\Epic', type: 'game' },
+      { path: 'E:\\ISOs', type: 'iso' },
+      { path: '  ', type: 'game' },
+      null,
+      undefined,
+      { notAPath: true },
+      'E:\\ISOs', // Duplicate path, should preserve existing ISO type
+    ]
+
+    const normalized = normalizeScanPathItems(raw)
+    expect(normalized).toEqual([
+      { path: 'C:\\Games\\Steam', type: 'installed' },
+      { path: 'D:\\Games\\Epic', type: 'installed' },
+      { path: 'E:\\ISOs', type: 'provider' },
+    ])
+
+    expect(normalizeScanPathItems(null)).toEqual([])
+    expect(normalizeScanPathItems(undefined)).toEqual([])
+    expect(normalizeScanPathItems('not an array')).toEqual([])
   })
 
   it('aggregates and deduplicates scan paths and destinations into configured folders', () => {
@@ -50,6 +82,26 @@ describe('paths utils', () => {
     expect(downloads?.isInstallation).toBe(false)
   })
 
+  it('defensively handles raw string arrays and undefined inputs in buildConfiguredFolderList', () => {
+    // Legacy array of strings
+    const rawLegacyScanPaths: any = ['C:\\Games\\Steam', 'D:\\Games\\GOG']
+    const list = buildConfiguredFolderList(rawLegacyScanPaths, undefined, null, '')
+
+    expect(list).toHaveLength(2)
+    expect(list[0].path).toBe('C:\\Games\\Steam')
+    expect(list[1].path).toBe('D:\\Games\\GOG')
+
+    // Completely empty or null inputs
+    expect(buildConfiguredFolderList(null, null, null, null)).toEqual([])
+    expect(buildConfiguredFolderList(undefined, undefined, undefined, undefined)).toEqual([])
+
+    // Array with null, undefined, or empty objects
+    const malformedScanPaths: any = [null, undefined, {}, { path: '   ' }, { path: 'E:\\Valid' }]
+    const safeList = buildConfiguredFolderList(malformedScanPaths)
+    expect(safeList).toHaveLength(1)
+    expect(safeList[0].path).toBe('E:\\Valid')
+  })
+
   it('filters folder items by search and filter tab', () => {
     const items = [
       { path: 'C:\\Games\\Steam', name: 'Steam', isInstallation: true, isGamesDownload: false, isIso: false },
@@ -67,6 +119,7 @@ describe('paths utils', () => {
 
     expect(filterFolderItems(items, 'ps2', 'all')).toHaveLength(1)
     expect(filterFolderItems(items, 'xyz', 'all')).toHaveLength(0)
+    expect(filterFolderItems(null as any, '', 'all')).toEqual([])
   })
 
   it('persists and loads view mode in localStorage', () => {
@@ -74,5 +127,16 @@ describe('paths utils', () => {
     expect(loadStoredPathsViewMode()).toBe('cards')
     saveStoredPathsViewMode('list')
     expect(loadStoredPathsViewMode()).toBe('list')
+  })
+
+  it('suggests default paths safely even when existing paths are strings or malformed', () => {
+    const suggestions = getSuggestedDefaultPaths(['C:\\Games', { path: 'D:\\Games' } as any], true)
+    expect(suggestions.some((s) => s.path === 'C:\\Games')).toBe(false)
+    expect(suggestions.some((s) => s.path === 'D:\\Games')).toBe(false)
+    expect(suggestions.some((s) => s.source === 'steam')).toBe(true)
+
+    // Null/undefined safety
+    expect(() => getSuggestedDefaultPaths(null as any, true)).not.toThrow()
+    expect(() => getSuggestedDefaultPaths(undefined, true)).not.toThrow()
   })
 })

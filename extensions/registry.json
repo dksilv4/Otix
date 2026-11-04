@@ -1,18 +1,4 @@
 {
-  "plugins": [
-    {
-      "id": "shadps4",
-      "name": "shadPS4 Emulator",
-      "version": "0.1.0",
-      "description": "PlayStation 4 emulator integration for Otix. Registers shadPS4 as an emulator service for .pkg ROMs.",
-      "author": "Otix Community",
-      "repository": "https://github.com/shadps4-emu/shadPS4",
-      "path": "plugins/shadps4",
-      "icon": "gamepad-2",
-      "category": "emulator",
-      "tags": ["ps4", "playstation", "emulator", "roms"],
-      "permissions": ["storage:local"]
-    }
-  ],
-  "updated_at": "2026-10-21T00:00:00Z"
+  "plugins": [],
+  "updated_at": "2026-11-02T00:00:00Z"
 }

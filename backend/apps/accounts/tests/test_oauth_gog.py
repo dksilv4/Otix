@@ -14,11 +14,11 @@ from rest_framework.test import APIClient
 from apps.accounts.models import OAuthState, User
 from apps.integrations.models import UserGOGGame
 from apps.integrations.services import gog_client
-from apps.library.models import UserGameServer
+from apps.library.models import UserNode
 
 
-def _node(user: User, *, is_online: bool = True, is_active: bool = True) -> UserGameServer:
-    return UserGameServer.objects.create(
+def _node(user: User, *, is_online: bool = True, is_active: bool = True) -> UserNode:
+    return UserNode.objects.create(
         user=user,
         name="Homelab",
         local_url="http://192.168.1.50:8000",

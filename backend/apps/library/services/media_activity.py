@@ -17,7 +17,7 @@ from typing import Any
 from django.core.cache import cache
 
 from apps.integrations.models import UserPlexItem
-from apps.library.models import UserGameServer, UserNodeShare
+from apps.library.models import UserNode, UserNodeShare
 from apps.library.services.node import (
     radarr_get_movies,
     radarr_get_queue,
@@ -143,7 +143,7 @@ def get_user_media_activity(
 
     # 1. Collect accessible nodes
     owned_servers = list(
-        UserGameServer.objects.filter(user=user, is_active=True).select_related("user")
+        UserNode.objects.filter(user=user, is_active=True).select_related("user")
     )
 
     friend_shares = []
@@ -155,7 +155,7 @@ def get_user_media_activity(
         )
 
     # Node descriptors tuple: (node, is_owned, can_manage, owner_dict)
-    nodes_to_poll: list[tuple[UserGameServer, bool, bool, dict[str, Any]]] = []
+    nodes_to_poll: list[tuple[UserNode, bool, bool, dict[str, Any]]] = []
 
     for server in owned_servers:
         owner_dict = {

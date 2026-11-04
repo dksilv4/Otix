@@ -23,6 +23,7 @@ import {
   healRepackArchive,
 } from '../downloads/organizer';
 import { updateGamePathInDb, getScanPathsFromDb } from '../downloads';
+import { resolveUncPath } from '../unc-resolver';
 
 export function registerInstallerIPC(): void {
   // Select ISO dialog
@@ -95,23 +96,31 @@ export function registerInstallerIPC(): void {
       if (err?.code === 'ENOENT' || err?.message?.includes('Folder does not exist')) {
         return [];
       }
+      if (err?.code === 'UNKNOWN' || err?.errno === -4094) {
+        const isNetwork = directory?.startsWith('\\\\') || directory?.startsWith('//');
+        throw new Error(
+          isNetwork
+            ? `Network share is offline or unreachable: ${directory}`
+            : `Folder path is inaccessible: ${directory}`,
+        );
+      }
       throw err;
     }
   });
 
   // Diagnose Repack Archive
   ipcMain.handle('installer:diagnose-repack', async (_, directory: string) => {
-    return await diagnoseArchiveIntegrity(directory);
+    return await diagnoseArchiveIntegrity(resolveUncPath(directory));
   });
 
   // Heal Repack Archive
   ipcMain.handle('installer:heal-repack', async (_, directory: string) => {
-    return await healRepackArchive(directory);
+    return await healRepackArchive(resolveUncPath(directory));
   });
 
   ipcMain.handle('installer:launch-setup', async (_, setupPath: string) => {
     try {
-      return await launchSetup(setupPath);
+      return await launchSetup(resolveUncPath(setupPath));
     } catch (err) {
       console.error('Failed to launch installer:', setupPath, err);
       throw err;
@@ -127,6 +136,8 @@ export function registerInstallerIPC(): void {
   ipcMain.handle(
     'installer:install-game',
     async (event, isoPath: string, targetDir: string, gameTitle?: string) => {
+      const resolvedIso = resolveUncPath(isoPath);
+      const resolvedTarget = resolveUncPath(targetDir);
       const installId = randomUUID();
 
       const sendProgress = (p: InstallProgress) => {
@@ -142,9 +153,9 @@ export function registerInstallerIPC(): void {
         const allPaths = await getScanPathsFromDb();
         const isoRoots = allPaths
           .filter((p) => p.type === 'iso')
-          .map((p) => p.path);
+          .map((p) => resolveUncPath(p.path));
 
-        const result = await installGameIso(installId, isoPath, targetDir, gameTitle ?? 'Game', sendProgress, isoRoots);
+        const result = await installGameIso(installId, resolvedIso, resolvedTarget, gameTitle ?? 'Game', sendProgress, isoRoots);
         return result;
       } catch (err: any) {
         console.error('[installer:install-game] Fatal:', err);
@@ -160,7 +171,7 @@ export function registerInstallerIPC(): void {
   // Check if install directory has a game executable
   ipcMain.handle('installer:check-install-dir', async (_, installDir: string) => {
     try {
-      const gameExe = await findGameExe(installDir)
+      const gameExe = await findGameExe(resolveUncPath(installDir))
       return { found: !!gameExe, gameExe: gameExe ?? null }
     } catch {
       return { found: false, gameExe: null }

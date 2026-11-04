@@ -2022,7 +2022,7 @@ export const SettingsIntegrationsPage = () => {
                               </span>
                               {node.isLocalDesktop && (
                                 <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-primary/10 text-primary">
-                                  Companion
+                                  Otix App
                                 </span>
                               )}
                             </div>

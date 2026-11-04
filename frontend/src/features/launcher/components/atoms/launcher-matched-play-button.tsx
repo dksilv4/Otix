@@ -1,6 +1,4 @@
-/* ── MatchedPlayButton — navigate to media detail when game is matched ── */
-
-import { Play } from 'lucide-react'
+import { BookOpen } from 'lucide-react'
 import { useNavigate } from '@tanstack/react-router'
 
 interface Props {
@@ -13,9 +11,10 @@ export const MatchedPlayButton = ({ mediaId }: Props) => {
   return (
     <button
       onClick={() => navigate({ to: '/media/$mediaType/$mediaId' as const, params: { mediaType: 'game', mediaId } })}
-      className="px-5.5 py-2.5 bg-white hover:bg-white/90 text-black rounded-xl text-[11px] font-black flex items-center gap-1.5 transition-all cursor-pointer shadow-lg active:scale-95"
+      className="h-10 px-5 bg-primary hover:bg-primary/90 text-primary-foreground font-black rounded-xl text-xs uppercase tracking-wider flex items-center gap-2 transition-all cursor-pointer shadow-lg active:scale-95 shrink-0"
     >
-      <Play size={14} fill="currentColor" /> Play
+      <BookOpen size={15} className="stroke-[2.5]" />
+      <span>View Details</span>
     </button>
   )
 };

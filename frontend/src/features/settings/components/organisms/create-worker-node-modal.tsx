@@ -20,8 +20,11 @@ import type { GameServer } from '@/features/downloads/types'
 import type { UserHome } from '../../types/server-machines'
 
 export interface CreateWorkerNodeModalProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
+  open?: boolean
+  isOpen?: boolean
+  onOpenChange?: (open: boolean) => void
+  onClose?: () => void
+  isExiting?: boolean
   defaultName?: string
   initialNodeUrl?: string
   initialTab?: 'claim' | 'manual'
@@ -32,7 +35,10 @@ export interface CreateWorkerNodeModalProps {
 
 export const CreateWorkerNodeModal = ({
   open,
+  isOpen,
   onOpenChange,
+  onClose,
+  isExiting,
   defaultName = 'Worker Node',
   initialNodeUrl = '',
   initialTab = 'claim',
@@ -40,12 +46,13 @@ export const CreateWorkerNodeModal = ({
   defaultHomeId = null,
   onSuccess,
 }: CreateWorkerNodeModalProps) => {
+  const isModalOpen = (open ?? isOpen ?? true) && !isExiting
   const { toast } = useToast()
   const claimServerMutation = useClaimGameServer()
   const createServerMutation = useCreateGameServer()
   const assignHomeMutation = useAssignNodeHome()
   const { data: servers = [] } = useGameServers()
-  const { data: pendingNodes = [] } = usePendingGameServers({ enabled: open })
+  const { data: pendingNodes = [] } = usePendingGameServers({ enabled: isModalOpen })
   const unclaimMutation = useUnclaimLocalNode()
 
   const [connectTab, setConnectTab] = useState<'claim' | 'manual'>(initialTab)
@@ -74,7 +81,7 @@ export const CreateWorkerNodeModal = ({
   const orphanedNodes = pendingNodes.filter((p) => isNodeOrphaned(p, servers))
 
   useEffect(() => {
-    if (open) {
+    if (isModalOpen) {
       setConnectTab(initialTab)
       setClaimPin('')
       setClaimNodeUrl(initialNodeUrl)
@@ -85,7 +92,7 @@ export const CreateWorkerNodeModal = ({
       setServerToken('')
       setSelectedHomeId(defaultHomeId != null ? String(defaultHomeId) : 'none')
     }
-  }, [open, initialTab, initialNodeUrl, defaultHomeId])
+  }, [isModalOpen, initialTab, initialNodeUrl, defaultHomeId])
 
   const handleUseDetectedPin = (node: PendingNode) => {
     if (node.claimCode) setClaimPin(node.claimCode)
@@ -119,7 +126,8 @@ export const CreateWorkerNodeModal = ({
     setServerRemoteUrl('')
     setServerToken('')
     setConnectTab('claim')
-    onOpenChange(false)
+    onOpenChange?.(false)
+    onClose?.()
   }
 
   const handleClaimByPin = async (e: React.FormEvent) => {
@@ -252,7 +260,7 @@ export const CreateWorkerNodeModal = ({
 
   return (
     <DkDialog
-      open={open}
+      open={isModalOpen}
       onOpenChange={(nextOpen) => !nextOpen && resetAndClose()}
       title="Connect Otix Node"
       description="Claim a running node with its PIN, or link one manually with a URL and access token."

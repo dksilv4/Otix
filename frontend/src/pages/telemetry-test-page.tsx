@@ -225,7 +225,7 @@ export const TelemetryTestPage = () => {
   const currentTelemetry = MOCK_GAMES[selectedKey] || MOCK_GAMES.cs2Match
 
   return (
-    <div className="min-h-screen w-full bg-[var(--background)] px-4 py-8 md:px-8 max-w-6xl mx-auto flex flex-col gap-6">
+    <div className="min-h-screen w-full bg-[var(--background)] px-4 py-8 md:px-8 flex flex-col gap-6">
       {/* Page Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex flex-col gap-1.5">

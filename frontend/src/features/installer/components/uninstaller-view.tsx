@@ -1,6 +1,5 @@
 import { motion } from 'framer-motion'
 import { Trash2, AlertTriangle, CheckCircle2, Loader2 } from 'lucide-react'
-import { DkLogo } from '@/components/ui/atoms/logo'
 import { DkButton } from '@/components/ui/atoms/button'
 import { DkCheckbox } from '@/components/ui/atoms/checkbox'
 import { useUninstaller } from '../hooks/use-uninstaller'
@@ -18,25 +17,22 @@ export const UninstallerView = () => {
   } = useUninstaller()
 
   return (
-    <div className="flex-1 flex flex-col justify-between p-6 overflow-hidden">
-      {/* Header */}
-      <div className="flex items-center gap-3">
-        <DkLogo className="h-8 w-auto text-foreground" animateInfinity={false} />
-        <div>
-          <h1 className="text-lg font-bold tracking-tight text-foreground">
-            Uninstall Otix
-          </h1>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Remove Otix from your system
-          </p>
-        </div>
+    <div className="flex-1 flex flex-col justify-between p-6 sm:p-7 select-none overflow-hidden">
+      {/* Title */}
+      <div className="space-y-1 pt-1">
+        <h1 className="text-xl font-bold tracking-tight text-foreground sm:text-2xl">
+          Uninstall Otix
+        </h1>
+        <p className="text-xs text-muted-foreground">
+          Remove Otix from your computer
+        </p>
       </div>
 
       {/* Main Body per step */}
       <div className="my-auto py-2">
         {step === 'confirm' && (
           <div className="space-y-4">
-            <div className="rounded-xl bg-destructive/[0.08] border border-destructive/20 p-4 flex items-start gap-3.5">
+            <div className="rounded-2xl bg-destructive/[0.08] p-4 flex items-start gap-3.5 backdrop-blur-xl shadow-lg shadow-black/20">
               <AlertTriangle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
               <div className="space-y-1">
                 <h3 className="text-sm font-semibold text-foreground">
@@ -48,7 +44,10 @@ export const UninstallerView = () => {
               </div>
             </div>
 
-            <div className="rounded-xl bg-white/[0.02] border border-white/[0.04] p-3.5">
+            <div
+              className="rounded-2xl bg-white/[0.025] p-4 backdrop-blur-xl shadow-lg shadow-black/20"
+              style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
+            >
               <DkCheckbox
                 checked={removeUserData}
                 onCheckedChange={setRemoveUserData}
@@ -61,7 +60,7 @@ export const UninstallerView = () => {
 
         {step === 'uninstalling' && (
           <div className="space-y-4 text-center flex flex-col items-center justify-center py-4">
-            <div className="p-3 rounded-2xl bg-white/[0.04] border border-white/[0.06] text-[var(--primary)] animate-pulse">
+            <div className="p-4 rounded-3xl bg-white/[0.04] text-primary shadow-xl animate-pulse">
               <Loader2 className="h-8 w-8 animate-spin" />
             </div>
             <div className="space-y-1">
@@ -85,7 +84,7 @@ export const UninstallerView = () => {
 
         {step === 'complete' && (
           <div className="text-center flex flex-col items-center justify-center space-y-3 py-4">
-            <div className="p-3 rounded-2xl bg-white/[0.04] border border-white/[0.06] text-[var(--primary)] shadow-lg">
+            <div className="p-4 rounded-3xl bg-white/[0.04] text-primary shadow-xl">
               <CheckCircle2 className="h-8 w-8" />
             </div>
             <div className="space-y-1 max-w-sm">
@@ -100,20 +99,23 @@ export const UninstallerView = () => {
         )}
 
         {step === 'error' && (
-          <div className="rounded-xl bg-destructive/10 border border-destructive/20 p-4 text-center space-y-2">
+          <div className="rounded-2xl bg-destructive/10 p-4 text-center space-y-2 shadow-lg">
             <AlertTriangle className="h-6 w-6 text-destructive mx-auto" />
             <h3 className="text-sm font-semibold text-foreground">
               Uninstallation Error
             </h3>
-            <p className="text-xs text-destructive/80">
+            <p className="text-xs text-destructive/90">
               {error || 'An unexpected error occurred during removal.'}
             </p>
           </div>
         )}
       </div>
 
-      {/* Footer */}
-      <div className="flex items-center justify-end gap-2 pt-3 border-t border-white/[0.04]">
+      {/* Footer - Borderless */}
+      <div
+        className="flex items-center justify-end gap-2 pt-4"
+        style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
+      >
         {step === 'confirm' && (
           <>
             <DkButton
@@ -122,7 +124,7 @@ export const UninstallerView = () => {
               size="sm"
               onClick={handleClose}
               disabled={isSubmitting}
-              className="text-xs"
+              className="text-xs text-muted-foreground hover:text-foreground cursor-pointer"
             >
               Cancel
             </DkButton>
@@ -132,7 +134,7 @@ export const UninstallerView = () => {
               size="sm"
               onClick={handleConfirmUninstall}
               disabled={isSubmitting}
-              className="text-xs px-5 gap-1.5"
+              className="text-xs px-5 gap-1.5 rounded-xl cursor-pointer"
             >
               <Trash2 className="h-3.5 w-3.5" />
               Uninstall
@@ -146,7 +148,7 @@ export const UninstallerView = () => {
             variant="default"
             size="sm"
             onClick={handleClose}
-            className="text-xs px-6"
+            className="text-xs px-6 rounded-xl cursor-pointer"
           >
             Close
           </DkButton>
@@ -158,7 +160,7 @@ export const UninstallerView = () => {
             variant="secondary"
             size="sm"
             onClick={handleClose}
-            className="text-xs px-5"
+            className="text-xs px-5 rounded-xl cursor-pointer"
           >
             Close
           </DkButton>

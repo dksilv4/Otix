@@ -13,14 +13,18 @@ from __future__ import annotations
 import asyncio
 import concurrent.futures
 import logging
+import math
 import re
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import AbstractBaseUser, AnonymousUser
 from django.contrib.contenttypes.models import ContentType
+from django.contrib.postgres.search import TrigramSimilarity, TrigramWordSimilarity
 from django.core.cache import cache
-from django.db.models import Case, IntegerField, QuerySet, Value, When
+from django.db import connection
+from django.db.models import Case, F, FloatField, IntegerField, Q, QuerySet, Value, When
+from django.db.models.functions import Coalesce, Greatest, Least, Ln
 from django.utils.text import slugify
 
 from apps.company.models import Company
@@ -54,27 +58,257 @@ PREHYDRATE_TITLE_LIMIT = 100
 PREHYDRATE_CACHE_TTL = 6 * 60 * 60
 
 
+def extract_trigrams(text: str | None) -> set[str]:
+    """Extract set of 3-character shingles matching PostgreSQL pg_trgm behavior."""
+    if not text:
+        return set()
+    words = re.findall(r"\w+", str(text).lower())
+    trigrams = set()
+    for word in words:
+        padded = f"  {word} "
+        for i in range(len(padded) - 2):
+            trigrams.add(padded[i : i + 3])
+    return trigrams
+
+
+def py_trigram_similarity(s1: str | None, s2: str | None) -> float:
+    """Compute Jaccard similarity of trigrams between s1 and s2, matching pg_trgm."""
+    if not s1 or not s2:
+        return 0.0
+    t1 = extract_trigrams(s1)
+    t2 = extract_trigrams(s2)
+    if not t1 or not t2:
+        return 0.0
+    intersection = len(t1 & t2)
+    union = len(t1 | t2)
+    return float(intersection) / float(union) if union > 0 else 0.0
+
+
+def py_word_trigram_similarity(query: str | None, target: str | None) -> float:
+    """Approximate pg_trgm word_similarity(query, target).
+
+    Finds the greatest similarity of the query against contiguous word sequences
+    in target.
+    """
+    if not query or not target:
+        return 0.0
+    q_str = str(query).strip()
+    t_str = str(target).strip()
+    full_sim = py_trigram_similarity(q_str, t_str)
+    if full_sim >= 0.9:
+        return 1.0
+
+    q_words = re.findall(r"\w+", q_str.lower())
+    t_words = re.findall(r"\w+", t_str.lower())
+    if not q_words or not t_words:
+        return full_sim
+
+    q_len = len(q_words)
+    if len(t_words) <= q_len:
+        return full_sim
+
+    best_sim = full_sim
+    t_query = extract_trigrams(q_str)
+    # Sliding window of length q_len in target words
+    for i in range(len(t_words) - q_len + 1):
+        window = " ".join(t_words[i : i + q_len])
+        t_win = extract_trigrams(window)
+        u = len(t_query | t_win)
+        sim = float(len(t_query & t_win)) / float(u) if u > 0 else 0.0
+        if sim > best_sim:
+            best_sim = sim
+
+    return best_sim
+
+
+def ensure_sqlite_search_functions(conn=None) -> None:
+    """Register similarity, word_similarity, and ln on SQLite connections."""
+    target_conn = conn or connection
+    if target_conn.vendor == "sqlite" and target_conn.connection is not None:
+        try:
+            target_conn.connection.create_function("similarity", 2, py_trigram_similarity)
+            target_conn.connection.create_function("word_similarity", 2, py_word_trigram_similarity)
+            target_conn.connection.create_function("ln", 1, lambda x: math.log(max(float(x), 1e-9)))
+        except Exception:
+            pass
+
+
+def _can_use_db_trigram() -> bool:
+    """Check if database supports trigram similarity (Postgres pg_trgm or SQLite custom function)."""
+    if connection.vendor == "postgresql":
+        return True
+    if connection.vendor == "sqlite":
+        ensure_sqlite_search_functions(connection)
+        return True
+    return False
+
+
+def compute_relevance_score(
+    title: str,
+    query: str,
+    popularity: float = 0.0,
+    slug: str | None = None,
+) -> float:
+    """Compute mathematical hybrid relevance score in Python.
+
+    Hierarchy:
+    - Exact title match (iexact): 100.0 pts
+    - Punctuation-stripped slug match: 90.0 pts
+    - Title prefix match (istartswith): 40.0 pts
+    - Substring match (icontains): 15.0 pts
+    - Trigram similarity weight: up to 30.0 pts
+    - Popularity log-dampened tie-breaker: up to 5.0 pts
+    """
+    q_clean = query.strip()
+    if not q_clean or not title:
+        return 0.0
+
+    t_clean = title.strip()
+    q_lower = q_clean.lower()
+    t_lower = t_clean.lower()
+
+    # 1. Match type hierarchy weights
+    match_boost = 0.0
+    if t_lower == q_lower:
+        match_boost = 100.0
+    elif slug and slug.lower() == slugify(q_clean):
+        match_boost = 90.0
+    elif t_lower.startswith(q_lower):
+        match_boost = 40.0
+    elif q_lower in t_lower:
+        match_boost = 15.0
+
+    # 2. Trigram similarity boost: max 30.0 points
+    sim = max(
+        py_trigram_similarity(q_clean, t_clean),
+        py_word_trigram_similarity(q_clean, t_clean),
+    )
+    trigram_boost = sim * 30.0
+
+    # 3. Popularity dampening: max 5.0 points
+    pop_val = max(float(popularity or 0.0), 0.0)
+    popularity_boost = min(math.log(pop_val + 1.0) * 1.5, 5.0)
+
+    return match_boost + trigram_boost + popularity_boost
+
+
+def rank_media_items_python(
+    items: list[MediaItem],
+    q: str,
+    sort_by: str | None = None,
+) -> list[MediaItem]:
+    """Pure-Python ranking fallback for media items."""
+    q_clean = q.strip()
+    if not q_clean:
+        return items
+
+    def score_item(item: MediaItem) -> tuple:
+        score = compute_relevance_score(
+            title=item.title,
+            query=q_clean,
+            popularity=item.popularity,
+            slug=item.slug,
+        )
+        if sort_by == "popularity":
+            return (item.popularity or 0.0, score, item.title)
+        elif sort_by == "rating":
+            return (item.avg_rating or 0.0, score, item.title)
+        elif sort_by == "release_date":
+            return (item.release_date or "", score, item.title)
+        elif sort_by == "title":
+            return (score, item.popularity or 0.0)
+        return (score, item.popularity or 0.0)
+
+    reverse = sort_by != "title"
+    return sorted(items, key=score_item, reverse=reverse)
+
+
 def _media_base(q: str, media_type: str | None) -> QuerySet[MediaItem]:
-    """Filtered hub rows for a title search (vector search lands later)."""
-    qs = MediaItem.objects.filter(title__icontains=q)
+    """Filtered hub rows for a title search using hybrid relevance matching."""
+    q_clean = q.strip()
+    if not q_clean:
+        return MediaItem.objects.none()
+
+    q_slug = slugify(q_clean)
+    qs = MediaItem.objects.all()
     if media_type:
         qs = qs.filter(media_type=media_type)
     if EXCLUDE_ADULT:
         qs = qs.filter(is_adult=False)
+
+    cand_filter = Q(title__icontains=q_clean)
+    if q_slug:
+        cand_filter |= Q(slug__iexact=q_slug)
+
+    clean_alpha = re.sub(r"[^a-zA-Z0-9]+", "", q_clean).lower()
+    if clean_alpha and clean_alpha != q_clean.lower() and len(clean_alpha) >= 3:
+        cand_filter |= Q(slug__icontains=clean_alpha)
+
+    if _can_use_db_trigram():
+        try:
+            sim_expr = Coalesce(TrigramSimilarity("title", q_clean), Value(0.0, output_field=FloatField()))
+            wsim_expr = Coalesce(TrigramWordSimilarity(q_clean, "title"), Value(0.0, output_field=FloatField()))
+            qs = qs.annotate(
+                _trig_sim=sim_expr,
+                _word_sim=wsim_expr,
+            ).annotate(
+                _similarity_score=Greatest("_trig_sim", "_word_sim"),
+            )
+            cand_filter |= Q(_similarity_score__gte=0.25)
+        except Exception as e:
+            logger.warning("Trigram database annotation failed, falling back to substring: %s", e)
+            qs = qs.annotate(_similarity_score=Value(0.0, output_field=FloatField()))
+    else:
+        qs = qs.annotate(_similarity_score=Value(0.0, output_field=FloatField()))
+
+    qs = qs.filter(cand_filter)
     return qs.prefetch_related("assets", "external_ids")
 
 
 def _ordered_media(base: QuerySet[MediaItem], q: str, sort_by: str | None) -> QuerySet[MediaItem]:
-    """Apply a prefix boost then the requested legacy ``sort_by`` (if any)."""
-    prefix_boost = Case(
-        When(title__istartswith=q, then=Value(0)),
-        default=Value(1),
-        output_field=IntegerField(),
+    """Apply hybrid relevance ranking then the requested legacy ``sort_by`` (if any)."""
+    q_clean = q.strip()
+    if not q_clean:
+        return base
+
+    q_slug = slugify(q_clean)
+    when_clauses = [
+        When(title__iexact=q_clean, then=Value(100.0)),
+    ]
+    if q_slug:
+        when_clauses.append(When(slug__iexact=q_slug, then=Value(90.0)))
+    when_clauses.extend([
+        When(title__istartswith=q_clean, then=Value(40.0)),
+        When(title__icontains=q_clean, then=Value(15.0)),
+    ])
+
+    match_boost = Case(
+        *when_clauses,
+        default=Value(0.0),
+        output_field=FloatField(),
     )
-    base = base.annotate(_prefix_boost=prefix_boost)
+
+    trigram_boost = Coalesce(F("_similarity_score"), Value(0.0, output_field=FloatField())) * Value(30.0, output_field=FloatField())
+
+    popularity_boost = Least(
+        Ln(Greatest(Coalesce(F("popularity"), Value(0.0, output_field=FloatField())), Value(0.0, output_field=FloatField())) + Value(1.0, output_field=FloatField())) * Value(1.5, output_field=FloatField()),
+        Value(5.0, output_field=FloatField()),
+    )
+
+    relevance_score = match_boost + trigram_boost + popularity_boost
+
+    base = base.annotate(
+        _relevance_score=relevance_score,
+        _prefix_boost=Case(
+            When(title__istartswith=q_clean, then=Value(0)),
+            default=Value(1),
+            output_field=IntegerField(),
+        ),
+    )
+
     if sort_by in _SORT_ORDERS:
-        return base.order_by(_SORT_ORDERS[sort_by], "_prefix_boost", "title", "id")
-    return base.order_by("_prefix_boost", "-popularity", "title", "id")
+        return base.order_by(_SORT_ORDERS[sort_by], "-_relevance_score", "title", "id")
+    return base.order_by("-_relevance_score", "-popularity", "title", "id")
 
 
 def _search_media_rows(
@@ -940,12 +1174,15 @@ def _best_results(
         n = name.lower().strip()
         if n == ql:
             score = 10.0
+        elif slugify(n) == slugify(ql):
+            score = 9.0
         elif n.startswith(ql):
             score = 5.0
         elif ql and ql in n:
             score = 2.0
         else:
-            score = 0.0
+            sim = py_trigram_similarity(ql, n)
+            score = sim * 4.0 if sim >= 0.25 else 0.0
         scored.append((score + weight - position * 0.1, item))
     scored.sort(key=lambda pair: pair[0], reverse=True)
     return [item for _score, item in scored[:3]]

@@ -27,6 +27,13 @@ async function postRefresh(): Promise<string> {
   const response = await authClient.post('/auth/refresh', {})
   const token = response.data.access_token ?? response.data.accessToken
   localStorage.setItem(ACCESS_TOKEN_KEY, token)
+  try {
+    if (typeof window !== 'undefined' && (window as any).desktopAPI?.plugin?.setAuthToken) {
+      void (window as any).desktopAPI.plugin.setAuthToken(token)
+    }
+  } catch {
+    // non-desktop
+  }
   return token
 }
 

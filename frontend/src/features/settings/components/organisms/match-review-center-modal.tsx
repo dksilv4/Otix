@@ -8,11 +8,13 @@ import {
 } from 'lucide-react'
 import { DkDialog } from '@ui/molecules/dialog'
 import { DkButton } from '@ui/atoms/button'
-import { apiClient } from '@/lib/api/client'
+import { getDesktopAPI } from '@/lib/desktop/api'
+import { resolveCatalogGame } from '@/features/launcher/data/queries'
 import {
   useGameMatches,
   useConfirmMatch,
   useUnmatchRecord,
+  useClearGameMatches,
 } from '../../hooks/use-node-paths'
 import type { GameMatchRecord } from '../../types/node-paths'
 import {
@@ -27,23 +29,22 @@ export interface MatchReviewCenterModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   initialRecordId?: number | null
+  nodeId?: number | null
 }
 
 export const MatchReviewCenterModal = ({
   open,
   onOpenChange,
   initialRecordId,
+  nodeId,
 }: MatchReviewCenterModalProps) => {
   const [tab, setTab] = useState<MatchFilterTab>('needs_review')
   const [searchQuery, setSearchQuery] = useState('')
-  const [manualSearchRecordId, setManualSearchRecordId] = useState<number | null>(initialRecordId || null)
-  const [manualQuery, setManualQuery] = useState('')
-  const [manualResults, setManualResults] = useState<any[]>([])
-  const [isSearchingManual, setIsSearchingManual] = useState(false)
 
-  const { data: records = [], isLoading, refetch } = useGameMatches()
+  const { data: records = [], isLoading, refetch } = useGameMatches(undefined, undefined, nodeId)
   const confirmMatchMutation = useConfirmMatch()
   const unmatchMutation = useUnmatchRecord()
+  const clearMatchesMutation = useClearGameMatches(nodeId)
 
   const filtered = useMemo(() => {
     return filterMatchRecords(records, tab, searchQuery)
@@ -58,31 +59,89 @@ export const MatchReviewCenterModal = ({
     }
   }, [records])
 
-  const handleManualSearch = async (record: GameMatchRecord) => {
-    const q = manualQuery.trim() || record.cleanedTitle || record.rawTitle
-    if (!q) return
-    setIsSearchingManual(true)
-    try {
-      const res = await apiClient.get<any>(`/search?q=${encodeURIComponent(q)}&media_type=game`)
-      const items = res.data?.results || res.data || []
-      setManualResults(Array.isArray(items) ? items : [])
-    } catch {
-      setManualResults([])
-    } finally {
-      setIsSearchingManual(false)
-    }
-  }
-
   const handleConfirmCandidate = async (recordId: number, mediaItemId: string) => {
-    await confirmMatchMutation.mutateAsync({ recordId, mediaItemId })
-    if (manualSearchRecordId === recordId) {
-      setManualSearchRecordId(null)
-      setManualResults([])
+    const record = records.find((r) => r.id === recordId)
+    let resolvedMediaId = mediaItemId
+    let cand = record?.candidates?.find((c) => String(c.mediaId) === String(mediaItemId))
+    const api = getDesktopAPI() ?? (typeof window !== 'undefined' ? (window as any).desktopAPI : null)
+
+    if (String(resolvedMediaId).startsWith('igdb:')) {
+      if (api && typeof (api as any).importCatalogIgdb === 'function') {
+        try {
+          const imported = await (api as any).importCatalogIgdb(resolvedMediaId)
+          if (imported?.id) {
+            resolvedMediaId = String(imported.id)
+            if (cand) {
+              cand = {
+                ...cand,
+                ...imported,
+                posterUrl: imported.poster_url || imported.posterUrl || cand.posterUrl,
+                backdropUrl: imported.backdrop_url || imported.backdropUrl || cand.backdropUrl,
+              }
+            }
+          }
+        } catch {
+          // ignore
+        }
+      }
+      if (String(resolvedMediaId).startsWith('igdb:')) {
+        try {
+          const resolved = await resolveCatalogGame((cand || { id: resolvedMediaId }) as any)
+          resolvedMediaId = String(resolved.id)
+          if (cand) {
+            cand = { ...cand, ...resolved }
+          }
+        } catch (err) {
+          console.warn('[MatchReviewCenterModal] Failed to resolve IGDB catalog item:', err)
+        }
+      }
     }
+
+    try {
+      await confirmMatchMutation.mutateAsync({ recordId, mediaItemId: resolvedMediaId })
+    } catch {
+      // Backend may be unauthenticated or offline
+    }
+    const targetKey = record?.canonicalKey || record?.relativePath
+    if (api && targetKey) {
+      try {
+        await api.acceptSuggestion(targetKey, {
+          id: resolvedMediaId,
+          title: cand?.title || record.cleanedTitle,
+          slug: cand?.slug || '',
+          mediaType: 'game',
+          posterUrl: cand?.posterUrl || cand?.poster_url || cand?.images?.poster?.url || null,
+          backdropUrl: cand?.backdropUrl || cand?.backdrop_url || cand?.images?.backdrop?.url || null,
+          confidence: cand?.confidence ?? 1.0,
+        })
+      } catch (err) {
+        console.warn('[MatchReviewCenterModal] Local acceptSuggestion error:', err)
+      }
+    }
+    void refetch()
   }
 
   const handleUnmatch = async (recordId: number) => {
-    await unmatchMutation.mutateAsync(recordId)
+    const record = records.find((r) => r.id === recordId)
+    try {
+      await unmatchMutation.mutateAsync(recordId)
+    } catch {
+      // Backend may be unauthenticated or offline
+    }
+    const api = getDesktopAPI() ?? (typeof window !== 'undefined' ? (window as any).desktopAPI : null)
+    const targetKey = record?.canonicalKey || record?.relativePath
+    if (api && targetKey) {
+      try {
+        if (typeof (api as any).unmatchGame === 'function') {
+          await (api as any).unmatchGame(targetKey)
+        } else {
+          await api.rejectSuggestion(targetKey, record.mediaItemId || '')
+        }
+      } catch (err) {
+        console.warn('[MatchReviewCenterModal] Local unmatch error:', err)
+      }
+    }
+    void refetch()
   }
 
   return (
@@ -158,6 +217,25 @@ export const MatchReviewCenterModal = ({
                 className="w-full pl-8 pr-3 py-1.5 rounded-xl text-xs bg-[var(--dk-surface-ghost)] border border-white/[0.04] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
               />
             </div>
+            {counts.all > 0 && (
+              <DkButton
+                size="sm"
+                variant="ghost"
+                onClick={async () => {
+                  try {
+                    await clearMatchesMutation.mutateAsync()
+                  } catch {
+                    // Backend may be offline or unauthenticated
+                  }
+                  void refetch()
+                }}
+                loading={clearMatchesMutation.isPending}
+                title="Clear all match records"
+                className="h-8 px-2.5 text-xs text-destructive hover:bg-destructive/10 cursor-pointer rounded-xl"
+              >
+                Clear All
+              </DkButton>
+            )}
             <DkButton
               size="sm"
               variant="ghost"
@@ -193,7 +271,6 @@ export const MatchReviewCenterModal = ({
           ) : (
             filtered.map((record) => {
               const badge = getConfidenceBadge(record.confidence)
-              const isManualOpen = manualSearchRecordId === record.id
 
               return (
                 <div
@@ -213,7 +290,7 @@ export const MatchReviewCenterModal = ({
                             record.matchStatus === 'matched'
                               ? 'bg-primary/10 text-primary'
                               : record.matchStatus === 'needs_review'
-                                ? 'bg-amber-500/10 text-amber-400'
+                                ? 'bg-primary/10 text-primary border border-primary/20'
                                 : 'bg-[var(--dk-surface-base)] text-muted-foreground',
                           )}
                         >
@@ -258,32 +335,53 @@ export const MatchReviewCenterModal = ({
                   </div>
 
                   {/* Matched State Info */}
-                  {record.matchStatus === 'matched' && record.media && (
+                  {record.matchStatus === 'matched' && (
                     <div className="flex items-center gap-3 p-3 rounded-xl bg-[var(--dk-surface-base)] border border-white/[0.04]">
-                      {record.media.posterUrl ? (
-                        <img
-                          src={record.media.posterUrl}
-                          alt={record.media.title}
-                          className="h-14 w-10 object-cover rounded-lg shrink-0"
-                        />
-                      ) : (
-                        <div className="h-14 w-10 rounded-lg bg-[var(--dk-surface-ghost)] flex items-center justify-center shrink-0">
-                          <Gamepad2 className="h-5 w-5 text-muted-foreground" />
-                        </div>
-                      )}
-                      <div className="min-w-0">
-                        <p className="text-xs font-semibold text-foreground truncate">
-                          {record.media.title}
-                        </p>
-                        {record.media.releaseDate && (
-                          <p className="text-[11px] text-muted-foreground">
-                            Released: {record.media.releaseDate}
-                          </p>
-                        )}
-                        <p className="text-[11px] text-primary mt-0.5">
-                          Canonical Match Confirmed
-                        </p>
-                      </div>
+                      {(() => {
+                        const m = record.media
+                        const poster =
+                          m?.posterUrl ||
+                          (m as any)?.poster_url ||
+                          record.candidates?.[0]?.posterUrl ||
+                          (record.candidates?.[0] as any)?.poster_url ||
+                          null
+                        const title = m?.title || record.cleanedTitle || record.rawTitle
+                        const releaseDate =
+                          m?.releaseDate ||
+                          (m as any)?.release_date ||
+                          (record.candidates?.[0]?.releaseYear
+                            ? String(record.candidates[0].releaseYear)
+                            : null)
+                        return (
+                          <>
+                            {poster ? (
+                              <img
+                                src={poster}
+                                alt={title}
+                                className="h-14 w-10 object-cover rounded-lg shrink-0 border border-white/[0.04]"
+                                loading="lazy"
+                              />
+                            ) : (
+                              <div className="h-14 w-10 rounded-lg bg-[var(--dk-surface-ghost)] flex items-center justify-center shrink-0 border border-white/[0.04]">
+                                <Gamepad2 className="h-5 w-5 text-muted-foreground" />
+                              </div>
+                            )}
+                            <div className="min-w-0 flex-1">
+                              <p className="text-xs font-semibold text-foreground truncate">
+                                {title}
+                              </p>
+                              {releaseDate && (
+                                <p className="text-[11px] text-muted-foreground">
+                                  Released: {releaseDate}
+                                </p>
+                              )}
+                              <p className="text-[11px] text-primary mt-0.5">
+                                Canonical Match Confirmed
+                              </p>
+                            </div>
+                          </>
+                        )
+                      })()}
                     </div>
                   )}
 
@@ -299,14 +397,15 @@ export const MatchReviewCenterModal = ({
                             key={cand.mediaId}
                             className="flex items-center gap-2.5 p-2 rounded-xl bg-[var(--dk-surface-base)] border border-white/[0.04] hover:border-white/[0.08] transition-all"
                           >
-                            {cand.posterUrl ? (
+                            {cand.posterUrl || (cand as any).poster_url ? (
                               <img
-                                src={cand.posterUrl}
+                                src={cand.posterUrl || (cand as any).poster_url}
                                 alt={cand.title}
-                                className="h-12 w-8 object-cover rounded shrink-0"
+                                className="h-12 w-8 object-cover rounded shrink-0 border border-white/[0.04]"
+                                loading="lazy"
                               />
                             ) : (
-                              <div className="h-12 w-8 rounded bg-[var(--dk-surface-ghost)] flex items-center justify-center shrink-0">
+                              <div className="h-12 w-8 rounded bg-[var(--dk-surface-ghost)] flex items-center justify-center shrink-0 border border-white/[0.04]">
                                 <Gamepad2 className="h-4 w-4 text-muted-foreground" />
                               </div>
                             )}
@@ -337,103 +436,6 @@ export const MatchReviewCenterModal = ({
                       </div>
                     </div>
                   )}
-
-                  {/* Manual Catalog Search Toggle & Form */}
-                  <div className="pt-1">
-                    {!isManualOpen ? (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setManualSearchRecordId(record.id)
-                          setManualQuery(record.cleanedTitle || record.rawTitle)
-                          setManualResults([])
-                        }}
-                        className="text-xs text-primary hover:underline cursor-pointer flex items-center gap-1"
-                      >
-                        <Search className="h-3 w-3" />
-                        Search catalog manually…
-                      </button>
-                    ) : (
-                      <div className="p-3 rounded-xl bg-[var(--dk-surface-base)] border border-white/[0.04] space-y-2">
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="text-xs font-semibold text-foreground">
-                            Manual Catalog Lookup
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setManualSearchRecordId(null)
-                              setManualResults([])
-                            }}
-                            className="text-xs text-muted-foreground hover:text-foreground cursor-pointer"
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="text"
-                            value={manualQuery}
-                            onChange={(e) => setManualQuery(e.target.value)}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') void handleManualSearch(record)
-                            }}
-                            placeholder="Enter game title to search…"
-                            className="flex-1 px-3 py-1.5 rounded-lg text-xs bg-[var(--dk-surface-ghost)] border border-white/[0.04] text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-                          />
-                          <DkButton
-                            size="sm"
-                            onClick={() => void handleManualSearch(record)}
-                            loading={isSearchingManual}
-                            className="h-8 text-xs shrink-0 rounded-lg"
-                          >
-                            Search
-                          </DkButton>
-                        </div>
-
-                        {manualResults.length > 0 && (
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2 max-h-48 overflow-y-auto">
-                            {manualResults.map((item: any) => (
-                              <div
-                                key={item.id}
-                                className="flex items-center justify-between gap-2 p-2 rounded-lg bg-[var(--dk-surface-ghost)] border border-white/[0.04]"
-                              >
-                                <div className="flex items-center gap-2 min-w-0">
-                                  {item.posterUrl ? (
-                                    <img
-                                      src={item.posterUrl}
-                                      alt={item.title}
-                                      className="h-10 w-7 object-cover rounded shrink-0"
-                                    />
-                                  ) : (
-                                    <div className="h-10 w-7 rounded bg-[var(--dk-surface-base)] flex items-center justify-center shrink-0">
-                                      <Gamepad2 className="h-3.5 w-3.5 text-muted-foreground" />
-                                    </div>
-                                  )}
-                                  <div className="min-w-0">
-                                    <p className="text-xs font-medium text-foreground truncate">
-                                      {item.title}
-                                    </p>
-                                    <p className="text-[10px] text-muted-foreground">
-                                      {item.releaseDate?.slice(0, 4) || 'Unknown year'}
-                                    </p>
-                                  </div>
-                                </div>
-                                <DkButton
-                                  size="sm"
-                                  onClick={() => handleConfirmCandidate(record.id, String(item.id))}
-                                  loading={confirmMatchMutation.isPending}
-                                  className="h-6 px-2 text-[10px] shrink-0 rounded-lg"
-                                >
-                                  Select
-                                </DkButton>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
                 </div>
               )
             })

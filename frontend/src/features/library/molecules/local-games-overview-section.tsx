@@ -1,4 +1,5 @@
 import { useNavigate } from "@tanstack/react-router"
+import { Gamepad2 } from "lucide-react"
 import { isDesktop } from "@/lib/desktop"
 import { useLocalGames } from "@/features/launcher/data/game-queries"
 import { GameCard } from "@/features/launcher/components/molecules/game-card"
@@ -9,7 +10,31 @@ export const LocalGamesOverviewSection = () => {
 
   const gamesList = Array.isArray(games) ? games : []
   const isElectron = isDesktop()
-  if (!isElectron || gamesList.length === 0) return null
+  if (!isElectron) return null
+
+  if (gamesList.length === 0) {
+    return (
+      <div className="rounded-2xl bg-[var(--dk-surface-glass)]/60 backdrop-blur-xl border border-white/[0.04] p-5 space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Gamepad2 className="h-4 w-4 text-primary" />
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+              Your Games
+            </h2>
+          </div>
+          <button
+            onClick={() => navigate({ to: '/settings/paths' })}
+            className="text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+          >
+            Manage Drive Locations
+          </button>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          No local games detected yet. Add a game folder or run a scan to populate your library.
+        </p>
+      </div>
+    )
+  }
 
   const preview = gamesList.filter(g => g && g.platform !== 'iso' && !g.sources?.includes('iso')).slice(0, 5)
 

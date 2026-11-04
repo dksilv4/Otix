@@ -20,6 +20,8 @@ export interface ArrServiceInstance {
   seasonFolder?: boolean
   language_profile_id?: number
   languageProfileId?: number
+  auto_request_watchlist?: boolean
+  autoRequestWatchlist?: boolean
   hasApiKey?: boolean
   has_api_key?: boolean
 }
@@ -28,21 +30,35 @@ export function createArrInstance(
   partial: Partial<ArrServiceInstance> = {},
   defaultPort: number,
 ): ArrServiceInstance {
+  const apiKey = partial.api_key || partial.apiKey || ''
+  const hasKey = Boolean(partial.hasApiKey ?? partial.has_api_key ?? apiKey)
+  const autoRequest = Boolean(partial.autoRequestWatchlist ?? partial.auto_request_watchlist)
   return {
     id: partial.id || `inst-${Math.random().toString(36).slice(2, 10)}`,
     name: partial.name || 'Default',
     enabled: partial.enabled ?? true,
     host: partial.host || '127.0.0.1',
     port: partial.port || defaultPort,
-    api_key: partial.api_key || partial.apiKey || '',
+    api_key: apiKey,
+    apiKey,
     use_ssl: Boolean(partial.use_ssl ?? partial.useSsl),
+    useSsl: Boolean(partial.use_ssl ?? partial.useSsl),
     url_base: partial.url_base || partial.urlBase || '',
+    urlBase: partial.url_base || partial.urlBase || '',
     quality_profile_id: partial.quality_profile_id ?? partial.qualityProfileId,
+    qualityProfileId: partial.quality_profile_id ?? partial.qualityProfileId,
     root_folder_path: partial.root_folder_path || partial.rootFolderPath || '',
+    rootFolderPath: partial.root_folder_path || partial.rootFolderPath || '',
     series_type: partial.series_type || partial.seriesType || 'standard',
+    seriesType: partial.series_type || partial.seriesType || 'standard',
     season_folder: partial.season_folder ?? partial.seasonFolder ?? true,
+    seasonFolder: partial.season_folder ?? partial.seasonFolder ?? true,
     language_profile_id: partial.language_profile_id ?? partial.languageProfileId,
-    hasApiKey: partial.hasApiKey ?? partial.has_api_key,
+    languageProfileId: partial.language_profile_id ?? partial.languageProfileId,
+    auto_request_watchlist: autoRequest,
+    autoRequestWatchlist: autoRequest,
+    hasApiKey: hasKey,
+    has_api_key: hasKey,
   }
 }
 
@@ -67,6 +83,8 @@ export function normalizeArrInstances(
         seasonFolder?: boolean
         language_profile_id?: number
         languageProfileId?: number
+        auto_request_watchlist?: boolean
+        autoRequestWatchlist?: boolean
         hasApiKey?: boolean
         has_api_key?: boolean
         enabled?: boolean
@@ -97,7 +115,9 @@ export function normalizeArrInstances(
         series_type: config?.series_type || config?.seriesType,
         season_folder: config?.season_folder ?? config?.seasonFolder,
         language_profile_id: config?.language_profile_id ?? config?.languageProfileId,
-        hasApiKey: config?.hasApiKey ?? config?.has_api_key,
+        auto_request_watchlist: config?.auto_request_watchlist ?? config?.autoRequestWatchlist,
+        autoRequestWatchlist: config?.auto_request_watchlist ?? config?.autoRequestWatchlist,
+        hasApiKey: config?.hasApiKey ?? config?.has_api_key ?? Boolean(config?.apiKey || config?.api_key),
       },
       defaultPort,
     ),

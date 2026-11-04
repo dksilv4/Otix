@@ -257,7 +257,7 @@ describe('NodeDaemonManager', () => {
       const capturedFetches: { url: string; options: any }[] = [];
       vi.mocked(electronNet.fetch).mockImplementation(async (url: any, options: any) => {
         capturedFetches.push({ url: String(url), options });
-        if (String(url).includes('/api/v1/library/servers/claim-direct')) {
+        if (String(url).includes('/api/v1/library/nodes/claim-direct')) {
           return {
             ok: true,
             status: 200,
@@ -286,7 +286,7 @@ describe('NodeDaemonManager', () => {
 
         expect(claimStatusFetched).toBe(true);
 
-        const backendCall = capturedFetches.find((f) => f.url.includes('/api/v1/library/servers/claim-direct'));
+        const backendCall = capturedFetches.find((f) => f.url.includes('/api/v1/library/nodes/claim-direct'));
         expect(backendCall).toBeDefined();
         expect(backendCall?.options?.headers?.Authorization).toBe('Bearer jwt-user-token-12345');
         const backendPayload = JSON.parse(backendCall?.options?.body);

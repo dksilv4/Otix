@@ -2,6 +2,8 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api/client';
+import { isValidNodeId } from './use-node-usenet';
+import { searchModularNodeDirect } from '../utils/node-search';
 import type {
   AddDownloadPayload,
   ProviderConnectionTestResult,
@@ -28,12 +30,24 @@ export function useNodeProviders(nodeId?: number) {
     queryKey: providerKeys.list(nodeId),
     queryFn: async () => {
       if (!nodeId) throw new Error('No node selected');
-      const { data } = await apiClient.get<ServerProvidersResponse>(
-        `/library/servers/${nodeId}/providers`
-      );
-      return data;
+      try {
+        const { data } = await apiClient.get<ServerProvidersResponse>(
+          `/library/nodes/${nodeId}/providers`
+        );
+        return data;
+      } catch {
+        return {
+          downloaders: [],
+          searchProviders: [],
+          search_providers: [],
+          activeDownloader: null,
+          active_downloader: null,
+          activeSearchProvider: null,
+          active_search_provider: null,
+        } as ServerProvidersResponse;
+      }
     },
-    enabled: !!nodeId,
+    enabled: isValidNodeId(nodeId),
     staleTime: 30_000,
   });
 }
@@ -52,7 +66,7 @@ export function useTestProvider(nodeId?: number) {
     }) => {
       if (!nodeId) throw new Error('No node selected');
       const { data } = await apiClient.post<ProviderConnectionTestResult>(
-        `/library/servers/${nodeId}/providers/${providerType}/${name}/test`
+        `/library/nodes/${nodeId}/providers/${providerType}/${name}/test`
       );
       return data;
     },
@@ -69,15 +83,11 @@ export function useModularSearch(
     queryKey: providerKeys.search(nodeId, query, provider),
     queryFn: async () => {
       if (!nodeId || !query?.trim()) return [];
-      const params: Record<string, string> = { query: query.trim() };
-      if (provider) {
-        params.provider = provider;
+      try {
+        return await searchModularNodeDirect(nodeId, query, provider);
+      } catch {
+        return [];
       }
-      const { data } = await apiClient.get<UnifiedReleaseItem[]>(
-        `/library/servers/${nodeId}/downloads/search`,
-        { params }
-      );
-      return data || [];
     },
     enabled: !!nodeId && !!query?.trim(),
     staleTime: 60_000,
@@ -98,7 +108,7 @@ export function useAddModularDownload(nodeId?: number) {
       if (!nodeId) throw new Error('No node selected');
       const params = downloader ? { downloader } : undefined;
       const { data } = await apiClient.post(
-        `/library/servers/${nodeId}/downloads/add`,
+        `/library/nodes/${nodeId}/downloads/add`,
         payload,
         { params }
       );
@@ -122,12 +132,12 @@ export function useModularDownloadQueue(
       if (!nodeId) throw new Error('No node selected');
       const params = downloader ? { downloader } : undefined;
       const { data } = await apiClient.get<UnifiedDownloadQueue>(
-        `/library/servers/${nodeId}/downloads/queue`,
+        `/library/nodes/${nodeId}/downloads/queue`,
         { params }
       );
       return data;
     },
-    enabled: !!nodeId,
+    enabled: isValidNodeId(nodeId),
     refetchInterval: pollingIntervalMs,
     staleTime: 2000,
   });
@@ -147,7 +157,7 @@ export function useCancelModularDownload(nodeId?: number) {
       if (!nodeId) throw new Error('No node selected');
       const params = downloader ? { downloader } : undefined;
       const { data } = await apiClient.delete(
-        `/library/servers/${nodeId}/downloads/queue/${downloadId}`,
+        `/library/nodes/${nodeId}/downloads/queue/${downloadId}`,
         { params }
       );
       return data;

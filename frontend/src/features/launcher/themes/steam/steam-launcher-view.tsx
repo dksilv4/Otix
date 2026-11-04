@@ -2,6 +2,7 @@ import { useState, useMemo } from "react"
 import { useNavigate } from "@tanstack/react-router"
 import {
   Search,
+  RotateCw,
   Play,
   Clock,
   Trophy,
@@ -19,6 +20,7 @@ import {
 import { MediaLogo } from "@/lib/media/media-logo"
 import { useLauncherVisibleGames } from "@/features/launcher/data/game-queries"
 import { useRunningGame } from "@/features/launcher/hooks/use-running-game"
+import { useGameAchievements } from "@/features/launcher/hooks/use-game-achievements"
 import { getDesktopAPI } from "@/lib/desktop/api"
 import { useToast } from "@ui/molecules/toast"
 import { LauncherGameSheet } from "../common/launcher-game-sheet"
@@ -31,7 +33,7 @@ export const SteamLauncherView = () => {
   const navigate = useNavigate()
   const { user, isAuthenticated } = useAuth()
   const { data: localGames = [] } = useLauncherVisibleGames()
-  const { runningGame } = useRunningGame()
+  const { runningGame, runningGames = [], cycleActiveGame } = useRunningGame()
   const { toast } = useToast()
 
   const [searchQuery, setSearchQuery] = useState("")
@@ -72,6 +74,8 @@ export const SteamLauncherView = () => {
     }
     return installedGames[0] || games[0] || null
   }, [selectedGameId, games, installedGames])
+
+  const { stats: activeGameStats } = useGameAchievements(activeGame?.id)
 
   const handleLaunch = async (g: LocalGame) => {
     const api = getDesktopAPI()
@@ -154,9 +158,20 @@ export const SteamLauncherView = () => {
         {/* Right window buttons */}
         <div className="flex items-center gap-3 text-[#8f98a0]">
           {runningGame && (
-            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 text-[10px] font-bold border border-emerald-500/30">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-primary/20 text-primary text-[10px] font-bold border border-primary/30">
+              <span className="w-1.5 h-1.5 rounded-full bg-primary" />
               <span>Playing {runningGame.game.title}</span>
+              {runningGames.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => void cycleActiveGame()}
+                  title={`Running ${runningGames.length} games. Click or press Ctrl+Tab to cycle active game focus.`}
+                  className="inline-flex items-center gap-1 pl-1.5 border-l border-primary/30 text-[9px] font-semibold text-primary hover:text-white transition-colors cursor-pointer"
+                >
+                  <RotateCw className="h-2 w-2" />
+                  <span>+${runningGames.length - 1}</span>
+                </button>
+              )}
             </div>
           )}
           <div className="flex items-center gap-2 pl-3 border-l border-[#2a475e]/40">
@@ -414,7 +429,11 @@ export const SteamLauncherView = () => {
                 <span className="text-[10px] text-[#8f98a0] uppercase tracking-wider font-semibold block">
                   Achievements
                 </span>
-                <span className="font-bold text-white">14 of 28 (50%)</span>
+                <span className="font-bold text-white">
+                  {activeGameStats.total > 0
+                    ? `${activeGameStats.unlocked} of ${activeGameStats.total} (${activeGameStats.completionPercentage}%)`
+                    : "No achievements"}
+                </span>
               </div>
             </div>
 
@@ -435,11 +454,19 @@ export const SteamLauncherView = () => {
                     <Trophy size={16} className="text-amber-400" />
                     <h3 className="text-xs font-bold text-white uppercase tracking-wider">Achievements</h3>
                   </div>
-                  <span className="text-[11px] text-[#66c0f4] font-semibold">View My Achievements</span>
+                  <button
+                    onClick={() => setDetailGame(activeGame)}
+                    className="text-[11px] text-[#66c0f4] hover:underline font-semibold cursor-pointer"
+                  >
+                    View My Achievements
+                  </button>
                 </div>
                 {/* Progress bar */}
                 <div className="w-full h-3 rounded-full bg-[#0e141b] overflow-hidden p-0.5 border border-[#2a475e]/30">
-                  <div className="h-full rounded-full bg-gradient-to-r from-[#1a9fff] to-[#66c0f4]" style={{ width: "50%" }} />
+                  <div
+                    className="h-full rounded-full bg-gradient-to-r from-[#1a9fff] to-[#66c0f4] transition-all duration-300"
+                    style={{ width: `${activeGameStats.completionPercentage}%` }}
+                  />
                 </div>
               </div>
 

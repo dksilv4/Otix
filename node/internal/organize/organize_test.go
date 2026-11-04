@@ -1364,4 +1364,47 @@ func TestUpdateChainDetection(t *testing.T) {
 	})
 }
 
+func TestUNCResolver(t *testing.T) {
+	RegisterMachineMapping("SERVER", "192.168.1.58")
+	RegisterMachineMapping("NAS", "192.168.1.100")
+
+	tests := []struct {
+		input    string
+		resolved string
+	}{
+		{`\\SERVER\Games\PC\Game`, `\\192.168.1.58\Games\PC\Game`},
+		{`\\server\games`, `\\192.168.1.58\games`},
+		{`//SERVER/Games`, `//192.168.1.58/Games`},
+		{`\\NAS\Media\Video.mkv`, `\\192.168.1.100\Media\Video.mkv`},
+		{`C:\Games\PC`, `C:\Games\PC`},
+		{`D:\Library`, `D:\Library`},
+		{`\\OTHER\Share`, `\\OTHER\Share`},
+	}
+
+	for _, tt := range tests {
+		got := ResolveUNCPath(tt.input)
+		if got != tt.resolved {
+			t.Errorf("ResolveUNCPath(%q) = %q, want %q", tt.input, got, tt.resolved)
+		}
+	}
+
+	unresolveTests := []struct {
+		input      string
+		unresolved string
+	}{
+		{`\\192.168.1.58\Games\PC\Game`, `\\SERVER\Games\PC\Game`},
+		{`//192.168.1.58/Games`, `//SERVER/Games`},
+		{`\\192.168.1.100\Media`, `\\NAS\Media`},
+		{`C:\Games\PC`, `C:\Games\PC`},
+	}
+
+	for _, tt := range unresolveTests {
+		got := UnresolveUNCPath(tt.input)
+		if got != tt.unresolved {
+			t.Errorf("UnresolveUNCPath(%q) = %q, want %q", tt.input, got, tt.unresolved)
+		}
+	}
+}
+
+
 

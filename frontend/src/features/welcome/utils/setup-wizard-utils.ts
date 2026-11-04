@@ -35,7 +35,7 @@ export const claimNodeWithPin = async (
   serverName?: string,
 ): Promise<{ success: boolean; message?: string }> => {
   try {
-    const resp = await apiClient.post('/library/servers/claim', {
+    const resp = await apiClient.post('/library/nodes/claim', {
       nodeUrl,
       claimCode: pin,
       serverName: serverName || 'Local Otix Node',

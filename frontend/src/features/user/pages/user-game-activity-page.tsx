@@ -82,7 +82,7 @@ export const UserGameActivityPage = () => {
   return (
     <div
       id="user-game-activity-page"
-      className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6 pb-16 w-full flex flex-col space-y-8"
+      className="w-full px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6 pb-16 flex flex-col space-y-8"
     >
       <Helmet>
         <title>{`${displayUsername}'s Gaming Activity - Otix`}</title>

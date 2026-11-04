@@ -22,7 +22,7 @@ interface NavPillRightProps {
  * Right-side floating navigation island.
  * Seamlessly morphs between compact navigation pill and expanded dropdowns
  * (user profile/friends, chat messages, and activity panel) with shared layout animations,
- * FLIP avatar transitions, and unified collapse mechanics.
+ * and unified collapse mechanics.
  */
 export const NavPillRight = ({
   isPinned,
@@ -181,9 +181,12 @@ export const NavPillRight = ({
               />
             </motion.div>
 
-            {/* In closed or activity state: Profile avatar trigger is here.
-                When user menu is opened: It glides down into the profile card below via shared layoutId! */}
-            {!isUserMenuOpen && (
+            {/* User Profile / Menu Trigger */}
+            <motion.div
+              layout
+              transition={{ duration: 0.22, ease: "linear" }}
+              className="flex items-center"
+            >
               <UserMenu
                 bare
                 triggerOnly
@@ -197,7 +200,7 @@ export const NavPillRight = ({
                   }
                 }}
               />
-            )}
+            </motion.div>
 
             {/* Activity Module Toggle Button */}
             <motion.div

@@ -59,6 +59,7 @@
     "icon": "assets/icon.ico"
   },
   "nsis": {
+    "include": "build/installer.nsh",
     "oneClick": false,
     "perMachine": true,
     "allowElevation": true,
@@ -74,6 +75,7 @@
   },
   "portable": {
     "unpackDirName": "OtixSetup",
+    "requestExecutionLevel": "admin",
     "artifactName": "${productName}-Setup-${version}.${ext}"
   },
   "mac": {

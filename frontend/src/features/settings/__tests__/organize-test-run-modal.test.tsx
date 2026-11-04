@@ -76,6 +76,28 @@ describe('OrganizeTestRunModal', () => {
     })
   })
 
+  it('displays user-friendly error message when network share is unreachable with UNKNOWN stat error', async () => {
+    ;(window as any).desktopAPI = {
+      smartOrganizePreview: vi.fn().mockRejectedValue(new Error("UNKNOWN: unknown error, stat '\\\\SERVER\\Games\\'")),
+    }
+
+    render(
+      <OrganizeTestRunModal
+        open={true}
+        onOpenChange={onOpenChange}
+        template="{Title} ({Year})/{Title}.{ext}"
+        isoDirectory="\\\\SERVER\\Games"
+      />,
+    )
+
+    await waitFor(() => {
+      expect(screen.getByText('Folder Scan Error')).toBeInTheDocument()
+      expect(
+        screen.getByText(/Network share is offline or unreachable/i),
+      ).toBeInTheDocument()
+    })
+  })
+
   it('displays onboarding message when no folder is selected', async () => {
     render(
       <OrganizeTestRunModal

@@ -276,10 +276,25 @@ export interface OtixEvents {
   'game:started': { gameId: string; gameTitle: string; pid: number; launchedByOtix: boolean; node?: unknown; hardware?: unknown; shareEligible?: boolean }
   'game:ended': { gameId: string; gameTitle: string; startTime: number; endTime: number; launchedByOtix: boolean; node?: unknown; hardware?: unknown; shareEligible?: boolean }
 
+
   // ── FPS capture (emitted by fps-capture plugin) ──
   'fps:live': { currentFps: number; frameCount: number; captureDurationMs: number; gameId: string }
   'fps:stats': { gameId: string; fpsStats: { avgFps: number; onePercentLow: number; zeroPointOnePercentLow: number; maxFps: number; minFps: number; totalFrames: number; captureDurationMs: number } | null }
   'fps:permission-needed': { pid: number; gameId: string }
+
+  // ── Achievements ──
+  'achievement:unlocked': {
+    gameId: string
+    gameTitle: string
+    apiName: string
+    displayName: string
+    description?: string | null
+    iconUrl?: string | null
+    points: number
+    unlockedAt: number
+    source: string
+    rarityPercentage?: number | null
+  }
 }
 
 export type OtixEventName = keyof OtixEvents

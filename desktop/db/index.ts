@@ -16,6 +16,8 @@ import migration009 from './migrations/009_repair_imports'
 import migration010 from './migrations/010_media'
 import migration011 from './migrations/011_media_status'
 import migration012 from './migrations/downloads/012_download_source'
+import migration013 from './migrations/013_achievements'
+import migration014 from './migrations/downloads/014_scanned_games_indexes'
 
 // Sequential chain against one schema_version table. The plugin migration was
 // id 1 in its own file; it becomes id 7 in the consolidated chain.
@@ -32,6 +34,8 @@ const migrations = [
   migration010,
   migration011,
   migration012,
+  migration013,
+  migration014,
 ]
 
 export async function initDatabase(): Promise<void> {
@@ -47,3 +51,10 @@ export { GamesRepository } from './repositories/games'
 export type { ScannedGameRow, CreateScannedGame } from './repositories/games'
 export { PluginsRepository } from './repositories/plugins'
 export type { PluginRegistryRow } from './repositories/plugins'
+export { AchievementsRepository } from './repositories/achievements'
+export type {
+  GameAchievementRow,
+  UnlockedAchievementRow,
+  AchievementWithUnlock,
+  AchievementStats,
+} from './repositories/achievements'

@@ -113,6 +113,22 @@ const initializeScannerBridge = () => {
     })
   }
 
+  if (api?.onMatchingProgress) {
+    api.onMatchingProgress((data: any) => {
+      if (data?.state === 'running' && typeof data?.percent === 'number') {
+        const item = data.currentItem ? `Matching: ${data.currentItem}` : 'Matching games against catalog...'
+        const detail = data.total ? `${item} (${data.processed}/${data.total})` : item
+        reportProgress(data.percent, detail, 'matching')
+      } else if (data?.state === 'complete') {
+        finishScan(
+          typeof data?.matched === 'number'
+            ? `Matching complete: ${data.matched} games matched`
+            : 'Matching complete'
+        )
+      }
+    })
+  }
+
   window.addEventListener(SCAN_PROGRESS_EVENT, ((e: CustomEvent<{
     progress: number
     currentDir?: string

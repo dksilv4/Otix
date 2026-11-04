@@ -91,7 +91,7 @@ describe('SettingsNodesPage', () => {
     )
   }
 
-  it('allows non-admin authenticated users to view nodes and locks for unauthenticated users', () => {
+  it('allows non-admin and unauthenticated users to access nodes in guest mode', () => {
     mockAuthUser = { id: 2, email: 'user@example.com', isAdmin: false }
     const { unmount } = renderPage()
     expect(screen.getByRole('heading', { name: 'Nodes' })).toBeInTheDocument()
@@ -99,8 +99,8 @@ describe('SettingsNodesPage', () => {
 
     mockAuthUser = null
     renderPage()
-    expect(screen.getByText('Sign in required')).toBeInTheDocument()
-    expect(screen.queryByRole('heading', { name: 'Nodes' })).not.toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Nodes' })).toBeInTheDocument()
+    expect(screen.queryByText('Sign in required')).not.toBeInTheDocument()
   })
 
   it('renders page header without beta or under development tags', () => {

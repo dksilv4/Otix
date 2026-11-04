@@ -68,7 +68,7 @@ export async function registerDeviceSession(isOnline = true): Promise<DeviceHear
 export async function fetchDevicePendingUpdates(nodeId: number): Promise<PendingUpdateEntry[]> {
   try {
     const { data } = await apiClient.get<{ pendingUpdates?: PendingUpdateEntry[] }>(
-      `/library/servers/${nodeId}/pending-updates`,
+      `/library/nodes/${nodeId}/pending-updates`,
     )
     return data.pendingUpdates || []
   } catch {
@@ -78,7 +78,7 @@ export async function fetchDevicePendingUpdates(nodeId: number): Promise<Pending
 
 export async function acknowledgeDeviceUpdates(nodeId: number, updateIds?: string[]): Promise<boolean> {
   try {
-    await apiClient.post(`/library/servers/${nodeId}/acknowledge-updates`, {
+    await apiClient.post(`/library/nodes/${nodeId}/acknowledge-updates`, {
       update_ids: updateIds,
     })
     return true

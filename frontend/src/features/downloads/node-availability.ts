@@ -1,6 +1,6 @@
 import { isTitleMatch } from '@media/utils'
 import { classifyReleaseKind, releaseMatchesSearchHint } from './release-parse'
-import type { ServerGameFile } from './types'
+import type { NodeGameFile, ServerGameFile } from './types'
 import type { ServerDownloadHistoryItem } from './usenet-types'
 
 type HistoryRow = ServerDownloadHistoryItem & {
@@ -17,7 +17,7 @@ function historyMediaId(item: HistoryRow): string {
   return (item.mediaItemId || item.media_item_id || '').trim()
 }
 
-function fileMatchesGame(file: ServerGameFile, id: string, title: string): boolean {
+function fileMatchesGame(file: NodeGameFile, id: string, title: string): boolean {
   if (id && file.catalogItem?.id === id) return true
   if (title && file.catalogItem?.title && isTitleMatch(file.catalogItem.title, title)) return true
   if (title && isTitleMatch(file.gameTitle, title)) return true
@@ -27,21 +27,21 @@ function fileMatchesGame(file: ServerGameFile, id: string, title: string): boole
   return false
 }
 
-function preferBaseServerFile(files: ServerGameFile[]): ServerGameFile | null {
+function preferBaseNodeFile(files: NodeGameFile[]): NodeGameFile | null {
   if (!files.length) return null
   const base = files.find((file) => classifyReleaseKind(file.filename || file.gameTitle) === 'game')
   return base || files[0]
 }
 
 export function matchNodeGameFile(
-  files: ServerGameFile[] | undefined,
+  files: NodeGameFile[] | undefined,
   mediaId?: string | null,
   mediaTitle?: string | null,
-): ServerGameFile | null {
+): NodeGameFile | null {
   if (!files?.length) return null
   const id = mediaId?.trim() || ''
   const title = mediaTitle?.trim() || ''
-  return preferBaseServerFile(files.filter((file) => fileMatchesGame(file, id, title)))
+  return preferBaseNodeFile(files.filter((file) => fileMatchesGame(file, id, title)))
 }
 
 export const matchServerGameFile = matchNodeGameFile

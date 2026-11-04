@@ -93,17 +93,25 @@ describe('SettingsPathsPage', () => {
     )
   }
 
-  it('renders paths header and node tabs without outer container', async () => {
+  it('renders paths header without outer container', async () => {
     renderPage()
 
-    expect(screen.getByRole('heading', { level: 1, name: 'Paths' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 1, name: 'Drive Locations' })).toBeInTheDocument()
     expect(
-      screen.getByText(/Manage library scan locations, games install paths/i),
+      screen.getByText(/Manage monitored folders and drive storage locations across your devices/i),
     ).toBeInTheDocument()
 
-    // Node tabs
-    expect(screen.getByRole('tab', { name: /Default Node Profile/i })).toBeInTheDocument()
-    expect(screen.getByRole('tab', { name: /Home Server/i })).toBeInTheDocument()
-    expect(screen.getByRole('tab', { name: /Living Room PC/i })).toBeInTheDocument()
+    // Node indicator badge
+    expect(screen.getAllByText('Home Server').length).toBeGreaterThan(0)
+  })
+
+  it('renders cleanly without crashing when localStorage contains legacy string scan-paths', async () => {
+    // Populate legacy string scan-paths in localStorage
+    localStorage.setItem('otix:scan-paths', JSON.stringify(['C:\\LegacyGames', 'D:\\MoreGames']))
+    localStorage.setItem('otix:games-install-dir', 'C:\\LegacyGames')
+    localStorage.setItem('otix:games-download-dir', 'D:\\Downloads')
+
+    expect(() => renderPage()).not.toThrow()
+    expect(screen.getByRole('heading', { level: 1, name: 'Drive Locations' })).toBeInTheDocument()
   })
 })

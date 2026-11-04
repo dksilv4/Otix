@@ -11,6 +11,7 @@ import { mediaQueries, formatDate, formatRuntime, getPreferredSeason, useMediaPa
 import { useEpisodeInteractions, useToggleEpisodeWatched, useMarkSeasonWatched } from "@/features/interaction/episode-interaction-queries"
 import { useModal } from "@/lib/modals"
 import { useStreamEpisode } from "@/features/media/hooks/use-stream-episode"
+import { useMediaDownloadActivity } from "@/features/media/hooks/use-media-download-activity"
 import { cn } from "@/lib/utils"
 
 interface ShowSectionProps {
@@ -32,6 +33,11 @@ export const ShowSection = ({
 
   const { data } = useQuery(mediaQueries.detail('show', mediaId))
   const show = data?.show
+  const { getEpisodeDownload } = useMediaDownloadActivity('show', data?.id ? String(data.id) : mediaId, {
+    tmdbId: data?.tmdbId,
+    tvdbId: (data as any)?.tvdbId,
+    title: data?.title,
+  })
 
   const episodeInteractionsQuery = useEpisodeInteractions(mediaType, mediaId, {
     enabled: !!show && isAuthenticated,
@@ -392,6 +398,7 @@ export const ShowSection = ({
          const isWatched = episodeInteractions?.[episode.id]?.watched ?? false
          const epLoadingKey = `${data?.id ? String(data.id) : mediaId}-s${currentSeason.seasonNumber}-e${episode.episodeNumber}`
          const isEpLoading = loadingKey === epLoadingKey
+          const download = getEpisodeDownload(currentSeason.seasonNumber, episode.episodeNumber)
 
          return (
            <button
@@ -470,7 +477,29 @@ export const ShowSection = ({
                  </span>
                )}
 
-               {/* Watch toggle */}
+               {download && (
+                  <div className="absolute inset-x-0 bottom-0 h-1 bg-black/60 z-20 overflow-hidden">
+                    <div
+                      className="h-full bg-primary transition-all duration-300 ease-out"
+                      style={{ width: `${Math.min(100, Math.max(0, download.percentage))}%` }}
+                    />
+                  </div>
+                )}
+                {download && (
+                  <div className="absolute top-1.5 right-1.5 flex items-center gap-1 z-10">
+                    <span className="glass-badge inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 font-semibold text-[10px] tabular-nums bg-primary/20 text-primary border border-primary/25 backdrop-blur-md shadow-sm">
+                      <Loader2 className="h-2.5 w-2.5 animate-spin text-primary" />
+                      <span>{download.percentage.toFixed(0)}%</span>
+                    </span>
+                    {download.timeleft && download.timeleft !== '00:00:00' && (
+                      <span className="glass-badge hidden sm:inline-flex items-center rounded-md px-1.5 py-0.5 font-medium text-[9px] tabular-nums text-muted-foreground backdrop-blur-md">
+                        {download.timeleft}
+                      </span>
+                    )}
+                  </div>
+                )}
+
+                {/* Watch toggle */}
                {onToggleEpisodeWatched && (
                  <span
                    data-watch-toggle
@@ -505,11 +534,19 @@ export const ShowSection = ({
                <p className="text-xs font-medium truncate">
                  {episode.name || `Episode ${episode.episodeNumber}`}
                </p>
-               {episode.airDate && (
+               {download ? (
+                 <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground mt-0.5">
+                   <span className="text-primary font-medium">Downloading</span>
+                   {download.speed && <span>· {download.speed}</span>}
+                   {download.timeleft && download.timeleft !== '00:00:00' && (
+                     <span className="truncate">· {download.timeleft}</span>
+                   )}
+                 </div>
+               ) : episode.airDate ? (
                  <p className="text-[10px] text-muted-foreground mt-0.5">
                    {formatDate(episode.airDate)}
                  </p>
-               )}
+               ) : null}
              </div>
            </button>
          )

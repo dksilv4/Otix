@@ -19,8 +19,6 @@ from django.utils import timezone
 
 from apps.library.models import UserNode
 
-UserGameServer = UserNode
-
 _LOOPBACK_HOSTS = {"127.0.0.1", "localhost", "::1"}
 PENDING_CACHE_KEY = "otix:pending-nodes"
 PENDING_TTL = 600
@@ -158,7 +156,7 @@ def record_node_heartbeat(payload: dict) -> dict:
 
 
 def apply_node_heartbeat(payload: dict) -> dict:
-    """Record a pending node and relink any already-saved UserGameServer rows.
+    """Record a pending node and relink any already-saved UserNode rows.
 
     This is the original auto-connect path: a live node posting heartbeat marks
     matching saved servers online and fills in the access token, including when
@@ -213,7 +211,7 @@ def apply_node_heartbeat(payload: dict) -> dict:
                 | Q(remote_url=url)
                 | Q(remote_url=f"{url}/")
             )
-        UserGameServer.objects.filter(query, is_online=True).update(
+        UserNode.objects.filter(query, is_online=True).update(
             is_online=False, updated_at=timezone.now()
         )
         return node
@@ -225,9 +223,9 @@ def apply_node_heartbeat(payload: dict) -> dict:
             Q(local_url=url) | Q(local_url=f"{url}/") | Q(remote_url=url) | Q(remote_url=f"{url}/")
         )
     if token:
-        query |= Q(auth_token=token)
+        query |= Q(api_key=token)
     now = timezone.now()
-    matched_servers = list(UserGameServer.objects.filter(query).select_related("user"))
+    matched_servers = list(UserNode.objects.filter(query).select_related("user"))
     if not matched_servers and bool(payload.get("claimed")):
         from django.contrib.auth import get_user_model
 
@@ -250,16 +248,16 @@ def apply_node_heartbeat(payload: dict) -> dict:
             server_name = (node.get("server_name") or "Local Otix Node").strip()
             local_url = node.get("local_url") or f"http://127.0.0.1:{port}"
             is_local = "127.0.0.1" in local_url or "localhost" in local_url or port == 8090
-            server = UserGameServer.objects.create(
+            server = UserNode.objects.create(
                 user=claimed_user,
                 name=server_name,
                 local_url=local_url,
                 remote_url=node.get("advertised_url") or "",
-                auth_token=token,
+                api_key=token,
                 is_online=True,
                 is_local=is_local,
                 is_local_desktop=False,
-                last_seen_at=now,
+                last_heartbeat=now,
             )
             matched_servers = [server]
         else:
@@ -267,12 +265,12 @@ def apply_node_heartbeat(payload: dict) -> dict:
             node["auth_token"] = ""
             node["claimed_by"] = ""
     for server in matched_servers:
-        fields = ["is_online", "last_seen_at", "updated_at"]
+        fields = ["is_online", "last_heartbeat", "updated_at"]
         server.is_online = True
-        server.last_seen_at = now
-        if token and server.auth_token != token:
-            server.auth_token = token
-            fields.append("auth_token")
+        server.last_heartbeat = now
+        if token and server.api_key != token:
+            server.api_key = token
+            fields.append("api_key")
         name = (node.get("server_name") or "").strip()
         if name and server.name != name:
             server.name = name
@@ -331,7 +329,7 @@ def list_pending_nodes_for(user) -> list[dict]:
     nodes = list_pending_nodes()
     if not nodes:
         return []
-    servers = UserGameServer.objects.filter(user=user).only("local_url", "remote_url", "auth_token")
+    servers = UserNode.objects.filter(user=user).only("local_url", "remote_url", "api_key")
     claimed_urls: set[str] = set()
     claimed_tokens: set[str] = set()
     for server in servers:
@@ -489,8 +487,8 @@ def claim_node_by_pin(
     server, created = link_or_create_node(user, server_data)
     if target_node:
         server.is_online = True
-        server.last_seen_at = timezone.now()
-        server.save(update_fields=["is_online", "last_seen_at", "updated_at"])
+        server.last_heartbeat = timezone.now()
+        server.save(update_fields=["is_online", "last_heartbeat", "updated_at"])
     else:
         result = ping_server_sync(server)
         if not result.get("online"):
@@ -607,8 +605,8 @@ def claim_node_direct(
 
     server, created = link_or_create_node(user, server_data)
     server.is_online = True
-    server.last_seen_at = timezone.now()
-    server.save(update_fields=["is_online", "last_seen_at", "updated_at"])
+    server.last_heartbeat = timezone.now()
+    server.save(update_fields=["is_online", "last_heartbeat", "updated_at"])
 
     # Prune any pending cache entries that match this node or its claim code
     claim_code = (payload.get("claim_code") or payload.get("claimCode") or "").strip().upper()
@@ -628,11 +626,11 @@ def claim_node_direct(
 
 
 def unclaim_node(token: str = "", urls: list[str] | None = None, user=None) -> int:
-    """Unclaim and delete UserGameServer record(s) matching token or URLs, and purge pending cache."""
+    """Unclaim and delete UserNode record(s) matching token or URLs, and purge pending cache."""
     query = Q()
     clean_token = (token or "").strip()
     if clean_token:
-        query |= Q(auth_token=clean_token)
+        query |= Q(api_key=clean_token)
     if urls:
         for url in urls:
             cleaned = _strip_url(url)
@@ -649,7 +647,7 @@ def unclaim_node(token: str = "", urls: list[str] | None = None, user=None) -> i
     if not query:
         return 0
 
-    servers = list(UserGameServer.objects.filter(query))
+    servers = list(UserNode.objects.filter(query))
     count = len(servers)
     deleted_urls: set[str] = set()
     deleted_tokens: set[str] = set()
@@ -679,7 +677,7 @@ def unclaim_node(token: str = "", urls: list[str] | None = None, user=None) -> i
     return count
 
 
-def probe_node_reachability(server: UserGameServer) -> dict:
+def probe_node_reachability(server: UserNode) -> dict:
     """Test remote and local network connectivity to an Otix node."""
     if getattr(server, "is_local_desktop", False):
         cutoff = timezone.now() - timedelta(seconds=90)
@@ -710,8 +708,8 @@ def probe_node_reachability(server: UserGameServer) -> dict:
                 latency_ms = int((time.perf_counter() - start_t) * 1000)
                 if resp.status_code == 200:
                     server.is_online = True
-                    server.last_seen_at = timezone.now()
-                    server.save(update_fields=["is_online", "last_seen_at", "updated_at"])
+                    server.last_heartbeat = timezone.now()
+                    server.save(update_fields=["is_online", "last_heartbeat", "updated_at"])
                     return {
                         "reachable": True,
                         "remote_accessible": True,
@@ -749,8 +747,8 @@ def probe_node_reachability(server: UserGameServer) -> dict:
                 latency_ms = int((time.perf_counter() - start_t) * 1000)
                 if resp.status_code == 200:
                     server.is_online = True
-                    server.last_seen_at = timezone.now()
-                    server.save(update_fields=["is_online", "last_seen_at", "updated_at"])
+                    server.last_heartbeat = timezone.now()
+                    server.save(update_fields=["is_online", "last_heartbeat", "updated_at"])
                     return {
                         "reachable": True,
                         "remote_accessible": False,
@@ -804,7 +802,7 @@ def _normalized_url_keys(local_url: str | None, remote_url: str | None) -> set[s
 def server_match_keys(
     local_url: str | None, remote_url: str | None, auth_token: str | None
 ) -> set[str]:
-    """Identity keys used to treat two UserGameServer rows as the same node."""
+    """Identity keys used to treat two UserNode rows as the same node."""
     keys = {f"url:{key}" for key in _normalized_url_keys(local_url, remote_url)}
     token = (auth_token or "").strip()
     if token:
@@ -812,14 +810,14 @@ def server_match_keys(
     return keys
 
 
-def _merge_game_server_into(keeper: UserGameServer, extra: UserGameServer) -> None:
+def _merge_node_into(keeper: UserNode, extra: UserNode) -> None:
     """Move downloads onto ``keeper`` and copy any missing connection fields."""
-    from apps.library.models import GameServerDownload
+    from apps.library.models import NodeDownload
 
     fields: list[str] = []
-    if extra.auth_token and extra.auth_token != keeper.auth_token:
-        keeper.auth_token = extra.auth_token
-        fields.append("auth_token")
+    if extra.api_key and extra.api_key != keeper.api_key:
+        keeper.api_key = extra.api_key
+        fields.append("api_key")
     if extra.name and keeper.name != extra.name:
         is_generic_extra = extra.name in ("This PC", "This Mac", "This computer")
         has_custom_keeper = keeper.name and keeper.name not in (
@@ -839,31 +837,59 @@ def _merge_game_server_into(keeper: UserGameServer, extra: UserGameServer) -> No
     if extra.is_online and not keeper.is_online:
         keeper.is_online = True
         fields.append("is_online")
-    if extra.last_seen_at and (
-        keeper.last_seen_at is None or extra.last_seen_at > keeper.last_seen_at
+    if extra.last_heartbeat and (
+        keeper.last_heartbeat is None or extra.last_heartbeat > keeper.last_heartbeat
     ):
-        keeper.last_seen_at = extra.last_seen_at
-        fields.append("last_seen_at")
+        keeper.last_heartbeat = extra.last_heartbeat
+        fields.append("last_heartbeat")
     if fields:
         keeper.save(update_fields=[*fields, "updated_at"])
 
-    for download in GameServerDownload.objects.filter(server=extra):
-        if GameServerDownload.objects.filter(server=keeper, nzo_id=download.nzo_id).exists():
+    for download in NodeDownload.objects.filter(node=extra):
+        if NodeDownload.objects.filter(node=keeper, nzo_id=download.nzo_id).exists():
             download.delete()
         else:
-            download.server = keeper
-            download.save(update_fields=["server"])
+            download.node = keeper
+            download.save(update_fields=["node"])
     extra.delete()
 
 
-def collapse_duplicate_game_servers(user) -> int:
+_merge_game_server_into = _merge_node_into
+
+
+def collapse_duplicate_nodes(user) -> int:
     """Keep one row per node (token or normalized URL) and delete extras."""
-    servers = list(UserGameServer.objects.filter(user=user).order_by("created_at", "id"))
-    groups: list[tuple[set[str], UserGameServer]] = []
-    extras: list[tuple[UserGameServer, UserGameServer]] = []
+    # Prune or collapse any virtual otix:// desktop nodes into the real desktop node
+    real_desktop = (
+        UserNode.objects.filter(user=user, is_local_desktop=True)
+        .exclude(local_url__startswith="otix://")
+        .first()
+        or UserNode.objects.filter(user=user, is_local=True)
+        .filter(Q(local_url__contains="127.0.0.1") | Q(local_url__contains="localhost"))
+        .exclude(local_url__startswith="otix://")
+        .first()
+    )
+    virtual_nodes = list(
+        UserNode.objects.filter(user=user).filter(
+            Q(local_url__startswith="otix://") | Q(remote_url__startswith="otix://")
+        )
+    )
+    for v_node in virtual_nodes:
+        if real_desktop:
+            _merge_node_into(real_desktop, v_node)
+        else:
+            v_node.local_url = "http://127.0.0.1:8090"
+            v_node.is_local = True
+            v_node.is_local_desktop = True
+            v_node.save(update_fields=["local_url", "is_local", "is_local_desktop", "updated_at"])
+            real_desktop = v_node
+
+    servers = list(UserNode.objects.filter(user=user).order_by("created_at", "id"))
+    groups: list[tuple[set[str], UserNode]] = []
+    extras: list[tuple[UserNode, UserNode]] = []
     for server in servers:
         keys = server_match_keys(server.local_url, server.remote_url, server.auth_token)
-        matched: UserGameServer | None = None
+        matched: UserNode | None = None
         for group_keys, keeper in groups:
             if keys & group_keys:
                 matched = keeper
@@ -874,17 +900,50 @@ def collapse_duplicate_game_servers(user) -> int:
         else:
             extras.append((server, matched))
     for extra, keeper in extras:
-        _merge_game_server_into(keeper, extra)
+        _merge_node_into(keeper, extra)
     return len(extras)
+
+
+collapse_duplicate_game_servers = collapse_duplicate_nodes
 
 
 def link_or_create_node(user, data: dict) -> tuple[UserNode, bool]:
     """Register a node, or update the user's existing row for the same node."""
     local_url = data.get("local_url") or ""
     remote_url = data.get("remote_url") or ""
-    auth_token = data.get("auth_token") or ""
+    auth_token = data.get("auth_token") or data.get("api_key") or ""
+
+    # If this is a local desktop node, match any existing local desktop node first
+    if data.get("is_local_desktop"):
+        existing_desktop = (
+            UserNode.objects.filter(user=user, is_local_desktop=True).order_by("created_at").first()
+            or UserNode.objects.filter(user=user, is_local=True)
+            .filter(Q(local_url__contains="127.0.0.1") | Q(local_url__contains="localhost"))
+            .order_by("created_at")
+            .first()
+        )
+        if existing_desktop:
+            fields: list[str] = []
+            for field in (
+                "name",
+                "local_url",
+                "remote_url",
+                "auth_token",
+                "is_active",
+                "is_local",
+                "is_local_desktop",
+            ):
+                value = data.get(field) if field != "auth_token" else (data.get("auth_token") or data.get("api_key"))
+                if value in (None, "") or getattr(existing_desktop, field) == value:
+                    continue
+                setattr(existing_desktop, field, value)
+                fields.append("api_key" if field == "auth_token" else field)
+            if fields:
+                existing_desktop.save(update_fields=[*fields, "updated_at"])
+            return existing_desktop, False
+
     incoming = server_match_keys(local_url, remote_url, auth_token)
-    for server in UserGameServer.objects.filter(user=user).order_by("created_at", "id"):
+    for server in UserNode.objects.filter(user=user).order_by("created_at", "id"):
         existing = server_match_keys(server.local_url, server.remote_url, server.auth_token)
         if not (incoming & existing):
             continue
@@ -898,18 +957,18 @@ def link_or_create_node(user, data: dict) -> tuple[UserNode, bool]:
             "is_local",
             "is_local_desktop",
         ):
-            value = data.get(field)
+            value = data.get(field) if field != "auth_token" else (data.get("auth_token") or data.get("api_key"))
             if value in (None, "") or getattr(server, field) == value:
                 continue
             setattr(server, field, value)
-            fields.append(field)
+            fields.append("api_key" if field == "auth_token" else field)
         if fields:
             server.save(update_fields=[*fields, "updated_at"])
         return server, False
-    return UserGameServer.objects.create(user=user, **data), True
+    return UserNode.objects.create(user=user, **data), True
 
 
-def _auth_headers(server: UserGameServer) -> dict[str, str]:
+def _auth_headers(server: UserNode) -> dict[str, str]:
     if not server.auth_token:
         return {}
     return {"Authorization": f"Bearer {server.auth_token}"}
@@ -1061,7 +1120,7 @@ def _format_node_error(exc: Exception | str) -> tuple[str, str]:
     return "Node is offline or unreachable.", "node_unreachable"
 
 
-def _mark_offline(server: UserGameServer, error: Exception | str) -> dict:
+def _mark_offline(server: UserNode, error: Exception | str) -> dict:
     server.is_online = False
     if getattr(server, "pk", None):
         try:
@@ -1104,7 +1163,7 @@ def ping_node_sync(server: UserNode) -> dict:
                 if resp.status_code == 200:
                     data = resp.json()
                     server.is_online = True
-                    server.last_seen_at = timezone.now()
+                    server.last_heartbeat = timezone.now()
                     tf = data.get("total_files")
                     server.total_files = tf if tf is not None else 0
                     df = data.get("disk_free_bytes")
@@ -1114,7 +1173,7 @@ def ping_node_sync(server: UserNode) -> dict:
                     server.save(
                         update_fields=[
                             "is_online",
-                            "last_seen_at",
+                            "last_heartbeat",
                             "total_files",
                             "storage_free_bytes",
                             "storage_total_bytes",
@@ -1134,12 +1193,17 @@ def ping_node_sync(server: UserNode) -> dict:
 ping_server_sync = ping_node_sync
 
 
-def _proxy_candidate_targets(server: UserGameServer) -> list[str]:
+def _proxy_candidate_targets(server: UserNode) -> list[str]:
     """Resolve candidate targets for proxying to an otix node.
 
     Includes primary_url, candidate fallbacks (local_url, remote_url),
     and Docker host / loopback rewrites where applicable.
     """
+    if getattr(server, "is_local_desktop", False) and (
+        not server.local_url or str(server.local_url).startswith("otix://")
+    ) and not server.auth_token:
+        return []
+
     cands: list[str] = []
     for raw in (server.primary_url, server.local_url, server.remote_url):
         clean = (raw or "").strip()
@@ -1173,7 +1237,7 @@ def _proxy_candidate_targets(server: UserGameServer) -> list[str]:
 
 
 def server_proxy_request(
-    server: UserGameServer,
+    server: UserNode,
     method: str,
     path: str,
     params: dict | None = None,
@@ -1247,9 +1311,12 @@ def server_proxy_request(
     }
 
 
+node_proxy_request = server_proxy_request
+
+
 # Backward-compatible alias
 def usenet_proxy_request(
-    server: UserGameServer,
+    server: UserNode,
     method: str,
     path: str,
     params: dict | None = None,
@@ -1259,7 +1326,7 @@ def usenet_proxy_request(
     return server_proxy_request(server, method, path, params=params, json=json, timeout=timeout)
 
 
-def explorer_browse(server: UserGameServer, path: str | None = None) -> tuple[int, dict | list]:
+def explorer_browse(server: UserNode, path: str | None = None) -> tuple[int, dict | list]:
     """Proxy directory browse request to connected otix-server node."""
     params = {"path": path} if path else None
     return server_proxy_request(
@@ -1268,7 +1335,7 @@ def explorer_browse(server: UserGameServer, path: str | None = None) -> tuple[in
 
 
 def explorer_set_download_path(
-    server: UserGameServer,
+    server: UserNode,
     path: str,
     create_if_missing: bool = True,
     add_as_library: bool = True,
@@ -1285,7 +1352,7 @@ def explorer_set_download_path(
 
 
 def explorer_create_folder(
-    server: UserGameServer,
+    server: UserNode,
     parent_path: str,
     folder_name: str,
 ) -> tuple[int, dict | list]:
@@ -1300,7 +1367,7 @@ def explorer_create_folder(
 
 
 def explorer_request_permission(
-    server: UserGameServer,
+    server: UserNode,
     path: str,
 ) -> tuple[int, dict | list]:
     """Proxy request-permission request to connected otix-server node."""
@@ -1311,7 +1378,7 @@ def explorer_request_permission(
 
 
 def explorer_connect_share(
-    server: UserGameServer,
+    server: UserNode,
     payload: dict,
 ) -> tuple[int, dict | list]:
     """Proxy connect-share request to connected otix-server node."""
@@ -1324,45 +1391,92 @@ def explorer_connect_share(
 
 
 def usenet_get_config(
-    server: UserGameServer, include_secrets: bool = False
+    server: UserNode, include_secrets: bool = False
 ) -> tuple[int, dict | list]:
+    cached = get_cached_node_config(server.id, "usenet_config")
+    default_cfg = {
+        "enabled": False,
+        "sabnzbd": {"configured": False, "has_api_key": False, "hasApiKey": False, "provider_type": "downloader-provider"},
+        "prowlarr": {"configured": False, "has_api_key": False, "hasApiKey": False, "provider_type": "indexer-provider"},
+        "g4u": {"configured": False, "has_api_key": False, "hasApiKey": False, "provider_type": "indexer-provider"},
+    }
+    target_url = server.primary_url or server.local_url or ""
+    if not server.is_online or not target_url or target_url.startswith("otix://"):
+        return 200, cached if cached is not None else default_cfg
     params = {"include_secrets": True} if include_secrets else None
-    return usenet_proxy_request(server, "GET", "/api/v1/usenet/config", params=params)
+    status_code, data = usenet_proxy_request(server, "GET", "/api/v1/usenet/config", params=params)
+    if status_code < 400 and isinstance(data, dict):
+        set_cached_node_config(server.id, "usenet_config", data)
+        return status_code, data
+    if cached is not None:
+        return 200, cached
+    return 200, default_cfg
 
 
-def usenet_save_config(server: UserGameServer, payload: dict) -> tuple[int, dict | list]:
-    return usenet_proxy_request(server, "POST", "/api/v1/usenet/config", json=payload)
+def usenet_save_config(server: UserNode, payload: dict) -> tuple[int, dict | list]:
+    cached = get_cached_node_config(server.id, "usenet_config")
+    if isinstance(cached, dict):
+        merged = dict(cached)
+        for k, v in payload.items():
+            if isinstance(v, dict) and isinstance(merged.get(k), dict):
+                merged[k] = {**merged[k], **v}
+            else:
+                merged[k] = v
+        set_cached_node_config(server.id, "usenet_config", merged)
+    else:
+        set_cached_node_config(server.id, "usenet_config", payload)
+    target_url = server.primary_url or server.local_url or ""
+    if not server.is_online or not target_url or target_url.startswith("otix://"):
+        queue_node_update(server.id, "usenet_config", payload)
+        return 200, {"status": "saved", "queued": True, "message": "Usenet configuration saved"}
+    status_code, data = usenet_proxy_request(server, "POST", "/api/v1/usenet/config", json=payload)
+    if status_code >= 400:
+        queue_node_update(server.id, "usenet_config", payload)
+        return 200, {"status": "saved", "queued": True, "message": "Usenet configuration queued for sync"}
+    return status_code, data
 
 
-def usenet_test_sabnzbd(server: UserGameServer, payload: dict) -> tuple[int, dict | list]:
+def usenet_test_sabnzbd(server: UserNode, payload: dict) -> tuple[int, dict | list]:
     return usenet_proxy_request(server, "POST", "/api/v1/usenet/test-sabnzbd", json=payload)
 
 
-def usenet_test_prowlarr(server: UserGameServer, payload: dict) -> tuple[int, dict | list]:
+def usenet_test_prowlarr(server: UserNode, payload: dict) -> tuple[int, dict | list]:
     return usenet_proxy_request(server, "POST", "/api/v1/usenet/test-prowlarr", json=payload)
 
 
-def usenet_test_g4u(server: UserGameServer, payload: dict) -> tuple[int, dict | list]:
+def usenet_test_g4u(server: UserNode, payload: dict) -> tuple[int, dict | list]:
     return usenet_proxy_request(server, "POST", "/api/v1/usenet/test-g4u", json=payload)
 
 
-def usenet_search(server: UserGameServer, query: str) -> tuple[int, dict | list]:
+def usenet_search(server: UserNode, query: str) -> tuple[int, dict | list]:
+    target_url = (server.primary_url or server.local_url or "").strip()
+    if target_url.startswith("otix://"):
+        return 400, {
+            "detail": "Indexer search for local desktop node must be executed directly through the node.",
+            "error": "local_node_direct_required",
+        }
     return usenet_proxy_request(
-        server, "GET", "/api/v1/usenet/search", params={"query": query}, timeout=60.0
+        server, "GET", "/api/v1/usenet/search", params={"query": query}, timeout=8.0
     )
 
 
-def usenet_download(server: UserGameServer, payload: dict) -> tuple[int, dict | list]:
+def usenet_download(server: UserNode, payload: dict) -> tuple[int, dict | list]:
     return usenet_proxy_request(
         server, "POST", "/api/v1/usenet/download", json=payload, timeout=60.0
     )
 
 
-def usenet_get_queue(server: UserGameServer) -> tuple[int, dict | list]:
-    return usenet_proxy_request(server, "GET", "/api/v1/usenet/queue", timeout=4.0)
+def usenet_get_queue(server: UserNode) -> tuple[int, dict | list]:
+    target_url = server.primary_url or server.local_url or ""
+    if not server.is_online or not target_url or target_url.startswith("otix://"):
+        return 200, {"status": "Idle", "speed": "0 KB/s", "time_left": "0:00:00", "size_left": "0 MB", "slots": []}
+    status_code, data = usenet_proxy_request(server, "GET", "/api/v1/usenet/queue", timeout=4.0)
+    if status_code >= 400:
+        return 200, {"status": "Idle", "speed": "0 KB/s", "time_left": "0:00:00", "size_left": "0 MB", "slots": []}
+    return status_code, data
 
 
-def usenet_get_history(server: UserGameServer, limit: int = 50) -> tuple[int, dict | list]:
+def usenet_get_history(server: UserNode, limit: int = 50) -> tuple[int, dict | list]:
     return usenet_proxy_request(
         server,
         "GET",
@@ -1372,25 +1486,41 @@ def usenet_get_history(server: UserGameServer, limit: int = 50) -> tuple[int, di
     )
 
 
-def usenet_delete_queue(server: UserGameServer, nzo_id: str) -> tuple[int, dict | list]:
+def usenet_delete_queue(server: UserNode, nzo_id: str) -> tuple[int, dict | list]:
     return usenet_proxy_request(server, "DELETE", f"/api/v1/usenet/queue/{nzo_id}", timeout=5.0)
 
 
 # ── Modular Provider & Download Operations ──────────────────────────────
 
 
-def provider_list(server: UserGameServer) -> tuple[int, dict | list]:
+def provider_list(server: UserNode) -> tuple[int, dict | list]:
     """List registered downloaders and search providers configured on the server node."""
-    return usenet_proxy_request(server, "GET", "/api/v1/providers")
+    cached = get_cached_node_config(server.id, "providers")
+    default_provs = {
+        "downloaders": [],
+        "search_providers": [],
+        "active_downloader": None,
+        "active_search_provider": None,
+    }
+    target_url = server.primary_url or server.local_url or ""
+    if not server.is_online or not target_url or target_url.startswith("otix://"):
+        return 200, cached if cached is not None else default_provs
+    status_code, data = usenet_proxy_request(server, "GET", "/api/v1/providers")
+    if status_code < 400 and isinstance(data, dict):
+        set_cached_node_config(server.id, "providers", data)
+        return status_code, data
+    if cached is not None:
+        return 200, cached
+    return 200, default_provs
 
 
-def provider_test(server: UserGameServer, provider_type: str, name: str) -> tuple[int, dict | list]:
+def provider_test(server: UserNode, provider_type: str, name: str) -> tuple[int, dict | list]:
     """Test connectivity for a registered provider."""
     return usenet_proxy_request(server, "POST", f"/api/v1/providers/{provider_type}/{name}/test")
 
 
 def downloads_search(
-    server: UserGameServer, query: str, provider: str | None = None
+    server: UserNode, query: str, provider: str | None = None
 ) -> tuple[int, dict | list]:
     """Search game releases across registered search providers (Prowlarr, etc)."""
     params = {"query": query}
@@ -1402,7 +1532,7 @@ def downloads_search(
 
 
 def downloads_add(
-    server: UserGameServer, payload: dict, downloader: str | None = None
+    server: UserNode, payload: dict, downloader: str | None = None
 ) -> tuple[int, dict | list]:
     """Dispatch a release download to the target or active downloader (SABnzbd, etc)."""
     params = {"downloader": downloader} if downloader else None
@@ -1412,17 +1542,23 @@ def downloads_add(
 
 
 def downloads_queue(
-    server: UserGameServer, downloader: str | None = None
+    server: UserNode, downloader: str | None = None
 ) -> tuple[int, dict | list]:
     """Fetch live download queue from the downloader."""
+    target_url = server.primary_url or server.local_url or ""
+    if not server.is_online or not target_url or target_url.startswith("otix://"):
+        return 200, {"status": "Idle", "speed": "0 KB/s", "time_left": "0:00:00", "size_left": "0 MB", "items": []}
     params = {"downloader": downloader} if downloader else None
-    return usenet_proxy_request(
+    status_code, data = usenet_proxy_request(
         server, "GET", "/api/v1/downloads/queue", params=params, timeout=4.0
     )
+    if status_code >= 400:
+        return 200, {"status": "Idle", "speed": "0 KB/s", "time_left": "0:00:00", "size_left": "0 MB", "items": []}
+    return status_code, data
 
 
 def downloads_history(
-    server: UserGameServer, downloader: str | None = None, limit: int = 50
+    server: UserNode, downloader: str | None = None, limit: int = 50
 ) -> tuple[int, dict | list]:
     """Fetch completed and failed downloads from the downloader."""
     params: dict = {"limit": limit}
@@ -1434,7 +1570,7 @@ def downloads_history(
 
 
 def downloads_cancel(
-    server: UserGameServer, download_id: str, downloader: str | None = None
+    server: UserNode, download_id: str, downloader: str | None = None
 ) -> tuple[int, dict | list]:
     """Cancel or remove an item from the download queue."""
     params = {"downloader": downloader} if downloader else None
@@ -1443,20 +1579,46 @@ def downloads_cancel(
     )
 
 
-def jdownloader_get_config(server: UserGameServer) -> tuple[int, dict | list]:
+def jdownloader_get_config(server: UserNode) -> tuple[int, dict | list]:
     """Fetch JDownloader configuration from the node."""
-    return usenet_proxy_request(server, "GET", "/api/v1/jdownloader/config", timeout=10.0)
+    cached = get_cached_node_config(server.id, "jdownloader_config")
+    default_jd = {
+        "enabled": False,
+        "configured": False,
+        "has_password": False,
+        "hasPassword": False,
+        "provider_type": "downloader-provider",
+    }
+    target_url = server.primary_url or server.local_url or ""
+    if not server.is_online or not target_url or target_url.startswith("otix://"):
+        return 200, cached if cached is not None else default_jd
+    status_code, data = usenet_proxy_request(server, "GET", "/api/v1/jdownloader/config", timeout=10.0)
+    if status_code < 400 and isinstance(data, dict):
+        set_cached_node_config(server.id, "jdownloader_config", data)
+        return status_code, data
+    if cached is not None:
+        return 200, cached
+    return 200, default_jd
 
 
-def jdownloader_save_config(server: UserGameServer, payload: dict) -> tuple[int, dict | list]:
+def jdownloader_save_config(server: UserNode, payload: dict) -> tuple[int, dict | list]:
     """Save JDownloader configuration on the node."""
-    return usenet_proxy_request(
+    set_cached_node_config(server.id, "jdownloader_config", payload)
+    target_url = server.primary_url or server.local_url or ""
+    if not server.is_online or not target_url or target_url.startswith("otix://"):
+        queue_node_update(server.id, "jdownloader_config", payload)
+        return 200, {"status": "saved", "queued": True, "message": "JDownloader configuration saved"}
+    status_code, data = usenet_proxy_request(
         server, "POST", "/api/v1/jdownloader/config", json=payload, timeout=10.0
     )
+    if status_code >= 400:
+        queue_node_update(server.id, "jdownloader_config", payload)
+        return 200, {"status": "saved", "queued": True, "message": "JDownloader configuration queued for sync"}
+    return status_code, data
 
 
 def jdownloader_test(
-    server: UserGameServer, payload: dict | None = None
+    server: UserNode, payload: dict | None = None
 ) -> tuple[int, dict | list]:
     """Test connectivity to JDownloader (Direct HTTP or MyJDownloader cloud)."""
     return usenet_proxy_request(
@@ -1465,17 +1627,23 @@ def jdownloader_test(
 
 
 def prowlarr_get_indexers(
-    server: UserGameServer, protocol: str | None = None
+    server: UserNode, protocol: str | None = None
 ) -> tuple[int, dict | list]:
     """Fetch indexers from Prowlarr on the game server node."""
+    target_url = server.primary_url or server.local_url or ""
+    if not server.is_online or not target_url or target_url.startswith("otix://"):
+        return 200, []
     params = {"protocol": protocol} if protocol else None
-    return usenet_proxy_request(
+    status_code, data = usenet_proxy_request(
         server, "GET", "/api/v1/prowlarr/indexers", params=params, timeout=10.0
     )
+    if status_code >= 400:
+        return 200, []
+    return status_code, data
 
 
 def prowlarr_sync_indexers(
-    server: UserGameServer, protocol: str | None = None
+    server: UserNode, protocol: str | None = None
 ) -> tuple[int, dict | list]:
     """Trigger ApplicationIndexerSync in Prowlarr on the game server node."""
     params = {"protocol": protocol} if protocol else None
@@ -1484,18 +1652,18 @@ def prowlarr_sync_indexers(
     )
 
 
-def sabnzbd_pause_queue(server: UserGameServer) -> tuple[int, dict | list]:
+def sabnzbd_pause_queue(server: UserNode) -> tuple[int, dict | list]:
     """Pause SABnzbd queue on the game server node."""
     return usenet_proxy_request(server, "POST", "/api/v1/sabnzbd/pause", timeout=5.0)
 
 
-def sabnzbd_resume_queue(server: UserGameServer) -> tuple[int, dict | list]:
+def sabnzbd_resume_queue(server: UserNode) -> tuple[int, dict | list]:
     """Resume SABnzbd queue on the game server node."""
     return usenet_proxy_request(server, "POST", "/api/v1/sabnzbd/resume", timeout=5.0)
 
 
 def scan_game_libraries(
-    server: UserGameServer, params: dict | None = None
+    server: UserNode, params: dict | None = None
 ) -> tuple[int, dict | list]:
     """Ask the game server to re-index installer files after a download completes."""
     is_waiting = bool(
@@ -1505,18 +1673,18 @@ def scan_game_libraries(
     return server_proxy_request(server, "POST", "/api/v1/scan", params=params, timeout=timeout)
 
 
-def clear_scanned_game_libraries(server: UserGameServer) -> tuple[int, dict | list]:
+def clear_scanned_game_libraries(server: UserNode) -> tuple[int, dict | list]:
     """Clear the node's in-memory hosted file index (does not delete files on disk)."""
     return usenet_proxy_request(server, "POST", "/api/v1/scan/clear", timeout=15.0)
 
 
-def node_get_sessions(server: UserGameServer, limit: int = 100) -> tuple[int, dict | list]:
+def node_get_sessions(server: UserNode, limit: int = 100) -> tuple[int, dict | list]:
     """Fetch recorded gameplay sessions and performance metrics from the node."""
     params = {"limit": limit}
     return usenet_proxy_request(server, "GET", "/api/v1/games/sessions", params=params, timeout=6.0)
 
 
-def node_get_running_games(server: UserGameServer) -> tuple[int, dict | list]:
+def node_get_running_games(server: UserNode) -> tuple[int, dict | list]:
     """Fetch currently running game(s) from the node."""
     if not server.primary_url or server.primary_url.startswith("otix://"):
         return 200, {"running": False, "game": None, "games": []}
@@ -1535,24 +1703,54 @@ def _instance_params(params: dict | None, instance_id: str | None) -> dict | Non
 
 
 def radarr_get_config(
-    server: UserGameServer, include_secrets: bool = False
+    server: UserNode, include_secrets: bool = False
 ) -> tuple[int, dict | list]:
+    cached = get_cached_node_config(server.id, "radarr_config")
+    default_radarr = {
+        "enabled": False,
+        "configured": False,
+        "host": "",
+        "port": 7878,
+        "api_key": "",
+        "auto_request_watchlist": False,
+    }
+    target_url = server.primary_url or server.local_url or ""
+    if not server.is_online or not target_url or target_url.startswith("otix://"):
+        return 200, cached if cached is not None else default_radarr
     params = {"include_secrets": True} if include_secrets else None
-    return usenet_proxy_request(server, "GET", "/api/v1/radarr/config", params=params, timeout=6.0)
+    status_code, data = usenet_proxy_request(server, "GET", "/api/v1/radarr/config", params=params, timeout=6.0)
+    if status_code < 400 and isinstance(data, dict):
+        if cached and isinstance(cached, dict):
+            if cached.get("auto_request_watchlist") and ("auto_request_watchlist" not in data or not data.get("auto_request_watchlist")):
+                data["auto_request_watchlist"] = True
+        set_cached_node_config(server.id, "radarr_config", data)
+        return status_code, data
+    if cached is not None:
+        return 200, cached
+    return 200, default_radarr
 
 
-def radarr_save_config(server: UserGameServer, payload: dict) -> tuple[int, dict | list]:
-    return usenet_proxy_request(server, "POST", "/api/v1/radarr/config", json=payload, timeout=8.0)
+def radarr_save_config(server: UserNode, payload: dict) -> tuple[int, dict | list]:
+    set_cached_node_config(server.id, "radarr_config", payload)
+    target_url = server.primary_url or server.local_url or ""
+    if not server.is_online or not target_url or target_url.startswith("otix://"):
+        queue_node_update(server.id, "radarr_config", payload)
+        return 200, {"status": "saved", "queued": True, "message": "Radarr configuration saved"}
+    status_code, data = usenet_proxy_request(server, "POST", "/api/v1/radarr/config", json=payload, timeout=8.0)
+    if status_code >= 400:
+        queue_node_update(server.id, "radarr_config", payload)
+        return 200, {"status": "saved", "queued": True, "message": "Radarr configuration queued for sync"}
+    return status_code, data
 
 
-def radarr_test(server: UserGameServer, payload: dict | None = None) -> tuple[int, dict | list]:
+def radarr_test(server: UserNode, payload: dict | None = None) -> tuple[int, dict | list]:
     return usenet_proxy_request(
         server, "POST", "/api/v1/radarr/test", json=payload or {}, timeout=15.0
     )
 
 
 def radarr_get_root_folders(
-    server: UserGameServer, instance_id: str | None = None
+    server: UserNode, instance_id: str | None = None
 ) -> tuple[int, dict | list]:
     return usenet_proxy_request(
         server,
@@ -1564,7 +1762,7 @@ def radarr_get_root_folders(
 
 
 def radarr_get_quality_profiles(
-    server: UserGameServer, instance_id: str | None = None
+    server: UserNode, instance_id: str | None = None
 ) -> tuple[int, dict | list]:
     return usenet_proxy_request(
         server,
@@ -1576,19 +1774,25 @@ def radarr_get_quality_profiles(
 
 
 def radarr_get_movies(
-    server: UserGameServer, instance_id: str | None = None
+    server: UserNode, instance_id: str | None = None
 ) -> tuple[int, dict | list]:
-    return usenet_proxy_request(
+    target_url = server.primary_url or server.local_url or ""
+    if not server.is_online or not target_url or target_url.startswith("otix://"):
+        return 200, []
+    status_code, data = usenet_proxy_request(
         server,
         "GET",
         "/api/v1/radarr/movies",
         params=_instance_params(None, instance_id),
         timeout=20.0,
     )
+    if status_code >= 400:
+        return 200, []
+    return status_code, data
 
 
 def radarr_lookup(
-    server: UserGameServer, term: str, instance_id: str | None = None
+    server: UserNode, term: str, instance_id: str | None = None
 ) -> tuple[int, dict | list]:
     return usenet_proxy_request(
         server,
@@ -1599,19 +1803,213 @@ def radarr_lookup(
     )
 
 
-def radarr_add_movie(server: UserGameServer, payload: dict) -> tuple[int, dict | list]:
+def radarr_add_movie(server: UserNode, payload: dict) -> tuple[int, dict | list]:
     return usenet_proxy_request(server, "POST", "/api/v1/radarr/movies", json=payload, timeout=20.0)
 
 
+def enrich_radarr_queue_records(records: list[dict]) -> None:
+    """Enrich Radarr queue records with connected Otix movie details."""
+    if not records or not isinstance(records, list):
+        return
+
+    try:
+        from apps.media.models import MediaItem
+        from apps.media.models.external_id import ExternalID
+        from django.contrib.contenttypes.models import ContentType
+
+        ct_media = ContentType.objects.get_for_model(MediaItem)
+        movie_cache: dict[str, Any] = {}
+
+        for record in records:
+            if not isinstance(record, dict):
+                continue
+
+            movie = record.get("movie") or {}
+            tmdb_id = movie.get("tmdbId") or record.get("movieId")
+            title = movie.get("title") or record.get("title")
+            year = movie.get("year")
+
+            cache_key = f"tmdb:{tmdb_id}" if tmdb_id else f"title:{title}"
+            movie_item = movie_cache.get(cache_key)
+            if movie_item is None and cache_key not in movie_cache:
+                if tmdb_id:
+                    ext = ExternalID.objects.filter(
+                        provider="tmdb", external_id=str(tmdb_id), content_type=ct_media
+                    ).select_related().first()
+                    if ext and isinstance(ext.target, MediaItem):
+                        movie_item = ext.target
+                if not movie_item and title:
+                    movie_item = MediaItem.objects.filter(media_type="movie", title__iexact=title).first()
+                movie_cache[cache_key] = movie_item
+
+            if movie_item:
+                record["media_item_id"] = movie_item.id
+                record["movie_title"] = movie_item.title
+                poster = movie_item.assets.filter(asset_type="poster").first()
+                if poster:
+                    record["poster_url"] = poster.url
+                backdrop = movie_item.assets.filter(asset_type="backdrop").first()
+                if backdrop:
+                    record["backdrop_url"] = backdrop.url
+                if movie_item.overview:
+                    record["overview"] = movie_item.overview
+
+            # Fallbacks from Radarr payload
+            if not record.get("poster_url"):
+                for img in movie.get("images") or []:
+                    if img.get("coverType") == "poster" and img.get("remoteUrl"):
+                        record["poster_url"] = img["remoteUrl"]
+                        break
+            if not record.get("backdrop_url"):
+                for img in movie.get("images") or []:
+                    if img.get("coverType") == "fanart" and img.get("remoteUrl"):
+                        record["backdrop_url"] = img["remoteUrl"]
+                        break
+            if not record.get("movie_title") and movie.get("title"):
+                record["movie_title"] = movie["title"]
+            if not record.get("movie_year") and year:
+                record["movie_year"] = year
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Failed to enrich Radarr queue records: %s", exc)
+
+
+def enrich_sonarr_queue_records(records: list[dict]) -> None:
+    """Enrich Sonarr queue records with connected Otix show & episode details."""
+    if not records or not isinstance(records, list):
+        return
+
+    try:
+        from apps.media.models import MediaItem, Episode
+        from apps.media.models.external_id import ExternalID
+        from django.contrib.contenttypes.models import ContentType
+
+        ct_media = ContentType.objects.get_for_model(MediaItem)
+        show_cache: dict[str, Any] = {}
+
+        for record in records:
+            if not isinstance(record, dict):
+                continue
+
+            series = record.get("series") or {}
+            tvdb_id = series.get("tvdbId")
+            tmdb_id = series.get("tmdbId")
+            series_title = series.get("title")
+
+            title_str = str(record.get("title") or "")
+            season_num = record.get("seasonNumber")
+            episode_obj = record.get("episode") or {}
+            if season_num is None:
+                season_num = episode_obj.get("seasonNumber")
+            ep_num = episode_obj.get("episodeNumber")
+
+            if (season_num is None or ep_num is None or not series_title or not episode_obj.get("title")) and title_str:
+                m = re.search(
+                    r"^(.*?)[.\s]+(?:(?:\(?\d{4}\)?)[.\s]+)?[sS](\d{1,2})[eE](\d{1,3})(?:[.\s]+(.*?))?(?:[.\s]+(?:2160p|1080p|720p|480p|WEB-DL|WEBDL|HDR|BluRay|BDRip|HDTV|NF|AMZN|HMAX|ATVP|x264|x265|H\.264|H\.265|DDP|DD5\.1|Atmos|AAC).*|$)",
+                    title_str,
+                    re.IGNORECASE,
+                )
+                if m:
+                    if not series_title:
+                        series_title = m.group(1).replace(".", " ").strip()
+                    if season_num is None:
+                        season_num = int(m.group(2))
+                    if ep_num is None:
+                        ep_num = int(m.group(3))
+                    raw_ep_name = (m.group(4) or "").replace(".", " ").strip()
+                    if raw_ep_name and not episode_obj.get("title") and not record.get("episode_name"):
+                        raw_ep_name = re.sub(
+                            r"\b(2160p|1080p|720p|WEB-DL|WEBDL|HDR|BluRay|BDRip|HDTV|NF|AMZN|HMAX|ATVP|x264|x265|H\.264|H\.265)\b.*$",
+                            "",
+                            raw_ep_name,
+                            flags=re.IGNORECASE,
+                        ).strip()
+                        if raw_ep_name:
+                            record["episode_name"] = raw_ep_name
+
+            cache_key = f"tvdb:{tvdb_id}" if tvdb_id else (f"tmdb:{tmdb_id}" if tmdb_id else f"title:{series_title}")
+            show_item = show_cache.get(cache_key)
+            if show_item is None and cache_key not in show_cache:
+                if tvdb_id:
+                    ext = ExternalID.objects.filter(
+                        provider="tvdb", external_id=str(tvdb_id), content_type=ct_media
+                    ).select_related().first()
+                    if ext and isinstance(ext.target, MediaItem):
+                        show_item = ext.target
+                if not show_item and tmdb_id:
+                    ext = ExternalID.objects.filter(
+                        provider="tmdb", external_id=str(tmdb_id), content_type=ct_media
+                    ).select_related().first()
+                    if ext and isinstance(ext.target, MediaItem):
+                        show_item = ext.target
+                if not show_item and series_title:
+                    clean_name = re.sub(r"\s*\(\d{4}\)$", "", series_title).strip()
+                    show_item = MediaItem.objects.filter(media_type="show", title__iexact=clean_name).first()
+                    if not show_item:
+                        show_item = MediaItem.objects.filter(media_type="show", title__iexact=series_title).first()
+                show_cache[cache_key] = show_item
+
+            if show_item:
+                record["media_item_id"] = show_item.id
+                record["show_title"] = show_item.title
+                poster = show_item.assets.filter(asset_type="poster").first()
+                if poster:
+                    record["show_poster_url"] = poster.url
+                backdrop = show_item.assets.filter(asset_type="backdrop").first()
+                if backdrop:
+                    record["show_backdrop_url"] = backdrop.url
+
+                if season_num is not None and ep_num is not None:
+                    ep = Episode.objects.filter(
+                        season__show__media_item=show_item,
+                        season__season_number=season_num,
+                        episode_number=ep_num,
+                    ).first()
+                    if ep:
+                        record["episode_name"] = ep.name
+                        record["episode_still_url"] = ep.still_url
+                        record["episode_overview"] = ep.overview
+                        record["otix_episode_id"] = ep.id
+
+            # Fallbacks from Sonarr payload
+            if not record.get("show_poster_url"):
+                for img in series.get("images") or []:
+                    if img.get("coverType") == "poster" and img.get("remoteUrl"):
+                        record["show_poster_url"] = img["remoteUrl"]
+                        break
+            if not record.get("show_backdrop_url"):
+                for img in series.get("images") or []:
+                    if img.get("coverType") == "fanart" and img.get("remoteUrl"):
+                        record["show_backdrop_url"] = img["remoteUrl"]
+                        break
+            if not record.get("episode_name") and episode_obj.get("title"):
+                record["episode_name"] = episode_obj["title"]
+            if not record.get("show_title") and series.get("title"):
+                record["show_title"] = series["title"]
+            if season_num is not None:
+                record["season_number"] = season_num
+            if ep_num is not None:
+                record["episode_number"] = ep_num
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Failed to enrich Sonarr queue records: %s", exc)
+
+
 def radarr_get_queue(
-    server: UserGameServer, page: int = 1, page_size: int = 50, instance_id: str | None = None
+    server: UserNode, page: int = 1, page_size: int = 50, instance_id: str | None = None
 ) -> tuple[int, dict | list]:
+    target_url = server.primary_url or server.local_url or ""
+    if not server.is_online or not target_url or target_url.startswith("otix://"):
+        return 200, {"page": page, "pageSize": page_size, "totalRecords": 0, "records": []}
     params = _instance_params({"page": page, "page_size": page_size}, instance_id)
-    return usenet_proxy_request(server, "GET", "/api/v1/radarr/queue", params=params, timeout=10.0)
+    status_code, data = usenet_proxy_request(server, "GET", "/api/v1/radarr/queue", params=params, timeout=10.0)
+    if status_code >= 400:
+        return 200, {"page": page, "pageSize": page_size, "totalRecords": 0, "records": []}
+    if status_code == 200 and isinstance(data, dict) and "records" in data:
+        enrich_radarr_queue_records(data.get("records") or [])
+    return status_code, data
 
 
 def radarr_delete_queue(
-    server: UserGameServer,
+    server: UserNode,
     queue_id: str | int,
     remove_from_client: bool = True,
     blocklist: bool = False,
@@ -1630,7 +2028,7 @@ def radarr_delete_queue(
 
 
 def radarr_get_history(
-    server: UserGameServer, page: int = 1, page_size: int = 50, instance_id: str | None = None
+    server: UserNode, page: int = 1, page_size: int = 50, instance_id: str | None = None
 ) -> tuple[int, dict | list]:
     params = _instance_params({"page": page, "page_size": page_size}, instance_id)
     return usenet_proxy_request(
@@ -1642,24 +2040,54 @@ def radarr_get_history(
 
 
 def sonarr_get_config(
-    server: UserGameServer, include_secrets: bool = False
+    server: UserNode, include_secrets: bool = False
 ) -> tuple[int, dict | list]:
+    cached = get_cached_node_config(server.id, "sonarr_config")
+    default_sonarr = {
+        "enabled": False,
+        "configured": False,
+        "host": "",
+        "port": 8989,
+        "api_key": "",
+        "auto_request_watchlist": False,
+    }
+    target_url = server.primary_url or server.local_url or ""
+    if not server.is_online or not target_url or target_url.startswith("otix://"):
+        return 200, cached if cached is not None else default_sonarr
     params = {"include_secrets": True} if include_secrets else None
-    return usenet_proxy_request(server, "GET", "/api/v1/sonarr/config", params=params, timeout=6.0)
+    status_code, data = usenet_proxy_request(server, "GET", "/api/v1/sonarr/config", params=params, timeout=6.0)
+    if status_code < 400 and isinstance(data, dict):
+        if cached and isinstance(cached, dict):
+            if cached.get("auto_request_watchlist") and ("auto_request_watchlist" not in data or not data.get("auto_request_watchlist")):
+                data["auto_request_watchlist"] = True
+        set_cached_node_config(server.id, "sonarr_config", data)
+        return status_code, data
+    if cached is not None:
+        return 200, cached
+    return 200, default_sonarr
 
 
-def sonarr_save_config(server: UserGameServer, payload: dict) -> tuple[int, dict | list]:
-    return usenet_proxy_request(server, "POST", "/api/v1/sonarr/config", json=payload, timeout=8.0)
+def sonarr_save_config(server: UserNode, payload: dict) -> tuple[int, dict | list]:
+    set_cached_node_config(server.id, "sonarr_config", payload)
+    target_url = server.primary_url or server.local_url or ""
+    if not server.is_online or not target_url or target_url.startswith("otix://"):
+        queue_node_update(server.id, "sonarr_config", payload)
+        return 200, {"status": "saved", "queued": True, "message": "Sonarr configuration saved"}
+    status_code, data = usenet_proxy_request(server, "POST", "/api/v1/sonarr/config", json=payload, timeout=8.0)
+    if status_code >= 400:
+        queue_node_update(server.id, "sonarr_config", payload)
+        return 200, {"status": "saved", "queued": True, "message": "Sonarr configuration queued for sync"}
+    return status_code, data
 
 
-def sonarr_test(server: UserGameServer, payload: dict | None = None) -> tuple[int, dict | list]:
+def sonarr_test(server: UserNode, payload: dict | None = None) -> tuple[int, dict | list]:
     return usenet_proxy_request(
         server, "POST", "/api/v1/sonarr/test", json=payload or {}, timeout=15.0
     )
 
 
 def sonarr_get_root_folders(
-    server: UserGameServer, instance_id: str | None = None
+    server: UserNode, instance_id: str | None = None
 ) -> tuple[int, dict | list]:
     return usenet_proxy_request(
         server,
@@ -1671,7 +2099,7 @@ def sonarr_get_root_folders(
 
 
 def sonarr_get_quality_profiles(
-    server: UserGameServer, instance_id: str | None = None
+    server: UserNode, instance_id: str | None = None
 ) -> tuple[int, dict | list]:
     return usenet_proxy_request(
         server,
@@ -1683,19 +2111,25 @@ def sonarr_get_quality_profiles(
 
 
 def sonarr_get_series(
-    server: UserGameServer, instance_id: str | None = None
+    server: UserNode, instance_id: str | None = None
 ) -> tuple[int, dict | list]:
-    return usenet_proxy_request(
+    target_url = server.primary_url or server.local_url or ""
+    if not server.is_online or not target_url or target_url.startswith("otix://"):
+        return 200, []
+    status_code, data = usenet_proxy_request(
         server,
         "GET",
         "/api/v1/sonarr/series",
         params=_instance_params(None, instance_id),
         timeout=20.0,
     )
+    if status_code >= 400:
+        return 200, []
+    return status_code, data
 
 
 def sonarr_lookup(
-    server: UserGameServer, term: str, instance_id: str | None = None
+    server: UserNode, term: str, instance_id: str | None = None
 ) -> tuple[int, dict | list]:
     return usenet_proxy_request(
         server,
@@ -1706,19 +2140,27 @@ def sonarr_lookup(
     )
 
 
-def sonarr_add_series(server: UserGameServer, payload: dict) -> tuple[int, dict | list]:
+def sonarr_add_series(server: UserNode, payload: dict) -> tuple[int, dict | list]:
     return usenet_proxy_request(server, "POST", "/api/v1/sonarr/series", json=payload, timeout=20.0)
 
 
 def sonarr_get_queue(
-    server: UserGameServer, page: int = 1, page_size: int = 50, instance_id: str | None = None
+    server: UserNode, page: int = 1, page_size: int = 50, instance_id: str | None = None
 ) -> tuple[int, dict | list]:
+    target_url = server.primary_url or server.local_url or ""
+    if not server.is_online or not target_url or target_url.startswith("otix://"):
+        return 200, {"page": page, "pageSize": page_size, "totalRecords": 0, "records": []}
     params = _instance_params({"page": page, "page_size": page_size}, instance_id)
-    return usenet_proxy_request(server, "GET", "/api/v1/sonarr/queue", params=params, timeout=10.0)
+    status_code, data = usenet_proxy_request(server, "GET", "/api/v1/sonarr/queue", params=params, timeout=10.0)
+    if status_code >= 400:
+        return 200, {"page": page, "pageSize": page_size, "totalRecords": 0, "records": []}
+    if status_code == 200 and isinstance(data, dict) and "records" in data:
+        enrich_sonarr_queue_records(data.get("records") or [])
+    return status_code, data
 
 
 def sonarr_delete_queue(
-    server: UserGameServer,
+    server: UserNode,
     queue_id: str | int,
     remove_from_client: bool = True,
     blocklist: bool = False,
@@ -1737,7 +2179,7 @@ def sonarr_delete_queue(
 
 
 def sonarr_get_history(
-    server: UserGameServer, page: int = 1, page_size: int = 50, instance_id: str | None = None
+    server: UserNode, page: int = 1, page_size: int = 50, instance_id: str | None = None
 ) -> tuple[int, dict | list]:
     params = _instance_params({"page": page, "page_size": page_size}, instance_id)
     return usenet_proxy_request(
@@ -1801,7 +2243,7 @@ def set_cached_node_config(server_id: int, config_type: str, data: Any):
 
 
 def desktop_get_settings(
-    server: UserGameServer, params: dict | None = None
+    server: UserNode, params: dict | None = None
 ) -> tuple[int, dict | list]:
     cached = get_cached_node_config(server.id, "desktop_settings")
     target_url = server.primary_url or server.local_url or ""
@@ -1829,21 +2271,85 @@ def desktop_get_settings(
     return 200, {}
 
 
-def node_list_libraries(server: UserGameServer) -> tuple[int, dict | list]:
+def node_list_libraries(server: UserNode) -> tuple[int, dict | list]:
     cached = get_cached_node_config(server.id, "libraries")
     target_url = server.primary_url or server.local_url or ""
     if not server.is_online or not target_url or target_url.startswith("otix://"):
-        return 200, cached if cached is not None else []
+        if cached is not None:
+            return 200, cached
+        try:
+            from apps.library.models import NodeLibraryPath
+            db_paths = NodeLibraryPath.objects.filter(node=server)
+            if db_paths.exists():
+                return 200, [
+                    {"name": p.name, "path": p.path, "kind": p.kind, "allowed_extensions": p.allowed_extensions}
+                    for p in db_paths
+                ]
+        except Exception:
+            pass
+        return 200, []
     status_code, data = usenet_proxy_request(server, "GET", "/api/v1/libraries", timeout=8.0)
     if status_code < 400:
         set_cached_node_config(server.id, "libraries", data)
+        try:
+            from apps.library.models import NodeLibraryPath
+
+            raw_list = (
+                data
+                if isinstance(data, list)
+                else data.get("libraries", [])
+                if isinstance(data, dict)
+                else []
+            )
+            active_paths = []
+            for lib in raw_list:
+                p_str = lib.get("path") if isinstance(lib, dict) else str(lib)
+                if not p_str:
+                    continue
+                active_paths.append(p_str)
+                c_name = (
+                    (lib.get("name") if isinstance(lib, dict) else None)
+                    or p_str.rstrip("/\\").split("/")[-1]
+                    or p_str.rstrip("/\\").split("\\")[-1]
+                    or "Games"
+                )
+                kind = (lib.get("kind") if isinstance(lib, dict) else None) or "game"
+                allowed_exts = (
+                    lib.get("allowed_extensions", []) if isinstance(lib, dict) else []
+                )
+                NodeLibraryPath.objects.update_or_create(
+                    node=server,
+                    path=p_str,
+                    defaults={
+                        "name": c_name,
+                        "kind": kind,
+                        "allowed_extensions": allowed_exts,
+                        "is_active": True,
+                    },
+                )
+            if active_paths:
+                NodeLibraryPath.objects.filter(node=server).exclude(
+                    path__in=active_paths
+                ).update(is_active=False)
+        except Exception as exc:
+            logger.warning("NodeLibraryPath sync from proxy failed: %s", exc)
         return status_code, data
     if cached is not None:
         return 200, cached
+    try:
+        from apps.library.models import NodeLibraryPath
+        db_paths = NodeLibraryPath.objects.filter(node=server)
+        if db_paths.exists():
+            return 200, [
+                {"name": p.name, "path": p.path, "kind": p.kind, "allowed_extensions": p.allowed_extensions}
+                for p in db_paths
+            ]
+    except Exception:
+        pass
     return 200, []
 
 
-def node_replace_libraries(server: UserGameServer, payload: dict) -> tuple[int, dict | list]:
+def node_replace_libraries(server: UserNode, payload: dict) -> tuple[int, dict | list]:
     set_cached_node_config(server.id, "libraries", payload)
     target_url = server.primary_url or server.local_url or ""
     if not server.is_online or not target_url or target_url.startswith("otix://"):
@@ -1866,7 +2372,7 @@ def node_replace_libraries(server: UserGameServer, payload: dict) -> tuple[int, 
     return status_code, data
 
 
-def node_get_organize(server: UserGameServer) -> tuple[int, dict | list]:
+def node_get_organize(server: UserNode) -> tuple[int, dict | list]:
     cached = get_cached_node_config(server.id, "organize")
     target_url = server.primary_url or server.local_url or ""
     if not server.is_online or not target_url or target_url.startswith("otix://"):
@@ -1880,7 +2386,7 @@ def node_get_organize(server: UserGameServer) -> tuple[int, dict | list]:
     return 200, {"enabled": False, "rules": []}
 
 
-def node_save_organize(server: UserGameServer, payload: dict) -> tuple[int, dict | list]:
+def node_save_organize(server: UserNode, payload: dict) -> tuple[int, dict | list]:
     set_cached_node_config(server.id, "organize", payload)
     target_url = server.primary_url or server.local_url or ""
     if not server.is_online or not target_url or target_url.startswith("otix://"):
@@ -1903,7 +2409,7 @@ def node_save_organize(server: UserGameServer, payload: dict) -> tuple[int, dict
     return status_code, data
 
 
-def node_preview_organize(server: UserGameServer, payload: dict) -> tuple[int, dict | list]:
+def node_preview_organize(server: UserNode, payload: dict) -> tuple[int, dict | list]:
     if not server.primary_url or server.primary_url.startswith("otix://"):
         return 400, {
             "error": "Local desktop client node does not support server-side organization preview."
@@ -1921,7 +2427,7 @@ def node_preview_organize(server: UserGameServer, payload: dict) -> tuple[int, d
     return status_code, data
 
 
-def node_execute_organize(server: UserGameServer, payload: dict) -> tuple[int, dict | list]:
+def node_execute_organize(server: UserNode, payload: dict) -> tuple[int, dict | list]:
     if not server.primary_url or server.primary_url.startswith("otix://"):
         return 400, {
             "error": "Local desktop client node does not support server-side organization execution."
@@ -1931,8 +2437,13 @@ def node_execute_organize(server: UserGameServer, payload: dict) -> tuple[int, d
     )
 
 
-def desktop_save_settings(server: UserGameServer, payload: dict) -> tuple[int, dict | list]:
-    set_cached_node_config(server.id, "desktop_settings", payload)
+def desktop_save_settings(server: UserNode, payload: dict) -> tuple[int, dict | list]:
+    cached = get_cached_node_config(server.id, "desktop_settings")
+    if isinstance(cached, dict):
+        merged = {**cached, **payload}
+        set_cached_node_config(server.id, "desktop_settings", merged)
+    else:
+        set_cached_node_config(server.id, "desktop_settings", payload)
     target_url = server.primary_url or server.local_url or ""
     if not server.is_online or not target_url or target_url.startswith("otix://"):
         queue_node_update(server.id, "desktop_settings", payload)
@@ -1954,48 +2465,51 @@ def desktop_save_settings(server: UserGameServer, payload: dict) -> tuple[int, d
     return status_code, data
 
 
-def pick_online_game_server(user) -> UserGameServer | None:
-    """Return the user's most recently seen online, active Otix Server, if any."""
+def pick_online_node(user) -> UserNode | None:
+    """Return the user's most recently seen online, active Otix Node, if any."""
     return (
-        UserGameServer.objects.filter(user=user, is_active=True, is_online=True)
-        .order_by("-last_seen_at", "-id")
+        UserNode.objects.filter(user=user, is_active=True, is_online=True)
+        .order_by("-last_heartbeat", "-id")
         .first()
     )
 
 
-def proxy_epic_auth(server: UserGameServer, code: str) -> tuple[int, dict]:
+pick_online_game_server = pick_online_node
+
+
+def proxy_epic_auth(server: UserNode, code: str) -> tuple[int, dict]:
     return server_proxy_request(
         server, "POST", "/api/v1/epic/auth", json={"code": code}, timeout=20.0
     )
 
 
-def proxy_epic_status(server: UserGameServer) -> tuple[int, dict]:
+def proxy_epic_status(server: UserNode) -> tuple[int, dict]:
     return server_proxy_request(server, "GET", "/api/v1/epic/status")
 
 
-def proxy_epic_scan(server: UserGameServer) -> tuple[int, dict]:
+def proxy_epic_scan(server: UserNode) -> tuple[int, dict]:
     return server_proxy_request(server, "POST", "/api/v1/epic/scan", timeout=60.0)
 
 
-def proxy_epic_disconnect(server: UserGameServer) -> tuple[int, dict]:
+def proxy_epic_disconnect(server: UserNode) -> tuple[int, dict]:
     return server_proxy_request(server, "DELETE", "/api/v1/epic/auth")
 
 
-def proxy_gog_auth(server: UserGameServer, code: str) -> tuple[int, dict]:
+def proxy_gog_auth(server: UserNode, code: str) -> tuple[int, dict]:
     return server_proxy_request(
         server, "POST", "/api/v1/gog/auth", json={"code": code}, timeout=20.0
     )
 
 
-def proxy_gog_status(server: UserGameServer) -> tuple[int, dict]:
+def proxy_gog_status(server: UserNode) -> tuple[int, dict]:
     return server_proxy_request(server, "GET", "/api/v1/gog/status")
 
 
-def proxy_gog_scan(server: UserGameServer) -> tuple[int, dict]:
+def proxy_gog_scan(server: UserNode) -> tuple[int, dict]:
     return server_proxy_request(server, "POST", "/api/v1/gog/scan", timeout=60.0)
 
 
-def proxy_gog_disconnect(server: UserGameServer) -> tuple[int, dict]:
+def proxy_gog_disconnect(server: UserNode) -> tuple[int, dict]:
     return server_proxy_request(server, "DELETE", "/api/v1/gog/auth")
 
 

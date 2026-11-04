@@ -69,30 +69,40 @@ export const usePlexSyncPrompt = () => {
     setOpen(false)
   }, [])
 
-  const handleSync = useCallback(async () => {
+  const handleSync = useCallback(() => {
     if (!options.syncWatchlist && !options.syncWatched) {
       setOpen(false)
       return
     }
 
+    const syncOptions = { ...options }
+    setOpen(false)
     setSyncing(true)
-    try {
-      const result = await executePlexSync(options)
-      notifyPlexSyncResult(result)
-      queryClient.invalidateQueries({ queryKey: libraryKeys.all() })
-      queryClient.invalidateQueries({ queryKey: ['integrations'] })
-      queryClient.invalidateQueries({ queryKey: ['discover'] })
-      setOpen(false)
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Could not complete Plex sync.'
-      showToast({
-        title: 'Plex sync failed',
-        description: msg,
-        variant: 'error',
+
+    showToast({
+      title: 'Plex sync started',
+      description: 'Syncing your Plex data in the background...',
+      variant: 'default',
+    })
+
+    void executePlexSync(syncOptions)
+      .then((result) => {
+        notifyPlexSyncResult(result)
+        void queryClient.invalidateQueries({ queryKey: libraryKeys.all() })
+        void queryClient.invalidateQueries({ queryKey: ['integrations'] })
+        void queryClient.invalidateQueries({ queryKey: ['discover'] })
       })
-    } finally {
-      setSyncing(false)
-    }
+      .catch((err: unknown) => {
+        const msg = err instanceof Error ? err.message : 'Could not complete Plex sync.'
+        showToast({
+          title: 'Plex sync failed',
+          description: msg,
+          variant: 'error',
+        })
+      })
+      .finally(() => {
+        setSyncing(false)
+      })
   }, [options, queryClient])
 
   return {

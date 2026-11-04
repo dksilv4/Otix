@@ -49,6 +49,8 @@ describe('GameSessionStatusIndicator', () => {
       runningGame: null,
       runningGames: [],
       elapsedMs: 0,
+      cycleActiveGame: vi.fn(),
+      setActiveGame: vi.fn(),
     })
   })
 
@@ -125,6 +127,8 @@ describe('GameSessionStatusIndicator', () => {
       runningGame: sampleRunningGame,
       runningGames: [sampleRunningGame],
       elapsedMs: 60000, // 01:00
+      cycleActiveGame: vi.fn(),
+      setActiveGame: vi.fn(),
     })
 
     render(<GameSessionStatusIndicator />)
@@ -132,6 +136,44 @@ describe('GameSessionStatusIndicator', () => {
     expect(screen.getByTestId('game-session-status-indicator')).toBeInTheDocument()
     expect(screen.getByText('Hades II')).toBeInTheDocument()
     expect(screen.getByText('01:00')).toBeInTheDocument()
+  })
+
+  it('renders multi-game switcher in card variant and handles cycling', () => {
+    const cycleMock = vi.fn()
+    const setActiveMock = vi.fn()
+    const secondaryGame: RunningGameData = {
+      game: { id: 'game-b', title: 'Bloons TD 6' },
+      startTime: Date.now() - 60000,
+      launchedByOtix: false,
+      fpsSnapshot: {
+        currentFps: 240,
+        frameCount: 240,
+        captureDurationMs: 1000,
+        gameId: 'game-b',
+      },
+    }
+
+    render(
+      <GameSessionStatusIndicator
+        runningGame={sampleRunningGame}
+        runningGames={[sampleRunningGame, secondaryGame]}
+        elapsedMs={120000}
+        variant="card"
+        onCycleActive={cycleMock}
+        onSetActive={setActiveMock}
+      />,
+    )
+
+    expect(screen.getByText('[1/2]')).toBeInTheDocument()
+    expect(screen.getByText('Bloons TD 6')).toBeInTheDocument()
+
+    const cycleBtn = screen.getByRole('button', { name: /cycle active game/i })
+    cycleBtn.click()
+    expect(cycleMock).toHaveBeenCalledTimes(1)
+
+    const switchBtn = screen.getByText('Bloons TD 6').closest('button')
+    switchBtn?.click()
+    expect(setActiveMock).toHaveBeenCalledWith('game-b')
   })
 
   it('strictly adheres to Otix design rules (no hardcoded palette colors, no pinging dots)', () => {
@@ -183,6 +225,8 @@ describe('PlayGameButton with active game session', () => {
       runningGame: null,
       runningGames: [],
       elapsedMs: 0,
+      cycleActiveGame: vi.fn(),
+      setActiveGame: vi.fn(),
     })
 
     render(<PlayGameButton game={sampleGame} />)
@@ -196,6 +240,8 @@ describe('PlayGameButton with active game session', () => {
       runningGame: sampleRunningGame,
       runningGames: [sampleRunningGame],
       elapsedMs: 185000, // 03:05
+      cycleActiveGame: vi.fn(),
+      setActiveGame: vi.fn(),
     })
 
     render(<PlayGameButton game={sampleGame} />)

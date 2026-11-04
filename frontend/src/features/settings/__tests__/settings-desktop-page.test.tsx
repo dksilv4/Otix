@@ -23,11 +23,13 @@ vi.mock('@/lib/desktop/platform', async (importOriginal) => {
   }
 })
 
+let mockServers: any[] = [
+  { id: 1, name: 'Living Room PC', primaryUrl: 'http://192.168.1.100:8000', isOnline: true },
+]
+
 vi.mock('@/features/downloads/use-server-downloads', () => ({
   useGameServers: () => ({
-    data: [
-      { id: 1, name: 'Living Room PC', primaryUrl: 'http://192.168.1.100:8000', isOnline: true },
-    ],
+    data: mockServers,
     isLoading: false,
   }),
   useCreateGameServer: () => ({ mutateAsync: vi.fn(), isPending: false }),
@@ -90,6 +92,9 @@ describe('SettingsDesktopPage', () => {
     localStorage.clear()
     delete (window as any).desktopAPI
     clearDesktopAPICache()
+    mockServers = [
+      { id: 1, name: 'Living Room PC', primaryUrl: 'http://192.168.1.100:8000', isOnline: true },
+    ]
     queryClient = new QueryClient({
       defaultOptions: { queries: { retry: false } },
     })
@@ -139,6 +144,10 @@ describe('SettingsDesktopPage', () => {
       setDesktopSettings: vi.fn().mockResolvedValue({}),
     }
     clearDesktopAPICache()
+    mockServers = [
+      { id: 1, name: 'Living Room PC', primaryUrl: 'http://192.168.1.100:8000', isOnline: true },
+      { id: 2, name: 'This computer', isLocalDesktop: true, localUrl: 'http://127.0.0.1:8090', isOnline: true },
+    ]
 
     renderPage()
 
@@ -149,7 +158,7 @@ describe('SettingsDesktopPage', () => {
 
     expect(screen.getByRole('link', { name: /open this computer/i })).toHaveAttribute(
       'href',
-      '/settings/nodes/-1',
+      '/settings/nodes/2',
     )
   })
 })

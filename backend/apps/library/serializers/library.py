@@ -18,11 +18,17 @@ from apps.integrations.models import (
     UserYoutubeLikedVideo,
 )
 from apps.library.models import (
-    UserGameServer,
+    NodeGameSource,
+    UserGame,
     UserGameSession,
     UserHome,
     UserLocalGame,
+    UserNode,
     UserNodeShare,
+)
+from apps.library.serializers.node import (
+    UserNodeCreateSerializer,
+    UserNodeSerializer,
 )
 from apps.library.services.summaries import build_media_item_summary
 from apps.media.models import MediaItem
@@ -156,135 +162,7 @@ class MediaItemSummarySerializer(serializers.Serializer):
         return build_media_item_summary(item)
 
 
-class UserNodeSerializer(serializers.ModelSerializer):
-    """Connected self-hosted Otix node."""
-
-    primary_url = serializers.CharField(read_only=True)
-    is_shared = serializers.SerializerMethodField()
-    shared_by = serializers.SerializerMethodField()
-    home_id = serializers.SerializerMethodField()
-    home_name = serializers.SerializerMethodField()
-    pending_updates = serializers.SerializerMethodField()
-
-    def get_home_id(self, obj: UserGameServer) -> int | None:
-        if obj.home_id:
-            return obj.home_id
-        parent = (
-            obj.hosted_server_machines.filter(home__isnull=False).select_related("home").first()
-        )
-        return parent.home_id if parent else None
-
-    def get_home_name(self, obj: UserGameServer) -> str | None:
-        if obj.home_id and obj.home:
-            return obj.home.name
-        parent = (
-            obj.hosted_server_machines.filter(home__isnull=False).select_related("home").first()
-        )
-        return parent.home.name if parent and parent.home else None
-
-    class Meta:
-        model = UserGameServer
-        fields = [
-            "id",
-            "name",
-            "home_id",
-            "home_name",
-            "local_url",
-            "remote_url",
-            "primary_url",
-            "auth_token",
-            "is_online",
-            "is_local",
-            "is_local_desktop",
-            "last_seen_at",
-            "total_files",
-            "storage_free_bytes",
-            "storage_total_bytes",
-            "is_active",
-            "is_shared",
-            "shared_by",
-            "pending_updates",
-            "created_at",
-            "updated_at",
-        ]
-        read_only_fields = [
-            "id",
-            "home_id",
-            "home_name",
-            "is_online",
-            "is_local_desktop",
-            "last_seen_at",
-            "total_files",
-            "storage_free_bytes",
-            "storage_total_bytes",
-            "created_at",
-            "updated_at",
-        ]
-
-    def get_is_shared(self, obj: UserGameServer) -> bool:
-        request = self.context.get("request")
-        if not request or not request.user.is_authenticated:
-            return False
-        return obj.user_id != request.user.id
-
-    def get_shared_by(self, obj: UserGameServer) -> dict | None:
-        request = self.context.get("request")
-        if not request or not request.user.is_authenticated or obj.user_id == request.user.id:
-            return None
-        owner = getattr(obj, "user", None)
-        if not owner:
-            return None
-        return {
-            "id": owner.id,
-            "username": owner.username,
-            "display_name": getattr(owner, "display_name", None) or owner.username,
-        }
-
-    def get_pending_updates(self, obj: UserGameServer) -> list[dict]:
-        from apps.library.services.node import get_node_pending_updates
-
-        return get_node_pending_updates(obj.id)
-
-
-class UserNodeCreateSerializer(serializers.ModelSerializer):
-    """Payload to register or update an Otix node."""
-
-    name = serializers.CharField(required=False, allow_blank=True, default="")
-    home_id = serializers.IntegerField(required=False, allow_null=True)
-
-    def validate_home_id(self, value):
-        if value is None:
-            return None
-        user = self.context.get("user")
-        if not user and "request" in self.context:
-            user = getattr(self.context["request"], "user", None)
-
-        if not UserHome.objects.filter(id=value).exists():
-            if user and getattr(user, "is_authenticated", False):
-                user_home = UserHome.objects.filter(user=user).first()
-                if not user_home:
-                    user_home = UserHome.objects.create(
-                        user=user,
-                        name="Home",
-                        description="Default home network & homelab environment",
-                        is_default=True,
-                    )
-                return user_home.id
-            raise serializers.ValidationError("Specified home does not exist.")
-        return value
-
-    class Meta:
-        model = UserGameServer
-        fields = [
-            "name",
-            "home_id",
-            "local_url",
-            "remote_url",
-            "auth_token",
-            "is_local",
-            "is_local_desktop",
-            "is_active",
-        ]
+# UserNodeSerializer and UserNodeCreateSerializer are imported from apps.library.serializers.node above.
 
 
 class UserNodeShareSerializer(serializers.ModelSerializer):
@@ -320,10 +198,6 @@ class UserNodeShareSerializer(serializers.ModelSerializer):
             or obj.shared_with.username,
         }
 
-
-# Backward compatibility aliases
-UserGameServerSerializer = UserNodeSerializer
-UserGameServerCreateSerializer = UserNodeCreateSerializer
 
 
 class UserGameSessionSerializer(serializers.ModelSerializer):
@@ -405,3 +279,82 @@ class UserGameSessionSerializer(serializers.ModelSerializer):
         if obj.total_frames is not None and "total_frames" not in stats:
             stats["total_frames"] = obj.total_frames
         return stats
+
+
+class NodeGameSourceSerializer(serializers.ModelSerializer):
+    """Physical instance of a game on a specific node."""
+
+    node_name = serializers.CharField(source="node.name", read_only=True)
+    share_name = serializers.CharField(source="storage_share.name", read_only=True, allow_null=True)
+    node_online = serializers.BooleanField(source="node.is_online", read_only=True)
+    primary_url = serializers.CharField(source="node.primary_url", read_only=True)
+
+    class Meta:
+        model = NodeGameSource
+        fields = (
+            "id",
+            "node_id",
+            "node_name",
+            "node_online",
+            "primary_url",
+            "storage_share_id",
+            "share_name",
+            "canonical_path",
+            "relative_path",
+            "source_state",
+            "file_size",
+            "sha256_head",
+            "is_available",
+            "format_details",
+            "last_seen_at",
+            "created_at",
+        )
+        read_only_fields = fields
+
+
+class UserGameSerializer(serializers.ModelSerializer):
+    """Canonical game entity aggregating all physical node sources."""
+
+    sources = NodeGameSourceSerializer(many=True, read_only=True)
+    catalog_title = serializers.CharField(source="media_item.title", read_only=True, allow_null=True)
+    catalog_slug = serializers.CharField(source="media_item.slug", read_only=True, allow_null=True)
+    catalog_poster_url = serializers.SerializerMethodField()
+    catalog_backdrop_url = serializers.SerializerMethodField()
+
+    class Meta:
+        model = UserGame
+        fields = (
+            "id",
+            "clean_title",
+            "platform",
+            "media_item_id",
+            "catalog_title",
+            "catalog_slug",
+            "catalog_poster_url",
+            "catalog_backdrop_url",
+            "cover_image_url",
+            "is_favorite",
+            "is_hidden",
+            "last_played_at",
+            "sources",
+            "created_at",
+            "updated_at",
+        )
+        read_only_fields = fields
+
+    def get_catalog_poster_url(self, obj: UserGame) -> str | None:
+        if obj.media_item:
+            return (
+                getattr(obj.media_item, "poster_url", None)
+                or getattr(obj.media_item, "_resolved_poster_url", None)
+            )
+        return obj.cover_image_url or None
+
+    def get_catalog_backdrop_url(self, obj: UserGame) -> str | None:
+        if obj.media_item:
+            return (
+                getattr(obj.media_item, "backdrop_url", None)
+                or getattr(obj.media_item, "_resolved_backdrop_url", None)
+            )
+        return None
+

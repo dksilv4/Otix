@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate } from '@tanstack/react-router'
+import { useNavigate, useLocation } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
 import { Ban, Dices, Loader2, RefreshCw, Sparkles, Play } from 'lucide-react'
 import { cn, heroImage } from '@/lib/utils'
@@ -39,6 +39,7 @@ import { yearOf } from '@/features/discover/utils/decide'
 
 export const DecideWatchModal = ({ onClose, isExiting }: DecideWatchModalProps) => {
   const navigate = useNavigate()
+  const location = useLocation()
   const { isAuthenticated, isLoading: authLoading } = useAuth()
   const [mediaTypes, setMediaTypes] = useState<MediaTypeFilter[]>(['movie', 'show'])
   const [runtime, setRuntime] = useState<DecideRuntime | 'any'>('any')
@@ -300,7 +301,11 @@ export const DecideWatchModal = ({ onClose, isExiting }: DecideWatchModalProps) 
               onClick={() => {
                 canDismissRef.current = true
                 onClose()
-                void navigate({ to: '/auth/login' })
+                const isAuthRoute = location.pathname.startsWith('/auth')
+                const redirectSearch = !isAuthRoute && location.href && location.href !== '/'
+                  ? { redirect: location.href }
+                  : undefined
+                void navigate({ to: '/auth/login', search: redirectSearch })
               }}
             >
               Sign in

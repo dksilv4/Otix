@@ -1,5 +1,3 @@
-/* ── PlayGameButton — launch installed game ── */
-
 import { Play, Gamepad2 } from 'lucide-react'
 import { getDesktopAPI } from '@/lib/desktop/api'
 import { useToast } from '@ui/molecules/toast'
@@ -38,8 +36,15 @@ export const PlayGameButton = ({ game }: Props) => {
 
     const api = getDesktopAPI()
     if (api?.launchGame) {
-      api.launchGame(game).catch(console.error)
       toast({ title: 'Launching Game', description: `Running ${game.title}...`, variant: 'success' })
+      api.launchGame(game).catch((err) => {
+        console.error('Launch game failed:', err)
+        toast({
+          title: 'Launch Failed',
+          description: err instanceof Error ? err.message : `Failed to launch ${game.title}`,
+          variant: 'destructive',
+        })
+      })
     } else {
       toast({
         title: 'Desktop App Required',

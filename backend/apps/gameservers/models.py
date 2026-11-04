@@ -50,13 +50,21 @@ class DedicatedGameServer(TimestampedModel):
         blank=True,
         related_name="dedicated_game_servers",
     )
-    server_machine = models.ForeignKey(
-        "library.UserServerMachine",
+    machine = models.ForeignKey(
+        "library.UserMachine",
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
         related_name="game_servers",
     )
+
+    @property
+    def server_machine(self):
+        return self.machine
+
+    @server_machine.setter
+    def server_machine(self, value):
+        self.machine = value
     name = models.CharField(max_length=255)
     game_title = models.CharField(max_length=255, blank=True, default="")
     server_type = models.CharField(

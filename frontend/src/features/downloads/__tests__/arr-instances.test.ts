@@ -16,6 +16,7 @@ describe('normalizeArrInstances', () => {
       url_base: '/radarr',
       quality_profile_id: 2,
       root_folder_path: '/movies',
+      auto_request_watchlist: true,
     }
 
     const instances = normalizeArrInstances(config, 7878)
@@ -27,6 +28,7 @@ describe('normalizeArrInstances', () => {
     expect(instances[0].url_base).toBe('/radarr')
     expect(instances[0].quality_profile_id).toBe(2)
     expect(instances[0].root_folder_path).toBe('/movies')
+    expect(instances[0].autoRequestWatchlist).toBe(true)
     expect(instances[0].enabled).toBe(true)
   })
 

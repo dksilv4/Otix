@@ -16,7 +16,12 @@ export const usePickFolder = (options?: {
   const target = options?.target ?? 'local'
   const serverId = options?.serverId
 
-  const remoteServers = servers.filter((s) => !isLocalDesktopNode(s) && Number(s.id) > 0)
+  const remoteServers = servers.filter(
+    (s) =>
+      Number(s.id) > 0 &&
+      !s.localUrl?.startsWith('otix://') &&
+      !s.primaryUrl?.startsWith('otix://'),
+  )
 
   const strategy = resolveFolderPickStrategy({
     target,
@@ -34,7 +39,7 @@ export const usePickFolder = (options?: {
       return new Promise((resolve) => {
         const close = openModal(
           <FolderPickerModal
-            initialServerId={serverId && !isLocalDesktopNodeId(serverId) ? serverId : remoteServers[0]?.id}
+            initialServerId={serverId && remoteServers.some((s) => s.id === serverId) ? serverId : remoteServers[0]?.id}
             onSelect={(path) => {
               close()
               resolve(path)

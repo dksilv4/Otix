@@ -4,6 +4,7 @@ import { useState, useCallback } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { Scan, Gamepad2, ChevronRight } from 'lucide-react'
 import { getDesktopAPI, hasDesktopAPI } from '@/lib/desktop/api'
+import { uploadScannedGamesManifest } from '@/lib/utils/manifest'
 import { fetchIsoPaths } from '@/features/launcher/data/storage'
 import { useToast } from '@ui/molecules/toast'
 import { formatScanError } from '@/lib/utils/scan-errors'
@@ -26,6 +27,11 @@ export const LauncherScanWidget = ({ id }: { id?: string }) => {
       const isoPaths = await fetchIsoPaths()
       const scanned = await api.scanPaths(gamePaths, isoPaths)
       if (scanned?.length) {
+        try {
+          await uploadScannedGamesManifest(0, scanned)
+        } catch {
+          // non-fatal
+        }
         toast({ title: 'Scan Complete', description: `Scanned ${scanned.length} games.`, variant: 'success' })
       } else {
         toast({ title: 'Scan Complete', description: 'No local games detected.', variant: 'default' })

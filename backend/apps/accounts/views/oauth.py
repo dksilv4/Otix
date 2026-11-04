@@ -35,9 +35,9 @@ from apps.accounts.services import oauth as oauth_service
 from apps.accounts.services import sessions as session_service
 from apps.accounts.services.cookies import set_refresh_cookie
 from apps.accounts.services.oauth import OAuthFlowError
-from apps.library.models import UserGameServer
-from apps.library.services.game_server import (
-    pick_online_game_server,
+from apps.library.models import UserNode
+from apps.library.services.node import (
+    pick_online_node,
     proxy_epic_auth,
     proxy_epic_disconnect,
     proxy_gog_auth,
@@ -681,9 +681,9 @@ class EpicLinkCallbackView(GenericAPIView):
         node_id = request.data.get("node_id") or request.data.get("server_id")
         server = None
         if node_id:
-            server = UserGameServer.objects.filter(user=user, id=node_id).first()
+            server = UserNode.objects.filter(user=user, id=node_id).first()
         if server is None:
-            server = pick_online_game_server(user)
+            server = pick_online_node(user)
         if server:
             try:
                 proxy_epic_auth(server, code)
@@ -731,9 +731,9 @@ class EpicDisconnectView(GenericAPIView):
         )
         server = None
         if node_id:
-            server = UserGameServer.objects.filter(user=user, id=node_id).first()
+            server = UserNode.objects.filter(user=user, id=node_id).first()
         if server is None:
-            server = pick_online_game_server(user)
+            server = pick_online_node(user)
         if server:
             try:
                 proxy_epic_disconnect(server)
@@ -801,9 +801,9 @@ class GOGLinkCallbackView(GenericAPIView):
         node_id = request.data.get("node_id") or request.data.get("server_id")
         server = None
         if node_id:
-            server = UserGameServer.objects.filter(user=user, id=node_id).first()
+            server = UserNode.objects.filter(user=user, id=node_id).first()
         if server is None:
-            server = pick_online_game_server(user)
+            server = pick_online_node(user)
         if server:
             try:
                 proxy_gog_auth(server, code)
@@ -851,9 +851,9 @@ class GOGDisconnectView(GenericAPIView):
         )
         server = None
         if node_id:
-            server = UserGameServer.objects.filter(user=user, id=node_id).first()
+            server = UserNode.objects.filter(user=user, id=node_id).first()
         if server is None:
-            server = pick_online_game_server(user)
+            server = pick_online_node(user)
         if server:
             try:
                 proxy_gog_disconnect(server)

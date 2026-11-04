@@ -8,11 +8,14 @@ import {
 import { cn } from '@/lib/utils';
 import { DkButton } from '@ui/atoms/button';
 import { DkDialog } from '@ui/molecules/dialog';
+import { connectionTestToneClass } from '../utils';
 
 export interface NodeIntegrationModalShellProps {
+  open?: boolean;
   isOpen?: boolean;
   isExiting?: boolean;
-  onClose: () => void;
+  onClose?: () => void;
+  onOpenChange?: (open: boolean) => void;
   title: string;
   description?: React.ReactNode;
   icon: React.ComponentType<{ className?: string }>;
@@ -32,9 +35,11 @@ export interface NodeIntegrationModalShellProps {
 export type ServerIntegrationModalShellProps = NodeIntegrationModalShellProps;
 
 export const NodeIntegrationModalShell = ({
+  open,
   isOpen = true,
   isExiting,
   onClose,
+  onOpenChange,
   title,
   description,
   icon: Icon,
@@ -53,12 +58,18 @@ export const NodeIntegrationModalShell = ({
   const titleId = 'integration-modal-title';
   const descriptionId = description ? 'integration-modal-description' : undefined;
   const isAvailable = hasNode ?? hasServer;
+  const isModalOpen = (open ?? isOpen ?? true) && !isExiting;
+
+  const handleClose = () => {
+    onClose?.();
+    onOpenChange?.(false);
+  };
 
   return (
     <DkDialog
-      open={isOpen !== false && !isExiting}
+      open={isModalOpen}
       onOpenChange={(next) => {
-        if (!next) onClose()
+        if (!next) handleClose();
       }}
       className={cn('max-h-[90vh] p-0 sm:p-0 flex flex-col overflow-hidden', maxWidthClass)}
     >
@@ -107,7 +118,7 @@ export const NodeIntegrationModalShell = ({
           emptyNodeState || emptyServerState || (
             <IntegrationEmptyNodeState
               serviceName={title}
-              onClose={onClose}
+              onClose={handleClose}
             />
           )
         ) : (
@@ -241,8 +252,6 @@ export const IntegrationEmptyNodeState = ({
 };
 
 export const IntegrationEmptyServerState = IntegrationEmptyNodeState;
-
-import { connectionTestToneClass } from '../utils'
 
 export const IntegrationModalFooter = ({
   onCancel,

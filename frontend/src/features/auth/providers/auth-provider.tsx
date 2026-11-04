@@ -31,8 +31,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   })
   const [twoFactorChallenge, setTwoFactorChallenge] = useState<TwoFactorChallenge | null>(null)
 
-  // Register device node and sync offline pending updates when online
-  useDeviceSync(user, !!user)
+  // Register device node and sync offline pending updates when online and authenticated
+  useDeviceSync(user, !!user && !isLoading)
 
   // Initialize auth state — runs once on mount
   useEffect(() => {
@@ -40,6 +40,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (!token) return
     window.desktopAPI?.plugin?.setAuthToken(token)
     fetchAuthenticatedUser().then((loadedUser) => {
+      const freshToken = localStorage.getItem(ACCESS_TOKEN_KEY)
+      if (freshToken && freshToken !== token) {
+        window.desktopAPI?.plugin?.setAuthToken(freshToken)
+      }
       setUser(loadedUser)
       setIsLoading(false)
     })
@@ -50,6 +54,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setUser(null)
       setCachedUser(null)
       localStorage.removeItem(ACCESS_TOKEN_KEY)
+      localStorage.removeItem('otix:cached-nodes')
       localStorage.removeItem('otix:cached-servers')
       localStorage.removeItem('otix:settings-selected-node')
       window.desktopAPI?.plugin?.setAuthToken(null)
@@ -176,6 +181,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       // ignore errors during logout
     }
     localStorage.removeItem(ACCESS_TOKEN_KEY)
+    localStorage.removeItem('otix:cached-nodes')
     localStorage.removeItem('otix:cached-servers')
     localStorage.removeItem('otix:settings-selected-node')
     setCachedUser(null)

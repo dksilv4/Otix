@@ -1,16 +1,155 @@
+diff --git a/node_modules/better-sqlite3/lib/database.js b/node_modules/better-sqlite3/lib/database.js
+index acd5b59..2a0be4c 100644
+--- a/node_modules/better-sqlite3/lib/database.js
++++ b/node_modules/better-sqlite3/lib/database.js
+@@ -65,8 +65,9 @@ function Database(filenameGiven, options) {
+ 		throw new TypeError('Cannot open database because the directory does not exist');
+ 	}
+ 
++	util.retain(this);
+ 	Object.defineProperties(this, {
+-		[util.cppdb]: { value: new addon.Database(filename, filenameGiven, anonymous, readonly, fileMustExist, timeout, verbose || null, buffer || null) },
++		[util.cppdb]: { value: util.retain(new addon.Database(filename, filenameGiven, anonymous, readonly, fileMustExist, timeout, verbose || null, buffer || null)) },
+ 		...wrappers.getters,
+ 	});
+ }
+diff --git a/node_modules/better-sqlite3/lib/methods/backup.js b/node_modules/better-sqlite3/lib/methods/backup.js
+index fe541b7..6ce99c0 100644
+--- a/node_modules/better-sqlite3/lib/methods/backup.js
++++ b/node_modules/better-sqlite3/lib/methods/backup.js
+@@ -2,7 +2,7 @@
+ const fs = require('fs');
+ const path = require('path');
+ const { promisify } = require('util');
+-const { cppdb } = require('../util');
++const { cppdb, retain } = require('../util');
+ const fsAccess = promisify(fs.access);
+ 
+ module.exports = async function backup(filename, options) {
+@@ -30,7 +30,7 @@ module.exports = async function backup(filename, options) {
+ 	});
+ 
+ 	const isNewFile = await fsAccess(filename).then(() => false, () => true);
+-	return runBackup(this[cppdb].backup(this, attachedName, filename, isNewFile), handler || null);
++	return runBackup(retain(this[cppdb].backup(this, attachedName, filename, isNewFile)), handler || null);
+ };
+ 
+ const runBackup = (backup, handler) => {
+diff --git a/node_modules/better-sqlite3/lib/methods/pragma.js b/node_modules/better-sqlite3/lib/methods/pragma.js
+index a275ab0..915cf62 100644
+--- a/node_modules/better-sqlite3/lib/methods/pragma.js
++++ b/node_modules/better-sqlite3/lib/methods/pragma.js
+@@ -1,5 +1,5 @@
+ 'use strict';
+-const { getBooleanOption, cppdb } = require('../util');
++const { getBooleanOption, cppdb, retain } = require('../util');
+ 
+ module.exports = function pragma(source, options) {
+ 	if (options == null) options = {};
+@@ -7,6 +7,6 @@ module.exports = function pragma(source, options) {
+ 	if (typeof options !== 'object') throw new TypeError('Expected second argument to be an options object');
+ 	const simple = getBooleanOption(options, 'simple');
+ 
+-	const stmt = this[cppdb].prepare(`PRAGMA ${source}`, this, true);
++	const stmt = retain(this[cppdb].prepare(`PRAGMA ${source}`, this, true));
+ 	return simple ? stmt.pluck().get() : stmt.all();
+ };
+diff --git a/node_modules/better-sqlite3/lib/methods/transaction.js b/node_modules/better-sqlite3/lib/methods/transaction.js
+index cb6c5e9..b8c6c8f 100644
+--- a/node_modules/better-sqlite3/lib/methods/transaction.js
++++ b/node_modules/better-sqlite3/lib/methods/transaction.js
+@@ -1,5 +1,5 @@
+ 'use strict';
+-const { cppdb } = require('../util');
++const { cppdb, retain } = require('../util');
+ const controllers = new WeakMap();
+ 
+ module.exports = function transaction(fn) {
+@@ -32,17 +32,17 @@ const getController = (db, self) => {
+ 	let controller = controllers.get(db);
+ 	if (!controller) {
+ 		const shared = {
+-			commit: db.prepare('COMMIT', self, false),
+-			rollback: db.prepare('ROLLBACK', self, false),
+-			savepoint: db.prepare('SAVEPOINT `\t_bs3.\t`', self, false),
+-			release: db.prepare('RELEASE `\t_bs3.\t`', self, false),
+-			rollbackTo: db.prepare('ROLLBACK TO `\t_bs3.\t`', self, false),
++			commit: retain(db.prepare('COMMIT', self, false)),
++			rollback: retain(db.prepare('ROLLBACK', self, false)),
++			savepoint: retain(db.prepare('SAVEPOINT `\t_bs3.\t`', self, false)),
++			release: retain(db.prepare('RELEASE `\t_bs3.\t`', self, false)),
++			rollbackTo: retain(db.prepare('ROLLBACK TO `\t_bs3.\t`', self, false)),
+ 		};
+ 		controllers.set(db, controller = {
+-			default: Object.assign({ begin: db.prepare('BEGIN', self, false) }, shared),
+-			deferred: Object.assign({ begin: db.prepare('BEGIN DEFERRED', self, false) }, shared),
+-			immediate: Object.assign({ begin: db.prepare('BEGIN IMMEDIATE', self, false) }, shared),
+-			exclusive: Object.assign({ begin: db.prepare('BEGIN EXCLUSIVE', self, false) }, shared),
++			default: Object.assign({ begin: retain(db.prepare('BEGIN', self, false)) }, shared),
++			deferred: Object.assign({ begin: retain(db.prepare('BEGIN DEFERRED', self, false)) }, shared),
++			immediate: Object.assign({ begin: retain(db.prepare('BEGIN IMMEDIATE', self, false)) }, shared),
++			exclusive: Object.assign({ begin: retain(db.prepare('BEGIN EXCLUSIVE', self, false)) }, shared),
+ 		});
+ 	}
+ 	return controller;
+diff --git a/node_modules/better-sqlite3/lib/methods/wrappers.js b/node_modules/better-sqlite3/lib/methods/wrappers.js
+index 1d4673e..1550b29 100644
+--- a/node_modules/better-sqlite3/lib/methods/wrappers.js
++++ b/node_modules/better-sqlite3/lib/methods/wrappers.js
+@@ -1,8 +1,8 @@
+ 'use strict';
+-const { cppdb } = require('../util');
++const { cppdb, retain } = require('../util');
+ 
+ exports.prepare = function prepare(sql) {
+-	return this[cppdb].prepare(sql, this, false);
++	return retain(this[cppdb].prepare(sql, this, false));
+ };
+ 
+ exports.exec = function exec(sql) {
+diff --git a/node_modules/better-sqlite3/lib/util.js b/node_modules/better-sqlite3/lib/util.js
+index 0328c84..b0166d6 100644
+--- a/node_modules/better-sqlite3/lib/util.js
++++ b/node_modules/better-sqlite3/lib/util.js
+@@ -10,3 +10,12 @@ exports.getBooleanOption = (options, key) => {
+ 
+ exports.cppdb = Symbol();
+ exports.inspect = Symbol.for('nodejs.util.inspect.custom');
++
++// Retain native ObjectWrap handles to prevent assertion failure on Node 24+ during GC
++const retainedHandles = new Set();
++exports.retain = (handle) => {
++	if (handle != null) {
++		retainedHandles.add(handle);
++	}
++	return handle;
++};
 diff --git a/node_modules/better-sqlite3/src/better_sqlite3.cpp b/node_modules/better-sqlite3/src/better_sqlite3.cpp
 index 13f054a..c50992a 100644
 --- a/node_modules/better-sqlite3/src/better_sqlite3.cpp
 +++ b/node_modules/better-sqlite3/src/better_sqlite3.cpp
 @@ -57,7 +57,7 @@ NODE_MODULE_INIT(/* exports, context */) {
-
+ 
  	// Initialize addon instance.
  	Addon* addon = new Addon(isolate);
 -	v8::Local<v8::External> data = v8::External::New(isolate, addon);
 +	v8::Local<v8::External> data = v8::External::New(isolate, addon, v8::kExternalPointerTypeTagDefault);
  	node::AddEnvironmentCleanupHook(isolate, Addon::Cleanup, addon);
-
+ 
  	// Create and export native-backed classes and functions.
+diff --git a/node_modules/better-sqlite3/src/util/helpers.cpp b/node_modules/better-sqlite3/src/util/helpers.cpp
+index f777152..db7fd9f 100644
+--- a/node_modules/better-sqlite3/src/util/helpers.cpp
++++ b/node_modules/better-sqlite3/src/util/helpers.cpp
+@@ -89,7 +89,7 @@ void SetPrototypeGetter(
+ 	recv->InstanceTemplate()->SetNativeDataProperty(
+ 		InternalizedFromLatin1(isolate, name),
+ 		func,
+-		0,
++		nullptr,
+ 		data
+ 	);
+ }
 diff --git a/node_modules/better-sqlite3/src/util/macros.cpp b/node_modules/better-sqlite3/src/util/macros.cpp
 index e75d537..a6d85b7 100644
 --- a/node_modules/better-sqlite3/src/util/macros.cpp
@@ -24,16 +163,3 @@ index e75d537..a6d85b7 100644
  #define UseIsolate v8::Isolate* isolate = OnlyIsolate
  #define UseContext v8::Local<v8::Context> ctx = OnlyContext
  #define UseAddon Addon* addon = OnlyAddon
-diff --git a/node_modules/better-sqlite3/src/util/helpers.cpp b/node_modules/better-sqlite3/src/util/helpers.cpp
-index 728876c..b42e7f4 100644
---- a/node_modules/better-sqlite3/src/util/helpers.cpp
-+++ b/node_modules/better-sqlite3/src/util/helpers.cpp
-@@ -89,7 +89,7 @@ void SetPrototypeGetter(
- 	recv->InstanceTemplate()->SetNativeDataProperty(
- 		InternalizedFromLatin1(isolate, name),
- 		func,
--		0,
-+		nullptr,
- 		data
- 	);
- }

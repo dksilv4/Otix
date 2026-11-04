@@ -9,30 +9,44 @@ import { NodeJDownloaderCard } from './node-jdownloader-card'
 import { ImportNodeInstancesButton } from './import-node-instances-modal'
 
 export interface ManageDownloadersModalProps {
+  open?: boolean
   isOpen?: boolean
   isExiting?: boolean
-  onClose: () => void
+  onClose?: () => void
+  onOpenChange?: (open: boolean) => void
 }
 
 export const ManageDownloadersModal = ({
+  open,
   isOpen,
   isExiting,
   onClose,
+  onOpenChange,
 }: ManageDownloadersModalProps) => {
+  const isModalOpen = (open ?? isOpen ?? true) && !isExiting
+  const handleClose = () => {
+    onClose?.()
+    onOpenChange?.(false)
+  }
   const navigate = useNavigate()
   const { servers } = useSettingsNode()
-  const instances = servers.filter((server) => !isLocalDesktopNode(server))
+  const instances = servers.filter(
+    (server) =>
+      Number(server.id) > 0 &&
+      !server.localUrl?.startsWith('otix://') &&
+      !server.primaryUrl?.startsWith('otix://'),
+  )
 
   const handleGoToConnections = () => {
-    onClose()
+    handleClose()
     navigate({ to: '/settings/connections' })
   }
 
   return (
     <DkDialog
-      open={isOpen !== false && !isExiting}
+      open={isModalOpen}
       onOpenChange={(next) => {
-        if (!next) onClose()
+        if (!next) handleClose()
       }}
       title="Manage Downloaders"
       description="Configure download clients (SABnzbd & JDownloader) for each Otix node below."

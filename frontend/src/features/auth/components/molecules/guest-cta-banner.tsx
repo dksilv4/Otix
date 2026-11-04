@@ -1,4 +1,4 @@
-import { Link } from '@tanstack/react-router'
+import { Link, useLocation } from '@tanstack/react-router'
 import { Sparkles, ArrowRight } from 'lucide-react'
 import { useAuth } from '@auth/hooks/use-auth'
 
@@ -15,8 +15,14 @@ export const GuestCtaBanner = ({
   className = '',
 }: GuestCtaBannerProps) => {
   const { isAuthenticated, isLoading } = useAuth()
+  const location = useLocation()
 
   if (isLoading || isAuthenticated) return null
+
+  const isAuthRoute = location.pathname.startsWith('/auth')
+  const redirectSearch = !isAuthRoute && location.href && location.href !== '/'
+    ? { redirect: location.href }
+    : undefined
 
   return (
     <div
@@ -43,6 +49,7 @@ export const GuestCtaBanner = ({
         <div className="flex items-center gap-3 shrink-0 self-stretch sm:self-auto">
           <Link
             to="/auth/register"
+            search={redirectSearch}
             className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-md transition-all hover:bg-primary/90 active:scale-[0.98]"
           >
             <span>Create Account</span>
@@ -50,6 +57,7 @@ export const GuestCtaBanner = ({
           </Link>
           <Link
             to="/auth/login"
+            search={redirectSearch}
             className="inline-flex items-center justify-center rounded-xl bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-glass-hover)] border border-[var(--dk-separator)] px-4 py-2.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
           >
             Sign In

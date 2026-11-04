@@ -3,7 +3,7 @@
 from rest_framework import serializers
 
 from apps.gameservers.models import DedicatedGameServer, GameServerInvite, GameServerShare
-from apps.library.models.user_server_machine import UserServerMachine
+from apps.library.models.user_machine import UserMachine
 
 
 class SharedUserSerializer(serializers.Serializer):
@@ -27,12 +27,22 @@ class DedicatedGameServerSerializer(serializers.ModelSerializer):
     )
     media_item_title = serializers.SerializerMethodField()
     media_item_poster = serializers.SerializerMethodField()
+    machine_id = serializers.PrimaryKeyRelatedField(
+        source="machine",
+        read_only=True,
+    )
+    machine_name = serializers.CharField(
+        source="machine.name",
+        read_only=True,
+        allow_null=True,
+        default=None,
+    )
     server_machine_id = serializers.PrimaryKeyRelatedField(
-        source="server_machine",
+        source="machine",
         read_only=True,
     )
     server_machine_name = serializers.CharField(
-        source="server_machine.name",
+        source="machine.name",
         read_only=True,
         allow_null=True,
         default=None,
@@ -53,6 +63,8 @@ class DedicatedGameServerSerializer(serializers.ModelSerializer):
             "media_item_id",
             "media_item_title",
             "media_item_poster",
+            "machine_id",
+            "machine_name",
             "server_machine_id",
             "server_machine_name",
             "server_type",
@@ -142,9 +154,15 @@ class DedicatedGameServerCreateSerializer(serializers.ModelSerializer):
         required=False,
         allow_null=True,
     )
+    machine_id = serializers.PrimaryKeyRelatedField(
+        queryset=UserMachine.objects.all(),
+        source="machine",
+        required=False,
+        allow_null=True,
+    )
     server_machine_id = serializers.PrimaryKeyRelatedField(
-        queryset=UserServerMachine.objects.all(),
-        source="server_machine",
+        queryset=UserMachine.objects.all(),
+        source="machine",
         required=False,
         allow_null=True,
     )
@@ -155,6 +173,7 @@ class DedicatedGameServerCreateSerializer(serializers.ModelSerializer):
             "name",
             "game_title",
             "media_item_id",
+            "machine_id",
             "server_machine_id",
             "server_type",
             "host",

@@ -1,12 +1,13 @@
-"""Tests for Storage Shares, Node Paths, and Game Match Center."""
-
+import uuid
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from rest_framework import status
 from rest_framework.test import APIClient
 
 from apps.library.models import GameMatchRecord, NodeLibraryPath, StorageShare, UserNode
-from apps.media.models import MediaItem
+from apps.library.models.game_source import NodeGameSource, UserGame
+from apps.library.services.otix_sync import node_write_otix
+from apps.media.models import MediaAsset, MediaItem
 
 User = get_user_model()
 
@@ -170,3 +171,161 @@ class StorageSharesAndMatchingTests(TestCase):
         self.assertEqual(unmatch_resp.status_code, status.HTTP_200_OK)
         self.assertEqual(unmatch_resp.data["match_status"], "unmatched")
         self.assertIsNone(unmatch_resp.data["media_item_id"])
+
+    def test_manifest_ingest_with_uuid_machine_id(self):
+        remote_node = UserNode.objects.create(
+            user=self.user,
+            name="Remote NAS",
+            local_url="http://192.168.1.150:7777",
+            api_key="secret-key-123",
+        )
+        manifest = [
+            {
+                "filename": "eldenring.exe",
+                "filepath": "/mnt/games/Elden Ring/eldenring.exe",
+                "relative_path": "Elden Ring/eldenring.exe",
+                "game_title": "Elden Ring",
+                "format_category": "game",
+                "filesize": 1024 * 1024 * 100,
+                "sha256_head": "uuidtest123",
+            }
+        ]
+        resp = self.client.post(
+            f"/api/v1/nodes/{remote_node.machine_id}/manifest/",
+            {"files": manifest},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.assertEqual(resp.data["stats"]["total_processed"], 1)
+        self.assertEqual(resp.data["stats"]["auto_matched"], 1)
+
+        source = NodeGameSource.objects.filter(node=remote_node, canonical_path="/mnt/games/Elden Ring/eldenring.exe").first()
+        self.assertIsNotNone(source)
+        self.assertEqual(source.user_game.media_item_id, self.media_item.id)
+
+    def test_manifest_ingest_bearer_token_unauthenticated_client(self):
+        daemon_node = UserNode.objects.create(
+            user=self.user,
+            name="Daemon Node",
+            local_url="http://192.168.1.200:7777",
+            api_key="daemon-api-token-xyz",
+        )
+        anon_client = APIClient()
+        manifest = [
+            {
+                "filename": "eldenring.exe",
+                "filepath": "/srv/games/Elden Ring/eldenring.exe",
+                "relative_path": "Elden Ring/eldenring.exe",
+                "game_title": "Elden Ring",
+                "format_category": "game",
+                "filesize": 1024 * 1024 * 50,
+                "sha256_head": "daemontoken123",
+            }
+        ]
+
+        # 1. Test Authorization Bearer header
+        anon_client.credentials(HTTP_AUTHORIZATION=f"Bearer {daemon_node.api_key}")
+        resp = anon_client.post(
+            f"/api/v1/nodes/{daemon_node.machine_id}/manifest",
+            {"files": manifest},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.assertEqual(resp.data["stats"]["total_processed"], 1)
+
+        # 2. Test invalid token rejected
+        anon_client.credentials(HTTP_AUTHORIZATION="Bearer invalid-token")
+        bad_resp = anon_client.post(
+            f"/api/v1/nodes/{daemon_node.machine_id}/manifest",
+            {"files": manifest},
+            format="json",
+        )
+        self.assertEqual(bad_resp.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_multi_node_sources_grouping_under_canonical_user_game(self):
+        node2 = UserNode.objects.create(
+            user=self.user,
+            name="Living Room PC",
+            local_url="http://192.168.1.180:7777",
+        )
+        manifest1 = [
+            {
+                "filename": "eldenring.exe",
+                "filepath": "C:/Games/Elden Ring/eldenring.exe",
+                "relative_path": "Elden Ring/eldenring.exe",
+                "game_title": "Elden Ring",
+                "format_category": "game",
+                "filesize": 1024 * 1024 * 100,
+            }
+        ]
+        resp1 = self.client.post(
+            f"/api/v1/nodes/{self.node.id}/manifest",
+            {"files": manifest1},
+            format="json",
+        )
+        self.assertEqual(resp1.status_code, status.HTTP_200_OK)
+
+        manifest2 = [
+            {
+                "filename": "setup.exe",
+                "filepath": "Z:/Installers/Elden.Ring.v1.10.Setup/setup.exe",
+                "relative_path": "Elden.Ring.v1.10.Setup/setup.exe",
+                "game_title": "Elden Ring",
+                "format_category": "installer",
+                "filesize": 1024 * 1024 * 80,
+            }
+        ]
+        resp2 = self.client.post(
+            f"/api/v1/nodes/{node2.id}/manifest",
+            {"files": manifest2},
+            format="json",
+        )
+        self.assertEqual(resp2.status_code, status.HTTP_200_OK)
+
+        user_games = UserGame.objects.filter(user=self.user, media_item=self.media_item)
+        self.assertEqual(user_games.count(), 1)
+        canonical_game = user_games.first()
+
+        sources = canonical_game.sources.all()
+        self.assertEqual(sources.count(), 2)
+        source_nodes = {s.node_id for s in sources}
+        self.assertEqual(source_nodes, {self.node.id, node2.id})
+
+        games_resp = self.client.get("/api/v1/library/games")
+        self.assertEqual(games_resp.status_code, status.HTTP_200_OK)
+        game_list = games_resp.data["games"]
+        self.assertEqual(len(game_list), 1)
+        self.assertEqual(game_list[0]["clean_title"], "Elden Ring")
+        self.assertEqual(len(game_list[0]["sources"]), 2)
+
+    def test_canonical_games_artwork_enrichment(self):
+        MediaAsset.objects.create(
+            media_item=self.media_item,
+            asset_type="poster",
+            url="https://images.example.com/elden-poster.jpg",
+        )
+        MediaAsset.objects.create(
+            media_item=self.media_item,
+            asset_type="backdrop",
+            url="https://images.example.com/elden-backdrop.jpg",
+        )
+        UserGame.objects.create(
+            user=self.user,
+            media_item=self.media_item,
+            clean_title="Elden Ring",
+            platform="pc",
+        )
+
+        resp = self.client.get("/api/v1/library/games")
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        games = resp.data["games"]
+        self.assertEqual(len(games), 1)
+        self.assertEqual(games[0]["catalog_poster_url"], "https://images.example.com/elden-poster.jpg")
+        self.assertEqual(games[0]["catalog_backdrop_url"], "https://images.example.com/elden-backdrop.jpg")
+
+    def test_node_write_otix_persists_purely_to_database(self):
+        status_code, res = node_write_otix(self.node, {"items": [{"dummy": True}]})
+        self.assertEqual(status_code, 200)
+        self.assertEqual(res["status"], "ok")
+        self.assertEqual(res["written"], 0)
+        self.assertTrue(res["persisted_to_database"])

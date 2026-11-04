@@ -61,6 +61,7 @@ MEDIA_ITEM_SUMMARY_KEYS = {
     "backdrop_url",
     "logo_url",
     "logo_color_guess",
+    "dominant_color",
     "icon_url",
     "release_date",
     "popularity",

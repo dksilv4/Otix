@@ -19,8 +19,11 @@ import {
 } from '../../utils/server-machines'
 
 export interface EditHomeModalProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
+  open?: boolean
+  isOpen?: boolean
+  onOpenChange?: (open: boolean) => void
+  onClose?: () => void
+  isExiting?: boolean
   home: UserHome | null
   onSuccess?: () => void
   onDelete?: (home: UserHome) => void
@@ -28,11 +31,19 @@ export interface EditHomeModalProps {
 
 export const EditHomeModal = ({
   open,
+  isOpen,
   onOpenChange,
+  onClose,
+  isExiting,
   home,
   onSuccess,
   onDelete,
 }: EditHomeModalProps) => {
+  const isModalOpen = (open ?? isOpen ?? true) && !isExiting
+  const handleClose = () => {
+    onOpenChange?.(false)
+    onClose?.()
+  }
   const { toast } = useToast()
   const updateMutation = useUpdateHome()
   const deleteMutation = useDeleteHome()
@@ -155,7 +166,7 @@ export const EditHomeModal = ({
         description: `Updated “${name.trim()}”.`,
         variant: 'default',
       })
-      onOpenChange(false)
+      handleClose()
       onSuccess?.()
     } catch (err: unknown) {
       const axiosErr = err as {
@@ -195,7 +206,7 @@ export const EditHomeModal = ({
         })
       }
       setConfirmDelete(false)
-      onOpenChange(false)
+      handleClose()
       onSuccess?.()
     } catch (err: unknown) {
       toast({
@@ -209,8 +220,10 @@ export const EditHomeModal = ({
   return (
     <>
       <DkDialog
-        open={open}
-        onOpenChange={onOpenChange}
+        open={isModalOpen}
+        onOpenChange={(next) => {
+          if (!next) handleClose()
+        }}
         className="max-w-md"
         title={`Edit ${home.name}`}
         description="Update network IP subnet and settings for this physical location."
@@ -382,7 +395,7 @@ export const EditHomeModal = ({
               <DkButton
                 type="button"
                 variant="ghost"
-                onClick={() => onOpenChange(false)}
+                onClick={handleClose}
                 disabled={isSaving}
               >
                 Cancel

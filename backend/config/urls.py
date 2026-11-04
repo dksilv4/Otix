@@ -7,19 +7,27 @@ live directly on this module.
 
 from django.contrib import admin
 from django.http import HttpRequest, JsonResponse
-from django.urls import include, path
+from django.urls import include, path, register_converter
+
+class SignedIntConverter:
+    regex = r"-?\d+"
+
+    def to_python(self, value):
+        return int(value)
+
+    def to_url(self, value):
+        return str(value)
+
+try:
+    register_converter(SignedIntConverter, "sint")
+except Exception:
+    pass
 
 from apps.accounts.views import UploadedFileView, UploadFileView
 from apps.blueprint.views import BlueprintListCreateView
 from apps.freegames.views import FreeGamesListView
 from apps.gameservers.views import GameServerListCreateView
-from apps.library.views import (
-    GameServerClaimDirectView,
-    GameServerClaimView,
-    GameServerHeartbeatView,
-    GameServerScanCompleteView,
-    GameServerUnclaimView,
-)
+from apps.library.views import NodeListCreateView, UserMachineListCreateView
 from apps.lists.views import ListRootView
 from apps.media.views import AssetFileView, MediaListView
 from apps.media.views.character import CharacterListView
@@ -58,25 +66,10 @@ urlpatterns = [
     path("api/v1/push/", include("apps.push.urls")),
     path("api/v1/search", SearchView.as_view(), name="search-root"),
     path("api/v1/search/", include("apps.search.urls")),
-    path(
-        "api/v1/servers/heartbeat", GameServerHeartbeatView.as_view(), name="game-server-heartbeat"
-    ),
-    path(
-        "api/v1/servers/scan-complete",
-        GameServerScanCompleteView.as_view(),
-        name="game-server-scan-complete",
-    ),
-    path("api/v1/servers/claim", GameServerClaimView.as_view(), name="game-server-claim"),
-    path(
-        "api/v1/servers/claim-direct",
-        GameServerClaimDirectView.as_view(),
-        name="game-server-claim-direct",
-    ),
-    path(
-        "api/v1/servers/unclaim",
-        GameServerUnclaimView.as_view(),
-        name="game-server-unclaim",
-    ),
+    path("api/v1/nodes", NodeListCreateView.as_view(), name="nodes-root"),
+    path("api/v1/nodes/", include("apps.library.node_urls")),
+    path("api/v1/machines", UserMachineListCreateView.as_view(), name="machines-root"),
+    path("api/v1/machines/", include("apps.library.machine_urls")),
     path("api/v1/library/", include("apps.library.urls")),
     path("api/v1/game-servers", GameServerListCreateView.as_view(), name="game-server-root"),
     path("api/v1/game-servers/", include("apps.gameservers.urls")),

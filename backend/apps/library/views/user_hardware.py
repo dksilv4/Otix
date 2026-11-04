@@ -7,7 +7,7 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.library.models import UserGameSession, UserNode, UserServerMachine
+from apps.library.models import UserGameSession, UserMachine, UserNode
 
 User = get_user_model()
 
@@ -77,7 +77,7 @@ class UserHardwareView(APIView):
         node_count = nodes.count()
         total_storage_bytes = sum(nodes.values_list("storage_total_bytes", flat=True))
 
-        servers = UserServerMachine.objects.filter(user=target_user)
+        servers = UserMachine.objects.filter(user=target_user)
         server_count = servers.count()
         server_storage = sum(servers.values_list("total_storage_bytes", flat=True))
         if server_storage > total_storage_bytes:

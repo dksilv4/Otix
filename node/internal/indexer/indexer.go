@@ -4,8 +4,10 @@ import (
 	"crypto/md5"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -24,18 +26,44 @@ var SkipExtensions = map[string]bool{
 var GenericInstallerStems = map[string]bool{
 	"setup": true, "install": true, "installer": true, "autorun": true,
 	"start": true, "play": true, "unins000": true, "uninstall": true,
+	"eboot": true,
 }
 
 var GenericFolderNames = map[string]bool{
 	"setup": true, "install": true, "installer": true, "autorun": true,
 	"start": true, "play": true, "unins000": true, "uninstall": true,
-	"bin": true, "x64": true, "x86": true, "win64": true, "win32": true, "binaries": true,
+	"bin": true, "bin32": true, "bin64": true, "x64": true, "x86": true, "x86_64": true,
+	"win64": true, "win32": true, "binaries": true, "binary": true,
 	"crack": true, "cracks": true, "redist": true, "commonredist": true, "_commonredist": true,
 	"directx": true, "vcredist": true, "windows": true, "win": true, "files": true,
 	"data": true, "game": true, "games": true, "disk1": true, "disc1": true, "cd1": true,
 	"dvd": true, "iso": true, "unpacked": true, "extracted": true, "temp": true, "tmp": true,
 	"update": true, "updates": true, "patch": true, "dlc": true, "support": true,
 	"docs": true, "documentation": true, "payloads": true,
+	"engine": true, "system": true, "system32": true, "shipping": true, "retail": true,
+	"release": true, "debug": true, "build": true, "client": true, "server": true,
+	"resources": true, "res": true, "prerequisites": true, "prereq": true,
+}
+
+var KnownEngineProjectFolders = map[string]bool{
+	"phoenix": true, "end": true, "b1": true, "oakgame": true, "willowgame": true,
+	"polaris": true, "athena": true, "pal": true, "factorygame": true,
+	"bendgame": true, "biogame": true, "xgame": true, "mk12": true,
+	"stalker2": true, "deadbydaylight": true, "atomicheart": true, "readyornot": true,
+}
+
+var ContainerFolderNames = map[string]bool{
+	"steamapps": true, "common": true, "games": true, "game": true,
+	"repacks": true, "repack": true, "fitgirl": true, "dodi": true,
+	"elamigos": true, "gog": true, "gog games": true, "steam": true,
+	"steam games": true, "epic": true, "epic games": true,
+	"downloads": true, "download": true, "installed": true,
+	"pc": true, "switch": true, "nsw": true, "ps1": true, "ps2": true,
+	"ps3": true, "ps4": true, "ps5": true, "xbox": true, "xbox360": true,
+	"wii": true, "wiiu": true, "gamecube": true, "3ds": true, "nds": true,
+	"gba": true, "snes": true, "nes": true, "genesis": true, "n64": true,
+	"roms": true, "rom": true, "iso": true, "isos": true,
+	"emulation": true, "emulators": true,
 }
 
 var NoiseExecutablePatterns = []string{
@@ -64,6 +92,12 @@ var NoiseDirectoryNames = map[string]bool{
 	"shows": true, "tv shows": true, "tv": true, "television": true, "series": true,
 	"music": true, "songs": true, "audiobooks": true, "podcasts": true,
 	"incomplete": true, "incompleted": true,
+	// Expanded OS, build, and package manager noise directories
+	"$recycle.bin": true, "system volume information": true, "recovery": true,
+	"node_modules": true, ".vs": true, ".vscode": true, ".idea": true, ".venv": true,
+	"__pycache__": true, ".egstore": true, "!downloads": true,
+	// PS5 / console internal noise directories that should never be scanned as separate folders
+	"sce_module": true, "sce_pfs": true, "fakelib": true, "_duplex_": true,
 }
 
 var InstallerHeaderSignatures = []string{
@@ -99,6 +133,8 @@ type HostedFile struct {
 	LibraryName    string                  `json:"library_name"`
 	GameTitle      string                  `json:"game_title"`
 	ModifiedAt     string                  `json:"modified_at"`
+	RootDir        string                  `json:"root_dir,omitempty"`
+	Platform       string                  `json:"platform,omitempty"`
 	OtixMediaID    string                  `json:"otix_media_id,omitempty"`
 	OtixTitle      string                  `json:"otix_title,omitempty"`
 	OtixSlug       string                  `json:"otix_slug,omitempty"`
@@ -106,6 +142,30 @@ type HostedFile struct {
 	OtixImages     map[string]OtixImageRef `json:"otix_images,omitempty"`
 	OtixPath       string                  `json:"otix_path,omitempty"`
 	OtixOverview   string                  `json:"otix_overview,omitempty"`
+}
+
+// IsPathReachable quickly validates whether a local path or UNC network share is online and accessible.
+func IsPathReachable(p string) bool {
+	clean := filepath.Clean(p)
+	if strings.HasPrefix(clean, `\\`) || strings.HasPrefix(clean, `//`) {
+		trimmed := strings.TrimPrefix(strings.TrimPrefix(clean, `\\`), `//`)
+		parts := strings.Split(trimmed, string(filepath.Separator))
+		if len(parts) > 0 && parts[0] != "" {
+			host := parts[0]
+			conn, err := net.DialTimeout("tcp", net.JoinHostPort(host, "445"), 500*time.Millisecond)
+			if err != nil {
+				conn139, err139 := net.DialTimeout("tcp", net.JoinHostPort(host, "139"), 300*time.Millisecond)
+				if err139 != nil {
+					return false
+				}
+				_ = conn139.Close()
+			} else {
+				_ = conn.Close()
+			}
+		}
+	}
+	_, err := os.Stat(clean)
+	return err == nil
 }
 
 // DetermineFormatCategory maps a file extension to its baseline category.
@@ -131,6 +191,11 @@ func DetermineFormatCategory(ext string) string {
 
 // DetermineFileFormatCategory inspects the filename, path, and headers to classify format.
 func DetermineFileFormatCategory(fullPath, filename string) string {
+	lowerName := strings.ToLower(filename)
+	if strings.HasSuffix(lowerName, ".nsp.hdf") {
+		return "rom"
+	}
+
 	ext := strings.ToLower(filepath.Ext(filename))
 	cleanExt := strings.TrimPrefix(ext, ".")
 
@@ -155,10 +220,50 @@ func DetermineFileFormatCategory(fullPath, filename string) string {
 		}
 		return "game"
 	case "bin":
+		if strings.EqualFold(filename, "eboot.bin") {
+			return "game"
+		}
 		return "iso"
 	default:
 		return "file"
 	}
+}
+
+var (
+	companionCheckMu    sync.RWMutex
+	companionCheckCache = make(map[string]bool)
+)
+
+func hasCompanionInstallerFiles(dir string) bool {
+	companionCheckMu.RLock()
+	cached, ok := companionCheckCache[dir]
+	companionCheckMu.RUnlock()
+	if ok {
+		return cached
+	}
+
+	companionCheckMu.Lock()
+	defer companionCheckMu.Unlock()
+	if cached, ok := companionCheckCache[dir]; ok {
+		return cached
+	}
+
+	if len(companionCheckCache) > 10000 {
+		companionCheckCache = make(map[string]bool)
+	}
+
+	found := false
+	if entries, err := os.ReadDir(dir); err == nil {
+		for _, entry := range entries {
+			name := strings.ToLower(entry.Name())
+			if strings.HasPrefix(name, "setup") && (strings.HasSuffix(name, ".bin") || strings.HasSuffix(name, ".cab")) {
+				found = true
+				break
+			}
+		}
+	}
+	companionCheckCache[dir] = found
+	return found
 }
 
 // DetectInstallerType checks filename patterns, companion files, and binary headers.
@@ -185,16 +290,11 @@ func DetectInstallerType(filePath, filename string) string {
 		return "installer"
 	}
 
-	// Companion installer data check (e.g. setup-1.bin, setup.bin)
+	// Companion installer data check (e.g. setup-1.bin, setup.bin) - cached per directory
 	if filePath != "" {
 		dir := filepath.Dir(filePath)
-		if entries, err := os.ReadDir(dir); err == nil {
-			for _, entry := range entries {
-				name := strings.ToLower(entry.Name())
-				if strings.HasPrefix(name, "setup") && (strings.HasSuffix(name, ".bin") || strings.HasSuffix(name, ".cab")) {
-					return "installer"
-				}
-			}
+		if hasCompanionInstallerFiles(dir) {
+			return "installer"
 		}
 	}
 
@@ -266,11 +366,31 @@ func IsNoiseOrUtilityExecutable(filename, fullPath string) bool {
 func IsUpdateOrPatchArtifact(filename, fullPath string) bool {
 	lowerName := strings.ToLower(filename)
 	lowerPath := strings.ToLower(filepath.ToSlash(fullPath))
-	if strings.Contains(lowerName, "update") || strings.Contains(lowerName, "hotfix") {
+
+	// Guard against full base games stating they bundle updates or DLC
+	if strings.Contains(lowerName, "incl") || strings.Contains(lowerName, "with dlc") || strings.Contains(lowerName, "includes") {
+		return false
+	}
+
+	if strings.Contains(lowerName, "update") || strings.Contains(lowerName, "hotfix") || (strings.Contains(lowerName, "patch") && !strings.Contains(lowerName, "dispatch") && !strings.Contains(lowerName, "despatch")) {
 		return true
 	}
+	if strings.Contains(lowerName, "[upd") || strings.Contains(lowerName, "(upd") {
+		return true
+	}
+	// Switch update Title ID hex (ends with 800)
+	if strings.Contains(lowerName, "800]") || strings.Contains(lowerName, "800)") {
+		if strings.Contains(lowerName, "[0100") || strings.Contains(lowerName, "(0100") {
+			return true
+		}
+	}
+	// Switch version tag [v65536] or higher
+	if strings.Contains(lowerName, "[v65536]") || strings.Contains(lowerName, "[v131072]") || strings.Contains(lowerName, "[v196608]") || strings.Contains(lowerName, "[v262144]") {
+		return true
+	}
+
 	for _, part := range strings.Split(lowerPath, "/") {
-		if part == "updates" {
+		if part == "updates" || part == "patches" {
 			return true
 		}
 		if strings.HasPrefix(part, "_unpack") && strings.Contains(part, "update") {
@@ -278,7 +398,7 @@ func IsUpdateOrPatchArtifact(filename, fullPath string) bool {
 		}
 		if strings.Contains(part, "_update_") || strings.Contains(part, "-update-") || strings.Contains(part, " update ") {
 			ext := strings.ToLower(filepath.Ext(filename))
-			if ext == ".exe" || ext == ".pkg" || ext == ".msi" || ext == ".dmg" {
+			if ext == ".exe" || ext == ".pkg" || ext == ".msi" || ext == ".dmg" || ext == ".nsp" || ext == ".bin" {
 				return true
 			}
 		}
@@ -310,7 +430,7 @@ func IsNoiseHostedPackage(filename, fullPath string) bool {
 	return false
 }
 
-// StripUpdateSuffixFromTitle removes trailing "update …" / "hotfix …" version noise.
+// StripUpdateSuffixFromTitle removes trailing "update â€¦" / "hotfix â€¦" version noise.
 func StripUpdateSuffixFromTitle(title string) string {
 	lower := strings.ToLower(title)
 	for _, marker := range []string{" update ", " hotfix ", " patch "} {
@@ -426,19 +546,24 @@ func ComputeHeadHash(filepath string) string {
 }
 
 var (
-	reCamel          = regexp.MustCompile(`([a-z])([A-Z])`)
-	reAcronym        = regexp.MustCompile(`([A-Z]+)([A-Z][a-z])`)
-	reLetterDigit    = regexp.MustCompile(`([a-uw-zA-UW-Z])([0-9]+)`)
-	reDigitLetter    = regexp.MustCompile(`([0-9]+)([a-zA-Z])`)
-	rePreTags        = regexp.MustCompile(`(?i)\bmac\s*os\b|\bmacos\b`)
-	reVersionPattern = regexp.MustCompile(`(?i)\bv\d+(?:\.\d+)+(?:[a-z]\d*)?\b|\bbuild\s*\d+\b`)
-	reTitleIdTag     = regexp.MustCompile(`(?i)\[[0-9a-f]{16}\]|\[?[a-z]{4}\d{5}\]?|\[(?:UPD|DLC|v\d+)\]`)
+	reCamel              = regexp.MustCompile(`([a-z])([A-Z])`)
+	reAcronym            = regexp.MustCompile(`([A-Z]+)([A-Z][a-z])`)
+	reLetterDigit        = regexp.MustCompile(`([a-uw-zA-UW-Z])([0-9]+)`)
+	reDigitLetter        = regexp.MustCompile(`([0-9]+)([a-zA-Z])`)
+	rePreTags            = regexp.MustCompile(`(?i)\bmac\s*os\b|\bmacos\b`)
+	reVersionPattern     = regexp.MustCompile(`(?i)\bv\d+(?:\.\d+)+(?:[a-z]\d*)?\b|\bbuild\s*\d+\b`)
+	reTitleIdTag         = regexp.MustCompile(`(?i)\[[0-9a-f]{16}\]|\[?[a-z]{4}\d{5}\]?|\[(?:UPD|DLC|v\d+)\]`)
+	reGeneralNoiseTags   = regexp.MustCompile(`(?i)\b(?:repack|fitgirl|dodi|elamigos|gog|iso|crackfix|onlinefix|direct\s*play|proper|earlyaccess|multi\d*|x64|x86)\b`)
+	reTrailingSceneGroup = regexp.MustCompile(`(?i)(?:[-_.]\s*|\s+)(?:rune|codex|skidrow|flt|tenoke|goldberg|razor1911|fairlight|hoodlum|empress|cpy|reloaded|prophet|plaza|tinyiso|chronos|tiki|kaos|darck|xatab|selax|unleashed)\s*$`)
 )
 
 func CleanTitleFromFilename(filename string) string {
 	base := filename
 	ext := filepath.Ext(filename)
-	if StripExtensions[strings.ToLower(ext)] {
+	lowerName := strings.ToLower(filename)
+	if strings.HasSuffix(lowerName, ".nsp.hdf") {
+		base = filename[:len(filename)-len(".nsp.hdf")]
+	} else if StripExtensions[strings.ToLower(ext)] {
 		base = strings.TrimSuffix(filename, ext)
 	}
 
@@ -451,29 +576,20 @@ func CleanTitleFromFilename(filename string) string {
 	// Remove macOS before CamelCase splitting turns it into mac OS
 	base = rePreTags.ReplaceAllString(base, " ")
 
+	// Strip trailing scene release group if present (e.g. -RUNE, -TENOKE, .CODEX)
+	base = reTrailingSceneGroup.ReplaceAllString(base, " ")
+
 	// Split CamelCase, acronyms, and alphanumeric boundaries
 	base = reCamel.ReplaceAllString(base, "$1 $2")
 	base = reAcronym.ReplaceAllString(base, "$1 $2")
 	base = reLetterDigit.ReplaceAllString(base, "$1 $2")
 	base = reDigitLetter.ReplaceAllString(base, "$1 $2")
 
-	tags := []string{
-		"repack", "fitgirl", "dodi", "gog", "iso", "codex", "skidrow",
-		"elamigos", "flt", "rune", "tenoke", "goldberg", "razor1911", "fairlight",
-		"hoodlum", "empress", "cpy", "reloaded", "prophet", "plaza", "tinyiso",
-		"chronos", "tiki", "kaos", "darck", "xatab", "selax", "setup",
-		"x64", "x86", "multi10", "multi12", "direct play", "macos", "mac", "osx",
-		"crackfix", "onlinefix", "proper", "earlyaccess",
-	}
-
-	lower := strings.ToLower(base)
-	for _, tag := range tags {
-		lower = strings.ReplaceAll(lower, tag, " ")
-	}
-
-	cleaned := strings.ReplaceAll(lower, ".", " ")
+	cleaned := strings.ReplaceAll(base, ".", " ")
 	cleaned = strings.ReplaceAll(cleaned, "_", " ")
 	cleaned = strings.ReplaceAll(cleaned, "-", " ")
+	cleaned = reGeneralNoiseTags.ReplaceAllString(cleaned, " ")
+	cleaned = reTrailingSceneGroup.ReplaceAllString(cleaned, " ")
 	cleaned = strings.TrimSpace(cleaned)
 
 	fields := strings.Fields(cleaned)
@@ -533,16 +649,63 @@ func FindGameRootFolder(candidatePath, libraryPath string) (rootDir string, root
 		return filepath.Dir(candidatePath), filepath.Base(candidatePath)
 	}
 
+	// 1. Walk up from immediate parent of candidatePath skipping generic folder names (e.g. bin, x64, Win64).
+	firstNonGenericIdx := -1
 	for i := len(parts) - 2; i >= 0; i-- {
 		part := parts[i]
 		if !GenericFolderNames[strings.ToLower(part)] {
-			sub := parts[:i+1]
-			fullRoot := filepath.Join(libraryPath, filepath.Join(sub...))
-			return fullRoot, part
+			firstNonGenericIdx = i
+			break
 		}
 	}
 
-	return filepath.Dir(candidatePath), parts[0]
+	// If all ancestor folders are generic (e.g. scanning single game directory directly where rel is "bin/x64/game.exe"),
+	// the libraryPath itself is the game root.
+	if firstNonGenericIdx < 0 {
+		return libraryPath, filepath.Base(libraryPath)
+	}
+
+	// Check if this candidate folder is an internal engine project folder (e.g. Phoenix, End, b1, OakGame)
+	// whose parent directory is the actual game root.
+	resolvedIdx := firstNonGenericIdx
+	if resolvedIdx > 0 {
+		candidateFolder := strings.ToLower(parts[resolvedIdx])
+		parentPart := parts[resolvedIdx-1]
+		parentDir := filepath.Join(libraryPath, filepath.Join(parts[:resolvedIdx]...))
+
+		isProjectFolder := KnownEngineProjectFolders[candidateFolder]
+		if !isProjectFolder {
+			// Check if parent directory on disk contains an "Engine" or "engine" folder
+			if fi, err := os.Stat(filepath.Join(parentDir, "Engine")); err == nil && fi.IsDir() {
+				isProjectFolder = true
+			} else if fi, err := os.Stat(filepath.Join(parentDir, "engine")); err == nil && fi.IsDir() {
+				isProjectFolder = true
+			}
+		}
+
+		// Also check if candidate executable matches the parent directory name rather than candidateFolder,
+		// or if candidateFolder is an engine subfolder echoing the parent game name (e.g. Portal 2/portal2 or Half-Life 2/hl2).
+		if !isProjectFolder {
+			exeStem := strings.ToLower(CleanTitleFromFilename(filepath.Base(candidatePath)))
+			parentTitle := strings.ToLower(CleanTitleFromFilename(parentPart))
+			candTitle := strings.ToLower(CleanTitleFromFilename(parts[resolvedIdx]))
+			if parentTitle != "" && candTitle != "" && (parentTitle == candTitle || strings.Contains(parentTitle, candTitle) || strings.Contains(candTitle, parentTitle)) {
+				isProjectFolder = true
+			} else if parentTitle != "" && exeStem != "" && (parentTitle == exeStem || strings.Contains(parentTitle, exeStem) || strings.Contains(exeStem, parentTitle)) {
+				if candTitle != exeStem {
+					isProjectFolder = true
+				}
+			}
+		}
+
+		if isProjectFolder && !ContainerFolderNames[strings.ToLower(parentPart)] {
+			resolvedIdx = resolvedIdx - 1
+		}
+	}
+
+	sub := parts[:resolvedIdx+1]
+	fullRoot := filepath.Join(libraryPath, filepath.Join(sub...))
+	return fullRoot, parts[resolvedIdx]
 }
 
 // GameRootForFile resolves the folder that should hold a `.otix` sidecar.
@@ -564,7 +727,11 @@ func AttachOtixSidecar(hf *HostedFile, libraryPath string) {
 	if hf == nil || hf.Filepath == "" {
 		return
 	}
-	root := GameRootForFile(hf.Filepath, libraryPath)
+	root := hf.RootDir
+	if root == "" {
+		root = GameRootForFile(hf.Filepath, libraryPath)
+		hf.RootDir = root
+	}
 	sc, err := otixmeta.Read(root)
 	if err != nil || sc == nil {
 		return
@@ -588,6 +755,171 @@ func AttachOtixSidecar(hf *HostedFile, libraryPath string) {
 			hf.OtixImages[role] = OtixImageRef{URL: ref.URL, Local: local}
 		}
 	}
+}
+
+func parsePS5ParamJSON(paramJsonPath string) (string, string) {
+	data, err := os.ReadFile(paramJsonPath)
+	if err != nil {
+		return "", ""
+	}
+	var raw struct {
+		TitleID             string                 `json:"titleId"`
+		LocalizedParameters map[string]interface{} `json:"localizedParameters"`
+	}
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return "", ""
+	}
+	titleId := strings.TrimSpace(raw.TitleID)
+	titleName := ""
+
+	if raw.LocalizedParameters != nil {
+		defaultLang := "en-GB"
+		if dl, ok := raw.LocalizedParameters["defaultLanguage"].(string); ok && dl != "" {
+			defaultLang = dl
+		}
+		candidates := []string{defaultLang, "en-GB", "en-US", "en", "default"}
+		for _, lang := range candidates {
+			if entry, ok := raw.LocalizedParameters[lang].(map[string]interface{}); ok {
+				if tn, ok := entry["titleName"].(string); ok && strings.TrimSpace(tn) != "" {
+					titleName = strings.TrimSpace(tn)
+					break
+				}
+			}
+		}
+		if titleName == "" {
+			for _, v := range raw.LocalizedParameters {
+				if entry, ok := v.(map[string]interface{}); ok {
+					if tn, ok := entry["titleName"].(string); ok && strings.TrimSpace(tn) != "" {
+						titleName = strings.TrimSpace(tn)
+						break
+					}
+				}
+			}
+		}
+	}
+	return titleId, titleName
+}
+
+// detectPS5GameDump inspects a directory to check if it represents a PS5 game dump package.
+// It looks for sce_sys/param.json, eboot.bin, app0 subdirectories, or PS5 indicators,
+// and returns (isPS5, targetExePath, titleId, titleName).
+func detectPS5GameDump(dir string) (bool, string, string, string) {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return false, "", "", ""
+	}
+
+	dirLower := strings.ToLower(filepath.Base(dir))
+	var hasEboot bool
+	var ebootPath string
+	var paramJsonPath string
+	var appSubdir string
+	var pakPath string
+	var hasPpsaFile bool
+	var hasPs5InName bool = strings.Contains(dirLower, "ps5") || strings.Contains(dirLower, "ppsa")
+
+	for _, e := range entries {
+		nameLower := strings.ToLower(e.Name())
+		if !e.IsDir() {
+			if nameLower == "eboot.bin" {
+				hasEboot = true
+				ebootPath = filepath.Join(dir, e.Name())
+			} else if nameLower == "param.json" {
+				paramJsonPath = filepath.Join(dir, e.Name())
+			} else if strings.HasSuffix(nameLower, ".pak") && strings.Contains(nameLower, "ps5") {
+				pakPath = filepath.Join(dir, e.Name())
+			} else if strings.HasPrefix(nameLower, "ppsa") {
+				hasPpsaFile = true
+			}
+		} else {
+			if nameLower == "sce_sys" {
+				pj := filepath.Join(dir, e.Name(), "param.json")
+				if _, err := os.Stat(pj); err == nil {
+					paramJsonPath = pj
+				}
+			} else if nameLower == "app0" || strings.HasPrefix(nameLower, "app0") ||
+				strings.HasPrefix(nameLower, "ppsa") || strings.Contains(nameLower, "app0") {
+				appSubdir = e.Name()
+			}
+		}
+	}
+
+	// Check appSubdir for param.json if not found in root
+	if paramJsonPath == "" && appSubdir != "" {
+		pj := filepath.Join(dir, appSubdir, "sce_sys", "param.json")
+		if _, err := os.Stat(pj); err == nil {
+			paramJsonPath = pj
+		} else {
+			pj2 := filepath.Join(dir, appSubdir, "param.json")
+			if _, err2 := os.Stat(pj2); err2 == nil {
+				paramJsonPath = pj2
+			}
+		}
+	}
+
+	// Check appSubdir for eboot.bin if not found in root
+	if !hasEboot && appSubdir != "" {
+		eb := filepath.Join(dir, appSubdir, "eboot.bin")
+		if _, err := os.Stat(eb); err == nil {
+			hasEboot = true
+			ebootPath = eb
+		}
+	}
+
+	var titleId, titleName string
+	if paramJsonPath != "" {
+		titleId, titleName = parsePS5ParamJSON(paramJsonPath)
+	}
+
+	// Also check .otix sidecar if present
+	if sc, scErr := otixmeta.Read(dir); scErr == nil && sc != nil {
+		if strings.HasPrefix(strings.ToUpper(sc.TitleID), "PPSA") {
+			hasPs5InName = true
+		}
+		for _, p := range sc.Platforms {
+			for _, v := range p {
+				if s, ok := v.(string); ok && strings.Contains(strings.ToUpper(s), "PS5") {
+					hasPs5InName = true
+				}
+			}
+		}
+		if hasPs5InName {
+			if titleId == "" {
+				titleId = sc.TitleID
+			}
+			if titleName == "" {
+				titleName = sc.Title
+			}
+		}
+	}
+
+	isPS5 := false
+	if strings.HasPrefix(strings.ToUpper(titleId), "PPSA") {
+		isPS5 = true
+	} else if paramJsonPath != "" && (hasPs5InName || hasEboot || strings.Contains(dirLower, "app0")) {
+		isPS5 = true
+	} else if hasEboot && (hasPs5InName || hasPpsaFile || strings.Contains(dirLower, "app0") || appSubdir != "") {
+		isPS5 = true
+	} else if pakPath != "" && (hasPs5InName || hasPpsaFile) {
+		isPS5 = true
+	}
+
+	if !isPS5 {
+		return false, "", "", ""
+	}
+
+	targetExe := ebootPath
+	if targetExe == "" {
+		if pakPath != "" {
+			targetExe = pakPath
+		} else if paramJsonPath != "" {
+			targetExe = paramJsonPath
+		} else {
+			targetExe = filepath.Join(dir, "eboot.bin")
+		}
+	}
+
+	return true, targetExe, titleId, titleName
 }
 
 // ScoreGameCandidate evaluates how likely an executable is to be the primary game binary.
@@ -955,11 +1287,24 @@ func (si *StorageIndexer) ScanAllWithDeep(deep bool) []HostedFile {
 		if libName == "" {
 			libName = "Default"
 		}
-		activePathsPerLib[libName] = make(map[string]bool)
 		libPath := lib.Path
-		if _, err := os.Stat(libPath); os.IsNotExist(err) {
+		if !IsPathReachable(libPath) {
+			// If the library path is inaccessible (e.g. offline network share, missing drive, or network timeout),
+			// preserve any existing cached files for this library so we do not wipe them
+			// from memory or delete them from the persistent SQLite store.
+			cleanLibPath := filepath.Clean(libPath)
+			for id, cf := range cachedFiles {
+				if cf.LibraryName == libName || strings.HasPrefix(filepath.Clean(cf.Filepath), cleanLibPath) {
+					newFiles[id] = cf
+					newFilesByPath[cf.Filepath] = id
+					if m, ok := cachedMtimes[cf.Filepath]; ok {
+						newMtimes[cf.Filepath] = m
+					}
+				}
+			}
 			continue
 		}
+		activePathsPerLib[libName] = make(map[string]bool)
 
 		allowedExts := lib.AllowedExtensions
 		if len(allowedExts) == 0 {
@@ -998,6 +1343,85 @@ func (si *StorageIndexer) ScanAllWithDeep(deep bool) []HostedFile {
 
 			// Handle macOS .app bundle
 			if info.IsDir() {
+				if path == libPath {
+					return nil
+				}
+				if ContainerFolderNames[strings.ToLower(name)] {
+					return nil
+				}
+
+				// Optimized PS5 game dump package detection: detect dump directly, index the game,
+				// and skip walking the thousands of internal asset, texture, shader, and prx files!
+				if isPS5, exePath, _, titleName := detectPS5GameDump(path); isPS5 {
+					mtimeUnix := info.ModTime().Unix()
+					activePathsPerLib[libName][path] = true
+					activePathsPerLib[libName][exePath] = true
+
+					cachedID, hasCached := cachedByPath[exePath]
+					if !hasCached {
+						cachedID, hasCached = cachedByPath[path]
+					}
+					cachedMt, hasMt := cachedMtimes[exePath]
+					if !hasMt {
+						cachedMt, hasMt = cachedMtimes[path]
+					}
+
+					if !deep && hasCached && hasMt && cachedMt == mtimeUnix {
+						if existing, ok := cachedFiles[cachedID]; ok {
+							newFiles[existing.ID] = existing
+							newFilesByPath[path] = existing.ID
+							newFilesByPath[exePath] = existing.ID
+							newMtimes[path] = mtimeUnix
+							newMtimes[exePath] = mtimeUnix
+							indexed = append(indexed, existing)
+							return filepath.SkipDir
+						}
+					}
+
+					fileSize := int64(0)
+					headHash := "0000000000000000000000000000000000000000000000000000000000000000"
+					if st, sErr := os.Stat(exePath); sErr == nil {
+						fileSize = st.Size()
+						headHash = ComputeHeadHash(exePath)
+					}
+
+					modTime := info.ModTime().UTC().Format(time.RFC3339)
+					hasher := md5.New()
+					hasher.Write([]byte(exePath))
+					fileID := fmt.Sprintf("file_%s", hex.EncodeToString(hasher.Sum(nil))[:12])
+					rel := RelativeLibraryPath(exePath, libPath)
+
+					title := titleName
+					if title == "" {
+						title = CleanTitleFromFilename(name)
+					}
+
+					hf := HostedFile{
+						ID:             fileID,
+						Filename:       filepath.Base(exePath),
+						Filepath:       exePath,
+						RelativePath:   rel,
+						Filesize:       fileSize,
+						SHA256Head:     headHash,
+						Extension:      strings.ToLower(filepath.Ext(exePath)),
+						FormatCategory: "game",
+						Platform:       "PS5",
+						LibraryName:    libName,
+						GameTitle:      title,
+						ModifiedAt:     modTime,
+						RootDir:        path,
+					}
+					AttachOtixSidecar(&hf, libPath)
+					newFiles[fileID] = hf
+					newFilesByPath[path] = fileID
+					newFilesByPath[exePath] = fileID
+					newMtimes[path] = mtimeUnix
+					newMtimes[exePath] = mtimeUnix
+					indexed = append(indexed, hf)
+					filesToPersist = append(filesToPersist, hf)
+					return filepath.SkipDir
+				}
+
 				if strings.HasSuffix(strings.ToLower(name), ".app") {
 					plist := filepath.Join(path, "Contents", "Info.plist")
 					macosDir := filepath.Join(path, "Contents", "MacOS")
@@ -1040,6 +1464,7 @@ func (si *StorageIndexer) ScanAllWithDeep(deep bool) []HostedFile {
 							LibraryName:    libName,
 							GameTitle:      title,
 							ModifiedAt:     modTime,
+							RootDir:        path,
 						}
 						AttachOtixSidecar(&hf, libPath)
 						newFiles[fileID] = hf
@@ -1071,14 +1496,19 @@ func (si *StorageIndexer) ScanAllWithDeep(deep bool) []HostedFile {
 				return nil
 			}
 
+			lowerName := strings.ToLower(name)
 			ext := strings.ToLower(filepath.Ext(path))
-			if len(allowedMap) > 0 && !allowedMap[ext] {
+			if strings.HasSuffix(lowerName, ".nsp.hdf") {
+				ext = ".nsp"
+			}
+			isConsoleExe := strings.EqualFold(name, "eboot.bin")
+			if len(allowedMap) > 0 && !allowedMap[ext] && !isConsoleExe {
 				return nil
 			}
 			if IsInstallerPayloadFile(name) {
 				return nil
 			}
-			if ext == ".bin" && SkipExtensions[ext] {
+			if ext == ".bin" && !isConsoleExe && SkipExtensions[ext] {
 				return nil
 			}
 			if IsNoiseHostedPackage(name, path) {
@@ -1118,9 +1548,11 @@ func (si *StorageIndexer) ScanAllWithDeep(deep bool) []HostedFile {
 					SHA256Head:     headHash,
 					Extension:      ext,
 					FormatCategory: cat,
+					Platform:       string(DeterminePlatform(name, path)),
 					LibraryName:    libName,
 					GameTitle:      title,
 					ModifiedAt:     modTime,
+					RootDir:        GameRootForFile(path, libPath),
 				}
 				AttachOtixSidecar(&hf, libPath)
 				newFiles[fileID] = hf
@@ -1248,9 +1680,11 @@ func (si *StorageIndexer) ScanAllWithDeep(deep bool) []HostedFile {
 				SHA256Head:     headHash,
 				Extension:      ext,
 				FormatCategory: formatCategory,
+				Platform:       string(DeterminePlatform(elected.filename, elected.path)),
 				LibraryName:    libName,
 				GameTitle:      title,
 				ModifiedAt:     modTime,
+				RootDir:        rootDir,
 			}
 			AttachOtixSidecar(&hf, libPath)
 
@@ -1270,6 +1704,15 @@ func (si *StorageIndexer) ScanAllWithDeep(deep bool) []HostedFile {
 		for libName, activeMap := range activePathsPerLib {
 			_, _ = store.DeleteMissing(activeMap, libName)
 		}
+		var activeLibNames []string
+		for _, lib := range libs {
+			name := lib.Name
+			if name == "" {
+				name = "Default"
+			}
+			activeLibNames = append(activeLibNames, name)
+		}
+		_ = store.PruneRemovedLibraries(activeLibNames)
 	}
 
 	si.mu.Lock()

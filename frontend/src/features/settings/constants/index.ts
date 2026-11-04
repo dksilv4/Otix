@@ -16,6 +16,8 @@ import {
   ScrollText,
   Info,
   Network,
+  FolderOpen,
+  ScanLine,
 } from 'lucide-react'
 import type { ComponentType } from 'react'
 import type { PluginSettingsTab } from '@/features/_config/slots'
@@ -116,14 +118,24 @@ export const NAV_ITEMS: NavItem[] = [
   },
   {
     id: 'nodes',
-    label: 'Nodes',
-    icon: Server,
+    label: 'Drive Locations',
+    icon: FolderOpen,
     desktop: false,
-    requiresAuth: true,
+    requiresAuth: false,
     adminOnly: false,
     group: 'library',
     isPage: true,
-    keywords: 'otix nodes desktop tray startup minimize close always on top window node native servers nas share remote worker machine paths folders organize downloaders sabnzbd scan epic games store egs homelab server machines hard drives drives storage homes smb dedicated game servers multiplayer host connect valheim minecraft cs2 rust palworld join share steam match matching proposals metadata review candidates rules naming templates directory structure',
+    keywords: 'drive locations game folders storage monitored folders paths disks local node otix nodes homelab servers game servers valheim organize matching proposals',
+  },
+  {
+    id: 'new-node-scan-files',
+    label: 'New Node Scan Files',
+    icon: ScanLine,
+    desktop: false,
+    requiresAuth: false,
+    adminOnly: false,
+    group: 'library',
+    keywords: 'new node scan files scanning files table index directories library monitored folders drive',
   },
   {
     id: 'connections',
@@ -139,7 +151,7 @@ export const NAV_ITEMS: NavItem[] = [
     label: 'Node Connections',
     icon: Network,
     desktop: false,
-    requiresAuth: true,
+    requiresAuth: false,
     group: 'connections',
     keywords: 'node connections worker daemon companion sabnzbd prowlarr radarr sonarr usenet torrent arr indexer downloader services host',
   },

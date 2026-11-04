@@ -311,4 +311,27 @@ describe('GameScanOrchestrator', () => {
     expect(match).toBeDefined();
     expect(match?.otixMediaId).toBe('otix_rl');
   });
+
+  it('should match games from an arbitrary scanned list (matchGames)', async () => {
+    const mockPluginManager = {
+      getPluginsForSlot: vi.fn().mockReturnValue([]),
+      callPluginData: vi.fn(),
+    };
+
+    const orchestrator = new GameScanOrchestrator(mockPluginManager as any);
+    orchestrator.setApiBaseUrl('http://127.0.0.1:8000');
+    const result = await orchestrator.matchGames([
+      {
+        id: 'Jaguar',
+        title: 'Rocket League',
+        platform: 'epic',
+        externalIds: [{ source: 'epic', id: 'Jaguar' }],
+      },
+    ], 'local');
+
+    expect(result.totalGames).toBe(1);
+    const match = getGameMatch('epic', 'Jaguar');
+    expect(match).toBeDefined();
+    expect(match?.otixMediaId).toBe('otix_rl');
+  });
 });

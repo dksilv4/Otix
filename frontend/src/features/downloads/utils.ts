@@ -57,7 +57,7 @@ export const protocolChip = (protocol?: string): { label: string; className: str
 }
 
 export const importEligibleNodes = (servers: GameServer[]): GameServer[] => {
-  return servers.filter((server) => !isLocalDesktopNode(server) && Number(server.id) > 0)
+  return servers.filter((server) => Number(server.id) > 0 && !server.localUrl?.startsWith('otix://') && !server.primaryUrl?.startsWith('otix://'))
 }
 
 export const pickDefaultPair = (

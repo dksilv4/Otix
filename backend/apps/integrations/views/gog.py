@@ -10,9 +10,9 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.integrations import services as integrations_services
-from apps.library.models import UserGameServer
-from apps.library.services.game_server import (
-    pick_online_game_server,
+from apps.library.models import UserNode
+from apps.library.services.node import (
+    pick_online_node,
     proxy_gog_status,
 )
 
@@ -38,9 +38,9 @@ class GOGStatusView(APIView):
         node_id = request.query_params.get("node_id") or request.query_params.get("server_id")
         server = None
         if node_id:
-            server = UserGameServer.objects.filter(user=request.user, id=node_id).first()
+            server = UserNode.objects.filter(user=request.user, id=node_id).first()
         if server is None:
-            server = pick_online_game_server(request.user)
+            server = pick_online_node(request.user)
 
         if server:
             status_code, data = proxy_gog_status(server)
@@ -66,7 +66,7 @@ class GOGLibraryScanView(APIView):
         )
         server = None
         if node_id:
-            server = UserGameServer.objects.filter(user=request.user, id=node_id).first()
+            server = UserNode.objects.filter(user=request.user, id=node_id).first()
         auto_resolve_param = request.data.get("auto_resolve")
         if auto_resolve_param is None:
             auto_resolve_param = request.query_params.get("auto_resolve")

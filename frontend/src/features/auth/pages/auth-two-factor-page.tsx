@@ -2,6 +2,7 @@ import { useCallback, useEffect } from 'react'
 import { Helmet } from 'react-helmet-async'
 import { useNavigate, useSearch } from '@tanstack/react-router'
 import { useAuth } from '@auth/hooks/use-auth'
+import { getSafeRedirectUrl } from '@auth/utils'
 import { TwoFactorChallenge } from '@auth/components/organisms/auth-two-factor-challenge'
 import { AuthBackground } from '@auth/components/atoms/auth-background'
 import { AuthCard } from '@auth/components/molecules/auth-card'
@@ -15,9 +16,11 @@ export const TwoFactorPage = () => {
     const is2faEnabled = useFeature('auth:two-factor')
 
     const search = useSearch({ strict: false }) as { redirect?: string }
-    const redirect = search.redirect || '/'
+    const rawRedirect = search?.redirect ?? (typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('redirect') : undefined)
+    const redirect = getSafeRedirectUrl(rawRedirect)
 
     const handleSuccess = useCallback(() => {
+        try { sessionStorage.removeItem('auth_redirect') } catch { /* ignore */ }
         navigate({ to: redirect })
     }, [navigate, redirect])
 

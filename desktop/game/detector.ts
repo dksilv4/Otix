@@ -9,6 +9,7 @@ import {
   getHostNodeAndHardware,
   getCachedHostNodeAndHardware,
 } from './node-hardware';
+import { getSettings } from '../desktop-settings';
 
 export interface RunningGame {
   game: LocalGame;
@@ -18,6 +19,8 @@ export interface RunningGame {
   node?: SessionNodeInfo | null;
   hardware?: SessionHardwareInfo | null;
   shareEligible?: boolean;
+  fpsAvailable?: boolean;
+  fpsSnapshot?: any | null;
 }
 
 export interface PlaySession {
@@ -52,12 +55,43 @@ interface ProcessMapping {
 }
 
 const MAX_SESSIONS = 100;
-const SCAN_INTERVAL_MS = 30000;
+const SCAN_INTERVAL_MS = 10000;
 
-/** Process names to ignore — non-game apps that shouldn't trigger FPS capture. */
-const NON_GAME_PROCESSES = new Set([
+/** Core system utilities and Windows shell processes that should never be tracked or shown in process list */
+export const NON_GAME_PROCESSES = new Set([
+  // Windows Shell & System
   'wallpaper64.exe', 'wallpaper32.exe', 'wallpaper.exe',
   'explorer.exe', 'svchost.exe', 'runtimebroker.exe',
+  'taskmgr.exe', 'searchhost.exe', 'shellexperiencehost.exe',
+  'startmenuexperiencehost.exe', 'applicationframehost.exe',
+  'systemsettings.exe', 'cmd.exe', 'powershell.exe', 'pwsh.exe',
+  'conhost.exe', 'windowsterminal.exe', 'openconsole.exe',
+  'dwm.exe', 'csrss.exe', 'services.exe', 'lsass.exe', 'fontdrvhost.exe',
+  'sihost.exe', 'ctfmon.exe', 'audiodg.exe',
+  // Otix itself
+  'otix.exe', 'electron.exe',
+  // Overlays & Crash Helpers
+  'eosoverlayrenderer-win64-shipping.exe', 'eosoverlayrenderer.exe',
+  'epiconlineservices.exe', 'gameoverlayui.exe', 'discordoverlay.exe',
+  'originoverlay.exe', 'crashreportclient.exe', 'crashreportclient-win64-shipping.exe',
+  'unitycrashhandler64.exe', 'unitycrashhandler32.exe',
+]);
+
+/** Processes excluded from automated heuristic and window title detection (browsers, launchers, chat) */
+export const HEURISTIC_EXCLUDED_PROCESSES = new Set([
+  ...NON_GAME_PROCESSES,
+  // Browsers
+  'chrome.exe', 'msedge.exe', 'firefox.exe', 'brave.exe',
+  'opera.exe', 'opera_gx.exe', 'vivaldi.exe', 'arc.exe',
+  // Launchers & Stores (background)
+  'steam.exe', 'steamwebhelper.exe', 'epicgameslauncher.exe',
+  'epicwebhelper.exe', 'galaxyclient.exe', 'galaxycommunication.exe',
+  'ea.exe', 'eadesktop.exe', 'eabackgroundservice.exe',
+  'battle.net.exe', 'riotclientservices.exe', 'ubisoftconnect.exe',
+  'upc.exe', 'gog galaxy.exe',
+  // Communication & Media
+  'discord.exe', 'spotify.exe', 'slack.exe', 'teams.exe',
+  'obs64.exe', 'obs32.exe', 'vlc.exe', 'devenv.exe', 'code.exe',
 ]);
 
 const KNOWN_GAME_SIGNATURES: Record<string, string> = {
@@ -78,23 +112,85 @@ const KNOWN_GAME_SIGNATURES: Record<string, string> = {
   'monsterhunterworld.exe': 'Monster Hunter: World',
   'monsterhunterrise.exe': 'Monster Hunter Rise',
   'cs2.exe': 'Counter-Strike 2',
+  'csgo.exe': 'Counter-Strike: Global Offensive',
+  'dota2.exe': 'Dota 2',
+  'valorant.exe': 'Valorant',
+  'valorant-win64-shipping.exe': 'Valorant',
+  'leagueclient.exe': 'League of Legends',
+  'league of legends.exe': 'League of Legends',
+  'destiny2.exe': 'Destiny 2',
+  'overwatch.exe': 'Overwatch 2',
+  'r5apex.exe': 'Apex Legends',
+  'fortniteclient-win64-shipping.exe': 'Fortnite',
+  'rocketleague.exe': 'Rocket League',
+  'deadbydaylight.exe': 'Dead by Daylight',
+  'deadbydaylight-win64-shipping.exe': 'Dead by Daylight',
+  'helldivers2.exe': 'Helldivers 2',
   'palworld-win64-shipping.exe': 'Palworld',
   'blackmythwukong.exe': 'Black Myth: Wukong',
   'b1-win64-shipping.exe': 'Black Myth: Wukong',
+  'spacemarine2.exe': 'Warhammer 40k: Space Marine 2',
+  'warhammer2.exe': 'Total War: Warhammer II',
+  'warhammer3.exe': 'Total War: Warhammer III',
+  'civ6.exe': "Sid Meier's Civilization VI",
+  'civ6_dx12.exe': "Sid Meier's Civilization VI",
+  'sekiro.exe': 'Sekiro: Shadows Die Twice',
+  'darksoulsiii.exe': 'Dark Souls III',
+  'armoredcore6.exe': 'Armored Core VI',
+  'godofwar.exe': 'God of War',
+  'gow_ragnarok.exe': 'God of War Ragnarok',
+  'spiderman.exe': "Marvel's Spider-Man Remastered",
+  'milesmorales.exe': "Marvel's Spider-Man: Miles Morales",
+  'tlou-i.exe': 'The Last of Us Part I',
+  'ghostooftsushima.exe': 'Ghost of Tsushima',
+  'horizonzerodawn.exe': 'Horizon Zero Dawn',
+  'horizonforbiddenwest.exe': 'Horizon Forbidden West',
+  'residentevil4.exe': 'Resident Evil 4',
+  're4.exe': 'Resident Evil 4',
+  're8.exe': 'Resident Evil Village',
+  're2.exe': 'Resident Evil 2',
+  're3.exe': 'Resident Evil 3',
+  'fallout4.exe': 'Fallout 4',
+  'skyrimse.exe': 'The Elder Scrolls V: Skyrim',
+  'tesv.exe': 'The Elder Scrolls V: Skyrim',
   'hades.exe': 'Hades',
   'hades2.exe': 'Hades II',
   'hollow_knight.exe': 'Hollow Knight',
-  'balatro.exe': 'Balatro',
+  'silksong.exe': 'Hollow Knight: Silksong',
+  'subnautica.exe': 'Subnautica',
+  'factorio.exe': 'Factorio',
+  'terraria.exe': 'Terraria',
   'stardew valley.exe': 'Stardew Valley',
   'stardewvalley.exe': 'Stardew Valley',
   'deadcells.exe': 'Dead Cells',
   'slaythespire.exe': 'Slay the Spire',
-  'factorio.exe': 'Factorio',
-  'satisfactory.exe': 'Satisfactory',
+  'balatro.exe': 'Balatro',
+  'bloonstd6.exe': 'Bloons TD 6',
+  'btd6.exe': 'Bloons TD 6',
+  'cleaner-btd6.exe': 'Bloons TD 6',
   'factorygamesteam.exe': 'Satisfactory',
+  'satisfactory.exe': 'Satisfactory',
+  'modernwarfare.exe': 'Call of Duty: Modern Warfare',
+  'supermarket together.exe': 'Supermarket Together',
+  'supermarkettogether.exe': 'Supermarket Together',
+  'rs2client.exe': 'RuneScape',
+  'runescape.exe': 'RuneScape',
+  'rsdragonwilds.exe': 'RuneScape Dragonwilds',
+  'rsdragonwilds-win64-shipping.exe': 'RuneScape Dragonwilds',
+  'oriwotw.exe': 'Ori and the Will of the Wisps',
+  'oride.exe': 'Ori and the Blind Forest',
+  'timberborn.exe': 'Timberborn',
+  'pragmata.exe': 'Pragmata',
   'pathofexile.exe': 'Path of Exile',
+  'pathofexile_x64.exe': 'Path of Exile',
   'pathofexilesteam.exe': 'Path of Exile 2',
   'pathofexile2.exe': 'Path of Exile 2',
+  'losslessscaling.exe': 'Lossless Scaling',
+  'transportfever3.exe': 'Transport Fever 3',
+  'transportfever2.exe': 'Transport Fever 2',
+  'whiskerwood.exe': 'Whiskerwood',
+  'whiskerwood-win64-shipping.exe': 'Whiskerwood',
+  'ultimatechickenhorse.exe': 'Ultimate Chicken Horse',
   'tekken 8.exe': 'Tekken 8',
   'tekken8.exe': 'Tekken 8',
   'risk of rain 2.exe': 'Risk of Rain 2',
@@ -106,21 +202,39 @@ const KNOWN_GAME_SIGNATURES: Record<string, string> = {
   'wardogs-win64-shipping.exe': 'Wardogs',
 };
 
+const normTitleCache = new Map<string, string>();
+
 function normalizeTitle(title: string): string {
-  return title
+  const cached = normTitleCache.get(title);
+  if (cached !== undefined) return cached;
+
+  const normalized = title
     .replace(/\s*[-–—:]\s*(Definitive|GOTY|Game of the Year|Remastered|Enhanced|Ultimate|Complete|Anniversary|Collectors|Digital Deluxe|Special|Legendary)\s*(Edition)?\s*$/i, '')
     .replace(/[^a-z0-9\s]/gi, '')
     .replace(/\s+/g, ' ')
     .trim()
     .toLowerCase();
+
+  if (normTitleCache.size < 10000) {
+    normTitleCache.set(title, normalized);
+  }
+  return normalized;
 }
 
+const exeCandidatesCache = new Map<string, string[]>();
+
 function titleToExeCandidates(title: string): string[] {
+  const cached = exeCandidatesCache.get(title);
+  if (cached) return cached;
+
   const normalized = normalizeTitle(title);
   const words = normalized.split(/\s+/).filter((w) => w.length > 2);
   const candidates: string[] = [];
 
-  if (words.length === 0) return candidates;
+  if (words.length === 0) {
+    if (exeCandidatesCache.size < 10000) exeCandidatesCache.set(title, candidates);
+    return candidates;
+  }
 
   candidates.push(words.join('') + '.exe');
   candidates.push(words.map((w) => w[0].toUpperCase() + w.slice(1)).join('') + '.exe');
@@ -142,15 +256,67 @@ function titleToExeCandidates(title: string): string[] {
   candidates.push(joined + 'launcher.exe');
   candidates.push(joined + 'launcher-shipping.exe');
 
+  if (exeCandidatesCache.size < 10000) {
+    exeCandidatesCache.set(title, candidates);
+  }
   return candidates;
+}
+
+const wordRegexCache = new Map<string, RegExp>();
+
+function getWordRegex(w: string): RegExp {
+  let re = wordRegexCache.get(w);
+  if (!re) {
+    re = new RegExp('\\b' + w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'i');
+    if (wordRegexCache.size < 2000) {
+      wordRegexCache.set(w, re);
+    }
+  }
+  return re;
+}
+
+interface CandidateProc {
+  pid: number;
+  nameLower: string;
+  baseLower: string;
+  hasUnderscore: boolean;
+  wordsSet: Set<string>;
+}
+
+interface RendererProc {
+  pid: number;
+  pn: string;
+  pnNoSuffix: string;
+}
+
+interface WindowEntry {
+  winTitle: string;
+  winLower: string;
+  pid: number;
+  hasUnderscore: boolean;
+  wordsSet: Set<string>;
+}
+
+interface ProcessSnapshot {
+  processes: { name: string; pid: number }[];
+  procByName: Map<string, { name: string; pid: number }>;
+  procByPid: Map<number, { name: string; pid: number }>;
+  procNamesList: string[];
+  candidateProcs: CandidateProc[];
+  rendererProcs: RendererProc[];
+  windowEntries: WindowEntry[];
 }
 
 // Get processes with open windows via PowerShell
 function getWindowTitles(): Promise<Map<string, string>> {
+  if (process.platform !== 'win32') {
+    return Promise.resolve(new Map());
+  }
+
   return new Promise((resolve) => {
     exec(
-      'powershell -NoProfile -Command "Get-Process | Where-Object {$_.MainWindowTitle} | Select-Object ProcessName, Id, MainWindowTitle | ConvertTo-Json"',
-      { timeout: 5000 },
+      'powershell -NoProfile -ExecutionPolicy Bypass -Command "Get-Process | Where-Object {$_.MainWindowTitle} | Select-Object ProcessName, Id, MainWindowTitle | ConvertTo-Json -Compress"',
+      { timeout: 4000 },
       (error, stdout) => {
         if (error || !stdout) {
           resolve(new Map());
@@ -178,13 +344,18 @@ function getWindowTitles(): Promise<Map<string, string>> {
 export class GameDetector extends EventEmitter {
   private runningGames: Map<string, RunningGame> = new Map();
   private library: LocalGame[] = [];
+  private libraryById = new Map<string, LocalGame>();
+  private libraryIds = new Set<string>();
+  private libraryNormalizedTitles = new Set<string>();
+  private exeNamesCache = new WeakMap<LocalGame, string[]>();
   private scanTimer: ReturnType<typeof setInterval> | null = null;
   private sessionsPath: string;
   private mappingsPath: string;
   private mappings: ProcessMapping[] = [];
   private trackedPids = new Set<number>();
   private processCheckTimer: ReturnType<typeof setInterval> | null = null;
-  private deadCheckTimer: ReturnType<typeof setInterval> | null = null;
+  private discoveryTimers: ReturnType<typeof setTimeout>[] = [];
+  private isScanning = false;
 
   constructor(sessionsDir: string) {
     super();
@@ -195,10 +366,17 @@ export class GameDetector extends EventEmitter {
 
   setLibrary(games: LocalGame[]) {
     this.library = games;
+    this.libraryById = new Map(games.map((g) => [g.id, g]));
+    this.libraryIds = new Set(games.map((g) => g.id));
+    this.libraryNormalizedTitles = new Set(games.map((g) => normalizeTitle(g.title)));
   }
 
   getLibrary(): LocalGame[] {
     return [...this.library];
+  }
+
+  addOrUpdateRunningGame(gameId: string, entry: RunningGame) {
+    this.runningGames.set(gameId, entry);
   }
 
   startTracking(game: LocalGame, pid?: number) {
@@ -229,19 +407,40 @@ export class GameDetector extends EventEmitter {
 
     if (pid) {
       this.trackedPids.add(pid);
-      this.startProcessCheck(); this.startDeadCheck();
+      this.startProcessCheck();
       // FPS capture is handled by the fps-capture plugin via eventBus
+    } else {
+      this.scheduleDiscoveryScans();
     }
 
     this.emit('game:started', entry);
   }
 
   stopTracking(gameId: string) {
+    this.clearDiscoveryScans();
     const entry = this.runningGames.get(gameId);
     if (entry) {
       this.endSession(entry);
       this.runningGames.delete(gameId);
     }
+  }
+
+  activeGameId?: string;
+
+  setActiveGame(gameId: string): RunningGame | null {
+    this.activeGameId = gameId;
+    return this.getRunningGame();
+  }
+
+  cycleActiveGame(): RunningGame | null {
+    const games = this.getRunningGames();
+    if (games.length <= 1) {
+      return games[0] ?? null;
+    }
+    const currIdx = games.findIndex((g) => g.game.id === this.activeGameId);
+    const nextIdx = (currIdx + 1) % games.length;
+    this.activeGameId = games[nextIdx].game.id;
+    return games[nextIdx];
   }
 
   getRunningGames(): RunningGame[] {
@@ -258,6 +457,13 @@ export class GameDetector extends EventEmitter {
         }
       } else {
         alive.push(entry);
+      }
+    }
+    if (this.activeGameId && alive.length > 1) {
+      const activeIdx = alive.findIndex((g) => g.game.id === this.activeGameId);
+      if (activeIdx > 0) {
+        const [active] = alive.splice(activeIdx, 1);
+        alive.unshift(active);
       }
     }
     return alive;
@@ -298,31 +504,47 @@ export class GameDetector extends EventEmitter {
   }
 
   async scanRunningProcesses(): Promise<RunningGame[]> {
+    if (this.isScanning) {
+      return this.getRunningGames();
+    }
+    this.isScanning = true;
     try {
       const [processes, windowTitles] = await Promise.all([
         psList(),
         getWindowTitles(),
       ]);
 
+      const snapshot = this.buildProcessSnapshot(processes, windowTitles);
       const currentlyRunning = new Set<string>();
 
       // 0. Check custom user mappings first
-      this.checkMappings(processes, currentlyRunning);
+      this.checkMappings(snapshot, currentlyRunning);
 
-      for (const game of this.library) {
+      const librarySnapshot = this.library;
+      const CHUNK_SIZE = 500;
+
+      for (let i = 0; i < librarySnapshot.length; i++) {
+        if (!this.isScanning) break;
+
+        // Yield to event loop periodically so thousands of games don't freeze the main thread
+        if (i > 0 && i % CHUNK_SIZE === 0) {
+          await new Promise((resolve) => setImmediate(resolve));
+        }
+
+        const game = librarySnapshot[i];
         if (currentlyRunning.has(game.id)) continue;
 
         let detectedPid: number | undefined;
 
         // 1. Window title match (highest confidence)
-        detectedPid = this.matchWindowTitle(game, windowTitles, processes);
+        detectedPid = this.matchWindowTitle(game, snapshot);
 
-        // 2. Exact process name match
+        // 2. Exact process name match (O(1) lookups via procByName)
         if (detectedPid === undefined) {
           const exeNames = this.getExeNames(game);
           for (const exeName of exeNames) {
             if (!exeName) continue;
-            const proc = processes.find((p) => p.name.toLowerCase() === exeName.toLowerCase());
+            const proc = snapshot.procByName.get(exeName.toLowerCase());
             if (proc) {
               detectedPid = proc.pid;
               break;
@@ -330,27 +552,30 @@ export class GameDetector extends EventEmitter {
           }
         }
 
-        // 3. Fuzzy process name match
+        // 3. Fuzzy process name match (O(1) installDir check + pre-filtered candidate processes)
         if (detectedPid === undefined) {
-          detectedPid = this.fuzzyMatchPid(game, processes);
+          detectedPid = this.fuzzyMatchPid(game, snapshot);
         }
 
         // If matched a launcher process, check for a better renderer PID
         // (e.g. SB.exe launches SB-Win64-Shipping.exe which does actual rendering)
         if (detectedPid !== undefined) {
-          const rendererPid = this.findRendererProcess(game, processes, detectedPid);
+          const rendererPid = this.findRendererProcess(game, snapshot, detectedPid);
           if (rendererPid !== undefined) detectedPid = rendererPid;
-        } else {
+        } else if (snapshot.rendererProcs.length > 0) {
           // Check for Unreal Engine renderer even if launcher is no longer running
-          const rendererPid = this.findRendererProcess(game, processes, 0);
+          const rendererPid = this.findRendererProcess(game, snapshot, 0);
           if (rendererPid !== undefined) detectedPid = rendererPid;
         }
 
         if (detectedPid !== undefined) {
-          // Skip if the detected process is a known non-game (e.g. wallpaper engine)
-          const proc = processes.find((p) => p.pid === detectedPid);
-          if (proc && (NON_GAME_PROCESSES.has(proc.name.toLowerCase()) || NON_GAME_PROCESSES.has(proc.name.toLowerCase() + '.exe'))) {
-            continue;
+          // Skip if the detected process is a known non-game (e.g. wallpaper engine, browser, launcher)
+          const proc = snapshot.procByPid.get(detectedPid);
+          if (proc) {
+            const pLower = proc.name.toLowerCase();
+            if (HEURISTIC_EXCLUDED_PROCESSES.has(pLower) || HEURISTIC_EXCLUDED_PROCESSES.has(pLower + '.exe')) {
+              continue;
+            }
           }
           currentlyRunning.add(game.id);
           const existing = this.runningGames.get(game.id);
@@ -376,75 +601,80 @@ export class GameDetector extends EventEmitter {
               }
             });
             this.trackedPids.add(detectedPid);
-            this.startProcessCheck(); this.startDeadCheck();
+            this.startProcessCheck();
             this.emit('game:started', entry);
           } else if (existing.pid !== detectedPid) {
-            // PID changed (e.g. launcher → game process) — update tracking
+            // PID detected or transitioned (e.g. protocol launch or launcher → game process)
             const oldPid = existing.pid;
             existing.pid = detectedPid;
             if (oldPid) { this.trackedPids.delete(oldPid); }
             this.trackedPids.add(detectedPid);
-            // FPS capture handled by fps-capture plugin via eventBus
+            this.startProcessCheck();
+            this.emit('game:updated', existing);
           }
         }
       }
 
-      // 4. Check known popular game executable signatures for unindexed games
-      const claimedPids = new Set<number>();
-      for (const entry of this.runningGames.values()) {
-        if (entry.pid) claimedPids.add(entry.pid);
-      }
+      // 4. Check known popular game executable signatures for unindexed games (if allowed by settings)
+      const settings = getSettings();
+      if (!settings.onlyTrackScannedGames) {
+        const claimedPids = new Set<number>();
+        for (const entry of this.runningGames.values()) {
+          if (entry.pid) claimedPids.add(entry.pid);
+        }
 
-      for (const proc of processes) {
-        if (claimedPids.has(proc.pid)) continue;
-        const lower = proc.name.toLowerCase();
-        if (NON_GAME_PROCESSES.has(lower) || NON_GAME_PROCESSES.has(lower + '.exe')) continue;
-        const knownTitle = KNOWN_GAME_SIGNATURES[lower] || KNOWN_GAME_SIGNATURES[lower + '.exe'];
-        if (knownTitle) {
-          const gameId = knownTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-          if (
-            !currentlyRunning.has(gameId) &&
-            !this.library.some((g) => g.id === gameId || normalizeTitle(g.title) === normalizeTitle(knownTitle))
-          ) {
-            currentlyRunning.add(gameId);
-            claimedPids.add(proc.pid);
-            const existing = this.runningGames.get(gameId);
-            if (!existing) {
-              const hostMatch = getCachedHostNodeAndHardware();
-              const synthGame: LocalGame = {
-                id: gameId,
-                title: knownTitle,
-                platform: 'pc',
-                exePath: '',
-                installDir: '',
-              };
-              const entry: RunningGame = {
-                game: synthGame,
-                startTime: Date.now(),
-                launchedByOtix: false,
-                pid: proc.pid,
-                node: hostMatch.node,
-                hardware: hostMatch.hardware,
-                shareEligible: hostMatch.shareEligible,
-              };
-              this.runningGames.set(gameId, entry);
-              void getHostNodeAndHardware().then((fresh) => {
-                const current = this.runningGames.get(gameId);
-                if (current) {
-                  current.node = fresh.node;
-                  current.hardware = fresh.hardware;
-                  current.shareEligible = fresh.shareEligible;
-                }
-              });
-              this.trackedPids.add(proc.pid);
-              this.startProcessCheck();
-              this.startDeadCheck();
-              this.emit('game:started', entry);
-            } else if (existing.pid !== proc.pid) {
-              const oldPid = existing.pid;
-              existing.pid = proc.pid;
-              if (oldPid) { this.trackedPids.delete(oldPid); }
-              this.trackedPids.add(proc.pid);
+        for (const proc of processes) {
+          if (claimedPids.has(proc.pid)) continue;
+          const lower = proc.name.toLowerCase();
+          if (HEURISTIC_EXCLUDED_PROCESSES.has(lower) || HEURISTIC_EXCLUDED_PROCESSES.has(lower + '.exe')) continue;
+          const knownTitle = KNOWN_GAME_SIGNATURES[lower] || KNOWN_GAME_SIGNATURES[lower + '.exe'];
+          if (knownTitle) {
+            const gameId = knownTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+            const normKnown = normalizeTitle(knownTitle);
+            if (
+              !currentlyRunning.has(gameId) &&
+              !this.libraryIds.has(gameId) &&
+              !this.libraryNormalizedTitles.has(normKnown)
+            ) {
+              currentlyRunning.add(gameId);
+              claimedPids.add(proc.pid);
+              const existing = this.runningGames.get(gameId);
+              if (!existing) {
+                const hostMatch = getCachedHostNodeAndHardware();
+                const synthGame: LocalGame = {
+                  id: gameId,
+                  title: knownTitle,
+                  platform: 'pc',
+                  exePath: '',
+                  installDir: '',
+                };
+                const entry: RunningGame = {
+                  game: synthGame,
+                  startTime: Date.now(),
+                  launchedByOtix: false,
+                  pid: proc.pid,
+                  node: hostMatch.node,
+                  hardware: hostMatch.hardware,
+                  shareEligible: hostMatch.shareEligible,
+                };
+                this.runningGames.set(gameId, entry);
+                void getHostNodeAndHardware().then((fresh) => {
+                  const current = this.runningGames.get(gameId);
+                  if (current) {
+                    current.node = fresh.node;
+                    current.hardware = fresh.hardware;
+                    current.shareEligible = fresh.shareEligible;
+                  }
+                });
+                this.trackedPids.add(proc.pid);
+                this.startProcessCheck();
+                this.emit('game:started', entry);
+              } else if (existing.pid !== proc.pid) {
+                const oldPid = existing.pid;
+                existing.pid = proc.pid;
+                if (oldPid) { this.trackedPids.delete(oldPid); }
+                this.trackedPids.add(proc.pid);
+              }
             }
           }
         }
@@ -469,6 +699,8 @@ export class GameDetector extends EventEmitter {
       }
     } catch (err) {
       console.error('[GameDetector] Process scan failed:', err);
+    } finally {
+      this.isScanning = false;
     }
 
     return this.getRunningGames();
@@ -489,37 +721,37 @@ export class GameDetector extends EventEmitter {
     }
   }
 
-  /** Every 2s: if a tracked game's PID is dead, end the session. */
+  /** Consolidated dead check & process status */
   private startDeadCheck() {
-    if (this.deadCheckTimer) return;
-    this.deadCheckTimer = setInterval(() => {
-      for (const [id, entry] of this.runningGames) {
-        if (!entry.pid) continue;
-        try {
-          process.kill(entry.pid, 0);
-        } catch {
-          this.endSession(entry);
-          this.runningGames.delete(id);
-        }
-      }
-      if (this.runningGames.size === 0 && this.deadCheckTimer) {
-        clearInterval(this.deadCheckTimer);
-        this.deadCheckTimer = null;
-      }
-    }, 2000);
+    this.startProcessCheck();
   }
 
   private stopDeadCheck() {
-    if (this.deadCheckTimer) {
-      clearInterval(this.deadCheckTimer);
-      this.deadCheckTimer = null;
+    this.stopProcessCheck();
+  }
+
+  private scheduleDiscoveryScans() {
+    this.clearDiscoveryScans();
+    const intervals = [1000, 2500, 5000, 10000];
+    for (const delay of intervals) {
+      const timer = setTimeout(() => {
+        void this.scanRunningProcesses();
+      }, delay);
+      this.discoveryTimers.push(timer);
     }
   }
 
+  private clearDiscoveryScans() {
+    for (const t of this.discoveryTimers) clearTimeout(t);
+    this.discoveryTimers = [];
+  }
+
   stopAll() {
+    this.isScanning = false;
     this.stopPeriodicScan();
     this.stopProcessCheck();
     this.stopDeadCheck();
+    this.clearDiscoveryScans();
     for (const entry of this.runningGames.values()) {
       this.endSession(entry);
     }
@@ -535,6 +767,26 @@ export class GameDetector extends EventEmitter {
         getWindowTitles(),
       ]);
 
+      const windowTitleByPid = new Map<number, string>();
+      const windowTitleByName = new Map<string, string>();
+
+      for (const [key, title] of windowTitles) {
+        if (!title) continue;
+        const [procName, pidStr] = key.split('|');
+        const keyPid = parseInt(pidStr, 10);
+        if (!isNaN(keyPid)) {
+          windowTitleByPid.set(keyPid, title);
+        }
+        const pLower = procName.toLowerCase();
+        if (!windowTitleByName.has(pLower)) {
+          windowTitleByName.set(pLower, title);
+        }
+        const pBase = pLower.replace(/\.exe$/i, '');
+        if (!windowTitleByName.has(pBase)) {
+          windowTitleByName.set(pBase, title);
+        }
+      }
+
       return processes
         .filter((p) => {
           const name = p.name.toLowerCase();
@@ -543,13 +795,14 @@ export class GameDetector extends EventEmitter {
           return true;
         })
         .map((p) => {
-          let windowTitle: string | null = null;
-          for (const [key, title] of windowTitles) {
-            if (key.startsWith(p.name.toLowerCase() + '|')) {
-              windowTitle = title;
-              break;
-            }
-          }
+          const pNameLower = p.name.toLowerCase();
+          const pBase = pNameLower.replace(/\.exe$/i, '');
+          const windowTitle =
+            windowTitleByPid.get(p.pid) ??
+            windowTitleByName.get(pNameLower) ??
+            windowTitleByName.get(pBase) ??
+            null;
+
           return {
             name: p.name,
             pid: p.pid,
@@ -609,16 +862,131 @@ export class GameDetector extends EventEmitter {
     }
   }
 
-  private checkMappings(processes: { name: string; pid: number }[], currentlyRunning: Set<string>) {
+  private buildProcessSnapshot(
+    processes: { name: string; pid: number }[],
+    windowTitles: Map<string, string>,
+  ): ProcessSnapshot {
+    const procByName = new Map<string, { name: string; pid: number }>();
+    const procByPid = new Map<number, { name: string; pid: number }>();
+    const procNamesList: string[] = [];
+    const candidateProcs: CandidateProc[] = [];
+    const rendererProcs: RendererProc[] = [];
+
+    for (const proc of processes) {
+      const lower = proc.name.toLowerCase();
+      procNamesList.push(lower);
+
+      if (!procByName.has(lower)) {
+        procByName.set(lower, proc);
+      }
+      const base = lower.replace(/\.exe$/i, '');
+      if (!procByName.has(base)) {
+        procByName.set(base, proc);
+      }
+      const withExe = base + '.exe';
+      if (!procByName.has(withExe)) {
+        procByName.set(withExe, proc);
+      }
+
+      if (!procByPid.has(proc.pid)) {
+        procByPid.set(proc.pid, proc);
+      }
+
+      if (HEURISTIC_EXCLUDED_PROCESSES.has(lower) || HEURISTIC_EXCLUDED_PROCESSES.has(withExe)) {
+        continue;
+      }
+
+      const words = base.split(/[^a-z0-9_]+/i).filter((w) => w.length > 2);
+      candidateProcs.push({
+        pid: proc.pid,
+        nameLower: lower,
+        baseLower: base,
+        hasUnderscore: base.includes('_'),
+        wordsSet: new Set(words),
+      });
+
+      if (/-win64-shipping$/.test(base) || /-shipping$/.test(base)) {
+        const pnNoSuffix = base.replace(/-(win64-)?shipping$/i, '').toLowerCase();
+        if (pnNoSuffix) {
+          rendererProcs.push({
+            pid: proc.pid,
+            pn: base,
+            pnNoSuffix,
+          });
+        }
+      }
+    }
+
+    const windowEntries: WindowEntry[] = [];
+    if (windowTitles.size > 0) {
+      for (const [procKey, winTitle] of windowTitles) {
+        if (!winTitle) continue;
+        const [procName, pidStr] = procKey.split('|');
+        const keyPid = parseInt(pidStr, 10);
+        const pLower = procName.toLowerCase();
+        if (HEURISTIC_EXCLUDED_PROCESSES.has(pLower) || HEURISTIC_EXCLUDED_PROCESSES.has(pLower + '.exe')) {
+          continue;
+        }
+
+        let pid: number | undefined;
+        if (!isNaN(keyPid) && procByPid.has(keyPid)) {
+          pid = keyPid;
+        } else {
+          const proc = procByName.get(pLower) || procByName.get(pLower + '.exe');
+          if (proc) {
+            pid = proc.pid;
+          } else if (!isNaN(keyPid)) {
+            pid = keyPid;
+          }
+        }
+
+        if (pid === undefined) continue;
+
+        const winLower = winTitle.toLowerCase();
+        const words = winLower.split(/[^a-z0-9_]+/i).filter((w) => w.length > 2);
+        windowEntries.push({
+          winTitle,
+          winLower,
+          pid,
+          hasUnderscore: winLower.includes('_'),
+          wordsSet: new Set(words),
+        });
+      }
+    }
+
+    return {
+      processes,
+      procByName,
+      procByPid,
+      procNamesList,
+      candidateProcs,
+      rendererProcs,
+      windowEntries,
+    };
+  }
+
+  private checkMappings(
+    snapshotOrProcesses: ProcessSnapshot | { name: string; pid: number }[],
+    currentlyRunning: Set<string>,
+  ) {
+    const isSnapshot = 'procByName' in snapshotOrProcesses;
+    const procByName = isSnapshot
+      ? (snapshotOrProcesses as ProcessSnapshot).procByName
+      : null;
+    const processes = isSnapshot
+      ? (snapshotOrProcesses as ProcessSnapshot).processes
+      : (snapshotOrProcesses as { name: string; pid: number }[]);
+
     for (const mapping of this.mappings) {
-      const proc = processes.find(
-        (p) => p.name.toLowerCase() === mapping.processName.toLowerCase(),
-      );
+      const pNameLower = mapping.processName.toLowerCase();
+      const proc = procByName
+        ? procByName.get(pNameLower)
+        : processes.find((p) => p.name.toLowerCase() === pNameLower);
       if (!proc) continue;
 
       currentlyRunning.add(mapping.gameId);
       if (!this.runningGames.has(mapping.gameId)) {
-        const game = this.library.find((g) => g.id === mapping.gameId);
+        const game = this.libraryById.get(mapping.gameId) || this.library.find((g) => g.id === mapping.gameId);
         if (game) {
           const hostMatch = getCachedHostNodeAndHardware();
           const entry: RunningGame = {
@@ -640,7 +1008,7 @@ export class GameDetector extends EventEmitter {
             }
           });
           this.trackedPids.add(proc.pid);
-          this.startProcessCheck(); this.startDeadCheck();
+          this.startProcessCheck();
           // FPS capture handled by fps-capture plugin via eventBus
           this.emit('game:started', entry);
         }
@@ -653,41 +1021,62 @@ export class GameDetector extends EventEmitter {
   // Returns the PID of the matched process, or undefined if no match.
   private matchWindowTitle(
     game: LocalGame,
-    windowTitles: Map<string, string>,
-    processes: { name: string; pid: number }[],
+    snapshotOrWindowTitles: ProcessSnapshot | Map<string, string>,
+    processes?: { name: string; pid: number }[],
   ): number | undefined {
+    let snapshot: ProcessSnapshot;
+    if ('windowEntries' in snapshotOrWindowTitles) {
+      snapshot = snapshotOrWindowTitles as ProcessSnapshot;
+    } else {
+      snapshot = this.buildProcessSnapshot(processes ?? [], snapshotOrWindowTitles as Map<string, string>);
+    }
+
+    if (snapshot.windowEntries.length === 0) {
+      return undefined;
+    }
+
     const titleLower = game.title.toLowerCase();
     const normTitle = normalizeTitle(game.title);
     const titleWords = normTitle.split(/\s+/).filter((w) => w.length > 2);
 
-    for (const [procKey, winTitle] of windowTitles) {
-      const winLower = winTitle.toLowerCase();
-
+    for (const entry of snapshot.windowEntries) {
       let matched = false;
 
       // Direct title match
-      if (winLower.includes(titleLower)) matched = true;
-      else if (titleLower.includes(winLower) && winLower.length > 5) matched = true;
+      if (entry.winLower.includes(titleLower)) matched = true;
+      else if (titleLower.includes(entry.winLower) && entry.winLower.length > 5) matched = true;
       // Normalized title match
-      else if (winLower.includes(normTitle)) matched = true;
-      else if (normTitle.length > 5 && normTitle.includes(winLower)) matched = true;
+      else if (entry.winLower.includes(normTitle)) matched = true;
+      else if (normTitle.length > 5 && normTitle.includes(entry.winLower)) matched = true;
       // Word match (whole-word boundaries to avoid substring false positives)
       else if (titleWords.length >= 2) {
-        const matchCount = titleWords.filter((w) => {
-          const re = new RegExp('\\b' + w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'i');
-          return re.test(winLower);
-        }).length;
-        matched = matchCount >= Math.min(titleWords.length, 2);
+        const target = Math.min(titleWords.length, 2);
+        let matchCount = 0;
+        for (const w of titleWords) {
+          if (!entry.winLower.includes(w)) continue;
+          if (!entry.hasUnderscore && entry.wordsSet.has(w)) {
+            matchCount++;
+          } else if (getWordRegex(w).test(entry.winLower)) {
+            matchCount++;
+          }
+          if (matchCount >= target) {
+            matched = true;
+            break;
+          }
+        }
       } else if (titleWords.length === 1) {
-        const re = new RegExp('\\b' + titleWords[0].replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'i');
-        matched = re.test(winLower);
+        const w = titleWords[0];
+        if (entry.winLower.includes(w)) {
+          if (!entry.hasUnderscore && entry.wordsSet.has(w)) {
+            matched = true;
+          } else if (getWordRegex(w).test(entry.winLower)) {
+            matched = true;
+          }
+        }
       }
 
       if (matched) {
-        // Extract process name from key (format: "processname|pid")
-        const procName = procKey.split('|')[0];
-        const proc = processes.find((p) => p.name.toLowerCase() === procName.toLowerCase());
-        return proc?.pid;
+        return entry.pid;
       }
     }
 
@@ -697,44 +1086,74 @@ export class GameDetector extends EventEmitter {
   // Returns PID of matched process, or undefined.
   private fuzzyMatchPid(
     game: LocalGame,
-    processes: { name: string; pid: number }[],
+    snapshotOrProcesses: ProcessSnapshot | { name: string; pid: number }[],
   ): number | undefined {
-    const norm = normalizeTitle(game.title);
-    const titleWords = norm.split(/\s+/).filter((w) => w.length > 2);
-    const candidates = titleToExeCandidates(game.title);
+    let snapshot: ProcessSnapshot;
+    if ('candidateProcs' in snapshotOrProcesses) {
+      snapshot = snapshotOrProcesses as ProcessSnapshot;
+    } else {
+      snapshot = this.buildProcessSnapshot(snapshotOrProcesses as { name: string; pid: number }[], new Map());
+    }
 
-    // Also check install directory basename
+    // 1. Check install directory basename against procByName in O(1)
     if (game.installDir) {
       const dirName = path.basename(game.installDir).toLowerCase().replace(/[^a-z0-9]/g, '');
       if (dirName.length > 3) {
-        candidates.push(dirName + '.exe');
+        const proc = snapshot.procByName.get(dirName + '.exe') || snapshot.procByName.get(dirName);
+        if (proc) {
+          const pLower = proc.name.toLowerCase();
+          if (!HEURISTIC_EXCLUDED_PROCESSES.has(pLower) && !HEURISTIC_EXCLUDED_PROCESSES.has(pLower + '.exe')) {
+            return proc.pid;
+          }
+        }
       }
     }
 
-    for (const proc of processes) {
-      const procName = proc.name.toLowerCase();
-      const procBase = procName.replace(/\.exe$/i, '').toLowerCase();
+    if (snapshot.candidateProcs.length === 0) {
+      return undefined;
+    }
 
-      // Candidate match
-      if (candidates.some((c) => c.toLowerCase() === procName)) return proc.pid;
+    const norm = normalizeTitle(game.title);
+    const normNoSpaces = norm.replace(/\s/g, '');
+    const titleWords = norm.split(/\s+/).filter((w) => w.length > 2);
+    const checkSubstring = normNoSpaces.length > 4;
+    const checkWords = titleWords.length > 0;
+    const threshold = titleWords.length <= 2 ? 1 : Math.min(2, titleWords.length);
 
+    if (!checkSubstring && !checkWords) {
+      return undefined;
+    }
+
+    for (const proc of snapshot.candidateProcs) {
       // Normalized title as substring
-      const normNoSpaces = norm.replace(/\s/g, '');
-      if (normNoSpaces.length > 4 && procBase.includes(normNoSpaces)) return proc.pid;
+      if (checkSubstring && proc.baseLower.includes(normNoSpaces)) {
+        return proc.pid;
+      }
 
-      // Word match with whole-word boundaries (avoid substring false positives)
-      const matchCount = titleWords.filter((w) => {
-        const re = new RegExp('\\b' + w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'i');
-        return re.test(procBase);
-      }).length;
-      const threshold = titleWords.length <= 2 ? 1 : Math.min(2, titleWords.length);
-      if (titleWords.length > 0 && matchCount >= threshold) return proc.pid;
+      // Word match with whole-word boundaries
+      if (checkWords) {
+        let matchCount = 0;
+        for (const w of titleWords) {
+          if (!proc.baseLower.includes(w)) continue;
+          if (!proc.hasUnderscore && proc.wordsSet.has(w)) {
+            matchCount++;
+          } else if (getWordRegex(w).test(proc.baseLower)) {
+            matchCount++;
+          }
+          if (matchCount >= threshold) {
+            return proc.pid;
+          }
+        }
+      }
     }
 
     return undefined;
   }
 
   private getExeNames(game: LocalGame): string[] {
+    const cached = this.exeNamesCache.get(game);
+    if (cached) return cached;
+
     const names: string[] = [];
     if (game.exePath && !game.exePath.startsWith('steam://')) {
       names.push(path.basename(game.exePath));
@@ -743,6 +1162,8 @@ export class GameDetector extends EventEmitter {
       names.push(path.basename(game.localExePath));
     }
     names.push(...titleToExeCandidates(game.title));
+
+    this.exeNamesCache.set(game, names);
     return names;
   }
 
@@ -753,31 +1174,36 @@ export class GameDetector extends EventEmitter {
    */
   private findRendererProcess(
     game: LocalGame,
-    processes: { name: string; pid: number }[],
-    _launcherPid: number,
+    snapshotOrProcesses: ProcessSnapshot | { name: string; pid: number }[],
+    _launcherPid?: number,
   ): number | undefined {
+    let snapshot: ProcessSnapshot;
+    if ('rendererProcs' in snapshotOrProcesses) {
+      snapshot = snapshotOrProcesses as ProcessSnapshot;
+    } else {
+      snapshot = this.buildProcessSnapshot(snapshotOrProcesses as { name: string; pid: number }[], new Map());
+    }
+
+    if (snapshot.rendererProcs.length === 0) {
+      return undefined;
+    }
+
     const norm = normalizeTitle(game.title);
     const normNoSpaces = norm.replace(/\s/g, '').toLowerCase();
     const nameNoSpaces = game.title.toLowerCase().replace(/[^a-z0-9]/g, '');
+    const exeNames = this.getExeNames(game);
 
-    for (const proc of processes) {
-      const pn = proc.name.toLowerCase().replace(/\.exe$/i, '');
-
-      // UE4/5 renderer pattern: *-Win64-Shipping, *-Shipping
-      const isRenderer = /-win64-shipping$/.test(pn) || /-shipping$/.test(pn);
-      if (!isRenderer) continue;
-
-      // Check if renderer name contains the game title (normalized)
-      // e.g. "SB-Win64-Shipping" contains "SB"
-      const pnNoSuffix = pn.replace(/-(win64-)?shipping$/i, '').toLowerCase();
-      if (!pnNoSuffix) continue;
-
-      // Direct match: renderer name contains game title
-      if (pn.includes(nameNoSpaces) || pn.includes(normNoSpaces)) return proc.pid;
+    for (const rProc of snapshot.rendererProcs) {
+      const pn = rProc.pn;
+      // Direct match: renderer name contains game title (minimum 3 chars to prevent false positives)
+      if (nameNoSpaces.length >= 3 && pn.includes(nameNoSpaces)) return rProc.pid;
+      if (normNoSpaces.length >= 3 && pn.includes(normNoSpaces)) return rProc.pid;
 
       // Exe name match: renderer matches one of the game's exe patterns
-      const exeNames = this.getExeNames(game);
-      if (exeNames.some((en) => pn.includes(en.replace(/\.exe$/i, '').toLowerCase()))) return proc.pid;
+      if (exeNames.some((en) => {
+        const target = en.replace(/\.exe$/i, '').toLowerCase();
+        return target.length >= 3 && pn.includes(target);
+      })) return rProc.pid;
     }
 
     return undefined;

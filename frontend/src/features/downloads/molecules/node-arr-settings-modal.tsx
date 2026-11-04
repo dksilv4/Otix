@@ -120,15 +120,18 @@ const ArrForm = ({
     );
   }
 
-  const isConfigured = Boolean(selected?.host && selected?.api_key);
+  const isConfigured = Boolean(
+    selected?.host &&
+      (selected?.api_key || selected?.apiKey || selected?.hasApiKey || selected?.has_api_key)
+  );
 
   useResetConnectionTest(
     {
       host: selected?.host || '',
       port: Number(selected?.port || 0),
-      apiKey: selected?.api_key || '',
-      useSsl: Boolean(selected?.use_ssl),
-      urlBase: selected?.url_base || '',
+      apiKey: selected?.api_key || selected?.apiKey || '',
+      useSsl: Boolean(selected?.use_ssl ?? selected?.useSsl),
+      urlBase: selected?.url_base || selected?.urlBase || '',
     },
     () => setTestResult(null),
   );
@@ -136,17 +139,26 @@ const ArrForm = ({
   const handleTest = async () => {
     setTestResult(null);
     try {
+      const apiKeyVal = (selected.api_key || selected.apiKey || '').trim();
       const res = await testMutation.mutateAsync({
         host: selected.host.trim(),
         port: Number(selected.port),
-        api_key: (selected.api_key || '').trim(),
-        use_ssl: Boolean(selected.use_ssl),
-        url_base: (selected.url_base || '').trim(),
+        api_key: apiKeyVal,
+        apiKey: apiKeyVal,
+        use_ssl: Boolean(selected.use_ssl ?? selected.useSsl),
+        useSsl: Boolean(selected.use_ssl ?? selected.useSsl),
+        url_base: (selected.url_base || selected.urlBase || '').trim(),
+        urlBase: (selected.url_base || selected.urlBase || '').trim(),
         instance_id: selected.id,
+        instanceId: selected.id,
       });
       setTestResult(res);
       if (res.ok) {
         toast({ title: 'Connected', description: res.message || 'Connection successful.', variant: 'success' });
+        const detectedBase = res.detectedUrlBase || res.detected_url_base || res.urlBase || res.url_base;
+        if (detectedBase && !(selected.url_base || selected.urlBase)) {
+          updateSelected({ url_base: detectedBase, urlBase: detectedBase });
+        }
         await Promise.all([refetchProfiles(), refetchFolders()]);
       } else {
         toast({ title: 'Connection failed', description: res.message || 'Could not connect.', variant: 'error' });
@@ -162,27 +174,40 @@ const ArrForm = ({
     e.preventDefault();
     try {
       const primary = instances.find((item) => item.enabled) || instances[0];
+      const primaryKey = (primary.api_key || primary.apiKey || '').trim() || undefined;
       const payload: any = {
         enabled: true,
         host: primary.host.trim(),
         port: Number(primary.port),
-        api_key: primary.api_key || undefined,
-        use_ssl: Boolean(primary.use_ssl),
-        url_base: primary.url_base || '',
-        quality_profile_id: primary.quality_profile_id,
-        root_folder_path: (primary.root_folder_path || '').trim(),
+        api_key: primaryKey,
+        apiKey: primaryKey,
+        use_ssl: Boolean(primary.use_ssl ?? primary.useSsl),
+        useSsl: Boolean(primary.use_ssl ?? primary.useSsl),
+        url_base: primary.url_base || primary.urlBase || '',
+        urlBase: primary.url_base || primary.urlBase || '',
+        quality_profile_id: primary.quality_profile_id ?? primary.qualityProfileId,
+        qualityProfileId: primary.quality_profile_id ?? primary.qualityProfileId,
+        root_folder_path: (primary.root_folder_path || primary.rootFolderPath || '').trim(),
+        rootFolderPath: (primary.root_folder_path || primary.rootFolderPath || '').trim(),
+        auto_request_watchlist: Boolean(primary.autoRequestWatchlist ?? primary.auto_request_watchlist),
+        autoRequestWatchlist: Boolean(primary.autoRequestWatchlist ?? primary.auto_request_watchlist),
         instances: instances.map((item) => ({
           ...item,
           host: item.host.trim(),
           port: Number(item.port),
-          api_key: item.api_key || '',
-          url_base: item.url_base || '',
-          root_folder_path: (item.root_folder_path || '').trim(),
+          api_key: item.api_key || item.apiKey || '',
+          apiKey: item.api_key || item.apiKey || '',
+          url_base: item.url_base || item.urlBase || '',
+          urlBase: item.url_base || item.urlBase || '',
+          root_folder_path: (item.root_folder_path || item.rootFolderPath || '').trim(),
+          rootFolderPath: (item.root_folder_path || item.rootFolderPath || '').trim(),
+          auto_request_watchlist: Boolean(item.autoRequestWatchlist ?? item.auto_request_watchlist),
+          autoRequestWatchlist: Boolean(item.autoRequestWatchlist ?? item.auto_request_watchlist),
         })),
       };
       if (!isRadarr) {
-        payload.series_type = primary.series_type;
-        payload.season_folder = primary.season_folder;
+        payload.series_type = primary.series_type || primary.seriesType || 'standard';
+        payload.season_folder = primary.season_folder ?? primary.seasonFolder ?? true;
       }
       await saveMutation.mutateAsync(payload);
       toast({ title: 'Settings saved', description: `Updated on ${targetNodeName}.`, variant: 'success' });
@@ -239,14 +264,21 @@ const ArrForm = ({
           key={selected.id}
           host={selected.host}
           port={selected.port}
-          apiKey={selected.api_key || ''}
-          useSsl={Boolean(selected.use_ssl)}
-          urlBase={selected.url_base || ''}
+          apiKey={selected.api_key || selected.apiKey || ''}
+          useSsl={Boolean(selected.use_ssl ?? selected.useSsl)}
+          urlBase={selected.url_base || selected.urlBase || ''}
           onHostChange={(host) => updateSelected({ host })}
           onPortChange={(port) => updateSelected({ port })}
-          onApiKeyChange={(api_key) => updateSelected({ api_key })}
-          onUseSslChange={(use_ssl) => updateSelected({ use_ssl })}
-          onUrlBaseChange={(url_base) => updateSelected({ url_base })}
+          onApiKeyChange={(apiKey) =>
+            updateSelected({
+              api_key: apiKey,
+              apiKey,
+              hasApiKey: Boolean(apiKey),
+              has_api_key: Boolean(apiKey),
+            })
+          }
+          onUseSslChange={(use_ssl) => updateSelected({ use_ssl, useSsl: use_ssl })}
+          onUrlBaseChange={(url_base) => updateSelected({ url_base, urlBase: url_base })}
           isConfigured={isConfigured}
           defaultPort={defaultPort}
           hostPlaceholder={`127.0.0.1 or ${appType}.local`}
@@ -288,6 +320,29 @@ const ArrForm = ({
             </>
           )}
         </ArrLibraryDefaults>
+      </IntegrationCardSection>
+
+      <IntegrationCardSection title="Automation">
+        <div className="space-y-1.5">
+          <div className="flex items-center">
+            <DkSwitch
+              id={`${appType}-auto-request-watchlist`}
+              checked={Boolean(selected.autoRequestWatchlist ?? selected.auto_request_watchlist)}
+              onCheckedChange={(val) =>
+                updateSelected({
+                  autoRequestWatchlist: val,
+                  auto_request_watchlist: val,
+                })
+              }
+              label="Automatically request media from the watchlist"
+            />
+          </div>
+          <p className="text-xs text-muted-foreground pl-14">
+            {isRadarr
+              ? 'Automatically request movies from your watchlist to download on this Radarr instance.'
+              : 'Automatically request TV series from your watchlist to download on this Sonarr instance.'}
+          </p>
+        </div>
       </IntegrationCardSection>
     </IntegrationModalForm>
   );

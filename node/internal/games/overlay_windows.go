@@ -175,11 +175,13 @@ type OverlayManager struct {
 	visible      bool
 	corner       string // "top-wide", "bottom-wide", "top-left", "top-right", "hidden"
 	monitor      string // "auto", "1", "2", "3", etc.
+	settings     OverlaySettings
 	gameTitle    string
 	playtimeSec  int
 	currentFps   float64
 	low1Fps      float64
 	avgFps       float64
+	permDenied   bool
 	lastX        int32
 	lastY        int32
 	lastW        int32
@@ -255,6 +257,16 @@ func wndProc(hwnd, msg, wParam, lParam uintptr) uintptr {
 		return ^uintptr(0) // HTTRANSPARENT = -1: clicks pass through cleanly to game
 
 	case wmHotKey:
+		if wParam >= 9 && wParam <= 11 {
+			fmt.Printf("[Overlay] Hotkey pressed (id=%v) -> Cycle active game\n", wParam)
+			if globalOverlayManager != nil && globalOverlayManager.tracker != nil {
+				next := globalOverlayManager.tracker.CycleActiveGame()
+				if next != nil {
+					fmt.Printf("[Overlay] Cycled active game to: %s (PID %d)\n", next.Title, next.PID)
+				}
+			}
+			return 0
+		}
 		fmt.Printf("[Overlay] Hotkey pressed (id=%v) -> Toggle\n", wParam)
 		if globalOverlayManager != nil {
 			globalOverlayManager.Toggle()
@@ -334,6 +346,7 @@ func NewOverlayManager(store *SessionStore, tracker *GameTracker, collector FpsC
 		collector: collector,
 		corner:    corner,
 		monitor:   mon,
+		settings:  settings,
 		visible:   false,
 		gameTitle: "Standby",
 		stopChan:  make(chan struct{}),
@@ -653,22 +666,28 @@ func (om *OverlayManager) runWin32Thread() {
 	// Register global hotkey: Ctrl + ` (VK_OEM_3 = 0xC0) (ID 1 - US layout)
 	hkRet1, _, hkErr1 := procRegisterHotKey.Call(hwnd, 1, uintptr(modControl), uintptr(0xC0))
 	// ID 2: Ctrl + ` on ISO/European/UK/PT key under Esc / left of 1 (VK_OEM_5 = 0xDC)
-	hkRet2, _, hkErr2 := procRegisterHotKey.Call(hwnd, 2, uintptr(modControl), uintptr(0xDC))
+	procRegisterHotKey.Call(hwnd, 2, uintptr(modControl), uintptr(0xDC))
 	// ID 3: Ctrl + ` on secondary layouts (VK_OEM_7 = 0xDE)
-	hkRet3, _, _ := procRegisterHotKey.Call(hwnd, 3, uintptr(modControl), uintptr(0xDE))
+	procRegisterHotKey.Call(hwnd, 3, uintptr(modControl), uintptr(0xDE))
 	// ID 4: Ctrl + Shift + ` (VK_OEM_3 = 0xC0)
 	procRegisterHotKey.Call(hwnd, 4, uintptr(modControl|modShift), uintptr(0xC0))
 	// ID 5: Ctrl + Shift + ` (VK_OEM_5 = 0xDC)
 	procRegisterHotKey.Call(hwnd, 5, uintptr(modControl|modShift), uintptr(0xDC))
 	// ID 6: Ctrl + Shift + O
-	hkRet6, _, _ := procRegisterHotKey.Call(hwnd, 6, uintptr(modControl|modShift), uintptr('O'))
+	procRegisterHotKey.Call(hwnd, 6, uintptr(modControl|modShift), uintptr('O'))
 	// ID 7: Alt + F12 (VK_F12 = 0x7B)
 	procRegisterHotKey.Call(hwnd, 7, uintptr(modAlt), uintptr(0x7B))
 	// ID 8: Ctrl + F11 (VK_F11 = 0x7A)
 	procRegisterHotKey.Call(hwnd, 8, uintptr(modControl), uintptr(0x7A))
+	// ID 9: Ctrl + Tab (VK_TAB = 0x09) - Cycle active game when multiple are running
+	hkRet9, _, _ := procRegisterHotKey.Call(hwnd, 9, uintptr(modControl), uintptr(0x09))
+	// ID 10: Ctrl + Shift + Tab - Cycle backward
+	hkRet10, _, _ := procRegisterHotKey.Call(hwnd, 10, uintptr(modControl|modShift), uintptr(0x09))
+	// ID 11: Ctrl + Alt + G ('G' = 0x47) - Alternative game cycle hotkey
+	hkRet11, _, _ := procRegisterHotKey.Call(hwnd, 11, uintptr(modControl|modAlt), uintptr('G'))
 
-	fmt.Printf("[Overlay] Hotkeys: Ctrl+` (0xC0) ret=%v (%v), Ctrl+` (0xDC) ret=%v (%v), Ctrl+` (0xDE) ret=%v, Ctrl+Shift+O ret=%v\n",
-		hkRet1, hkErr1, hkRet2, hkErr2, hkRet3, hkRet6)
+	fmt.Printf("[Overlay] Hotkeys: Ctrl+` ret=%v (%v), Cycle Ctrl+Tab ret=%v, Ctrl+Shift+Tab ret=%v, Ctrl+Alt+G ret=%v\n",
+		hkRet1, hkErr1, hkRet9, hkRet10, hkRet11)
 
 	// If overlay is enabled AND an active game is running, position as HWND_TOPMOST and show
 	om.mu.RLock()
@@ -705,7 +724,7 @@ func (om *OverlayManager) runWin32Thread() {
 	}
 	fmt.Printf("[Overlay] runWin32Thread unregistering hotkeys and exiting\n")
 
-	for id := uintptr(1); id <= 8; id++ {
+	for id := uintptr(1); id <= 11; id++ {
 		procUnregisterHotKey.Call(hwnd, id)
 	}
 	if hwnd != 0 {
@@ -901,6 +920,10 @@ func (om *OverlayManager) paint(hwnd uintptr) {
 	avg := om.avgFps
 	playtime := om.playtimeSec
 	gameTitle := om.gameTitle
+	showFps := om.settings.ShowFps
+	showPercentiles := om.settings.ShowPercentiles
+	showPlaytime := om.settings.ShowPlaytime
+	showTitle := om.settings.ShowTitle
 	om.mu.RUnlock()
 
 	// 1. Draw Background: Deep Obsidian Glass (#101115 / RGB: 16, 17, 21)
@@ -913,6 +936,11 @@ func (om *OverlayManager) paint(hwnd uintptr) {
 	procSetBkMode.Call(hdc, 1) // TRANSPARENT = 1
 
 	fontSegoe, _ := syscall.UTF16PtrFromString("Segoe UI")
+
+	var runningList []*RunningGame
+	if om.tracker != nil {
+		runningList = om.tracker.GetRunningGames()
+	}
 
 	if w > 400 {
 		// ================= MONITOR-WIDE BAR HUD (w = screen width, h = barHeight) =================
@@ -939,93 +967,133 @@ func (om *OverlayManager) paint(hwnd uintptr) {
 			uintptr(unsafe.Pointer(fontSegoe)),
 		)
 
-		// Left: Brand "OTIX"
-		procSelectObject.Call(hdc, hFontBrand)
-		procSetTextColor.Call(hdc, uintptr(0x00EF46D9)) // Crisp purple (BGR: 0x00EF46D9)
-		u16Brand, _ := syscall.UTF16FromString("OTIX")
-		rBrand := rect{20, 8, 65, h}
-		procDrawTextW.Call(hdc, uintptr(unsafe.Pointer(&u16Brand[0])), uintptr(len(u16Brand)-1), uintptr(unsafe.Pointer(&rBrand)), dtLeft|dtSingle)
+		// Left: Brand "OTIX" and Game Title
+		if showTitle {
+			procSelectObject.Call(hdc, hFontBrand)
+			procSetTextColor.Call(hdc, uintptr(0x00EF46D9)) // Crisp purple (BGR: 0x00EF46D9)
+			u16Brand, _ := syscall.UTF16FromString("OTIX")
+			rBrand := rect{20, 8, 65, h}
+			procDrawTextW.Call(hdc, uintptr(unsafe.Pointer(&u16Brand[0])), uintptr(len(u16Brand)-1), uintptr(unsafe.Pointer(&rBrand)), dtLeft|dtSingle)
 
-		// Divider "|"
-		procSelectObject.Call(hdc, hFontTiny)
-		procSetTextColor.Call(hdc, uintptr(0x00505050))
-		u16Div, _ := syscall.UTF16FromString("|")
-		rDiv := rect{66, 9, 80, h}
-		procDrawTextW.Call(hdc, uintptr(unsafe.Pointer(&u16Div[0])), uintptr(len(u16Div)-1), uintptr(unsafe.Pointer(&rDiv)), dtLeft|dtSingle)
+			// Divider "|"
+			procSelectObject.Call(hdc, hFontTiny)
+			procSetTextColor.Call(hdc, uintptr(0x00505050))
+			u16Div, _ := syscall.UTF16FromString("|")
+			rDiv := rect{66, 9, 80, h}
+			procDrawTextW.Call(hdc, uintptr(unsafe.Pointer(&u16Div[0])), uintptr(len(u16Div)-1), uintptr(unsafe.Pointer(&rDiv)), dtLeft|dtSingle)
 
-		// Game Title
-		titleText := gameTitle
-		if titleText == "" {
-			titleText = "Standby"
+			// Game Title
+			titleText := gameTitle
+			if titleText == "" {
+				titleText = "Standby"
+			}
+			if len(runningList) > 1 {
+				titleText = fmt.Sprintf("%s [1/%d]", titleText, len(runningList))
+			}
+			procSelectObject.Call(hdc, hFontText)
+			procSetTextColor.Call(hdc, uintptr(0x00E4E4E7))
+			u16Title, _ := syscall.UTF16FromString(titleText)
+			rTitle := rect{82, 8, 380, h}
+			procDrawTextW.Call(hdc, uintptr(unsafe.Pointer(&u16Title[0])), uintptr(len(u16Title)-1), uintptr(unsafe.Pointer(&rTitle)), dtLeft|dtSingle)
+
+			// If a 2nd game is running, show its badge/chip
+			if len(runningList) > 1 && runningList[1] != nil {
+				procSelectObject.Call(hdc, hFontTiny)
+				procSetTextColor.Call(hdc, uintptr(0x008E8E8E))
+				secondTitle := runningList[1].Title
+				if len(secondTitle) > 20 {
+					secondTitle = secondTitle[:18] + "…"
+				}
+				secStr := fmt.Sprintf("•  %s", secondTitle)
+				if runningList[1].FpsSnapshot != nil && runningList[1].FpsSnapshot.FPS > 0 {
+					secStr = fmt.Sprintf("•  %s (%d FPS)", secondTitle, int(math.Round(runningList[1].FpsSnapshot.FPS)))
+				}
+				u16Sec, _ := syscall.UTF16FromString(secStr)
+				rSec := rect{385, 9, 620, h}
+				procDrawTextW.Call(hdc, uintptr(unsafe.Pointer(&u16Sec[0])), uintptr(len(u16Sec)-1), uintptr(unsafe.Pointer(&rSec)), dtLeft|dtSingle)
+			}
 		}
-		procSelectObject.Call(hdc, hFontText)
-		procSetTextColor.Call(hdc, uintptr(0x00E4E4E7))
-		u16Title, _ := syscall.UTF16FromString(titleText)
-		rTitle := rect{82, 8, 450, h}
-		procDrawTextW.Call(hdc, uintptr(unsafe.Pointer(&u16Title[0])), uintptr(len(u16Title)-1), uintptr(unsafe.Pointer(&rTitle)), dtLeft|dtSingle)
 
 		// Right side stats:
 		marginRight := w - 24
 
-		// 1. Hotkey hint on far right: "[Ctrl+`] Toggle"
+		// 1. Hotkey hint on far right:
 		procSelectObject.Call(hdc, hFontTiny)
 		procSetTextColor.Call(hdc, uintptr(0x0071717A))
-		u16Hk, _ := syscall.UTF16FromString("[Ctrl+`] Toggle")
-		rHk := rect{marginRight - 120, 11, marginRight, h}
+		hkStr := "[Ctrl+`] Toggle"
+		if len(runningList) > 1 {
+			hkStr = "[Ctrl+Tab] Cycle  •  " + hkStr
+		}
+		u16Hk, _ := syscall.UTF16FromString(hkStr)
+		rHkWidth := int32(115)
+		if len(runningList) > 1 {
+			rHkWidth = 220
+		}
+		rHk := rect{marginRight - rHkWidth, 11, marginRight, h}
 		procDrawTextW.Call(hdc, uintptr(unsafe.Pointer(&u16Hk[0])), uintptr(len(u16Hk)-1), uintptr(unsafe.Pointer(&rHk)), dtLeft|dtSingle)
 
 		// 2. Playtime:
-		var playtimeStr string
-		if playtime > 0 {
-			hSec := playtime / 3600
-			mSec := (playtime % 3600) / 60
-			sSec := playtime % 60
-			playtimeStr = fmt.Sprintf("Time: %02d:%02d:%02d", hSec, mSec, sSec)
-		} else {
-			playtimeStr = "Time: --:--:--"
+		offsetRight := marginRight - rHkWidth - 15
+		if showPlaytime {
+			var playtimeStr string
+			if playtime > 0 {
+				hSec := playtime / 3600
+				mSec := (playtime % 3600) / 60
+				sSec := playtime % 60
+				playtimeStr = fmt.Sprintf("Time: %02d:%02d:%02d", hSec, mSec, sSec)
+			} else {
+				playtimeStr = "Time: --:--:--"
+			}
+			u16Time, _ := syscall.UTF16FromString(playtimeStr)
+			procSelectObject.Call(hdc, hFontText)
+			procSetTextColor.Call(hdc, uintptr(0x00A1A1AA))
+			rTime := rect{offsetRight - 120, 8, offsetRight, h}
+			procDrawTextW.Call(hdc, uintptr(unsafe.Pointer(&u16Time[0])), uintptr(len(u16Time)-1), uintptr(unsafe.Pointer(&rTime)), dtLeft|dtSingle)
+			offsetRight -= 135
 		}
-		u16Time, _ := syscall.UTF16FromString(playtimeStr)
-		procSelectObject.Call(hdc, hFontText)
-		procSetTextColor.Call(hdc, uintptr(0x00A1A1AA))
-		rTime := rect{marginRight - 265, 8, marginRight - 145, h}
-		procDrawTextW.Call(hdc, uintptr(unsafe.Pointer(&u16Time[0])), uintptr(len(u16Time)-1), uintptr(unsafe.Pointer(&rTime)), dtLeft|dtSingle)
 
 		// 3. 1% Low & Avg FPS
-		statsStr := fmt.Sprintf("1%%: %d   Avg: %d", int(math.Round(low1)), int(math.Round(avg)))
-		if low1 == 0 && avg == 0 {
-			statsStr = "1%: --   Avg: --"
+		if showPercentiles {
+			statsStr := fmt.Sprintf("1%%: %d   Avg: %d", int(math.Round(low1)), int(math.Round(avg)))
+			if low1 == 0 && avg == 0 {
+				statsStr = "1%: --   Avg: --"
+			}
+			u16Stats, _ := syscall.UTF16FromString(statsStr)
+			procSelectObject.Call(hdc, hFontText)
+			procSetTextColor.Call(hdc, uintptr(0x00D4D4D8))
+			rStats := rect{offsetRight - 155, 8, offsetRight, h}
+			procDrawTextW.Call(hdc, uintptr(unsafe.Pointer(&u16Stats[0])), uintptr(len(u16Stats)-1), uintptr(unsafe.Pointer(&rStats)), dtLeft|dtSingle)
+			offsetRight -= 170
 		}
-		u16Stats, _ := syscall.UTF16FromString(statsStr)
-		procSetTextColor.Call(hdc, uintptr(0x00D4D4D8))
-		rStats := rect{marginRight - 440, 8, marginRight - 275, h}
-		procDrawTextW.Call(hdc, uintptr(unsafe.Pointer(&u16Stats[0])), uintptr(len(u16Stats)-1), uintptr(unsafe.Pointer(&rStats)), dtLeft|dtSingle)
 
 		// 4. Large Live FPS
-		procSelectObject.Call(hdc, hFontFps)
-		var fpsColor uintptr
-		if fps >= 60 {
-			fpsColor = 0x0080DE4A // Crisp soft green (BGR)
-		} else if fps >= 35 {
-			fpsColor = 0x0047E0FD // Warm amber (BGR)
-		} else {
-			fpsColor = 0x007171F8 // Soft coral red (BGR)
-		}
-		procSetTextColor.Call(hdc, fpsColor)
+		if showFps {
+			procSelectObject.Call(hdc, hFontFps)
+			var fpsColor uintptr
+			if fps >= 60 {
+				fpsColor = 0x0080DE4A // Crisp soft green (BGR)
+			} else if fps >= 35 {
+				fpsColor = 0x0047E0FD // Warm amber (BGR)
+			} else {
+				fpsColor = 0x007171F8 // Soft coral red (BGR)
+			}
+			procSetTextColor.Call(hdc, fpsColor)
 
-		fpsStr := fmt.Sprintf("%d", int(math.Round(fps)))
-		if fps == 0 {
-			fpsStr = "--"
-		}
-		u16Fps, _ := syscall.UTF16FromString(fpsStr)
-		rFps := rect{marginRight - 530, 6, marginRight - 475, h}
-		procDrawTextW.Call(hdc, uintptr(unsafe.Pointer(&u16Fps[0])), uintptr(len(u16Fps)-1), uintptr(unsafe.Pointer(&rFps)), dtRight|dtSingle)
+			fpsStr := fmt.Sprintf("%d", int(math.Round(fps)))
+			if fps == 0 {
+				fpsStr = "--"
+			}
+			u16Fps, _ := syscall.UTF16FromString(fpsStr)
+			rFps := rect{offsetRight - 65, 6, offsetRight - 28, h}
+			procDrawTextW.Call(hdc, uintptr(unsafe.Pointer(&u16Fps[0])), uintptr(len(u16Fps)-1), uintptr(unsafe.Pointer(&rFps)), dtRight|dtSingle)
 
-		// FPS label next to number
-		procSelectObject.Call(hdc, hFontTiny)
-		procSetTextColor.Call(hdc, uintptr(0x0071717A))
-		u16FpsLbl, _ := syscall.UTF16FromString("FPS")
-		rFpsLbl := rect{marginRight - 470, 11, marginRight - 445, h}
-		procDrawTextW.Call(hdc, uintptr(unsafe.Pointer(&u16FpsLbl[0])), uintptr(len(u16FpsLbl)-1), uintptr(unsafe.Pointer(&rFpsLbl)), dtLeft|dtSingle)
+			// FPS label next to number
+			procSelectObject.Call(hdc, hFontTiny)
+			procSetTextColor.Call(hdc, uintptr(0x0071717A))
+			u16FpsLbl, _ := syscall.UTF16FromString("FPS")
+			rFpsLbl := rect{offsetRight - 25, 11, offsetRight, h}
+			procDrawTextW.Call(hdc, uintptr(unsafe.Pointer(&u16FpsLbl[0])), uintptr(len(u16FpsLbl)-1), uintptr(unsafe.Pointer(&rFpsLbl)), dtLeft|dtSingle)
+		}
 
 		procDeleteObject.Call(hFontBrand)
 		procDeleteObject.Call(hFontText)
@@ -1047,55 +1115,64 @@ func (om *OverlayManager) paint(hwnd uintptr) {
 			uintptr(unsafe.Pointer(fontSegoe)),
 		)
 
-		procSelectObject.Call(hdc, hFontBig)
-		var fpsColor uintptr
-		if fps >= 60 {
-			fpsColor = 0x00F5F5F5
-		} else if fps >= 35 {
-			fpsColor = 0x0047E0FD
-		} else {
-			fpsColor = 0x007171F8
-		}
-		procSetTextColor.Call(hdc, fpsColor)
+		if showFps {
+			procSelectObject.Call(hdc, hFontBig)
+			var fpsColor uintptr
+			if fps >= 60 {
+				fpsColor = 0x00F5F5F5
+			} else if fps >= 35 {
+				fpsColor = 0x0047E0FD
+			} else {
+				fpsColor = 0x007171F8
+			}
+			procSetTextColor.Call(hdc, fpsColor)
 
-		fpsStr := fmt.Sprintf("%d", int(math.Round(fps)))
-		if fps == 0 {
-			fpsStr = "--"
-		}
-		u16Fps, _ := syscall.UTF16FromString(fpsStr)
-		rFps := rect{12, 10, 85, 48}
-		procDrawTextW.Call(hdc, uintptr(unsafe.Pointer(&u16Fps[0])), uintptr(len(u16Fps)-1), uintptr(unsafe.Pointer(&rFps)), dtLeft|dtSingle)
+			fpsStr := fmt.Sprintf("%d", int(math.Round(fps)))
+			if fps == 0 {
+				fpsStr = "--"
+			}
+			u16Fps, _ := syscall.UTF16FromString(fpsStr)
+			rFps := rect{12, 10, 85, 48}
+			procDrawTextW.Call(hdc, uintptr(unsafe.Pointer(&u16Fps[0])), uintptr(len(u16Fps)-1), uintptr(unsafe.Pointer(&rFps)), dtLeft|dtSingle)
 
-		procSelectObject.Call(hdc, hFontTiny)
-		procSetTextColor.Call(hdc, uintptr(0x00666666))
-		u16FpsLbl, _ := syscall.UTF16FromString("FPS")
-		rFpsLbl := rect{74, 24, 108, 44}
-		procDrawTextW.Call(hdc, uintptr(unsafe.Pointer(&u16FpsLbl[0])), uintptr(len(u16FpsLbl)-1), uintptr(unsafe.Pointer(&rFpsLbl)), dtLeft|dtSingle)
-
-		procSelectObject.Call(hdc, hFontSmall)
-		procSetTextColor.Call(hdc, uintptr(0x00D0D0D0))
-		statsStr := fmt.Sprintf("1%%: %d   Avg: %d", int(math.Round(low1)), int(math.Round(avg)))
-		if low1 == 0 && avg == 0 {
-			statsStr = "1%: --   Avg: --"
+			procSelectObject.Call(hdc, hFontTiny)
+			procSetTextColor.Call(hdc, uintptr(0x00666666))
+			u16FpsLbl, _ := syscall.UTF16FromString("FPS")
+			rFpsLbl := rect{74, 24, 108, 44}
+			procDrawTextW.Call(hdc, uintptr(unsafe.Pointer(&u16FpsLbl[0])), uintptr(len(u16FpsLbl)-1), uintptr(unsafe.Pointer(&rFpsLbl)), dtLeft|dtSingle)
 		}
-		u16Stats, _ := syscall.UTF16FromString(statsStr)
-		rStats := rect{112, 12, overlayWidth - 10, 30}
-		procDrawTextW.Call(hdc, uintptr(unsafe.Pointer(&u16Stats[0])), uintptr(len(u16Stats)-1), uintptr(unsafe.Pointer(&rStats)), dtLeft|dtSingle)
 
-		var playtimeStr string
-		if playtime > 0 {
-			hSec := playtime / 3600
-			mSec := (playtime % 3600) / 60
-			sSec := playtime % 60
-			playtimeStr = fmt.Sprintf("Time: %02d:%02d:%02d", hSec, mSec, sSec)
-		} else {
-			playtimeStr = "Time: --:--:--"
+		if showPercentiles {
+			procSelectObject.Call(hdc, hFontSmall)
+			procSetTextColor.Call(hdc, uintptr(0x00D0D0D0))
+			statsStr := fmt.Sprintf("1%%: %d   Avg: %d", int(math.Round(low1)), int(math.Round(avg)))
+			if low1 == 0 && avg == 0 {
+				statsStr = "1%: --   Avg: --"
+			}
+			u16Stats, _ := syscall.UTF16FromString(statsStr)
+			rStats := rect{112, 12, overlayWidth - 10, 30}
+			procDrawTextW.Call(hdc, uintptr(unsafe.Pointer(&u16Stats[0])), uintptr(len(u16Stats)-1), uintptr(unsafe.Pointer(&rStats)), dtLeft|dtSingle)
 		}
-		u16Time, _ := syscall.UTF16FromString(playtimeStr)
-		rTime := rect{112, 34, overlayWidth - 10, 52}
-		procSelectObject.Call(hdc, hFontTiny)
-		procSetTextColor.Call(hdc, uintptr(0x008E8E8E))
-		procDrawTextW.Call(hdc, uintptr(unsafe.Pointer(&u16Time[0])), uintptr(len(u16Time)-1), uintptr(unsafe.Pointer(&rTime)), dtLeft|dtSingle)
+
+		if showPlaytime {
+			var playtimeStr string
+			if playtime > 0 {
+				hSec := playtime / 3600
+				mSec := (playtime % 3600) / 60
+				sSec := playtime % 60
+				playtimeStr = fmt.Sprintf("Time: %02d:%02d:%02d", hSec, mSec, sSec)
+			} else {
+				playtimeStr = "Time: --:--:--"
+			}
+			if len(runningList) > 1 {
+				playtimeStr += fmt.Sprintf(" [1/%d]", len(runningList))
+			}
+			u16Time, _ := syscall.UTF16FromString(playtimeStr)
+			rTime := rect{112, 34, overlayWidth - 10, 52}
+			procSelectObject.Call(hdc, hFontTiny)
+			procSetTextColor.Call(hdc, uintptr(0x008E8E8E))
+			procDrawTextW.Call(hdc, uintptr(unsafe.Pointer(&u16Time[0])), uintptr(len(u16Time)-1), uintptr(unsafe.Pointer(&rTime)), dtLeft|dtSingle)
+		}
 
 		procDeleteObject.Call(hFontBig)
 		procDeleteObject.Call(hFontSmall)
@@ -1158,16 +1235,22 @@ func (om *OverlayManager) ApplySettings(settings OverlaySettings) {
 	if settings.Monitor != "" {
 		om.monitor = settings.Monitor
 	}
+	if settings.Opacity <= 0 || settings.Opacity > 1.0 {
+		settings.Opacity = 0.92
+	}
+	om.settings = settings
 	hasActiveGame := om.tracker != nil && om.tracker.GetActiveGame() != nil
 	om.visible = settings.Enabled && hasActiveGame
 	vis := om.visible
 	corner := om.corner
 	hwnd := om.hwnd
+	alpha := uint8(math.Round(settings.Opacity * 255))
 	om.mu.Unlock()
 
-	fmt.Printf("[Overlay] ApplySettings: enabled=%v, hasActiveGame=%v, visible=%v, corner=%s, monitor=%s\n", settings.Enabled, hasActiveGame, vis, corner, settings.Monitor)
+	fmt.Printf("[Overlay] ApplySettings: enabled=%v, hasActiveGame=%v, visible=%v, corner=%s, monitor=%s, opacity=%.2f\n", settings.Enabled, hasActiveGame, vis, corner, settings.Monitor, settings.Opacity)
 
 	if hwnd != 0 {
+		procSetLayeredWindowAttributes.Call(hwnd, 0, uintptr(alpha), lwaAlpha)
 		if vis {
 			x, y, w, h := om.calculatePosition(corner)
 			procSetWindowPos.Call(

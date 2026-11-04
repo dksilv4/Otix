@@ -26,6 +26,7 @@ interface DkMediaCardProps {
   backdropUrl?: string | null
   logoUrl?: string | null
   logoColorGuess?: string | null
+  dominantColor?: string | null
   releaseDate?: string | null
   avgRating?: number | null
   ratingCount?: number
@@ -59,6 +60,7 @@ const DkMediaCard = memo(({
   backdropUrl,
   logoUrl,
   logoColorGuess,
+  dominantColor,
   releaseDate,
   avgRating,
   ratingCount: _ratingCount,
@@ -125,12 +127,13 @@ const DkMediaCard = memo(({
         title,
         logoUrl,
         logoColorGuess,
+        dominantColor,
         backdropUrl,
         posterUrl,
         releaseDate,
       },
     },
-  }), [params, title, logoUrl, logoColorGuess, backdropUrl, posterUrl, releaseDate])
+  }), [params, title, logoUrl, logoColorGuess, dominantColor, backdropUrl, posterUrl, releaseDate])
 
   const Root = (interactive ? Link : 'div') as React.ElementType
 

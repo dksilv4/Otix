@@ -1,9 +1,10 @@
 import { ipcMain, shell } from 'electron';
 import { spawn } from 'child_process';
 import path from 'path';
-import { GameDetector } from '../game/detector';
+import { GameDetector, type RunningGame } from '../game/detector';
 import type { Cs2GsiManager } from '../game/cs2-gsi';
 import type { PluginManager } from '../plugin-runtime/manager';
+import type { FpsCaptureService } from '../game/fps-capture';
 import type { LocalGame } from '../preload-api';
 import {
   isRomGame,
@@ -13,18 +14,88 @@ import {
 } from '../game/emulators';
 import { getSettings } from '../desktop-settings';
 import { updateGamePlatform } from '../game/storage';
+import { httpPostJson, httpGetJson } from '../game/node-hardware';
+
+async function getRunningGamesMerged(gameDetector: GameDetector | null): Promise<RunningGame[]> {
+  const local = gameDetector?.getRunningGames() ?? [];
+  try {
+    const nodeData = await httpGetJson<{ running?: boolean; games?: any[]; game?: any }>(
+      'http://127.0.0.1:8090/api/v1/games/running',
+      500
+    );
+    if (nodeData && nodeData.running) {
+      const rawList: any[] = Array.isArray(nodeData.games) && nodeData.games.length > 0
+        ? nodeData.games
+        : (nodeData.game ? [nodeData.game] : []);
+
+      const merged = [...local];
+      for (const g of rawList) {
+        const gameId = g.id || g.game_id || '';
+        const match = merged.find((lg) => lg.game.id === gameId || (g.pid && lg.pid === g.pid));
+        const rawFps = g.fps_snapshot || g.fpsSnapshot;
+        const fpsSnapshot = rawFps ? {
+          currentFps: rawFps.fps ?? rawFps.current_fps ?? rawFps.currentFps ?? 0,
+          frameCount: rawFps.frame_count ?? rawFps.frameCount ?? 0,
+          captureDurationMs: 0,
+          gameId,
+        } : null;
+
+        if (match) {
+          if (!match.pid && g.pid) match.pid = g.pid;
+          if (fpsSnapshot) match.fpsSnapshot = fpsSnapshot;
+          if (g.fps_available != null) match.fpsAvailable = Boolean(g.fps_available);
+        } else {
+          const rawStart = new Date(g.start_time || g.startTime || g.startedAt).getTime();
+          const duration = g.current_duration_seconds ?? g.currentDurationSeconds ?? 0;
+          const elapsedFallback = Date.now() - (duration * 1000);
+          const startTime = isNaN(rawStart) || rawStart <= 0 ? elapsedFallback : rawStart;
+          const synth: RunningGame = {
+            game: {
+              id: gameId,
+              title: g.title || g.game_title || '',
+              platform: (g.platform as any) || 'pc',
+              exePath: g.exe_path || g.exePath || '',
+              installDir: '',
+              otixMediaId: g.otix_media_id ?? g.otixMediaId,
+              posterUrl: g.poster_url || g.posterUrl,
+              otixPosterUrl: g.poster_url || g.posterUrl,
+            },
+            startTime,
+            launchedByOtix: Boolean(g.launched_by_otix ?? g.launchedByOtix),
+            pid: g.pid,
+            fpsAvailable: Boolean(g.fps_available ?? g.fpsAvailable),
+            fpsSnapshot,
+          };
+          merged.push(synth);
+          if (gameDetector && gameId) {
+            gameDetector.addOrUpdateRunningGame(gameId, synth);
+          }
+        }
+      }
+      return merged;
+    }
+  } catch {
+    // node daemon unavailable or timed out
+  }
+  return local;
+}
 
 export function registerGameDetectorIPC(
   gameDetector: GameDetector | null,
-  pluginManager?: PluginManager,
+  pluginManager?: PluginManager | FpsCaptureService | null,
   cs2GsiManager?: Cs2GsiManager,
+  fpsCaptureService?: FpsCaptureService | null,
 ): void {
+  const getServiceRegistry = () => {
+    return (pluginManager && 'serviceRegistry' in pluginManager) ? (pluginManager as PluginManager).serviceRegistry : undefined;
+  };
+
   // Launch game — accepts full LocalGame for tracking
   ipcMain.handle('launcher:launch-game', async (_, game: LocalGame) => {
     try {
       if (isRomGame(game)) {
         const settings = getSettings();
-        const launch = resolveEmulatorLaunch(game, pluginManager?.serviceRegistry, settings);
+        const launch = resolveEmulatorLaunch(game, getServiceRegistry(), settings);
         const child = spawn(launch.executablePath, launch.args, {
           cwd: launch.workingDir,
           detached: true,
@@ -59,7 +130,7 @@ export function registerGameDetectorIPC(
   // Emulator management IPC
   ipcMain.handle('emulators:get-all', async () => {
     const settings = getSettings();
-    return detectAllEmulators(pluginManager?.serviceRegistry, settings.emulatorPaths);
+    return detectAllEmulators(getServiceRegistry(), settings.emulatorPaths);
   });
 
   ipcMain.handle('emulators:get-ambiguous-candidates', async (_, filePathOrGame: string | LocalGame) => {
@@ -71,27 +142,47 @@ export function registerGameDetectorIPC(
     return true;
   });
 
-  ipcMain.handle('game:get-running', () => {
-    return gameDetector?.getRunningGames() ?? [];
+  ipcMain.handle('game:get-running', async () => {
+    return getRunningGamesMerged(gameDetector);
   });
 
-  ipcMain.handle('game:get-running-single', () => {
-    return gameDetector?.getRunningGame() ?? null;
+  ipcMain.handle('game:get-running-single', async () => {
+    const games = await getRunningGamesMerged(gameDetector);
+    return games.length > 0 ? games[0] : null;
+  });
+
+  ipcMain.handle('game:cycle-active', async () => {
+    try {
+      await httpPostJson('http://127.0.0.1:8090/api/v1/games/active', { action: 'cycle' });
+    } catch {
+      // fallback if node daemon is unlinked
+    }
+    return gameDetector?.cycleActiveGame() ?? null;
+  });
+
+  ipcMain.handle('game:set-active', async (_, gameId: string) => {
+    try {
+      await httpPostJson('http://127.0.0.1:8090/api/v1/games/active', { game_id: gameId });
+    } catch {
+      // fallback if node daemon is unlinked
+    }
+    return gameDetector?.setActiveGame(gameId) ?? null;
   });
 
   ipcMain.handle('game:get-recent-sessions', async () => {
     const detectorSessions = gameDetector?.getRecentSessions() ?? [];
-    if (pluginManager) {
+    const fpsService = (fpsCaptureService || (pluginManager && 'getRecentSessions' in pluginManager ? pluginManager : null)) as FpsCaptureService | null;
+    if (fpsService) {
       try {
-        const pluginSessions = await pluginManager.callPluginData('fps-capture', 'getRecentSessions', 20);
-        if (Array.isArray(pluginSessions) && pluginSessions.length > 0) {
+        const fpsSessions = fpsService.getRecentSessions(20);
+        if (Array.isArray(fpsSessions) && fpsSessions.length > 0) {
           const map = new Map<string, any>();
           for (const s of detectorSessions) {
-            const key = s.id || `${s.gameId}-${s.startTime}`;
+            const key = (s as any).id || `${s.gameId}-${s.startTime}`;
             map.set(key, s);
           }
-          for (const s of pluginSessions) {
-            const key = s.id || `${s.gameId}-${s.startTime}`;
+          for (const s of fpsSessions) {
+            const key = (s as any).id || `${s.gameId}-${s.startTime}`;
             map.set(key, { ...(map.get(key) || {}), ...s });
           }
           return Array.from(map.values()).slice(-20);
@@ -104,9 +195,13 @@ export function registerGameDetectorIPC(
   });
 
   ipcMain.handle('game:get-playtime', async (_event, gameId: string) => {
-    if (pluginManager) {
-      try { return await pluginManager.callPluginData('fps-capture', 'getPlaytimeForGame', gameId); }
-      catch { /* fall back to detector */ }
+    const fpsService = (fpsCaptureService || (pluginManager && 'getPlaytimeForGame' in pluginManager ? pluginManager : null)) as FpsCaptureService | null;
+    if (fpsService) {
+      try {
+        return fpsService.getPlaytimeForGame(gameId);
+      } catch {
+        /* fall back to detector */
+      }
     }
     return gameDetector?.getPlaytimeForGame(gameId) ?? { totalMinutes: 0, sessionCount: 0, lastPlayed: null, lastFpsStats: null };
   });

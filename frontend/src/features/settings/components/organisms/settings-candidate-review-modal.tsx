@@ -1,6 +1,7 @@
 /* ── CandidateReviewModal — comparison table: scanned game ↔ match / candidates ── */
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
+import { Link, useLocation } from '@tanstack/react-router'
 import {
   CheckCircle2, Gamepad2, Loader2, Check,
   X, Sparkles, LogIn, AlertCircle,
@@ -10,6 +11,7 @@ import type { LocalGame } from '@/features/launcher/types'
 import { confirmMatch, rejectMatch } from '@/features/plugins/utils/matching'
 import { getDesktopAPI } from '@/lib/desktop/api'
 import { useAuth } from '@/lib/providers/auth'
+import { DkDialog } from '@ui/molecules/dialog'
 
 interface MatchCandidate {
   media_item_id?: string | null
@@ -28,27 +30,40 @@ interface MatchCandidate {
 
 export interface CandidateReviewModalProps {
   game: LocalGame
-  onClose: () => void
+  open?: boolean
+  isOpen?: boolean
+  onClose?: () => void
+  onOpenChange?: (open: boolean) => void
   isExiting?: boolean
   onMatchResolved?: () => void
 }
 
 type Row = [string, string | null, string | null]
 
-export const CandidateReviewModal = ({ game, onClose, isExiting, onMatchResolved }: CandidateReviewModalProps) => {
+export const CandidateReviewModal = ({
+  game,
+  open,
+  isOpen,
+  onClose,
+  onOpenChange,
+  isExiting,
+  onMatchResolved,
+}: CandidateReviewModalProps) => {
   const { user } = useAuth()
+  const location = useLocation()
   const isAuthenticated = !!user
   const [selectedIdx, setSelectedIdx] = useState(0)
   const [confirming, setConfirming] = useState(false)
   const [rejecting, setRejecting] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
-  const [animateIn, setAnimateIn] = useState(false)
 
-  useEffect(() => {
-    requestAnimationFrame(() => requestAnimationFrame(() => setAnimateIn(true)))
-  }, [])
+  const isModalOpen = (open ?? isOpen ?? true) && !isExiting
 
-  const visible = animateIn && !isExiting
+  const handleClose = () => {
+    onClose?.()
+    onOpenChange?.(false)
+  }
+
   const isMatched = !!(game.data?.id || game.otixMediaId)
   const suggestion = game.otixMatchSuggestion || game.matchSuggestion
 
@@ -94,44 +109,72 @@ export const CandidateReviewModal = ({ game, onClose, isExiting, onMatchResolved
   ] as Row[]).filter(([, a, b]) => a || b)
 
   const handleAcceptCandidate = async (candidate: MatchCandidate) => {
-    if (!isAuthenticated) { setActionError('Sign in to confirm matches'); return }
     setActionError(null); setConfirming(true)
     try {
-      const r = await confirmMatch(queryId, candidate.media_item_id || null, candidate.provider_id ? parseInt(candidate.provider_id) : null)
-      if (r.success) {
-        const api = getDesktopAPI()
-        if (api) await api.acceptSuggestion(game.id, { id: candidate.media_item_id || `${candidate.provider}_${candidate.provider_id}`, title: candidate.title, slug: candidate.media_item_id || '', mediaType: 'game', posterUrl: candidate.poster_url || null, developer: candidate.developer || null, platforms: candidate.platforms || [], confidence: candidate.confidence } as any)
-        onMatchResolved?.(); onClose()
-      } else setActionError(r.error || 'Failed to confirm')
+      if (isAuthenticated) {
+        try {
+          const r = await confirmMatch(queryId, candidate.media_item_id || null, candidate.provider_id ? parseInt(candidate.provider_id) : null)
+          if (!r.success && !getDesktopAPI()) {
+            setActionError(r.error || 'Failed to confirm')
+            return
+          }
+        } catch (err: any) {
+          console.warn('[CandidateReviewModal] Cloud match confirm warning:', err?.message)
+        }
+      }
+      const api = getDesktopAPI()
+      if (api) {
+        await api.acceptSuggestion(game.id, {
+          id: candidate.media_item_id || `${candidate.provider}_${candidate.provider_id}`,
+          title: candidate.title,
+          slug: candidate.media_item_id || '',
+          mediaType: 'game',
+          posterUrl: candidate.poster_url || null,
+          developer: candidate.developer || null,
+          platforms: candidate.platforms || [],
+          confidence: candidate.confidence,
+        } as any)
+      }
+      onMatchResolved?.(); handleClose()
     } catch (err: any) {
-      setActionError(err?.response?.status === 401 ? 'Sign in to confirm matches' : err?.response?.status === 403 ? 'Account not authorized' : err?.message || 'Failed')
+      setActionError(err?.message || 'Failed')
     } finally { setConfirming(false) }
   }
 
   const handleReject = async (permanent: boolean) => {
     setActionError(null); setRejecting(true)
     try {
-      await rejectMatch(queryId, permanent)
-      const api = getDesktopAPI(); if (api) await api.rejectSuggestion(game.id, suggestion?.id || '')
-      onMatchResolved?.(); onClose()
+      if (isAuthenticated) {
+        try {
+          await rejectMatch(queryId, permanent)
+        } catch (err: any) {
+          console.warn('[CandidateReviewModal] Cloud match reject warning:', err?.message)
+        }
+      }
+      const api = getDesktopAPI()
+      if (api) await api.rejectSuggestion(game.id, suggestion?.id || '')
+      onMatchResolved?.(); handleClose()
     } catch (err: any) {
-      if (err?.response?.status !== 401) console.error('handleReject error:', err)
-      else setActionError('Sign in to manage matches')
+      setActionError(err?.message || 'Failed')
     } finally { setRejecting(false) }
   }
 
   return (
-    <div className={'fixed inset-0 z-[var(--dk-z-modal)] flex items-center justify-center p-4 transition-opacity duration-200 ' + (visible ? 'opacity-100' : 'opacity-0')}>
-      <div className="absolute inset-0 bg-background/80 backdrop-blur-sm" onClick={onClose} />
-      <div className={'relative w-full max-w-2xl max-h-[85vh] overflow-hidden rounded-3xl bg-[var(--dk-surface-base)] border border-[var(--dk-separator)] shadow-[var(--dk-shadow-dialog)] transition-all duration-200 ease-out flex flex-col ' + (visible ? 'scale-100 translate-y-0' : 'scale-95 translate-y-4')}>
+    <DkDialog
+      open={isModalOpen}
+      onOpenChange={(next) => {
+        if (!next) handleClose()
+      }}
+      className="max-w-2xl max-h-[85vh] p-0 sm:p-0 flex flex-col overflow-hidden"
+    >
+      <div className="relative z-10 flex min-h-0 flex-1 flex-col overflow-hidden">
         {/* Header */}
-        <div className="flex items-center gap-2.5 px-6 py-4 shrink-0 border-b border-[var(--dk-separator)]">
+        <div className="flex items-center gap-2.5 px-6 py-4 shrink-0 border-b border-[var(--dk-separator)] pr-12">
           {isMatched ? <CheckCircle2 size={16} className="text-emerald-500" /> : candidateCount > 0 ? <Sparkles size={16} className="text-amber-500" /> : <Gamepad2 size={16} className="text-muted-foreground" />}
           <h2 className="text-sm font-bold text-foreground truncate flex-1">
             {isMatched ? 'Matched Game' : candidateCount > 0 ? `Review Candidates (${candidateCount})` : 'Game Details'}
           </h2>
           {dlcOf && <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-500 dark:text-amber-400 font-medium shrink-0 border border-amber-500/20">DLC of {dlcOf}</span>}
-          <button onClick={onClose} className="shrink-0 rounded-xl p-1.5 transition-all text-muted-foreground hover:bg-[var(--dk-surface-hover)] hover:text-foreground"><X size={16} /></button>
         </div>
 
         {/* Poster row */}
@@ -178,14 +221,14 @@ export const CandidateReviewModal = ({ game, onClose, isExiting, onMatchResolved
         {!isMatched && candidateCount > 1 && (
           <div className="flex items-center justify-between px-6 py-3 shrink-0 border-t border-[var(--dk-separator)]">
             <button onClick={() => setSelectedIdx(i => Math.max(0, i - 1))} disabled={selectedIdx === 0}
-              className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-hover)] transition-colors disabled:opacity-20 disabled:cursor-not-allowed">
+              className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-hover)] transition-colors disabled:opacity-20 disabled:cursor-not-allowed cursor-pointer">
               <ChevronLeft size={14} /> Previous
             </button>
             <span className="text-xs text-muted-foreground font-medium tabular-nums">
               {selectedIdx + 1} / {candidateCount}
             </span>
             <button onClick={() => setSelectedIdx(i => Math.min(candidateCount - 1, i + 1))} disabled={selectedIdx >= candidateCount - 1}
-              className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-hover)] transition-colors disabled:opacity-20 disabled:cursor-not-allowed">
+              className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-hover)] transition-colors disabled:opacity-20 disabled:cursor-not-allowed cursor-pointer">
               Next <ChevronRight size={14} />
             </button>
           </div>
@@ -198,41 +241,37 @@ export const CandidateReviewModal = ({ game, onClose, isExiting, onMatchResolved
               <div className="flex items-center gap-2 p-2.5 rounded-xl bg-destructive/10 text-xs text-destructive border border-destructive/20">
                 <AlertCircle size={14} className="shrink-0" />
                 <span className="flex-1">{actionError}</span>
-                {!isAuthenticated && <a href="/login" className="shrink-0 flex items-center gap-1 px-3 py-1.5 rounded-lg bg-primary/20 text-primary font-medium hover:bg-primary/30 transition-colors"><LogIn size={12} /> Sign In</a>}
+                {!isAuthenticated && <Link to="/auth/login" search={!location.pathname.startsWith('/auth') && location.href ? { redirect: location.href } : undefined} className="shrink-0 flex items-center gap-1 px-3 py-1.5 rounded-lg bg-primary/20 text-primary font-medium hover:bg-primary/30 transition-colors"><LogIn size={12} /> Sign In</Link>}
               </div>
             )}
 
             {!isMatched && candidateCount > 0 && (
               <>
-                {!isAuthenticated ? (
-                  <div className="flex items-center gap-2 p-2.5 rounded-xl bg-amber-500/10 text-xs text-amber-500 dark:text-amber-400 border border-amber-500/20">
-                    <LogIn size={14} className="shrink-0" />
-                    <span className="flex-1">Sign in to confirm matches</span>
-                    <a href="/login" className="shrink-0 px-3 py-1.5 rounded-lg bg-primary/20 text-primary font-medium hover:bg-primary/30 transition-colors">Sign In</a>
-                  </div>
-                ) : (
-                  <button onClick={() => handleAcceptCandidate(candidates[selectedIdx])} disabled={isAccepting}
-                    className="w-full py-2.5 rounded-xl bg-primary hover:bg-primary/90 disabled:opacity-50 text-primary-foreground text-xs font-bold flex items-center justify-center gap-2 transition-all active:scale-[0.98]">
-                    {confirming ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
-                    Accept Selected Match
-                  </button>
-                )}
+                <button
+                  type="button"
+                  onClick={() => handleAcceptCandidate(candidates[selectedIdx])}
+                  disabled={isAccepting}
+                  className="w-full py-2.5 rounded-xl bg-primary hover:bg-primary/90 disabled:opacity-50 text-primary-foreground text-xs font-bold flex items-center justify-center gap-2 transition-all active:scale-[0.98] cursor-pointer"
+                >
+                  {confirming ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
+                  Accept Selected Match
+                </button>
 
                 <div className="flex gap-2">
-                  <button onClick={() => handleReject(false)} disabled={isAccepting} className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-destructive/10 text-destructive text-[11px] font-semibold hover:bg-destructive/20 border border-destructive/20 transition-colors disabled:opacity-50">
+                  <button onClick={() => handleReject(false)} disabled={isAccepting} className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-destructive/10 text-destructive text-[11px] font-semibold hover:bg-destructive/20 border border-destructive/20 transition-colors disabled:opacity-50 cursor-pointer">
                     {rejecting ? <Loader2 size={12} className="animate-spin" /> : <X size={12} />} Skip
                   </button>
-                  <button onClick={() => handleReject(true)} disabled={isAccepting} className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-destructive/10 text-destructive/80 text-[11px] font-semibold hover:bg-destructive/20 border border-destructive/20 transition-colors disabled:opacity-50">
+                  <button onClick={() => handleReject(true)} disabled={isAccepting} className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-destructive/10 text-destructive/80 text-[11px] font-semibold hover:bg-destructive/20 border border-destructive/20 transition-colors disabled:opacity-50 cursor-pointer">
                     <X size={12} /> Never suggest
                   </button>
                   <div className="flex-1" />
-                  <button onClick={onClose} className="px-4 py-2 rounded-xl bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-hover)] text-foreground border border-[var(--dk-separator)] text-[11px] font-semibold transition-all">Close</button>
+                  <button onClick={handleClose} className="px-4 py-2 rounded-xl bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-hover)] text-foreground border border-[var(--dk-separator)] text-[11px] font-semibold transition-all cursor-pointer">Close</button>
                 </div>
               </>
             )}
           </div>
         )}
       </div>
-    </div>
+    </DkDialog>
   )
 };

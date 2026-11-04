@@ -25,6 +25,7 @@ import {
   type FileInfo,
 } from '../game/parser';
 import { executeOrganization, OrganizationPreviewItem } from '../installer';
+import { resolveUncPath, unresolveUncPath } from '../unc-resolver';
 import {
   diagnoseArchiveIntegrity,
   healRepackArchive,
@@ -199,8 +200,9 @@ function isGameExecutableName(name: string): boolean {
 }
 
 async function scanForGameExecutable(dirPath: string): Promise<boolean> {
+  const actualDir = resolveUncPath(dirPath);
   try {
-    const entries = await fs.readdir(dirPath, { withFileTypes: true });
+    const entries = await fs.readdir(actualDir, { withFileTypes: true });
     const files = entries.filter((e) => e.isFile()).map((e) => e.name);
     if (files.some((f) => isGameExecutableName(f))) {
       return true;
@@ -217,7 +219,7 @@ async function scanForGameExecutable(dirPath: string): Promise<boolean> {
       if (subdirs.length > 1 && !KNOWN_GAME_SUBDIRS.has(sd.name.toLowerCase())) {
         continue;
       }
-      const subPath = path.join(dirPath, sd.name);
+      const subPath = path.join(actualDir, sd.name);
       try {
         const subEntries = await fs.readdir(subPath, { withFileTypes: true });
         const subFiles = subEntries.filter((e) => e.isFile()).map((e) => e.name);
@@ -264,14 +266,24 @@ export async function findDownloadedContent(
   const results: DownloadedContent[] = [];
   const seen = new Set<string>();
 
+  const resolvedDir = resolveUncPath(dirPath);
+
   try {
-    const stat = await fs.stat(dirPath);
+    const stat = await fs.stat(resolvedDir);
     if (!stat.isDirectory()) {
       throw new Error(`Target is not a directory: ${dirPath}`);
     }
   } catch (err: any) {
     if (err?.code === 'ENOENT') {
       throw new Error(`Folder does not exist: ${dirPath}`);
+    }
+    if (err?.code === 'UNKNOWN' || err?.errno === -4094) {
+      const isNetwork = dirPath.startsWith('\\\\') || dirPath.startsWith('//');
+      throw new Error(
+        isNetwork
+          ? `Network share is offline or unreachable: ${dirPath}`
+          : `Folder path is inaccessible: ${dirPath}`,
+      );
     }
     throw err;
   }
@@ -576,8 +588,11 @@ export async function findDownloadedContent(
     }
   }
 
-  await traverse(dirPath, 1);
-  return results;
+  await traverse(resolvedDir, 1);
+  return results.map((item) => ({
+    ...item,
+    path: unresolveUncPath(item.path),
+  }));
 }
 
 // ── Template application ────────────────────────────────────────────────────
@@ -637,8 +652,9 @@ export interface PatchRange {
   to: string;
 }
 
-export function parseDateOrSemVerParts(s: string): number[] {
-  const clean = s.trim().toLowerCase().replace(/^v/, '');
+export function parseDateOrSemVerParts(s: unknown): number[] {
+  if (s === null || s === undefined || s === '') return [];
+  const clean = String(s).trim().toLowerCase().replace(/^v/, '');
   const dateMatch = clean.match(/^(\d{2})[._-](\d{2})[._-](\d{4})$/);
   if (dateMatch) {
     const d = parseInt(dateMatch[1], 10);
@@ -657,10 +673,12 @@ export function parseDateOrSemVerParts(s: string): number[] {
   return parts;
 }
 
-export function compareVersionStrings(v1: string, v2: string): number {
-  if (v1 === v2) return 0;
-  const p1 = parseDateOrSemVerParts(v1);
-  const p2 = parseDateOrSemVerParts(v2);
+export function compareVersionStrings(v1: unknown, v2: unknown): number {
+  const s1 = v1 === null || v1 === undefined ? '' : String(v1);
+  const s2 = v2 === null || v2 === undefined ? '' : String(v2);
+  if (s1 === s2) return 0;
+  const p1 = parseDateOrSemVerParts(s1);
+  const p2 = parseDateOrSemVerParts(s2);
   const minLen = Math.min(p1.length, p2.length);
   for (let i = 0; i < minLen; i++) {
     if (p1[i] < p2[i]) return -1;
@@ -669,7 +687,7 @@ export function compareVersionStrings(v1: string, v2: string): number {
   if (p1.length < p2.length) return -1;
   if (p1.length > p2.length) return 1;
   if (p1.length > 0) return 0;
-  return v1.localeCompare(v2);
+  return s1.localeCompare(s2);
 }
 
 export function parseUpdateRange(filename: string): { from: string; to: string } | null {
@@ -854,19 +872,20 @@ export async function smartOrganizePreview(
     };
 
     let hasSidecar = false;
+    const actualItemPath = resolveUncPath(item.path);
     if (item.type === 'pc_game') {
       try {
-        let otixPath = path.join(item.path, '.otix');
+        let otixPath = path.join(actualItemPath, '.otix');
         try {
           await fs.access(otixPath);
         } catch {
-          const children = await fs.readdir(item.path, { withFileTypes: true });
+          const children = await fs.readdir(actualItemPath, { withFileTypes: true });
           const nonNoiseDirs = children.filter(
             (c) => c.isDirectory() && !SKIP_DIRS.has(c.name.toLowerCase()) && !c.name.startsWith('.') && !c.name.startsWith('$')
           );
           // Only check child directory if there is EXACTLY ONE child directory.
           if (nonNoiseDirs.length === 1) {
-            const deepOtix = path.join(item.path, nonNoiseDirs[0].name, '.otix');
+            const deepOtix = path.join(actualItemPath, nonNoiseDirs[0].name, '.otix');
             try {
               await fs.access(deepOtix);
               otixPath = deepOtix;
@@ -908,11 +927,11 @@ export async function smartOrganizePreview(
       } catch {}
     } else {
       try {
-        await fs.access(`${item.path}.otix`);
+        await fs.access(resolveUncPath(`${item.path}.otix`));
         hasSidecar = true;
       } catch {
         try {
-          await fs.access(`${item.path}.otixmeta`);
+          await fs.access(resolveUncPath(`${item.path}.otixmeta`));
           hasSidecar = true;
         } catch {}
       }
@@ -1003,9 +1022,10 @@ export async function smartOrganizePreview(
       status = 'conflict';
     } else {
       try {
-        const dstStat = await fs.stat(targetRaw);
+        const actualTargetRaw = resolveUncPath(targetRaw);
+        const dstStat = await fs.stat(actualTargetRaw);
         if (dstStat.isDirectory()) {
-          const entries = await fs.readdir(targetRaw);
+          const entries = await fs.readdir(actualTargetRaw);
           if (entries.length > 0) {
             status = 'conflict';
           }
@@ -1047,7 +1067,7 @@ export async function smartOrganizePreview(
     let targetVersion: string | undefined;
 
     if (item.type === 'pc_game') {
-      const chainResult = await checkUpdateChain(item.path, release.version);
+      const chainResult = await checkUpdateChain(actualItemPath, release.version);
       if (chainResult.anomalies.length > 0) {
         itemAnomalies = [...itemAnomalies, ...chainResult.anomalies];
         if (!itemHealth || itemHealth === 'HEALTHY' || itemHealth === 'GENERIC') {
@@ -1133,7 +1153,7 @@ export async function batchOrganizeDirectory(
   }
 
   try {
-    await fs.access(directory);
+    await fs.access(resolveUncPath(directory));
   } catch {
     result.errors.push('Directory not accessible');
     return result;
@@ -1308,7 +1328,7 @@ export async function autoOrganizeDownload(
       const translated = translatePath(candidate, pair);
       const dirToScan = translated || candidate;
       try {
-        await fs.access(dirToScan);
+        await fs.access(resolveUncPath(dirToScan));
         const contents = await findDownloadedContent(dirToScan);
         allContent.push(...contents);
         effectiveDest = pair.dest;

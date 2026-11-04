@@ -248,6 +248,15 @@ def _logo_color_guess(item: MediaItem, context: str = "general") -> str | None:
     return best.color_guess if best is not None else None
 
 
+def _dominant_color(item: MediaItem, context: str = "general") -> str | None:
+    """Resolve the media item's dominant color, preferring backdrop, then poster, then logo."""
+    for asset_type in ("backdrop", "poster", "logo"):
+        best = _best_asset(item, asset_type, context)
+        if best is not None and best.dominant_color:
+            return best.dominant_color
+    return None
+
+
 def attach_media_urls(items: list[MediaItem], context: str = "general") -> None:
     """Resolve image URLs from prefetched assets and attach them to instances."""
     for item in items:
@@ -257,6 +266,7 @@ def attach_media_urls(items: list[MediaItem], context: str = "general") -> None:
         item.textless_poster_url = _pick_asset(item, "textless_poster", context)
         item.icon_url = _pick_asset(item, "icon", context)
         item.logo_color_guess = _logo_color_guess(item, context)
+        item.dominant_color = _dominant_color(item, context)
 
 
 def external_ids_for(

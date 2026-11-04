@@ -11,13 +11,13 @@
 // and camel_cases responses, which would corrupt keys the plugin defined.
 
 import axios from 'axios'
-import { isDesktop } from '@/lib/desktop'
+import { isDesktop, getDesktopAPI } from '@/lib/desktop'
 import { ACCESS_TOKEN_KEY } from '@/lib/config/config'
 import type { PluginAPI } from '@/features/plugins/api'
 import type { PluginInfo, PluginManifest, PluginSettingsTab, PluginStatus } from '@/features/plugins/types/plugins'
 
 const BASE_URL = isDesktop()
-  ? import.meta.env.VITE_API_BASE_URL || (import.meta.env?.VITE_LOCAL_BACKEND === 'true' ? 'http://127.0.0.1:8000/api/v1' : 'https://otix.app/api/v1')
+  ? (getDesktopAPI()?.apiBaseUrl ? `${getDesktopAPI()?.apiBaseUrl?.replace(/\/+$/, '')}/api/v1` : (import.meta.env.VITE_API_BASE_URL || (import.meta.env?.DEV || import.meta.env?.VITE_LOCAL_BACKEND === 'true' ? 'http://127.0.0.1:8000/api/v1' : 'https://otix.app/api/v1')))
   : import.meta.env.VITE_API_BASE_URL || '/api/v1'
 
 const http = axios.create({

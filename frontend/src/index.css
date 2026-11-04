@@ -682,6 +682,22 @@
 }
 
 /* ── Prefers reduced motion ── */
+.installer-draggable-frame {
+    -webkit-app-region: drag;
+}
+
+.installer-draggable-frame button,
+.installer-draggable-frame input,
+.installer-draggable-frame textarea,
+.installer-draggable-frame select,
+.installer-draggable-frame a,
+.installer-draggable-frame [role="button"],
+.installer-draggable-frame [role="checkbox"],
+.installer-no-drag {
+    -webkit-app-region: no-drag !important;
+}
+
+/* ── Prefers reduced motion ── */
 @media (prefers-reduced-motion: reduce) {
     *, ::before, ::after {
         animation-duration: 0.01ms !important;

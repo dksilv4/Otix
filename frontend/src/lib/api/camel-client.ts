@@ -13,7 +13,7 @@
 import createClient from 'openapi-fetch'
 import type { paths as ApiPaths } from './openapi'
 import { ACCESS_TOKEN_KEY } from '@/lib/config/config'
-import { isDesktop } from '@/lib/desktop'
+import { isDesktop, getDesktopAPI } from '@/lib/desktop'
 import { convertKeysToCamelCase } from './client'
 
 // ── CamelCase type mapping ───────────────────────────────────────────
@@ -30,7 +30,7 @@ export type CamelCaseKeys<T> =
 // ── Client ───────────────────────────────────────────────────────────
 
 const BASE_URL = isDesktop()
-  ? (import.meta.env.VITE_API_BASE_URL || (import.meta.env?.VITE_LOCAL_BACKEND === 'true' ? 'http://127.0.0.1:8000' : 'https://otix.app'))
+  ? (getDesktopAPI()?.apiBaseUrl?.replace(/\/+$/, '') || import.meta.env.VITE_API_BASE_URL || (import.meta.env?.DEV || import.meta.env?.VITE_LOCAL_BACKEND === 'true' ? 'http://127.0.0.1:8000' : 'https://otix.app'))
   : (import.meta.env.VITE_API_BASE_URL || '')
 
 // Build the typed client, then monkey-patch fetch for camelCase conversion

@@ -4,7 +4,11 @@ import { DkDialog } from '@ui/molecules/dialog'
 import { DkButton } from '@ui/atoms/button'
 import type { NodeMapConnectPrompt } from '../../types/node-map'
 
-interface NodeMapConnectDialogProps {
+export interface NodeMapConnectDialogProps {
+  open?: boolean
+  isOpen?: boolean
+  isExiting?: boolean
+  onOpenChange?: (open: boolean) => void
   prompt: NodeMapConnectPrompt | null
   onClose: () => void
   onConnect: (connectionType: 'home' | 'host' | 'smb' | 'game_server') => Promise<void> | void
@@ -12,11 +16,20 @@ interface NodeMapConnectDialogProps {
 }
 
 export const NodeMapConnectDialog = ({
+  open,
+  isOpen,
+  isExiting,
+  onOpenChange,
   prompt,
   onClose,
   onConnect,
   isPending = false,
 }: NodeMapConnectDialogProps) => {
+  const isModalOpen = (open ?? isOpen ?? Boolean(prompt)) && !isExiting
+  const handleClose = () => {
+    onClose?.()
+    onOpenChange?.(false)
+  }
   const [selectedType, setSelectedType] = useState<'home' | 'host' | 'smb' | 'game_server'>(
     prompt?.allowedTypes[0] || 'host',
   )
@@ -38,8 +51,8 @@ export const NodeMapConnectDialog = ({
 
   return (
     <DkDialog
-      open={Boolean(prompt)}
-      onOpenChange={(open) => !open && onClose()}
+      open={isModalOpen}
+      onOpenChange={(nextOpen) => !nextOpen && handleClose()}
       title="Connect Homelab Nodes"
       description={`Choose how to link "${source.name}" and "${target.name}".`}
       className="max-w-md"

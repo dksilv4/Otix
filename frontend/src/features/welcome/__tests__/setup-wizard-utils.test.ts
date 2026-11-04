@@ -114,7 +114,7 @@ describe('setup-wizard-utils', () => {
   })
 
   describe('claimNodeWithPin', () => {
-    it('calls /library/servers/claim with formatted body', async () => {
+    it('calls /library/nodes/claim with formatted body', async () => {
       vi.mocked(apiClient.post).mockResolvedValueOnce({
         data: { message: 'Node claimed successfully' },
       } as any)
@@ -122,7 +122,7 @@ describe('setup-wizard-utils', () => {
       const result = await claimNodeWithPin('http://127.0.0.1:8090', '7X9K2P', 'My Gaming Rig')
       expect(result.success).toBe(true)
       expect(result.message).toBe('Node claimed successfully')
-      expect(apiClient.post).toHaveBeenCalledWith('/library/servers/claim', {
+      expect(apiClient.post).toHaveBeenCalledWith('/library/nodes/claim', {
         nodeUrl: 'http://127.0.0.1:8090',
         claimCode: '7X9K2P',
         serverName: 'My Gaming Rig',

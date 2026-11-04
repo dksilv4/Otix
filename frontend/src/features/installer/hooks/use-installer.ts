@@ -162,6 +162,56 @@ export const useInstaller = () => {
     setStep('config')
   }, [])
 
+  const handleRelaunchElevated = useCallback(async () => {
+    const api = getDesktopAPI()
+    if (api?.installerRelaunchElevated) {
+      await api.installerRelaunchElevated()
+    }
+  }, [])
+
+  const handleInstallToUserFolder = useCallback(async () => {
+    const api = getDesktopAPI()
+    let targetPath = 'C:\\Users\\Default\\AppData\\Local\\Programs\\Otix'
+    if (api?.installerGetUserInstallPath) {
+      try {
+        const res = await api.installerGetUserInstallPath()
+        if (res) targetPath = res
+      } catch {}
+    }
+    setInstallPath(targetPath)
+    setError(null)
+    setIsSubmitting(true)
+    setStep('installing')
+    setProgress({ percent: 5, status: 'Preparing user installation...' })
+
+    if (api?.installerStartInstall) {
+      try {
+        const result = await api.installerStartInstall({
+          installPath: targetPath,
+          createDesktopShortcut,
+          createStartMenuShortcut,
+          startOnBoot,
+        })
+        if (!result.success) {
+          setError(result.error || 'Installation encountered an error.')
+          setStep('error')
+          setIsSubmitting(false)
+        }
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : 'Unknown installation error'
+        setError(message)
+        setStep('error')
+        setIsSubmitting(false)
+      }
+    } else {
+      setTimeout(() => {
+        setProgress({ percent: 100, status: 'Installation completed!' })
+        setStep('complete')
+        setIsSubmitting(false)
+      }, 1000)
+    }
+  }, [createDesktopShortcut, createStartMenuShortcut, startOnBoot])
+
   const handleGoBackToWelcome = useCallback(() => {
     setStep('welcome')
   }, [])
@@ -173,6 +223,8 @@ export const useInstaller = () => {
     setStep,
     handleGoToConfig,
     handleGoBackToWelcome,
+    handleRelaunchElevated,
+    handleInstallToUserFolder,
     version,
     installPath,
     setInstallPath,

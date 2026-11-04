@@ -302,7 +302,7 @@ export const useDownloadRelocation = (
       // Sync with companion node if connected
       if (nodeId && nodeId > 0) {
         try {
-          await apiClient.post(`/library/servers/${nodeId}/organize`, {
+          await apiClient.post(`/library/nodes/${nodeId}/organize`, {
             autoOrganizeEnabled: enabled,
           })
         } catch {
@@ -406,7 +406,7 @@ export const useDownloadRelocation = (
             throw new Error(firstResult.error || 'Relocation failed')
           }
         } else if (nodeId && nodeId > 0) {
-          await apiClient.post(`/library/servers/${nodeId}/organize/execute`, {
+          await apiClient.post(`/library/nodes/${nodeId}/organize/execute`, {
             items: [{ sourcePath: item.sourcePath, targetPath: item.targetPath }],
             deleteEmptyFolders: true,
           })
@@ -460,7 +460,7 @@ export const useDownloadRelocation = (
       if (api?.executeOrganization) {
         await api.executeOrganization(itemsToMove)
       } else if (nodeId && nodeId > 0) {
-        await apiClient.post(`/library/servers/${nodeId}/organize/execute`, {
+        await apiClient.post(`/library/nodes/${nodeId}/organize/execute`, {
           items: itemsToMove,
           deleteEmptyFolders: true,
         })
