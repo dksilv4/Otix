@@ -286,6 +286,8 @@ export const useNodeScanFiles = () => {
 
         // Poll progress
         let scannedCount = 0
+        const syncedFileIds = new Set<string>()
+
         for (let i = 0; i < 60; i++) {
           await new Promise((resolve) => setTimeout(resolve, 400))
           try {
@@ -323,11 +325,36 @@ export const useNodeScanFiles = () => {
               (data?.phase === 'scanning' || data?.phase === 'running')
             if (scanning) {
               scanProgress.reportProgress(pct, dir, 'scanning')
-            } else if (
+            }
+
+            // Real-time incremental ingestion: check for newly discovered files while scan is running
+            try {
+              const { data: currentFiles } = await apiClient.get<any[]>(`/library/nodes/${remoteNodeId}/files`)
+              if (Array.isArray(currentFiles) && currentFiles.length > 0) {
+                const newBatch = currentFiles.filter((f) => {
+                  const id = f.id || f.filepath || f.filename
+                  return id && !syncedFileIds.has(String(id))
+                })
+                if (newBatch.length > 0) {
+                  for (const f of newBatch) {
+                    const id = f.id || f.filepath || f.filename
+                    if (id) syncedFileIds.add(String(id))
+                  }
+                  await uploadNodeManifestInChunks(remoteNodeId, newBatch, { append: true })
+                  void queryClient.invalidateQueries({ queryKey: NODE_SCANNED_FILES_QUERY_KEY(remoteNodeId) })
+                  void queryClient.invalidateQueries({ queryKey: ['library', 'matches'] })
+                  void queryClient.invalidateQueries({ queryKey: ['games'] })
+                }
+              }
+            } catch {
+              // non-fatal incremental sync error
+            }
+
+            if (!scanning && (
               data?.phase === 'completed' ||
               data?.phase === 'idle' ||
               data?.phase === 'complete'
-            ) {
+            )) {
               break
             }
           } catch (pollErr: any) {
@@ -339,11 +366,20 @@ export const useNodeScanFiles = () => {
           }
         }
 
-        // Ingest node manifest if available
+        // Final sync for any remaining files
         try {
           const { data: serverFiles } = await apiClient.get<any[]>(`/library/nodes/${remoteNodeId}/files`)
           if (Array.isArray(serverFiles) && serverFiles.length > 0) {
-            await uploadNodeManifestInChunks(remoteNodeId, serverFiles)
+            const remaining = serverFiles.filter((f) => {
+              const id = f.id || f.filepath || f.filename
+              return id && !syncedFileIds.has(String(id))
+            })
+            if (remaining.length > 0) {
+              await uploadNodeManifestInChunks(remoteNodeId, remaining, { append: true })
+            }
+            void queryClient.invalidateQueries({ queryKey: NODE_SCANNED_FILES_QUERY_KEY(remoteNodeId) })
+            void queryClient.invalidateQueries({ queryKey: ['library', 'matches'] })
+            void queryClient.invalidateQueries({ queryKey: ['games'] })
           }
         } catch {
           // non-fatal

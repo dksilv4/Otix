@@ -33,11 +33,19 @@ export function registerDownloadsIPC(): void {
   // ── Config (direct DB access) ──────────────────────────────────────────
 
   ipcMain.handle('downloads:get-config', (_, userId: string) => {
-    return getConfig(userId);
+    try {
+      return getConfig(userId);
+    } catch {
+      return null;
+    }
   });
 
   ipcMain.handle('downloads:save-config', (_, config: any) => {
-    return saveConfig(config);
+    try {
+      return saveConfig(config);
+    } catch {
+      return null;
+    }
   });
 
   // ── Search & Filter (native implementation) ────────────────────────────
@@ -67,11 +75,20 @@ export function registerDownloadsIPC(): void {
   // ── Download CRUD ──────────────────────────────────────────────────────
 
   ipcMain.handle('downloads:get-download', (_, id: string) => {
-    return getDownload(id);
+    try {
+      return getDownload(id);
+    } catch {
+      return null;
+    }
   });
 
-  ipcMain.handle('downloads:get-user-downloads', () => {
-    return getUserDownloads();
+  ipcMain.handle('downloads:get-user-downloads', async () => {
+    try {
+      return await getUserDownloads();
+    } catch (err: any) {
+      console.warn('[downloads:get-user-downloads] Error:', err?.message || err);
+      return [];
+    }
   });
 
   ipcMain.handle('downloads:delete', async (_, id: string) => {

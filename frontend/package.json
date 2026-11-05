@@ -1,7 +1,7 @@
 {
   "name": "frontend",
   "private": true,
-  "version": "0.1.44",
+  "version": "0.1.45",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -83,5 +83,8 @@
     "vite": "^8.0.10",
     "vite-plugin-svgr": "^5.2.0",
     "vitest": "^4.1.5"
+  },
+  "overrides": {
+    "minimatch": "^11.0.4"
   }
 }

@@ -1000,8 +1000,9 @@ type ScanStatus struct {
 }
 
 type ScanProgressEvent struct {
-	Event string     `json:"event"`
-	Data  ScanStatus `json:"data"`
+	Event string      `json:"event"`
+	Data  interface{} `json:"data"`
+	File  *HostedFile `json:"file,omitempty"`
 }
 
 type StorageIndexer struct {
@@ -1279,6 +1280,67 @@ func (si *StorageIndexer) ScanAllWithDeep(deep bool) []HostedFile {
 	var filesToPersist []HostedFile
 	activePathsPerLib := make(map[string]map[string]bool)
 
+	// Real-time file registration closures: update in-memory maps, persist to SQLite, and broadcast progress
+	registerHostedFile := func(hf HostedFile, mtimeUnix int64, paths ...string) {
+		newFiles[hf.ID] = hf
+		for _, p := range paths {
+			newFilesByPath[p] = hf.ID
+			newMtimes[p] = mtimeUnix
+		}
+		indexed = append(indexed, hf)
+		filesToPersist = append(filesToPersist, hf)
+
+		si.mu.Lock()
+		si.filesByID[hf.ID] = hf
+		for _, p := range paths {
+			si.filesByPath[p] = hf.ID
+			si.mtimesByPath[p] = mtimeUnix
+		}
+		si.mu.Unlock()
+
+		if store != nil {
+			_ = store.UpsertFiles([]HostedFile{hf})
+		}
+
+		si.statusMu.Lock()
+		si.status.TotalFiles = len(newFiles)
+		si.statusMu.Unlock()
+
+		si.broadcastProgress(ScanProgressEvent{
+			Event: "file_indexed",
+			Data:  hf,
+			File:  &hf,
+		})
+		if hf.FormatCategory != "update" {
+			si.broadcastProgress(ScanProgressEvent{
+				Event: "game_found",
+				Data:  hf,
+				File:  &hf,
+			})
+		}
+	}
+
+	registerExisting := func(existing HostedFile, mtimeUnix int64, paths ...string) {
+		newFiles[existing.ID] = existing
+		for _, p := range paths {
+			newFilesByPath[p] = existing.ID
+			newMtimes[p] = mtimeUnix
+		}
+		indexed = append(indexed, existing)
+
+		si.mu.Lock()
+		si.filesByID[existing.ID] = existing
+		for _, p := range paths {
+			si.filesByPath[p] = existing.ID
+			si.mtimesByPath[p] = mtimeUnix
+		}
+		si.mu.Unlock()
+
+		si.statusMu.Lock()
+		si.status.TotalFiles = len(newFiles)
+		si.statusMu.Unlock()
+	}
+
 	totalFilesScanned := 0
 	lastBroadcast := time.Now()
 
@@ -1317,6 +1379,107 @@ func (si *StorageIndexer) ScanAllWithDeep(deep bool) []HostedFile {
 
 		dirCandidates := make(map[string][]candidateExe)
 		dirRootNames := make(map[string]string)
+		activeRootDir := ""
+
+		flushRootDirCandidates := func(rootDir string) {
+			candidates := dirCandidates[rootDir]
+			if len(candidates) == 0 {
+				delete(dirCandidates, rootDir)
+				delete(dirRootNames, rootDir)
+				return
+			}
+			delete(dirCandidates, rootDir)
+
+			rootName := dirRootNames[rootDir]
+			delete(dirRootNames, rootDir)
+			if rootName == "" {
+				rootName = filepath.Base(rootDir)
+			}
+
+			var gameCandidates []candidateExe
+			var installerCandidates []candidateExe
+
+			for _, c := range candidates {
+				if c.isInstaller {
+					installerCandidates = append(installerCandidates, c)
+				} else {
+					c.score = ScoreGameCandidate(c.path, rootName, c.info, false)
+					gameCandidates = append(gameCandidates, c)
+				}
+			}
+
+			var elected candidateExe
+			var formatCategory string
+
+			if len(gameCandidates) > 0 {
+				best := gameCandidates[0]
+				for _, gc := range gameCandidates[1:] {
+					if gc.score > best.score {
+						best = gc
+					}
+				}
+				elected = best
+				formatCategory = "game"
+			} else {
+				best := installerCandidates[0]
+				for _, ic := range installerCandidates[1:] {
+					stem := strings.ToLower(strings.TrimSuffix(ic.filename, filepath.Ext(ic.filename)))
+					if stem == "setup" || stem == "install" {
+						best = ic
+						break
+					}
+				}
+				elected = best
+				formatCategory = "installer"
+			}
+
+			mtimeUnix := elected.info.ModTime().Unix()
+			cachedID, hasCached := cachedByPath[elected.path]
+			cachedMt, hasMt := cachedMtimes[elected.path]
+
+			if !deep && hasCached && hasMt && cachedMt == mtimeUnix {
+				if existing, ok := cachedFiles[cachedID]; ok {
+					registerExisting(existing, mtimeUnix, elected.path)
+					return
+				}
+			}
+
+			fileSize := elected.info.Size()
+			modTime := elected.info.ModTime().UTC().Format(time.RFC3339)
+			headHash := ComputeHeadHash(elected.path)
+
+			hasher := md5.New()
+			hasher.Write([]byte(elected.path))
+			fileID := fmt.Sprintf("file_%s", hex.EncodeToString(hasher.Sum(nil))[:12])
+
+			rel := RelativeLibraryPath(elected.path, libPath)
+			title := TitleFromInstallerPath(elected.filename, elected.path, libPath)
+			if formatCategory == "game" {
+				if !GenericFolderNames[strings.ToLower(rootName)] && rootName != "." {
+					title = CleanTitleFromFilename(rootName)
+				}
+			}
+
+			ext := strings.ToLower(filepath.Ext(elected.filename))
+			hf := HostedFile{
+				ID:             fileID,
+				Filename:       elected.filename,
+				Filepath:       elected.path,
+				RelativePath:   rel,
+				Filesize:       fileSize,
+				SHA256Head:     headHash,
+				Extension:      ext,
+				FormatCategory: formatCategory,
+				Platform:       string(DeterminePlatform(elected.filename, elected.path)),
+				LibraryName:    libName,
+				GameTitle:      title,
+				ModifiedAt:     modTime,
+				RootDir:        rootDir,
+			}
+			AttachOtixSidecar(&hf, libPath)
+
+			registerHostedFile(hf, mtimeUnix, elected.path)
+		}
 
 		_ = filepath.Walk(libPath, func(path string, info os.FileInfo, err error) error {
 			if err != nil {
@@ -1339,6 +1502,12 @@ func (si *StorageIndexer) ScanAllWithDeep(deep bool) []HostedFile {
 					s.FilesScanned = totalFilesScanned
 					s.ElapsedMs = time.Since(startTime).Milliseconds()
 				})
+			}
+
+			// If moving outside activeRootDir, finalize and register candidate game immediately
+			if activeRootDir != "" && path != activeRootDir && !strings.HasPrefix(filepath.Clean(path), filepath.Clean(activeRootDir)+string(filepath.Separator)) {
+				flushRootDirCandidates(activeRootDir)
+				activeRootDir = ""
 			}
 
 			// Handle macOS .app bundle
@@ -1368,12 +1537,7 @@ func (si *StorageIndexer) ScanAllWithDeep(deep bool) []HostedFile {
 
 					if !deep && hasCached && hasMt && cachedMt == mtimeUnix {
 						if existing, ok := cachedFiles[cachedID]; ok {
-							newFiles[existing.ID] = existing
-							newFilesByPath[path] = existing.ID
-							newFilesByPath[exePath] = existing.ID
-							newMtimes[path] = mtimeUnix
-							newMtimes[exePath] = mtimeUnix
-							indexed = append(indexed, existing)
+							registerExisting(existing, mtimeUnix, path, exePath)
 							return filepath.SkipDir
 						}
 					}
@@ -1412,13 +1576,7 @@ func (si *StorageIndexer) ScanAllWithDeep(deep bool) []HostedFile {
 						RootDir:        path,
 					}
 					AttachOtixSidecar(&hf, libPath)
-					newFiles[fileID] = hf
-					newFilesByPath[path] = fileID
-					newFilesByPath[exePath] = fileID
-					newMtimes[path] = mtimeUnix
-					newMtimes[exePath] = mtimeUnix
-					indexed = append(indexed, hf)
-					filesToPersist = append(filesToPersist, hf)
+					registerHostedFile(hf, mtimeUnix, path, exePath)
 					return filepath.SkipDir
 				}
 
@@ -1433,10 +1591,7 @@ func (si *StorageIndexer) ScanAllWithDeep(deep bool) []HostedFile {
 
 						if !deep && hasCached && hasMt && cachedMt == mtimeUnix {
 							if existing, ok := cachedFiles[cachedID]; ok {
-								newFiles[existing.ID] = existing
-								newFilesByPath[path] = existing.ID
-								newMtimes[path] = mtimeUnix
-								indexed = append(indexed, existing)
+								registerExisting(existing, mtimeUnix, path)
 								return filepath.SkipDir
 							}
 						}
@@ -1467,11 +1622,7 @@ func (si *StorageIndexer) ScanAllWithDeep(deep bool) []HostedFile {
 							RootDir:        path,
 						}
 						AttachOtixSidecar(&hf, libPath)
-						newFiles[fileID] = hf
-						newFilesByPath[path] = fileID
-						newMtimes[path] = mtimeUnix
-						indexed = append(indexed, hf)
-						filesToPersist = append(filesToPersist, hf)
+						registerHostedFile(hf, mtimeUnix, path)
 						return filepath.SkipDir
 					}
 				}
@@ -1524,10 +1675,7 @@ func (si *StorageIndexer) ScanAllWithDeep(deep bool) []HostedFile {
 
 				if !deep && hasCached && hasMt && cachedMt == mtimeUnix {
 					if existing, ok := cachedFiles[cachedID]; ok {
-						newFiles[existing.ID] = existing
-						newFilesByPath[path] = existing.ID
-						newMtimes[path] = mtimeUnix
-						indexed = append(indexed, existing)
+						registerExisting(existing, mtimeUnix, path)
 						return
 					}
 				}
@@ -1555,11 +1703,7 @@ func (si *StorageIndexer) ScanAllWithDeep(deep bool) []HostedFile {
 					RootDir:        GameRootForFile(path, libPath),
 				}
 				AttachOtixSidecar(&hf, libPath)
-				newFiles[fileID] = hf
-				newFilesByPath[path] = fileID
-				newMtimes[path] = mtimeUnix
-				indexed = append(indexed, hf)
-				filesToPersist = append(filesToPersist, hf)
+				registerHostedFile(hf, mtimeUnix, path)
 			}
 
 			if IsUpdateOrPatchArtifact(name, path) {
@@ -1574,6 +1718,10 @@ func (si *StorageIndexer) ScanAllWithDeep(deep bool) []HostedFile {
 
 				isInst := DetectInstallerType(path, name) != ""
 				rootDir, rootName := FindGameRootFolder(path, libPath)
+				if activeRootDir != "" && activeRootDir != rootDir {
+					flushRootDirCandidates(activeRootDir)
+				}
+				activeRootDir = rootDir
 				dirCandidates[rootDir] = append(dirCandidates[rootDir], candidateExe{
 					path:        path,
 					filename:    name,
@@ -1593,110 +1741,17 @@ func (si *StorageIndexer) ScanAllWithDeep(deep bool) []HostedFile {
 			return nil
 		})
 
-		for rootDir, candidates := range dirCandidates {
-			if len(candidates) == 0 {
-				continue
-			}
-
-			rootName := dirRootNames[rootDir]
-			if rootName == "" {
-				rootName = filepath.Base(rootDir)
-			}
-
-			var gameCandidates []candidateExe
-			var installerCandidates []candidateExe
-
-			for _, c := range candidates {
-				if c.isInstaller {
-					installerCandidates = append(installerCandidates, c)
-				} else {
-					c.score = ScoreGameCandidate(c.path, rootName, c.info, false)
-					gameCandidates = append(gameCandidates, c)
-				}
-			}
-
-			var elected candidateExe
-			var formatCategory string
-
-			if len(gameCandidates) > 0 {
-				best := gameCandidates[0]
-				for _, gc := range gameCandidates[1:] {
-					if gc.score > best.score {
-						best = gc
-					}
-				}
-				elected = best
-				formatCategory = "game"
-			} else {
-				best := installerCandidates[0]
-				for _, ic := range installerCandidates[1:] {
-					stem := strings.ToLower(strings.TrimSuffix(ic.filename, filepath.Ext(ic.filename)))
-					if stem == "setup" || stem == "install" {
-						best = ic
-						break
-					}
-				}
-				elected = best
-				formatCategory = "installer"
-			}
-
-			mtimeUnix := elected.info.ModTime().Unix()
-			cachedID, hasCached := cachedByPath[elected.path]
-			cachedMt, hasMt := cachedMtimes[elected.path]
-
-			if !deep && hasCached && hasMt && cachedMt == mtimeUnix {
-				if existing, ok := cachedFiles[cachedID]; ok {
-					newFiles[existing.ID] = existing
-					newFilesByPath[elected.path] = existing.ID
-					newMtimes[elected.path] = mtimeUnix
-					indexed = append(indexed, existing)
-					continue
-				}
-			}
-
-			fileSize := elected.info.Size()
-			modTime := elected.info.ModTime().UTC().Format(time.RFC3339)
-			headHash := ComputeHeadHash(elected.path)
-
-			hasher := md5.New()
-			hasher.Write([]byte(elected.path))
-			fileID := fmt.Sprintf("file_%s", hex.EncodeToString(hasher.Sum(nil))[:12])
-
-			rel := RelativeLibraryPath(elected.path, libPath)
-			title := TitleFromInstallerPath(elected.filename, elected.path, libPath)
-			if formatCategory == "game" {
-				if !GenericFolderNames[strings.ToLower(rootName)] && rootName != "." {
-					title = CleanTitleFromFilename(rootName)
-				}
-			}
-
-			ext := strings.ToLower(filepath.Ext(elected.filename))
-			hf := HostedFile{
-				ID:             fileID,
-				Filename:       elected.filename,
-				Filepath:       elected.path,
-				RelativePath:   rel,
-				Filesize:       fileSize,
-				SHA256Head:     headHash,
-				Extension:      ext,
-				FormatCategory: formatCategory,
-				Platform:       string(DeterminePlatform(elected.filename, elected.path)),
-				LibraryName:    libName,
-				GameTitle:      title,
-				ModifiedAt:     modTime,
-				RootDir:        rootDir,
-			}
-			AttachOtixSidecar(&hf, libPath)
-
-			newFiles[fileID] = hf
-			newFilesByPath[elected.path] = fileID
-			newMtimes[elected.path] = mtimeUnix
-			indexed = append(indexed, hf)
-			filesToPersist = append(filesToPersist, hf)
+		// Flush any remaining candidates for this library
+		if activeRootDir != "" {
+			flushRootDirCandidates(activeRootDir)
+			activeRootDir = ""
+		}
+		for rootDir := range dirCandidates {
+			flushRootDirCandidates(rootDir)
 		}
 	}
 
-	// Persist changes to SQLite store
+	// Persist changes and prune missing files in SQLite store
 	if store != nil {
 		if len(filesToPersist) > 0 {
 			_ = store.UpsertFiles(filesToPersist)
@@ -1725,14 +1780,14 @@ func (si *StorageIndexer) ScanAllWithDeep(deep bool) []HostedFile {
 	elapsed := time.Since(startTime).Milliseconds()
 	si.statusMu.Lock()
 	si.status = ScanStatus{
-		Phase:           ScanPhaseCompleted,
+		Phase:            ScanPhaseCompleted,
 		CurrentDirectory: "",
-		FilesScanned:    totalFilesScanned,
-		TotalFiles:      len(newFiles),
-		Percentage:      100.0,
-		StartedAt:       startTime,
-		ElapsedMs:       elapsed,
-		LastCompletedAt: time.Now(),
+		FilesScanned:     totalFilesScanned,
+		TotalFiles:       len(newFiles),
+		Percentage:       100.0,
+		StartedAt:        startTime,
+		ElapsedMs:        elapsed,
+		LastCompletedAt:  time.Now(),
 	}
 	completedStatus := si.status
 	si.statusMu.Unlock()

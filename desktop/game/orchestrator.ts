@@ -514,14 +514,16 @@ export class GameScanOrchestrator extends EventEmitter {
 
       let processedCount = 0;
       let matchedCount = 0;
+      let batchIndex = 0;
+      const processedGameIds = new Set<string>();
+      let pendingRows: GameRow[] = [...eligibleGames];
 
-      for (let i = 0; i < eligibleGames.length; i += BATCH_SIZE) {
-        if (abortController.signal.aborted) {
-          console.log('[Orchestrator] Matching loop aborted between chunks');
-          break;
+      while (pendingRows.length > 0 && !abortController.signal.aborted) {
+        const chunkRows = pendingRows.slice(0, BATCH_SIZE);
+        pendingRows = pendingRows.slice(BATCH_SIZE);
+        for (const r of chunkRows) {
+          processedGameIds.add(r.id);
         }
-
-        const chunkRows = eligibleGames.slice(i, i + BATCH_SIZE);
         const scannedChunk: ScannedGame[] = chunkRows.map((r) => this.gameRowToScannedGame(r));
         const chunkSignal = abortController.signal;
 
@@ -529,7 +531,7 @@ export class GameScanOrchestrator extends EventEmitter {
           await this.streamMatchesRemote(scannedChunk, 'background', 'game', chunkSignal, 15_000);
         } catch (remoteErr: any) {
           if (chunkSignal.aborted) break;
-          console.warn(`[Orchestrator] Remote match failed for batch ${Math.floor(i / BATCH_SIZE) + 1} (${remoteErr?.message || remoteErr}), falling back to offline matcher for this chunk`);
+          console.warn(`[Orchestrator] Remote match failed for batch ${batchIndex + 1} (${remoteErr?.message || remoteErr}), falling back to offline matcher for this chunk`);
           try {
             await this.streamMatchesLocal(scannedChunk, 'background');
           } catch (localErr: any) {
@@ -666,20 +668,39 @@ export class GameScanOrchestrator extends EventEmitter {
         this.emitThrottledProgress({
           state: 'running',
           processed: processedCount,
-          total: eligibleGames.length,
-          totalInLibrary,
+          total: this.matchingStats.totalUnmatched,
+          totalInLibrary: this.matchingStats.totalInLibrary,
           matched: matchedCount,
-          unmatched: eligibleGames.length - matchedCount,
+          unmatched: Math.max(0, this.matchingStats.totalUnmatched - matchedCount),
           percent,
           current: processedCount,
           progress: percent,
           currentItem: currentTitle,
           gameTitle: currentTitle,
         });
+
+        batchIndex++;
+
+        // If all pending rows have been matched and more unmatched games arrived in real time, queue them
+        if (pendingRows.length === 0 && !rematchAll && !options?.gameIds && !abortController.signal.aborted) {
+          const freshUnmatched = this.getUnmatchedGamesFromStorage({ rematchAll: false });
+          const newArrivals = freshUnmatched.filter((g) => !processedGameIds.has(g.id));
+          if (newArrivals.length > 0) {
+            pendingRows = newArrivals;
+            const newTotalInLib = getGameCount();
+            this.matchingStats.totalInLibrary = newTotalInLib;
+            this.matchingStats.totalUnmatched += newArrivals.length;
+          }
+        }
       }
 
       if (!abortController.signal.aborted) {
-        this.emitComplete(processedCount, totalInLibrary, matchedCount, eligibleGames.length);
+        this.emitComplete(
+          processedCount,
+          this.matchingStats.totalInLibrary || totalInLibrary,
+          matchedCount,
+          this.matchingStats.totalUnmatched || eligibleGames.length,
+        );
       }
     } catch (err: any) {
       console.error('[Orchestrator] Background matching engine error:', err);

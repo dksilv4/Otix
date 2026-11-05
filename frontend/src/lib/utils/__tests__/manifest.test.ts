@@ -84,6 +84,17 @@ describe('manifest utilities', () => {
       })
     })
 
+    it('sets append: true on single request when options.append is true', async () => {
+      const items = Array.from({ length: 50 }, (_, i) => ({ filename: `Incremental Game ${i}` }))
+      await uploadNodeManifestInChunks(0, items, { append: true })
+
+      expect(apiClient.post).toHaveBeenCalledTimes(1)
+      expect(apiClient.post).toHaveBeenCalledWith('/library/nodes/0/manifest', {
+        files: items,
+        append: true,
+      })
+    })
+
     it('chunks 1,200 items into 3 requests of 500, 500, and 200 with append flag on subsequent chunks', async () => {
       const items = Array.from({ length: 1200 }, (_, i) => ({ filename: `Game ${i}` }))
       const progressSpy = vi.fn()

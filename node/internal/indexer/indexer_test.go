@@ -731,4 +731,66 @@ func TestStorageIndexerOptimizedPS5DumpScanning(t *testing.T) {
 	}
 }
 
+func TestRealTimeFileIndexingAndProgressSSE(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "otix_realtime_scan_test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	// Create 3 game directories with executables
+	for i := 1; i <= 3; i++ {
+		gameDir := filepath.Join(tmpDir, fmt.Sprintf("Game_%d", i))
+		_ = os.MkdirAll(gameDir, 0755)
+		_ = os.WriteFile(filepath.Join(gameDir, fmt.Sprintf("game%d.exe", i)), []byte("game executable content"), 0755)
+	}
+
+	libraries := []config.LibraryConfig{
+		{
+			Name: "RealTimeGames",
+			Path: tmpDir,
+			Kind: "game",
+		},
+	}
+
+	idx := indexer.NewStorageIndexer(libraries)
+	ch := idx.SubscribeProgress()
+	defer idx.UnsubscribeProgress(ch)
+
+	foundCh := make(chan string, 10)
+	doneCh := make(chan struct{})
+
+	go func() {
+		defer close(doneCh)
+		for ev := range ch {
+			if ev.Event == "game_found" || ev.Event == "file_indexed" {
+				if ev.File != nil {
+					foundCh <- ev.File.GameTitle
+				}
+			}
+			if ev.Event == "scan_completed" {
+				return
+			}
+		}
+	}()
+
+	files := idx.ScanAll()
+	if len(files) != 3 {
+		t.Fatalf("expected 3 files indexed, got %d", len(files))
+	}
+
+	<-doneCh
+	close(foundCh)
+
+	var titlesReceived []string
+	for title := range foundCh {
+		titlesReceived = append(titlesReceived, title)
+	}
+
+	if len(titlesReceived) == 0 {
+		t.Fatalf("expected real-time events to be received, got 0")
+	}
+}
+
+
 

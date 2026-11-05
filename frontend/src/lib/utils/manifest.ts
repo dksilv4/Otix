@@ -16,6 +16,7 @@ export interface ManifestFileEntry {
 
 export interface UploadManifestOptions {
   chunkSize?: number
+  append?: boolean
   onProgress?: (uploadedCount: number, totalCount: number) => void
 }
 
@@ -59,7 +60,7 @@ export const uploadNodeManifestInChunks = async (
       files: chunk,
     }
 
-    if (isMultiChunk && !isFirst) {
+    if (options?.append || (isMultiChunk && !isFirst)) {
       payload.append = true
     }
 

@@ -1270,11 +1270,13 @@ const INNOUNP_EXE = 'innounp.exe';
 
 /** Find innounp.exe on PATH or in common locations. */
 async function findInnounp(): Promise<string | null> {
-  try {
-    const result = execSync(`where ${INNOUNP_EXE} 2>nul`, { encoding: 'utf-8', windowsHide: true });
-    const p = result.trim().split('\n')[0]?.trim();
-    if (p && existsSync(p)) return p;
-  } catch {}
+  if (process.platform === 'win32') {
+    try {
+      const result = execSync(`where ${INNOUNP_EXE} 2>nul`, { encoding: 'utf-8', windowsHide: true });
+      const p = result.trim().split('\n')[0]?.trim();
+      if (p && existsSync(p)) return p;
+    } catch {}
+  }
   const checkDirs = [
     path.join(tmpdir(), 'otix-innounp'),
     path.join(process.env.APPDATA || '', 'desktop'),
@@ -1413,7 +1415,8 @@ async function extractWithProgress(
 /** Try to extract with 7z (handles some InnoSetup installers too). */
 async function extractWith7z(setupPath: string, targetDir: string): Promise<boolean> {
   try {
-    const result = execSync(`where 7z 2>nul`, { encoding: 'utf-8', windowsHide: true });
+    const cmd = process.platform === 'win32' ? 'where 7z 2>nul' : 'which 7z 2>/dev/null';
+    const result = execSync(cmd, { encoding: 'utf-8', windowsHide: true });
     const sevenZipPath = result.trim().split('\n')[0]?.trim();
     if (!sevenZipPath || !existsSync(sevenZipPath)) return false;
     execSync(`"${sevenZipPath}" x "${setupPath}" -o"${targetDir}" -y`, { stdio: 'ignore', timeout: 120000 });

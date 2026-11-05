@@ -96,9 +96,11 @@ function createDetector(sessionsDir?: string): GameDetector {
 
 describe('GameDetector', () => {
   let detector: GameDetector
+  const originalPlatform = process.platform
 
   beforeEach(() => {
     vi.clearAllMocks()
+    Object.defineProperty(process, 'platform', { value: 'win32', configurable: true })
 
     // Re-establish all basic mocks after clearAllMocks
     mockNoProcesses()
@@ -116,6 +118,7 @@ describe('GameDetector', () => {
 
   afterEach(() => {
     detector.stopAll()
+    Object.defineProperty(process, 'platform', { value: originalPlatform, configurable: true })
     vi.clearAllMocks()
   })
 

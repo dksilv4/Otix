@@ -321,6 +321,36 @@ describe('Milestone 2: Scanner Decoupling & Autonomous Matching Engine', () => {
       expect(getGameMatch('pc', 'unmatched_2')).toBeNull();
     });
 
+    it('seamlessly picks up newly discovered games upserted during active background matching', async () => {
+      let batchNum = 0;
+      vi.spyOn(orchestrator as any, 'streamMatchesRemote').mockImplementation(async (...args: any[]) => {
+        const chunk = args[0] as ScannedGame[];
+        batchNum++;
+        if (batchNum === 1) {
+          // Scanner discovers and persists a 4th game while matching is underway
+          upsertGames([
+            {
+              id: 'pc_realtime_4',
+              title: 'Realtime Discovered Game 4',
+              exePath: 'C:\\Games\\r4\\r4.exe',
+              installDir: 'C:\\Games\\r4',
+              platform: 'pc' as const,
+            },
+          ] as any);
+        }
+        await (orchestrator as any).streamMatchesLocal(chunk, 'background');
+      });
+
+      await orchestrator.startBackgroundMatching();
+
+      // All 3 initial games plus the realtime discovered 4th game should be matched
+      expect(getGameMatch('pc', 'unmatched_1')).toBeDefined();
+      expect(getGameMatch('pc', 'unmatched_2')).toBeDefined();
+      expect(getGameMatch('pc', 'unmatched_3')).toBeDefined();
+      expect(getGameMatch('pc', 'realtime_4')).toBeDefined();
+      expect(orchestrator.getMatchingStatus().totalUnmatched).toBe(0);
+    });
+
     it('guards against concurrent runs and prevents duplicate loops', async () => {
       let resolver: () => void;
       const deferred = new Promise<void>((r) => { resolver = r; });

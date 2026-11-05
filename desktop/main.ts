@@ -1328,22 +1328,31 @@ app.on('ready', async () => {
     console.error('[main] DB init failed (app will run with reduced functionality):', err.message);
   });
 
-  const pluginsRepo = new PluginsRepository();
+  let pluginsRepo: PluginsRepository | null = null;
+  if (dbReady) {
+    try {
+      pluginsRepo = new PluginsRepository();
+    } catch (err: any) {
+      console.error('[main] Failed to create PluginsRepository:', err);
+    }
+  }
 
   // Rehydrate any installs that were running before Electron last closed
   if (dbReady) { try { rehydrateActiveInstalls() } catch (err) { console.error('[main] rehydrateActiveInstalls failed:', err) } }
 
   // Register modular IPC handlers (safe — registration doesn't touch DB)
-  registerDownloadsIPC();
-  registerGameServersIPC();
-  registerNetworkIPC();
+  try { registerDownloadsIPC(); } catch (err) { console.error('[main] registerDownloadsIPC failed:', err); }
+  try { registerGameServersIPC(); } catch (err) { console.error('[main] registerGameServersIPC failed:', err); }
+  try { registerNetworkIPC(); } catch (err) { console.error('[main] registerNetworkIPC failed:', err); }
   nodeDaemon = new NodeDaemonManager(app.getPath('userData'), process.resourcesPath);
-  registerNodeDaemonIPC(nodeDaemon);
-  registerScannerIPC(gameDetector, nodeDaemon, () => {
-    void syncDesktopNodeToBackend(true);
-    libraryWatcher?.updateWatches();
-  });
-  registerInstallerIPC();
+  try { registerNodeDaemonIPC(nodeDaemon); } catch (err) { console.error('[main] registerNodeDaemonIPC failed:', err); }
+  try {
+    registerScannerIPC(gameDetector, nodeDaemon, () => {
+      void syncDesktopNodeToBackend(true);
+      libraryWatcher?.updateWatches();
+    });
+  } catch (err) { console.error('[main] registerScannerIPC failed:', err); }
+  try { registerInstallerIPC(); } catch (err) { console.error('[main] registerInstallerIPC failed:', err); }
   if (dbReady && !isInstallerMode && !isUninstallerMode) {
     achievementTracker = new AchievementTracker();
     registerAchievementsIPC(achievementTracker);
@@ -1403,7 +1412,7 @@ app.on('ready', async () => {
   createWindow();
 
   // ── Initialize plugin system ──
-  if (dbReady) {
+  if (dbReady && pluginsRepo) {
     const packagedPluginsDir = path.join(process.resourcesPath, 'plugins');
     const extensionsDir = isDev
       ? path.resolve(__dirname, '..', '..', 'extensions', 'plugins')

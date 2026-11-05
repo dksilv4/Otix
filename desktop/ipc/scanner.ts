@@ -97,6 +97,188 @@ export interface ExecuteScanOptions {
   isAutomatic?: boolean;
 }
 
+function transformFileToLocalGame(
+  f: any,
+  existingGamesById: Map<string, LocalGame>,
+  existingExes: Set<string>,
+  existingDirs: Set<string>,
+  matchesByKey: Map<string, any>,
+): { game: LocalGame | null; isNew: boolean } {
+  const filename = f.filename || (f.filepath ? path.basename(f.filepath) : '');
+  const filepath = f.filepath || '';
+  if (
+    f.format_category === 'update' ||
+    (f as any).isUpdate ||
+    isUpdateFile(filename, filepath) ||
+    isDlcFile(filename, filepath)
+  ) {
+    return { game: null, isNew: false };
+  }
+  const fileId = f.id || `node_${f.filename}`;
+  const plat = f.platform || (f.format_category === 'iso' ? 'iso' : (f.format_category === 'rom' ? 'rom' : (f.format_category === 'steam' ? 'steam' : 'pc')));
+  const knownPrefixes = ['pc_', 'steam_', 'iso_', 'rom_', 'ps1_', 'ps2_', 'ps3_', 'ps4_', 'ps5_', 'psp_', 'psvita_', 'xbox_', 'xbox360_', 'switch_', 'wii_', 'wiiu_'];
+  const alreadyPrefixed = knownPrefixes.some((p) => fileId.startsWith(p));
+  const fullId = alreadyPrefixed ? fileId : `${plat}_${fileId}`;
+  const existing = existingGamesById.get(fullId) || existingGamesById.get(fileId);
+  const match = matchesByKey.get(`${plat}:${fileId}`) || matchesByKey.get(`local:${fileId}`);
+
+  const poster = existing?.posterUrl || (existing as any)?.otixPosterUrl || f.otix_images?.poster?.url || f.catalog_item?.poster_url || match?.otixPosterUrl;
+  const backdrop = (existing as any)?.backdropUrl || (existing as any)?.otixBackdropUrl || f.otix_images?.backdrop?.url || f.catalog_item?.backdrop_url || match?.otixBackdropUrl;
+  const logo = (existing as any)?.logoUrl || (existing as any)?.otixLogoUrl || f.otix_images?.logo?.url || f.catalog_item?.logo_url;
+  const icon = existing?.iconUrl || (existing as any)?.otixIconUrl || f.otix_images?.icon?.url || f.catalog_item?.icon_url || match?.otixIconUrl;
+  const mediaId = existing?.otixMediaId || match?.otixMediaId || f.otix_media_id || f.catalog_item?.id;
+  const mediaTitle = existing?.otixMediaTitle || match?.otixTitle || f.otix_title || f.catalog_item?.title;
+  const confidence = existing?.otixConfidence ?? match?.otixConfidence ?? f.otix_confidence ?? (mediaId ? 1.0 : undefined);
+  const overview = f.otix_overview || f.catalog_item?.overview || (existing?.data as any)?.overview;
+  const slug = f.otix_slug || f.catalog_item?.slug || (existing?.data as any)?.slug;
+
+  const gameData = existing?.data || (mediaId ? {
+    id: String(mediaId),
+    mediaId: String(mediaId),
+    title: mediaTitle || f.game_title || f.filename,
+    slug: slug || '',
+    overview: overview || '',
+    posterUrl: poster,
+    backdropUrl: backdrop,
+    logoUrl: logo,
+    iconUrl: icon,
+    sizeBytes: Number(f.filesize || f.size_bytes || (existing?.data as any)?.sizeBytes || (existing as any)?.sizeBytes || 0),
+    modifiedAt: f.modified_at || f.modifiedAt || (existing as any)?.modifiedAt || undefined,
+  } : undefined);
+
+  let calculatedSize = Number(
+    f.filesize ||
+    f.size_bytes ||
+    f.sizeBytes ||
+    f.fileSize ||
+    f.file_size ||
+    f.size ||
+    (existing as any)?.sizeBytes ||
+    (existing?.data as any)?.sizeBytes ||
+    0
+  );
+
+  let fileModifiedAt =
+    f.modified_at ||
+    f.modifiedAt ||
+    f.updated_at ||
+    f.updatedAt ||
+    f.created_at ||
+    f.createdAt ||
+    (existing as any)?.modifiedAt ||
+    (existing?.data as any)?.modifiedAt ||
+    undefined;
+
+  const resolvedExe =
+    (f as any).local_exe_path ||
+    (f as any).localExePath ||
+    existing?.localExePath ||
+    f.filepath ||
+    existing?.exePath ||
+    '';
+
+  const resolvedDir =
+    f.root_dir ||
+    f.installDir ||
+    f.install_dir ||
+    existing?.installDir ||
+    (resolvedExe && !resolvedExe.startsWith('steam://') ? path.dirname(resolvedExe) : '');
+
+  let fileTarget = resolvedExe && !resolvedExe.startsWith('steam://') && fs.existsSync(resolvedExe) ? resolvedExe : null;
+  const dirTarget = resolvedDir && fs.existsSync(resolvedDir) ? resolvedDir : null;
+
+  let resolvedLocalExe = (f as any).local_exe_path || (f as any).localExePath || existing?.localExePath;
+  if ((!fileTarget || (fileTarget && fs.statSync(fileTarget).isDirectory())) && dirTarget) {
+    const foundExe = gameService.findMainExecutableInFolder(dirTarget);
+    if (foundExe) {
+      fileTarget = foundExe;
+      if (!resolvedLocalExe) resolvedLocalExe = foundExe;
+    }
+  }
+
+  if (!fileModifiedAt) {
+    const probe = fileTarget || dirTarget;
+    if (probe) {
+      try {
+        const st = fs.statSync(probe);
+        if (st.mtime) fileModifiedAt = st.mtime.toISOString();
+      } catch {}
+    }
+  }
+
+  if (!calculatedSize) {
+    if (dirTarget) {
+      const dirSize = gameService.calculateDirectorySize(dirTarget);
+      if (dirSize > 0) calculatedSize = dirSize;
+    }
+    if (!calculatedSize && fileTarget) {
+      try {
+        const st = fs.statSync(fileTarget);
+        if (st.size > 0) calculatedSize = st.size;
+      } catch {}
+    }
+  }
+
+  let calculatedVersion =
+    (f as any).version ||
+    (f as any).game_version ||
+    (f as any).gameVersion ||
+    existing?.version ||
+    (existing?.data as any)?.version ||
+    (existing?.data as any)?.gameVersion ||
+    undefined;
+
+  if (!calculatedVersion && fileTarget && fileTarget.toLowerCase().endsWith('.exe')) {
+    const peVer = gameService.getPeVersion(fileTarget);
+    if (peVer) calculatedVersion = peVer;
+  }
+
+  const finalExePath =
+    (f.filepath && path.extname(f.filepath) ? f.filepath : null) ||
+    (existing?.localExePath && path.extname(existing.localExePath) ? existing.localExePath : null) ||
+    (existing?.exePath && path.extname(existing.exePath) ? existing.exePath : null) ||
+    fileTarget ||
+    f.filepath ||
+    existing?.exePath ||
+    '';
+
+  const game: LocalGame = {
+    id: fullId,
+    title: existing?.title || f.game_title || f.filename,
+    exePath: finalExePath,
+    localExePath: resolvedLocalExe || (fileTarget || undefined),
+    installDir: resolvedDir,
+    platform: plat,
+    version: calculatedVersion,
+    updateFiles: f.update_files || existing?.updateFiles,
+    isDlc: f.format_category === 'dlc' || f.format_category === 'update' || f.isDlc,
+    otixMediaId: mediaId ? String(mediaId) : undefined,
+    otixMediaTitle: mediaTitle,
+    otixConfidence: confidence,
+    posterUrl: poster,
+    backdropUrl: backdrop,
+    logoUrl: logo,
+    iconUrl: icon,
+    overview: overview,
+    sizeBytes: calculatedSize,
+    modifiedAt: fileModifiedAt,
+    data: {
+      ...(gameData || {}),
+      sizeBytes: calculatedSize,
+      modifiedAt: fileModifiedAt,
+      version: calculatedVersion,
+    } as any,
+    otixMatchSuggestion: existing?.otixMatchSuggestion || (existing as any)?.matchSuggestion,
+  } as LocalGame;
+
+  const isKnownId = existingGamesById.has(game.id);
+  const isKnownDir = game.installDir ? existingDirs.has(path.resolve(game.installDir).toLowerCase()) : false;
+  const isKnownExe = game.exePath ? existingExes.has(path.resolve(game.exePath).toLowerCase()) : false;
+  const isNew = !isKnownId && !isKnownDir && !isKnownExe;
+
+  return { game, isNew };
+}
+
 export async function executeScan(
   options: ExecuteScanOptions = {}
 ): Promise<{ games: LocalGame[]; newGames: LocalGame[] }> {
@@ -231,8 +413,140 @@ export async function executeScan(
 
     sendSafeProgress('Indexing library files...', 30);
 
+    // ── Real-Time File Discovery Setup ──
+    const allExistingGames = gameService.getAllGames();
+    const existingGamesById = new Map<string, (typeof allExistingGames)[0]>();
+    for (const eg of allExistingGames) {
+      existingGamesById.set(eg.id, eg);
+    }
+    const existingExes = new Set<string>();
+    const existingDirs = new Set<string>();
+    for (const eg of allExistingGames) {
+      if (eg.exePath) existingExes.add(path.resolve(eg.exePath).toLowerCase());
+      if (eg.localExePath) existingExes.add(path.resolve(eg.localExePath).toLowerCase());
+      if (eg.installDir) existingDirs.add(path.resolve(eg.installDir).toLowerCase());
+    }
+
+    const allMatches = gameService.getAllGameMatches();
+    const matchesByKey = new Map<string, (typeof allMatches)[0]>();
+    for (const m of allMatches) {
+      matchesByKey.set(`${m.source}:${m.sourceGameId}`, m);
+    }
+
+    const games: LocalGame[] = [];
+    const newGames: LocalGame[] = [];
+    const processedFileIds = new Set<string>();
+    const scope = hasClientPaths ? Array.from(allPathsMap.keys()) : undefined;
+
+    const ingestFile = (f: any): LocalGame | null => {
+      if (!f) return null;
+      const rawId = f.id || `node_${f.filename || (f.filepath ? path.basename(f.filepath) : '')}`;
+      if (processedFileIds.has(rawId)) return null;
+
+      const res = transformFileToLocalGame(f, existingGamesById, existingExes, existingDirs, matchesByKey);
+      if (!res || !res.game) return null;
+      const { game, isNew } = res;
+      if (processedFileIds.has(game.id)) return null;
+
+      processedFileIds.add(rawId);
+      processedFileIds.add(game.id);
+
+      games.push(game);
+      if (isNew) {
+        newGames.push(game);
+      }
+      existingGamesById.set(game.id, game as any);
+      if (game.installDir) existingDirs.add(path.resolve(game.installDir).toLowerCase());
+      if (game.exePath) existingExes.add(path.resolve(game.exePath).toLowerCase());
+      if (game.localExePath) existingExes.add(path.resolve(game.localExePath).toLowerCase());
+      return game;
+    };
+
+    const handleDiscoveredBatch = (batch: LocalGame[]) => {
+      if (batch.length === 0) return;
+      try {
+        gameService.upsertGames(batch as any[], scope);
+        gameService.flushNotifyGamesChanged();
+        if (_orchestrator) {
+          if (typeof (_orchestrator as any).startBackgroundMatching === 'function') {
+            (_orchestrator as any).startBackgroundMatching().catch(() => {});
+          } else if (typeof (_orchestrator as any).startMatching === 'function') {
+            (_orchestrator as any).startMatching().catch(() => {});
+          }
+        }
+      } catch (err: any) {
+        console.warn('[scanner:scan-paths] Real-time batch upsert error:', err);
+      }
+    };
+
+    const fetchCurrentFiles = (): Promise<any[]> => {
+      return new Promise((resolve) => {
+        const req = http.get(
+          `http://127.0.0.1:${port}/api/v1/files`,
+          { headers: authHeaders, timeout: 3000 },
+          (res) => {
+            if (res.statusCode !== 200) {
+              res.resume();
+              resolve([]);
+              return;
+            }
+            let buf = '';
+            res.on('data', (c) => { buf += c; });
+            res.on('end', () => {
+              try {
+                const parsed = JSON.parse(buf);
+                resolve(Array.isArray(parsed) ? parsed : []);
+              } catch {
+                resolve([]);
+              }
+            });
+          }
+        );
+        req.on('error', () => resolve([]));
+        req.on('timeout', () => { req.destroy(); resolve([]); });
+      });
+    };
+
+    // Connect to real-time scan progress stream (SSE)
+    let sseReq: http.ClientRequest | null = null;
+    try {
+      sseReq = http.get(
+        `http://127.0.0.1:${port}/api/v1/scan/progress`,
+        { headers: authHeaders, timeout: 180000 },
+        (res) => {
+          let sseBuffer = '';
+          res.on('data', (chunk: Buffer) => {
+            sseBuffer += chunk.toString('utf8');
+            const blocks = sseBuffer.split('\n\n');
+            sseBuffer = blocks.pop() || '';
+            const realTimeBatch: LocalGame[] = [];
+            for (const block of blocks) {
+              const eventMatch = block.match(/^event:\s*([^\r\n]+)/m);
+              const dataMatch = block.match(/^data:\s*([^\r\n]+)/m);
+              if (eventMatch && dataMatch) {
+                const eventName = eventMatch[1].trim();
+                if (eventName === 'game_found' || eventName === 'file_indexed') {
+                  try {
+                    const parsedFile = JSON.parse(dataMatch[1].trim());
+                    const g = ingestFile(parsedFile);
+                    if (g) realTimeBatch.push(g);
+                  } catch {}
+                }
+              }
+            }
+            if (realTimeBatch.length > 0) {
+              handleDiscoveredBatch(realTimeBatch);
+            }
+          });
+          res.on('error', () => {});
+        }
+      );
+      sseReq.on('error', () => {});
+    } catch {}
+
     // Trigger node scan with progress polling
     let scanDone = false;
+    let isPollingFiles = false;
     const progressTimer = setInterval(async () => {
       if (scanDone) return;
       try {
@@ -259,6 +573,27 @@ export async function executeScan(
             `Scanning ${displayDir} (${scanned} files)...`,
             Math.min(85, 30 + Math.floor(scanned / 50)),
           );
+        }
+
+        if (!isPollingFiles) {
+          isPollingFiles = true;
+          fetchCurrentFiles()
+            .then((current) => {
+              if (Array.isArray(current) && current.length > 0) {
+                const pollBatch: LocalGame[] = [];
+                for (const f of current) {
+                  const g = ingestFile(f);
+                  if (g) pollBatch.push(g);
+                }
+                if (pollBatch.length > 0) {
+                  handleDiscoveredBatch(pollBatch);
+                }
+              }
+            })
+            .catch(() => {})
+            .finally(() => {
+              isPollingFiles = false;
+            });
         }
       } catch {
         // ignore
@@ -294,6 +629,9 @@ export async function executeScan(
     } finally {
       scanDone = true;
       clearInterval(progressTimer);
+      if (sseReq) {
+        try { sseReq.destroy(); } catch {}
+      }
     }
 
     sendSafeProgress('Fetching indexed games...', 88);
@@ -387,8 +725,20 @@ export async function executeScan(
       nodeFiles = [];
     }
 
+    // Ingest any remaining files returned by node
+    if (nodeFiles && nodeFiles.length > 0) {
+      const finalBatch: LocalGame[] = [];
+      for (const f of nodeFiles) {
+        const g = ingestFile(f);
+        if (g) finalBatch.push(g);
+      }
+      if (finalBatch.length > 0) {
+        handleDiscoveredBatch(finalBatch);
+      }
+    }
+
     // Fallback: if node returned 0 files or is offline, scan via native local-scanner
-    if (!nodeFiles || nodeFiles.length === 0) {
+    if (games.length === 0 && (!nodeFiles || nodeFiles.length === 0)) {
       sendSafeProgress('Scanning local directories...', 40);
       console.log('[scanner:scan-paths] Running native local file scanner...');
       try {
@@ -405,10 +755,11 @@ export async function executeScan(
         const rawFallback = localScanResult.games || [];
         if (rawFallback.length > 0) {
           console.log(`[scanner:scan-paths] Native local scanner discovered ${rawFallback.length} games`);
-          nodeFiles = rawFallback.map((g: any) => {
+          const fallbackBatch: LocalGame[] = [];
+          for (const g of rawFallback) {
             const isIsoOrRom = g.platform !== 'pc' && g.platform !== 'steam';
             const formatCategory = g.platform === 'steam' ? 'steam' : isIsoOrRom ? (g.platform === 'iso' ? 'iso' : 'rom') : 'pc';
-            return {
+            const mapped = ingestFile({
               id: g.id,
               filename: path.basename(g.exePath || g.installDir || g.title),
               filepath: g.exePath || g.installDir,
@@ -419,8 +770,12 @@ export async function executeScan(
               update_files: g.updateFiles,
               isDlc: g.isDlc,
               local_exe_path: g.localExePath,
-            };
-          });
+            });
+            if (mapped) fallbackBatch.push(mapped);
+          }
+          if (fallbackBatch.length > 0) {
+            handleDiscoveredBatch(fallbackBatch);
+          }
         }
       } catch (fbErr: any) {
         console.warn('[scanner:scan-paths] Native local scanner error:', fbErr.message);
@@ -450,21 +805,9 @@ export async function executeScan(
           });
           const steamGames = (steamResult.games || []).filter((g) => g.platform === 'steam');
           if (steamGames.length > 0) {
-            const steamCommonDirs = new Set(steamGames.map((g) => path.resolve(g.installDir).toLowerCase()));
-            // Filter out interior executables in steamapps/common from nodeFiles to prevent duplicate/partial PC records
-            nodeFiles = nodeFiles.filter((f) => {
-              const rDir = f.root_dir ? path.resolve(f.root_dir).toLowerCase() : '';
-              const fPath = f.filepath ? path.resolve(f.filepath).toLowerCase() : '';
-              for (const scd of steamCommonDirs) {
-                if (rDir === scd || rDir.startsWith(scd + path.sep) || fPath.startsWith(scd + path.sep)) {
-                  return false;
-                }
-              }
-              return true;
-            });
-
+            const steamBatch: LocalGame[] = [];
             for (const sg of steamGames) {
-              nodeFiles.push({
+              const mapped = ingestFile({
                 id: sg.id,
                 filename: path.basename(sg.exePath || sg.installDir || sg.title),
                 filepath: sg.exePath || sg.installDir,
@@ -476,222 +819,15 @@ export async function executeScan(
                 isDlc: sg.isDlc,
                 local_exe_path: sg.localExePath,
               });
+              if (mapped) steamBatch.push(mapped);
+            }
+            if (steamBatch.length > 0) {
+              handleDiscoveredBatch(steamBatch);
             }
           }
         }
       } catch (steamErr: any) {
         console.warn('[scanner:scan-paths] Native Steam library scan augmentation error:', steamErr.message);
-      }
-    }
-
-    // ── Phase 1: Transform discovered files into LocalGame records immediately ──
-    // Pre-load all existing games and matches into memory maps to avoid N*2 individual DB queries
-    const allExistingGames = gameService.getAllGames();
-    const existingGamesById = new Map<string, (typeof allExistingGames)[0]>();
-    for (const eg of allExistingGames) {
-      existingGamesById.set(eg.id, eg);
-    }
-    const existingExes = new Set<string>();
-    const existingDirs = new Set<string>();
-    for (const eg of allExistingGames) {
-      if (eg.exePath) existingExes.add(path.resolve(eg.exePath).toLowerCase());
-      if (eg.localExePath) existingExes.add(path.resolve(eg.localExePath).toLowerCase());
-      if (eg.installDir) existingDirs.add(path.resolve(eg.installDir).toLowerCase());
-    }
-
-    const allMatches = gameService.getAllGameMatches();
-    const matchesByKey = new Map<string, (typeof allMatches)[0]>();
-    for (const m of allMatches) {
-      matchesByKey.set(`${m.source}:${m.sourceGameId}`, m);
-    }
-
-    const games: LocalGame[] = [];
-    const rawCount = (nodeFiles || []).length;
-    for (let i = 0; i < rawCount; i++) {
-      if (i > 0 && i % 500 === 0) {
-        await new Promise<void>((r) => setImmediate(r));
-      }
-      const f = nodeFiles[i];
-      const filename = f.filename || (f.filepath ? path.basename(f.filepath) : '');
-      const filepath = f.filepath || '';
-      if (
-        f.format_category === 'update' ||
-        (f as any).isUpdate ||
-        isUpdateFile(filename, filepath) ||
-        isDlcFile(filename, filepath)
-      ) {
-        // Update / patch files belong to their parent game, not as standalone library cards
-        continue;
-      }
-      const fileId = f.id || `node_${f.filename}`;
-      const plat = f.platform || (f.format_category === 'iso' ? 'iso' : (f.format_category === 'rom' ? 'rom' : (f.format_category === 'steam' ? 'steam' : 'pc')));
-      const knownPrefixes = ['pc_', 'steam_', 'iso_', 'rom_', 'ps1_', 'ps2_', 'ps3_', 'ps4_', 'ps5_', 'psp_', 'psvita_', 'xbox_', 'xbox360_', 'switch_', 'wii_', 'wiiu_'];
-      const alreadyPrefixed = knownPrefixes.some((p) => fileId.startsWith(p));
-      const fullId = alreadyPrefixed ? fileId : `${plat}_${fileId}`;
-      const existing = existingGamesById.get(fullId) || existingGamesById.get(fileId);
-      const match = matchesByKey.get(`${plat}:${fileId}`) || matchesByKey.get(`local:${fileId}`);
-
-      const poster = existing?.posterUrl || (existing as any)?.otixPosterUrl || f.otix_images?.poster?.url || f.catalog_item?.poster_url || match?.otixPosterUrl;
-      const backdrop = (existing as any)?.backdropUrl || (existing as any)?.otixBackdropUrl || f.otix_images?.backdrop?.url || f.catalog_item?.backdrop_url || match?.otixBackdropUrl;
-      const logo = (existing as any)?.logoUrl || (existing as any)?.otixLogoUrl || f.otix_images?.logo?.url || f.catalog_item?.logo_url;
-      const icon = existing?.iconUrl || (existing as any)?.otixIconUrl || f.otix_images?.icon?.url || f.catalog_item?.icon_url || match?.otixIconUrl;
-      const mediaId = existing?.otixMediaId || match?.otixMediaId || f.otix_media_id || f.catalog_item?.id;
-      const mediaTitle = existing?.otixMediaTitle || match?.otixTitle || f.otix_title || f.catalog_item?.title;
-      const confidence = existing?.otixConfidence ?? match?.otixConfidence ?? f.otix_confidence ?? (mediaId ? 1.0 : undefined);
-      const overview = f.otix_overview || f.catalog_item?.overview || (existing?.data as any)?.overview;
-      const slug = f.otix_slug || f.catalog_item?.slug || (existing?.data as any)?.slug;
-
-      const gameData = existing?.data || (mediaId ? {
-        id: String(mediaId),
-        mediaId: String(mediaId),
-        title: mediaTitle || f.game_title || f.filename,
-        slug: slug || '',
-        overview: overview || '',
-        posterUrl: poster,
-        backdropUrl: backdrop,
-        logoUrl: logo,
-        iconUrl: icon,
-        sizeBytes: Number(f.filesize || f.size_bytes || (existing?.data as any)?.sizeBytes || (existing as any)?.sizeBytes || 0),
-        modifiedAt: f.modified_at || f.modifiedAt || (existing as any)?.modifiedAt || undefined,
-      } : undefined);
-
-      let calculatedSize = Number(
-        f.filesize ||
-        f.size_bytes ||
-        f.sizeBytes ||
-        f.fileSize ||
-        f.file_size ||
-        f.size ||
-        (existing as any)?.sizeBytes ||
-        (existing?.data as any)?.sizeBytes ||
-        0
-      );
-
-      let fileModifiedAt =
-        f.modified_at ||
-        f.modifiedAt ||
-        f.updated_at ||
-        f.updatedAt ||
-        f.created_at ||
-        f.createdAt ||
-        (existing as any)?.modifiedAt ||
-        (existing?.data as any)?.modifiedAt ||
-        undefined;
-
-      const resolvedExe =
-        (f as any).local_exe_path ||
-        (f as any).localExePath ||
-        existing?.localExePath ||
-        f.filepath ||
-        existing?.exePath ||
-        '';
-
-      const resolvedDir =
-        f.root_dir ||
-        f.installDir ||
-        f.install_dir ||
-        existing?.installDir ||
-        (resolvedExe && !resolvedExe.startsWith('steam://') ? path.dirname(resolvedExe) : '');
-
-      let fileTarget = resolvedExe && !resolvedExe.startsWith('steam://') && fs.existsSync(resolvedExe) ? resolvedExe : null;
-      const dirTarget = resolvedDir && fs.existsSync(resolvedDir) ? resolvedDir : null;
-
-      let resolvedLocalExe = (f as any).local_exe_path || (f as any).localExePath || existing?.localExePath;
-      if ((!fileTarget || (fileTarget && fs.statSync(fileTarget).isDirectory())) && dirTarget) {
-        const foundExe = gameService.findMainExecutableInFolder(dirTarget);
-        if (foundExe) {
-          fileTarget = foundExe;
-          if (!resolvedLocalExe) resolvedLocalExe = foundExe;
-        }
-      }
-
-      if (!fileModifiedAt) {
-        const probe = fileTarget || dirTarget;
-        if (probe) {
-          try {
-            const st = fs.statSync(probe);
-            if (st.mtime) fileModifiedAt = st.mtime.toISOString();
-          } catch {}
-        }
-      }
-
-      if (!calculatedSize) {
-        if (dirTarget) {
-          const dirSize = gameService.calculateDirectorySize(dirTarget);
-          if (dirSize > 0) calculatedSize = dirSize;
-        }
-        if (!calculatedSize && fileTarget) {
-          try {
-            const st = fs.statSync(fileTarget);
-            if (st.size > 0) calculatedSize = st.size;
-          } catch {}
-        }
-      }
-
-      let calculatedVersion =
-        (f as any).version ||
-        (f as any).game_version ||
-        (f as any).gameVersion ||
-        existing?.version ||
-        (existing?.data as any)?.version ||
-        (existing?.data as any)?.gameVersion ||
-        undefined;
-
-      if (!calculatedVersion && fileTarget && fileTarget.toLowerCase().endsWith('.exe')) {
-        const peVer = gameService.getPeVersion(fileTarget);
-        if (peVer) calculatedVersion = peVer;
-      }
-
-      const finalExePath =
-        (f.filepath && path.extname(f.filepath) ? f.filepath : null) ||
-        (existing?.localExePath && path.extname(existing.localExePath) ? existing.localExePath : null) ||
-        (existing?.exePath && path.extname(existing.exePath) ? existing.exePath : null) ||
-        fileTarget ||
-        f.filepath ||
-        existing?.exePath ||
-        '';
-
-      games.push({
-        id: fullId,
-        title: existing?.title || f.game_title || f.filename,
-        exePath: finalExePath,
-        localExePath: resolvedLocalExe || (fileTarget || undefined),
-        installDir: resolvedDir,
-        platform: plat,
-        version: calculatedVersion,
-        updateFiles: f.update_files || existing?.updateFiles,
-        isDlc: f.format_category === 'dlc' || f.format_category === 'update' || f.isDlc,
-        otixMediaId: mediaId ? String(mediaId) : undefined,
-        otixMediaTitle: mediaTitle,
-        otixConfidence: confidence,
-        posterUrl: poster,
-        backdropUrl: backdrop,
-        logoUrl: logo,
-        iconUrl: icon,
-        overview: overview,
-        sizeBytes: calculatedSize,
-        modifiedAt: fileModifiedAt,
-        data: {
-          ...(gameData || {}),
-          sizeBytes: calculatedSize,
-          modifiedAt: fileModifiedAt,
-          version: calculatedVersion,
-        } as any,
-        matchSuggestion: existing?.matchSuggestion,
-        otixMatchSuggestion: existing?.otixMatchSuggestion,
-      } as LocalGame);
-    }
-
-    // Determine newly detected games
-    const newGames: LocalGame[] = [];
-    for (const g of games) {
-      if (g.isDlc || (g as any).isUpdate) continue;
-      const isKnownId = existingGamesById.has(g.id);
-      const isKnownDir = g.installDir ? existingDirs.has(path.resolve(g.installDir).toLowerCase()) : false;
-      const isKnownExe = g.exePath ? existingExes.has(path.resolve(g.exePath).toLowerCase()) : false;
-
-      if (!isKnownId && !isKnownDir && !isKnownExe) {
-        newGames.push(g);
       }
     }
 
