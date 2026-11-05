@@ -1,6 +1,6 @@
 import { isTitleMatch } from '@media/utils'
 import { classifyReleaseKind, releaseMatchesSearchHint } from './release-parse'
-import type { NodeGameFile, ServerGameFile } from './types'
+import type { NodeGameFile } from './types'
 import type { ServerDownloadHistoryItem } from './usenet-types'
 
 type HistoryRow = ServerDownloadHistoryItem & {

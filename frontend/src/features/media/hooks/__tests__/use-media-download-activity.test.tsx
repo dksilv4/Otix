@@ -183,4 +183,41 @@ describe('useMediaDownloadActivity', () => {
     expect(result.current.overallProgress).toBe(60)
     expect(result.current.primaryQueueItem?.id).toBe(301)
   })
+
+  it('marks item as completed and not downloading when download reaches 100% / sizeLeft=0', () => {
+    vi.spyOn(downloadHooksModule, 'useServerSonarrQueue').mockReturnValue({
+      data: { records: [] } as any,
+    } as any)
+
+    vi.spyOn(downloadHooksModule, 'useServerRadarrQueue').mockReturnValue({
+      data: {
+        records: [
+          {
+            id: 301,
+            title: 'Inception.2010.1080p.BluRay',
+            status: 'Completed',
+            size: 10_000_000_000,
+            sizeLeft: 0,
+            timeleft: '00:00:00',
+            mediaItemId: 99,
+            movieTitle: 'Inception',
+            movie: { id: 5, title: 'Inception', tmdbId: 27205 },
+          },
+        ],
+      } as any,
+    } as any)
+
+    const { result } = renderHook(
+      () =>
+        useMediaDownloadActivity('movie', 99, {
+          tmdbId: 27205,
+          title: 'Inception',
+        }),
+      { wrapper },
+    )
+
+    expect(result.current.isDownloading).toBe(false)
+    expect(result.current.isCompleted).toBe(true)
+    expect(result.current.overallProgress).toBe(100)
+  })
 })

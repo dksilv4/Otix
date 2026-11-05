@@ -6,16 +6,14 @@ import { formatBytes } from '@/lib/utils/utils'
 import { MatchGameModal } from '@/features/launcher/components/molecules/launcher-match-game-modal'
 import { useLauncherFoundGames } from '@/features/launcher/data/game-queries'
 import type { FoundServerGame } from '@/features/launcher/data/visible-games'
-import type { LocalGame } from '@/features/launcher/types'
+import type { LocalGame, FoundTab } from '@/features/launcher/types'
 
-type FoundTab = 'unmatched' | 'all'
-
-interface Props {
+interface LauncherFoundGamesProps {
   className?: string
   compact?: boolean
 }
 
-export const LauncherFoundGames = ({ className, compact = false }: Props) => {
+export const LauncherFoundGames = ({ className, compact = false }: LauncherFoundGamesProps) => {
   const { data: found = [], persistable, isLoading } = useLauncherFoundGames()
   const { openModal } = useModal()
   const unmatchedCount = found.filter((item) => item.status === 'unmatched').length

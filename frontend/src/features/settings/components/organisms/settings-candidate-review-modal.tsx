@@ -12,21 +12,7 @@ import { confirmMatch, rejectMatch } from '@/features/plugins/utils/matching'
 import { getDesktopAPI } from '@/lib/desktop/api'
 import { useAuth } from '@/lib/providers/auth'
 import { DkDialog } from '@ui/molecules/dialog'
-
-interface MatchCandidate {
-  media_item_id?: string | null
-  title: string
-  poster_url?: string | null
-  backdrop_url?: string | null
-  release_year?: number | null
-  platforms?: string[] | null
-  developer?: string | null
-  confidence: number
-  match_type: string
-  needs_import?: boolean
-  provider_id?: string | null
-  provider?: string | null
-}
+import type { MatchCandidate, CandidateRow as Row } from '../../types'
 
 export interface CandidateReviewModalProps {
   game: LocalGame
@@ -37,8 +23,6 @@ export interface CandidateReviewModalProps {
   isExiting?: boolean
   onMatchResolved?: () => void
 }
-
-type Row = [string, string | null, string | null]
 
 export const CandidateReviewModal = ({
   game,

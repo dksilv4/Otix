@@ -4,6 +4,7 @@ import {
   matchEpisodeRecord,
   resolveItemSpeed,
   aggregateQueueProgress,
+  isArrQueueItemComplete,
 } from '../media-download'
 import type { ServerArrQueueItem } from '@/features/downloads/arr-types'
 
@@ -117,6 +118,35 @@ describe('media-download utilities', () => {
       expect(res.totalRemaining).toBe(2_500_000_000)
       expect(res.overallProgress).toBe(37.5)
       expect(res.eta).toBe('00:05:30')
+    })
+  })
+
+  describe('isArrQueueItemComplete', () => {
+    it('returns false for actively downloading item', () => {
+      expect(isArrQueueItemComplete(mockSonarrRecord)).toBe(false)
+    })
+
+    it('returns true when sizeLeft is 0', () => {
+      const doneRecord: ServerArrQueueItem = {
+        ...mockSonarrRecord,
+        size: 2_000_000,
+        sizeLeft: 0,
+      }
+      expect(isArrQueueItemComplete(doneRecord)).toBe(true)
+    })
+
+    it('returns true when status is completed or imported', () => {
+      const completedRecord: ServerArrQueueItem = {
+        ...mockSonarrRecord,
+        status: 'Completed',
+      }
+      expect(isArrQueueItemComplete(completedRecord)).toBe(true)
+
+      const importedRecord: ServerArrQueueItem = {
+        ...mockSonarrRecord,
+        status: 'imported',
+      }
+      expect(isArrQueueItemComplete(importedRecord)).toBe(true)
     })
   })
 })

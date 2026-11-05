@@ -147,7 +147,7 @@ def _get_alternative_plex_urls(server: UserPlexServer, user) -> list[str]:
     callers fall back to the stored ``base_url`` — mirrors the legacy helper.
     Caches the lookup in Django cache to prevent synchronous network latency on every probe.
     """
-    if not user.plex_auth_token:
+    if not user or not getattr(user, "plex_auth_token", None):
         return []
 
     cache_key = f"plex_resources_alt_urls:{user.pk}:{server.machine_identifier}"
@@ -826,7 +826,7 @@ def get_plex_connect_info(
         if url not in base_urls:
             base_urls.append(url)
 
-    token = server.access_token or user.plex_auth_token
+    token = server.access_token or (getattr(user, "plex_auth_token", None) if user else None)
     album_thumb_url = None
     if base_urls and token and plex_item.rating_key:
         album_thumb_url = (
@@ -1101,7 +1101,7 @@ def _plex_server_get(server: UserPlexServer, user, path: str) -> tuple[dict, str
     Returns ``(data, working_base_url)`` from the first base URL that answers
     200, or ``None`` when no connection (or no token) works.
     """
-    token = server.access_token or user.plex_auth_token
+    token = server.access_token or (getattr(user, "plex_auth_token", None) if user else None)
     if not token:
         return None
 
@@ -1258,7 +1258,7 @@ def get_plex_sessions(user) -> list[dict]:
     Only ``movie``/``episode``/``track`` items are reported (legacy parity), and
     relative thumbnails are made absolute against the serving server + token.
     """
-    if not user.plex_auth_token:
+    if not user or not getattr(user, "plex_auth_token", None):
         return []
 
     servers = UserPlexServer.objects.filter(user=user, selected=True, owned=True)
@@ -1511,7 +1511,7 @@ def get_plex_continue_watching(user) -> list[dict]:
     seen_rating_keys: set[str] = set()
 
     for server in servers:
-        token = server.access_token or user.plex_auth_token
+        token = server.access_token or (getattr(user, "plex_auth_token", None) if user else None)
         if not token or not server.base_url:
             continue
 
@@ -1917,7 +1917,7 @@ def discover_plex_libraries(user, server: UserPlexServer) -> list[UserPlexLibrar
     discovery works seamlessly in all environments: local bare metal, Docker
     containers, and remote production VMs.
     """
-    token = server.access_token or user.plex_auth_token
+    token = server.access_token or (getattr(user, "plex_auth_token", None) if user else None)
     if not token or not server.base_url:
         return []
 
@@ -2010,7 +2010,7 @@ def _signed_stream_url(base_url: str, token: str, data: dict) -> str | None:
 
 def _resolve_stream_url_for_server(server: UserPlexServer, user, rating_key: str) -> str | None:
     """Resolve a stream URL through one Plex server (base URL + alt fallbacks)."""
-    token = server.access_token or user.plex_auth_token
+    token = server.access_token or (getattr(user, "plex_auth_token", None) if user else None)
     if not token:
         return None
     result = _plex_server_get(server, user, f"/library/metadata/{rating_key}")
@@ -2065,3 +2065,204 @@ def get_plex_stream_url(user, rating_key: str) -> str | None:
         if url is not None:
             return url
     return None
+
+
+def _parse_iso_date(val: Any):
+    """Safely parse a date string or timestamp into a date object."""
+    if not val:
+        return None
+    try:
+        from datetime import datetime
+
+        return datetime.strptime(str(val)[:10], "%Y-%m-%d").date()
+    except Exception:
+        return None
+
+
+def hydrate_show_seasons_from_plex(
+    media_item_or_id: Any,
+    user=None,
+    server: UserPlexServer | None = None,
+    plex_item: UserPlexItem | None = None,
+) -> bool:
+    """Hydrate seasons and episodes for a TV show from connected Plex server(s).
+
+    Fetches /library/metadata/{rating_key}/children to retrieve seasons, and
+    for each season fetches /library/metadata/{season_rating_key}/children to
+    retrieve episodes. Populates Season, Episode, Show counts, and viewed episode
+    interactions. Returns True if seasons/episodes were populated.
+    """
+    from apps.media.models import Episode, MediaItem, Season, Show
+    from apps.social.models import UserEpisodeInteraction
+
+    if isinstance(media_item_or_id, MediaItem):
+        item = media_item_or_id
+    else:
+        try:
+            item = MediaItem.objects.filter(id=int(media_item_or_id), media_type="show").first()
+        except (TypeError, ValueError):
+            return False
+
+    if item is None or item.media_type != "show":
+        return False
+
+    if plex_item is None:
+        qs = UserPlexItem.objects.filter(media_item=item).select_related("server", "user")
+        if user is not None and getattr(user, "is_authenticated", False):
+            plex_item = qs.filter(user=user).first() or qs.first()
+        else:
+            plex_item = qs.first()
+
+    if plex_item is None or not plex_item.rating_key:
+        cand = (
+            UserPlexItem.objects.filter(title__iexact=item.title, media_type="show")
+            .select_related("server", "user")
+            .first()
+        )
+        if cand and cand.rating_key:
+            plex_item = cand
+            if cand.media_item_id is None:
+                cand.media_item = item
+                cand.save(update_fields=["media_item"])
+
+    if plex_item is None or not plex_item.rating_key:
+        return False
+
+    server = server or plex_item.server
+    if server is None:
+        return False
+
+    user = user if (user is not None and getattr(user, "is_authenticated", False)) else plex_item.user
+    token = server.access_token or (getattr(user, "plex_auth_token", None) if user else None)
+    base_url = (server.base_url or "").rstrip("/")
+
+    res = _plex_server_get(server, user, f"/library/metadata/{plex_item.rating_key}/children")
+    if not res:
+        logger.warning(
+            "Could not fetch seasons from Plex for show %s (ratingKey=%s)",
+            item.id,
+            plex_item.rating_key,
+        )
+        return False
+
+    seasons_data, working_base = res
+    working_base = (working_base or base_url).rstrip("/")
+    season_items = _container_items(seasons_data)
+    if not season_items:
+        return False
+
+    show, _ = Show.objects.get_or_create(media_item=item)
+
+    total_episodes_found = 0
+    for s in season_items:
+        s_idx = s.get("index")
+        if s_idx is None:
+            continue
+        try:
+            s_idx = int(s_idx)
+        except (TypeError, ValueError):
+            continue
+
+        s_thumb = s.get("thumb")
+        s_poster = None
+        if s_thumb:
+            clean_s_thumb = s_thumb if str(s_thumb).startswith("/") else f"/{s_thumb}"
+            s_poster = f"{working_base}{clean_s_thumb}"
+            if token:
+                s_poster = f"{s_poster}?X-Plex-Token={token}"
+
+        season, _ = Season.objects.update_or_create(
+            show=show,
+            season_number=s_idx,
+            defaults={
+                "name": s.get("title") or f"Season {s_idx}",
+                "overview": s.get("summary") or "",
+                "poster_url": s_poster,
+                "air_date": _parse_iso_date(s.get("originallyAvailableAt")),
+            },
+        )
+
+        s_rating_key = s.get("ratingKey")
+        if not s_rating_key:
+            continue
+
+        ep_res = _plex_server_get(server, user, f"/library/metadata/{s_rating_key}/children")
+        if not ep_res:
+            continue
+
+        ep_data, ep_base = ep_res
+        ep_working_base = (ep_base or working_base).rstrip("/")
+        ep_items = _container_items(ep_data)
+
+        for e in ep_items:
+            e_idx = e.get("index")
+            if e_idx is None:
+                continue
+            try:
+                e_idx = int(e_idx)
+            except (TypeError, ValueError):
+                continue
+
+            dur_ms = e.get("duration")
+            runtime = None
+            if dur_ms:
+                try:
+                    runtime = int(int(dur_ms) / 60000)
+                except (TypeError, ValueError):
+                    pass
+
+            e_thumb = e.get("thumb")
+            e_still = None
+            if e_thumb:
+                clean_e_thumb = e_thumb if str(e_thumb).startswith("/") else f"/{e_thumb}"
+                e_still = f"{ep_working_base}{clean_e_thumb}"
+                if token:
+                    e_still = f"{e_still}?X-Plex-Token={token}"
+
+            episode, _ = Episode.objects.update_or_create(
+                season=season,
+                episode_number=e_idx,
+                defaults={
+                    "name": e.get("title") or f"Episode {e_idx}",
+                    "overview": e.get("summary") or "",
+                    "runtime": runtime,
+                    "air_date": _parse_iso_date(e.get("originallyAvailableAt")),
+                    "still_url": e_still,
+                },
+            )
+            total_episodes_found += 1
+
+            if user and int(e.get("viewCount") or 0) > 0:
+                try:
+                    UserEpisodeInteraction.objects.get_or_create(user=user, episode=episode)
+                except Exception:
+                    pass
+
+    show.number_of_seasons = Season.objects.filter(show=show, season_number__gt=0).count()
+    show.number_of_episodes = Episode.objects.filter(season__show=show).count()
+    show.save(update_fields=["number_of_seasons", "number_of_episodes"])
+
+    # Invalidate media detail cache
+    cache.delete_many([
+        f"media:detail:show:{item.id}:anon:dark",
+        f"media:detail:show:{item.id}:anon:light",
+        f"media:detail:show:{item.slug}:anon:dark",
+        f"media:detail:show:{item.slug}:anon:light",
+    ])
+    if user and getattr(user, "id", None):
+        cache.delete_many([
+            f"media:detail:show:{item.id}:{user.id}:dark",
+            f"media:detail:show:{item.id}:{user.id}:light",
+            f"media:detail:show:{item.slug}:{user.id}:dark",
+            f"media:detail:show:{item.slug}:{user.id}:light",
+        ])
+
+    logger.info(
+        "Hydrated Plex seasons for show %s (%s): %s seasons, %s episodes",
+        item.id,
+        item.title,
+        show.number_of_seasons,
+        show.number_of_episodes,
+    )
+    return total_episodes_found > 0 or show.number_of_seasons > 0
+

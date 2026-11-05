@@ -120,7 +120,6 @@ export function buildThemeFromColors(
   const borderGlow = `rgba(${accentRgb[0]}, ${accentRgb[1]}, ${accentRgb[2]}, 0.45)`
   const surfaceTint = `rgba(${surfaceRgb[0]}, ${surfaceRgb[1]}, ${surfaceRgb[2]}, 0.88)`
 
-  const sStr = surfaceRgb.join(', ')
   const safeBgUrl = backdropUrl ? backdropUrl.replace(/"/g, '\\"') : null
   const gradientOverlay = ''
 

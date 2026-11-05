@@ -1,25 +1,12 @@
 import { useState, useRef, useEffect, forwardRef, useMemo } from 'react'
 import { ArrowRight, Search, X } from 'lucide-react'
+import {
+  MEDIA_TYPE_CLASS,
+  MEDIA_TYPE_LABEL,
+  MEDIA_TYPE_REGEX,
+} from '../../utils/search-helpers'
 
-const MEDIA_TYPE_REGEX = /^\/(movie|show|game)\b/
-
-const MEDIA_TYPE_LABEL: Record<string, string> = {
-  movie: 'Movie',
-  show: 'TV Show',
-  game: 'Game',
-  people: 'Artist',
-  users: 'User',
-}
-
-const MEDIA_TYPE_CLASS: Record<string, string> = {
-  movie: 'text-rose-600 dark:text-rose-400 bg-rose-500/10 border-rose-500/20',
-  show: 'text-violet-600 dark:text-violet-400 bg-violet-500/10 border-violet-500/20',
-  game: 'text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border-emerald-500/20',
-  people: 'text-blue-600 dark:text-blue-400 bg-blue-500/10 border-blue-500/20',
-  users: 'text-teal-600 dark:text-teal-400 bg-teal-500/10 border-teal-500/20',
-}
-
-interface SearchInputProps {
+export interface SearchInputProps {
   value: string
   onChange: (value: string) => void
   onSubmit?: () => void
@@ -41,10 +28,10 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(({
   onFocus,
   placeholder = 'Search movies, shows, games...',
   disabled = false,
-  debounceMs = 300,
+  debounceMs = 200,
   showSubmitWhenEmpty = false,
   submitLabel = 'Search',
-  className,
+  className = '',
   onTypeChange,
   activeType,
 }, ref) => {
@@ -135,19 +122,19 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(({
   return (
     <div className={`relative w-full ${className}`}>
       <div
-        className={'relative flex items-center gap-3 px-5 py-3 rounded-[2rem] backdrop-blur-xl ring-1 ring-[var(--dk-separator)] transition-all duration-300 bg-gradient-to-br from-[var(--dk-surface-glass)] to-[var(--dk-surface-glass-hover)] shadow-[var(--dk-shadow-glass)] focus-within:scale-[1.01] focus-within:ring-primary/20'}
+        className="relative flex items-center gap-3 px-5 py-3 rounded-[2rem] backdrop-blur-xl border border-white/[0.04] transition-all duration-300 bg-[var(--dk-surface-glass)] shadow-[var(--dk-shadow-glass)] focus-within:scale-[1.01] focus-within:bg-[var(--dk-surface-glass-hover)]"
       >
         <Search className="h-5 w-5 shrink-0 text-muted-foreground/50" />
 
         {displayType && (
           <span
-            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border shrink-0 animate-[fadeIn_200ms_ease-out] ${MEDIA_TYPE_CLASS[displayType]}`}
+            className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium border shrink-0 animate-[fadeIn_200ms_ease-out] ${MEDIA_TYPE_CLASS[displayType] || 'text-primary bg-primary/10 border-primary/20'}`}
           >
-            {MEDIA_TYPE_LABEL[displayType]}
+            {MEDIA_TYPE_LABEL[displayType] || displayType}
             <button
               onClick={handleRemoveType}
               className="rounded-full p-0.5 hover:bg-[var(--dk-surface-ghost-hover)] transition-colors"
-              aria-label={`Remove ${MEDIA_TYPE_LABEL[displayType]} filter`}
+              aria-label={`Remove ${MEDIA_TYPE_LABEL[displayType] || displayType} filter`}
             >
               <X className="h-3 w-3" />
             </button>
@@ -160,9 +147,9 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(({
           onChange={handleInputChange}
           onKeyDown={handleKeyDown}
           onFocus={onFocus}
-          placeholder={displayType ? `Search ${MEDIA_TYPE_LABEL[displayType].toLowerCase()}...` : placeholder}
+          placeholder={displayType ? `Search ${(MEDIA_TYPE_LABEL[displayType] || displayType).toLowerCase()}...` : placeholder}
           disabled={disabled}
-          className={'flex-1 min-w-0 h-12 text-base md:text-lg bg-transparent border-0 outline-none shadow-none ring-0 focus:ring-0 focus:ring-offset-0 appearance-none placeholder:text-muted-foreground/40 text-foreground'}
+          className="flex-1 min-w-0 h-12 text-base md:text-lg bg-transparent border-0 outline-none shadow-none ring-0 focus:ring-0 focus:ring-offset-0 appearance-none placeholder:text-muted-foreground/40 text-foreground"
         />
         {(inputValue || showSubmitWhenEmpty) && (
           <button
@@ -177,3 +164,5 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(({
     </div>
   )
 })
+
+SearchInput.displayName = 'SearchInput'

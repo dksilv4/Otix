@@ -56,7 +56,9 @@ export const NodeAddFolderModal = ({
       if (lastStored && servers?.some((s) => String(s.id) === String(lastStored))) {
         return String(lastStored)
       }
-    } catch {}
+    } catch {
+      /* ignore */
+    }
     if (currentNodeId != null && servers?.some((s) => s.id === currentNodeId)) {
       return String(currentNodeId)
     }
@@ -78,7 +80,9 @@ export const NodeAddFolderModal = ({
     setSelectedTargetNodeId(val)
     try {
       localStorage.setItem('otix:last-add-folder-node-id', val)
-    } catch {}
+    } catch {
+      /* ignore */
+    }
   }
 
   const selectedNodeObj = useMemo(() => {
@@ -136,7 +140,7 @@ export const NodeAddFolderModal = ({
       }}
       title="Add Monitored Folder"
       description={`Add a directory on ${effectiveDisplayName} to monitor installed games or provider repositories.`}
-      maxWidth="max-w-lg"
+      className="max-w-lg"
     >
       <div className="space-y-4 pt-2">
         {/* Node Target Selection Dropdown */}

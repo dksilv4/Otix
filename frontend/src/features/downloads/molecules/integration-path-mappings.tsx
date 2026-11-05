@@ -2,12 +2,15 @@ import React from 'react'
 import { Plus, Trash2 } from 'lucide-react'
 import { PathInput } from '@/components/path-picker'
 import { cn } from '@/lib/utils'
+import type { PathMappingRow } from '../types'
 
-export interface PathMappingRow {
-  remotePath: string
-  hostPath: string
-  linked?: boolean
-  error?: string
+export type { PathMappingRow }
+
+interface IntegrationPathMappingsProps {
+  mappings: PathMappingRow[]
+  onChange: (next: PathMappingRow[]) => void
+  folderError?: string
+  addButtonClass?: string
 }
 
 export const IntegrationPathMappings = ({
@@ -15,12 +18,7 @@ export const IntegrationPathMappings = ({
   onChange,
   folderError,
   addButtonClass = 'bg-amber-500 text-black hover:bg-amber-400 shadow-amber-500/20',
-}: {
-  mappings: PathMappingRow[]
-  onChange: (next: PathMappingRow[]) => void
-  folderError?: string
-  addButtonClass?: string
-}) => {
+}: IntegrationPathMappingsProps) => {
   const anyLinked = mappings.some((mapping) => mapping.linked)
   const showDiscovery = Boolean(folderError) && !anyLinked
 

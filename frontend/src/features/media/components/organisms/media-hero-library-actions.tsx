@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { mediaQueries } from '../../queries/media-queries'
 import { useMediaParams } from '../../hooks/use-media-params'
 import { MediaDetailPluginButtons } from './plugin-detail-actions'
+import { MediaPlaySplitButton } from '../molecules/media-play-split-button'
 import { RequestGameButton } from '@/features/media/game/components/organisms/media-download-game-button'
 import { RequestMediaButton } from './media-request-button'
 import { useMediaDetailPluginActions } from '@/features/media/hooks/use-media-detail-plugin-actions'
@@ -26,6 +27,9 @@ export const MediaHeroLibraryActions = () => {
   )
   const requestMedia = useRequestMedia()
   const hasPlayWidgets = pluginActions.playWidgets.length > 0
+  const unfulfilledArrTargets = requestMedia.instances.filter(
+    (item) => item.status !== 'downloaded' && item.status !== 'partially_available',
+  )
 
   const handleWatchAvailable = useCallback(async () => {
     try {
@@ -101,13 +105,12 @@ export const MediaHeroLibraryActions = () => {
       )}
 
       {hasPlayWidgets ? (
-        <MediaDetailPluginButtons
-          widgets={[]}
-          playWidgets={pluginActions.playWidgets}
-          requesting={pluginActions.requesting}
-          onRequest={pluginActions.handleRequest}
+        <MediaPlaySplitButton
+          playWidget={pluginActions.playWidgets[0]}
+          otherPlayWidgets={pluginActions.playWidgets.slice(1)}
+          alternativeArrInstances={unfulfilledArrTargets}
           onPlay={pluginActions.handlePlay}
-          variant="pill"
+          onRequestAlternative={(instanceId) => requestMedia.handleRequest(instanceId)}
         />
       ) : null}
 
@@ -123,4 +126,4 @@ export const MediaHeroLibraryActions = () => {
       )}
     </>
   )
-};
+}

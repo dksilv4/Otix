@@ -21,14 +21,9 @@ import { nodeSettingsNavigateOptions, type NodeSettingsTab } from '../../node-se
 import { SettingsCard } from '../molecules/settings-card'
 import { SectionHeader } from '../molecules/settings-section-header'
 import type { LibrarySettingsTab } from './settings-library-tabs'
+import type { LibraryOverviewStats, OverviewOrganize } from '../../types'
 
-export interface LibraryOverviewStats {
-  total: number
-  matched: number
-  candidates: number
-  unmatched: number
-  loading?: boolean
-}
+export type { LibraryOverviewStats }
 
 export interface SettingsLibraryOverviewSectionProps {
   stats: LibraryOverviewStats
@@ -141,15 +136,6 @@ const OverviewNavCard = ({
     </button>
   )
 };
-
-type OverviewOrganize = {
-  autoSearchWishlist?: boolean
-  postProcessEnabled?: boolean
-  autoOrganizeEnabled?: boolean
-  preferredRepackers?: string | null
-  downloadPath?: string | null
-  isoDownloadPath?: string | null
-}
 
 export const SettingsLibraryOverviewSection = ({
   stats,

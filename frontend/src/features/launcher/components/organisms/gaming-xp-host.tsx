@@ -12,26 +12,7 @@ import {
   resetGamingSessionState,
   getGamingSessionState,
 } from '../../utils/gaming-xp-store'
-
-interface HeartbeatBreakdown {
-  baseXp: number
-  completionXp: number
-  winXp: number
-  kdr: number
-  kdrMultiplier: number
-  totalCalculated: number
-}
-
-interface HeartbeatResponse {
-  status: string
-  xpAwarded: number
-  totalXp: number
-  level: number
-  levelTitle: string
-  sessionXp: number
-  dailyXp: number
-  breakdown?: HeartbeatBreakdown
-}
+import type { HeartbeatResponse } from '../../types'
 
 /** Headless host component that tracks active gaming duration, match outcomes, and awards session XP. */
 export const GamingXpHost = () => {

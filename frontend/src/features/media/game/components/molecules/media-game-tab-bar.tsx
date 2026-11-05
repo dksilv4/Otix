@@ -1,10 +1,5 @@
 import { useState, useEffect } from 'react'
-
-interface GameTab {
-  tabId: string
-  label: string
-  pluginId: string
-}
+import type { GameTab } from '../../types'
 
 interface Props {
   gameExternalId: string

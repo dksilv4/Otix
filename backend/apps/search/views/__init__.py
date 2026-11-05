@@ -12,6 +12,7 @@ from apps.search.views.search import (
     SteamGridView,
     SuggestionsView,
 )
+from apps.search.views.stream import SearchStreamView
 
 __all__ = [
     "CompaniesView",
@@ -20,6 +21,7 @@ __all__ = [
     "PollView",
     "PrehydrateView",
     "ProvidersView",
+    "SearchStreamView",
     "SearchView",
     "SemanticSearchView",
     "SteamGridView",

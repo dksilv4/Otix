@@ -9,3 +9,11 @@ export { openExternal, openSessionWindow } from './open-external'
 export type { OpenExternalOptions } from './open-external'
 export { MANIFEST_CHUNK_SIZE, toManifestFiles, uploadNodeManifestInChunks, uploadScannedGamesManifest } from './manifest'
 export type { ManifestFileEntry, UploadManifestOptions } from './manifest'
+export {
+  calculateCarouselItemWidth,
+  calculateCarouselPageWidth,
+  calculateCarouselSnapTarget,
+  getTrackHorizontalPadding,
+} from './carousel'
+export type { CarouselSnapOptions } from './carousel'
+export { normalizePathSeparators, extractPathFilename } from './path'

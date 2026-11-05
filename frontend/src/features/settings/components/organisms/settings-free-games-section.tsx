@@ -6,31 +6,8 @@ import { SettingsCard } from '../molecules/settings-card'
 import { SectionHeader } from '../molecules/settings-section-header'
 import { ProviderLogo } from '../atoms/provider-logo'
 import { Carousel } from '@ui/molecules/carousel'
-
-interface EpicFreeGame {
-  id: string
-  title: string
-  namespace: string
-  offerId: string
-  seller?: string | null
-  description?: string | null
-  posterUrl?: string | null
-  urlSlug?: string | null
-  freeEndDate?: string | null
-  originalPrice?: string | null
-  claimed?: boolean
-}
-
-interface FreeCheckResult {
-  success: boolean
-  freeGames: EpicFreeGame[]
-  unclaimedGames?: EpicFreeGame[]
-  upcomingGames: EpicFreeGame[]
-  isAuthenticated: boolean
-  alreadyOwned: number
-}
-
 import { claimUrl, EPIC_FREE_PAGE } from '../../utils/free-games'
+import type { EpicFreeGame, EpicFreeCheckResult as FreeCheckResult } from '@/features/discover/types'
 
 const FreeClaimCard = ({ game }: { game: EpicFreeGame }) => {
   const [posterError, setPosterError] = useState(false)

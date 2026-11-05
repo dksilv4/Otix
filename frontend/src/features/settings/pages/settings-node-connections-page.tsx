@@ -1,14 +1,11 @@
 import { useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import { Network, Server, Search, ExternalLink } from 'lucide-react'
-import { useAuth } from '@/lib/providers/auth'
 import { useSettingsNode } from '../context/settings-node-context'
 import { NodeConnectionsGroup } from '../components/organisms/node-connections-group'
-import { SettingsLockedState } from '../components/molecules/settings-locked-state'
 import { GLOBAL_PROFILE_NODE_ID } from '../utils/node-switcher'
 
 export const SettingsNodeConnectionsPage = () => {
-  const { isAuthenticated } = useAuth()
   const { servers, selectedNode, selectedNodeId, isLoading } = useSettingsNode()
   const [searchQuery, setSearchQuery] = useState('')
 

@@ -24,7 +24,7 @@ from django.contrib.postgres.search import TrigramSimilarity, TrigramWordSimilar
 from django.core.cache import cache
 from django.db import connection
 from django.db.models import Case, F, FloatField, IntegerField, Q, QuerySet, Value, When
-from django.db.models.functions import Coalesce, Greatest, Least, Ln
+from django.db.models.functions import Coalesce, Greatest, Least, Ln, Replace
 from django.utils.text import slugify
 
 from apps.company.models import Company
@@ -57,6 +57,49 @@ IGDB_ID_PREFIX = "igdb:"
 PREHYDRATE_TITLE_LIMIT = 100
 PREHYDRATE_CACHE_TTL = 6 * 60 * 60
 
+SEARCH_CACHE_TTL = 600  # 10 minutes
+CACHE_VERSION_KEY = "search:cache_version"
+
+
+def get_search_cache_version() -> int:
+    """Return atomic generation counter for search cache invalidation."""
+    try:
+        val = cache.get(CACHE_VERSION_KEY)
+        if val is None:
+            cache.set(CACHE_VERSION_KEY, 1, timeout=None)
+            return 1
+        return int(val)
+    except Exception:
+        return 1
+
+
+def invalidate_search_cache() -> None:
+    """Bump atomic generation counter, invalidating all hot search cache keys in O(1)."""
+    try:
+        if cache.get(CACHE_VERSION_KEY) is None:
+            cache.set(CACHE_VERSION_KEY, 2, timeout=None)
+        else:
+            cache.incr(CACHE_VERSION_KEY)
+    except Exception:
+        pass
+
+
+def _make_search_cache_key(
+    prefix: str,
+    media_type: str | None,
+    sort_by: str | None,
+    q: str,
+    page: int = 1,
+    page_size: int = 24,
+) -> str:
+    import hashlib
+
+    version = get_search_cache_version()
+    q_hash = hashlib.sha256(q.lower().strip().encode("utf-8")).hexdigest()[:16]
+    mt = media_type or "all"
+    sb = sort_by or "rel"
+    return f"search:v{version}:{prefix}:{mt}:{sb}:{q_hash}:{page}:{page_size}"
+
 
 def extract_trigrams(text: str | None) -> set[str]:
     """Extract set of 3-character shingles matching PostgreSQL pg_trgm behavior."""
@@ -88,7 +131,7 @@ def py_word_trigram_similarity(query: str | None, target: str | None) -> float:
     """Approximate pg_trgm word_similarity(query, target).
 
     Finds the greatest similarity of the query against contiguous word sequences
-    in target.
+    in target, matching PostgreSQL's formula |Q ∩ S| / |Q|.
     """
     if not query or not target:
         return 0.0
@@ -103,22 +146,23 @@ def py_word_trigram_similarity(query: str | None, target: str | None) -> float:
     if not q_words or not t_words:
         return full_sim
 
-    q_len = len(q_words)
-    if len(t_words) <= q_len:
-        return full_sim
-
     best_sim = full_sim
     t_query = extract_trigrams(q_str)
-    # Sliding window of length q_len in target words
-    for i in range(len(t_words) - q_len + 1):
-        window = " ".join(t_words[i : i + q_len])
-        t_win = extract_trigrams(window)
-        u = len(t_query | t_win)
-        sim = float(len(t_query & t_win)) / float(u) if u > 0 else 0.0
-        if sim > best_sim:
-            best_sim = sim
+    if not t_query:
+        return best_sim
 
-    return best_sim
+    q_len = len(q_words)
+    # Check contiguous windows from length 1 up to len(t_words)
+    max_w = min(len(t_words), max(q_len + 1, 3))
+    for w_size in range(1, max_w + 1):
+        for i in range(len(t_words) - w_size + 1):
+            window = " ".join(t_words[i : i + w_size])
+            t_win = extract_trigrams(window)
+            sim = float(len(t_query & t_win)) / float(len(t_query))
+            if sim > best_sim:
+                best_sim = sim
+
+    return min(best_sim, 1.0)
 
 
 def ensure_sqlite_search_functions(conn=None) -> None:
@@ -128,7 +172,11 @@ def ensure_sqlite_search_functions(conn=None) -> None:
         try:
             target_conn.connection.create_function("similarity", 2, py_trigram_similarity)
             target_conn.connection.create_function("word_similarity", 2, py_word_trigram_similarity)
-            target_conn.connection.create_function("ln", 1, lambda x: math.log(max(float(x), 1e-9)))
+            target_conn.connection.create_function(
+                "ln",
+                1,
+                lambda x: math.log(float(x)) if x is not None and float(x) > 0 else 0.0,
+            )
         except Exception:
             pass
 
@@ -168,10 +216,14 @@ def compute_relevance_score(
     t_lower = t_clean.lower()
 
     # 1. Match type hierarchy weights
+    q_alpha = re.sub(r"[^a-zA-Z0-9]+", "", q_clean).lower()
+    t_alpha = re.sub(r"[^a-zA-Z0-9]+", "", t_clean).lower()
+    s_alpha = re.sub(r"[^a-zA-Z0-9]+", "", slug or "").lower()
+
     match_boost = 0.0
     if t_lower == q_lower:
         match_boost = 100.0
-    elif slug and slug.lower() == slugify(q_clean):
+    elif (slug and slug.lower() == slugify(q_clean)) or (q_alpha and len(q_alpha) >= 3 and q_alpha in (t_alpha, s_alpha)):
         match_boost = 90.0
     elif t_lower.startswith(q_lower):
         match_boost = 40.0
@@ -201,6 +253,30 @@ def rank_media_items_python(
     q_clean = q.strip()
     if not q_clean:
         return items
+
+    if sort_by in _SORT_ORDERS:
+        q_slug = slugify(q_clean)
+        clean_alpha = re.sub(r"[^a-zA-Z0-9]+", "", q_clean).lower()
+        filtered = []
+        for item in items:
+            t_lower = (item.title or "").lower()
+            s_lower = (item.slug or "").lower()
+            q_lower = q_clean.lower()
+            sim = max(
+                py_trigram_similarity(q_clean, item.title or ""),
+                py_word_trigram_similarity(q_clean, item.title or ""),
+            )
+            is_match = (
+                q_lower == t_lower
+                or (q_slug and q_slug == s_lower)
+                or t_lower.startswith(q_lower)
+                or q_lower in t_lower
+                or (clean_alpha and len(clean_alpha) >= 3 and clean_alpha in s_lower)
+                or sim >= 0.40
+            )
+            if is_match:
+                filtered.append(item)
+        items = filtered
 
     def score_item(item: MediaItem) -> tuple:
         score = compute_relevance_score(
@@ -241,8 +317,9 @@ def _media_base(q: str, media_type: str | None) -> QuerySet[MediaItem]:
         cand_filter |= Q(slug__iexact=q_slug)
 
     clean_alpha = re.sub(r"[^a-zA-Z0-9]+", "", q_clean).lower()
-    if clean_alpha and clean_alpha != q_clean.lower() and len(clean_alpha) >= 3:
-        cand_filter |= Q(slug__icontains=clean_alpha)
+    qs = qs.annotate(_slug_clean=Replace("slug", Value("-"), Value("")))
+    if clean_alpha and len(clean_alpha) >= 3:
+        cand_filter |= Q(_slug_clean__icontains=clean_alpha)
 
     if _can_use_db_trigram():
         try:
@@ -254,7 +331,8 @@ def _media_base(q: str, media_type: str | None) -> QuerySet[MediaItem]:
             ).annotate(
                 _similarity_score=Greatest("_trig_sim", "_word_sim"),
             )
-            cand_filter |= Q(_similarity_score__gte=0.25)
+            if len(q_clean) >= 3:
+                cand_filter |= Q(_trig_sim__gte=0.30) | Q(_word_sim__gte=0.45)
         except Exception as e:
             logger.warning("Trigram database annotation failed, falling back to substring: %s", e)
             qs = qs.annotate(_similarity_score=Value(0.0, output_field=FloatField()))
@@ -272,11 +350,14 @@ def _ordered_media(base: QuerySet[MediaItem], q: str, sort_by: str | None) -> Qu
         return base
 
     q_slug = slugify(q_clean)
+    clean_alpha = re.sub(r"[^a-zA-Z0-9]+", "", q_clean).lower()
     when_clauses = [
         When(title__iexact=q_clean, then=Value(100.0)),
     ]
     if q_slug:
         when_clauses.append(When(slug__iexact=q_slug, then=Value(90.0)))
+    if clean_alpha and len(clean_alpha) >= 3:
+        when_clauses.append(When(_slug_clean=clean_alpha, then=Value(90.0)))
     when_clauses.extend([
         When(title__istartswith=q_clean, then=Value(40.0)),
         When(title__icontains=q_clean, then=Value(15.0)),
@@ -307,6 +388,17 @@ def _ordered_media(base: QuerySet[MediaItem], q: str, sort_by: str | None) -> Qu
     )
 
     if sort_by in _SORT_ORDERS:
+        floor_filter = (
+            Q(title__iexact=q_clean)
+            | Q(title__istartswith=q_clean)
+            | Q(title__icontains=q_clean)
+            | Q(_similarity_score__gte=0.40)
+        )
+        if q_slug:
+            floor_filter |= Q(slug__iexact=q_slug)
+        if clean_alpha and len(clean_alpha) >= 3:
+            floor_filter |= Q(_slug_clean__icontains=clean_alpha)
+        base = base.filter(floor_filter)
         return base.order_by(_SORT_ORDERS[sort_by], "-_relevance_score", "title", "id")
     return base.order_by("-_relevance_score", "-popularity", "title", "id")
 
@@ -324,9 +416,10 @@ def _search_media_rows(
     ``None`` on later pages).
     """
     base = _media_base(q, media_type)
-    total = base.count() if page == 1 else None
+    ordered = _ordered_media(base, q, sort_by)
+    total = ordered.count() if page == 1 else None
     offset = (page - 1) * page_size
-    rows = list(_ordered_media(base, q, sort_by)[offset : offset + page_size + 1])
+    rows = list(ordered[offset : offset + page_size + 1])
     has_more = len(rows) > page_size
     return rows[:page_size], total, has_more
 
@@ -636,6 +729,25 @@ def _tmdb_movie_backfill(
                 seen.add(sid)
                 continue
         missing.append(raw_id)
+        # Attempt immediate authentic database ingestion
+        seeded_pk = None
+        try:
+            from core.providers.tmdb.hydrators import seed_movie_from_tmdb
+
+            seeded_pk = seed_movie_from_tmdb(movie)
+        except Exception:
+            logger.debug("Inline seed_movie_from_tmdb failed for tmdb_id=%s", raw_id)
+
+        if seeded_pk:
+            sid = str(seeded_pk)
+            if sid in seen:
+                continue
+            media = MediaItem.objects.filter(pk=seeded_pk).prefetch_related("assets", "external_ids").first()
+            if media is not None:
+                extras.extend(dict(row) for row in MediaSummarySerializer([media], many=True).data)
+                seen.add(sid)
+                continue
+
         placeholder_id = f"tmdb:movie:{raw_id}"
         if placeholder_id in seen:
             continue
@@ -714,6 +826,25 @@ def _tmdb_show_backfill(
                 seen.add(sid)
                 continue
         missing.append(raw_id)
+        # Attempt immediate authentic database ingestion
+        seeded_pk = None
+        try:
+            from core.providers.tmdb.hydrators import seed_show_from_tmdb
+
+            seeded_pk = seed_show_from_tmdb(show)
+        except Exception:
+            logger.debug("Inline seed_show_from_tmdb failed for tmdb_id=%s", raw_id)
+
+        if seeded_pk:
+            sid = str(seeded_pk)
+            if sid in seen:
+                continue
+            media = MediaItem.objects.filter(pk=seeded_pk).prefetch_related("assets", "external_ids").first()
+            if media is not None:
+                extras.extend(dict(row) for row in MediaSummarySerializer([media], many=True).data)
+                seen.add(sid)
+                continue
+
         placeholder_id = f"tmdb:show:{raw_id}"
         if placeholder_id in seen:
             continue
@@ -943,6 +1074,69 @@ def enqueue_prehydrate_titles(titles: list[str]) -> int:
     return len(cleaned)
 
 
+def get_local_search_items(
+    q: str,
+    media_type: str | None = None,
+    sort_by: str | None = None,
+    limit: int = 24,
+) -> list[dict]:
+    """Instant local database search matches for Stage 1 of SSE streaming."""
+    q_str = q.strip()
+    if not q_str:
+        return []
+
+    cache_key = _make_search_cache_key("local", media_type, sort_by, q_str, 1, limit)
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return cached
+
+    rows, _total, _has_more = _search_media_rows(q_str, media_type, sort_by, 1, limit)
+    items = [dict(row) for row in MediaSummarySerializer(rows, many=True).data]
+    try:
+        cache.set(cache_key, items, SEARCH_CACHE_TTL)
+    except Exception:
+        pass
+    return items
+
+
+def get_external_search_items(
+    q: str,
+    media_type: str | None = None,
+    limit: int = 12,
+    existing_ids: set[str] | None = None,
+) -> list[dict]:
+    """External provider search matches (TMDB & IGDB) for Stage 2 of SSE streaming."""
+    q_str = q.strip()
+    if not q_str or not _should_backfill(q_str):
+        return []
+
+    items = []
+    seen = set(existing_ids or set())
+
+    if media_type == "movie":
+        extras, _ = _tmdb_movie_backfill(q_str, limit=limit, existing_ids=seen, force=True)
+        items.extend(extras)
+    elif media_type in ("show", "tv"):
+        extras, _ = _tmdb_show_backfill(q_str, limit=limit, existing_ids=seen, force=True)
+        items.extend(extras)
+    elif media_type == "game":
+        extras, _ = _igdb_game_backfill(q_str, limit=limit, existing_ids=seen, force=True)
+        items.extend(extras)
+    elif media_type is None:
+        m_extras, _ = _tmdb_movie_backfill(q_str, limit=min(limit, 8), existing_ids=seen, force=True)
+        for it in m_extras:
+            seen.add(str(it["id"]))
+        s_extras, _ = _tmdb_show_backfill(q_str, limit=min(limit, 8), existing_ids=seen, force=True)
+        for it in s_extras:
+            seen.add(str(it["id"]))
+        g_extras, _ = _igdb_game_backfill(q_str, limit=min(limit, 8), existing_ids=seen, force=True)
+        items.extend(m_extras + s_extras + g_extras)
+
+    if items:
+        invalidate_search_cache()
+    return items[:limit]
+
+
 def search_media_payload(
     q: str,
     media_type: str | None = None,
@@ -961,6 +1155,12 @@ def search_media_payload(
             "backfill_pending": False,
             "next_cursor": None,
         }
+
+    cache_key = _make_search_cache_key("payload", media_type, sort_by, q, page, page_size)
+    if page == 1:
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return cached
 
     rows, total, has_more = _search_media_rows(q, media_type, sort_by, page, page_size)
     items = [dict(row) for row in MediaSummarySerializer(rows, many=True).data]
@@ -1024,7 +1224,7 @@ def search_media_payload(
         if current_count == 0 and items:
             total = len(items)
 
-    return {
+    result_payload = {
         "items": items,
         "tracks": [],
         "has_more": has_more,
@@ -1032,6 +1232,12 @@ def search_media_payload(
         "backfill_pending": backfill_pending,
         "next_cursor": None,
     }
+    if page == 1:
+        try:
+            cache.set(cache_key, result_payload, SEARCH_CACHE_TTL)
+        except Exception:
+            pass
+    return result_payload
 
 
 def suggestions_payload(q: str, media_type: str | None, limit: int) -> list[dict]:

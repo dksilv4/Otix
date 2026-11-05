@@ -41,8 +41,8 @@ export interface GameMatchCandidate {
   mediaId: string
   title: string
   slug: string
-  posterUrl?: string
-  backdropUrl?: string
+  posterUrl?: string | null
+  backdropUrl?: string | null
   releaseYear?: number | null
   confidence: number
 }
@@ -65,8 +65,8 @@ export interface GameMatchRecord {
     id: string
     title: string
     slug: string
-    posterUrl?: string | null
-    backdropUrl?: string | null
+    posterUrl?: string | null | null
+    backdropUrl?: string | null | null
     releaseDate?: string | null
   } | null
   storageShareId?: number | null

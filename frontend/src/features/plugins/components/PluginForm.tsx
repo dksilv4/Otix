@@ -6,6 +6,8 @@ import { Button, Field, Input, Select, Switch } from '@/features/plugins/ui'
 import { InstancesEditor } from '@/features/plugins/components/organisms/instances-editor'
 import { PathInput } from '@/components/path-picker'
 import { cn } from '@/lib/utils'
+import { isVisible } from '../utils/form'
+import type { GroupedField } from '@/features/plugins/types'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -27,13 +29,6 @@ export interface PluginFormProps {
   inline?: boolean
   className?: string
 }
-
-interface GroupedField {
-  key: string
-  field: PluginConfigField
-}
-
-import { isVisible } from '../utils/form'
 
 // ── Field input ───────────────────────────────────────────────────────────────
 

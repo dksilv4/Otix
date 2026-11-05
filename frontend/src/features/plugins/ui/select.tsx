@@ -1,11 +1,9 @@
 import { forwardRef, type SelectHTMLAttributes } from 'react'
 import { ChevronDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import type { SelectOption } from './types'
 
-export interface SelectOption {
-  value: string
-  label: string
-}
+export type { SelectOption }
 
 interface SelectProps extends SelectHTMLAttributes<HTMLSelectElement> {
   options: SelectOption[]

@@ -1,5 +1,5 @@
 import type { ServerArrQueueItem } from '@/features/downloads/arr-types'
-import { resolveEpisodeMetadata, type ResolvedEpisodeMetadata } from '@/features/downloads/utils/episode-download'
+import { resolveEpisodeMetadata } from '@/features/downloads/utils/episode-download'
 
 export interface MatchMediaOptions {
   mediaId?: string | number | null
@@ -158,24 +158,50 @@ export const aggregateQueueProgress = (
     }
   }
 
-  let overallProgress = 0
-  if (totalSize > 0) {
-    overallProgress = Math.min(100, Math.max(0, ((totalSize - totalRemaining) / totalSize) * 100))
-  } else {
-    // Fallback to average percentage if sizes are zero
-    const percentages = records.map((r) => {
-      const meta = resolveEpisodeMetadata(r)
-      return meta.percentage
-    })
-    overallProgress = percentages.reduce((acc, p) => acc + p, 0) / (percentages.length || 1)
-  }
+  const rawOverallProgress =
+    totalSize > 0
+      ? Math.min(100, Math.max(0, ((totalSize - totalRemaining) / totalSize) * 100))
+      : records
+          .map((r) => resolveEpisodeMetadata(r).percentage)
+          .reduce((acc, p) => acc + p, 0) / (records.length || 1)
 
   return {
-    overallProgress: Math.round(overallProgress * 10) / 10,
+    overallProgress: Math.round(rawOverallProgress * 10) / 10,
     totalSize,
     totalRemaining,
     speed: primarySpeed || fallbackSpeed || null,
     eta: primaryEta || null,
     activeCount: records.length,
   }
+}
+
+/**
+ * Checks whether an Arr queue item has finished downloading / importing.
+ */
+export const isArrQueueItemComplete = (record: ServerArrQueueItem): boolean => {
+  if (!record) return false
+
+  const size = record.size || 0
+  const sizeLeft = record.sizeLeft ?? (record as any).size_left ?? 0
+  const status = (record.status || '').toLowerCase()
+  const trackedStatus = String((record as any).trackedDownloadStatus || '').toLowerCase()
+
+  if (['completed', 'downloaded', 'imported'].includes(status)) {
+    return true
+  }
+
+  if (['completed', 'ok'].includes(trackedStatus) && size > 0 && sizeLeft <= 0) {
+    return true
+  }
+
+  if (size > 0 && sizeLeft <= 0) {
+    return true
+  }
+
+  const meta = resolveEpisodeMetadata(record)
+  if (meta.percentage >= 100 && (sizeLeft <= 0 || !size)) {
+    return true
+  }
+
+  return false
 }

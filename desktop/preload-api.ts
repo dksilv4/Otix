@@ -563,6 +563,7 @@ export interface IDesktopAPI {
 
   // ── Notifications ──
   showNotification: (opts: { title: string; body?: string; icon?: string; type: string; metadata?: Record<string, unknown> }) => Promise<void>;
+  onNotificationNavigate?: (callback: (payload: { type: string; metadata?: Record<string, unknown> }) => void) => () => void;
 
   // ── General ──
   openPath: (filePath: string) => Promise<string>;
@@ -631,6 +632,7 @@ export interface IDesktopAPI {
   resetPlatformGames: (platforms: string[]) => Promise<void>;
   resetGameData: () => Promise<void>;
   onGamesDbChanged: (callback: () => void) => () => void;
+  onNewGamesDetected?: (callback: (data: { games: LocalGame[] }) => void) => () => void;
 
   // Game detection
   getRunningGame: () => Promise<RunningGame | null>;

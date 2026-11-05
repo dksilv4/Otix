@@ -16,7 +16,7 @@ import { LibraryTabSettingsModal } from "@library/molecules/library-tab-settings
 import { LibraryScanBar } from "@library/molecules/library-scan-bar"
 import { useSlotData, SlotRenderer } from "@/features/_config/slots"
 import { getPluginAPI, getPluginIcon } from "@/features/plugins/api"
-import type { SlotContribution, PluginInfo } from "@/features/plugins/types/plugins"
+import type { PluginInfo } from "@/features/plugins/types/plugins"
 import { OfflineNotice } from "@/lib/offline-notice"
 
 // Side-effect imports to register platform definitions
@@ -24,14 +24,7 @@ import "@library/platforms/steam"
 import "@library/platforms/plex"
 import "@library/platforms/youtube"
 import { readVisibility, readTabOrder, sortTabsByOrder } from "../utils"
-
-type LibTab = {
-  id: string
-  label: string
-  icon: React.ReactNode
-  kind: "media" | "plugin" | "all"
-  contribution?: SlotContribution
-}
+import type { LibTab } from "../types"
 
 export const LibraryLayout = () => {
   const navigate = useNavigate()

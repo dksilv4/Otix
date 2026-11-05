@@ -1,3 +1,5 @@
+export * from './types/index'
+
 export interface SettingsUser {
   email: string
   username: string

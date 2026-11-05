@@ -54,8 +54,19 @@ import { getApiBaseUrl } from './config';
 import { syncMachineMappings, getRegisteredMachineMappings, syncMachineMappingsFromBackend } from './unc-resolver';
 import { GameDetector, type RunningGame, type PlaySession } from './game/detector';
 import { FpsCaptureService } from './game/fps-capture';
-import { registerDownloadsIPC, setPluginCaller } from './ipc/downloads';
-import { registerScannerIPC, setScanOrchestrator, registerPluginScanIPC, setPluginManager } from './ipc/scanner';
+import { registerDownloadsIPC } from './ipc/downloads';
+import { pollAndUpdateDownloads } from './downloads';
+import {
+  registerScannerIPC,
+  setScanOrchestrator,
+  registerPluginScanIPC,
+  setPluginManager,
+  setScannerMainWindow,
+  executeScan,
+  handleNewGamesDetected,
+} from './ipc/scanner';
+import { LibraryWatcher } from './game/library-watcher';
+import * as gameService from './game/storage';
 import { registerInstallerIPC } from './ipc/installer';
 import { rehydrateActiveInstalls } from './installer';
 import { registerGameDetectorIPC } from './ipc/game-detector';
@@ -110,6 +121,7 @@ let currentAuthToken = '';
 let permissionManager: PermissionManager | null = null;
 let fetchBridge: FetchWorkerBridge | null = null;
 let nodeDaemon: NodeDaemonManager | null = null;
+let libraryWatcher: LibraryWatcher | null = null;
 let pendingDeepLink: string | null = null;
 let isQuitting = false;
 
@@ -427,6 +439,8 @@ function createWindow() {
 
   // Wire game-storage-service change notifications to this window
   setNotifyTarget(mainWindow);
+  setScannerMainWindow(mainWindow);
+  libraryWatcher?.setMainWindow(mainWindow);
   setPluginMainWebContents(mainWindow.webContents);
   nodeDaemon?.setWebContents(mainWindow.webContents);
   fpsCaptureService?.setWebContents(mainWindow.webContents);
@@ -546,6 +560,8 @@ function createWindow() {
 
   mainWindow.on('closed', () => {
     console.log('[main] Window closed');
+    setScannerMainWindow(null);
+    libraryWatcher?.setMainWindow(null);
     gameDetector?.stopAll();
     mainWindow = null;
   });
@@ -1325,6 +1341,7 @@ app.on('ready', async () => {
   registerNodeDaemonIPC(nodeDaemon);
   registerScannerIPC(gameDetector, nodeDaemon, () => {
     void syncDesktopNodeToBackend(true);
+    libraryWatcher?.updateWatches();
   });
   registerInstallerIPC();
   if (dbReady && !isInstallerMode && !isUninstallerMode) {
@@ -1400,7 +1417,6 @@ app.on('ready', async () => {
     pluginManager = new PluginManager(extensionsDir, pluginsRepo, app.getPath('userData'), devExtensionsDir);
     pluginManager.setPermissionManager(permissionManager);
     saveDaemon?.setServiceRegistry(pluginManager.serviceRegistry);
-    setPluginCaller((pluginId, method, args) => pluginManager!.callPluginData(pluginId, method, args));
     permissionManager.setWebContents(mainWindow!.webContents);
     registerPluginIPC(pluginManager, mainWindow!, permissionManager);
     cs2GsiManager = new Cs2GsiManager();
@@ -1555,6 +1571,25 @@ app.on('ready', async () => {
     if (settings.startMinimized && tray) {
       mainWindow.hide()
     }
+
+    // Initialize library folder watcher for automatic game detection
+    if (dbReady && !isInstallerMode && !isUninstallerMode) {
+      libraryWatcher = new LibraryWatcher({
+        getScanPaths: () => gameService.getScanPaths(),
+        onPerformScan: async () => {
+          return executeScan({
+            gameDetector,
+            nodeDaemon,
+            isAutomatic: true,
+          });
+        },
+        onNewGamesDetected: (newGames) => {
+          handleNewGamesDetected(newGames, mainWindow);
+        },
+      });
+      libraryWatcher.setMainWindow(mainWindow);
+      libraryWatcher.start();
+    }
   }
 
   // Launch embedded Otix Node companion daemon if enabled
@@ -1577,6 +1612,14 @@ app.on('ready', async () => {
       pendingDeepLink = null;
       handleDeepLink(url);
     }
+    if (dbReady && !isInstallerMode && !isUninstallerMode && libraryWatcher) {
+      // Check for any new games installed while Otix was offline
+      setTimeout(() => {
+        if (libraryWatcher) {
+          void libraryWatcher.triggerScan();
+        }
+      }, 3500);
+    }
   };
 
   if (mainWindow?.webContents.isLoading()) {
@@ -1589,6 +1632,8 @@ app.on('ready', async () => {
   app.on('before-quit', () => {
     console.log('[main] before-quit fired');
     isQuitting = true;
+    libraryWatcher?.stop();
+    libraryWatcher = null;
     stopPeriodicUpdateChecks();
     if (desktopNodeHeartbeatTimer) {
       clearInterval(desktopNodeHeartbeatTimer);
@@ -1614,13 +1659,13 @@ app.on('ready', async () => {
   // First check 5 minutes after startup, then every 12 hours
   // Delegated to the downloads plugin; these calls serve as a fallback
   setTimeout(() => {
-    pluginManager?.callPluginData('downloads', 'poll-queue').catch((err: any) =>
+    pollAndUpdateDownloads().catch((err: any) =>
       console.error('[main] Initial update check failed:', err)
     );
   }, 5 * 60 * 1000);
 
   setInterval(() => {
-    pluginManager?.callPluginData('downloads', 'poll-queue').catch((err: any) =>
+    pollAndUpdateDownloads().catch((err: any) =>
       console.error('[main] Periodic update check failed:', err)
     );
   }, 12 * 60 * 60 * 1000);

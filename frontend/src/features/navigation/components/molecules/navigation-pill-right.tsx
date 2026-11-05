@@ -103,10 +103,10 @@ export const NavPillRight = ({
           layout: { duration: 0.22, ease: "linear" },
         }}
         data-nav-pill="right"
-        className={`fixed z-[9999] right-4 ${titleBarOffset} shadow-[var(--dk-shadow-glass)] backdrop-blur-[16px] overflow-hidden flex flex-col ${
+        className={`fixed z-[9999] right-4 ${titleBarOffset} shadow-[var(--dk-shadow-glass)] backdrop-blur-[16px] flex flex-col ${
           isExpanded
-            ? "w-[380px] p-3 rounded-3xl gap-2"
-            : "w-auto px-2 py-1.5 rounded-[2rem] gap-0"
+            ? "w-[380px] p-3 rounded-3xl gap-2 overflow-hidden"
+            : "w-auto px-2 py-1.5 rounded-[2rem] gap-0 overflow-visible"
         }`}
         style={{
           background: "color-mix(in oklch, var(--dk-surface-raised) 25%, transparent)",
@@ -115,10 +115,7 @@ export const NavPillRight = ({
         }}
       >
         {/* Top Controls Bar Row */}
-        <motion.div
-          layout
-          className="flex items-center justify-end w-full"
-        >
+        <div className="flex items-center justify-end w-full overflow-visible">
           {/* Collapse button when open */}
           <AnimatePresence mode="popLayout">
             {isExpanded && (
@@ -140,7 +137,7 @@ export const NavPillRight = ({
             )}
           </AnimatePresence>
 
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 overflow-visible">
             {showCloseButton && (
               <DkButton
                 type="button"
@@ -155,19 +152,15 @@ export const NavPillRight = ({
             )}
 
             {/* Search Button */}
-            <motion.div
-              layout
-              transition={{ duration: 0.22, ease: "linear" }}
-              className="flex items-center"
-            >
+            <div className="flex items-center overflow-visible">
               <NavSearch />
-            </motion.div>
+            </div>
 
             {/* Chat Messages Button */}
             <motion.div
               layout
               transition={{ duration: 0.22, ease: "linear" }}
-              className="flex items-center"
+              className="flex items-center overflow-visible"
             >
               <ChatNavButton
                 onToggleChat={() => {
@@ -185,7 +178,7 @@ export const NavPillRight = ({
             <motion.div
               layout
               transition={{ duration: 0.22, ease: "linear" }}
-              className="flex items-center"
+              className="flex items-center overflow-visible"
             >
               <UserMenu
                 bare
@@ -206,7 +199,7 @@ export const NavPillRight = ({
             <motion.div
               layout
               transition={{ duration: 0.22, ease: "linear" }}
-              className="flex items-center"
+              className="flex items-center overflow-visible"
             >
               <ActivityModuleButton
                 bare
@@ -220,7 +213,7 @@ export const NavPillRight = ({
               />
             </motion.div>
           </div>
-        </motion.div>
+        </div>
 
         {/* Dropdown Content appears simultaneously in a clean transition */}
         <AnimatePresence mode="popLayout">

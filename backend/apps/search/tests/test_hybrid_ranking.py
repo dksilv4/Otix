@@ -11,6 +11,7 @@ Covers:
 """
 
 from datetime import date
+from django.core.management import call_command
 from django.db import connection
 from django.test import TestCase
 from rest_framework.test import APIClient
@@ -239,3 +240,62 @@ class HybridRelevanceRankingTests(TestCase):
                 row_ln = cursor.fetchone()
                 self.assertIsNotNone(row_ln)
                 self.assertAlmostEqual(row_ln[0], 2.302585, places=4)
+
+    def test_sqlite_ln_null_safety(self) -> None:
+        """Verify SQLite ln function handles NULL, 0, and negative numbers without OperationalError."""
+        if connection.vendor == "sqlite":
+            ensure_sqlite_search_functions(connection)
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT ln(NULL)")
+                row_null = cursor.fetchone()
+                self.assertIsNotNone(row_null)
+                self.assertEqual(row_null[0], 0.0)
+
+                cursor.execute("SELECT ln(0.0)")
+                row_zero = cursor.fetchone()
+                self.assertIsNotNone(row_zero)
+                self.assertEqual(row_zero[0], 0.0)
+
+                cursor.execute("SELECT ln(-10.0)")
+                row_neg = cursor.fetchone()
+                self.assertIsNotNone(row_neg)
+                self.assertEqual(row_neg[0], 0.0)
+
+    def test_explicit_sort_relevance_floor(self) -> None:
+        """Verify sort_by='popularity' filters out low-similarity fuzzy noise from high popularity."""
+        batman = _create_media("movie", "Batman", "batman", popularity=30.0)
+        batman_begins = _create_media("movie", "Batman Begins", "batman-begins", popularity=80.0)
+        # Seed high-popularity noise titles that share substrings like 'Man' or weak trigrams
+        breaking_bad = _create_media("show", "Breaking Bad", "breaking-bad", popularity=1000.0)
+        running_man = _create_media("movie", "Running Man", "running-man", popularity=500.0)
+
+        res = self.client.get("/api/v1/search/", {"q": "Batman", "sort_by": "popularity"})
+        self.assertEqual(res.status_code, 200)
+        items = res.data["items"]
+        item_ids = [it["id"] for it in items]
+
+        # Top item should be Batman Begins (popularity 80), followed by Batman (popularity 30)
+        self.assertIn(batman_begins.id, item_ids)
+        self.assertIn(batman.id, item_ids)
+        self.assertEqual(item_ids[0], batman_begins.id)
+        self.assertEqual(item_ids[1], batman.id)
+
+        # Breaking Bad and Running Man must be completely filtered out
+        self.assertNotIn(breaking_bad.id, item_ids)
+        self.assertNotIn(running_man.id, item_ids)
+
+    def test_short_query_trigram_skip(self) -> None:
+        """Queries shorter than 3 characters do not trigger fuzzy trigram candidate matching."""
+        batman = _create_media("movie", "Batman", "batman", popularity=30.0)
+        superman = _create_media("movie", "Superman", "superman", popularity=30.0)
+
+        # 2-character query 'ba' matches 'Batman' (prefix/substring) but NOT 'Superman'
+        res = self.client.get("/api/v1/search/", {"q": "ba"})
+        self.assertEqual(res.status_code, 200)
+        ids = [it["id"] for it in res.data["items"]]
+        self.assertIn(batman.id, ids)
+        self.assertNotIn(superman.id, ids)
+
+    def test_migration_schema_state_parity(self) -> None:
+        """Verify that makemigrations detects zero model state drift or uncommitted changes."""
+        call_command("makemigrations", check=True, dry_run=True, verbosity=0)

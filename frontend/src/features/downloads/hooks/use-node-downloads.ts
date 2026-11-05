@@ -577,7 +577,7 @@ export function useRemoteDownloads() {
       const assignedDir = destDir || localStorage.getItem('otix:games-download-dir') || undefined
 
       const downloadId = await window.desktopAPI.downloadsRemoteStart({
-        serverUrl: file.serverUrl,
+        serverUrl: file.serverUrl || '',
         fileId: file.fileId,
         filename: file.filename,
         filesize: file.filesize,

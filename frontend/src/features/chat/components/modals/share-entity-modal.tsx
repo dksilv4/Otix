@@ -2,24 +2,12 @@ import { useState, useEffect } from 'react'
 import { Search, Gamepad2, Film, Tv, Loader2 } from 'lucide-react'
 import { DkDialog } from '@ui/molecules/dialog'
 import { apiClient } from '@/lib/api'
-import type { EntityEmbedMetadata } from '../../types'
+import type { EntityEmbedMetadata, SearchResultItem } from '../../types'
 
 interface ShareEntityModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onSelectEntity: (entity: EntityEmbedMetadata) => void
-}
-
-interface SearchResultItem {
-  id: number | string
-  title: string
-  mediaType?: string
-  type?: string
-  posterUrl?: string
-  coverUrl?: string
-  releaseDate?: string
-  releaseYear?: string | number
-  year?: string | number
 }
 
 export const ShareEntityModal = ({

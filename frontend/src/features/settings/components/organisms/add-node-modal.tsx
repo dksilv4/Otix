@@ -231,7 +231,7 @@ export const AddNodeModal = ({
             type="button"
             variant="secondary"
             size="sm"
-            onClick={() => onOpenChange(false)}
+            onClick={handleClose}
           >
             Cancel
           </DkButton>

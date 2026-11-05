@@ -42,13 +42,7 @@ import { SectionHeader } from '../components/molecules/settings-section-header'
 import { SettingsCard } from '../components/molecules/settings-card'
 import { SettingsRow } from '../components/molecules/settings-row'
 import { SettingsLockedState } from '../components/molecules/settings-locked-state'
-
-interface StorageStats {
-  mediaDir: string
-  downloadedCount: number
-  downloadedBytes: number
-  disk: { total: number; used: number; free: number }
-}
+import type { StorageStats } from '../types'
 
 const Metric = ({
   icon: Icon,

@@ -12,6 +12,7 @@ interface MediaCarouselProps {
   viewAllSearch?: Record<string, any>
   priority?: boolean
   hideStreamBadge?: boolean
+  snap?: boolean
 }
 
 export const MediaCarousel = memo(({
@@ -23,6 +24,7 @@ export const MediaCarousel = memo(({
   viewAllSearch,
   priority = false,
   hideStreamBadge = false,
+  snap = true,
 }: MediaCarouselProps) => {
   return (
     <Carousel
@@ -34,6 +36,7 @@ export const MediaCarousel = memo(({
       title={title}
       viewAllLink={viewAllLink}
       viewAllSearch={viewAllSearch}
+      snap={snap}
     >
       {(Array.isArray(items) ? items.filter((item) => item && item.id) : []).map((item, index) => (
         <DiscoverMediaCard

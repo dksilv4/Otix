@@ -2,17 +2,10 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import {
   Sparkles,
   Gamepad2,
-  Check,
-  X,
   Loader2,
   Search,
   CheckCircle2,
   AlertCircle,
-  RefreshCw,
-  FolderOpen,
-  Filter,
-  ArrowRight,
-  Disc,
 } from 'lucide-react'
 import { DkDialog } from '@ui/molecules/dialog'
 import { DkButton } from '@ui/atoms/button'
@@ -22,7 +15,6 @@ import type { ScannedGameItem, CatalogCandidate } from '../../utils/scanned-summ
 import { searchCatalogGames } from '../../utils/scanned-summary'
 import {
   GAME_PLATFORM_OPTIONS,
-  resolvePlatformLabel,
   getFileFormatBadge,
 } from '../../utils/node-scan-files'
 import {
@@ -35,6 +27,9 @@ import {
   getMassMatchStats,
 } from '../../utils/mass-match'
 import { cn } from '@/lib/utils'
+import type { MassMatchPhase } from '../../types'
+
+export type { MassMatchPhase }
 
 export interface NodeMassMatchModalProps {
   open: boolean
@@ -43,8 +38,6 @@ export interface NodeMassMatchModalProps {
   onMatchSuccess?: (updatedGame: ScannedGameItem) => void
   onFinish?: () => void
 }
-
-type MassMatchPhase = 'analyzing' | 'reviewing' | 'applying' | 'completed'
 
 interface InlineSearchModalProps {
   open: boolean
@@ -98,7 +91,7 @@ const InlineSearchModal = ({
       }}
       title="Search Catalog Candidate"
       description={`Find the matching game metadata for "${row.game.title}"`}
-      maxWidth="max-w-xl"
+      className="max-w-xl"
     >
       <div className="space-y-4 pt-1">
         {/* Search input bar */}
@@ -119,8 +112,7 @@ const InlineSearchModal = ({
           <DkButton
             type="button"
             variant="primary"
-            size="sm"
-            disabled={isSearching}
+              disabled={isSearching}
             onClick={() => void executeSearch(query)}
             className="rounded-xl px-4"
           >
@@ -174,8 +166,7 @@ const InlineSearchModal = ({
                   <DkButton
                     type="button"
                     variant="ghost"
-                    size="sm"
-                    className="shrink-0 rounded-lg text-xs"
+                              className="shrink-0 rounded-lg text-xs"
                   >
                     Select
                   </DkButton>
@@ -266,7 +257,6 @@ const MassMatchRow = ({
           value={row.selectedPlatform}
           onChange={(val) => onPlatformChange(row.id, val)}
           options={platformOptions}
-          size="sm"
           className="w-full text-xs rounded-xl"
         />
       </div>
@@ -296,8 +286,7 @@ const MassMatchRow = ({
                     if (match) onCandidateChange(row.id, match)
                   }}
                   options={candidateOptions}
-                  size="sm"
-                  className="w-full text-xs rounded-lg"
+                          className="w-full text-xs rounded-lg"
                 />
               ) : (
                 <p className="text-xs font-medium text-foreground truncate">
@@ -335,7 +324,6 @@ const MassMatchRow = ({
         <DkButton
           type="button"
           variant="ghost"
-          size="sm"
           onClick={() => onOpenSearch(row)}
           title="Search alternative candidate"
           className="h-8 px-2.5 text-xs rounded-xl shrink-0 text-muted-foreground hover:text-foreground"
@@ -571,7 +559,7 @@ export const NodeMassMatchModal = ({
           </div>
         }
         description="Batch analyze and confirm metadata for unmatched game dumps and files."
-        maxWidth="max-w-5xl"
+        className="max-w-5xl"
       >
         <div className="space-y-4 pt-1">
           {/* ── Phase 1: Analyzing ── */}
@@ -602,8 +590,7 @@ export const NodeMassMatchModal = ({
                 <DkButton
                   type="button"
                   variant="ghost"
-                  size="sm"
-                  onClick={() => {
+                          onClick={() => {
                     if (abortControllerRef.current) {
                       abortControllerRef.current.abort()
                     }
@@ -690,8 +677,7 @@ export const NodeMassMatchModal = ({
                   <DkButton
                     type="button"
                     variant="ghost"
-                    size="sm"
-                    onClick={handleSelectHighConfidence}
+                              onClick={handleSelectHighConfidence}
                     title="Select only high-confidence matches"
                     className="h-7 px-2 text-[11px] rounded-lg text-primary hover:bg-primary/10"
                   >
@@ -701,8 +687,7 @@ export const NodeMassMatchModal = ({
                   <DkButton
                     type="button"
                     variant="ghost"
-                    size="sm"
-                    onClick={handleSelectAll}
+                              onClick={handleSelectAll}
                     title="Select all games with candidates"
                     className="h-7 px-2 text-[11px] rounded-lg text-muted-foreground hover:text-foreground"
                   >
@@ -712,8 +697,7 @@ export const NodeMassMatchModal = ({
                   <DkButton
                     type="button"
                     variant="ghost"
-                    size="sm"
-                    onClick={handleDeselectAll}
+                              onClick={handleDeselectAll}
                     title="Clear selection"
                     className="h-7 px-2 text-[11px] rounded-lg text-muted-foreground hover:text-foreground"
                   >
@@ -755,8 +739,7 @@ export const NodeMassMatchModal = ({
                   <DkButton
                     type="button"
                     variant="ghost"
-                    size="sm"
-                    onClick={handleClose}
+                              onClick={handleClose}
                     className="rounded-xl"
                   >
                     Cancel

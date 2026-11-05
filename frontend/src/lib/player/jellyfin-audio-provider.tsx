@@ -1,41 +1,10 @@
-import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
+import { createContext, useCallback, useEffect, useRef, useState } from 'react'
 import { getJellyfinClientId } from './utils'
+import type { JellyfinTrackInfo, JellyfinPlayerContextValue } from './types'
 
-export interface JellyfinTrackInfo {
-  id: string
-  itemId: string
-  title: string
-  artist: string
-  albumName: string
-  albumArt: string | null
-  durationMs: number
-  serverUrl: string | null
-  token: string | null
-}
+export type { JellyfinTrackInfo, JellyfinPlayerContextValue }
 
-interface JellyfinPlayerContextValue {
-  isPlaying: boolean
-  currentTrack: JellyfinTrackInfo | null
-  position: number
-  duration: number
-  volume: number
-  queue: JellyfinTrackInfo[]
-  previousTracks: JellyfinTrackInfo[]
-  error: string | null
-  playTrack: (track: JellyfinTrackInfo) => Promise<void>
-  playAlbum: (tracks: JellyfinTrackInfo[], startIndex?: number) => Promise<void>
-  togglePlay: () => void
-  pause: () => void
-  resume: () => void
-  seek: (ms: number) => void
-  setVolume: (vol: number) => void
-  skipNext: () => void
-  skipPrevious: () => void
-  skipToIndex: (index: number) => void
-  stop: () => void
-}
-
-const JellyfinPlayerContext = createContext<JellyfinPlayerContextValue | null>(null)
+export const JellyfinPlayerContext = createContext<JellyfinPlayerContextValue | null>(null)
 
 const VOLUME_KEY = 'jellyfin-player-volume'
 
@@ -287,9 +256,4 @@ export const JellyfinAudioProvider = ({ children }: { children: React.ReactNode 
   )
 };
 
-// eslint-disable-next-line react-refresh/only-export-components
-export const useJellyfinPlayer = (): JellyfinPlayerContextValue => {
-  const ctx = useContext(JellyfinPlayerContext)
-  if (!ctx) throw new Error('useJellyfinPlayer must be used within JellyfinAudioProvider')
-  return ctx
-}
+export { useJellyfinPlayer } from './hooks/use-jellyfin-player'

@@ -1,42 +1,11 @@
 // TODO: Review this file
-import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react"
+import { createContext, useCallback, useEffect, useRef, useState } from "react"
 import { getPlexClientId, generateSessionId } from "./utils"
+import type { PlexTrackInfo, PlexPlayerContextValue } from "./types"
 
-export interface PlexTrackInfo {
-  id: string
-  ratingKey: string
-  title: string
-  artist: string
-  albumName: string
-  albumArt: string | null
-  durationMs: number
-  plexBaseUrl: string | null
-  plexToken: string | null
-}
+export type { PlexTrackInfo, PlexPlayerContextValue }
 
-interface PlexPlayerContextValue {
-  isPlaying: boolean
-  currentTrack: PlexTrackInfo | null
-  position: number
-  duration: number
-  volume: number
-  queue: PlexTrackInfo[]
-  previousTracks: PlexTrackInfo[]
-  error: string | null
-  playTrack: (track: PlexTrackInfo) => Promise<void>
-  playAlbum: (tracks: PlexTrackInfo[], startIndex?: number) => Promise<void>
-  togglePlay: () => void
-  pause: () => void
-  resume: () => void
-  seek: (ms: number) => void
-  setVolume: (vol: number) => void
-  skipNext: () => void
-  skipPrevious: () => void
-  skipToIndex: (index: number) => void
-  stop: () => void
-}
-
-const PlexPlayerContext = createContext<PlexPlayerContextValue | null>(null)
+export const PlexPlayerContext = createContext<PlexPlayerContextValue | null>(null)
 
 const VOLUME_KEY = "plex-player-volume"
 
@@ -421,8 +390,4 @@ export const PlexAudioProvider = ({ children }: { children: React.ReactNode }) =
   )
 };
 
-export const usePlexPlayer = (): PlexPlayerContextValue => {
-  const ctx = useContext(PlexPlayerContext)
-  if (!ctx) throw new Error("usePlexPlayer must be used within PlexAudioProvider")
-  return ctx
-}
+export { usePlexPlayer } from './hooks/use-plex-player'

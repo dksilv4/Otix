@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
+import { createContext, useEffect, useState, type ReactNode } from 'react'
 import { applyAccentColor } from '@/lib/theme/accent'
 import { ENV } from '@/lib/config/env'
 import {
@@ -13,7 +13,7 @@ import {
 
 export type { Theme, ThemeSetting }
 
-const ThemeContext = createContext<{
+export const ThemeContext = createContext<{
   theme: ThemeSetting
   resolvedTheme: Theme
   setTheme: (theme: ThemeSetting) => void
@@ -27,9 +27,7 @@ const ThemeContext = createContext<{
   setLayoutTheme: () => {},
 })
 
-export const useTheme = () => {
-  return useContext(ThemeContext)
-}
+export { useTheme } from './hooks/use-theme'
 
 export const ThemeProvider = ({ children }: { children: ReactNode }) => {
   const [theme, setThemeState] = useState<ThemeSetting>(getInitialTheme)

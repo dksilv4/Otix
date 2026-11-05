@@ -2,13 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ChevronLeft, ChevronRight, X } from 'lucide-react'
 import { useModal } from '@/lib/modals'
-
-interface Screenshot {
-  url: string
-  width?: number
-  height?: number
-  provider?: string
-}
+import type { Screenshot } from '@/features/launcher/types'
 
 interface LauncherScreenshotGalleryProps {
   screenshots: Screenshot[]

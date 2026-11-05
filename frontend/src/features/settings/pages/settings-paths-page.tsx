@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { useNavigate, Link } from '@tanstack/react-router'
-import { useAuth } from '@/lib/providers/auth'
 import { useDeleteGameServer } from '@/features/downloads/use-server-downloads'
 import { useSettingsNode } from '../context/settings-node-context'
 import { SettingsPathsSection } from '../components/organisms/settings-paths-section'
@@ -56,12 +55,6 @@ export const SettingsPathsPage = ({
       onNavigateToOrganize()
     } else {
       void navigate({ to: '/settings/nodes', hash: 'organize' })
-    }
-  }
-
-  const handleGoToInfrastructure = () => {
-    if (onNavigateToInfrastructure) {
-      onNavigateToInfrastructure()
     }
   }
 
@@ -160,7 +153,7 @@ export const SettingsPathsPage = ({
             >
               <Server className="h-3.5 w-3.5" />
               <span>{server.name}</span>
-              <span className={cn('h-1.5 w-1.5 rounded-full', server.status === 'online' ? 'bg-primary' : 'bg-muted-foreground/40')} />
+              <span className={cn('h-1.5 w-1.5 rounded-full', (server.isOnline || (server as any).status === 'online') ? 'bg-primary' : 'bg-muted-foreground/40')} />
             </button>
           ))}
         </div>

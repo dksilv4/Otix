@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as http from 'http';
 import * as path from 'path';
-import { BrowserWindow, dialog, ipcMain } from 'electron';
+import { BrowserWindow, dialog, ipcMain, Notification } from 'electron';
 import * as gameService from '../game/storage';
 import type { LocalGame } from '../preload-api';
 import type { GameScanOrchestrator, ScannedGame } from '../game/orchestrator';
@@ -18,6 +18,9 @@ import { scanLocalFiles, isUpdateFile, isDlcFile } from '../game/local-scanner';
 
 let _orchestrator: GameScanOrchestrator | null = null;
 let _pluginManager: PluginManager | null = null;
+let _gameDetector: GameDetector | null = null;
+let _nodeDaemon: import('../node-daemon').NodeDaemonManager | null = null;
+let _scannerMainWindow: BrowserWindow | null = null;
 
 export function setScanOrchestrator(o: GameScanOrchestrator): void {
   _orchestrator = o;
@@ -27,588 +30,775 @@ export function setPluginManager(pm: PluginManager): void {
   _pluginManager = pm;
 }
 
-export function registerScannerIPC(
-  gameDetector: GameDetector | null,
-  nodeDaemon?: import('../node-daemon').NodeDaemonManager | null,
-  onPathsChanged?: () => void,
-): void {
-  // Scan game in paths via Otix Node engine
-  ipcMain.handle('scanner:scan-paths', async (event, paths: string[], isoPaths: string[], clientAuthToken?: string) => {
-    event.sender.send('scanner:progress', { currentDir: 'Scanning library folders via Otix Node...', progress: 10 });
+export function setScannerMainWindow(win: BrowserWindow | null): void {
+  _scannerMainWindow = win;
+}
 
-    try {
-      const port = (nodeDaemon as any)?.currentPort || 8090;
-      const nodeToken = (nodeDaemon as any)?.getNodeAuthToken ? (nodeDaemon as any).getNodeAuthToken() : '';
-      const authHeaders: Record<string, string> = nodeToken ? { Authorization: `Bearer ${nodeToken}` } : {};
+export function handleNewGamesDetected(newGames: LocalGame[], mainWindow?: BrowserWindow | null): void {
+  if (!newGames || newGames.length === 0) return;
 
-      if (clientAuthToken && _orchestrator) {
-        _orchestrator.setAuthToken(clientAuthToken);
-      }
+  const count = newGames.length;
+  const title = count === 1 ? 'New game detected' : 'New games detected';
+  const body = count === 1
+    ? `${newGames[0].title} was detected and added to your library.`
+    : `${count} new games were detected and added to your library.`;
 
-      // Synchronize configured paths to node libraries.
-      // If paths are passed explicitly from the client, treat them as the current active list
-      // instead of unioning with stale database paths.
-      const hasClientPaths = (paths && paths.length > 0) || (isoPaths && isoPaths.length > 0);
-      const allPathsMap = new Map<string, 'game' | 'iso'>();
-      if (hasClientPaths) {
-        for (const p of paths || []) {
-          allPathsMap.set(p, 'game');
-        }
-        for (const ip of isoPaths || []) {
-          allPathsMap.set(ip, 'iso');
-        }
-      } else {
-        let configuredPaths = gameService.getScanPaths();
-        if (configuredPaths.length === 0 && nodeDaemon) {
-          try {
-            const nodeLibs: any = await new Promise((resolve) => {
-              const req = http.get(
-                `http://127.0.0.1:${port}/api/v1/libraries`,
-                { headers: authHeaders, timeout: 2000 },
-                (res) => {
-                  let buf = '';
-                  res.on('data', (c) => { buf += c; });
-                  res.on('end', () => {
-                    try { resolve(JSON.parse(buf)); } catch { resolve([]); }
-                  });
-                }
-              );
-              req.on('error', () => resolve([]));
-              req.on('timeout', () => { req.destroy(); resolve([]); });
-            });
-            if (Array.isArray(nodeLibs) && nodeLibs.length > 0) {
-              const recovered = nodeLibs.map((nl: any) => ({
-                path: nl.path,
-                type: (nl.kind === 'iso' ? 'iso' : 'game') as 'game' | 'iso',
-              }));
-              gameService.saveScanPaths(recovered);
-              configuredPaths = recovered;
-            }
-          } catch {
-            // ignore node library fetch error
-          }
-        }
-        for (const cp of configuredPaths) {
-          allPathsMap.set(cp.path, cp.type);
-        }
-      }
+  console.log(`[scanner] ${title}: ${body}`);
 
-      // Deduplicate paths and prune nested subfolders so directories are not walked multiple times
-      const sortedPaths = Array.from(allPathsMap.entries()).sort((a, b) => a[0].length - b[0].length);
-      const prunedPathsMap = new Map<string, 'game' | 'iso'>();
-      for (const [p, type] of sortedPaths) {
-        const normP = path.resolve(p).toLowerCase();
-        let isChild = false;
-        for (const [parentP] of prunedPathsMap.entries()) {
-          const normParent = path.resolve(parentP).toLowerCase();
-          if (normP !== normParent && normP.startsWith(normParent + path.sep.toLowerCase())) {
-            isChild = true;
-            break;
-          }
-        }
-        if (!isChild) {
-          prunedPathsMap.set(p, type);
-        }
-      }
-      allPathsMap.clear();
-      for (const [k, v] of prunedPathsMap) {
-        allPathsMap.set(k, v);
-      }
+  // 1. Native Desktop Notification (Electron Notification)
+  try {
+    if (typeof Notification !== 'undefined' && typeof Notification.isSupported === 'function' && Notification.isSupported()) {
+      const iconPath = path.join(__dirname, '..', 'assets', 'icon.png');
+      const notification = new Notification({
+        title,
+        body,
+        icon: fs.existsSync(iconPath) ? iconPath : undefined,
+      });
 
-      if (nodeDaemon && allPathsMap.size > 0) {
-        const scanItems = Array.from(allPathsMap.entries()).map(([p, t]) => ({ path: p, type: t }));
-        // Sync libraries to node with ?no_scan=true so it skips autonomous ScanAll() before explicit scan
-        try {
-          await new Promise<void>((resolve) => {
-            const body = JSON.stringify({
-              libraries: scanItems.map((item) => ({
-                name: path.basename(item.path) || item.type,
-                path: resolveUncPath(item.path),
-                kind: item.type,
-              })),
-            });
-            const sHeaders: Record<string, string> = {
-              ...authHeaders,
-              'Content-Type': 'application/json',
-              'Content-Length': Buffer.byteLength(body).toString(),
-            };
-            const sreq = http.request(
-              `http://127.0.0.1:${port}/api/v1/libraries?no_scan=true`,
-              { method: 'PUT', headers: sHeaders, timeout: 5000 },
-              (res) => {
-                res.resume();
-                res.on('end', () => resolve());
-              }
-            );
-            sreq.on('error', () => resolve());
-            sreq.on('timeout', () => { sreq.destroy(); resolve(); });
-            sreq.write(body);
-            sreq.end();
+      notification.on('click', () => {
+        const win = mainWindow || _scannerMainWindow;
+        if (win && !win.isDestroyed()) {
+          if (win.isMinimized()) win.restore();
+          win.show();
+          win.focus();
+          win.webContents.send('notifications:navigate', {
+            type: 'game_detected',
+            metadata: { gameId: newGames[0]?.id },
           });
-        } catch {
-          await nodeDaemon.syncLibraries(scanItems);
         }
+      });
+
+      notification.show();
+    }
+  } catch (err) {
+    console.warn('[scanner] Failed to show native notification:', err);
+  }
+
+  // 2. Dispatch IPC event to renderer window
+  try {
+    const win = mainWindow || _scannerMainWindow;
+    if (win && !win.isDestroyed()) {
+      win.webContents.send('scanner:new-games-detected', {
+        games: newGames,
+      });
+    }
+  } catch (err) {
+    console.warn('[scanner] Failed to dispatch new games event to window:', err);
+  }
+}
+
+export interface ExecuteScanOptions {
+  paths?: string[];
+  isoPaths?: string[];
+  clientAuthToken?: string;
+  gameDetector?: GameDetector | null;
+  nodeDaemon?: import('../node-daemon').NodeDaemonManager | null;
+  onProgress?: (currentDir: string, progress: number) => void;
+  isAutomatic?: boolean;
+}
+
+export async function executeScan(
+  options: ExecuteScanOptions = {}
+): Promise<{ games: LocalGame[]; newGames: LocalGame[] }> {
+  const { paths, isoPaths, clientAuthToken } = options;
+  const gameDetector = options.gameDetector !== undefined ? options.gameDetector : _gameDetector;
+  const nodeDaemon = options.nodeDaemon !== undefined ? options.nodeDaemon : _nodeDaemon;
+  const onProgress = options.onProgress || (() => {});
+
+  const sendSafeProgress = (currentDir: string, progress: number) => {
+    try {
+      onProgress(currentDir, progress);
+    } catch {
+      // ignore
+    }
+  };
+
+  sendSafeProgress('Scanning library folders via Otix Node...', 10);
+
+  try {
+    const port = (nodeDaemon as any)?.currentPort || 8090;
+    const nodeToken = (nodeDaemon as any)?.getNodeAuthToken ? (nodeDaemon as any).getNodeAuthToken() : '';
+    const authHeaders: Record<string, string> = nodeToken ? { Authorization: `Bearer ${nodeToken}` } : {};
+
+    if (clientAuthToken && _orchestrator) {
+      _orchestrator.setAuthToken(clientAuthToken);
+    }
+
+    // Synchronize configured paths to node libraries.
+    // If paths are passed explicitly from the client, treat them as the current active list
+    // instead of unioning with stale database paths.
+    const hasClientPaths = (paths && paths.length > 0) || (isoPaths && isoPaths.length > 0);
+    const allPathsMap = new Map<string, 'game' | 'iso'>();
+    if (hasClientPaths) {
+      for (const p of paths || []) {
+        allPathsMap.set(p, 'game');
       }
-
-      event.sender.send('scanner:progress', { currentDir: 'Indexing library files...', progress: 30 });
-
-      // Trigger node scan with progress polling
-      let scanDone = false;
-      const progressTimer = setInterval(async () => {
-        if (scanDone) return;
+      for (const ip of isoPaths || []) {
+        allPathsMap.set(ip, 'iso');
+      }
+    } else {
+      let configuredPaths = gameService.getScanPaths();
+      if (configuredPaths.length === 0 && nodeDaemon) {
         try {
-          const status: any = await new Promise((resolve) => {
-            const sreq = http.get(
-              `http://127.0.0.1:${port}/api/v1/scan/status`,
+          const nodeLibs: any = await new Promise((resolve) => {
+            const req = http.get(
+              `http://127.0.0.1:${port}/api/v1/libraries`,
               { headers: authHeaders, timeout: 2000 },
               (res) => {
                 let buf = '';
                 res.on('data', (c) => { buf += c; });
                 res.on('end', () => {
-                  try { resolve(JSON.parse(buf)); } catch { resolve(null); }
+                  try { resolve(JSON.parse(buf)); } catch { resolve([]); }
                 });
               }
             );
-            sreq.on('error', () => resolve(null));
-            sreq.on('timeout', () => { sreq.destroy(); resolve(null); });
+            req.on('error', () => resolve([]));
+            req.on('timeout', () => { req.destroy(); resolve([]); });
           });
-          if (status && status.phase === 'scanning') {
-            const scanned = status.files_scanned || 0;
-            const dirParts = (status.current_directory || '').split(/[\\/]/).filter(Boolean);
-            const displayDir = dirParts.length > 0 ? dirParts[dirParts.length - 1] : 'libraries';
-            event.sender.send('scanner:progress', {
-              currentDir: `Scanning ${displayDir} (${scanned} files)...`,
-              progress: Math.min(85, 30 + Math.floor(scanned / 50)),
-            });
+          if (Array.isArray(nodeLibs) && nodeLibs.length > 0) {
+            const recovered = nodeLibs.map((nl: any) => ({
+              path: nl.path,
+              type: (nl.kind === 'iso' ? 'iso' : 'game') as 'game' | 'iso',
+            }));
+            gameService.saveScanPaths(recovered);
+            configuredPaths = recovered;
           }
         } catch {
-          // ignore
+          // ignore node library fetch error
         }
-      }, 500);
+      }
+      for (const cp of configuredPaths) {
+        allPathsMap.set(cp.path, cp.type === 'iso' || (cp.type as any) === 'provider' ? 'iso' : 'game');
+      }
+    }
 
+    // Deduplicate paths and prune nested subfolders so directories are not walked multiple times
+    const sortedPaths = Array.from(allPathsMap.entries()).sort((a, b) => a[0].length - b[0].length);
+    const prunedPathsMap = new Map<string, 'game' | 'iso'>();
+    for (const [p, type] of sortedPaths) {
+      const normP = path.resolve(p).toLowerCase();
+      let isChild = false;
+      for (const [parentP] of prunedPathsMap.entries()) {
+        const normParent = path.resolve(parentP).toLowerCase();
+        if (normP !== normParent && normP.startsWith(normParent + path.sep.toLowerCase())) {
+          isChild = true;
+          break;
+        }
+      }
+      if (!isChild) {
+        prunedPathsMap.set(p, type);
+      }
+    }
+    allPathsMap.clear();
+    for (const [k, v] of prunedPathsMap) {
+      allPathsMap.set(k, v);
+    }
+
+    if (nodeDaemon && allPathsMap.size > 0) {
+      const scanItems = Array.from(allPathsMap.entries()).map(([p, t]) => ({ path: p, type: t }));
+      // Sync libraries to node with ?no_scan=true so it skips autonomous ScanAll() before explicit scan
       try {
         await new Promise<void>((resolve) => {
-          const req = http.request(
-            `http://127.0.0.1:${port}/api/v1/scan?wait=1`,
-            { method: 'POST', headers: authHeaders, timeout: 120000 },
+          const body = JSON.stringify({
+            libraries: scanItems.map((item) => ({
+              name: path.basename(item.path) || item.type,
+              path: resolveUncPath(item.path),
+              kind: item.type,
+            })),
+          });
+          const sHeaders: Record<string, string> = {
+            ...authHeaders,
+            'Content-Type': 'application/json',
+            'Content-Length': Buffer.byteLength(body).toString(),
+          };
+          const sreq = http.request(
+            `http://127.0.0.1:${port}/api/v1/libraries?no_scan=true`,
+            { method: 'PUT', headers: sHeaders, timeout: 5000 },
+            (res) => {
+              res.resume();
+              res.on('end', () => resolve());
+            }
+          );
+          sreq.on('error', () => resolve());
+          sreq.on('timeout', () => { sreq.destroy(); resolve(); });
+          sreq.write(body);
+          sreq.end();
+        });
+      } catch {
+        await nodeDaemon.syncLibraries(scanItems);
+      }
+    }
+
+    sendSafeProgress('Indexing library files...', 30);
+
+    // Trigger node scan with progress polling
+    let scanDone = false;
+    const progressTimer = setInterval(async () => {
+      if (scanDone) return;
+      try {
+        const status: any = await new Promise((resolve) => {
+          const sreq = http.get(
+            `http://127.0.0.1:${port}/api/v1/scan/status`,
+            { headers: authHeaders, timeout: 2000 },
             (res) => {
               let buf = '';
               res.on('data', (c) => { buf += c; });
               res.on('end', () => {
-                if (res.statusCode && res.statusCode >= 400) {
-                  console.warn(`[scanner:scan-paths] Node scan returned HTTP ${res.statusCode}: ${buf}`);
-                }
-                resolve();
+                try { resolve(JSON.parse(buf)); } catch { resolve(null); }
               });
             }
           );
-          req.on('error', (e) => {
-            console.warn('[scanner:scan-paths] Node scan request error:', e.message);
-            resolve();
-          });
-          req.on('timeout', () => {
-            req.destroy();
-            resolve();
-          });
-          req.end();
+          sreq.on('error', () => resolve(null));
+          sreq.on('timeout', () => { sreq.destroy(); resolve(null); });
         });
-      } finally {
-        scanDone = true;
-        clearInterval(progressTimer);
-      }
-
-      const sendSafeProgress = (currentDir: string, progress: number) => {
-        try {
-          if (!event.sender.isDestroyed()) {
-            event.sender.send('scanner:progress', { currentDir, progress });
-          }
-        } catch {
-          // sender destroyed or IPC channel closed
+        if (status && status.phase === 'scanning') {
+          const scanned = status.files_scanned || 0;
+          const dirParts = (status.current_directory || '').split(/[\\/]/).filter(Boolean);
+          const displayDir = dirParts.length > 0 ? dirParts[dirParts.length - 1] : 'libraries';
+          sendSafeProgress(
+            `Scanning ${displayDir} (${scanned} files)...`,
+            Math.min(85, 30 + Math.floor(scanned / 50)),
+          );
         }
-      };
+      } catch {
+        // ignore
+      }
+    }, 500);
 
-      sendSafeProgress('Fetching indexed games...', 88);
+    try {
+      await new Promise<void>((resolve) => {
+        const req = http.request(
+          `http://127.0.0.1:${port}/api/v1/scan?wait=1`,
+          { method: 'POST', headers: authHeaders, timeout: 120000 },
+          (res) => {
+            let buf = '';
+            res.on('data', (c) => { buf += c; });
+            res.on('end', () => {
+              if (res.statusCode && res.statusCode >= 400) {
+                console.warn(`[scanner:scan-paths] Node scan returned HTTP ${res.statusCode}: ${buf}`);
+              }
+              resolve();
+            });
+          }
+        );
+        req.on('error', (e) => {
+          console.warn('[scanner:scan-paths] Node scan request error:', e.message);
+          resolve();
+        });
+        req.on('timeout', () => {
+          req.destroy();
+          resolve();
+        });
+        req.end();
+      });
+    } finally {
+      scanDone = true;
+      clearInterval(progressTimer);
+    }
 
-      // Fetch hosted files from node with streaming JSON parse to avoid buffering a massive string
-      let nodeFiles: any[] = [];
-      try {
-        nodeFiles = await new Promise((resolve) => {
-          let resolved = false;
-          const safeResolve = (val: any[]) => {
+    sendSafeProgress('Fetching indexed games...', 88);
+
+    // Fetch hosted files from node with streaming JSON parse to avoid buffering a massive string
+    let nodeFiles: any[] = [];
+    try {
+      nodeFiles = await new Promise((resolve) => {
+        let resolved = false;
+        const safeResolve = (val: any[]) => {
+          if (!resolved) {
+            resolved = true;
+            resolve(val);
+          }
+        };
+
+        const chunks: Buffer[] = [];
+        let totalBytes = 0;
+        let lastProgressReportTime = Date.now();
+        const MAX_RESPONSE_BYTES = 100 * 1024 * 1024; // 100MB safety limit
+        const req = http.get(`http://127.0.0.1:${port}/api/v1/files`, { headers: authHeaders, timeout: 10000 }, (res) => {
+          res.on('error', (err) => {
+            req.destroy();
+            console.warn('[scanner:scan-paths] Node files response stream error:', err.message);
+            safeResolve([]);
+          });
+          res.on('close', () => {
             if (!resolved) {
-              resolved = true;
-              resolve(val);
+              safeResolve([]);
             }
-          };
+          });
 
-          const chunks: Buffer[] = [];
-          let totalBytes = 0;
-          let lastProgressReportTime = Date.now();
-          const MAX_RESPONSE_BYTES = 100 * 1024 * 1024; // 100MB safety limit
-          const req = http.get(`http://127.0.0.1:${port}/api/v1/files`, { headers: authHeaders, timeout: 10000 }, (res) => {
-            res.on('error', (err) => {
-              req.destroy();
-              console.warn('[scanner:scan-paths] Node files response stream error:', err.message);
+          if (res.statusCode !== 200) {
+            let buf = '';
+            res.on('data', (c) => { buf += c; });
+            res.on('end', () => {
+              console.warn(`[scanner:scan-paths] Node files returned HTTP ${res.statusCode}: ${buf}`);
               safeResolve([]);
             });
-            res.on('close', () => {
-              if (!resolved) {
-                safeResolve([]);
-              }
-            });
-
-            if (res.statusCode !== 200) {
-              let buf = '';
-              res.on('data', (c) => { buf += c; });
-              res.on('end', () => {
-                console.warn(`[scanner:scan-paths] Node files returned HTTP ${res.statusCode}: ${buf}`);
-                safeResolve([]);
-              });
+            return;
+          }
+          res.on('data', (chunk: Buffer) => {
+            totalBytes += chunk.length;
+            if (totalBytes > MAX_RESPONSE_BYTES) {
+              req.destroy();
+              console.warn('[scanner:scan-paths] Node files response exceeded 100MB, aborting');
+              safeResolve([]);
               return;
             }
-            res.on('data', (chunk: Buffer) => {
-              totalBytes += chunk.length;
-              if (totalBytes > MAX_RESPONSE_BYTES) {
-                req.destroy();
-                console.warn('[scanner:scan-paths] Node files response exceeded 100MB, aborting');
+            chunks.push(chunk);
+            const now = Date.now();
+            if (now - lastProgressReportTime > 300) {
+              lastProgressReportTime = now;
+              const mb = (totalBytes / (1024 * 1024)).toFixed(1);
+              sendSafeProgress(`Fetching indexed games (${mb} MB)...`, 89);
+            }
+          });
+          res.on('end', async () => {
+            try {
+              sendSafeProgress('Processing indexed games...', 91);
+              if (chunks.length === 0 || totalBytes === 0) {
                 safeResolve([]);
                 return;
               }
-              chunks.push(chunk);
-              const now = Date.now();
-              if (now - lastProgressReportTime > 300) {
-                lastProgressReportTime = now;
-                const mb = (totalBytes / (1024 * 1024)).toFixed(1);
-                sendSafeProgress(`Fetching indexed games (${mb} MB)...`, 89);
-              }
-            });
-            res.on('end', async () => {
-              try {
-                sendSafeProgress('Processing indexed games...', 91);
-                if (chunks.length === 0 || totalBytes === 0) {
-                  safeResolve([]);
-                  return;
-                }
-                // Yield to event loop so renderer updates can flush
-                await new Promise<void>((r) => setImmediate(r));
-                const rawString = chunks.length === 1 ? chunks[0].toString('utf8') : Buffer.concat(chunks, totalBytes).toString('utf8');
-                chunks.length = 0;
-                const parsed = JSON.parse(rawString);
-                const result = Array.isArray(parsed) ? parsed : [];
-                sendSafeProgress(`Loaded ${result.length} indexed files`, 93);
-                safeResolve(result);
-              } catch (parseErr: any) {
-                console.warn('[scanner:scan-paths] Failed to parse node files response:', parseErr.message);
-                safeResolve([]);
-              }
-            });
-          });
-          req.on('error', (e) => {
-            console.warn('[scanner:scan-paths] Node files fetch error:', e.message);
-            safeResolve([]);
-          });
-          req.on('timeout', () => {
-            req.destroy();
-            console.warn('[scanner:scan-paths] Node files fetch timed out after 10s');
-            safeResolve([]);
+              // Yield to event loop so renderer updates can flush
+              await new Promise<void>((r) => setImmediate(r));
+              const rawString = chunks.length === 1 ? chunks[0].toString('utf8') : Buffer.concat(chunks, totalBytes).toString('utf8');
+              chunks.length = 0;
+              const parsed = JSON.parse(rawString);
+              const result = Array.isArray(parsed) ? parsed : [];
+              sendSafeProgress(`Loaded ${result.length} indexed files`, 93);
+              safeResolve(result);
+            } catch (parseErr: any) {
+              console.warn('[scanner:scan-paths] Failed to parse node files response:', parseErr.message);
+              safeResolve([]);
+            }
           });
         });
-      } catch (fetchErr: any) {
-        console.warn('[scanner:scan-paths] Node files fetch exception:', fetchErr);
-        nodeFiles = [];
-      }
+        req.on('error', (e) => {
+          console.warn('[scanner:scan-paths] Node files fetch error:', e.message);
+          safeResolve([]);
+        });
+        req.on('timeout', () => {
+          req.destroy();
+          console.warn('[scanner:scan-paths] Node files fetch timed out after 10s');
+          safeResolve([]);
+        });
+      });
+    } catch (fetchErr: any) {
+      console.warn('[scanner:scan-paths] Node files fetch exception:', fetchErr);
+      nodeFiles = [];
+    }
 
-      // Fallback: if node returned 0 files or is offline, scan via native local-scanner
-      if (!nodeFiles || nodeFiles.length === 0) {
-        sendSafeProgress('Scanning local directories...', 40);
-        console.log('[scanner:scan-paths] Running native local file scanner...');
-        try {
-          const scanDirs = Array.from(allPathsMap.entries()).filter(([_, t]) => t === 'game').map(([p]) => p);
-          const isoDirs = Array.from(allPathsMap.entries()).filter(([_, t]) => t === 'iso').map(([p]) => p);
-          const localScanResult = await scanLocalFiles({
-            scanDirectories: scanDirs,
-            isoDirectories: isoDirs,
-            onProgress: (dir, progress) => {
-              const displayDir = path.basename(dir) || 'folders';
-              sendSafeProgress(`Scanning ${displayDir}...`, Math.min(85, 40 + Math.floor(progress * 0.45)));
-            },
+    // Fallback: if node returned 0 files or is offline, scan via native local-scanner
+    if (!nodeFiles || nodeFiles.length === 0) {
+      sendSafeProgress('Scanning local directories...', 40);
+      console.log('[scanner:scan-paths] Running native local file scanner...');
+      try {
+        const scanDirs = Array.from(allPathsMap.entries()).filter(([_, t]) => t === 'game' || (t as string) === 'installed').map(([p]) => p);
+        const isoDirs = Array.from(allPathsMap.entries()).filter(([_, t]) => t === 'iso' || (t as string) === 'provider').map(([p]) => p);
+        const localScanResult = await scanLocalFiles({
+          scanDirectories: scanDirs,
+          isoDirectories: isoDirs,
+          onProgress: (dir, progress) => {
+            const displayDir = path.basename(dir) || 'folders';
+            sendSafeProgress(`Scanning ${displayDir}...`, Math.min(85, 40 + Math.floor(progress * 0.45)));
+          },
+        });
+        const rawFallback = localScanResult.games || [];
+        if (rawFallback.length > 0) {
+          console.log(`[scanner:scan-paths] Native local scanner discovered ${rawFallback.length} games`);
+          nodeFiles = rawFallback.map((g: any) => {
+            const isIsoOrRom = g.platform !== 'pc' && g.platform !== 'steam';
+            const formatCategory = g.platform === 'steam' ? 'steam' : isIsoOrRom ? (g.platform === 'iso' ? 'iso' : 'rom') : 'pc';
+            return {
+              id: g.id,
+              filename: path.basename(g.exePath || g.installDir || g.title),
+              filepath: g.exePath || g.installDir,
+              game_title: g.title,
+              format_category: formatCategory,
+              platform: g.platform,
+              root_dir: g.installDir,
+              update_files: g.updateFiles,
+              isDlc: g.isDlc,
+              local_exe_path: g.localExePath,
+            };
           });
-          const rawFallback = localScanResult.games || [];
-          if (rawFallback.length > 0) {
-            console.log(`[scanner:scan-paths] Native local scanner discovered ${rawFallback.length} games`);
-            nodeFiles = rawFallback.map((g: any) => {
-              const isIsoOrRom = g.platform !== 'pc' && g.platform !== 'steam';
-              const formatCategory = g.platform === 'steam' ? 'steam' : isIsoOrRom ? (g.platform === 'iso' ? 'iso' : 'rom') : 'pc';
-              return {
-                id: g.id,
-                filename: path.basename(g.exePath || g.installDir || g.title),
-                filepath: g.exePath || g.installDir,
-                game_title: g.title,
-                format_category: formatCategory,
-                platform: g.platform,
-                root_dir: g.installDir,
-                update_files: g.updateFiles,
-                isDlc: g.isDlc,
-                local_exe_path: g.localExePath,
-              };
+        }
+      } catch (fbErr: any) {
+        console.warn('[scanner:scan-paths] Native local scanner error:', fbErr.message);
+      }
+    } else {
+      // Augment Steam libraries natively so appmanifests are recognized as Steam titles
+      try {
+        const scanDirs = Array.from(allPathsMap.entries()).filter(([_, t]) => t === 'game' || (t as string) === 'installed').map(([p]) => p);
+        const steamDirs = scanDirs.filter((d) => {
+          try {
+            const lower = d.toLowerCase();
+            if (lower.endsWith('steamapps') || path.basename(lower) === 'steam') return true;
+            if (fs.existsSync(d) && fs.statSync(d).isDirectory()) {
+              const entries = fs.readdirSync(d);
+              return entries.some((e) => e.toLowerCase() === 'steamapps');
+            }
+            return false;
+          } catch {
+            return false;
+          }
+        });
+
+        if (steamDirs.length > 0) {
+          const steamResult = await scanLocalFiles({
+            scanDirectories: steamDirs,
+            isoDirectories: [],
+          });
+          const steamGames = (steamResult.games || []).filter((g) => g.platform === 'steam');
+          if (steamGames.length > 0) {
+            const steamCommonDirs = new Set(steamGames.map((g) => path.resolve(g.installDir).toLowerCase()));
+            // Filter out interior executables in steamapps/common from nodeFiles to prevent duplicate/partial PC records
+            nodeFiles = nodeFiles.filter((f) => {
+              const rDir = f.root_dir ? path.resolve(f.root_dir).toLowerCase() : '';
+              const fPath = f.filepath ? path.resolve(f.filepath).toLowerCase() : '';
+              for (const scd of steamCommonDirs) {
+                if (rDir === scd || rDir.startsWith(scd + path.sep) || fPath.startsWith(scd + path.sep)) {
+                  return false;
+                }
+              }
+              return true;
             });
+
+            for (const sg of steamGames) {
+              nodeFiles.push({
+                id: sg.id,
+                filename: path.basename(sg.exePath || sg.installDir || sg.title),
+                filepath: sg.exePath || sg.installDir,
+                game_title: sg.title,
+                format_category: 'steam',
+                platform: 'steam',
+                root_dir: sg.installDir,
+                update_files: sg.updateFiles,
+                isDlc: sg.isDlc,
+                local_exe_path: sg.localExePath,
+              });
+            }
           }
-        } catch (fbErr: any) {
-          console.warn('[scanner:scan-paths] Native local scanner error:', fbErr.message);
+        }
+      } catch (steamErr: any) {
+        console.warn('[scanner:scan-paths] Native Steam library scan augmentation error:', steamErr.message);
+      }
+    }
+
+    // ── Phase 1: Transform discovered files into LocalGame records immediately ──
+    // Pre-load all existing games and matches into memory maps to avoid N*2 individual DB queries
+    const allExistingGames = gameService.getAllGames();
+    const existingGamesById = new Map<string, (typeof allExistingGames)[0]>();
+    for (const eg of allExistingGames) {
+      existingGamesById.set(eg.id, eg);
+    }
+    const existingExes = new Set<string>();
+    const existingDirs = new Set<string>();
+    for (const eg of allExistingGames) {
+      if (eg.exePath) existingExes.add(path.resolve(eg.exePath).toLowerCase());
+      if (eg.localExePath) existingExes.add(path.resolve(eg.localExePath).toLowerCase());
+      if (eg.installDir) existingDirs.add(path.resolve(eg.installDir).toLowerCase());
+    }
+
+    const allMatches = gameService.getAllGameMatches();
+    const matchesByKey = new Map<string, (typeof allMatches)[0]>();
+    for (const m of allMatches) {
+      matchesByKey.set(`${m.source}:${m.sourceGameId}`, m);
+    }
+
+    const games: LocalGame[] = [];
+    const rawCount = (nodeFiles || []).length;
+    for (let i = 0; i < rawCount; i++) {
+      if (i > 0 && i % 500 === 0) {
+        await new Promise<void>((r) => setImmediate(r));
+      }
+      const f = nodeFiles[i];
+      const filename = f.filename || (f.filepath ? path.basename(f.filepath) : '');
+      const filepath = f.filepath || '';
+      if (
+        f.format_category === 'update' ||
+        (f as any).isUpdate ||
+        isUpdateFile(filename, filepath) ||
+        isDlcFile(filename, filepath)
+      ) {
+        // Update / patch files belong to their parent game, not as standalone library cards
+        continue;
+      }
+      const fileId = f.id || `node_${f.filename}`;
+      const plat = f.platform || (f.format_category === 'iso' ? 'iso' : (f.format_category === 'rom' ? 'rom' : (f.format_category === 'steam' ? 'steam' : 'pc')));
+      const knownPrefixes = ['pc_', 'steam_', 'iso_', 'rom_', 'ps1_', 'ps2_', 'ps3_', 'ps4_', 'ps5_', 'psp_', 'psvita_', 'xbox_', 'xbox360_', 'switch_', 'wii_', 'wiiu_'];
+      const alreadyPrefixed = knownPrefixes.some((p) => fileId.startsWith(p));
+      const fullId = alreadyPrefixed ? fileId : `${plat}_${fileId}`;
+      const existing = existingGamesById.get(fullId) || existingGamesById.get(fileId);
+      const match = matchesByKey.get(`${plat}:${fileId}`) || matchesByKey.get(`local:${fileId}`);
+
+      const poster = existing?.posterUrl || (existing as any)?.otixPosterUrl || f.otix_images?.poster?.url || f.catalog_item?.poster_url || match?.otixPosterUrl;
+      const backdrop = (existing as any)?.backdropUrl || (existing as any)?.otixBackdropUrl || f.otix_images?.backdrop?.url || f.catalog_item?.backdrop_url || match?.otixBackdropUrl;
+      const logo = (existing as any)?.logoUrl || (existing as any)?.otixLogoUrl || f.otix_images?.logo?.url || f.catalog_item?.logo_url;
+      const icon = existing?.iconUrl || (existing as any)?.otixIconUrl || f.otix_images?.icon?.url || f.catalog_item?.icon_url || match?.otixIconUrl;
+      const mediaId = existing?.otixMediaId || match?.otixMediaId || f.otix_media_id || f.catalog_item?.id;
+      const mediaTitle = existing?.otixMediaTitle || match?.otixTitle || f.otix_title || f.catalog_item?.title;
+      const confidence = existing?.otixConfidence ?? match?.otixConfidence ?? f.otix_confidence ?? (mediaId ? 1.0 : undefined);
+      const overview = f.otix_overview || f.catalog_item?.overview || (existing?.data as any)?.overview;
+      const slug = f.otix_slug || f.catalog_item?.slug || (existing?.data as any)?.slug;
+
+      const gameData = existing?.data || (mediaId ? {
+        id: String(mediaId),
+        mediaId: String(mediaId),
+        title: mediaTitle || f.game_title || f.filename,
+        slug: slug || '',
+        overview: overview || '',
+        posterUrl: poster,
+        backdropUrl: backdrop,
+        logoUrl: logo,
+        iconUrl: icon,
+        sizeBytes: Number(f.filesize || f.size_bytes || (existing?.data as any)?.sizeBytes || (existing as any)?.sizeBytes || 0),
+        modifiedAt: f.modified_at || f.modifiedAt || (existing as any)?.modifiedAt || undefined,
+      } : undefined);
+
+      let calculatedSize = Number(
+        f.filesize ||
+        f.size_bytes ||
+        f.sizeBytes ||
+        f.fileSize ||
+        f.file_size ||
+        f.size ||
+        (existing as any)?.sizeBytes ||
+        (existing?.data as any)?.sizeBytes ||
+        0
+      );
+
+      let fileModifiedAt =
+        f.modified_at ||
+        f.modifiedAt ||
+        f.updated_at ||
+        f.updatedAt ||
+        f.created_at ||
+        f.createdAt ||
+        (existing as any)?.modifiedAt ||
+        (existing?.data as any)?.modifiedAt ||
+        undefined;
+
+      const resolvedExe =
+        (f as any).local_exe_path ||
+        (f as any).localExePath ||
+        existing?.localExePath ||
+        f.filepath ||
+        existing?.exePath ||
+        '';
+
+      const resolvedDir =
+        f.root_dir ||
+        f.installDir ||
+        f.install_dir ||
+        existing?.installDir ||
+        (resolvedExe && !resolvedExe.startsWith('steam://') ? path.dirname(resolvedExe) : '');
+
+      let fileTarget = resolvedExe && !resolvedExe.startsWith('steam://') && fs.existsSync(resolvedExe) ? resolvedExe : null;
+      const dirTarget = resolvedDir && fs.existsSync(resolvedDir) ? resolvedDir : null;
+
+      let resolvedLocalExe = (f as any).local_exe_path || (f as any).localExePath || existing?.localExePath;
+      if ((!fileTarget || (fileTarget && fs.statSync(fileTarget).isDirectory())) && dirTarget) {
+        const foundExe = gameService.findMainExecutableInFolder(dirTarget);
+        if (foundExe) {
+          fileTarget = foundExe;
+          if (!resolvedLocalExe) resolvedLocalExe = foundExe;
         }
       }
 
-      // ── Phase 1: Transform discovered files into LocalGame records immediately ──
-      // Pre-load all existing games and matches into memory maps to avoid N*2 individual DB queries
-      const allExistingGames = gameService.getAllGames();
-      const existingGamesById = new Map<string, (typeof allExistingGames)[0]>();
-      for (const eg of allExistingGames) {
-        existingGamesById.set(eg.id, eg);
+      if (!fileModifiedAt) {
+        const probe = fileTarget || dirTarget;
+        if (probe) {
+          try {
+            const st = fs.statSync(probe);
+            if (st.mtime) fileModifiedAt = st.mtime.toISOString();
+          } catch {}
+        }
       }
 
-      const allMatches = gameService.getAllGameMatches();
-      const matchesByKey = new Map<string, (typeof allMatches)[0]>();
-      for (const m of allMatches) {
-        matchesByKey.set(`${m.source}:${m.sourceGameId}`, m);
+      if (!calculatedSize) {
+        if (dirTarget) {
+          const dirSize = gameService.calculateDirectorySize(dirTarget);
+          if (dirSize > 0) calculatedSize = dirSize;
+        }
+        if (!calculatedSize && fileTarget) {
+          try {
+            const st = fs.statSync(fileTarget);
+            if (st.size > 0) calculatedSize = st.size;
+          } catch {}
+        }
       }
 
-      const games: LocalGame[] = [];
-      const rawCount = (nodeFiles || []).length;
-      for (let i = 0; i < rawCount; i++) {
-        if (i > 0 && i % 500 === 0) {
-          await new Promise<void>((r) => setImmediate(r));
-        }
-        const f = nodeFiles[i];
-        const filename = f.filename || (f.filepath ? path.basename(f.filepath) : '');
-        const filepath = f.filepath || '';
-        if (
-          f.format_category === 'update' ||
-          (f as any).isUpdate ||
-          isUpdateFile(filename, filepath) ||
-          isDlcFile(filename, filepath)
-        ) {
-          // Update / patch files belong to their parent game, not as standalone library cards
-          continue;
-        }
-        const fileId = f.id || `node_${f.filename}`;
-        const plat = f.platform || (f.format_category === 'iso' ? 'iso' : (f.format_category === 'rom' ? 'rom' : (f.format_category === 'steam' ? 'steam' : 'pc')));
-        const knownPrefixes = ['pc_', 'steam_', 'iso_', 'rom_', 'ps1_', 'ps2_', 'ps3_', 'ps4_', 'ps5_', 'psp_', 'psvita_', 'xbox_', 'xbox360_', 'switch_', 'wii_', 'wiiu_'];
-        const alreadyPrefixed = knownPrefixes.some((p) => fileId.startsWith(p));
-        const fullId = alreadyPrefixed ? fileId : `${plat}_${fileId}`;
-        const existing = existingGamesById.get(fullId) || existingGamesById.get(fileId);
-        const match = matchesByKey.get(`${plat}:${fileId}`) || matchesByKey.get(`local:${fileId}`);
+      let calculatedVersion =
+        (f as any).version ||
+        (f as any).game_version ||
+        (f as any).gameVersion ||
+        existing?.version ||
+        (existing?.data as any)?.version ||
+        (existing?.data as any)?.gameVersion ||
+        undefined;
 
-        const poster = existing?.posterUrl || (existing as any)?.otixPosterUrl || f.otix_images?.poster?.url || f.catalog_item?.poster_url || match?.otixPosterUrl;
-        const backdrop = (existing as any)?.backdropUrl || (existing as any)?.otixBackdropUrl || f.otix_images?.backdrop?.url || f.catalog_item?.backdrop_url || match?.otixBackdropUrl;
-        const logo = (existing as any)?.logoUrl || (existing as any)?.otixLogoUrl || f.otix_images?.logo?.url || f.catalog_item?.logo_url;
-        const icon = existing?.iconUrl || (existing as any)?.otixIconUrl || f.otix_images?.icon?.url || f.catalog_item?.icon_url || match?.otixIconUrl;
-        const mediaId = existing?.otixMediaId || match?.otixMediaId || f.otix_media_id || f.catalog_item?.id;
-        const mediaTitle = existing?.otixMediaTitle || match?.otixTitle || f.otix_title || f.catalog_item?.title;
-        const confidence = existing?.otixConfidence ?? match?.otixConfidence ?? f.otix_confidence ?? (mediaId ? 1.0 : undefined);
-        const overview = f.otix_overview || f.catalog_item?.overview || (existing?.data as any)?.overview;
-        const slug = f.otix_slug || f.catalog_item?.slug || (existing?.data as any)?.slug;
+      if (!calculatedVersion && fileTarget && fileTarget.toLowerCase().endsWith('.exe')) {
+        const peVer = gameService.getPeVersion(fileTarget);
+        if (peVer) calculatedVersion = peVer;
+      }
 
-        const gameData = existing?.data || (mediaId ? {
-          id: String(mediaId),
-          mediaId: String(mediaId),
-          title: mediaTitle || f.game_title || f.filename,
-          slug: slug || '',
-          overview: overview || '',
-          posterUrl: poster,
-          backdropUrl: backdrop,
-          logoUrl: logo,
-          iconUrl: icon,
-          sizeBytes: Number(f.filesize || f.size_bytes || (existing?.data as any)?.sizeBytes || (existing as any)?.sizeBytes || 0),
-          modifiedAt: f.modified_at || f.modifiedAt || (existing as any)?.modifiedAt || undefined,
-        } : undefined);
+      const finalExePath =
+        (f.filepath && path.extname(f.filepath) ? f.filepath : null) ||
+        (existing?.localExePath && path.extname(existing.localExePath) ? existing.localExePath : null) ||
+        (existing?.exePath && path.extname(existing.exePath) ? existing.exePath : null) ||
+        fileTarget ||
+        f.filepath ||
+        existing?.exePath ||
+        '';
 
-        let calculatedSize = Number(
-          f.filesize ||
-          f.size_bytes ||
-          f.sizeBytes ||
-          f.fileSize ||
-          f.file_size ||
-          f.size ||
-          (existing as any)?.sizeBytes ||
-          (existing?.data as any)?.sizeBytes ||
-          0
-        );
-
-        let fileModifiedAt =
-          f.modified_at ||
-          f.modifiedAt ||
-          f.updated_at ||
-          f.updatedAt ||
-          f.created_at ||
-          f.createdAt ||
-          (existing as any)?.modifiedAt ||
-          (existing?.data as any)?.modifiedAt ||
-          undefined;
-
-        const resolvedExe =
-          (f as any).local_exe_path ||
-          (f as any).localExePath ||
-          existing?.localExePath ||
-          f.filepath ||
-          existing?.exePath ||
-          '';
-
-        const resolvedDir =
-          f.root_dir ||
-          f.installDir ||
-          f.install_dir ||
-          existing?.installDir ||
-          (resolvedExe && !resolvedExe.startsWith('steam://') ? path.dirname(resolvedExe) : '');
-
-        let fileTarget = resolvedExe && !resolvedExe.startsWith('steam://') && fs.existsSync(resolvedExe) ? resolvedExe : null;
-        const dirTarget = resolvedDir && fs.existsSync(resolvedDir) ? resolvedDir : null;
-
-        let resolvedLocalExe = (f as any).local_exe_path || (f as any).localExePath || existing?.localExePath;
-        if ((!fileTarget || (fileTarget && fs.statSync(fileTarget).isDirectory())) && dirTarget) {
-          const foundExe = gameService.findMainExecutableInFolder(dirTarget);
-          if (foundExe) {
-            fileTarget = foundExe;
-            if (!resolvedLocalExe) resolvedLocalExe = foundExe;
-          }
-        }
-
-        if (!fileModifiedAt) {
-          const probe = fileTarget || dirTarget;
-          if (probe) {
-            try {
-              const st = fs.statSync(probe);
-              if (st.mtime) fileModifiedAt = st.mtime.toISOString();
-            } catch {}
-          }
-        }
-
-        if (!calculatedSize) {
-          if (dirTarget) {
-            const dirSize = gameService.calculateDirectorySize(dirTarget);
-            if (dirSize > 0) calculatedSize = dirSize;
-          }
-          if (!calculatedSize && fileTarget) {
-            try {
-              const st = fs.statSync(fileTarget);
-              if (st.size > 0) calculatedSize = st.size;
-            } catch {}
-          }
-        }
-
-        let calculatedVersion =
-          (f as any).version ||
-          (f as any).game_version ||
-          (f as any).gameVersion ||
-          existing?.version ||
-          (existing?.data as any)?.version ||
-          (existing?.data as any)?.gameVersion ||
-          undefined;
-
-        if (!calculatedVersion && fileTarget && fileTarget.toLowerCase().endsWith('.exe')) {
-          const peVer = gameService.getPeVersion(fileTarget);
-          if (peVer) calculatedVersion = peVer;
-        }
-
-        const finalExePath =
-          (f.filepath && path.extname(f.filepath) ? f.filepath : null) ||
-          (existing?.localExePath && path.extname(existing.localExePath) ? existing.localExePath : null) ||
-          (existing?.exePath && path.extname(existing.exePath) ? existing.exePath : null) ||
-          fileTarget ||
-          f.filepath ||
-          existing?.exePath ||
-          '';
-
-        games.push({
-          id: fullId,
-          title: existing?.title || f.game_title || f.filename,
-          exePath: finalExePath,
-          localExePath: resolvedLocalExe || (fileTarget || undefined),
-          installDir: resolvedDir,
-          platform: plat,
-          version: calculatedVersion,
-          updateFiles: f.update_files || existing?.updateFiles,
-          isDlc: f.format_category === 'dlc' || f.format_category === 'update' || f.isDlc,
-          otixMediaId: mediaId ? String(mediaId) : undefined,
-          otixMediaTitle: mediaTitle,
-          otixConfidence: confidence,
-          posterUrl: poster,
-          backdropUrl: backdrop,
-          logoUrl: logo,
-          iconUrl: icon,
-          overview: overview,
+      games.push({
+        id: fullId,
+        title: existing?.title || f.game_title || f.filename,
+        exePath: finalExePath,
+        localExePath: resolvedLocalExe || (fileTarget || undefined),
+        installDir: resolvedDir,
+        platform: plat,
+        version: calculatedVersion,
+        updateFiles: f.update_files || existing?.updateFiles,
+        isDlc: f.format_category === 'dlc' || f.format_category === 'update' || f.isDlc,
+        otixMediaId: mediaId ? String(mediaId) : undefined,
+        otixMediaTitle: mediaTitle,
+        otixConfidence: confidence,
+        posterUrl: poster,
+        backdropUrl: backdrop,
+        logoUrl: logo,
+        iconUrl: icon,
+        overview: overview,
+        sizeBytes: calculatedSize,
+        modifiedAt: fileModifiedAt,
+        data: {
+          ...(gameData || {}),
           sizeBytes: calculatedSize,
           modifiedAt: fileModifiedAt,
-          data: {
-            ...(gameData || {}),
-            sizeBytes: calculatedSize,
-            modifiedAt: fileModifiedAt,
-            version: calculatedVersion,
-          } as any,
-          matchSuggestion: existing?.matchSuggestion,
-          otixMatchSuggestion: existing?.otixMatchSuggestion,
-        } as LocalGame);
-      }
+          version: calculatedVersion,
+        } as any,
+        matchSuggestion: existing?.matchSuggestion,
+        otixMatchSuggestion: existing?.otixMatchSuggestion,
+      } as LocalGame);
+    }
 
-      // Update detector state with newly indexed games (isolated from scan return)
-      try {
-        gameDetector?.setLibrary(games);
-        gameDetector?.startPeriodicScan();
-      } catch (detErr) {
-        console.warn('[scanner:scan-paths] Detector update error:', detErr);
-      }
+    // Determine newly detected games
+    const newGames: LocalGame[] = [];
+    for (const g of games) {
+      if (g.isDlc || (g as any).isUpdate) continue;
+      const isKnownId = existingGamesById.has(g.id);
+      const isKnownDir = g.installDir ? existingDirs.has(path.resolve(g.installDir).toLowerCase()) : false;
+      const isKnownExe = g.exePath ? existingExes.has(path.resolve(g.exePath).toLowerCase()) : false;
 
-      // Commit 100% of discovered games into SQLite immediately in atomic transaction
-      if (games.length > 0) {
-        sendSafeProgress(`Saving ${games.length} games to library...`, 96);
-        const scope = hasClientPaths ? Array.from(allPathsMap.keys()) : undefined;
-        gameService.upsertGames(games as any[], scope);
-        // Flush change notification immediately so renderer hydrates cards without debounce delay
-        gameService.flushNotifyGamesChanged();
+      if (!isKnownId && !isKnownDir && !isKnownExe) {
+        newGames.push(g);
       }
-      // Prune missing games asynchronously to avoid blocking the main thread with fs.existsSync
-      try {
-        gameService.pruneMissingGamesAsync().catch((err: any) => {
-          console.warn('[scanner:scan-paths] Async prune error:', err);
+    }
+
+    // Update detector state with newly indexed games (isolated from scan return)
+    try {
+      gameDetector?.setLibrary(games);
+      gameDetector?.startPeriodicScan();
+    } catch (detErr) {
+      console.warn('[scanner:scan-paths] Detector update error:', detErr);
+    }
+
+    // Commit 100% of discovered games into SQLite immediately in atomic transaction
+    if (games.length > 0) {
+      sendSafeProgress(`Saving ${games.length} games to library...`, 96);
+      const scope = hasClientPaths ? Array.from(allPathsMap.keys()) : undefined;
+      gameService.upsertGames(games as any[], scope);
+      // Flush change notification immediately so renderer hydrates cards without debounce delay
+      gameService.flushNotifyGamesChanged();
+    }
+    // Prune missing games asynchronously to avoid blocking the main thread with fs.existsSync
+    try {
+      gameService.pruneMissingGamesAsync().catch((err: any) => {
+        console.warn('[scanner:scan-paths] Async prune error:', err);
+      });
+    } catch (pruneErr) {
+      console.warn('[scanner:scan-paths] Synchronous prune invocation error:', pruneErr);
+    }
+
+    // Discovery is complete: notify frontend scanner widget
+    sendSafeProgress('Scan complete', 100);
+
+    // ── Phase 2: Autonomous Background Matching (Fire-and-forget, non-blocking) ──
+    if (_orchestrator) {
+      if (typeof (_orchestrator as any).startBackgroundMatching === 'function') {
+        (_orchestrator as any).startBackgroundMatching().catch((matchErr: any) => {
+          console.warn('[scanner:scan-paths] Background matching error:', matchErr);
         });
-      } catch (pruneErr) {
-        console.warn('[scanner:scan-paths] Synchronous prune invocation error:', pruneErr);
+      } else if (typeof (_orchestrator as any).startMatching === 'function') {
+        (_orchestrator as any).startMatching().catch((matchErr: any) => {
+          console.warn('[scanner:scan-paths] Background matching error:', matchErr);
+        });
+      } else if (typeof _orchestrator.matchGames === 'function') {
+        const scannedForMatch: ScannedGame[] = games
+          .filter((g) => !g.isDlc && !g.isApp)
+          .map((g) => ({
+            id: g.id,
+            title: cleanGameTitle(g.title) || g.title,
+            platform: g.platform,
+            installPath: g.installDir,
+            exePath: g.exePath,
+            isDlc: g.isDlc,
+          }));
+        _orchestrator.matchGames(scannedForMatch, 'local').catch((matchErr: any) => {
+          console.warn('[scanner:scan-paths] Background matchGames fallback error:', matchErr);
+        });
       }
+    }
 
-      // Discovery is complete: notify frontend scanner widget
-      sendSafeProgress('Scan complete', 100);
+    // Return discovered games and newly identified games
+    return { games, newGames };
+  } catch (err: any) {
+    console.warn('[scanner:executeScan] Scan failed:', err);
+    sendSafeProgress('Scan error', 100);
+    return { games: [], newGames: [] };
+  }
+}
 
-      // ── Phase 2: Autonomous Background Matching (Fire-and-forget, non-blocking) ──
-      if (_orchestrator) {
-        if (typeof (_orchestrator as any).startBackgroundMatching === 'function') {
-          (_orchestrator as any).startBackgroundMatching().catch((matchErr: any) => {
-            console.warn('[scanner:scan-paths] Background matching error:', matchErr);
-          });
-        } else if (typeof (_orchestrator as any).startMatching === 'function') {
-          (_orchestrator as any).startMatching().catch((matchErr: any) => {
-            console.warn('[scanner:scan-paths] Background matching error:', matchErr);
-          });
-        } else if (typeof _orchestrator.matchGames === 'function') {
-          const scannedForMatch: ScannedGame[] = games
-            .filter((g) => !g.isDlc && !g.isApp)
-            .map((g) => ({
-              id: g.id,
-              title: cleanGameTitle(g.title) || g.title,
-              platform: g.platform,
-              installPath: g.installDir,
-              exePath: g.exePath,
-              isDlc: g.isDlc,
-            }));
-          _orchestrator.matchGames(scannedForMatch, 'local').catch((matchErr: any) => {
-            console.warn('[scanner:scan-paths] Background matchGames fallback error:', matchErr);
-          });
+export function registerScannerIPC(
+  gameDetector: GameDetector | null,
+  nodeDaemon?: import('../node-daemon').NodeDaemonManager | null,
+  onPathsChanged?: () => void,
+): void {
+  _gameDetector = gameDetector;
+  _nodeDaemon = nodeDaemon ?? null;
+
+  // Scan game in paths via Otix Node engine
+  ipcMain.handle('scanner:scan-paths', async (event, paths: string[], isoPaths: string[], clientAuthToken?: string) => {
+    const sendSafeProgress = (currentDir: string, progress: number) => {
+      try {
+        if (!event.sender.isDestroyed()) {
+          event.sender.send('scanner:progress', { currentDir, progress });
         }
+      } catch {
+        // sender destroyed or IPC channel closed
+      }
+    };
+
+    try {
+      const { games, newGames } = await executeScan({
+        paths,
+        isoPaths,
+        clientAuthToken,
+        gameDetector,
+        nodeDaemon,
+        onProgress: sendSafeProgress,
+        isAutomatic: false,
+      });
+
+      if (newGames.length > 0) {
+        const win = BrowserWindow.fromWebContents(event.sender) || _scannerMainWindow;
+        handleNewGamesDetected(newGames, win);
       }
 
-      // Return discovered games to caller immediately (~1-2s total)
       return games;
     } catch (err: any) {
       console.warn('[scanner:scan-paths] Node scan failed:', err);
-      event.sender.send('scanner:progress', { currentDir: 'Scan error', progress: 100 });
+      sendSafeProgress('Scan error', 100);
       return [];
     }
   });

@@ -18,6 +18,18 @@ export interface EntityEmbedMetadata {
   slug?: string
 }
 
+export interface SearchResultItem {
+  id: number | string
+  title: string
+  mediaType?: string
+  type?: string
+  posterUrl?: string
+  coverUrl?: string
+  releaseDate?: string
+  releaseYear?: string | number
+  year?: string | number
+}
+
 export interface MessageAttachment {
   id: number
   fileName: string

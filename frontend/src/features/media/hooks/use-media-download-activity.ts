@@ -1,20 +1,26 @@
-import { useMemo, useCallback } from 'react'
+import { useMemo, useCallback, useRef, useEffect } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { useGameServers } from '@/features/downloads/use-server-downloads'
 import {
   useServerSonarrQueue,
   useServerRadarrQueue,
   useCancelServerSonarrQueueItem,
   useCancelServerRadarrQueueItem,
+  arrKeys,
 } from '@/features/downloads/use-server-arr'
 import { useServerUsenetQueue } from '@/features/downloads/use-node-usenet'
 import { useDownloads } from '@/features/downloads/use-downloads'
 import { useOptionalAuth } from '@/lib/providers/auth'
 import type { ServerArrQueueItem } from '@/features/downloads/arr-types'
 import { resolveEpisodeMetadata } from '@/features/downloads/utils/episode-download'
+import { showToast } from '@ui/molecules/toast'
+import { mediaQueries } from '../queries/media-queries'
+import { mediaActivityKeys } from './use-media-activity'
 import {
   isMatchingArrRecord,
   resolveItemSpeed,
   aggregateQueueProgress,
+  isArrQueueItemComplete,
   type MatchMediaOptions,
 } from '../utils/media-download'
 
@@ -38,6 +44,7 @@ export interface EpisodeDownloadActivity {
 
 export interface MediaDownloadActivityState {
   isDownloading: boolean
+  isCompleted: boolean
   overallProgress: number
   speed: string | null
   eta: string | null
@@ -185,15 +192,70 @@ export const useMediaDownloadActivity = (
     return usenetItems.find((u) => u.nzo_id === gameDownload.sabnzbdNzoId) || null
   }, [gameDownload, usenetItems])
 
-  const isDownloading = useMemo(() => {
+  const { allComplete, anyDownloading } = useMemo(() => {
     if (isShow || isMovie) {
-      return matchedRecords.length > 0
+      if (matchedRecords.length === 0) {
+        return { allComplete: false, anyDownloading: false }
+      }
+      const completed = matchedRecords.filter(isArrQueueItemComplete)
+      return {
+        allComplete: completed.length === matchedRecords.length,
+        anyDownloading: completed.length < matchedRecords.length,
+      }
     }
     if (isGame) {
-      return Boolean(gameDownload && gameDownload.status === 'downloading')
+      const isComplete = Boolean(
+        gameDownload && (gameDownload.status === 'completed' || (gameDownload.percentage ?? 0) >= 100),
+      )
+      const isDl = Boolean(
+        gameDownload && gameDownload.status === 'downloading' && (gameDownload.percentage ?? 0) < 100,
+      )
+      return {
+        allComplete: isComplete,
+        anyDownloading: isDl,
+      }
     }
-    return false
-  }, [isShow, isMovie, matchedRecords.length, isGame, gameDownload])
+    return { allComplete: false, anyDownloading: false }
+  }, [isShow, isMovie, matchedRecords, isGame, gameDownload])
+
+  const isDownloading = anyDownloading
+  const isCompleted = allComplete
+
+  // Auto-invalidation and user notification when download finishes without any manual action needed
+  const queryClient = useQueryClient()
+  const prevDownloadingRef = useRef(false)
+
+  useEffect(() => {
+    if (prevDownloadingRef.current && (allComplete || (matchedRecords.length === 0 && !anyDownloading))) {
+      void queryClient.invalidateQueries({ queryKey: mediaActivityKeys.all })
+      void queryClient.invalidateQueries({ queryKey: ['request-media'] })
+      if (mediaType && mediaId) {
+        void queryClient.invalidateQueries({ queryKey: mediaQueries.detail(mediaType, String(mediaId)).queryKey })
+      }
+      if (activeServerId) {
+        if (isMovie) void queryClient.invalidateQueries({ queryKey: arrKeys.radarr.queue(activeServerId) })
+        if (isShow) void queryClient.invalidateQueries({ queryKey: arrKeys.sonarr.queue(activeServerId) })
+      }
+
+      const mediaTitle = options?.title || 'Media'
+      showToast({
+        title: `Ready to Stream: ${mediaTitle}`,
+        description: 'Download complete and available in your library.',
+      })
+    }
+    prevDownloadingRef.current = anyDownloading
+  }, [
+    allComplete,
+    anyDownloading,
+    matchedRecords.length,
+    queryClient,
+    mediaType,
+    mediaId,
+    activeServerId,
+    isMovie,
+    isShow,
+    options?.title,
+  ])
 
   const overallProgress = useMemo(() => {
     if (isShow || isMovie) {
@@ -220,7 +282,7 @@ export const useMediaDownloadActivity = (
       return aggregated.eta
     }
     if (isGame && gameDownload) {
-      return gameUsenetItem?.timeleft || null
+      return (gameUsenetItem as any)?.timeleft || (gameUsenetItem as any)?.time_left || null
     }
     return null
   }, [isShow, isMovie, aggregated.eta, isGame, gameDownload, gameUsenetItem])
@@ -242,6 +304,7 @@ export const useMediaDownloadActivity = (
 
   return {
     isDownloading,
+    isCompleted,
     overallProgress,
     speed,
     eta,

@@ -348,6 +348,14 @@ def _sync_library(user, server, library, token: str, emit) -> dict:
             _upsert_item(user, server, library, item, media_type, media_item_id, guids)
             if media_item_id is not None:
                 _apply_interactions(user, item, media_type, media_item_id)
+                if media_type == "show":
+                    try:
+                        from apps.media.models import Episode
+                        if not Episode.objects.filter(season__show_id=media_item_id).exists():
+                            from apps.integrations.services.plex import hydrate_show_seasons_from_plex
+                            hydrate_show_seasons_from_plex(media_item_id, user=user, server=server)
+                    except Exception:
+                        logger.warning("Failed to hydrate show seasons for %s during library sync", media_item_id)
             if (i + 1) % 5 == 0:
                 emit(
                     "library_progress",

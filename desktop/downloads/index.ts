@@ -563,3 +563,5 @@ export async function migrateLegacyConfigToPlugins(): Promise<{ migrated: boolea
   if (!row) return { migrated: false, errors: ['No legacy config found'] };
   return { migrated: true, errors: [] };
 }
+
+export * from './downloader';

@@ -23,7 +23,7 @@ export const LauncherScanWidget = ({ id }: { id?: string }) => {
     try {
       const api = getDesktopAPI()!
       const paths = await api.getScanPaths()
-      const gamePaths = paths.filter((p) => p.type === 'game').map((p) => p.path)
+      const gamePaths = paths.filter((p) => p.type === 'game' || (p as any).type === 'installed').map((p) => p.path)
       const isoPaths = await fetchIsoPaths()
       const scanned = await api.scanPaths(gamePaths, isoPaths)
       if (scanned?.length) {

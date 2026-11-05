@@ -49,11 +49,8 @@ export const AUTO_ORGANIZE_STORAGE_KEY = 'otix:auto-organize-enabled'
 export const UNORGANIZED_ITEMS_STORAGE_KEY = 'otix:unorganized-downloads'
 export const DISMISSED_RELOCATIONS_STORAGE_KEY = 'otix:dismissed-relocations'
 
-/** Normalize Windows / POSIX path slashes to standard forward slashes without trailing slashes. */
-export const normalizePathSeparators = (pathStr: string): string => {
-  if (!pathStr) return ''
-  return pathStr.replace(/\\+/g, '/').replace(/\/+/g, '/').replace(/\/+$/, '')
-}
+import { normalizePathSeparators } from '@/lib/utils'
+export { normalizePathSeparators }
 
 /** Extract base filename from full path. */
 export const extractFilename = (pathStr: string): string => {

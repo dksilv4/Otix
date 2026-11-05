@@ -6,6 +6,7 @@ import { mediaQueries } from '@media/queries/media-queries'
 import { useMediaParams } from '@media'
 import { useAuth } from '@auth/hooks/use-auth'
 import { cn } from '@/lib/utils'
+import type { MoreLikeThisTab } from '../../types'
 
 interface MoreLikeThisSectionProps {
   className?: string
@@ -13,14 +14,12 @@ interface MoreLikeThisSectionProps {
   trackPaddingInline?: string
 }
 
-type Tab = 'similar' | 'forYou'
-
 export const MoreLikeThisSection = ({
   className,
   headerClassName,
   trackPaddingInline,
 }: MoreLikeThisSectionProps) => {
-  const [activeTab, setActiveTab] = useState<Tab>('similar')
+  const [activeTab, setActiveTab] = useState<MoreLikeThisTab>('similar')
   const { isAuthenticated } = useAuth()
 
   const { mediaType, mediaId } = useMediaParams()
@@ -52,7 +51,7 @@ export const MoreLikeThisSection = ({
   // Nothing to show at all
   if (!hasSimilar && !hasForYou) return null
 
-  const availableTabs: { key: Tab; label: string }[] = []
+  const availableTabs: { key: MoreLikeThisTab; label: string }[] = []
   if (hasSimilar) availableTabs.push({ key: 'similar', label: 'Similar' })
   if (hasForYou) availableTabs.push({ key: 'forYou', label: 'For You' })
 

@@ -1,4 +1,4 @@
-import type { FeatureStatusKind } from '@/components/ui/atoms/feature-status-tag'
+import type { FeatureStatusKind } from '@/components/ui/types'
 
 /** Map plugin manifest stage → status chips (stable → none). */
 export const kindsFromPluginStage = (stage?: string | null): FeatureStatusKind[] => {

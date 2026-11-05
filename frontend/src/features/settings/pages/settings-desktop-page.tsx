@@ -1,7 +1,6 @@
 import { useState, useMemo, useEffect } from 'react'
 import {
   AlertTriangle,
-  ShieldAlert,
   Trash2,
 } from 'lucide-react'
 import { DkButton } from '@ui/atoms/button'
@@ -9,9 +8,8 @@ import { DkDialog } from '@ui/molecules/dialog'
 import { useToast } from '@ui/molecules/toast'
 import { cn } from '@/lib/utils'
 import { useModal } from '@/lib/modals'
-import { useNavigate } from '@tanstack/react-router'
+import { useNavigate, Link } from '@tanstack/react-router'
 import { useAuth } from '@/lib/providers/auth'
-import { SettingsLockedState } from '../components/molecules/settings-locked-state'
 import {
   useClaimGameServer,
   useDeleteGameServer,

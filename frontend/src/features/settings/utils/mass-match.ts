@@ -165,7 +165,7 @@ export async function batchAnalyzeGamesForMatch(
       const initialPlat = normalizePlatformValue(game.platform || resolvePlatformLabel(game))
       const rowId = String(game.id || `game-${index}`)
 
-      let candidates: CatalogCandidate[] = []
+      let candidates: CatalogCandidate[]
       try {
         candidates = await searchCatalogGames(cleanTitle)
         if (candidates.length === 0) {

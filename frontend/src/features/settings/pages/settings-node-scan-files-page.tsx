@@ -84,7 +84,7 @@ export const SettingsNewNodeScanFilesPage = () => {
     () =>
       (servers || []).map((s) => ({
         value: String(s.id),
-        label: `${s.name}${s.is_local || (s as any).isLocal || isLocalDesktopNode(s) || s.id === -1 ? ' (Local)' : ''}`,
+        label: `${s.name}${s.isLocal || (s as any).is_local || isLocalDesktopNode(s) || s.id === -1 ? ' (Local)' : ''}`,
       })),
     [servers],
   )
@@ -160,7 +160,9 @@ export const SettingsNewNodeScanFilesPage = () => {
                 setSelectedNodeId(id)
                 try {
                   localStorage.setItem('otix:last-add-folder-node-id', String(id))
-                } catch {}
+                } catch {
+                  /* ignore */
+                }
               }}
               variant="filter"
               className="min-w-[160px]"

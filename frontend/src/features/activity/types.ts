@@ -72,3 +72,42 @@ export interface PlexSessionsResponse {
 
 export type ActivityCategory = 'all' | 'media' | 'transfers' | 'plex' | 'notifications'
 
+export interface PluginActivityItem {
+  id: string
+  type: 'scan' | 'download' | 'sync' | 'info' | 'warning' | 'error' | 'notification'
+  title: string
+  subtitle?: string
+  progress?: number
+  status?: 'active' | 'completed' | 'error' | 'pending'
+  icon?: string
+  timestamp?: number
+  action?: {
+    label: string
+    method: string
+  }
+}
+
+export interface ActivityPollResult {
+  activities: PluginActivityItem[]
+  label?: string
+}
+
+export interface ActivitySlotEntry {
+  pluginId: string
+  label: string
+}
+
+export interface ActivityStoreEntry {
+  pluginId: string
+  instanceId?: string
+  activities?: PluginActivityItem[]
+  label?: string
+}
+
+export interface PanelContextValue {
+  isUserMenuOpen: boolean
+  setUserMenuOpen: (open: boolean) => void
+  isChatOpen: boolean
+  setChatOpen: (open: boolean) => void
+}
+

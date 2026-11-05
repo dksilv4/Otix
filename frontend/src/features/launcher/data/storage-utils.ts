@@ -138,7 +138,7 @@ export function mergeDuplicateGames(games: LocalGame[]): LocalGame[] {
     }
 
     // Merge updateFiles
-    let combinedUpdates = best.updateFiles ? [...best.updateFiles] : [];
+    const combinedUpdates = best.updateFiles ? [...best.updateFiles] : [];
     for (const g of group) {
       if (g.id !== best.id && g.updateFiles) {
         for (const u of g.updateFiles) {

@@ -1,19 +1,15 @@
 /* ── IsoInstallingProgress — install progress bar + cancel button ── */
 
 import { Loader2, X } from 'lucide-react'
+import type { InstallInfo } from '@/features/launcher/types'
 
-interface InstallInfo {
-  isoPath: string
-  progress?: { message?: string; phase?: string; progress?: number } | null
-}
-
-interface Props {
+interface IsoInstallingProgressProps {
   install: InstallInfo
   onOpenInstaller: () => void
   onCancel: (isoPath: string) => void
 }
 
-export const IsoInstallingProgress = ({ install, onOpenInstaller, onCancel }: Props) => {
+export const IsoInstallingProgress = ({ install, onOpenInstaller, onCancel }: IsoInstallingProgressProps) => {
   return (
     <div className="flex gap-2 items-stretch h-10">
       <button

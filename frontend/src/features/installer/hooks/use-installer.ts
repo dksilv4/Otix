@@ -176,7 +176,9 @@ export const useInstaller = () => {
       try {
         const res = await api.installerGetUserInstallPath()
         if (res) targetPath = res
-      } catch {}
+      } catch {
+        /* ignore */
+      }
     }
     setInstallPath(targetPath)
     setError(null)

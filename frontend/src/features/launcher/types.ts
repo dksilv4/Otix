@@ -67,7 +67,7 @@ export interface LocalGameSource {
   path: string
   isIso?: boolean
   format?: string
-  sourceType?: 'installed' | 'iso' | 'source' | 'folder'
+  sourceType?: 'installed' | 'iso' | 'source' | 'folder' | 'server'
   sizeBytes?: number
   updatedAt?: string
 }
@@ -235,3 +235,106 @@ export interface GamesFilter {
   sortBy?: 'title' | 'platform' | 'updated_at' | 'last_played_at'
   sortDir?: 'asc' | 'desc'
 }
+
+// ── Game Achievements ──────────────────────────────────────────────
+
+export interface GameAchievement {
+  id: string
+  gameId: string
+  appId?: string | null
+  apiName: string
+  displayName: string
+  description?: string | null
+  iconUrl?: string | null
+  iconLockedUrl?: string | null
+  hidden: boolean
+  points: number
+  rarityPercentage?: number | null
+  unlocked?: boolean
+  unlockedAt?: number | null
+  source?: string | null
+}
+
+export interface AchievementStats {
+  total: number
+  unlocked: number
+  totalPoints: number
+  earnedPoints: number
+  completionPercentage: number
+}
+
+export interface AchievementUnlockToast {
+  id: string
+  gameId: string
+  gameTitle: string
+  apiName: string
+  displayName: string
+  description?: string | null
+  iconUrl?: string | null
+  points: number
+  unlockedAt: number
+  source: string
+  rarityPercentage?: number | null
+}
+
+export interface CompanyEntry {
+  id?: string
+  developer: boolean
+  publisher: boolean
+  company: { id?: string; name: string; slug?: string; logoUrl?: string | null }
+}
+
+export interface Screenshot {
+  url: string
+  width?: number
+  height?: number
+  provider?: string
+}
+
+export interface DriveInfo {
+  drive: string
+  total?: number
+  used: number
+  free: number
+  hasGamePaths?: boolean
+  hasIsoPaths?: boolean
+}
+
+export interface InstallInfo {
+  isoPath: string
+  progress?: { message?: string; phase?: string; progress?: number } | null
+}
+
+export type LauncherModalStep =
+  | 'matching'
+  | 'matched'
+  | 'suggestion'
+  | 'no-match'
+  | 'accepting'
+  | 'done'
+
+export interface HeartbeatBreakdown {
+  baseXp: number
+  completionXp: number
+  winXp: number
+  kdr: number
+  kdrMultiplier: number
+  totalCalculated: number
+}
+
+export interface HeartbeatResponse {
+  status: string
+  xpAwarded: number
+  totalXp: number
+  level: number
+  levelTitle: string
+  sessionXp: number
+  dailyXp: number
+  breakdown?: HeartbeatBreakdown
+}
+
+export type FoundTab = 'all' | 'in-library' | 'unmatched'
+export type ShelfTab = 'my-games' | 'popular'
+export type SortMode = 'playtime' | 'title' | 'recent' | 'platform'
+export type ModernViewMode = 'grid' | 'banner' | 'list'
+export type ModernSortField = 'recent' | 'title' | 'platform' | 'playtime'

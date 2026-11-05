@@ -18,17 +18,9 @@ import { NodesFeatureTags } from '../nodes-feature-tags'
 import type { PendingNode } from '@/features/downloads/pending-nodes'
 import { cn } from '@/lib/utils'
 import { isDesktop } from '@/lib/desktop/api'
+import type { NodesCentralHubStats } from '../../types'
 
-export interface NodesCentralHubStats {
-  totalNodes: number
-  onlineNodes: number
-  offlineNodes: number
-  serverCount: number
-  homeCount: number
-  sambaCount: number
-  gameServerCount?: number
-  gameServerPlayerCount?: number
-}
+export type { NodesCentralHubStats }
 
 export interface NodesCentralHubNodeProps {
   stats: NodesCentralHubStats

@@ -2,11 +2,8 @@ import { memo, useState, useRef, useEffect, useLayoutEffect, useCallback, useId 
 import { createPortal } from 'react-dom'
 import { ChevronDown, Check } from 'lucide-react'
 import { cn } from '@/lib/utils'
-
-export interface DkDropdownOption {
-  value: string
-  label: string
-}
+import type { DkDropdownOption } from '@/components/ui/types'
+export type { DkDropdownOption } from '@/components/ui/types'
 
 interface DkDropdownProps<T extends string = string> {
   options: readonly DkDropdownOption[]

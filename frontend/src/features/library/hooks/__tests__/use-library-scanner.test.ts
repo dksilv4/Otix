@@ -8,13 +8,13 @@ const mockErrorScan = vi.fn()
 const mockRefetchMatches = vi.fn().mockResolvedValue({})
 const mockInvalidateQueries = vi.fn()
 
-let mockMatchesData: any[] = [
+const mockMatchesData: any[] = [
   { id: 1, matchStatus: 'matched', serverName: 'This PC' },
   { id: 2, matchStatus: 'needs_review', serverName: 'Living Room PC' },
   { id: 3, matchStatus: 'unmatched', serverName: 'Living Room PC' },
 ]
 
-let mockServers: any[] = [{ id: 10, name: 'Living Room PC' }]
+const mockServers: any[] = [{ id: 10, name: 'Living Room PC' }]
 
 vi.mock('@tanstack/react-query', () => ({
   useQueryClient: () => ({

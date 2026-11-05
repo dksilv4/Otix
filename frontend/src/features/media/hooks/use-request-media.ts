@@ -10,11 +10,16 @@ import {
   useCancelServerRadarrQueueItem,
   useCancelServerSonarrQueueItem,
   useServerRadarrConfig,
+  useServerRadarrQualityProfiles,
   useServerRadarrQueue,
   useServerSonarrConfig,
+  useServerSonarrQualityProfiles,
   useServerSonarrQueue,
 } from '@/features/downloads/use-server-arr'
-import { readyArrInstances } from '@/features/downloads/arr-instances'
+import { readyArrInstances, type ArrServiceInstance } from '@/features/downloads/arr-instances'
+import { findBestArrInstance } from '@/features/downloads/utils/arr-routing'
+import { mediaActivityKeys } from './use-media-activity'
+import { showToast } from '@ui/molecules/toast'
 import type { ServerArrQueueItem } from '@/features/downloads/arr-types'
 import { mediaQueries } from '@media/queries/media-queries'
 import { useMediaParams } from './use-media-params'
@@ -78,6 +83,11 @@ export interface RequestMediaState {
   handleCancelQueue: () => void
   refetchStatus?: () => Promise<unknown>
   isCheckingStatus?: boolean
+  autoMatchedInstance?: ArrServiceInstance | null
+  qualityProfiles?: Array<{ id: number; name: string }>
+  isSingleOrAutoRouted?: boolean
+  defaultQualityProfileId?: number
+  recentlyRequested?: boolean
 }
 
 async function lookupOnInstance(
@@ -129,6 +139,46 @@ export function useRequestMedia(): RequestMediaState {
   const instances = readyArrInstances(config, isMovie ? 7878 : 8989)
   const hasArr = enabled && Boolean(serverId) && instances.length > 0
   const identifier = String(tmdbId || tvdbId || mediaTitle)
+  const [recentlyRequested, setRecentlyRequested] = useState(false)
+
+  const mediaGenres = useMemo(() => {
+    if (!detail) return []
+    const genres = (detail as any).genres
+    if (Array.isArray(genres)) {
+      return genres.map((g: any) => (typeof g === 'string' ? g : g?.name || '')).filter(Boolean)
+    }
+    return []
+  }, [detail])
+
+  const autoMatchedInstance = useMemo(() => {
+    if (!instances.length) return null
+    return findBestArrInstance(instances, {
+      title: mediaTitle,
+      isAnime: detail?.movie?.isAnime || (detail as any)?.show?.isAnime,
+      originalLanguage: detail?.originalLanguage,
+      genres: mediaGenres,
+    })
+  }, [instances, mediaTitle, detail, mediaGenres])
+
+  const targetArrInstId = autoMatchedInstance?.id || instances[0]?.id
+  const radarrProfilesQuery = useServerRadarrQualityProfiles(
+    isMovie ? serverId : undefined,
+    targetArrInstId,
+    { enabled: hasArr && isMovie && Boolean(targetArrInstId) },
+  )
+  const sonarrProfilesQuery = useServerSonarrQualityProfiles(
+    isShow ? serverId : undefined,
+    targetArrInstId,
+    { enabled: hasArr && isShow && Boolean(targetArrInstId) },
+  )
+  const qualityProfiles = (isMovie ? radarrProfilesQuery?.data : sonarrProfilesQuery?.data) || []
+  const defaultQualityProfileId =
+    autoMatchedInstance?.quality_profile_id ??
+    autoMatchedInstance?.qualityProfileId ??
+    config?.quality_profile_id ??
+    config?.qualityProfileId ??
+    qualityProfiles[0]?.id
+  const isSingleOrAutoRouted = instances.length === 1 || Boolean(autoMatchedInstance)
 
   const statusQuery = useQuery({
     queryKey: requestMediaKeys.status(serverId, mediaType, identifier),
@@ -161,8 +211,9 @@ export function useRequestMedia(): RequestMediaState {
 
   const requestable = statusQuery.data || []
   const isRequested = requestable.some((item) => item.status === 'requested')
-  const radarrQueue = useServerRadarrQueue(isMovie ? serverId : undefined, 1, 50, isRequested ? 4000 : false)
-  const sonarrQueue = useServerSonarrQueue(isShow ? serverId : undefined, 1, 50, isRequested ? 4000 : false)
+  const shouldPollFast = isRequested || recentlyRequested
+  const radarrQueue = useServerRadarrQueue(isMovie ? serverId : undefined, 1, 50, shouldPollFast ? 1500 : false)
+  const sonarrQueue = useServerSonarrQueue(isShow ? serverId : undefined, 1, 50, shouldPollFast ? 1500 : false)
   const queueRecords = (isMovie ? radarrQueue.data?.records : sonarrQueue.data?.records) || []
 
   const downloadActivity = useMediaDownloadActivity(mediaType, detail?.id ? String(detail.id) : mediaId, {
@@ -198,6 +249,7 @@ export function useRequestMedia(): RequestMediaState {
     const options: RequestMediaOptions = typeof opts === 'string' ? { instanceId: opts } : (opts || {})
     const target =
       requestable.find((item) => item.id === options.instanceId) ||
+      (autoMatchedInstance ? requestable.find((item) => item.id.endsWith(`:${autoMatchedInstance.id}`)) : null) ||
       requestable.find((item) => item.status === 'not_exists' || item.status === 'error') ||
       requestable[0] ||
       (options.instanceId ? { id: options.instanceId, name: options.instanceId, status: 'not_exists' as const } : null) ||
@@ -232,6 +284,12 @@ export function useRequestMedia(): RequestMediaState {
       }
       await queryClient.invalidateQueries({ queryKey: requestMediaKeys.status(serverId, mediaType, identifier) })
       await queryClient.invalidateQueries({ queryKey: isMovie ? arrKeys.radarr.queue(serverId) : arrKeys.sonarr.queue(serverId) })
+      await queryClient.invalidateQueries({ queryKey: mediaActivityKeys.all })
+      setRecentlyRequested(true)
+      showToast({
+        title: `${isMovie ? 'Movie' : 'Show'} Requested`,
+        description: `Sent to ${target.name || (isMovie ? 'Radarr' : 'Sonarr')}. Searching indexers...`,
+      })
     } catch (err) {
       throw new Error(arrRequestErrorMessage(err, `Failed to request ${isMovie ? 'movie' : 'show'}`))
     } finally {
@@ -322,5 +380,10 @@ export function useRequestMedia(): RequestMediaState {
     handleCancelQueue,
     refetchStatus: statusQuery.refetch,
     isCheckingStatus: statusQuery.isFetching,
+    autoMatchedInstance,
+    qualityProfiles,
+    isSingleOrAutoRouted,
+    defaultQualityProfileId,
+    recentlyRequested,
   }
 }

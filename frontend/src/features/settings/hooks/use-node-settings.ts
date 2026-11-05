@@ -78,10 +78,10 @@ export function useNodeLibraries(serverId: number | null | undefined) {
       }
       try {
         const { data } = await apiClient.get(`/library/nodes/${serverId}/libraries`)
-        } catch {
+        return mapLibrariesToScanPaths(data)
+      } catch {
         return []
       }
-      return mapLibrariesToScanPaths(data)
     },
   })
 }
@@ -172,7 +172,8 @@ export function useNodeOrganize(serverId: number | null | undefined) {
       }
       try {
         const { data } = await apiClient.get<NodeOrganizeSettings>(`/library/nodes/${serverId}/organize`)
-        } catch {
+        return data
+      } catch {
         return {
           postProcessEnabled: false,
           autoSearchWishlist: false,
@@ -186,7 +187,6 @@ export function useNodeOrganize(serverId: number | null | undefined) {
           gamesDownloadPath: '',
         }
       }
-      return data
     },
   })
 }

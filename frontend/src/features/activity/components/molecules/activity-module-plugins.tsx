@@ -3,39 +3,12 @@ import {
   RefreshCw, Download, Info, AlertTriangle, XCircle, CheckCircle2,
 } from 'lucide-react'
 import { ActivityModuleSection } from './activity-module-section'
-
-// ── Types ──────────────────────────────────────────────────────────────
-
-interface PluginActivityItem {
-  id: string
-  type: 'scan' | 'download' | 'sync' | 'info' | 'warning' | 'error' | 'notification'
-  title: string
-  subtitle?: string
-  progress?: number
-  status?: 'active' | 'completed' | 'error' | 'pending'
-  icon?: string
-  timestamp?: number
-  action?: {
-    label: string
-    method: string
-  }
-}
-
-interface ActivityPollResult {
-  activities: PluginActivityItem[]
-  label?: string
-}
-
-interface ActivitySlotEntry {
-  pluginId: string
-  label: string
-}
-
-interface ActivityStoreEntry {
-  pluginId: string
-  label: string
-  activities: PluginActivityItem[]
-}
+import type {
+  PluginActivityItem,
+  ActivityPollResult,
+  ActivitySlotEntry,
+  ActivityStoreEntry,
+} from '../../types'
 
 // ── Poll interval ──────────────────────────────────────────────────────
 

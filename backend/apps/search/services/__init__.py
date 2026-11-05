@@ -1,10 +1,15 @@
 """Search domain services, re-exported for convenient imports."""
 
 from apps.search.services.search import (
+    BACKFILL_THRESHOLD,
     companies_payload,
     enqueue_prehydrate_titles,
     external_payload,
+    get_external_search_items,
+    get_local_search_items,
+    get_search_cache_version,
     grouped_payload,
+    invalidate_search_cache,
     log_search,
     poll_payload,
     prehydrate_game_titles,
@@ -16,10 +21,15 @@ from apps.search.services.search import (
 )
 
 __all__ = [
+    "BACKFILL_THRESHOLD",
     "companies_payload",
     "enqueue_prehydrate_titles",
     "external_payload",
+    "get_external_search_items",
+    "get_local_search_items",
+    "get_search_cache_version",
     "grouped_payload",
+    "invalidate_search_cache",
     "log_search",
     "poll_payload",
     "prehydrate_game_titles",

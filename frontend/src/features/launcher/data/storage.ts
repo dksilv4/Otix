@@ -1,5 +1,6 @@
 import type { LocalGame, GamesFilter } from '../types';
-import { getDesktopAPI, hasDesktopAPI as checkDesktopAPI } from '@/lib/desktop/api';
+import { getDesktopAPI, hasDesktopAPI } from '@/lib/desktop/api';
+export { hasDesktopAPI };
 import { mergeDuplicateGames } from './storage-utils';
 import { OTIX_DEFAULT_GAME, OTIX_DEFAULT_GAME_ID } from './otix-default-game';
 
@@ -19,9 +20,6 @@ const cache: {
   loaded: false,
 };
 
-export function hasDesktopAPI(): boolean {
-  return checkDesktopAPI();
-}
 
 /** True after first successful IPC load. */
 export function isStorageReady(): boolean {
@@ -106,7 +104,7 @@ export async function fetchIsoPaths(): Promise<string[]> {
   const api = getDesktopAPI()!;
   const raw = await api.getScanPaths();
   cache.isoPaths = raw
-    .filter((p): p is { path: string; type: 'iso' } => p.type === 'iso')
+    .filter((p): p is { path: string; type: 'iso' } => p.type === 'iso' || (p as any).type === 'provider')
     .map((p) => p.path);
   return cache.isoPaths;
 }

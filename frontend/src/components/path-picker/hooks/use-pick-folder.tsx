@@ -3,7 +3,6 @@ import { FolderPickerModal } from '../folder-picker-modal'
 import { useModal } from '@/lib/modals'
 import { getDesktopAPI, isDesktop } from '@/lib/desktop/api'
 import { useGameServers } from '@/features/downloads/use-server-downloads'
-import { isLocalDesktopNode, isLocalDesktopNodeId } from '@/features/settings/local-desktop-node'
 import { resolveFolderPickStrategy, type FolderPickTarget } from '../strategy'
 
 export const usePickFolder = (options?: {

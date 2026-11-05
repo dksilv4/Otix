@@ -1,6 +1,7 @@
 import { cn } from '@/lib/utils'
+import type { FeatureStatusKind } from '@/components/ui/types'
 
-export type FeatureStatusKind = 'beta' | 'wip' | 'alpha'
+export type { FeatureStatusKind }
 
 const KIND_STYLES: Record<FeatureStatusKind, string> = {
   beta: 'border-amber-400/25 bg-amber-400/10 text-amber-200/80',
@@ -21,15 +22,17 @@ const KIND_SHORT_LABELS: Record<FeatureStatusKind, string> = {
   alpha: 'Alpha',
 }
 
+interface FeatureStatusTagProps {
+  kind: FeatureStatusKind
+  short?: boolean
+  className?: string
+}
+
 export const FeatureStatusTag = ({
   kind,
   short = false,
   className,
-}: {
-  kind: FeatureStatusKind
-  short?: boolean
-  className?: string
-}) => {
+}: FeatureStatusTagProps) => {
   return (
     <span
       className={cn(
@@ -43,15 +46,17 @@ export const FeatureStatusTag = ({
   )
 };
 
+interface FeatureStatusTagsProps {
+  kinds: FeatureStatusKind[]
+  short?: boolean
+  className?: string
+}
+
 export const FeatureStatusTags = ({
   kinds,
   short = false,
   className,
-}: {
-  kinds: FeatureStatusKind[]
-  short?: boolean
-  className?: string
-}) => {
+}: FeatureStatusTagsProps) => {
   if (kinds.length === 0) return null
   return (
     <span className={cn('inline-flex flex-wrap items-center gap-1.5', className)}>
@@ -61,5 +66,3 @@ export const FeatureStatusTags = ({
     </span>
   )
 };
-
-export { kindsFromPluginStage } from '@/lib/utils/feature-status'

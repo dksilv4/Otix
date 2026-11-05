@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useMemo } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { getDesktopAPI, hasDesktopAPI } from '@/lib/desktop/api'
 import { apiClient } from '@/lib/api/client'
@@ -9,13 +9,6 @@ import { useGameMatches } from '@/features/settings/hooks/use-node-paths'
 import { useSettingsNode } from '@/features/settings/context/settings-node-context'
 import { formatScanError } from '@/lib/utils/scan-errors'
 import { localGameKeys } from '@/features/launcher/data/game-queries'
-import {
-  type ScannedFilesSummaryData,
-  fetchDesktopScannedSummary,
-  fetchNodeScannedSummary,
-  loadStoredScannedSummary,
-  saveStoredScannedSummary,
-} from '@/features/settings/utils/scanned-summary'
 
 export interface LibraryScanSummary {
   totalCount: number

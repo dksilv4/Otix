@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, within } from '@testing-library/react'
+import { render, screen, fireEvent } from '@testing-library/react'
 import {
   type ScannedGameItem,
   normalizeTitleForGrouping,
@@ -11,7 +11,6 @@ import {
 import {
   computeNodeScanStats,
   filterAndSortScannedFiles,
-  groupGamesAndUpdates,
 } from '../utils/node-scan-files'
 import { NodeScannedFilesTableRow } from '../components/molecules/node-scanned-files-table-row'
 import { NodeGameDetailsModal } from '../components/organisms/node-game-details-modal'

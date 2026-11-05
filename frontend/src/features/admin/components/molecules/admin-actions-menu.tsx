@@ -10,15 +10,8 @@ import { MediaManageModal } from '@/features/media/components/organisms/media-ma
 import { cn, formatBytes } from '@/lib/utils'
 import { Shield, Pencil, Download, ChevronDown } from 'lucide-react'
 import type { MediaItemDetail } from '@media/queries/media-queries'
+import type { DownloadAssetsResult } from '../../types'
 import './admin-actions-menu.scss'
-
-interface DownloadAssetsResult {
-  mediaItemId: string
-  title: string
-  downloaded: number
-  bytes: number
-  types: string[]
-}
 
 interface Props {
   mediaId: string

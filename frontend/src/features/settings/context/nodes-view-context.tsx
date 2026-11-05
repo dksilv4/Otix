@@ -10,26 +10,9 @@ import {
   saveStoredNodesActiveTab,
   resolveNodesActiveTabFromHash,
 } from '../utils/node-views'
+import type { NodesViewContextValue } from '../types'
 
-export interface NodesViewContextValue {
-  viewMode: NodesViewMode
-  setViewMode: (mode: NodesViewMode) => void
-  activeTab: NodesActiveTab
-  setActiveTab: (tab: NodesActiveTab) => void
-  searchQuery: string
-  setSearchQuery: (query: string) => void
-  categoryFilter: NodesCategoryFilter
-  setCategoryFilter: (category: NodesCategoryFilter) => void
-  statusFilter: NodesStatusFilter
-  setStatusFilter: (status: NodesStatusFilter) => void
-  resetFilters: () => void
-  addModalOpen: boolean
-  setAddModalOpen: (open: boolean) => void
-  totalCount: number
-  setTotalCount: (count: number) => void
-  onlineCount: number
-  setOnlineCount: (count: number) => void
-}
+export type { NodesViewContextValue }
 
 export const NodesViewContext = createContext<NodesViewContextValue | null>(null)
 
@@ -121,26 +104,6 @@ export const NodesViewProvider = ({ children, initialTab }: NodesViewProviderPro
   )
 
   return <NodesViewContext.Provider value={value}>{children}</NodesViewContext.Provider>
-}
-
-export const defaultFallbackValue: NodesViewContextValue = {
-  viewMode: 'map',
-  setViewMode: () => {},
-  activeTab: 'infrastructure',
-  setActiveTab: () => {},
-  searchQuery: '',
-  setSearchQuery: () => {},
-  categoryFilter: 'all',
-  setCategoryFilter: () => {},
-  statusFilter: 'all',
-  setStatusFilter: () => {},
-  resetFilters: () => {},
-  addModalOpen: false,
-  setAddModalOpen: () => {},
-  totalCount: 0,
-  setTotalCount: () => {},
-  onlineCount: 0,
-  setOnlineCount: () => {},
-}
+};
 
 export { useNodesView } from '../hooks/use-nodes-view'

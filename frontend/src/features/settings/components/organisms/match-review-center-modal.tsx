@@ -16,7 +16,6 @@ import {
   useUnmatchRecord,
   useClearGameMatches,
 } from '../../hooks/use-node-paths'
-import type { GameMatchRecord } from '../../types/node-paths'
 import {
   type MatchFilterTab,
   formatFileSize,
@@ -35,7 +34,7 @@ export interface MatchReviewCenterModalProps {
 export const MatchReviewCenterModal = ({
   open,
   onOpenChange,
-  initialRecordId,
+  initialRecordId: _initialRecordId,
   nodeId,
 }: MatchReviewCenterModalProps) => {
   const [tab, setTab] = useState<MatchFilterTab>('needs_review')
@@ -110,8 +109,8 @@ export const MatchReviewCenterModal = ({
           title: cand?.title || record.cleanedTitle,
           slug: cand?.slug || '',
           mediaType: 'game',
-          posterUrl: cand?.posterUrl || cand?.poster_url || cand?.images?.poster?.url || null,
-          backdropUrl: cand?.backdropUrl || cand?.backdrop_url || cand?.images?.backdrop?.url || null,
+          posterUrl: cand?.posterUrl || (cand as any)?.poster_url || (cand as any)?.images?.poster?.url || null,
+          backdropUrl: cand?.backdropUrl || (cand as any)?.backdrop_url || (cand as any)?.images?.backdrop?.url || null,
           confidence: cand?.confidence ?? 1.0,
         })
       } catch (err) {

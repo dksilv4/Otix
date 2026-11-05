@@ -1,23 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Search, Upload, Loader2, AlertCircle, Heart, Download } from 'lucide-react'
 import { BlueprintCard } from '../molecules/media-game-blueprint-card'
-
-interface BlueprintPluginAPI {
-  callData: (pluginId: string, method: string, payload?: Record<string, unknown>) => Promise<any>
-}
-
-interface CommunityBlueprint {
-  id: string
-  author_name: string
-  title: string
-  description: string
-  parsed_data: any
-  tags: string[]
-  downloads: number
-  likes_count: number
-  user_has_liked: boolean
-  created_at: string
-}
+import type { BlueprintPluginAPI, CommunityBlueprint } from '../../types'
 
 interface Props {
   pluginId: string

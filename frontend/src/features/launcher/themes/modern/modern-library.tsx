@@ -14,10 +14,12 @@ import { LauncherMediaCard } from "@/features/launcher/components/molecules/laun
 import { LauncherFoundGames } from "@/features/launcher/components/organisms/launcher-found-games"
 import { PLATFORM_LABELS } from "@/constants/games"
 import { isApplicationGame } from "@/features/launcher/utils"
-import type { LocalGame, DisplayGame } from "@/features/launcher/types"
-
-type ViewMode = "grid" | "banner" | "list"
-type SortField = "recent" | "title" | "platform" | "playtime"
+import type {
+  LocalGame,
+  DisplayGame,
+  ModernViewMode as ViewMode,
+  ModernSortField as SortField,
+} from "@/features/launcher/types"
 
 interface ModernLibraryProps {
   localGames: LocalGame[]

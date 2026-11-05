@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import {
-  MANIFEST_CHUNK_SIZE,
   toManifestFiles,
   uploadNodeManifestInChunks,
   uploadScannedGamesManifest,

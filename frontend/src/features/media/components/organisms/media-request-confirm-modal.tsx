@@ -106,7 +106,10 @@ export const MediaRequestConfirmModal = ({
   // Synchronize initial instance
   useEffect(() => {
     if (!open) return
-    const fallbackId = targets[0]?.id || availableInstances[0]?.id || ''
+    const autoTarget = state.autoMatchedInstance
+      ? availableInstances.find((i) => i.id.endsWith(`:${state.autoMatchedInstance?.id}`))
+      : null
+    const fallbackId = autoTarget?.id || targets[0]?.id || availableInstances[0]?.id || ''
     const match = availableInstances.find((item) => item.id === initialInstanceId)
     setSelectedInstanceId(match ? match.id : fallbackId)
   }, [open, initialInstanceId, targets, availableInstances])

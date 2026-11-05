@@ -30,3 +30,30 @@ export const revokeOtherSessions = async (): Promise<number> => {
 }
 
 export { extractAccountErrorMessage } from '@/lib/utils/format-error'
+
+export const formatUserAgent = (ua: string | null): string => {
+  if (!ua) return 'Unknown device'
+  const browsers = ['Firefox', 'Chrome', 'Safari', 'Edge', 'Opera']
+  for (const b of browsers) {
+    if (ua.includes(b)) {
+      const match = ua.match(new RegExp(`${b}\\/([\\d.]+)`))
+      return match ? `${b} ${match[1]}` : b
+    }
+  }
+  return ua.length > 50 ? ua.slice(0, 50) + '…' : ua
+}
+
+export const formatSessionTime = (iso: string | null): string => {
+  if (!iso) return ''
+  const d = new Date(iso)
+  const now = new Date()
+  const diffMs = now.getTime() - d.getTime()
+  const diffMin = Math.floor(diffMs / 60000)
+  if (diffMin < 1) return 'Just now'
+  if (diffMin < 60) return `${diffMin}m ago`
+  const diffHrs = Math.floor(diffMin / 60)
+  if (diffHrs < 24) return `${diffHrs}h ago`
+  const diffDays = Math.floor(diffHrs / 24)
+  if (diffDays < 7) return `${diffDays}d ago`
+  return d.toLocaleDateString()
+}

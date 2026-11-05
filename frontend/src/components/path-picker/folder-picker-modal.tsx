@@ -6,7 +6,6 @@ import { useOptionalToast } from '@ui/molecules/toast'
 import { cn, formatBytes } from '@/lib/utils'
 import { useGameServers } from '@/features/downloads/use-server-downloads'
 import { useCreateServerFolder, useServerExplorer } from '@/features/downloads/use-server-explorer'
-import { isLocalDesktopNode, isLocalDesktopNodeId } from '@/features/settings/local-desktop-node'
 import {
   isPathOnDrive,
   normalizeExplorerBrowse,

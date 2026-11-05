@@ -1,27 +1,9 @@
 import { useState, useEffect } from 'react'
 import { Search, Plus, Upload, Loader2, AlertCircle } from 'lucide-react'
 import { BlueprintCard } from '../molecules/media-game-blueprint-card'
+import type { BlueprintPluginAPI, ParsedBlueprint } from '../../types'
 
-interface BlueprintPluginAPI {
-  callData: (pluginId: string, method: string, payload?: Record<string, unknown>) => Promise<any>
-}
-
-export interface ParsedBlueprint {
-  type: string
-  label: string
-  description: string
-  icons: string[]
-  entities: Record<string, number>
-  entityCount: number
-  tiles: Record<string, number>
-  tileCount: number
-  dimensions: { width: number; height: number }
-  version: string
-  raw: string
-  id?: string
-  tags?: string[]
-  created_at?: string
-}
+export type { ParsedBlueprint }
 
 interface Props {
   pluginId: string

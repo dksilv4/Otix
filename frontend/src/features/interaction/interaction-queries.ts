@@ -6,41 +6,20 @@ import { interactionKeys } from './interaction-keys'
 import { mediaKeys } from '@media/queries/media-keys'
 import type { MediaItemDetail, MediaItemSummary, MediaListResponse } from '@media/queries/media-queries'
 
-export interface UserInteractionState {
-  liked: boolean
-  watchlisted: boolean
-  watched: boolean
-  played: boolean
-  started: boolean
-  listened: boolean
-  owned: boolean
-}
-
-export interface InteractionCounts {
-  likeCount: number
-  watchlistCount: number
-  watchedCount: number
-  playedCount: number
-  startedCount: number
-  listenedCount: number
-}
-
-export interface InteractionOut {
-  userId: string
-  mediaItemId: string
-  interactionType: string
-  extraData: Record<string, unknown>
-  createdAt: string
-  updatedAt: string
-}
-
-export interface InteractionToggleResponse {
-  interaction: InteractionOut
-  counts: InteractionCounts
-}
-
-export const VALID_TYPES = ['liked', 'watchlisted', 'watched', 'played', 'started', 'listened'] as const
-export type InteractionType = (typeof VALID_TYPES)[number]
+import type {
+  UserInteractionState,
+  InteractionCounts,
+  InteractionToggleResponse,
+  InteractionType,
+} from './types'
+export {
+  VALID_TYPES,
+  type UserInteractionState,
+  type InteractionCounts,
+  type InteractionOut,
+  type InteractionToggleResponse,
+  type InteractionType,
+} from './types'
 
 export function useUserInteractions(
   mediaType: string,

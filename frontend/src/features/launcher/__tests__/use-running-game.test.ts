@@ -6,8 +6,8 @@ import type { DesktopAPI, RunningGameData } from '@/lib/desktop/api'
 describe('useRunningGame with multiple games and isolated FPS', () => {
   let mockDesktopAPI: Partial<DesktopAPI>
   let fpsCallback: ((data: any) => void) | null = null
-  let gameStartedCallback: ((data: any) => void) | null = null
-  let gameEndedCallback: ((data: any) => void) | null = null
+  let _gameStartedCallback: ((data: any) => void) | null = null
+  let _gameEndedCallback: ((data: any) => void) | null = null
 
   const game1: RunningGameData = {
     game: { id: 'brawlhalla', title: 'Brawlhalla', platform: 'pc' },
@@ -30,18 +30,18 @@ describe('useRunningGame with multiple games and isolated FPS', () => {
   beforeEach(() => {
     vi.useFakeTimers()
     fpsCallback = null
-    gameStartedCallback = null
-    gameEndedCallback = null
+    _gameStartedCallback = null
+    _gameEndedCallback = null
 
     mockDesktopAPI = {
       getRunningGames: vi.fn().mockResolvedValue([game1, game2]),
       getRunningGame: vi.fn().mockResolvedValue(game1),
       onGameStarted: vi.fn().mockImplementation((cb) => {
-        gameStartedCallback = cb
+        _gameStartedCallback = cb
         return () => {}
       }),
       onGameEnded: vi.fn().mockImplementation((cb) => {
-        gameEndedCallback = cb
+        _gameEndedCallback = cb
         return () => {}
       }),
       onFpsUpdate: vi.fn().mockImplementation((cb) => {

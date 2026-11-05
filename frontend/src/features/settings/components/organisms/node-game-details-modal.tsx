@@ -31,7 +31,6 @@ import {
   getFileFormatDescription,
   resolveItemVersion,
 } from '../../utils/node-scan-files'
-import { cn } from '@/lib/utils'
 
 export interface NodeGameDetailsModalProps {
   open: boolean

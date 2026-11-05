@@ -15,8 +15,6 @@ import {
   getColumnSortState,
   groupGamesAndUpdates,
   DEFAULT_VISIBLE_COLUMNS,
-  loadStoredColumnVisibility,
-  saveStoredColumnVisibility,
 } from '../utils/node-scan-files'
 import {
   buildThemeFromColors,
@@ -29,10 +27,9 @@ import { NodeScannedFilesTable } from '../components/organisms/node-scanned-file
 import { NodeScannedFilesTableRow } from '../components/molecules/node-scanned-files-table-row'
 import { NodeScanPathsCard } from '../components/molecules/node-scan-paths-card'
 import { NodeAddFolderModal } from '../components/organisms/node-add-folder-modal'
-import { isLocalDesktopNode, LOCAL_DESKTOP_NODE_ID } from '../local-desktop-node'
+import { isLocalDesktopNode } from '../local-desktop-node'
 import type { GameServer } from '@/features/downloads/types'
 import { NodeGameDetailsModal } from '../components/organisms/node-game-details-modal'
-import { NodeMassMatchModal } from '../components/organisms/node-mass-match-modal'
 import { NodeScanColumnSettings } from '../components/molecules/node-scan-column-settings'
 
 const createTestQueryClient = () =>

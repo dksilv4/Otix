@@ -1,53 +1,27 @@
 import type { ReactNode } from 'react'
 import { openExternal } from '@/lib/utils/open-external'
 import { CheckSquare, Square } from 'lucide-react'
+import type {
+  MarkdownBlockHeading,
+  MarkdownBlockCode,
+  MarkdownBlockQuote,
+  MarkdownBlockHr,
+  MarkdownBlockList,
+  MarkdownBlockParagraph,
+  MarkdownBlockTable,
+  MarkdownBlock,
+} from '../types'
 
-export interface MarkdownBlockHeading {
-  type: 'heading'
-  level: number
-  text: string
+export type {
+  MarkdownBlockHeading,
+  MarkdownBlockCode,
+  MarkdownBlockQuote,
+  MarkdownBlockHr,
+  MarkdownBlockList,
+  MarkdownBlockParagraph,
+  MarkdownBlockTable,
+  MarkdownBlock,
 }
-
-export interface MarkdownBlockCode {
-  type: 'code'
-  language: string
-  code: string
-}
-
-export interface MarkdownBlockQuote {
-  type: 'quote'
-  text: string
-}
-
-export interface MarkdownBlockHr {
-  type: 'hr'
-}
-
-export interface MarkdownBlockList {
-  type: 'list'
-  ordered: boolean
-  items: string[]
-}
-
-export interface MarkdownBlockParagraph {
-  type: 'paragraph'
-  text: string
-}
-
-export interface MarkdownBlockTable {
-  type: 'table'
-  headers: string[]
-  rows: string[][]
-}
-
-export type MarkdownBlock =
-  | MarkdownBlockHeading
-  | MarkdownBlockCode
-  | MarkdownBlockQuote
-  | MarkdownBlockHr
-  | MarkdownBlockList
-  | MarkdownBlockParagraph
-  | MarkdownBlockTable
 
 export const renderInlineMarkdown = (text: string): ReactNode[] => {
   if (!text) return []

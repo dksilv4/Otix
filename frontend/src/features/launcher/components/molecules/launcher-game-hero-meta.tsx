@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useParams } from '@tanstack/react-router'
 import { useLauncherGame } from '@/features/launcher/hooks/use-launcher-game'
 import { formatTimeToBeat } from '@/features/launcher/utils'
+import type { CompanyEntry } from '@/features/launcher/types'
 
 const AnimatedRoleLabel = () => {
   const [label, setLabel] = useState('Developer')
@@ -36,12 +37,6 @@ const AnimatedRoleLabel = () => {
   )
 };
 
-interface CompanyEntry {
-  id: string
-  company: { id: string; name: string; slug: string; logoUrl?: string | null }
-  developer: boolean
-  publisher: boolean
-}
 
 export const LauncherGameHeroMeta = () => {
   const p = useParams({ strict: false })

@@ -1,16 +1,13 @@
 import { useEffect, useState } from 'react'
 import { getPluginAPI } from '@/features/plugins/api'
 import { cn } from '@/lib/utils'
+import type { CardBadge } from '@/features/plugins/types'
+
+export type { CardBadge }
 
 // Plugins contribute badge widgets to the `media/card/badges` slot; each
 // rendered as a small pill overlaid on the media card poster.
 const SLOT_LOCATION = 'media/card/badges'
-
-export interface CardBadge {
-  pluginId: string
-  text: string
-  tone?: 'default' | 'info' | 'success' | 'warning' | 'danger'
-}
 
 interface MediaCardBadgesProps {
   mediaId: string

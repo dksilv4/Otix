@@ -15,6 +15,7 @@ from apps.search.views import (
     PollView,
     PrehydrateView,
     ProvidersView,
+    SearchStreamView,
     SearchView,
     SemanticSearchView,
     SteamGridView,
@@ -25,6 +26,7 @@ app_name = "search"
 
 urlpatterns = [
     path("", SearchView.as_view(), name="search"),
+    path("stream", SearchStreamView.as_view(), name="search-stream"),
     path("semantic", SemanticSearchView.as_view(), name="search-semantic"),
     path("suggestions", SuggestionsView.as_view(), name="search-suggestions"),
     path("grouped", GroupedView.as_view(), name="search-grouped"),

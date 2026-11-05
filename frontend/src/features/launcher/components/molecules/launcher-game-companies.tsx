@@ -1,12 +1,6 @@
 import { useParams } from '@tanstack/react-router'
 import { useLauncherGame } from '@/features/launcher/hooks/use-launcher-game'
-
-interface CompanyEntry {
-  id: string
-  company: { id: string; name: string; slug: string; logoUrl?: string | null }
-  developer: boolean
-  publisher: boolean
-}
+import type { CompanyEntry } from '@/features/launcher/types'
 
 export const LauncherGameCompanies = () => {
   const p = useParams({ strict: false })

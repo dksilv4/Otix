@@ -17,6 +17,7 @@ import { DkDropdown } from "@ui/atoms/dropdown"
 import PlexIcon from "@/assets/provider-logos/plex.svg?react"
 import { registerPlatform } from "./index"
 import type { PlatformDefinition, PlatformEmptyStateProps } from "./types"
+import type { SyncProgress } from "../types"
 import { formatDaysAgo } from "../utils"
 import "./plex.scss"
 
@@ -72,12 +73,6 @@ const PlexEmptyState = ({ onScan, isScanning, scanResult, scanError }: PlatformE
 };
 
 // ── Main content ──
-
-type SyncProgress = {
-  phase: string
-  itemsProcessed?: number
-  itemsTotal?: number
-}
 
 export const PlexTabContent = () => {
   const loadMoreRef = useRef<HTMLDivElement>(null)

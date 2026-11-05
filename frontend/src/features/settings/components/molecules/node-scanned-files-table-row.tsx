@@ -14,7 +14,7 @@ import {
 } from 'lucide-react'
 import { DkButton } from '@ui/atoms/button'
 import { getDesktopAPI } from '@/lib/desktop/api'
-import type { ScannedGameItem, ScannedGameSource } from '../../utils/scanned-summary'
+import type { ScannedGameItem } from '../../utils/scanned-summary'
 import {
   type NodeScanColumnId,
   DEFAULT_VISIBLE_COLUMNS,

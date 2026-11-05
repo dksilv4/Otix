@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { apiClient } from '@/lib/api/client'
 import { useRunningGame } from './use-running-game'
@@ -219,7 +219,7 @@ export function cleanGameTitle(rawTitle: string, exePath?: string): string {
   return title
 }
 
-export function useMatchedRunningGame(customGame?: RunningGameData): {
+export const useMatchedRunningGame = (customGame?: RunningGameData): {
   runningGame: RunningGameData | null
   runningGames: RunningGameData[]
   elapsedMs: number
@@ -227,10 +227,27 @@ export function useMatchedRunningGame(customGame?: RunningGameData): {
   isMatching: boolean
   cycleActiveGame: () => Promise<void>
   setActiveGame: (gameId: string) => Promise<void>
-} {
+} => {
   const { runningGame: defaultRunningGame, runningGames, elapsedMs: defaultElapsedMs, cycleActiveGame, setActiveGame } = useRunningGame()
   const runningGame = customGame ?? defaultRunningGame
-  const elapsedMs = customGame?.startTime ? Math.max(0, Date.now() - customGame.startTime) : defaultElapsedMs
+  const [customElapsedMs, setCustomElapsedMs] = useState(() =>
+    customGame?.startTime ? Math.max(0, Date.now() - customGame.startTime) : 0,
+  )
+
+  useEffect(() => {
+    if (!customGame?.startTime) {
+      setCustomElapsedMs(0)
+      return
+    }
+    const update = () => {
+      setCustomElapsedMs(Math.max(0, Date.now() - customGame.startTime))
+    }
+    update()
+    const timer = setInterval(update, 1000)
+    return () => clearInterval(timer)
+  }, [customGame?.startTime])
+
+  const elapsedMs = customGame ? customElapsedMs : defaultElapsedMs
 
   const rawTitle = runningGame?.game.title || ''
   const exePath = runningGame?.game.exePath || ''
@@ -376,8 +393,11 @@ export function useMatchedRunningGame(customGame?: RunningGameData): {
 
   return {
     runningGame,
+    runningGames,
     elapsedMs,
     matchedGame: matchedGame || null,
     isMatching,
+    cycleActiveGame,
+    setActiveGame,
   }
 }

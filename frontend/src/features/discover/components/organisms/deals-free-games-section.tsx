@@ -2,30 +2,8 @@ import { useState, useEffect, useCallback } from 'react'
 import { motion } from 'framer-motion'
 import { Gamepad2, ExternalLink, Gift, AlertCircle } from 'lucide-react'
 import { Carousel } from '@ui/molecules/carousel'
-
-interface DealGame {
-  id: string
-  title: string
-  storeId: number
-  storeName: string
-  posterUrl: string | null
-  originalPrice: string | null
-  freeEndDate: string | null
-  urlSlug: string | null
-  description: string | null
-  seller: string | null
-  storeUrl: string | null
-  steamAppId: number | null
-}
-
-interface DealsCheckResult {
-  success: boolean
-  deals: DealGame[]
-  newDeals?: DealGame[]
-  error?: string
-}
-
-import { getPluginAPI } from '@/features/discover/utils/plugins'
+import { getPluginAPI } from '@/features/plugins/api'
+import type { DealGame, DealsCheckResult } from '../../types'
 
 export const DealsFreeGamesSection = () => {
   const [result, setResult] = useState<DealsCheckResult | null>(null)

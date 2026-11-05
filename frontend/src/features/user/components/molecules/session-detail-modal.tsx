@@ -209,6 +209,12 @@ export const SessionDetailModal = ({
                     <span className="text-foreground font-bold">{session.backgroundSeconds}s</span>
                   </div>
                 )}
+                {session.lobbySeconds != null && session.lobbySeconds > 0 && (
+                  <div className="flex justify-between border-b border-border/30 pb-1">
+                    <span className="text-muted-foreground/70">Lobby / Menu</span>
+                    <span className="text-foreground font-bold">{session.lobbySeconds}s</span>
+                  </div>
+                )}
                 {session.processName && (
                   <div className="flex justify-between border-b border-border/30 pb-1 col-span-2">
                     <span className="text-muted-foreground/70">Process</span>

@@ -40,6 +40,7 @@ export interface NormalizedPlaySession {
   loadingSeconds?: number | null
   backgroundSeconds?: number | null
   gameplaySeconds?: number | null
+  lobbySeconds?: number | null
   node?: SessionNodeInfo | null
   hardware?: SessionHardwareInfo | null
   hardwareSummary?: string | null
@@ -85,8 +86,21 @@ export function normalizeSession(raw: Record<string, unknown>): NormalizedPlaySe
     : typeof fps.loadingDurationMs === 'number'
       ? Math.round(fps.loadingDurationMs / 1000)
       : null
-  const backgroundSeconds = typeof fps.background_seconds === 'number' ? fps.background_seconds : null
-  const gameplaySeconds = typeof fps.gameplay_seconds === 'number' ? fps.gameplay_seconds : null
+  const backgroundSeconds = typeof fps.background_seconds === 'number'
+    ? fps.background_seconds
+    : typeof fps.backgroundDurationMs === 'number'
+      ? Math.round(fps.backgroundDurationMs / 1000)
+      : null
+  const gameplaySeconds = typeof fps.gameplay_seconds === 'number'
+    ? fps.gameplay_seconds
+    : typeof fps.gameplayDurationMs === 'number'
+      ? Math.round(fps.gameplayDurationMs / 1000)
+      : null
+  const lobbySeconds = typeof fps.lobby_seconds === 'number'
+    ? fps.lobby_seconds
+    : typeof fps.lobbyDurationMs === 'number'
+      ? Math.round(fps.lobbyDurationMs / 1000)
+      : null
 
   const startTime = parseTimestamp((raw.start_time || raw.startTime) as string | number)
   const endTime = parseTimestamp((raw.end_time || raw.endTime) as string | number)
@@ -167,6 +181,7 @@ export function normalizeSession(raw: Record<string, unknown>): NormalizedPlaySe
     loadingSeconds: loadingSeconds && loadingSeconds > 0 ? loadingSeconds : null,
     backgroundSeconds: backgroundSeconds && backgroundSeconds > 0 ? backgroundSeconds : null,
     gameplaySeconds: gameplaySeconds && gameplaySeconds > 0 ? gameplaySeconds : null,
+    lobbySeconds: lobbySeconds && lobbySeconds > 0 ? lobbySeconds : null,
     node,
     hardware,
     hardwareSummary,

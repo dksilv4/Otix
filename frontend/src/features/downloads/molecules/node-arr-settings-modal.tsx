@@ -38,8 +38,8 @@ import { IntegrationConnectionFields } from './integration-connection-fields';
 import { IntegrationModalForm } from './integration-modal-form';
 import { ArrLibraryDefaults } from './arr-library-defaults';
 import { ArrInstanceSwitcher } from './arr-instance-switcher';
-
-export type ArrAppType = 'radarr' | 'sonarr';
+import { ArrInstanceTagsSection } from './arr-instance-tags-section';
+import type { ArrAppType } from '../types';
 
 export interface NodeArrSettingsModalProps {
   appType: ArrAppType;
@@ -343,6 +343,13 @@ const ArrForm = ({
               : 'Automatically request TV series from your watchlist to download on this Sonarr instance.'}
           </p>
         </div>
+      </IntegrationCardSection>
+
+      <IntegrationCardSection title="Routing & Tags">
+        <ArrInstanceTagsSection
+          tags={selected.tags || []}
+          onChange={(tags) => updateSelected({ tags })}
+        />
       </IntegrationCardSection>
     </IntegrationModalForm>
   );

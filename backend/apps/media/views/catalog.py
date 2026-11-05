@@ -196,6 +196,36 @@ def _enqueue_detail_rehydrate(item: MediaItem) -> bool:
 
     provider = CANONICAL_PROVIDER.get(item.media_type)
     ext = canonical_external_id(item)
+
+    # TV Shows: if missing seasons or episodes, eagerly hydrate from Plex or provider
+    if item.media_type == "show":
+        from apps.media.models import Episode, Season
+        needs_show_episodes = (
+            not Episode.objects.filter(season__show_id=item.pk).exists()
+            or not Season.objects.filter(show_id=item.pk, season_number__gt=0).exists()
+            or show_needs_episodes(item.pk)
+        )
+        if needs_show_episodes:
+            # 1. Try Plex hydration first if linked to a Plex item
+            try:
+                from apps.integrations.services.plex import hydrate_show_seasons_from_plex
+                if hydrate_show_seasons_from_plex(item):
+                    return True
+            except Exception:
+                logger.exception("Plex season hydration failed for show %s", item.pk)
+
+            # 2. Try TMDB / provider sync if credentials exist
+            if provider and ext and server_can_fetch(provider):
+                job = ensure_catalog_job(
+                    provider, item.media_type, ext, priority=0, force=True, dispatch=False
+                )
+                if job is not None:
+                    try:
+                        execute_sync_job(job.pk)
+                        return True
+                    except Exception:
+                        logger.exception("Synchronous episode sync failed for %s:%s", provider, ext)
+
     if not provider or not ext:
         return False
 

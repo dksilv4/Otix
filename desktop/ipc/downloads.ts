@@ -1,104 +1,31 @@
 import { ipcMain, BrowserWindow } from 'electron';
 import { getDb } from '../db';
 import {
-  getConfig, saveConfig, getDownload, getUserDownloads, deleteDownload,
-  getWishlistTracking, skipWishlistItem,
-  getPathMappings, addPathMapping, removePathMapping,
+  getConfig,
+  saveConfig,
+  getDownload,
+  getUserDownloads,
+  getWishlistTracking,
+  skipWishlistItem,
+  getPathMappings,
+  addPathMapping,
+  removePathMapping,
 } from '../framework/downloads';
+import {
+  searchNzbPlanet,
+  testNzbPlanetConnection,
+  testSabnzbdConnection,
+  searchAndDownload,
+  pollAndUpdateDownloads,
+  postProcessDownload,
+  scanWishlist,
+  deleteDownloadWithJob,
+  scheduledUpdateCheck,
+  filterQualityResults,
+  autoPickBest,
+} from '../downloads/downloader';
 import { previewNamingTemplate, validateNamingTemplate } from '../downloads/organizer';
 import { getRemoteDownloadManager, type RemoteDownloadOptions } from '../downloads/remote-downloader';
-
-// ── Plugin call router ───────────────────────────────────────────────────
-// Set after PluginManager is initialized in main.ts
-
-let _callPlugin: ((pluginId: string, method: string, args?: any) => Promise<any>) | null = null;
-
-export function setPluginCaller(caller: (pluginId: string, method: string, args?: any) => Promise<any>): void {
-  _callPlugin = caller;
-}
-
-// ── Inline quality-filter helpers ────────────────────────────────────────
-// (Moved from downloads/index.ts to the plugin; kept here for IPC convenience)
-
-const DEMO_PATTERNS = ['demo', 'trial', 'beta', 'alpha'];
-const SCENE_TAGS = ['iso', 'repack', 'codex', 'crack', 'gog', 'elamigos', 'dodi', 'fitgirl', 'skidrow', 'flt'];
-const HYPERVISOR_TAGS = ['hv', 'hypervisor', 'vm', 'vmware', 'virtualbox', 'qemu', 'vmic'];
-const CRACK_ONLY_PATTERNS = ['crack by', 'crack-only', 'crack only', 'crackfix', 'standalone crack'];
-
-function isFullGame(r: any): boolean {
-  const title = (r.title || '').toLowerCase();
-  return !DEMO_PATTERNS.some(p => title.includes(p));
-}
-
-function hasSceneTags(r: any): boolean {
-  const title = (r.title || '').toLowerCase();
-  return SCENE_TAGS.some(tag => title.includes(tag));
-}
-
-function hasPreferredRepacker(r: any, repackers: string[]): boolean {
-  if (repackers.length === 0) return false;
-  const title = (r.title || '').toLowerCase();
-  return repackers.some(rep => title.includes(rep.toLowerCase()));
-}
-
-function hasHypervisorTags(r: any): boolean {
-  const title = (r.title || '').toLowerCase();
-  return HYPERVISOR_TAGS.some(tag => {
-    if (tag === 'hv') {
-      return title.includes(' hv ') || title.startsWith('hv ') || title.endsWith(' hv') || title === 'hv';
-    }
-    return title.includes(tag);
-  });
-}
-
-function isNotCrackOnly(r: any): boolean {
-  const title = (r.title || '').toLowerCase();
-  return !CRACK_ONLY_PATTERNS.some(p => title.includes(p));
-}
-
-function filterQualityResults(results: any[]): any[] {
-  const filtered = results.filter(r => isFullGame(r) && isNotCrackOnly(r));
-  return filtered.length > 0 ? filtered : results;
-}
-
-function compareByVersion(a: any, b: any): number {
-  const verA = a._parsedVersion != null ? a._parsedVersion : null;
-  const verB = b._parsedVersion != null ? b._parsedVersion : null;
-  if (verA !== null && verB !== null) return verB - verA;
-  if (verA !== null) return -1;
-  if (verB !== null) return 1;
-  return 0;
-}
-
-function autoPickBest(results: any[], _preferredRepackers?: string | null, allowHypervisor?: boolean): any | null {
-  let quality = filterQualityResults(results);
-  if (quality.length === 0) return null;
-
-  if (!allowHypervisor) {
-    quality = quality.filter(r => !hasHypervisorTags(r));
-    if (quality.length === 0) return null;
-  }
-
-  const repackerList = _preferredRepackers
-    ? _preferredRepackers.split(',').map(r => r.trim()).filter(Boolean)
-    : [];
-
-  if (repackerList.length > 0) {
-    const preferred = quality.filter(r => hasPreferredRepacker(r, repackerList));
-    const others = quality.filter(r => !hasPreferredRepacker(r, repackerList));
-    const prefScene = preferred.filter(r => hasSceneTags(r)).sort(compareByVersion);
-    const prefNonScene = preferred.filter(r => !hasSceneTags(r)).sort(compareByVersion);
-    const otherScene = others.filter(r => hasSceneTags(r)).sort(compareByVersion);
-    const otherNonScene = others.filter(r => !hasSceneTags(r)).sort(compareByVersion);
-    const ranked = [...prefScene, ...prefNonScene, ...otherScene, ...otherNonScene];
-    return ranked[0];
-  }
-
-  const scene = quality.filter(r => hasSceneTags(r)).sort(compareByVersion);
-  const nonScene = quality.filter(r => !hasSceneTags(r)).sort(compareByVersion);
-  const ranked = [...scene, ...nonScene];
-  return ranked[0];
-}
 
 // ── IPC handler registration ─────────────────────────────────────────────
 
@@ -113,11 +40,10 @@ export function registerDownloadsIPC(): void {
     return saveConfig(config);
   });
 
-  // ── Search (routed to plugins) ─────────────────────────────────────────
+  // ── Search & Filter (native implementation) ────────────────────────────
 
-  ipcMain.handle('downloads:search', async (_, query: string) => {
-    if (!_callPlugin) throw new Error('Plugin system not initialized');
-    return _callPlugin('nzbplanet', 'search', { query });
+  ipcMain.handle('downloads:search', async (_, query: string, apiKey?: string) => {
+    return await searchNzbPlanet(query, apiKey);
   });
 
   ipcMain.handle('downloads:filter-results', (_, results: any[]) => {
@@ -128,35 +54,17 @@ export function registerDownloadsIPC(): void {
     return autoPickBest(results, undefined, allowHypervisor);
   });
 
-  // ── Search & Download (routed to plugins) ──────────────────────────────
+  // ── Search & Download (native implementation) ──────────────────────────
 
   ipcMain.handle('downloads:scan-wishlist', async (_, userId: string, wishlistGames: { id: string; title: string }[]) => {
-    if (!_callPlugin) throw new Error('Plugin system not initialized');
-
-    const results: { mediaItemId: string; success: boolean; downloadId?: string; error?: string }[] = [];
-    for (const game of wishlistGames) {
-      try {
-        const result = await _callPlugin('downloads', 'search-and-download', { query: game.title });
-        if (result && result.downloadId) {
-          results.push({ mediaItemId: game.id, success: true, downloadId: result.downloadId });
-        } else if (result && result.error) {
-          results.push({ mediaItemId: game.id, success: false, error: result.error });
-        } else {
-          results.push({ mediaItemId: game.id, success: false, error: 'Unknown error' });
-        }
-      } catch (err: any) {
-        results.push({ mediaItemId: game.id, success: false, error: err.message });
-      }
-    }
-    return results;
+    return await scanWishlist(userId, wishlistGames);
   });
 
   ipcMain.handle('downloads:search-and-download', async (_, userId: string, mediaItemId: string | null, gameName: string, allowHypervisor?: boolean) => {
-    if (!_callPlugin) throw new Error('Plugin system not initialized');
-    return _callPlugin('downloads', 'search-and-download', { query: gameName, allowHypervisor });
+    return await searchAndDownload(userId, mediaItemId, gameName, allowHypervisor);
   });
 
-  // ── Download CRUD (routed to downloads plugin for history) ────────────
+  // ── Download CRUD ──────────────────────────────────────────────────────
 
   ipcMain.handle('downloads:get-download', (_, id: string) => {
     return getDownload(id);
@@ -166,27 +74,24 @@ export function registerDownloadsIPC(): void {
     return getUserDownloads();
   });
 
-  ipcMain.handle('downloads:delete', (_, id: string) => {
-    return deleteDownload(id);
+  ipcMain.handle('downloads:delete', async (_, id: string) => {
+    return await deleteDownloadWithJob(id);
   });
 
-  // ── Poll queue (routed to plugins) ─────────────────────────────────────
+  // ── Poll queue (native SABnzbd polling) ─────────────────────────────────
 
-  ipcMain.handle('downloads:poll-queue', async () => {
-    if (!_callPlugin) throw new Error('Plugin system not initialized');
-    return _callPlugin('downloads', 'poll-queue');
+  ipcMain.handle('downloads:poll-queue', async (_, userId?: string) => {
+    return await pollAndUpdateDownloads(userId);
   });
 
-  // ── Connection testing (routed to plugins) ─────────────────────────────
+  // ── Connection testing (native SABnzbd & NZBPlanet) ────────────────────
 
-  ipcMain.handle('downloads:test-sabnzbd', async () => {
-    if (!_callPlugin) throw new Error('Plugin system not initialized');
-    return _callPlugin('sabnzbd', 'test-connection');
+  ipcMain.handle('downloads:test-sabnzbd', async (_, host?: string, port?: number, apiKey?: string, useSsl?: boolean) => {
+    return await testSabnzbdConnection(host, port, apiKey, useSsl);
   });
 
-  ipcMain.handle('downloads:test-nzbplanet', async () => {
-    if (!_callPlugin) throw new Error('Plugin system not initialized');
-    return _callPlugin('nzbplanet', 'test-connection');
+  ipcMain.handle('downloads:test-nzbplanet', async (_, apiKey?: string) => {
+    return await testNzbPlanetConnection(apiKey);
   });
 
   // ── Wishlist tracking (direct DB access) ───────────────────────────────
@@ -199,14 +104,10 @@ export function registerDownloadsIPC(): void {
     return skipWishlistItem(userId, mediaItemId);
   });
 
-  // ── Post-process (routed to plugins) ───────────────────────────────────
+  // ── Post-process (native auto-organizer / relocation) ──────────────────
 
-  ipcMain.handle('downloads:post-process', async (_, downloadId: string, _configId: string, fallbackSource?: string, fallbackDest?: string) => {
-    if (!_callPlugin) throw new Error('Plugin system not initialized');
-    return _callPlugin('downloads', 'post-process', {
-      downloadPath: fallbackSource,
-      destPath: fallbackDest,
-    });
+  ipcMain.handle('downloads:post-process', async (_, downloadId: string, configId?: string, fallbackSource?: string, fallbackDest?: string) => {
+    return await postProcessDownload(downloadId, configId, fallbackSource, fallbackDest);
   });
 
   // ── Path mappings (direct DB access) ───────────────────────────────────
@@ -228,7 +129,7 @@ export function registerDownloadsIPC(): void {
   ipcMain.handle('downloads:get-tracked-game', async () => {
     const db = getDb();
     const rows = db.prepare('SELECT * FROM game_update_tracking ORDER BY media_item_title').all() as any[];
-    return rows.map(row => ({
+    return rows.map((row) => ({
       mediaItemId: row.media_item_id,
       mediaItemTitle: row.media_item_title,
       downloadedUpdateTags: JSON.parse(row.downloaded_updates || '[]'),
@@ -236,16 +137,10 @@ export function registerDownloadsIPC(): void {
     }));
   });
 
-  // ── Update check (routed to plugins) ───────────────────────────────────
+  // ── Update check (native update checker) ───────────────────────────────
 
   ipcMain.handle('downloads:check-updates', async () => {
-    if (!_callPlugin) throw new Error('Plugin system not initialized');
-    try {
-      const queue = await _callPlugin('downloads', 'poll-queue');
-      return Array.isArray(queue) ? queue : [];
-    } catch {
-      return [];
-    }
+    return await scheduledUpdateCheck();
   });
 
   // ── Naming template helpers (direct imports) ───────────────────────────

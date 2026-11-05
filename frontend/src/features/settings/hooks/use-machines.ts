@@ -7,7 +7,6 @@ import type {
   ServerMachineInput,
   UserHome,
   UserMachine,
-  UserServerMachine,
 } from '../types/server-machines'
 
 export const machineQueryKeys = {

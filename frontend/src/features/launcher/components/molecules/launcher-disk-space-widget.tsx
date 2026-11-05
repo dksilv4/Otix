@@ -1,17 +1,10 @@
 /* ── DiskSpaceWidget — multi-drive storage with scan-path markers ── */
 
 import { useState, useEffect, useMemo } from 'react'
-import { getDesktopAPI } from '@/lib/desktop/api'
+import { getDesktopAPI, type DiskInfo } from '@/lib/desktop/api'
 import { useDesktopPlatform } from '@/lib/desktop/platform'
 import { DriveRow } from '@/features/launcher/components/atoms/launcher-drive-row'
 import { extractDrive } from '@/features/launcher/utils'
-
-interface DiskInfo {
-  drive: string
-  total?: number
-  used: number
-  free: number
-}
 
 export const DiskSpaceWidget = ({ id }: { id?: string }) => {
   const { isDesktop } = useDesktopPlatform()

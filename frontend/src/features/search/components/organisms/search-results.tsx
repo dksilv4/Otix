@@ -4,6 +4,7 @@ import { useInView } from 'framer-motion'
 import { motion } from 'framer-motion'
 import { Link } from '@tanstack/react-router'
 import { UserRound } from 'lucide-react'
+import { useSearchStream } from '@search/hooks/use-search-stream'
 import { useSearchBackfill } from '@search/hooks/use-search-backfill'
 import { MediaGrid } from '@ui/molecules/media-grid'
 import { Carousel } from '@ui/molecules/carousel'
@@ -37,8 +38,8 @@ const SearchEmpty = ({ query, type }: { query: string; type: string }) => {
       ? ''
       : TYPE_OPTIONS.find((t) => t.value === type)?.label?.toLowerCase()
   return (
-    <div className="flex flex-col items-center justify-center py-16 text-center">
-      <p className="text-lg font-semibold text-muted-foreground">
+    <div className="mx-auto max-w-md my-12 p-8 rounded-2xl bg-[var(--dk-surface-glass)] backdrop-blur-xl border border-white/[0.04] shadow-[var(--dk-shadow-glass)] text-center">
+      <p className="text-base font-semibold text-foreground/90">
         No results found
       </p>
       <p className="mt-1 text-sm text-muted-foreground/60">
@@ -51,8 +52,8 @@ const SearchEmpty = ({ query, type }: { query: string; type: string }) => {
 
 const SearchError = () => {
   return (
-    <div className="flex flex-col items-center justify-center py-16 text-center">
-      <p className="text-lg font-semibold text-muted-foreground">
+    <div className="mx-auto max-w-md my-12 p-8 rounded-2xl bg-[var(--dk-surface-glass)] backdrop-blur-xl border border-white/[0.04] shadow-[var(--dk-shadow-glass)] text-center">
+      <p className="text-base font-semibold text-foreground/90">
         Something went wrong
       </p>
       <p className="mt-1 text-sm text-muted-foreground/60">
@@ -76,22 +77,22 @@ const BestResultItem = ({ item }: { item: any }) => {
       <Link
         to="/u/$username"
         params={{ username: item.username }}
-        className="group relative flex w-full aspect-[2/3] flex-col items-center justify-center rounded-xl bg-[var(--dk-surface-ghost)] p-6 text-center border border-[var(--dk-separator)] transition-colors hover:bg-[var(--dk-surface-ghost-hover)]"
+        className="group relative flex w-full aspect-[2/3] flex-col items-center justify-center rounded-xl bg-[var(--dk-surface-ghost)] p-6 text-center border border-white/[0.04] transition-colors hover:bg-[var(--dk-surface-ghost-hover)]"
       >
         <div className="flex flex-col items-center justify-center">
           {item.avatarUrl ? (
             <Image
               src={item.avatarUrl}
               alt={item.username}
-              className="h-24 w-24 rounded-full object-cover ring-2 ring-[var(--dk-separator)]"
+              className="h-24 w-24 rounded-full object-cover ring-1 ring-white/[0.06]"
               fallback={
-                <div className="flex h-24 w-24 items-center justify-center rounded-full bg-[var(--dk-surface-glass)] border border-[var(--dk-separator)]">
+                <div className="flex h-24 w-24 items-center justify-center rounded-full bg-[var(--dk-surface-glass)] border border-white/[0.04]">
                   <UserRound className="h-10 w-10 text-muted-foreground/50" aria-hidden="true" />
                 </div>
               }
             />
           ) : (
-            <div className="flex h-24 w-24 items-center justify-center rounded-full bg-[var(--dk-surface-glass)] border border-[var(--dk-separator)]">
+            <div className="flex h-24 w-24 items-center justify-center rounded-full bg-[var(--dk-surface-glass)] border border-white/[0.04]">
               <UserRound className="h-10 w-10 text-muted-foreground/50" aria-hidden="true" />
             </div>
           )}
@@ -195,6 +196,14 @@ export const SearchResults = ({ query, type, sort }: SearchResultsProps) => {
     enabled: query.length > 0 && isAllTypes,
   })
 
+  // ── Stream search (specific media types) ─────────────────────────
+  const streamState = useSearchStream({
+    query,
+    type,
+    sort,
+    enabled: query.length > 0 && !isAllTypes && !isPeopleOnly && !isUsersOnly,
+  })
+
   // ── Infinite search (specific media types) ────────────────────────
   const searchType = isPeopleOnly || isUsersOnly ? undefined : type
 
@@ -235,13 +244,28 @@ export const SearchResults = ({ query, type, sort }: SearchResultsProps) => {
   })
 
   // ── Derived state (flat infinite mode) ────────────────────────────
-  const items = useMemo(
-    () => data?.pages?.flatMap((page) => (Array.isArray(page?.items) ? page.items.filter(Boolean) : [])) ?? [],
-    [data]
-  )
+  const items = useMemo(() => {
+    const paged = data?.pages?.flatMap((page) => (Array.isArray(page?.items) ? page.items.filter(Boolean) : [])) ?? []
+    if (!streamState.items.length) {
+      return paged
+    }
+    const subsequentPages = (data?.pages?.slice(1) ?? []).flatMap((page) =>
+      Array.isArray(page?.items) ? page.items.filter(Boolean) : []
+    )
+    const seen = new Set<string>()
+    const merged: MediaItemSummary[] = []
+    for (const it of [...streamState.items, ...subsequentPages]) {
+      const idStr = String(it.id)
+      if (!seen.has(idStr)) {
+        seen.add(idStr)
+        merged.push(it)
+      }
+    }
+    return merged
+  }, [data, streamState.items])
   const people = useMemo(() => (Array.isArray(peopleData?.items) ? peopleData.items.filter(Boolean) : []), [peopleData])
   const users = useMemo(() => (Array.isArray(userData?.items) ? userData.items.filter(Boolean) : []), [userData])
-  const total = data?.pages?.[0]?.total ?? undefined
+  const total = data?.pages?.[0]?.total ?? (streamState.isDone ? streamState.totalLocal + streamState.totalExternal : undefined)
 
   // Backfill polling for newly discovered media items
   const groupedIds = useMemo(() => {
@@ -345,7 +369,7 @@ export const SearchResults = ({ query, type, sort }: SearchResultsProps) => {
           <section className="mb-10">
             <Carousel
               title="Users"
-              subtitle={`· ${(g?.usersCount ?? gUsers.length).toLocaleString()} result${(g?.usersCount ?? gUsers.length) !== 1 ? 's' : ''}`}
+              subtitle={`${(g?.usersCount ?? gUsers.length).toLocaleString()} result${(g?.usersCount ?? gUsers.length) !== 1 ? 's' : ''}`}
               viewAllLink="/search"
               viewAllSearch={{ q: query, type: 'user', sort }}
               minItemWidth={160}
@@ -362,7 +386,7 @@ export const SearchResults = ({ query, type, sort }: SearchResultsProps) => {
                   <Link
                     to="/u/$username"
                     params={{ username: user.username }}
-                    className="group relative flex w-full flex-col items-center rounded-xl bg-[var(--dk-surface-ghost)] p-4 text-center border border-[var(--dk-separator)] transition-colors hover:bg-[var(--dk-surface-ghost-hover)]"
+                    className="group relative flex w-full flex-col items-center rounded-xl bg-[var(--dk-surface-ghost)] p-4 text-center border border-white/[0.04] transition-colors hover:bg-[var(--dk-surface-ghost-hover)]"
                   >
                     {user.avatarUrl ? (
                       <Image
@@ -370,13 +394,13 @@ export const SearchResults = ({ query, type, sort }: SearchResultsProps) => {
                         alt={user.username}
                         className="h-16 w-16 rounded-full"
                         fallback={
-                          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[var(--dk-surface-glass)] border border-[var(--dk-separator)]">
+                          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[var(--dk-surface-glass)] border border-white/[0.04]">
                             <UserRound className="h-8 w-8 text-muted-foreground/50" aria-hidden="true" />
                           </div>
                         }
                       />
                     ) : (
-                      <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[var(--dk-surface-glass)] border border-[var(--dk-separator)]">
+                      <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[var(--dk-surface-glass)] border border-white/[0.04]">
                         <UserRound className="h-8 w-8 text-muted-foreground/50" aria-hidden="true" />
                       </div>
                     )}
@@ -400,7 +424,7 @@ export const SearchResults = ({ query, type, sort }: SearchResultsProps) => {
           <section className="mb-10">
             <Carousel
               title="Artists"
-              subtitle={`· ${(g?.peopleCount ?? gPeople.length).toLocaleString()} result${(g?.peopleCount ?? gPeople.length) !== 1 ? 's' : ''}`}
+              subtitle={`${(g?.peopleCount ?? gPeople.length).toLocaleString()} result${(g?.peopleCount ?? gPeople.length) !== 1 ? 's' : ''}`}
               viewAllLink="/search"
               viewAllSearch={{ q: query, type: 'person', sort }}
               minItemWidth={140}
@@ -432,7 +456,7 @@ export const SearchResults = ({ query, type, sort }: SearchResultsProps) => {
           <section className="mb-10">
             <Carousel
               title="Movies"
-              subtitle={`· ${(g?.moviesCount ?? gMovies.length).toLocaleString()} result${(g?.moviesCount ?? gMovies.length) !== 1 ? 's' : ''}`}
+              subtitle={`${(g?.moviesCount ?? gMovies.length).toLocaleString()} result${(g?.moviesCount ?? gMovies.length) !== 1 ? 's' : ''}`}
               viewAllLink="/search"
               viewAllSearch={{ q: query, type: 'movie', sort }}
               minItemWidth={250}
@@ -458,7 +482,7 @@ export const SearchResults = ({ query, type, sort }: SearchResultsProps) => {
           <section className="mb-10">
             <Carousel
               title="Shows"
-              subtitle={`· ${(g?.showsCount ?? gShows.length).toLocaleString()} result${(g?.showsCount ?? gShows.length) !== 1 ? 's' : ''}`}
+              subtitle={`${(g?.showsCount ?? gShows.length).toLocaleString()} result${(g?.showsCount ?? gShows.length) !== 1 ? 's' : ''}`}
               viewAllLink="/search"
               viewAllSearch={{ q: query, type: 'show', sort }}
               minItemWidth={250}
@@ -484,7 +508,7 @@ export const SearchResults = ({ query, type, sort }: SearchResultsProps) => {
           <section className="mb-10">
             <Carousel
               title="Games"
-              subtitle={`· ${(g?.gamesCount ?? gGames.length).toLocaleString()} result${(g?.gamesCount ?? gGames.length) !== 1 ? 's' : ''}`}
+              subtitle={`${(g?.gamesCount ?? gGames.length).toLocaleString()} result${(g?.gamesCount ?? gGames.length) !== 1 ? 's' : ''}`}
               viewAllLink="/search"
               viewAllSearch={{ q: query, type: 'game', sort }}
               minItemWidth={250}
@@ -551,7 +575,7 @@ export const SearchResults = ({ query, type, sort }: SearchResultsProps) => {
               key={user.id}
               to="/u/$username"
               params={{ username: user.username }}
-              className="group relative flex w-full flex-col items-center rounded-xl bg-[var(--dk-surface-ghost)] p-4 text-center border border-[var(--dk-separator)] transition-colors hover:bg-[var(--dk-surface-ghost-hover)]"
+              className="group relative flex w-full flex-col items-center rounded-xl bg-[var(--dk-surface-ghost)] p-4 text-center border border-white/[0.04] transition-colors hover:bg-[var(--dk-surface-ghost-hover)]"
             >
               {user.avatarUrl ? (
                 <Image
@@ -559,13 +583,13 @@ export const SearchResults = ({ query, type, sort }: SearchResultsProps) => {
                   alt={user.username}
                   className="h-16 w-16 rounded-full"
                   fallback={
-                    <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[var(--dk-surface-glass)] border border-[var(--dk-separator)]">
+                    <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[var(--dk-surface-glass)] border border-white/[0.04]">
                       <UserRound className="h-8 w-8 text-muted-foreground/50" aria-hidden="true" />
                     </div>
                   }
                 />
               ) : (
-                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[var(--dk-surface-glass)] border border-[var(--dk-separator)]">
+                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[var(--dk-surface-glass)] border border-white/[0.04]">
                   <UserRound className="h-8 w-8 text-muted-foreground/50" aria-hidden="true" />
                 </div>
               )}
@@ -585,22 +609,30 @@ export const SearchResults = ({ query, type, sort }: SearchResultsProps) => {
   }
 
   // ── Specific media type (infinite scroll) ─────────────────────────
-  if (isLoading) return <SearchSkeleton />
+  const isInitialLoading = (isLoading && streamState.items.length === 0) || (streamState.isStreaming && streamState.items.length === 0)
+  if (isInitialLoading) return <SearchSkeleton />
 
-  if (isError) return <SearchError />
+  if (isError && !streamState.items.length) return <SearchError />
 
   const hasInfiniteResults = items.length > 0
 
-  if (!hasInfiniteResults) return <SearchEmpty query={query} type={type} />
+  if (!hasInfiniteResults && !streamState.isStreaming) return <SearchEmpty query={query} type={type} />
 
   return (
     <div id="search-results">
-      {/* Total count */}
-      {total !== undefined && (
-        <p className="px-4 pb-2 text-sm text-muted-foreground/50 lg:px-8">
-          {total.toLocaleString()} result{total !== 1 ? 's' : ''}
-        </p>
-      )}
+      {/* Total count & status */}
+      <div className="flex items-center justify-between px-4 pb-2 lg:px-8">
+        {total !== undefined && (
+          <p className="text-sm text-muted-foreground/50">
+            {total.toLocaleString()} result{total !== 1 ? 's' : ''}
+          </p>
+        )}
+        {streamState.isStreaming && streamState.items.length > 0 && (
+          <p className="text-xs text-muted-foreground/40 italic">
+            Checking external sources...
+          </p>
+        )}
+      </div>
 
       {/* Media items grid */}
       {items.length > 0 && (

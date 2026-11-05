@@ -16,6 +16,17 @@ import {
 import { getPluginAPI, type PluginAPI } from '@/features/plugins/api'
 import { useModal } from '@/lib/modals'
 import { SlidePanel } from '@/lib/modals/slide-panel'
+import type {
+  SyncStatus,
+  SyncItem,
+  CatalogMovie,
+  InstanceSummary,
+  ArrDetail,
+  CatalogRequest,
+  SyncRun,
+  SyncRunError,
+  SpotifyPlaylist,
+} from '@/features/plugins/types'
 import type { PluginConfigField, PluginInfo } from '@/features/plugins/types/plugins'
 import { PluginForm } from '../PluginForm'
 import { Alert, Badge, Button, EmptyState, Input, Select, Spinner } from '@/features/plugins/ui'
@@ -278,48 +289,11 @@ const AuthCard = ({
 // the completed run, and the last-sync result. Adapts to the status shape the
 // plugin returns (playlist/track fields vs. movie-import fields).
 
-interface SyncStatus {
-  phase?: string
-  current?: number
-  total?: number
-  playlistTitle?: string
-  track?: number
-  trackTotal?: number
-  lastTrack?: string
-  /** SyncPlay: per-playlist result of the most recent run. */
-  last?: LastSyncInfo | null
-  /** Radarr: import summary of the most recent run. */
-  lastSync?: LastSyncInfo | null
-  /** Radarr: number of configured instances (0 disables the Sync button). */
-  instance_count?: number
-  /** Radarr: enabled instances, so the UI can sync each one separately or all at once. */
-  instances?: Array<{ id: string; name: string }>
-}
 
-interface LastSyncInfo {
-  at?: string
-  lastSyncAt?: string | number
-  added?: number
-  imported?: number
-  skipped?: number
-  pruned?: number
-  unmatched?: number
-  failed?: number
-  errors?: number | unknown[]
-}
 
-interface SyncItem {
-  ok?: boolean
-  title?: string
-  key?: string
-  upToDate?: boolean
-  added?: number
-  skipped?: number
-  pruned?: number
-  unmatched?: unknown[]
-  errors?: string[]
-  error?: string
-}
+
+
+
 
 const SyncCard = ({ pluginId }: { pluginId: string }) => {
   const api = getPluginAPI()
@@ -536,38 +510,12 @@ const SyncCard = ({ pluginId }: { pluginId: string }) => {
 // Browses the movies the plugin synced into the shared local `media` table via
 // its `movies.list` data method. Search + load-more pagination.
 
-interface CatalogMovie {
-  provider_id: string
-  title: string | null
-  year: number | null
-  poster_url: string | null
-  backdrop_url: string | null
-  overview: string | null
-  runtime: number | null
-  rating: number | null
-  status: string | null
-  genres: string | null
-  file_path: string | null
-  source_instance: string | null
-  source_instance_id: string | null
-}
+
 
 const MOVIES_PAGE = 100
 
 /** Per-instance aggregate returned by the arr plugins' `movies.summary`. */
-interface InstanceSummary {
-  id: string
-  name: string
-  disabled?: boolean
-  total: number
-  size_on_disk: number
-  downloaded: number
-  downloading: number
-  requested: number
-  missing: number
-  episodes_total?: number
-  episodes_files?: number
-}
+
 
 /** Pill showing a synced movie's live Radarr status on the card art. */
 const MovieStatusBadge = ({ status }: { status: string | null }) => {
@@ -603,43 +551,7 @@ const MovieStatusBadge = ({ status }: { status: string | null }) => {
 // monitored, episode counts). When the plugin has no `media.detail` (e.g.
 // Plex) or the instance is offline, it falls back to the cached row.
 
-interface ArrDetail {
-  found?: boolean
-  live?: boolean
-  source?: string | null
-  media_type?: string | null
-  provider_id?: string | null
-  source_instance?: string | null
-  source_instance_id?: string | null
-  title?: string | null
-  year?: number | null
-  overview?: string | null
-  poster_url?: string | null
-  backdrop_url?: string | null
-  genres?: string[] | null
-  runtime?: number | null
-  rating?: number | null
-  status?: string | null
-  path?: string | null
-  size_on_disk?: number | null
-  monitored?: boolean | null
-  quality_profile?: string | null
-  minimum_availability?: string | null
-  added?: string | null
-  series_type?: string | null
-  season_count?: number | null
-  episode_count?: number | null
-  episode_file_count?: number | null
-  percent_of_episodes?: number | null
-  file?: {
-    name?: string | null
-    size?: number | null
-    quality?: string | null
-    video?: string | null
-    audio?: string | null
-  } | null
-  error?: string | null
-}
+
 
 const DetailStatusBadge = ({ status }: { status: string | null }) => {
   if (status === 'downloaded') {
@@ -1125,19 +1037,7 @@ const MoviesSection = ({ pluginId }: { pluginId?: string }) => {
 // Lists every movie requested on a Radarr instance (radarr_requests) — via the
 // detail-page request button or watchlist auto-request — newest first.
 
-interface CatalogRequest {
-  tmdb_id: string
-  title: string | null
-  instance_id: string | null
-  instance_name: string | null
-  status: 'requested' | 'exists' | 'error'
-  source: string | null
-  already_exists: number
-  error: string | null
-  requested_at: number
-  poster_url: string | null
-  backdrop_url: string | null
-}
+
 
 const REQUESTS_PAGE = 50
 
@@ -1301,26 +1201,9 @@ const RequestsSection = ({ pluginId }: { pluginId?: string }) => {
 // Lists every `sync.now` run (radarr_sync_log) newest-first. Expand a run to see
 // the per-movie failures captured on that run.
 
-interface SyncRun {
-  id: number
-  instance_id: string | null
-  started_at: number
-  finished_at: number | null
-  success: number
-  paused: number
-  found: number
-  imported: number
-  skipped: number
-  failed: number
-  errors: string | null
-  message: string | null
-}
 
-interface SyncRunError {
-  title?: string | null
-  error?: string | null
-  tmdb_id?: string | null
-}
+
+
 
 const SyncHistorySection = ({ pluginId }: { pluginId?: string }) => {
   const api = getPluginAPI()
@@ -1460,12 +1343,7 @@ const SyncHistorySection = ({ pluginId }: { pluginId?: string }) => {
 // manual URL/ID entry when the playlist list can't be fetched (e.g. Spotify
 // blocks user endpoints until the app owner's account has Premium).
 
-interface SpotifyPlaylist {
-  id: string
-  name: string
-  tracks: number
-  public: boolean
-}
+
 
 const PlaylistMappingForm = ({ pluginId }: { pluginId: string }) => {
   const api = getPluginAPI()

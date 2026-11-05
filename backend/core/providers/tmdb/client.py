@@ -8,7 +8,7 @@ API documentation: https://developer.themoviedb.org/reference
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import httpx
 from django.conf import settings
@@ -40,8 +40,9 @@ def get_http_client() -> httpx.AsyncClient:
         tmdb_pkg = None  # type: ignore[assignment]
 
     headers = {"Accept": "application/json"}
-    if hasattr(settings, "TMDB_RAT"):
-        headers["Authorization"] = f"Bearer {settings.TMDB_RAT}"
+    tmdb_rat = getattr(settings, "TMDB_RAT", None)
+    if tmdb_rat and str(tmdb_rat).strip():
+        headers["Authorization"] = f"Bearer {str(tmdb_rat).strip()}"
     _shared_client, _shared_client_loop_id = resolve_shared_http_client(
         _shared_client,
         _shared_client_loop_id,
@@ -95,6 +96,16 @@ class TMDBProvider(BaseProviderClient):
             circuit_threshold=circuit_threshold,
             circuit_recovery=circuit_recovery,
         )
+
+    async def _request(self, method: str, url: str, **kwargs: Any) -> httpx.Response:
+        api_key = getattr(settings, "TMDB_API_KEY", None)
+        rat = getattr(settings, "TMDB_RAT", None)
+        if not (rat and str(rat).strip()) and (api_key and str(api_key).strip()):
+            params = dict(kwargs.get("params") or {})
+            if "api_key" not in params:
+                params["api_key"] = str(api_key).strip()
+            kwargs["params"] = params
+        return await super()._request(method, url, **kwargs)
 
     # ── Movies ──────────────────────────────────────────────────
 

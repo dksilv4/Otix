@@ -1,10 +1,7 @@
 import { createContext, useContext, useState, type ReactNode } from 'react'
 import { cn } from '@/lib/utils'
+import type { TabsContextValue } from '@/components/ui/types'
 
-interface TabsContextValue {
-  value: string
-  onChange: (value: string) => void
-}
 const TabsContext = createContext<TabsContextValue | null>(null)
 
 interface DkTabsProps {

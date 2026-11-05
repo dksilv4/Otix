@@ -1,5 +1,70 @@
-import type { PlexTrackInfo } from './plex-audio-provider'
-import type { JellyfinTrackInfo } from './jellyfin-audio-provider'
+export interface PlexTrackInfo {
+  id: string
+  ratingKey: string
+  title: string
+  artist: string
+  albumName: string
+  albumArt: string | null
+  durationMs: number
+  plexBaseUrl: string | null
+  plexToken: string | null
+}
+
+export interface PlexPlayerContextValue {
+  isPlaying: boolean
+  currentTrack: PlexTrackInfo | null
+  position: number
+  duration: number
+  volume: number
+  queue: PlexTrackInfo[]
+  previousTracks: PlexTrackInfo[]
+  error: string | null
+  playTrack: (track: PlexTrackInfo) => Promise<void>
+  playAlbum: (tracks: PlexTrackInfo[], startIndex?: number) => Promise<void>
+  togglePlay: () => void
+  pause: () => void
+  resume: () => void
+  seek: (ms: number) => void
+  setVolume: (vol: number) => void
+  skipNext: () => void
+  skipPrevious: () => void
+  skipToIndex: (index: number) => void
+  stop: () => void
+}
+
+export interface JellyfinTrackInfo {
+  id: string
+  itemId: string
+  title: string
+  artist: string
+  albumName: string
+  albumArt: string | null
+  durationMs: number
+  serverUrl: string | null
+  token: string | null
+}
+
+export interface JellyfinPlayerContextValue {
+  isPlaying: boolean
+  currentTrack: JellyfinTrackInfo | null
+  position: number
+  duration: number
+  volume: number
+  queue: JellyfinTrackInfo[]
+  previousTracks: JellyfinTrackInfo[]
+  error: string | null
+  playTrack: (track: JellyfinTrackInfo) => Promise<void>
+  playAlbum: (tracks: JellyfinTrackInfo[], startIndex?: number) => Promise<void>
+  togglePlay: () => void
+  pause: () => void
+  resume: () => void
+  seek: (ms: number) => void
+  setVolume: (vol: number) => void
+  skipNext: () => void
+  skipPrevious: () => void
+  skipToIndex: (index: number) => void
+  stop: () => void
+}
 
 export type PlayerSource = 'plex' | 'jellyfin' | 'none'
 

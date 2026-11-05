@@ -2,7 +2,6 @@ import { describe, expect, it, beforeEach, afterEach } from 'vitest'
 import { clearDesktopAPICache } from '@/lib/desktop/api'
 import type { GameServer } from '@/features/downloads/types'
 import {
-  registerLocalDesktopNodeId,
   isLocalDesktopNode,
   isLocalDesktopNodeId,
   localDesktopNodeName,

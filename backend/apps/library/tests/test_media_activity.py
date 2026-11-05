@@ -166,6 +166,38 @@ class MediaActivityTests(APITestCase):
         self.assertFalse(items["tmdb:movie:999"]["can_manage"])  # read share
         self.assertEqual(items["tmdb:movie:999"]["owner"]["username"], "bob")
 
+    @patch("apps.library.services.media_activity.radarr_get_queue")
+    @patch("apps.library.services.media_activity.radarr_get_movies")
+    @patch("apps.library.services.media_activity.sonarr_get_queue")
+    @patch("apps.library.services.media_activity.sonarr_get_series")
+    def test_completed_queue_record_is_available(
+        self, mock_sonarr_series, mock_sonarr_queue, mock_radarr_movies, mock_radarr_queue
+    ):
+        mock_radarr_queue.return_value = (
+            200,
+            {
+                "records": [
+                    {
+                        "id": 105,
+                        "size": 1000,
+                        "sizeleft": 0,
+                        "timeleft": "00:00:00",
+                        "status": "Completed",
+                        "movie": {"tmdbId": 777, "title": "Completed Movie", "year": 2024},
+                    }
+                ]
+            },
+        )
+        mock_radarr_movies.return_value = (200, [])
+        mock_sonarr_queue.return_value = (200, {"records": []})
+        mock_sonarr_series.return_value = (200, [])
+
+        data = get_user_media_activity(self.alice)
+        items = data["items"]
+        self.assertIn("tmdb:movie:777", items)
+        self.assertEqual(items["tmdb:movie:777"]["status"], "available")
+        self.assertEqual(items["tmdb:movie:777"]["progress"], 100.0)
+
     def test_api_endpoint_authenticated(self):
         self.client.force_authenticate(user=self.alice)
         response = self.client.get("/api/v1/library/nodes/media-activity")

@@ -16,6 +16,7 @@ celerybeat-schedule
 **/.agents/
 **/.superpowers/
 **/.serena/
+**/.gemini/
 
 /node_modules
 desktop/frontend/

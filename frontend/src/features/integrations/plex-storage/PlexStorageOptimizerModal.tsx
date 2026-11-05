@@ -27,22 +27,12 @@ import {
   usePlexStorageRecommendations,
   useRefreshPlexStorage,
 } from './use-plex-storage'
-import type { PlexStorageRecommendationItem } from './types'
+import type { PlexStorageRecommendationItem, SavingsCategory, TabDef } from './types'
 
 export interface PlexStorageOptimizerModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   initialServerId?: number | null
-}
-
-type SavingsCategory = 'duplicates' | 'transcode' | 'unwatched' | 'watched_shows' | 'largest_files'
-
-interface TabDef {
-  id: SavingsCategory
-  label: string
-  icon: typeof Layers
-  badgeColor: string
-  description: string
 }
 
 const TABS: TabDef[] = [

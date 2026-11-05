@@ -19,3 +19,8 @@ export interface SlotError {
   error: string
   suspended: boolean
 }
+
+export interface SlotErrorBoundaryState {
+  hasError: boolean
+  error: Error | null
+}

@@ -1,12 +1,10 @@
 // TODO: Review this file
-import { createContext, useContext, useState, type ReactNode } from 'react'
+import { createContext, useState, type ReactNode } from 'react'
+import type { PageMeta } from './types'
 
-interface PageMeta {
-  navLogo: string | null
-  setNavLogo: (url: string | null) => void
-}
+export type { PageMeta }
 
-const PageMetaContext = createContext<PageMeta>({
+export const PageMetaContext = createContext<PageMeta>({
   navLogo: null,
   setNavLogo: () => {},
 })
@@ -21,6 +19,4 @@ export const PageMetaProvider = ({ children }: { children: ReactNode }) => {
   )
 };
 
-export const usePageMeta = () => {
-  return useContext(PageMetaContext)
-}
+export { usePageMeta } from './hooks/use-page-meta'

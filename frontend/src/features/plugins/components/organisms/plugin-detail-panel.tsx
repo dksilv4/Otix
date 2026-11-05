@@ -22,8 +22,10 @@ import { PluginForm } from '@/features/plugins/components/PluginForm'
 import { PluginAccessTokenCard } from '@/features/plugins/components/organisms/plugin-access-token-card'
 import { Alert, Badge, Button } from '@/features/plugins/ui'
 import { cn } from '@/lib/utils'
-import { FeatureStatusTags, kindsFromPluginStage } from '@ui/atoms/feature-status-tag'
-import type { PluginInfo, PluginStatus } from '@/features/plugins/types/plugins'
+import { FeatureStatusTags } from '@ui/atoms/feature-status-tag'
+import { kindsFromPluginStage } from '@/lib/utils/feature-status'
+import type { PluginInfo } from '@/features/plugins/types/plugins'
+import type { PluginDetailTabId, DepEntry } from '@/features/plugins/types'
 
 // ── Tabs ──────────────────────────────────────────────────────────────────────
 
@@ -34,8 +36,6 @@ const TABS = [
   { id: 'activity', label: 'Activity', icon: Activity },
   { id: 'depends', label: 'Depends on', icon: Network },
 ] as const
-
-type TabId = (typeof TABS)[number]['id']
 
 // ── Connection section (OAuth + scan) ─────────────────────────────────────────
 
@@ -570,13 +570,6 @@ const ActivityContent = ({ plugin, api }: { plugin: PluginInfo; api: PluginAPI }
 
 // ── Dependencies content ────────────────────────────────────────────────────────
 
-type DepEntry = {
-  id: string
-  name: string
-  installed: boolean
-  status?: PluginStatus
-}
-
 const DepRow = ({
   dep,
   clickable,
@@ -690,7 +683,7 @@ export const PluginDetailPanel = ({
   onConfigSaved?: () => void
   isExiting?: boolean
 }) => {
-  const [activeTab, setActiveTab] = useState<TabId>('overview')
+  const [activeTab, setActiveTab] = useState<PluginDetailTabId>('overview')
   const icon = getPluginIcon(plugin.manifest.icon)
 
   return (

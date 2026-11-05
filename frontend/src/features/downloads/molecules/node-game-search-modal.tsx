@@ -59,8 +59,7 @@ import type {
   ServerSabnzbdQueueItem,
   ServerDownloadHistoryItem,
 } from '../usenet-types'
-
-type ProtocolFilter = 'all' | 'usenet' | 'torrent'
+import type { ProtocolFilter } from '../types'
 
 export interface NodeGameSearchModalProps {
   open?: boolean

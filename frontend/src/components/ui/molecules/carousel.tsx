@@ -4,6 +4,12 @@ import { Link } from '@tanstack/react-router'
 import { ArrowRight } from 'lucide-react'
 import { Skeleton } from '@ui/atoms/skeleton'
 import { cn } from '@/lib/utils'
+import {
+  calculateCarouselItemWidth,
+  calculateCarouselPageWidth,
+  calculateCarouselSnapTarget,
+  getTrackHorizontalPadding,
+} from '@/lib/utils/carousel'
 
 interface CarouselProps {
   children: ReactNode
@@ -19,6 +25,7 @@ interface CarouselProps {
   isLoading?: boolean
   skeleton?: ReactNode
   trackPaddingInline?: string
+  snap?: boolean
 }
 
 export const Carousel = forwardRef((
@@ -36,13 +43,22 @@ export const Carousel = forwardRef((
     isLoading,
     skeleton,
     trackPaddingInline,
+    snap = true,
   }: CarouselProps,
   ref: Ref<HTMLDivElement>,
 ) => {
   const trackRef = useRef<HTMLDivElement>(null)
   const [itemWidth, setItemWidth] = useState(minItemWidth)
   const [isDragging, setIsDragging] = useState(false)
-  const dragState = useRef({ x: 0, scrollLeft: 0, active: false, moved: false })
+  const dragState = useRef({
+    startX: 0,
+    startScrollLeft: 0,
+    lastX: 0,
+    lastTime: 0,
+    velocity: 0,
+    active: false,
+    moved: false,
+  })
   const showSkeleton = isLoading && Children.count(children) === 0
 
   useLayoutEffect(() => {
@@ -50,11 +66,9 @@ export const Carousel = forwardRef((
     if (!track) return
 
     const measure = () => {
-      const available = track.clientWidth - 2 * gap
-      // On small screens, reduce min width so at least 2 cards show
-      const effectiveMin = Math.min(minItemWidth, Math.max(140, available / 2.5))
-      const n = Math.max(1, Math.floor((available + gap) / (effectiveMin + gap)))
-      setItemWidth(Math.max(effectiveMin, (available - (n - 1) * gap) / n))
+      const padding = getTrackHorizontalPadding(track)
+      const available = Math.max(0, track.clientWidth - padding)
+      setItemWidth(calculateCarouselItemWidth(available, minItemWidth, gap))
     }
 
     measure()
@@ -66,15 +80,23 @@ export const Carousel = forwardRef((
   const scrollByPage = useCallback((direction: -1 | 1) => {
     const track = trackRef.current
     if (!track) return
-    const w = track.clientWidth - 2 * gap
-    const n = Math.max(1, Math.floor((w + gap) / (itemWidth + gap)))
-    const pageWidth = n * (itemWidth + gap)
+    const padding = getTrackHorizontalPadding(track)
+    const available = Math.max(0, track.clientWidth - padding)
+    const pageWidth = calculateCarouselPageWidth(available, itemWidth, gap)
     track.scrollBy({ left: direction * pageWidth, behavior: 'smooth' })
   }, [itemWidth, gap])
 
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
     if (e.pointerType === 'touch') return
-    dragState.current = { x: e.clientX, scrollLeft: trackRef.current?.scrollLeft ?? 0, active: true, moved: false }
+    dragState.current = {
+      startX: e.clientX,
+      startScrollLeft: trackRef.current?.scrollLeft ?? 0,
+      lastX: e.clientX,
+      lastTime: Date.now(),
+      velocity: 0,
+      active: true,
+      moved: false,
+    }
   }, [])
 
   const handlePointerMove = useCallback((e: React.PointerEvent) => {
@@ -82,22 +104,88 @@ export const Carousel = forwardRef((
     const track = trackRef.current
     if (!track) return
 
-    const dx = e.clientX - dragState.current.x
+    const dx = e.clientX - dragState.current.startX
     if (!dragState.current.moved && Math.abs(dx) > 5) {
       dragState.current.moved = true
       setIsDragging(true)
+      try {
+        (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
+      } catch {
+        // ignore in test / virtual environments
+      }
     }
 
     if (dragState.current.moved) {
-      track.scrollLeft = dragState.current.scrollLeft - dx
+      const now = Date.now()
+      const dt = now - dragState.current.lastTime
+      if (dt > 0) {
+        dragState.current.velocity = (e.clientX - dragState.current.lastX) / dt
+      }
+      dragState.current.lastX = e.clientX
+      dragState.current.lastTime = now
+      track.scrollLeft = dragState.current.startScrollLeft - dx
     }
   }, [])
 
-  const handlePointerUp = useCallback(() => {
-    setIsDragging(false)
-    dragState.current.active = false
-    dragState.current.moved = false
+  const handlePointerUp = useCallback(
+    (e: React.PointerEvent) => {
+      if (e.pointerType === 'touch') return
+      const track = trackRef.current
+      try {
+        if ((e.currentTarget as HTMLElement).hasPointerCapture?.(e.pointerId)) {
+          (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId)
+        }
+      } catch {
+        // ignore
+      }
+
+      if (dragState.current.moved && track) {
+        if (snap) {
+          const dx = e.clientX - dragState.current.startX
+          const maxScroll = Math.max(0, track.scrollWidth - track.clientWidth)
+          const targetScrollLeft = calculateCarouselSnapTarget({
+            currentScrollLeft: track.scrollLeft,
+            dragDistance: dx,
+            velocity: dragState.current.velocity,
+            itemWidth,
+            gap,
+            maxScroll,
+          })
+          track.scrollTo({ left: targetScrollLeft, behavior: 'smooth' })
+        }
+      }
+
+      setIsDragging(false)
+      dragState.current.active = false
+      setTimeout(() => {
+        dragState.current.moved = false
+      }, 50)
+    },
+    [gap, itemWidth, snap],
+  )
+
+  const handleClickCapture = useCallback((e: React.MouseEvent) => {
+    if (dragState.current.moved) {
+      e.preventDefault()
+      e.stopPropagation()
+    }
   }, [])
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      const track = trackRef.current
+      if (!track) return
+      const stride = itemWidth + gap
+      if (e.key === 'ArrowRight') {
+        e.preventDefault()
+        track.scrollBy({ left: stride, behavior: 'smooth' })
+      } else if (e.key === 'ArrowLeft') {
+        e.preventDefault()
+        track.scrollBy({ left: -stride, behavior: 'smooth' })
+      }
+    },
+    [itemWidth, gap],
+  )
 
   return (
     <div ref={ref} className={cn('relative', className)}>
@@ -145,18 +233,23 @@ export const Carousel = forwardRef((
         )}
         <div
           ref={trackRef}
+          data-carousel-track="true"
           className={cn(
-            'flex overflow-x-auto overflow-y-hidden scrollbar-none pb-2 select-none',
+            'flex overflow-x-auto overflow-y-hidden scrollbar-none pb-2 select-none focus:outline-hidden',
+            snap && 'snap-x snap-mandatory',
+            !isDragging && 'scroll-smooth cursor-grab',
             isDragging && 'cursor-grabbing',
-            !isDragging && 'cursor-grab',
           )}
           style={{
             gap: `${gap}px`,
             paddingInline: trackPaddingInline ?? 'clamp(1rem, 2vw, 2rem)',
             scrollPaddingInline: trackPaddingInline ?? 'clamp(1rem, 2vw, 2rem)',
-            scrollSnapType: 'x mandatory',
+            scrollSnapType: snap ? (isDragging ? 'none' : 'x mandatory') : undefined,
             touchAction: 'pan-x pan-y pinch-zoom',
           }}
+          tabIndex={0}
+          onKeyDown={handleKeyDown}
+          onClickCapture={handleClickCapture}
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
@@ -164,12 +257,20 @@ export const Carousel = forwardRef((
         >
           {showSkeleton
             ? Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="snap-start shrink-0" style={{ width: `${itemWidth}px` }}>
+                <div
+                  key={i}
+                  className={cn('shrink-0', snap && 'snap-start snap-always')}
+                  style={{ width: `${itemWidth}px` }}
+                >
                   {skeleton ?? <Skeleton className="w-full aspect-[2/3] rounded-xl" />}
                 </div>
               ))
             : Children.toArray(children).map((child, i) => (
-                <div key={i} className="snap-start shrink-0" style={{ width: `${itemWidth}px` }}>
+                <div
+                  key={i}
+                  className={cn('shrink-0', snap && 'snap-start snap-always')}
+                  style={{ width: `${itemWidth}px` }}
+                >
                   {child}
                 </div>
               ))}

@@ -23,8 +23,8 @@ export interface ProviderInfo {
 }
 
 export interface ServerProvidersResponse {
-  active_downloader: string;
-  active_search_provider: string;
+  active_downloader?: string | null;
+  active_search_provider?: string | null;
   active_indexer?: string;
   downloaders: ProviderInfo[];
   search_providers: ProviderInfo[];

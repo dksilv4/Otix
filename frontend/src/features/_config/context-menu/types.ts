@@ -66,3 +66,10 @@ export interface ContextMenuActions {
   }) => void
   close: () => void
 }
+
+export interface ContextMenuContextValue extends ContextMenuState, ContextMenuActions {}
+
+export interface MenuBuilderContext {
+  navigate?: (opts: { to: string; params?: Record<string, string>; search?: Record<string, unknown> }) => void
+  openModal?: (node: React.ReactNode) => () => void
+}

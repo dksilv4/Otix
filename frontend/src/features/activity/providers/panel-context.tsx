@@ -1,20 +1,9 @@
 import { createContext, useState, type ReactNode } from 'react'
+import type { PanelContextValue } from '../types'
 
-export interface PanelContextValue {
-  isUserMenuOpen: boolean
-  setUserMenuOpen: (open: boolean) => void
-  isChatOpen: boolean
-  setChatOpen: (open: boolean) => void
-}
+export type { PanelContextValue }
 
 export const PanelContext = createContext<PanelContextValue | null>(null)
-
-export const defaultPanelContext: PanelContextValue = {
-  isUserMenuOpen: false,
-  setUserMenuOpen: () => {},
-  isChatOpen: false,
-  setChatOpen: () => {},
-}
 
 export const PanelProvider = ({ children }: { children: ReactNode }) => {
   const [isUserMenuOpen, setUserMenuOpen] = useState(false)

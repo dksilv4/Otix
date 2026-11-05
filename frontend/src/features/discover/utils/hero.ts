@@ -15,17 +15,7 @@ export const HERO_STAGE_FADE = {
   transition: { duration: 0.6, ease: [0.16, 1, 0.3, 1] },
 } as const
 
-export const formatSeasonBadgeText = (releaseDate?: string | null): string => {
-  if (!releaseDate) return 'New Season'
-  const date = new Date(releaseDate)
-  const now = new Date()
-  const days = Math.floor((date.getTime() - now.getTime()) / 86400000)
-  const month = date.toLocaleString('en-US', { month: 'short' })
-  const year = date.getFullYear()
-  if (days > 0) return `New Season · ${month} ${year}`
-  if (days >= -14) return 'New Season · Just Landed'
-  return `New Season · ${month} ${year}`
-}
+export { formatSeasonBadgeText } from '@/lib/utils/media-badge'
 
 export const formatRatingPercent = (avgRating?: number | null): string | null => {
   if (avgRating == null || isNaN(avgRating)) return null

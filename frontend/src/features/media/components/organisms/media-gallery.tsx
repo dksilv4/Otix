@@ -10,6 +10,7 @@ import {
 import type { MediaAssetOut } from '../../queries/media-queries'
 import { TrailerVideoModal } from '@/features/discover/components/molecules/trailer-video-modal'
 import { MediaScreenshotLightboxModal } from '../molecules/media-screenshot-lightbox-modal'
+import type { GalleryTab } from '../../types'
 
 interface MediaGalleryProps {
   videos?: MediaVideoLike[]
@@ -17,8 +18,6 @@ interface MediaGalleryProps {
   title?: string
   className?: string
 }
-
-type GalleryTab = 'all' | 'videos' | 'screenshots'
 
 export const MediaGallery = ({
   videos = [],

@@ -5,8 +5,7 @@ import { LauncherMediaCard } from '@/features/launcher/components/molecules/laun
 import { LauncherFoundGames } from '@/features/launcher/components/organisms/launcher-found-games'
 import { usePopularGames } from '@/features/launcher/data/queries'
 import { useLauncherVisibleGames } from '@/features/launcher/data/game-queries'
-
-type ShelfTab = 'my-games' | 'popular'
+import type { ShelfTab } from '@/features/launcher/types'
 
 const TAB_LABELS: Record<ShelfTab, string> = {
   'my-games': 'My Games',

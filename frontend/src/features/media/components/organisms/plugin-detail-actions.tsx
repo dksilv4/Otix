@@ -9,69 +9,9 @@ import {
   getStreamPresentation,
   getStreamButtonTheme,
 } from '../../utils/plugin-actions'
-import type { StreamPlaybackSession, AudioTrack, SubtitleTrack } from '../../types/stream-player'
+import type { RequestInstance, RequestWidget, PlayInstance, PlayWidget } from '../../types'
 
-export interface RequestInstance {
-  id: string
-  name: string
-  status: 'downloaded' | 'requested' | 'not_exists' | 'error' | 'partially_available'
-  file?: {
-    name?: string | null
-    size?: number | null
-    quality?: string | null
-    video?: string | null
-    audio?: string | null
-  } | null
-}
-
-export interface RequestWidget {
-  pluginId: string
-  label: string
-  props: {
-    label?: string
-    mediaType: string
-    mediaId: string
-    instances: RequestInstance[]
-  }
-}
-
-export interface PlayInstance {
-  id: string
-  serverId: string
-  name: string
-  ratingKey: string
-  baseUrl?: string
-  token?: string
-  provider?: string
-  providerLabel?: string
-  serverName?: string
-  mediaType?: 'movie' | 'show' | 'episode'
-  seasonNumber?: number
-  episodeNumber?: number
-  episodeTitle?: string
-  viewOffset?: number
-  duration?: number
-  progressPercent?: number
-  viewed?: boolean
-  itemId?: string
-  title?: string
-  baseUrls?: string[]
-  directUrl?: string
-  hlsUrl?: string
-  audioTracks?: AudioTrack[]
-  subtitles?: SubtitleTrack[]
-  streamSession?: StreamPlaybackSession
-}
-
-export interface PlayWidget {
-  pluginId: string
-  label: string
-  props: {
-    mediaType: string
-    mediaId: string
-    instances: PlayInstance[]
-  }
-}
+export type { RequestInstance, RequestWidget, PlayInstance, PlayWidget }
 
 const FileDetails = ({ file }: { file: NonNullable<RequestInstance['file']> }) => {
   return (

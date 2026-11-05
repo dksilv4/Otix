@@ -72,7 +72,7 @@ export const ConnectNodePickerModal = ({
   if (!sourceItem) return null
 
   const handleConnectOption = (target: NodeMapItem, type: 'home' | 'host' | 'smb') => {
-    onOpenChange(false)
+    onOpenChange?.(false)
     onConnect(sourceItem, target, type)
   }
 
@@ -81,7 +81,7 @@ export const ConnectNodePickerModal = ({
   }
 
   const handleAddNewOption = (type: 'server' | 'node' | 'home' | 'samba' | 'game_server') => {
-    onOpenChange(false)
+    onOpenChange?.(false)
     if (type === 'samba') {
       const machine = sourceItem.data.type === 'server' ? sourceItem.data.machine : undefined
       onAddSamba?.(machine)

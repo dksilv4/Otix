@@ -62,7 +62,7 @@ export const DiscoverGenresSection = memo(({
               genre={genre}
               mediaType={mediaType}
               priority={eager && index < 4}
-              className="min-w-[250px] w-full"
+              className="w-full"
             />
           ))}
         </Carousel>

@@ -1,17 +1,7 @@
 import { createContext, useState, useCallback, useRef, type ReactNode } from 'react'
+import type { ModalInstance, ModalContextValue } from './types'
 
-export interface ModalInstance {
-  id: string
-  component: ReactNode
-  exiting: boolean
-}
-
-interface ModalContextValue {
-  modals: ModalInstance[]
-  openModal: (component: ReactNode) => () => void
-  closeModal: (id: string) => void
-  closeAll: () => void
-}
+export type { ModalInstance, ModalContextValue }
 
 export const ModalContext = createContext<ModalContextValue>({
   modals: [],

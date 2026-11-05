@@ -15,7 +15,6 @@ import {
   normalizePlatformValue,
   resolvePlatformLabel,
 } from '../../utils/node-scan-files'
-import { cn } from '@/lib/utils'
 
 export interface NodeFileMatchModalProps {
   open: boolean
@@ -136,7 +135,7 @@ export const NodeFileMatchModal = ({
       }}
       title={game.matched ? 'Edit Game Match' : 'Match Game with Catalog'}
       description={`Link catalog metadata for "${game.title}".`}
-      maxWidth="max-w-xl"
+      className="max-w-xl"
     >
       <div className="space-y-4 pt-2">
         {/* ── 1. Existing Active Match Card (if matched) ── */}

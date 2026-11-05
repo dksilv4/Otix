@@ -3,41 +3,11 @@ import { useNavigate } from '@tanstack/react-router'
 import { motion } from 'framer-motion'
 import { Gamepad2, ExternalLink, Gift, AlertCircle, Eye } from 'lucide-react'
 import { Carousel } from '@ui/molecules/carousel'
-
-interface EpicFreeGame {
-  id: string
-  title: string
-  namespace: string
-  offerId: string
-  posterUrl: string | null
-  originalPrice: string | null
-  freeEndDate: string | null
-  urlSlug: string | null
-  description: string | null
-  seller: string | null
-}
-
-interface GameMatch {
-  media_item_id?: string
-  title: string
-  poster_url?: string | null
-}
-
-interface MatchedEntry {
-  game: EpicFreeGame
-  match: GameMatch | null
-  candidates: GameMatch[]
-  error?: string
-}
-
-interface MatchResult {
-  success: boolean
-  matched: MatchedEntry[]
-  isAuthenticated: boolean
-  alreadyOwned?: number
-}
-
-import { getPluginAPI } from '@/features/discover/utils/plugins'
+import { getPluginAPI } from '@/features/plugins/api'
+import type {
+  MatchedEntry,
+  MatchResult,
+} from '../../types'
 
 export const EpicFreeGamesSection = () => {
   const [result, setResult] = useState<MatchResult | null>(null)

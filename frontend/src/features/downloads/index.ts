@@ -15,6 +15,7 @@ export * from './server-explorer-utils';
 export * from './types';
 export type { NodeProbeResult, ServerProbeResult } from './types';
 export * from './utils';
+export * from './utils/node-search';
 export * from './node-availability';
 export * from './server-availability';
 

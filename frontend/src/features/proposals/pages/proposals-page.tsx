@@ -4,34 +4,8 @@ import { apiClient } from '@/lib/api/client'
 import { DkButton } from '@ui/atoms/button'
 import { SettingsCard } from '@/features/settings/components/molecules/settings-card'
 import { SectionHeader } from '@/features/settings/components/molecules/settings-section-header'
-
-interface MatchProposal {
-  id: number | string
-  source: string
-  sourceGameId: string
-  sourceTitle: string
-  developer: string | null
-  releaseYear: number | null
-  posterUrl: string | null
-  otixMediaId: string
-  otixTitle: string
-  otixPosterUrl: string | null
-  otixReleaseYear: number | null
-  otixConfidence: number
-  matchType: string
-  status: string
-  proposedBy: string
-  proposerAvatar: string | null
-  proposerXp: number
-  createdAt: string
-}
-
-interface MatchProposalList {
-  proposals: MatchProposal[]
-  total: number
-}
-
 import { confidenceColor } from '../utils'
+import type { MatchProposal, MatchProposalList } from '../types'
 
 export const ProposalsPage = () => {
   const [proposals, setProposals] = useState<MatchProposal[]>([])

@@ -1,7 +1,6 @@
 import type { ReactNode } from 'react'
 import { cn } from '@/lib/utils'
-
-type BadgeTone = 'default' | 'success' | 'warning' | 'danger' | 'info' | 'system'
+import type { BadgeTone } from './types'
 
 interface BadgeProps {
   tone?: BadgeTone

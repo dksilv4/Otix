@@ -1,8 +1,8 @@
-import type { LocalGame, DisplayGame } from './types'
+import type { LocalGame, DisplayGame, CatalogGame } from './types'
 import { getScanPaths } from '@/features/launcher/data/storage'
 export { heroImage } from '@/lib/utils'
 
-export type LauncherCardGame = LocalGame | DisplayGame
+export type LauncherCardGame = LocalGame | DisplayGame | CatalogGame
 
 /** Applications (non-game software) are stored but hidden from the launcher UI for now. */
 export const isApplicationGame = (
@@ -47,7 +47,7 @@ export const driveLetter = (drive: string): string => {
   return drive.endsWith('\\') || drive.endsWith('/') ? drive.slice(0, -1) : drive
 }
 
-export const formatPlaytime = (
+export const formatGamePlaytime = (
   playtime: { totalMinutes: number } | null,
   steamPlaytime: number | null | undefined,
 ): string => {
@@ -63,6 +63,8 @@ export const formatPlaytime = (
   }
   return '—'
 }
+
+export const formatPlaytime = formatGamePlaytime
 
 export const extractDrive = (path: string): string => {
   const win = path.match(/^([A-Za-z]:)/)
@@ -106,26 +108,27 @@ export const asLocal = (game: LauncherCardGame): LocalGame | null => {
 export const launcherMediaCardProps = (game: LauncherCardGame) => {
   const raw = asLocal(game)
   const data = raw?.data
-  const display = game as DisplayGame
-  const textless = raw?.otixTextlessPosterUrl || data?.textlessPosterUrl || display.textlessPosterUrl || null
-  const backdrop = raw?.otixBackdropUrl || data?.backdropUrl || display.backdropUrl || null
-  const poster = raw?.otixPosterUrl || data?.posterUrl || raw?.posterUrl || display.posterUrl || null
+  const display = 'badge' in game ? (game as DisplayGame) : null
+  const catalog = !raw && !display ? (game as CatalogGame) : null
+  const textless = raw?.otixTextlessPosterUrl || data?.textlessPosterUrl || display?.textlessPosterUrl || catalog?.textlessPosterUrl || null
+  const backdrop = raw?.otixBackdropUrl || data?.backdropUrl || display?.backdropUrl || catalog?.backdropUrl || null
+  const poster = raw?.otixPosterUrl || data?.posterUrl || raw?.posterUrl || display?.posterUrl || catalog?.posterUrl || null
   const hasCleanArt = Boolean(textless || backdrop)
   const logo = hasCleanArt
-    ? (raw?.otixLogoUrl || data?.logoUrl || display.logoUrl || null)
+    ? (raw?.otixLogoUrl || data?.logoUrl || display?.logoUrl || catalog?.logoUrl || null)
     : null
 
   return {
-    id: raw?.otixMediaId || data?.id || display.otixMediaId || game.id,
+    id: raw?.otixMediaId || data?.id || display?.otixMediaId || game.id,
     title: data?.title || raw?.otixMediaTitle || game.title,
     posterUrl: poster,
     textlessPosterUrl: textless || backdrop || poster,
     backdropUrl: backdrop,
     logoUrl: logo,
-    logoColorGuess: data?.logoColorGuess ?? display.logoColorGuess ?? null,
-    avgRating: data?.avgRating ?? null,
+    logoColorGuess: data?.logoColorGuess ?? display?.logoColorGuess ?? catalog?.logoColorGuess ?? null,
+    avgRating: data?.avgRating ?? catalog?.avgRating ?? null,
     ratingCount: data?.ratingCount,
-    releaseDate: data?.releaseDate ?? null,
+    releaseDate: data?.releaseDate ?? catalog?.releaseDate ?? null,
   }
 }
 

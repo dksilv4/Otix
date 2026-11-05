@@ -93,7 +93,6 @@ export const DownloadQueuePage = () => {
   const activeUsenetIds = new Set((usenetQueueData?.items ?? []).map((item) => item.nzo_id));
   const usenetHistoryItems = usenetHistory.filter((item) => !activeUsenetIds.has(item.nzo_id));
   const usenetActiveItems = usenetQueueData?.items ?? [];
-  const usenetActiveCount = usenetActiveItems.length;
 
   const { data: sonarrQueueData, refetch: refetchSonarrQueue } = useServerSonarrQueue(activeServerId);
   const { data: radarrQueueData, refetch: refetchRadarrQueue } = useServerRadarrQueue(activeServerId);

@@ -2,21 +2,7 @@ import { useState } from 'react'
 import { Copy, X, Check, Layers, Grid3X3, Hammer } from 'lucide-react'
 import { BlueprintIcon } from '../atoms/media-game-blueprint-icon'
 import { categorizeEntity } from '../../utils/blueprint'
-
-interface ParsedBlueprint {
-  type: string
-  label: string
-  description: string
-  icons: string[]
-  entities: Record<string, number>
-  entityCount: number
-  tiles: Record<string, number>
-  tileCount: number
-  dimensions: { width: number; height: number }
-  version: string
-  raw: string
-  id?: string
-}
+import type { ParsedBlueprint } from '../../types'
 
 interface Props {
   blueprint: ParsedBlueprint

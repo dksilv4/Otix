@@ -49,6 +49,16 @@ describe('useRequestMedia', () => {
       isLoading: false,
     } as any)
 
+    vi.spyOn(downloadHooksModule, 'useServerRadarrQualityProfiles').mockReturnValue({
+      data: [{ id: 1, name: 'HD - 1080p' }, { id: 2, name: 'Ultra-HD' }] as any,
+      isLoading: false,
+    } as any)
+
+    vi.spyOn(downloadHooksModule, 'useServerSonarrQualityProfiles').mockReturnValue({
+      data: [{ id: 1, name: 'HD - 1080p' }, { id: 2, name: 'Ultra-HD' }] as any,
+      isLoading: false,
+    } as any)
+
     vi.spyOn(downloadHooksModule, 'useServerSonarrConfig').mockReturnValue({
       data: {
         enabled: true,
@@ -56,6 +66,16 @@ describe('useRequestMedia', () => {
         port: 8989,
         instances: [{ id: 'sonarr1', name: 'TV', enabled: true, host: '127.0.0.1', port: 8989 }],
       } as any,
+      isLoading: false,
+    } as any)
+
+    vi.spyOn(downloadHooksModule, 'useServerRadarrQualityProfiles').mockReturnValue({
+      data: [{ id: 1, name: 'HD - 1080p' }, { id: 2, name: 'Ultra-HD' }] as any,
+      isLoading: false,
+    } as any)
+
+    vi.spyOn(downloadHooksModule, 'useServerSonarrQualityProfiles').mockReturnValue({
+      data: [{ id: 1, name: 'HD - 1080p' }, { id: 2, name: 'Ultra-HD' }] as any,
       isLoading: false,
     } as any)
 

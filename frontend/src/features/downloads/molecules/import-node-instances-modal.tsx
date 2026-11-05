@@ -74,7 +74,7 @@ export const ImportNodeInstancesModal = ({
           variant: 'error',
         })
       }
-      if (imported.length || !errors.length) onClose()
+      if (imported.length || !errors.length) handleClose()
     } catch (err: any) {
       toast({
         title: 'Import failed',

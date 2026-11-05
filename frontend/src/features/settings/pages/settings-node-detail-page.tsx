@@ -11,20 +11,16 @@ import {
   Radio,
   AlertTriangle,
   ExternalLink,
-  ShieldAlert,
   Link2,
   Cpu,
   SlidersHorizontal,
-  Users,
 } from 'lucide-react'
 import { DkButton } from '@ui/atoms/button'
 import { DkDialog } from '@ui/molecules/dialog'
 import { useToast } from '@ui/molecules/toast'
-import { useAuth } from '@/lib/providers/auth'
 import { useDeleteGameServer } from '@/features/downloads/use-server-downloads'
 import { useSettingsNode } from '../context/settings-node-context'
 import { parseNodeIdParam } from '../node-settings'
-import { SettingsLockedState } from '../components/molecules/settings-locked-state'
 import { ViewScannedGamesModal } from '../components/organisms/view-scanned-games-modal'
 import { formatBytes } from '../utils/scanned-summary'
 import { cn } from '@/lib/utils'
@@ -32,7 +28,6 @@ import { cn } from '@/lib/utils'
 export const SettingsNodeDetailPage = () => {
   const navigate = useNavigate()
   const { toast } = useToast()
-  const { isAuthenticated } = useAuth()
   const params = useParams({ strict: false }) as { nodeId?: string }
   const nodeId = parseNodeIdParam(params.nodeId)
   const { servers, setSelectedNodeId } = useSettingsNode()

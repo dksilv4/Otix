@@ -16,7 +16,7 @@ from datetime import date, timedelta
 from django.db.models import OuterRef, Q, Subquery
 from django.db.models.query import QuerySet
 
-from apps.media.models import MediaItem, Season
+from apps.media.models import MediaAsset, MediaItem, Season
 from apps.media.services import catalog as catalog_service
 
 VALID_MEDIA_TYPES = {"movie", "show", "game"}
@@ -84,15 +84,25 @@ def hero_items(*, exclude_adult: bool, limit: int) -> list[MediaItem]:
     """
     import random
 
+    any_assets = MediaAsset.objects.exists()
     pool_size = min(limit * 4, 50)
     pool = list(
         catalog_service.list_media(
-            has_artwork=True,
+            has_artwork=any_assets,
             exclude_adult=exclude_adult,
             prefer_local=True,
             exclude_genres=catalog_service.TALK_SHOW_GENRE_SLUGS,
         )[:pool_size]
     )
+    if not pool and any_assets:
+        pool = list(
+            catalog_service.list_media(
+                has_artwork=False,
+                exclude_adult=exclude_adult,
+                prefer_local=True,
+                exclude_genres=catalog_service.TALK_SHOW_GENRE_SLUGS,
+            )[:pool_size]
+        )
     local = [item for item in pool if getattr(item, "_has_local", False)]
     remote = [item for item in pool if not getattr(item, "_has_local", False)]
     random.shuffle(local)
@@ -139,6 +149,10 @@ def list_feed(
         if not (genre and genre.lower() in catalog_service.TALK_SHOW_GENRE_SLUGS):
             exclude_genres = catalog_service.TALK_SHOW_GENRE_SLUGS
 
+    any_assets = MediaAsset.objects.exists()
+    has_artwork = require_artwork if any_assets else False
+    has_logo = (media_type in ("movie", "show")) if any_assets else False
+
     return catalog_service.list_media(
         media_type=media_type,
         genre=genre,
@@ -146,8 +160,8 @@ def list_feed(
         language=language,
         is_anime=is_anime,
         platform=platform,
-        has_artwork=require_artwork,
-        has_logo=media_type in ("movie", "show"),
+        has_artwork=has_artwork,
+        has_logo=has_logo,
         main_games_only=is_game,
         sort_by=sort_by,
         sort_dir=sort_dir,

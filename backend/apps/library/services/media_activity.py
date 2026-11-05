@@ -12,6 +12,7 @@ Owned node status always takes precedence over friend-shared nodes.
 from __future__ import annotations
 
 import logging
+from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
 from django.core.cache import cache
@@ -70,7 +71,17 @@ def _parse_queue_record(record: dict, media_type: str) -> dict[str, Any] | None:
 
     timeleft = str(record.get("timeleft") or record.get("estimated_completion_time") or "").strip()
     status_str = str(record.get("status") or "Downloading").strip()
+    tracked_status = str(
+        record.get("trackedDownloadStatus") or record.get("tracked_download_status") or ""
+    ).strip().lower()
     queue_id = record.get("id")
+
+    is_complete = (
+        (progress >= 100.0 and size_left <= 0)
+        or status_str.lower() in ("completed", "downloaded", "imported")
+        or (tracked_status in ("completed", "ok") and size > 0 and size_left <= 0)
+    )
+    item_status = "available" if is_complete else "processing"
 
     # Radarr queue
     if media_type == "movie":
@@ -82,7 +93,7 @@ def _parse_queue_record(record: dict, media_type: str) -> dict[str, Any] | None:
             return None
         return {
             "queue_id": queue_id,
-            "status": "processing",
+            "status": item_status,
             "media_type": "movie",
             "tmdb_id": str(tmdb_id),
             "title": str(title),
@@ -110,7 +121,7 @@ def _parse_queue_record(record: dict, media_type: str) -> dict[str, Any] | None:
 
     return {
         "queue_id": queue_id,
-        "status": "processing",
+        "status": item_status,
         "media_type": "show",
         "tmdb_id": str(tmdb_id) if tmdb_id else None,
         "tvdb_id": str(tvdb_id) if tvdb_id else None,
@@ -183,6 +194,65 @@ def get_user_media_activity(
     owned_items: dict[str, dict[str, Any]] = {}
     friend_items: dict[str, dict[str, Any]] = {}
 
+    def _apply_item_to_map(
+        target_map: dict[str, dict[str, Any]], key: str, item: dict[str, Any]
+    ) -> None:
+        existing = target_map.get(key)
+        if not existing:
+            target_map[key] = item
+        elif existing.get("status") == "requested":
+            target_map[key] = item
+        elif item.get("status") == "available":
+            target_map[key] = item
+        elif existing.get("status") == "processing" and item.get("status") == "processing":
+            if (item.get("progress") or 0) > (existing.get("progress") or 0):
+                target_map[key] = item
+
+    # Concurrently fetch queue and catalog across all accessible nodes
+    fetch_tasks = {}
+    with ThreadPoolExecutor(max_workers=min(16, max(len(nodes_to_poll) * 4, 1))) as executor:
+        for server, _, _, _ in nodes_to_poll:
+            q_cache_key_r = f"media_activity:node:{server.id}:radarr:queue"
+            fetch_tasks[(server.id, "radarr_q")] = executor.submit(
+                _get_cached_or_fetch,
+                q_cache_key_r,
+                QUEUE_CACHE_TTL,
+                lambda s=server: radarr_get_queue(s, page=1, page_size=50),
+            )
+
+            q_cache_key_s = f"media_activity:node:{server.id}:sonarr:queue"
+            fetch_tasks[(server.id, "sonarr_q")] = executor.submit(
+                _get_cached_or_fetch,
+                q_cache_key_s,
+                QUEUE_CACHE_TTL,
+                lambda s=server: sonarr_get_queue(s, page=1, page_size=50),
+            )
+
+            if not queue_only:
+                cat_cache_key_m = f"media_activity:node:{server.id}:radarr:movies"
+                fetch_tasks[(server.id, "radarr_movies")] = executor.submit(
+                    _get_cached_or_fetch,
+                    cat_cache_key_m,
+                    CATALOG_CACHE_TTL,
+                    lambda s=server: radarr_get_movies(s),
+                )
+
+                cat_cache_key_s = f"media_activity:node:{server.id}:sonarr:series"
+                fetch_tasks[(server.id, "sonarr_series")] = executor.submit(
+                    _get_cached_or_fetch,
+                    cat_cache_key_s,
+                    CATALOG_CACHE_TTL,
+                    lambda s=server: sonarr_get_series(s),
+                )
+
+    node_results = {}
+    for task_key, future in fetch_tasks.items():
+        try:
+            node_results[task_key] = future.result()
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("Error fetching %s: %s", task_key, exc)
+            node_results[task_key] = (500, None)
+
     for server, is_owned, can_manage, owner_dict in nodes_to_poll:
         target_map = owned_items if is_owned else friend_items
         server_meta = {
@@ -193,27 +263,18 @@ def get_user_media_activity(
             "owner": owner_dict,
         }
 
-        # --- A. Radarr Queue (Processing) ---
-        q_cache_key = f"media_activity:node:{server.id}:radarr:queue"
-        status_code, radarr_q = _get_cached_or_fetch(
-            q_cache_key, QUEUE_CACHE_TTL, lambda s=server: radarr_get_queue(s, page=1, page_size=50)
-        )
+        # --- A. Radarr Queue ---
+        status_code, radarr_q = node_results.get((server.id, "radarr_q"), (500, None))
         if status_code == 200 and isinstance(radarr_q, dict):
             for record in radarr_q.get("records") or []:
                 item = _parse_queue_record(record, "movie")
                 if item and item.get("tmdb_id"):
                     key = _activity_key("movie", item["tmdb_id"])
                     item.update(server_meta)
-                    # Processing overrides Requested; Available overrides Processing
-                    existing = target_map.get(key)
-                    if not existing or existing["status"] == "requested":
-                        target_map[key] = item
+                    _apply_item_to_map(target_map, key, item)
 
-        # --- B. Sonarr Queue (Processing) ---
-        q_cache_key = f"media_activity:node:{server.id}:sonarr:queue"
-        status_code, sonarr_q = _get_cached_or_fetch(
-            q_cache_key, QUEUE_CACHE_TTL, lambda s=server: sonarr_get_queue(s, page=1, page_size=50)
-        )
+        # --- B. Sonarr Queue ---
+        status_code, sonarr_q = node_results.get((server.id, "sonarr_q"), (500, None))
         if status_code == 200 and isinstance(sonarr_q, dict):
             for record in sonarr_q.get("records") or []:
                 item = _parse_queue_record(record, "show")
@@ -222,18 +283,13 @@ def get_user_media_activity(
                     if ident:
                         key = _activity_key("show", ident)
                         item.update(server_meta)
-                        existing = target_map.get(key)
-                        if not existing or existing["status"] == "requested":
-                            target_map[key] = item
+                        _apply_item_to_map(target_map, key, item)
 
         if queue_only:
             continue
 
-        # --- C. Radarr Movies Catalog (Available vs Requested) ---
-        cat_cache_key = f"media_activity:node:{server.id}:radarr:movies"
-        status_code, movies = _get_cached_or_fetch(
-            cat_cache_key, CATALOG_CACHE_TTL, lambda s=server: radarr_get_movies(s)
-        )
+        # --- C. Radarr Movies Catalog ---
+        status_code, movies = node_results.get((server.id, "radarr_movies"), (500, None))
         if status_code == 200 and isinstance(movies, list):
             for m in movies:
                 if not isinstance(m, dict):
@@ -260,20 +316,10 @@ def get_user_media_activity(
                     "is_partial": False,
                     **server_meta,
                 }
+                _apply_item_to_map(target_map, key, item_data)
 
-                existing = target_map.get(key)
-                if not existing:
-                    target_map[key] = item_data
-                elif existing["status"] == "requested" and item_status == "available":
-                    target_map[key] = item_data
-                elif existing["status"] == "processing" and item_status == "available":
-                    target_map[key] = item_data
-
-        # --- D. Sonarr Series Catalog (Available vs Requested) ---
-        cat_cache_key = f"media_activity:node:{server.id}:sonarr:series"
-        status_code, series_list = _get_cached_or_fetch(
-            cat_cache_key, CATALOG_CACHE_TTL, lambda s=server: sonarr_get_series(s)
-        )
+        # --- D. Sonarr Series Catalog ---
+        status_code, series_list = node_results.get((server.id, "sonarr_series"), (500, None))
         if status_code == 200 and isinstance(series_list, list):
             for s in series_list:
                 if not isinstance(s, dict):
@@ -308,14 +354,7 @@ def get_user_media_activity(
                     "is_partial": is_partial,
                     **server_meta,
                 }
-
-                existing = target_map.get(key)
-                if not existing:
-                    target_map[key] = item_data
-                elif existing["status"] == "requested" and item_status == "available":
-                    target_map[key] = item_data
-                elif existing["status"] == "processing" and item_status == "available":
-                    target_map[key] = item_data
+                _apply_item_to_map(target_map, key, item_data)
 
     # --- E. Fallback: User's Connected Plex Items (Direct Available Items) ---
     if not queue_only:

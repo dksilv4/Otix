@@ -25,7 +25,7 @@ export const useGameAchievements = (gameId?: string) => {
     try {
       const [list, gameStats] = await Promise.all([
         window.desktopAPI.getGameAchievements(gameId),
-        window.desktopAPI.getGameAchievementStats(gameId),
+        window.desktopAPI.getGameAchievementStats?.(gameId) ?? Promise.resolve({ total: 0, unlocked: 0, totalPoints: 0, earnedPoints: 0, completionPercentage: 0 }),
       ])
       setAchievements(list as GameAchievement[])
       setStats(gameStats)

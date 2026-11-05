@@ -85,11 +85,5 @@ export const formatAdded = (raw?: string | null): string => {
   return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
 }
 
-export const openBoundModal = (
-  openFn: (element: React.ReactNode) => () => void,
-  renderModal: (onClose: () => void) => React.ReactNode,
-): void => {
-  let close = () => {}
-  close = openFn(renderModal(() => close()))
-}
+export { openBoundModal } from '@/lib/modals'
 

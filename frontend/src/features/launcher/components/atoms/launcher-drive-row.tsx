@@ -3,17 +3,13 @@
 import { motion } from 'framer-motion'
 import { HardDrive, Gamepad2, Disc } from 'lucide-react'
 import { formatBytes, driveLetter } from '@/features/launcher/utils'
+import type { DriveInfo } from '@/features/launcher/types'
 
-interface DriveInfo {
-  drive: string
-  total?: number
-  used: number
-  free: number
-  hasGamePaths?: boolean
-  hasIsoPaths?: boolean
+interface DriveRowProps extends DriveInfo {
+  index?: number
 }
 
-export const DriveRow = ({ drive, total, used, free, hasGamePaths, hasIsoPaths, index = 0 }: DriveInfo & { index?: number }) => {
+export const DriveRow = ({ drive, total, used, free, hasGamePaths, hasIsoPaths, index = 0 }: DriveRowProps) => {
   const totalBytes = total || used + free
   const usedPct = (used / totalBytes) * 100
 

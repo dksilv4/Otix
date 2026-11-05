@@ -1,7 +1,7 @@
 import { BellRing, CheckCheck, ExternalLink } from 'lucide-react'
 import { Link, useNavigate } from '@tanstack/react-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { useAuth, useHasSession } from '@/lib/providers/auth'
+import { useAuth } from '@/lib/providers/auth'
 import { apiClient } from '@/lib/api/client'
 import { showToast, showErrorToast } from '@ui/molecules/toast'
 import { notificationQueries } from '@/features/notifications/queries'
@@ -23,7 +23,6 @@ export interface ActivityModuleNotificationsProps {
 /** Notifications panel section synchronized in real time with the notification page and SSE stream. */
 export const ActivityModuleNotifications = ({ onClose }: ActivityModuleNotificationsProps) => {
   const { isAuthenticated } = useAuth()
-  const hasSession = useHasSession()
   const queryClient = useQueryClient()
   const navigate = useNavigate()
   const markRead = useMarkRead()

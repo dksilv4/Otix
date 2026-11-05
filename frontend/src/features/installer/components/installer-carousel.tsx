@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Gamepad2, Zap, Cloud, Blocks, ShieldCheck, Flame, Cpu, Gauge } from 'lucide-react'
+import { Gamepad2, Zap, Cloud, Blocks, ShieldCheck, Cpu, Gauge } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { INSTALLER_CAROUSEL_SLIDES } from '../constants'
 import type { CarouselSlide } from '../types'

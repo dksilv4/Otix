@@ -1,4 +1,3 @@
-import type { ReactNode } from 'react'
 import {
   Info,
   ExternalLink,
@@ -57,7 +56,9 @@ import { MediaScreenshotLightboxModal } from '@/features/media/components/molecu
 import { ShareModal } from '@/features/list/components/molecules/list-actions'
 import { EpisodeModal } from '@/features/media/show/components/organisms/media-show-episode-modal'
 import { MatchReviewCenterModal } from '@/features/settings/components/organisms/match-review-center-modal'
-import type { ContextMenuItemDef } from '../types'
+import type { ContextMenuItemDef, MenuBuilderContext } from '../types'
+
+export type { MenuBuilderContext }
 import type {
   ResolvedMediaTarget,
   ResolvedGameTarget,
@@ -76,11 +77,6 @@ import type {
   ResolvedInputTarget,
   ResolvedPageTarget,
 } from './dom-resolver'
-
-export interface MenuBuilderContext {
-  navigate?: (opts: { to: string; params?: Record<string, string>; search?: Record<string, unknown> }) => void
-  openModal?: (node: ReactNode) => () => void
-}
 
 const safeCopy = async (text: string, title = 'Copied to clipboard') => {
   try {

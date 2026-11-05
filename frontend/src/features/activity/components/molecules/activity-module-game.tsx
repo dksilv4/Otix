@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { RotateCw } from 'lucide-react'
 import { useMatchedRunningGame, useCs2GameState, isCs2Game } from '@/features/launcher'
 import type { RunningGameData } from '@/lib/desktop/api'
@@ -25,6 +26,7 @@ export const ActivityModuleGame = ({ onClose }: ActivityModuleGameProps = {}) =>
   )
   const { gameState } = useCs2GameState({ enabled: isCs2FromRunningGame || !runningGame })
   const hasActiveCs2Gsi = Boolean(gameState && (gameState.isInGame || gameState.activity === 'playing'))
+  const [cs2StartTime] = useState(() => Date.now())
 
   if (runningGames.length === 0 && !runningGame && !hasActiveCs2Gsi) {
     return null
@@ -40,7 +42,7 @@ export const ActivityModuleGame = ({ onClose }: ActivityModuleGameProps = {}) =>
   if (gamesToRender.length === 0 && hasActiveCs2Gsi) {
     gamesToRender.push({
       game: { id: '730', title: 'Counter-Strike 2', platform: 'pc' },
-      startTime: Date.now(),
+      startTime: cs2StartTime,
       launchedByOtix: false,
     })
   }

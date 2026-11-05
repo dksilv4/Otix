@@ -1,10 +1,8 @@
-import { useState } from 'react'
 import {
   Sparkles,
   RefreshCw,
   X,
   ChevronRight,
-  HardDrive,
   Gamepad2,
   FolderOpen,
 } from 'lucide-react'
@@ -28,7 +26,6 @@ export const LibraryScanBar = ({
   const {
     isScanning,
     scanProgress,
-    scanPhase,
     summary,
     isBannerVisible,
     dismissBanner,

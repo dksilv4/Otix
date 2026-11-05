@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils'
 import { resolveProviderUrl } from '../../utils/provider'
 import { useMediaParams } from '../../hooks/use-media-params'
 import { useQuickStream } from '../../hooks/use-quick-stream'
+import type { CommercialCategory } from '../../types'
 
 interface WhereToWatchProps {
   watchProviders?: MediaWatchProvider[]
@@ -14,8 +15,6 @@ interface WhereToWatchProps {
 }
 
 export type WhereToWatchV4Props = WhereToWatchProps
-
-type CommercialCategory = 'stream' | 'rent' | 'buy'
 
 const COMMERCIAL_MAP: Record<CommercialCategory, { label: string; types: string[]; color: string; badge: string }> = {
   stream: {

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from '@tanstack/react-router'
-import { Tv, Loader2, Clock, X, AlertCircle } from 'lucide-react'
+import { Tv, Loader2, Clock, X, AlertCircle, Check, Play } from 'lucide-react'
 import type { ServerArrQueueItem } from '../arr-types'
 import { resolveEpisodeMetadata } from '../utils/episode-download'
 import { formatBytes } from '@/lib/utils'
@@ -25,9 +25,14 @@ export const DownloadEpisodeCard = ({
     ? meta.backdropUrl || meta.posterUrl
     : meta.stillUrl || meta.backdropUrl || meta.posterUrl
 
-  const isDownloading = meta.status.toLowerCase().includes('download')
-  const isQueued = meta.status.toLowerCase().includes('queue')
   const isFailed = meta.status.toLowerCase().includes('fail') || meta.status.toLowerCase().includes('error')
+  const isCompleted =
+    !isFailed &&
+    (meta.percentage >= 100 ||
+      ['completed', 'downloaded', 'imported'].includes(meta.status.toLowerCase()) ||
+      (meta.sizeBytes > 0 && meta.sizeLeftBytes <= 0))
+  const isDownloading = !isCompleted && meta.status.toLowerCase().includes('download')
+  const isQueued = !isCompleted && meta.status.toLowerCase().includes('queue')
 
   const episodeBadgeText =
     meta.seasonNumber != null && meta.episodeNumber != null
@@ -88,14 +93,16 @@ export const DownloadEpisodeCard = ({
 
               {/* Status Indicator */}
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-muted text-muted-foreground">
-                {isDownloading ? (
+                {isCompleted ? (
+                  <Check className="h-2.5 w-2.5 text-primary" />
+                ) : isDownloading ? (
                   <Loader2 className="h-2.5 w-2.5 animate-spin text-primary" />
                 ) : isQueued ? (
                   <Clock className="h-2.5 w-2.5 text-muted-foreground" />
                 ) : isFailed ? (
                   <AlertCircle className="h-2.5 w-2.5 text-destructive" />
                 ) : null}
-                <span className="capitalize">{meta.status}</span>
+                <span className="capitalize">{isCompleted ? 'Ready to Stream' : meta.status}</span>
               </span>
             </div>
 
@@ -107,8 +114,17 @@ export const DownloadEpisodeCard = ({
             )}
           </div>
 
-          {/* Cancel button */}
-          {onCancel && (
+          {isCompleted && meta.mediaItemId ? (
+            <Link
+              to="/media/$mediaType/$mediaId"
+              params={{ mediaType: 'show', mediaId: String(meta.mediaItemId) }}
+              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-all shadow-sm shrink-0"
+              title="Stream show"
+            >
+              <Play className="h-3 w-3 fill-current" />
+              <span>Stream</span>
+            </Link>
+          ) : onCancel ? (
             <button
               type="button"
               onClick={() => onCancel(item.id)}
@@ -119,7 +135,7 @@ export const DownloadEpisodeCard = ({
             >
               {isCancelling ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <X className="h-3.5 w-3.5" />}
             </button>
-          )}
+          ) : null}
         </div>
 
         {/* Quality, Protocol & Release Details */}

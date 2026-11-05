@@ -5,8 +5,7 @@ import { ListsTabContent } from '@library/molecules/lists-tab-content'
 import { isDesktop } from '@/lib/desktop/api'
 import { useGameServers } from '@/features/downloads/use-server-downloads'
 import { apiClient } from '@/lib/api/client'
-
-type Tab = { id: string; label: string; icon: React.ComponentType<{ className?: string }> }
+import type { Tab, DownloadItem, ArrLibrary } from '../types'
 
 const TABS: Tab[] = [
   { id: 'lists', label: 'My Lists', icon: List },
@@ -15,18 +14,6 @@ const TABS: Tab[] = [
   { id: 'lidarr', label: 'Lidarr', icon: Music },
   { id: 'downloads', label: 'Downloads', icon: Download },
 ]
-
-interface DownloadItem {
-  id: string
-  mediaItemTitle: string | null
-  nzbName: string | null
-  nzbSize: number | null
-  status: string
-  percentage: number | null
-  errorMessage: string | null
-  completedAt: string | null
-  createdAt: string
-}
 
 export const LibraryPage = () => {
   const [activeTab, setActiveTab] = useState('lists')
@@ -73,24 +60,6 @@ const ListsTab = () => {
 };
 
 // ── Arr tab helper (shares logic between Radarr, Sonarr, Lidarr) ──
-
-interface ArrItem {
-  id: number
-  title: string
-  year?: number
-  images?: Array<{ coverType: string; remoteUrl: string }>
-}
-
-interface ArrLibrary {
-  name: string
-  url: string
-  count: number
-  movies?: ArrItem[]
-  series?: ArrItem[]
-  albums?: ArrItem[]
-  items?: ArrItem[]
-  error?: string
-}
 
 const ArrTab = ({
   pluginId,

@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
+import { createContext, useEffect, useState, type ReactNode } from 'react'
 import {
   type ShaderQualityPreference,
   SHADER_QUALITY_STORAGE_KEY,
@@ -9,7 +9,7 @@ import {
 export type { ShaderQualityPreference }
 export { SHADER_QUALITY_OPTIONS }
 
-const ShaderQualityContext = createContext<{
+export const ShaderQualityContext = createContext<{
   shaderQuality: ShaderQualityPreference
   setShaderQuality: (value: ShaderQualityPreference) => void
 }>({
@@ -29,9 +29,7 @@ export const ShaderQualityProvider = ({ children }: { children: ReactNode }) => 
       {children}
     </ShaderQualityContext.Provider>
   )
-}
+};
 
-export const useShaderQuality = () => {
-  return useContext(ShaderQualityContext)
-}
+export { useShaderQuality } from './hooks/use-shader-quality'
 

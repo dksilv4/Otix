@@ -12,17 +12,7 @@ import { useServerGames, serverKeys } from '@/features/downloads/use-server-down
 import { matchServerGameFile } from '@/features/downloads/server-availability'
 import { DkDialog } from '@ui/molecules/dialog'
 import { PLATFORM_LABELS } from '@/constants/games'
-import type { LocalGame, CatalogGame, Game } from '@/features/launcher/types'
-
-// ── Modal step enum ──────────────────────────────────────────────
-
-type ModalStep =
-  | 'matching'      // spinner — calling match API
-  | 'matched'       // high confidence result shown
-  | 'suggestion'    // medium confidence, needs user decision
-  | 'no-match'      // no confident match, show search
-  | 'accepting'     // saving match to server
-  | 'done'          // brief success state before close
+import type { LocalGame, CatalogGame, Game, LauncherModalStep as ModalStep } from '@/features/launcher/types'
 
 // ── Props ────────────────────────────────────────────────────────
 

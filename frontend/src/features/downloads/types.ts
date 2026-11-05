@@ -176,3 +176,14 @@ export interface ServerProbeResult {
 
 export type NodeProbeResult = ServerProbeResult
 
+export interface PathMappingRow {
+  remotePath: string
+  hostPath: string
+  linked?: boolean
+  error?: string
+}
+
+export type ArrAppType = 'radarr' | 'sonarr'
+
+export type ProtocolFilter = 'all' | 'usenet' | 'torrent'
+

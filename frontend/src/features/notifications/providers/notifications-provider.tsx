@@ -9,6 +9,7 @@ import { createSoundChannel } from '../channels/sound-channel'
 import { createWebChannel } from '../channels/web-channel'
 import { createToastChannel } from '../channels/toast-channel'
 import { createDesktopChannel } from '../channels/desktop-channel'
+import { useDetectedGames } from '../hooks/use-detected-games'
 import type {
   NotificationEvent,
   NotificationType,
@@ -33,6 +34,8 @@ export const NotificationsProvider = ({ children }: NotificationsProviderProps) 
   const queryClient = useQueryClient()
   const { toast } = useToast()
   const routerRef = useRef<NotificationRouter | null>(null)
+
+  useDetectedGames()
 
   const rawPrefs = user?.notificationPreferences
   const prefs = useMemo(

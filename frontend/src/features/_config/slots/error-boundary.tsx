@@ -1,6 +1,7 @@
 // frontend/src/features/_config/slots/ErrorBoundary.tsx
 import { Component, type ReactNode } from 'react'
 import { showErrorToast } from '@ui/molecules/toast'
+import type { SlotErrorBoundaryState } from './types'
 
 interface Props {
   children: ReactNode
@@ -8,18 +9,13 @@ interface Props {
   onError?: (error: Error) => void
 }
 
-interface State {
-  hasError: boolean
-  error: Error | null
-}
-
-export class ErrorBoundary extends Component<Props, State> {
+export class ErrorBoundary extends Component<Props, SlotErrorBoundaryState> {
   constructor(props: Props) {
     super(props)
     this.state = { hasError: false, error: null }
   }
 
-  static getDerivedStateFromError(error: Error): State {
+  static getDerivedStateFromError(error: Error): SlotErrorBoundaryState {
     return { hasError: true, error }
   }
 

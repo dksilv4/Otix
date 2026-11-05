@@ -14,13 +14,12 @@ import { useQuickStream } from '@/features/media/hooks/use-quick-stream'
 import { apiClient } from '@/lib/api/client'
 import type { GenreOption } from '@/features/genre/types'
 import { MEDIA_TYPE_LABEL } from '@/constants/media'
+import type { MediaTypeFilter } from '../../types'
 
 export interface DecideWatchModalProps {
   onClose: () => void
   isExiting?: boolean
 }
-
-type MediaTypeFilter = 'movie' | 'show' | 'game'
 
 const RUNTIME_OPTIONS: Array<{ id: DecideRuntime | 'any'; label: string }> = [
   { id: 'any', label: 'Any length' },

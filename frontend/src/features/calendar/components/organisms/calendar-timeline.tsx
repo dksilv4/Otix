@@ -27,18 +27,10 @@ import {
   expandClustersForSpace,
   type TimelineCluster,
 } from '../../utils/timeline-cluster'
+import type { PlacedCluster } from '../../types'
 
 interface CalendarTimelineProps {
   events: CalendarEvent[]
-}
-
-interface PlacedCluster {
-  cluster: TimelineCluster
-  x: number
-  axisOffsetY: number
-  side: BeamSide
-  isPast: boolean
-  stemHeight: number
 }
 
 const SIDE_PAD = 80

@@ -1,13 +1,9 @@
 import { useCallback, useRef } from 'react'
 import { useModal } from '@/lib/modals'
 import { MediaRequestConfirmModal } from '../components/organisms/media-request-confirm-modal'
-import type { RequestMediaState } from './use-request-media'
+import type { OpenMediaRequestModalOptions } from '../types'
 
-export interface OpenMediaRequestModalOptions {
-  state: RequestMediaState
-  initialInstanceId?: string
-  onWatch?: () => void
-}
+export type { OpenMediaRequestModalOptions }
 
 export const useOpenMediaRequestModal = () => {
   const { openModal } = useModal()

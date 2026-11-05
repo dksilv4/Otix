@@ -1,5 +1,3 @@
-import type { ReactNode } from 'react'
-
 export interface YouTubeProgressState {
   phase: string
   detail?: string
@@ -34,12 +32,6 @@ export const personaStateLabel = (state: number | null): string => {
 
 export { extractIntegrationMessage } from '@/lib/utils/format-error'
 
-export const openBoundModal = (
-  openModal: (component: ReactNode) => () => void,
-  render: (onClose: () => void) => ReactNode,
-): void => {
-  const closeRef = { current: () => {} }
-  closeRef.current = openModal(render(() => closeRef.current()))
-}
+export { openBoundModal } from '@/lib/modals'
 
 export { formatDaysAgo } from '@/lib/utils/format-days-ago'

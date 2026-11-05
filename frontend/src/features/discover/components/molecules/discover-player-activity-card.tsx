@@ -2,32 +2,9 @@ import { Link } from '@tanstack/react-router'
 import { Zap, Gamepad2, Film, Tv, Music } from 'lucide-react'
 import { DkAvatar } from '@ui/atoms/avatar'
 import { formatDuration } from '@/lib/utils'
+import type { LiveActivityMediaType, LiveMediaActivityItem, PlayerActivityItem } from '../../types'
 
-export type LiveActivityMediaType = 'game' | 'movie' | 'show' | 'music'
-
-export interface LiveMediaActivityItem {
-  id: string
-  mediaType: LiveActivityMediaType
-  mediaId?: string | null
-  title: string
-  subtitle?: string | null
-  user: {
-    id?: string
-    username: string
-    avatarUrl?: string | null
-  }
-  posterUrl?: string | null
-  backdropUrl?: string | null
-  textlessPosterUrl?: string | null
-  elapsedMs?: number
-  durationMs?: number
-  fps?: number | null
-  sessionXp?: number
-  cs2Status?: string
-}
-
-// Backward compatibility alias
-export type PlayerActivityItem = LiveMediaActivityItem
+export type { LiveActivityMediaType, LiveMediaActivityItem, PlayerActivityItem }
 
 interface DiscoverPlayerActivityCardProps {
   item: LiveMediaActivityItem

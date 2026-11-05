@@ -1,4 +1,4 @@
-import { Sparkles, Gamepad2, X, CheckCircle2, AlertTriangle, Loader2 } from 'lucide-react'
+import { Sparkles, Gamepad2, X, CheckCircle2, AlertTriangle } from 'lucide-react'
 import { DkButton } from '@ui/atoms/button'
 import { cn } from '@/lib/utils'
 import {

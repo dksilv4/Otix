@@ -511,7 +511,7 @@ export function listFoundServerGames(
       status: foundStatus(game, existing, visibleIds),
       filename: group.primary.file.relativePath || group.primary.file.filename,
       filesize: group.primary.file.filesize,
-      serverName: group.primary.file.serverName,
+      serverName: group.primary.file.serverName || group.primary.file.nodeName || 'Server',
       nodeName: group.primary.file.nodeName || group.primary.file.serverName,
       extraCount: group.updates.length + group.dlc.length + Math.max(0, group.games.length - 1),
     })

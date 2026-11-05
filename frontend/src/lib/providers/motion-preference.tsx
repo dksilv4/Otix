@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
+import { createContext, useEffect, useState, type ReactNode } from 'react'
 import {
   type MotionPreference,
   MOTION_STORAGE_KEY,
@@ -10,7 +10,7 @@ import {
 export type { MotionPreference }
 export { MOTION_OPTIONS }
 
-const MotionPreferenceContext = createContext<{
+export const MotionPreferenceContext = createContext<{
   motionPreference: MotionPreference
   setMotionPreference: (value: MotionPreference) => void
 }>({
@@ -50,9 +50,7 @@ export const MotionPreferenceProvider = ({ children }: { children: ReactNode }) 
       {children}
     </MotionPreferenceContext.Provider>
   )
-}
+};
 
-export const useMotionPreference = () => {
-  return useContext(MotionPreferenceContext)
-}
+export { useMotionPreference } from './hooks/use-motion-preference'
 

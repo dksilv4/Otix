@@ -31,10 +31,7 @@ import {
   mapGOGUnmatched,
   deduplicateGames,
 } from '../utils/library-games'
-
-type ItemFilter = 'all' | 'games' | 'dlcs' | 'expansions' | 'demos' | 'betas' | 'mods' | 'soundtracks' | 'matched' | 'candidates' | 'unmatched'
-type SortKey = 'title' | 'recent' | 'playtime' | 'platform' | 'status'
-type SortDir = 'asc' | 'desc'
+import type { ItemFilter, SortKey, SortDir } from '../types'
 
 export const SettingsLibraryPage = () => {
   const [pluginApi, setPluginApi] = useState<PluginAPI | null>(null)
@@ -516,7 +513,7 @@ export const SettingsLibraryPage = () => {
 
                         <button
                           type="button"
-                          onClick={() => setSortDir((prev) => (prev === 'asc' ? 'desc' : 'asc'))}
+                          onClick={() => setSortDir((prev: SortDir) => (prev === 'asc' ? 'desc' : 'asc'))}
                           className="flex items-center justify-center h-8 w-8 rounded-full bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)] text-muted-foreground hover:text-foreground transition-all cursor-pointer select-none"
                           title={sortDir === 'asc' ? 'Ascending (Click for Descending)' : 'Descending (Click for Ascending)'}
                         >

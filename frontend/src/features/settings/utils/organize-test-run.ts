@@ -69,9 +69,8 @@ export interface PreviewMetrics {
   subdirectoriesCount: number
 }
 
-export const normalizePathSeparators = (pathStr: string): string => {
-  return (pathStr || '').replace(/[\\/]+/g, '/').replace(/\/+$/, '')
-}
+import { normalizePathSeparators } from '@/lib/utils'
+export { normalizePathSeparators }
 
 export const extractSourceSubdirectory = (sourcePath: string, rootDir?: string): string | null => {
   if (!sourcePath) return null

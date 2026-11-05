@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useLocation } from '@tanstack/react-router'
+import { Link } from '@tanstack/react-router'
 import { Star, Pencil, Sparkles, ExternalLink, LogIn } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '@auth/hooks/use-auth'

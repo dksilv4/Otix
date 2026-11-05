@@ -160,8 +160,8 @@ export const FloatingGameSelector = () => {
         })
         const catalogId =
           game.otixMediaId ||
-          (game as Record<string, unknown>).rawGame?.otixMediaId ||
-          (game as Record<string, unknown>).rawGame?.data?.id ||
+          ((game as unknown as Record<string, any>).rawGame?.otixMediaId) ||
+          ((game as unknown as Record<string, any>).rawGame?.data?.id) ||
           (isCatalogId(game.id) ? game.id : undefined)
         if (catalogId && isCatalogId(catalogId as string)) {
           queryClient.prefetchQuery(gameDetailOptions(catalogId as string))
@@ -204,8 +204,8 @@ export const FloatingGameSelector = () => {
     try {
       setIsScanning(true)
       const scanPaths = await api.getScanPaths()
-      const gameDirs = scanPaths.filter((sp) => sp.type === 'game').map((sp) => sp.path)
-      const isoDirs = scanPaths.filter((sp) => sp.type === 'iso').map((sp) => sp.path)
+      const gameDirs = scanPaths.filter((sp) => sp.type === 'game' || (sp as any).type === 'installed').map((sp) => sp.path)
+      const isoDirs = scanPaths.filter((sp) => sp.type === 'iso' || (sp as any).type === 'provider').map((sp) => sp.path)
       await api.scanPaths(gameDirs, isoDirs)
       queryClient.invalidateQueries({ queryKey: localGameKeys.all })
       toast({

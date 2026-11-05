@@ -1,12 +1,9 @@
 import { SlidersHorizontal, Server } from 'lucide-react'
-import { useAuth } from '@/lib/providers/auth'
 import { useSettingsNode } from '../context/settings-node-context'
 import { NodeSoftwareSettings } from '../components/organisms/node-software-settings'
-import { SettingsLockedState } from '../components/molecules/settings-locked-state'
 import { GLOBAL_PROFILE_NODE_ID } from '../utils/node-switcher'
 
 export const SettingsSoftwarePage = () => {
-  const { isAuthenticated } = useAuth()
   const { servers, selectedNode, selectedNodeId } = useSettingsNode()
 
   const activeNodeId =

@@ -48,15 +48,7 @@ export function getSafeRedirectUrl(raw: string | null | undefined, fallback = '/
   return trimmed
 }
 
-export function extractErrorMessage(err: unknown, fallback = 'Something went wrong. Please try again.'): string {
-  if (err && typeof err === 'object' && 'response' in err) {
-    const resp = (err as { response?: { data?: { detail?: string; message?: string } } }).response
-    if (resp?.data?.detail) return resp.data.detail
-    if (resp?.data?.message) return resp.data.message
-  }
-  if (err instanceof Error) return err.message
-  return fallback
-}
+export { extractErrorMessage } from '@/lib/utils/format-error'
 
 export function validateLoginFields(fields: { identity: string; password: string }): Record<string, string> {
   const errors: Record<string, string> = {}

@@ -1,8 +1,7 @@
 import type { ReactNode } from 'react'
 import { AlertTriangle, CheckCircle2, Info, XCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
-
-type AlertTone = 'info' | 'success' | 'warning' | 'error'
+import type { AlertTone } from './types'
 
 interface AlertProps {
   tone?: AlertTone

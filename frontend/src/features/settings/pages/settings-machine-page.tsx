@@ -1,12 +1,9 @@
 import { Cpu, Server } from 'lucide-react'
-import { useAuth } from '@/lib/providers/auth'
 import { useSettingsNode } from '../context/settings-node-context'
 import { NodeMachineSettings } from '../components/organisms/node-machine-settings'
-import { SettingsLockedState } from '../components/molecules/settings-locked-state'
 import { GLOBAL_PROFILE_NODE_ID } from '../utils/node-switcher'
 
 export const SettingsMachinePage = () => {
-  const { isAuthenticated } = useAuth()
   const { servers, selectedNode, selectedNodeId } = useSettingsNode()
 
   const activeNodeId =

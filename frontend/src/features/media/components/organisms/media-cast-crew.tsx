@@ -4,14 +4,9 @@ import { PeopleCard } from '@people/components/molecules/people-card'
 import { groupByRole } from '@media'
 import { DkDialog } from '@ui/molecules/dialog'
 import { cn } from '@/lib/utils'
+import type { CreditItem, CreditCategory } from '../../types'
 
-export interface CreditItem {
-  id: string
-  person: { id: string; name: string; photoUrl?: string } | null
-  role: string
-  characterName?: string
-  sortOrder: number
-}
+export type { CreditItem, CreditCategory }
 
 interface CastCrewProps {
   credits?: CreditItem[]
@@ -19,8 +14,6 @@ interface CastCrewProps {
 }
 
 export type CastCrewV4Props = CastCrewProps
-
-type CreditCategory = 'cast' | 'directing' | 'crew'
 
 export const CastCrew = ({ credits = [], className = '' }: CastCrewProps) => {
   const scrollRef = useRef<HTMLDivElement>(null)

@@ -4,33 +4,8 @@ import { Gamepad2, ExternalLink, Gift, AlertCircle } from 'lucide-react'
 import { Carousel } from '@ui/molecules/carousel'
 import { useSteamFreePacksSetting } from '@/features/settings/hooks/use-steam-free-packs-setting'
 import { cn } from '@/lib/utils'
-
-interface SteamFreeGame {
-  id: number
-  title: string
-  appId: number
-  posterUrl: string | null
-  originalPrice: string | null
-  freeEndDate: string | null
-  urlSlug: string | null
-  description: string | null
-  seller: string | null
-  kind?: string
-  itemType?: string
-  baseGameTitle?: string
-  claimUrl?: string
-}
-
-interface FreeCheckResult {
-  success: boolean
-  freeGames: SteamFreeGame[]
-  newGames?: SteamFreeGame[]
-  isAuthenticated: boolean
-  alreadyOwned?: number
-  error?: string
-}
-
-import { getPluginAPI } from '@/features/discover/utils/plugins'
+import { getPluginAPI } from '@/features/plugins/api'
+import type { SteamFreeGame, FreeCheckResult } from '../../types'
 
 export const SteamFreeGamesSection = () => {
   const [result, setResult] = useState<FreeCheckResult | null>(null)

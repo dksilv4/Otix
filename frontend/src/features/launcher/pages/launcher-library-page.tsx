@@ -18,9 +18,7 @@ import { useLauncherSettings } from '@/features/launcher/hooks/use-launcher-sett
 import { LibraryScanBar } from '@/features/library/molecules/library-scan-bar'
 import { PLATFORM_LABELS } from '@/constants/games'
 import { MediaLogo } from '@/lib/media/media-logo'
-import type { DisplayGame, LauncherPlatform } from '@/features/launcher/types'
-
-type SortMode = 'recent' | 'title' | 'platform'
+import type { DisplayGame, LauncherPlatform, SortMode } from '@/features/launcher/types'
 
 export const LauncherLibraryPage = () => {
   const navigate = useNavigate()

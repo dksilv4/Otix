@@ -25,7 +25,7 @@ const EXTENDED_RAILS = [
 ] as const
 
 export const DiscoverFeed = () => {
-  const { data: heroData, isFetched } = useInfiniteQuery(discoverQueries.hero())
+  const { data: heroData } = useInfiniteQuery(discoverQueries.hero())
   const hasFeedContent = useMemo(() => {
     const pages = heroData?.pages ?? []
     return pages.some((p) => {
@@ -33,7 +33,6 @@ export const DiscoverFeed = () => {
       return Array.isArray(items) && items.length > 0
     })
   }, [heroData])
-  const catalogEmpty = isFetched && !hasFeedContent
 
   const {
     sections,
@@ -121,8 +120,7 @@ export const DiscoverFeed = () => {
       </div>
 
       {/* 4. Modular Sections */}
-      {!catalogEmpty && (
-        <div className="space-y-12 sm:space-y-14">
+      <div className="space-y-12 sm:space-y-14">
           {sections.map((section) => {
             if (!shouldRenderSection(section.id)) return null
 
@@ -212,7 +210,6 @@ export const DiscoverFeed = () => {
             }
           })}
         </div>
-      )}
 
       {/* 5. Customization Modal */}
       <DiscoverCustomizeModal

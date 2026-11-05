@@ -7,7 +7,6 @@ import { useSettingsNode } from '../context/settings-node-context'
 import { isLocalDesktopNode, isLocalDesktopNodeId, LOCAL_DESKTOP_NODE_ID } from '../local-desktop-node'
 import { useScanProgress } from './use-scan-progress'
 import {
-  type ScannedGameItem,
   fetchScannedGamesList,
   unlinkSourcePair,
 } from '../utils/scanned-summary'
@@ -29,7 +28,7 @@ import {
 import { formatScanError } from '@/lib/utils/scan-errors'
 import { uploadNodeManifestInChunks, uploadScannedGamesManifest } from '@/lib/utils/manifest'
 
-export const NODE_SCANNED_FILES_QUERY_KEY = (nodeId?: number | null) =>
+export const NODE_SCANNED_FILES_QUERY_KEY = (nodeId?: number | string | null) =>
   ['node-scanned-files', nodeId ?? 'local'] as const
 
 export const useNodeScanFiles = () => {
@@ -405,7 +404,7 @@ export const useNodeScanFiles = () => {
       window.dispatchEvent(new Event('scanned-games-updated'))
       await refetchFiles()
     } catch (err: any) {
-      scanProgress.failScan(err?.message || 'Scan encountered an issue.')
+      scanProgress.errorScan(err?.message || 'Scan encountered an issue.')
       toast({
         title: 'Scan Failed',
         description: err?.message || 'Could not complete scan on this node.',

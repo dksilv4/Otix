@@ -2,12 +2,9 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ChevronLeft, ChevronRight, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import type { LightboxScreenshot } from '../../types'
 
-export interface LightboxScreenshot {
-  url: string
-  width?: number | null
-  height?: number | null
-}
+export type { LightboxScreenshot }
 
 interface MediaScreenshotLightboxModalProps {
   screenshots: LightboxScreenshot[]

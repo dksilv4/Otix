@@ -24,6 +24,7 @@ export interface ArrServiceInstance {
   autoRequestWatchlist?: boolean
   hasApiKey?: boolean
   has_api_key?: boolean
+  tags?: string[]
 }
 
 export function createArrInstance(
@@ -59,6 +60,7 @@ export function createArrInstance(
     autoRequestWatchlist: autoRequest,
     hasApiKey: hasKey,
     has_api_key: hasKey,
+    tags: Array.isArray(partial.tags) ? partial.tags.map((t) => String(t).trim()).filter(Boolean) : [],
   }
 }
 
@@ -118,6 +120,7 @@ export function normalizeArrInstances(
         auto_request_watchlist: config?.auto_request_watchlist ?? config?.autoRequestWatchlist,
         autoRequestWatchlist: config?.auto_request_watchlist ?? config?.autoRequestWatchlist,
         hasApiKey: config?.hasApiKey ?? config?.has_api_key ?? Boolean(config?.apiKey || config?.api_key),
+        tags: Array.isArray((config as any)?.tags) ? (config as any).tags : [],
       },
       defaultPort,
     ),

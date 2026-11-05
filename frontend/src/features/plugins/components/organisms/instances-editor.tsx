@@ -48,17 +48,7 @@ import {
   instanceSummary,
   parseParts,
 } from '../../utils/instances'
-
-interface ProbeOptions {
-  [field: string]: Array<{ value: string; label: string }>
-}
-
-interface ProbeResult {
-  ok: boolean
-  version?: string
-  options?: ProbeOptions
-  error?: string
-}
+import type { ProbeResult } from '@/features/plugins/types'
 
 export const InstancesEditor = ({
   field,

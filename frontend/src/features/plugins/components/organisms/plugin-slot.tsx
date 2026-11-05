@@ -12,33 +12,7 @@ import { useGameServers } from '@/features/downloads/use-server-downloads'
 import { workerConnectionNodes } from '@/features/downloads/molecules/use-integration-target-server'
 import { openExternal } from '@/lib/utils/open-external'
 import { EpicCodeModal } from '@/features/settings/components/organisms/epic-code-modal'
-
-interface ConfigField {
-  key: string
-  label: string
-  type: 'path-list' | 'string' | 'number'
-  description?: string
-  placeholder?: string
-}
-
-interface SlotPluginData {
-  type: string
-  label: string
-  description?: string
-  platform?: string
-  platforms?: string[]
-  mediaTypes?: string[]
-  status?: Record<string, unknown>
-  actions?: Record<string, string>
-  configFields?: ConfigField[]
-  viewLibraryPath?: string
-}
-
-interface SlotEntry {
-  pluginId: string
-  label: string
-  data: SlotPluginData | null
-}
+import type { ConfigField, SlotEntry, ScanProgress } from '@/features/plugins/types'
 
 interface Props {
   location: string
@@ -46,18 +20,6 @@ interface Props {
 }
 
 const API_BASE = (window as any).desktopAPI?.getApiBaseUrl?.() || (import.meta.env?.DEV ? 'http://127.0.0.1:8000/api' : 'https://otix.app/api')
-
-type ScanPhase = 'idle' | 'scanning' | 'matching' | 'hydrating' | 'done'
-
-interface ScanProgress {
-  phase: ScanPhase
-  scanned: number
-  matched: number
-  suggested: number
-  total: number
-  currentDir: string
-  message: string
-}
 
 export const PluginSlot = ({ location, pluginApi }: Props) => {
   const [slotData, setSlotData] = useState<SlotEntry[]>([])

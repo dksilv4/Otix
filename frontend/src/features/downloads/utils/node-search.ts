@@ -5,7 +5,7 @@
 
 import { getCachedNodes } from '../hooks/use-node-downloads';
 import { normalizeProwlarrRelease } from '../usenet-utils';
-import type { ServerProwlarrRelease } from '../arr-types';
+import type { ServerProwlarrRelease } from '../usenet-types';
 import type { UnifiedReleaseItem } from '../provider-types';
 
 export interface NodeSearchEndpoints {

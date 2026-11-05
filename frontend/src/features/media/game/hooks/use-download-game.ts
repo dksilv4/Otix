@@ -10,6 +10,7 @@ import {
   useNodeUsenetConfig,
   getAlternateNumeralQuery,
   usenetKeys,
+  searchNodeIndexersDirect,
 } from '@/features/downloads/use-node-usenet'
 import { useNodeProviders } from '@/features/downloads/use-node-providers'
 import { findBestGameRelease } from '@/features/downloads/game-auto-match'

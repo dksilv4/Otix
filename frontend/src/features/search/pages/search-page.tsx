@@ -115,6 +115,7 @@ export const SearchPage = () => {
               <SearchSortBar
                 type={urlType}
                 sort={urlSort}
+                query={urlQ}
                 onTypeChange={handleTypeChange}
                 onSortChange={handleSortChange}
                 className="mt-4"

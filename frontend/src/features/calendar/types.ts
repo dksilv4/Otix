@@ -40,3 +40,12 @@ export type MonthGroup = {
   monthLabel: string
   events: CalendarEvent[]
 }
+
+export interface PlacedCluster {
+  cluster: import('./utils/timeline-cluster').TimelineCluster
+  x: number
+  axisOffsetY: number
+  side: 'up' | 'down'
+  isPast: boolean
+  stemHeight: number
+}

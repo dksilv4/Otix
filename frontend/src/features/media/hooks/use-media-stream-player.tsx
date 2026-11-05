@@ -2,10 +2,11 @@ import { createContext, useContext, useState, useRef, useCallback, useEffect, us
 import type {
   StreamPlaybackSession,
   PlaybackMethod,
-  SubtitleTrack,
-  AudioTrack,
   StreamQualityOption,
+  MediaStreamPlayerContextValue,
 } from '../types/stream-player'
+
+export type { MediaStreamPlayerContextValue }
 import { determinePlaybackMethod } from '../utils/stream-compatibility'
 import { loadPlayerSettings, savePlayerSettings } from '@/features/discover/utils/trailer'
 import { apiClient } from '@/lib/api/client'
@@ -22,69 +23,7 @@ import {
   syncMediaSessionPlaybackState,
   registerMediaSessionActions,
 } from '../utils/pip'
-
-export interface MediaStreamPlayerContextValue {
-  session: StreamPlaybackSession | null
-  isOpen: boolean
-  isPlaying: boolean
-  isBuffering: boolean
-  currentTime: number
-  duration: number
-  bufferedTime: number
-  volume: number
-  playbackSpeed: number
-  isMuted: boolean
-  isTheater: boolean
-  isZoomedOut: boolean
-  isInAppPip: boolean
-  isOverallPip: boolean
-  isOverallPipSupported: boolean
-  activeSubtitle: SubtitleTrack | null
-  activeAudio: AudioTrack | null
-  currentQuality: string
-  availableQualities: StreamQualityOption[]
-  activeLevelHeight: number | null
-  playbackMethod: PlaybackMethod
-  error: string | null
-
-  // Session lifecycle
-  openStream: (session: StreamPlaybackSession) => void
-  closeStream: () => void
-  failoverToBaseUrl: (newBaseUrl: string) => void
-
-  // Transport actions
-  togglePlay: () => void
-  play: () => void
-  pause: () => void
-  seek: (seconds: number) => void
-  setVolume: (volume: number) => void
-  setPlaybackSpeed: (speed: number) => void
-  toggleMute: () => void
-  setTheater: (isTheater: boolean) => void
-  setZoomedOut: (isZoomed: boolean) => void
-  setActiveSubtitle: (subtitleId: string | null) => void
-  setActiveAudio: (audioIndex: number | null) => void
-  setQuality: (qualityId: string) => void
-  setAvailableQualities: (qualities: StreamQualityOption[]) => void
-  setActiveLevelHeight: (height: number | null) => void
-  updateSessionQuality: (qualityOption: StreamQualityOption) => void
-
-  // Picture-in-Picture actions
-  setInAppPip: (inAppPip: boolean) => void
-  toggleInAppPip: () => void
-  setIsOverallPip: (overallPip: boolean) => void
-  requestOverallPip: () => Promise<void>
-  exitOverallPip: () => Promise<void>
-  toggleOverallPip: () => Promise<void>
-  registerVideoElement: (el: HTMLVideoElement | null) => void
-
-  // Internal bindings for the video element
-  onTimeUpdate: (time: number, duration: number) => void
-  onBufferedUpdate: (buffered: number) => void
-  onBuffering: (buffering: boolean) => void
-  onError: (err: string | null) => void
-  fallbackToHls: () => void
-}
+import { defaultPlayerContextValue } from '../utils/player-defaults'
 
 const MediaStreamPlayerContext = createContext<MediaStreamPlayerContextValue | null>(null)
 
@@ -575,63 +514,6 @@ export const MediaStreamPlayerProvider = ({ children }: { children: React.ReactN
     </MediaStreamPlayerContext.Provider>
   )
 };
-
-const noop = () => {}
-const asyncNoop = async () => {}
-const defaultPlayerContextValue: MediaStreamPlayerContextValue = {
-  session: null,
-  isOpen: false,
-  isPlaying: false,
-  currentTime: 0,
-  duration: 0,
-  bufferedTime: 0,
-  volume: 1,
-  playbackSpeed: 1,
-  isMuted: false,
-  isBuffering: false,
-  isTheater: false,
-  isZoomedOut: false,
-  isInAppPip: false,
-  isOverallPip: false,
-  isOverallPipSupported: false,
-  activeSubtitle: null,
-  activeAudio: null,
-  currentQuality: 'auto',
-  availableQualities: [],
-  activeLevelHeight: null,
-  playbackMethod: 'direct-play',
-  error: null,
-  openStream: noop,
-  closeStream: noop,
-  failoverToBaseUrl: noop,
-  togglePlay: noop,
-  play: noop,
-  pause: noop,
-  seek: noop,
-  setVolume: noop,
-  setPlaybackSpeed: noop,
-  toggleMute: noop,
-  setTheater: noop,
-  setZoomedOut: noop,
-  setInAppPip: noop,
-  toggleInAppPip: noop,
-  setIsOverallPip: noop,
-  requestOverallPip: asyncNoop,
-  exitOverallPip: asyncNoop,
-  toggleOverallPip: asyncNoop,
-  registerVideoElement: noop,
-  setActiveSubtitle: noop,
-  setActiveAudio: noop,
-  setQuality: noop,
-  setAvailableQualities: noop,
-  setActiveLevelHeight: noop,
-  updateSessionQuality: noop,
-  onTimeUpdate: noop,
-  onBufferedUpdate: noop,
-  onBuffering: noop,
-  onError: noop,
-  fallbackToHls: noop,
-}
 
 // eslint-disable-next-line react-refresh/only-export-components
 export const useMediaStreamPlayer = (): MediaStreamPlayerContextValue => {

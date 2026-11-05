@@ -1,9 +1,7 @@
 import { useState, useRef } from 'react'
-import { Bookmark, Play, Heart, ArrowDown, Download, Check } from 'lucide-react'
+import { Bookmark, Play, Heart, ArrowDown, Download } from 'lucide-react'
 import { useNavCenter } from '@/features/navigation'
-
-type PillPreset = 'media' | 'compact' | 'download'
-type TriggerMode = 'sentinel' | 'threshold' | 'scrollUpOnly'
+import type { PillPreset, TriggerMode } from './types'
 
 /**
  * Dev-only sandbox to experiment with the new Nav Center Pill API:
@@ -15,7 +13,7 @@ export const NavDockPrototypePage = () => {
 
   const [preset, setPreset] = useState<PillPreset>('media')
   const [triggerMode, setTriggerMode] = useState<TriggerMode>('sentinel')
-  const [thresholdPx, setThresholdPx] = useState(250)
+  const [thresholdPx] = useState(250)
   const [fallbackMode, setFallbackMode] = useState<'sub-tier' | 'hidden'>('sub-tier')
   const [isBookmarked, setIsBookmarked] = useState(false)
   const [isLiked, setIsLiked] = useState(false)

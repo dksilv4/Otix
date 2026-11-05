@@ -1,3 +1,13 @@
+export type SavingsCategory = 'duplicates' | 'transcode' | 'unwatched' | 'watched_shows' | 'largest_files'
+
+export interface TabDef {
+  id: SavingsCategory
+  label: string
+  icon: any
+  badgeColor?: string
+  description: string
+}
+
 export interface PlexStorageServer {
   id: number
   machineIdentifier?: string

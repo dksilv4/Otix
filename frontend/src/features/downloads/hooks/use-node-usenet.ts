@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api/client';
 import { searchNodeIndexersDirect } from '../utils/node-search';
+export { searchNodeIndexersDirect };
 import type {
   ConnectionTestResult,
   DownloadReleasePayload,

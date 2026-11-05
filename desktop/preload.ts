@@ -80,6 +80,11 @@ contextBridge.exposeInMainWorld('desktopAPI', {
   // ── Notifications ──
   showNotification: (opts: { title: string; body?: string; icon?: string; type: string; metadata?: Record<string, unknown> }) =>
     ipcRenderer.invoke('notifications:show', opts),
+  onNotificationNavigate: (callback: (payload: { type: string; metadata?: Record<string, unknown> }) => void) => {
+    const handler = (_event: any, payload: { type: string; metadata?: Record<string, unknown> }) => callback(payload);
+    ipcRenderer.on('notifications:navigate', handler);
+    return () => ipcRenderer.removeListener('notifications:navigate', handler);
+  },
   scanPaths: (paths: string[], isoPaths: string[], authToken?: string) => ipcRenderer.invoke('scanner:scan-paths', paths, isoPaths, authToken),
   scanLaunchers: () => ipcRenderer.invoke('scanner:scan-launchers'),
   launchGame: (game: LocalGame) => ipcRenderer.invoke('launcher:launch-game', game),
@@ -144,6 +149,11 @@ contextBridge.exposeInMainWorld('desktopAPI', {
     const handler = () => callback();
     ipcRenderer.on('games-db:changed', handler);
     return () => ipcRenderer.removeListener('games-db:changed', handler);
+  },
+  onNewGamesDetected: (callback: (data: { games: LocalGame[] }) => void) => {
+    const handler = (_event: any, data: { games: LocalGame[] }) => callback(data);
+    ipcRenderer.on('scanner:new-games-detected', handler);
+    return () => ipcRenderer.removeListener('scanner:new-games-detected', handler);
   },
 
   // Game detection

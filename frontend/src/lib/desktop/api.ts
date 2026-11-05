@@ -142,6 +142,7 @@ export interface LiveFpsSnapshot {
   frameCount: number
   captureDurationMs: number
   gameId: string
+  pid?: number
   node?: SessionNodeInfo | null
   hardware?: SessionHardwareInfo | null
   shareEligible?: boolean
@@ -344,6 +345,7 @@ export interface DesktopAPI {
   rejectSuggestion(gameId: string, suggestionMediaId: string): Promise<void>
   unmatchGame?: (gameId: string) => Promise<void>
   onGamesDbChanged(cb: () => void): () => void
+  onNewGamesDetected?: (cb: (data: { games: LocalGame[] }) => void) => () => void
   onScannerProgress?: (cb: (data: { currentDir?: string; progress?: number }) => void) => () => void
   onMatchingProgress?: (cb: (data: any) => void) => () => void
   onMatchingComplete?: (cb: (data: any) => void) => () => void
@@ -378,6 +380,7 @@ export interface DesktopAPI {
     type: string
     metadata?: Record<string, unknown>
   }) => Promise<void>
+  onNotificationNavigate?: (cb: (payload: { type: string; metadata?: Record<string, unknown> }) => void) => () => void
 
   // Sessions & playtime
   getRecentSessions(): Promise<RecentSession[]>
@@ -553,6 +556,11 @@ export interface DesktopAPI {
     queryWarning?: string
     error?: string
   }>
+  getGameAchievements?: (gameId: string) => Promise<any[]>
+  getGameAchievementStats?: (gameId: string) => Promise<any>
+  getRecentAchievements?: (limit?: number) => Promise<any[]>
+  syncGameAchievements?: (gameId: string) => Promise<void>
+  onAchievementUnlocked?: (callback: (achievement: any) => void) => () => void
 }
 
 // ── Accessor ─────────────────────────────────────────────────────────

@@ -81,7 +81,7 @@ export const NodeScannedFilesTable = ({
   onTriggerScan,
   onOpenMatchModal,
   onOpenDetails,
-  onOpenMassMatch,
+  onOpenMassMatch: _onOpenMassMatch,
   onUnlinkSource,
   stats,
   className,

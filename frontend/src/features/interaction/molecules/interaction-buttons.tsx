@@ -16,22 +16,11 @@ import { useIsOfflineWatchlisted, toggleOfflineWatchlist } from '../offline-watc
 import {
  useToggleInteraction,
  useUserInteractions,
- type InteractionType,
  type UserInteractionState,
 } from '../interaction-queries'
+import type { InteractionButtonDef, InteractionType } from '../types'
 
 // ── Button configs ──────────────────────────────────────────────
-
-interface ButtonDef {
- type: InteractionType
- label: string
- activeColor: string
- activeGlow: string
- Icon: typeof Heart
- showFor: 'all' | 'movie_show' | 'game' | 'music'
- /** Icons with inner detail (checkmarks, etc.) look wrong when filled — skip fill-current for those */
- supportsFill: boolean
-}
 
 const XP_VALUES: Record<InteractionType, number> = {
  liked: 10,
@@ -42,7 +31,7 @@ const XP_VALUES: Record<InteractionType, number> = {
  listened: 30,
 }
 
-const BUTTONS: ButtonDef[] = [
+const BUTTONS: InteractionButtonDef[] = [
  {
  type: 'liked',
  label: 'Like',
@@ -130,7 +119,7 @@ const InteractionButton = ({
  mediaId,
  mediaType,
  onClick,
-}: ButtonDef & { active: boolean; mediaId: string; mediaType: string; onClick?: () => void }) => {
+}: InteractionButtonDef & { active: boolean; mediaId: string; mediaType: string; onClick?: () => void }) => {
  const toggle = useToggleInteraction(mediaType, mediaId)
  const { user } = useAuth()
  const [localActive, setLocalActive] = useState<boolean | null>(null)

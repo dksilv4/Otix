@@ -3,12 +3,9 @@ import { ChevronUp, ChevronDown, Check, RotateCcw } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { DkDialog } from "@ui/molecules/dialog"
 import { writeTabOrder, writeVisibility, resetTabPreferences } from "../utils"
+import type { TabItemInfo } from "../types"
 
-export interface TabItemInfo {
-  id: string
-  label: string
-  icon: React.ReactNode
-}
+export type { TabItemInfo }
 
 export interface LibraryTabSettingsModalProps {
   allTabs: TabItemInfo[]

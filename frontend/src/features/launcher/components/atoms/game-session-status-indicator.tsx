@@ -95,11 +95,13 @@ export const GameSessionStatusIndicator = ({
           const isCurrent = g.game.id === activeGame.game.id
           const gFps = g.fpsSnapshot?.currentFps
           const gHasFps = showFps && typeof gFps === 'number' && gFps > 0
+          const currentStartTime = activeGame.startTime || 0
+          const gStartTime = g.startTime || currentStartTime
           const gTime = formatElapsed(
             isCurrent && propElapsedMs !== undefined
               ? propElapsedMs
-              : g.startTime
-                ? Math.max(0, Date.now() - g.startTime)
+              : g.startTime && currentStartTime
+                ? Math.max(0, activeElapsedMs + (currentStartTime - gStartTime))
                 : activeElapsedMs,
           )
 

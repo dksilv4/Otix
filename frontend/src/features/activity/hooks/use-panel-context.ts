@@ -1,5 +1,12 @@
 import { useContext } from 'react'
-import { PanelContext, defaultPanelContext, type PanelContextValue } from '../providers/panel-context'
+import { PanelContext, type PanelContextValue } from '../providers/panel-context'
+
+export const defaultPanelContext: PanelContextValue = {
+  isUserMenuOpen: false,
+  setUserMenuOpen: () => {},
+  isChatOpen: false,
+  setChatOpen: () => {},
+}
 
 /**
  * Hook to access the activity panel layout context.

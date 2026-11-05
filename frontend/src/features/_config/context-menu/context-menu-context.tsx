@@ -1,16 +1,16 @@
-import { createContext, useContext, useState, useCallback, type ReactNode } from 'react'
+import { createContext, useState, useCallback, type ReactNode } from 'react'
 import type {
   ContextMenuItemDef,
   ContextMenuPosition,
   ContextMenuMediaType,
   ContextMenuTargetType,
-  ContextMenuState,
   ContextMenuActions,
+  ContextMenuContextValue,
 } from './types'
 
-interface ContextMenuContextValue extends ContextMenuState, ContextMenuActions {}
+export type { ContextMenuContextValue }
 
-const ContextMenuCtx = createContext<ContextMenuContextValue | null>(null)
+export const ContextMenuCtx = createContext<ContextMenuContextValue | null>(null)
 
 export const ContextMenuProvider = ({ children }: { children: ReactNode }) => {
   const [isOpen, setIsOpen] = useState(false)
@@ -51,12 +51,4 @@ export const ContextMenuProvider = ({ children }: { children: ReactNode }) => {
   )
 };
 
-export const useOptionalMenuContext = (): ContextMenuContextValue | null => {
-  return useContext(ContextMenuCtx)
-}
-
-export const useMenuContext = (): ContextMenuContextValue => {
-  const ctx = useContext(ContextMenuCtx)
-  if (!ctx) throw new Error('useMenuContext must be used within ContextMenuProvider')
-  return ctx
-}
+export { useOptionalMenuContext, useMenuContext } from './hooks/use-menu-context'

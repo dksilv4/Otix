@@ -1,7 +1,6 @@
 /** Utility functions for downloads and transfers. */
 
 import { formatBytes } from '@/lib/utils'
-import { isLocalDesktopNode } from '@/features/settings/local-desktop-node'
 import type { GameServer, ServerProwlarrRelease, ServerSabnzbdQueueItem, ServerDownloadHistoryItem } from './types'
 
 /** Format ETA in seconds to human-readable string (e.g. "45s left", "3m 12s left", "1h 20m left"). */

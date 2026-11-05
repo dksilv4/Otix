@@ -1,9 +1,7 @@
 import { forwardRef, type ButtonHTMLAttributes } from 'react'
 import { Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-
-type Variant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'outline'
-type Size = 'xs' | 'sm' | 'md' | 'lg'
+import type { Variant, Size } from './types'
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: Variant

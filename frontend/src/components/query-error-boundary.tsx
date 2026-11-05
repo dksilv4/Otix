@@ -2,6 +2,7 @@ import { Component, type ReactNode } from 'react'
 import { AlertTriangle, RefreshCw } from 'lucide-react'
 import { showErrorToast } from '@ui/molecules/toast'
 import { isChunkLoadError, reloadForNewChunk } from '@/lib/utils/chunk-reload'
+import type { QueryErrorBoundaryState } from './types'
 import './query-error-boundary.scss'
 
 interface Props {
@@ -11,18 +12,13 @@ interface Props {
   label?: string
 }
 
-interface State {
-  hasError: boolean
-  error: Error | null
-}
-
-export class QueryErrorBoundary extends Component<Props, State> {
+export class QueryErrorBoundary extends Component<Props, QueryErrorBoundaryState> {
   constructor(props: Props) {
     super(props)
     this.state = { hasError: false, error: null }
   }
 
-  static getDerivedStateFromError(error: Error): State {
+  static getDerivedStateFromError(error: Error): QueryErrorBoundaryState {
     return { hasError: true, error }
   }
 

@@ -54,43 +54,6 @@ import {
 import { usePlexLibraries, streamPlexLibrarySync } from '@library/library-queries'
 import type { PlexLibraryInfo } from '@library/library-queries'
 import { useModal } from '@/lib/modals'
-
-type SteamProfile = {
-  personaname: string | null
-  avatarfull: string | null
-  profileurl: string | null
-  realname: string | null
-  loccountrycode: string | null
-  timecreated: number | null
-  personastate: number | null
-  lastlogoff: number | null
-}
-
-type PlexIntegration = {
-  name: string
-  connected: boolean
-  plexId: string | null
-  plexUsername: string | null
-  plexEmail: string | null
-  plexThumb: string | null
-}
-
-type PlexSyncResult = {
-  servers: number
-  libraries: number
-  total: number
-  matched: number
-  seeded: number
-}
-
-type PlexLibraryProgress = {
-  serverName: string
-  libraryName: string
-  itemsProcessed: number
-  itemsTotal: number
-  phase: 'pending' | 'syncing' | 'complete' | 'failed'
-}
-
 import {
   type YouTubeProgressState,
   formatAccountAge,
@@ -99,6 +62,13 @@ import {
   openBoundModal,
   formatDaysAgo,
 } from '../utils/integrations'
+import type {
+  SteamProfile,
+  PlexIntegration,
+  PlexSyncResult,
+  PlexLibraryProgress,
+  IntegrationDef,
+} from '../types'
 
 const BRAND_COLORS: Record<string, string> = {
   steam: '#1a6bcc',
@@ -1271,26 +1241,6 @@ export const SettingsIntegrationsPage = () => {
 
   const query = searchQuery.toLowerCase().trim()
   const filteredNodes = filterConnectedNodes(servers, query)
-
-  type IntegrationCategory = 'account' | 'service'
-
-  interface IntegrationDef {
-    id: string
-    name: string
-    category: IntegrationCategory
-    keywords: string
-    description: string
-    isConnected: boolean
-    brandColor: string
-    brandBg: string
-    icon: any
-    onConnect?: () => void
-    connecting?: boolean
-    connectDisabled?: boolean
-    onDisconnect?: () => void
-    disconnecting?: boolean
-    error?: string
-  }
 
   const integrationDefs: IntegrationDef[] = [
     {

@@ -1,28 +1,14 @@
 import React, { createContext, useState, useEffect, useCallback, useMemo } from "react"
-
-export type LauncherThemeId =
-  | "classic"
-  | "modern"
-  | "steam"
-  | "playstation"
-  | "xbox"
-  | "switch"
-  | "retro"
-  | "minimal"
-  | "forge"
-  | "glass"
-
-export interface LauncherThemeMeta {
-  id: LauncherThemeId
-  version: string
-  name: string
-  subtitle: string
-  description: string
-  badgeColor: string
-  accentColor: string
-  icon: "layout-grid" | "sparkles" | "gamepad" | "tv" | "box" | "disc" | "terminal" | "feather" | "flame" | "layers"
-  isEnabled?: boolean
-}
+import type {
+  LauncherThemeId,
+  LauncherThemeMeta,
+  LauncherThemeContextType,
+} from "./types"
+export type {
+  LauncherThemeId,
+  LauncherThemeMeta,
+  LauncherThemeContextType,
+} from "./types"
 
 export const ACTIVE_LAUNCHER_THEME_ID: LauncherThemeId = "classic"
 
@@ -143,14 +129,6 @@ export const AVAILABLE_LAUNCHER_THEMES = LAUNCHER_THEMES
 
 const STORAGE_KEY = "otix:launcher-theme"
 const DEFAULT_THEME: LauncherThemeId = "classic"
-
-interface LauncherThemeContextType {
-  currentTheme: LauncherThemeId
-  setTheme: (theme: LauncherThemeId) => void
-  cycleTheme: () => void
-  themeMeta: LauncherThemeMeta
-  availableThemes: LauncherThemeMeta[]
-}
 
 export const LauncherThemeContext = createContext<LauncherThemeContextType | null>(null)
 

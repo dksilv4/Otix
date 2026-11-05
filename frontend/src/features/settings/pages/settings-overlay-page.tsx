@@ -1,12 +1,9 @@
 import { Sparkles, Server } from 'lucide-react'
-import { useAuth } from '@/lib/providers/auth'
 import { useSettingsNode } from '../context/settings-node-context'
 import { NodeOverlaySettings } from '../components/organisms/node-overlay-settings'
-import { SettingsLockedState } from '../components/molecules/settings-locked-state'
 import { GLOBAL_PROFILE_NODE_ID } from '../utils/node-switcher'
 
 export const SettingsOverlayPage = () => {
-  const { isAuthenticated } = useAuth()
   const { servers, selectedNode, selectedNodeId } = useSettingsNode()
 
   const activeNodeId =
