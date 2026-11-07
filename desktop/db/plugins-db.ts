@@ -29,10 +29,6 @@ export function getPluginsDb(): Database.Database {
   return getDb()
 }
 
-export function getPluginsDbPath(): string {
-  return getDbPath()
-}
-
 // ── Schema auto-migration ────────────────────────────────────────────
 
 /**
@@ -118,41 +114,6 @@ export function replaceTableNames(
     result = result.replace(regex, prefixedName)
   }
   return result
-}
-
-// ── Query helpers ────────────────────────────────────────────────────
-
-export function runQuery(
-  pluginId: string,
-  dbConfig: DbConfig | null,
-  sql: string,
-  params?: unknown[],
-): void {
-  const db = getPluginsDb()
-  const finalSql = dbConfig ? replaceTableNames(sql, pluginId, dbConfig) : sql
-  db.prepare(finalSql).run(...(params || []))
-}
-
-export function getQuery(
-  pluginId: string,
-  dbConfig: DbConfig | null,
-  sql: string,
-  params?: unknown[],
-): unknown {
-  const db = getPluginsDb()
-  const finalSql = dbConfig ? replaceTableNames(sql, pluginId, dbConfig) : sql
-  return db.prepare(finalSql).get(...(params || [])) || null
-}
-
-export function allQuery(
-  pluginId: string,
-  dbConfig: DbConfig | null,
-  sql: string,
-  params?: unknown[],
-): unknown[] {
-  const db = getPluginsDb()
-  const finalSql = dbConfig ? replaceTableNames(sql, pluginId, dbConfig) : sql
-  return db.prepare(finalSql).all(...(params || []))
 }
 
 // ── Migration from per-plugin data.db ────────────────────────────────

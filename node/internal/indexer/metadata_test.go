@@ -1,13 +1,11 @@
 package indexer_test
 
 import (
-	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/dksilv4/otix/node/internal/indexer"
-	"github.com/dksilv4/otix/node/internal/otixmeta"
 )
 
 func TestDeterminePlatform(t *testing.T) {
@@ -151,30 +149,15 @@ func TestMatchMetadata_Heuristics(t *testing.T) {
 	}
 }
 
-func TestMatchMetadata_SidecarOtix(t *testing.T) {
+func TestMatchMetadata_SidecarsIgnored(t *testing.T) {
 	tmpDir, err := os.MkdirTemp("", "otix_sidecar_test")
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer os.RemoveAll(tmpDir)
 
-	sc := &otixmeta.Sidecar{
-		Version:    1,
-		Title:      "The Witcher 3: Wild Hunt",
-		Overview:   "Monster hunting open world RPG.",
-		Confidence: 0.99,
-		Companies: []map[string]any{
-			{"name": "CD PROJEKT RED"},
-		},
-		Platforms: []map[string]any{
-			{"name": "PC"},
-		},
-		Images: map[string]*otixmeta.ImageRef{
-			"poster": {URL: "https://example.com/poster.jpg"},
-		},
-	}
-	if err := otixmeta.Write(tmpDir, sc); err != nil {
-		t.Fatalf("failed to write sidecar: %v", err)
+	if err := os.WriteFile(filepath.Join(tmpDir, ".otix"), []byte(`{"title":"Ignored Sidecar"}`), 0644); err != nil {
+		t.Fatal(err)
 	}
 
 	match, err := indexer.MatchMetadata("witcher3.exe", tmpDir)
@@ -182,68 +165,10 @@ func TestMatchMetadata_SidecarOtix(t *testing.T) {
 		t.Fatalf("MatchMetadata failed: %v", err)
 	}
 
-	if match.Source != "sidecar" {
-		t.Errorf("expected source sidecar, got %s", match.Source)
+	if match.Source == "sidecar" {
+		t.Errorf("expected sidecar to be ignored, got source %s", match.Source)
 	}
-	if match.Title != "The Witcher 3: Wild Hunt" {
-		t.Errorf("expected title 'The Witcher 3: Wild Hunt', got %q", match.Title)
-	}
-	if match.Developer != "CD PROJEKT RED" {
-		t.Errorf("expected developer CD PROJEKT RED, got %q", match.Developer)
-	}
-	if match.Artwork["poster"] != "https://example.com/poster.jpg" {
-		t.Errorf("expected poster artwork URL, got %q", match.Artwork["poster"])
-	}
-	if match.Confidence != 0.99 {
-		t.Errorf("expected confidence 0.99, got %f", match.Confidence)
-	}
-}
-
-func TestMatchMetadata_SidecarOtixmeta(t *testing.T) {
-	tmpDir, err := os.MkdirTemp("", "otixmeta_json_test")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(tmpDir)
-
-	metaContent := map[string]any{
-		"title":        "Metroid Prime",
-		"year":         2002,
-		"platform":     "GameCube",
-		"developer":    "Retro Studios",
-		"publisher":    "Nintendo",
-		"overview":     "First person adventure on Tallon IV.",
-		"confidence":   0.98,
-		"artwork": map[string]string{
-			"cover": "cover.jpg",
-		},
-	}
-	bytes, _ := json.Marshal(metaContent)
-	if err := os.WriteFile(filepath.Join(tmpDir, ".otixmeta"), bytes, 0644); err != nil {
-		t.Fatalf("failed to write .otixmeta: %v", err)
-	}
-
-	match, err := indexer.MatchMetadata("game.iso", tmpDir)
-	if err != nil {
-		t.Fatalf("MatchMetadata failed: %v", err)
-	}
-
-	if match.Source != "sidecar" {
-		t.Errorf("expected source sidecar, got %s", match.Source)
-	}
-	if match.Title != "Metroid Prime" {
-		t.Errorf("expected title 'Metroid Prime', got %q", match.Title)
-	}
-	if match.Year != 2002 {
-		t.Errorf("expected year 2002, got %d", match.Year)
-	}
-	if match.Platform != indexer.PlatformGameCube {
-		t.Errorf("expected platform GameCube, got %s", match.Platform)
-	}
-	if match.Developer != "Retro Studios" {
-		t.Errorf("expected developer 'Retro Studios', got %q", match.Developer)
-	}
-	if match.Artwork["cover"] != "cover.jpg" {
-		t.Errorf("expected cover artwork 'cover.jpg', got %q", match.Artwork["cover"])
+	if match.Title == "Ignored Sidecar" {
+		t.Errorf("expected sidecar title to be ignored, got %q", match.Title)
 	}
 }

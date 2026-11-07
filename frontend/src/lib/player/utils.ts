@@ -1,6 +1,17 @@
-import type { PlexTrackInfo } from './plex-audio-provider'
-import type { JellyfinTrackInfo } from './jellyfin-audio-provider'
-import type { PlayerTrackInfo } from './types'
+import type { LocalTrackInfo, PlayerTrackInfo, PlexTrackInfo, JellyfinTrackInfo } from './types'
+
+export const mapLocalTrack = (track: LocalTrackInfo): PlayerTrackInfo => {
+  return {
+    id: track.id,
+    title: track.title,
+    artist: track.artist,
+    artists: track.artist ? [{ name: track.artist, uri: '' }] : [],
+    albumName: track.albumName,
+    albumArt: track.albumArt,
+    durationMs: track.durationMs,
+    source: 'local',
+  }
+}
 
 export const mapPlexTrack = (track: PlexTrackInfo): PlayerTrackInfo => {
   return {
@@ -75,3 +86,7 @@ export const getJellyfinClientId = (): string => {
   }
   return id
 }
+
+export const JELLYFIN_PLAYER_VOLUME_KEY = 'jellyfin-player-volume'
+export const LOCAL_PLAYER_VOLUME_KEY = 'otix_local_player_volume'
+export const PLEX_PLAYER_VOLUME_KEY = 'plex-player-volume'

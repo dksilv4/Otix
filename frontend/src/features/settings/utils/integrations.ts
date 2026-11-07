@@ -35,3 +35,24 @@ export { extractIntegrationMessage } from '@/lib/utils/format-error'
 export { openBoundModal } from '@/lib/modals'
 
 export { formatDaysAgo } from '@/lib/utils/format-days-ago'
+
+export const BRAND_COLORS: Record<string, string> = {
+  steam: '#1a6bcc',
+  epic: '#ffffff',
+  gog: '#a855f7',
+  plex: '#e5a00d',
+  tmdb: '#01b4e4',
+  google: '#4285F4',
+  youtube: '#FF0000',
+}
+
+export const BRAND_BG: Record<string, string> = {
+  steam: 'bg-[#1a6bcc]/10',
+  epic: 'bg-foreground/10',
+  gog: 'bg-[#a855f7]/10',
+  plex: 'bg-[#e5a00d]/10',
+  tmdb: 'bg-[#01b4e4]/10',
+  google: 'bg-[#4285F4]/10',
+  youtube: 'bg-[#FF0000]/10',
+}
+

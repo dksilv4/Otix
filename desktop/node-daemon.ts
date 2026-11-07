@@ -1,4 +1,4 @@
-import { ChildProcess, spawn, execSync } from 'child_process';
+import { ChildProcess, spawn, exec } from 'child_process';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as http from 'http';
@@ -65,6 +65,7 @@ export class NodeDaemonManager {
   private currentAuthToken = '';
   private localNodeAuthToken: string | null = null;
   private currentState: DaemonLifecycleState = 'stopped';
+  private isClaiming: Promise<boolean> | null = null;
 
   constructor(
     private readonly userDataPath: string,
@@ -225,9 +226,22 @@ export class NodeDaemonManager {
       return this.getStatus();
     }
 
-    // Check port availability: if requestedPort is in use by another process, hunt for the next free port
+    // Check port availability: give requestedPort a grace period for socket TIME_WAIT before hunting
     let port = requestedPort;
-    const isAvailable = await isPortAvailable(port);
+    let isAvailable = false;
+    const RETRY_ATTEMPTS = 5;
+    const RETRY_DELAY_MS = 200;
+
+    for (let attempt = 0; attempt < RETRY_ATTEMPTS; attempt++) {
+      isAvailable = await isPortAvailable(port);
+      if (isAvailable) {
+        break;
+      }
+      if (attempt < RETRY_ATTEMPTS - 1) {
+        await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS));
+      }
+    }
+
     if (!isAvailable) {
       console.log(`[node-daemon] Port ${port} is occupied by another process, hunting for next available port...`);
       try {
@@ -284,8 +298,16 @@ export class NodeDaemonManager {
         const lines = text.trim().split('\n');
         for (const line of lines) {
           if (line) console.log(`[otix-node] ${line}`);
+          const portMatch = line.match(/Listening:\s+https?:\/\/[^:]+:(\d+)/i);
+          if (portMatch) {
+            const detectedPort = Number(portMatch[1]);
+            if (detectedPort && detectedPort !== this.currentPort) {
+              console.log(`[node-daemon] Detected active port change from daemon stdout: ${detectedPort} (was ${this.currentPort})`);
+              this.currentPort = detectedPort;
+            }
+          }
         }
-        if (this.currentState === 'starting' && (text.includes('Listening') || text.includes('started') || text.includes('Server running'))) {
+        if (this.currentState === 'starting' && (text.includes('Listening') || text.includes('started') || text.includes('Server running') || text.includes('Node running'))) {
           this.currentState = 'running';
           this.notifyStatus();
           if (this.currentAuthToken) {
@@ -327,12 +349,12 @@ export class NodeDaemonManager {
         this.notifyStatus();
       });
 
-      // Poll up to 4 seconds for HTTP service readiness
+      // Poll up to 5 seconds for HTTP service readiness
       const startTime = Date.now();
       let ready = false;
-      while (Date.now() - startTime < 4000) {
+      while (Date.now() - startTime < 5000) {
         await new Promise((r) => setTimeout(r, 200));
-        if (await this.probeNode(port, 400)) {
+        if (await this.probeNode(this.currentPort, 400)) {
           ready = true;
           break;
         }
@@ -343,7 +365,7 @@ export class NodeDaemonManager {
       }
 
       if (ready) {
-        console.log(`[node-daemon] Embedded Otix Node is live on http://127.0.0.1:${port}`);
+        console.log(`[node-daemon] Embedded Otix Node is live on http://127.0.0.1:${this.currentPort}`);
         this.currentState = 'running';
         this.lastError = null;
         this.notifyStatus();
@@ -398,17 +420,18 @@ export class NodeDaemonManager {
       proc.once('exit', finish);
 
       // Attempt graceful termination
+      try {
+        proc.kill('SIGTERM');
+      } catch {}
+
       if (process.platform === 'win32' && pid) {
-        try {
-          execSync(`taskkill /pid ${pid} /T /F`);
-          finish();
-          return;
-        } catch {
-          // Fall back to SIGTERM and 2.5s SIGKILL timeout
-        }
+        exec(`taskkill /pid ${pid} /T /F`, (err) => {
+          if (!err) {
+            finish();
+          }
+        });
       }
 
-      proc.kill('SIGTERM');
       // Force kill after 2.5 seconds if still hanging
       setTimeout(() => {
         if (!resolved) {
@@ -432,6 +455,16 @@ export class NodeDaemonManager {
 
   /** Ensure the local companion node is claimed and linked to the authenticated user */
   public async ensureClaimed(authToken?: string): Promise<boolean> {
+    if (this.isClaiming) {
+      return this.isClaiming;
+    }
+    this.isClaiming = this.doEnsureClaimed(authToken).finally(() => {
+      this.isClaiming = null;
+    });
+    return this.isClaiming;
+  }
+
+  private async doEnsureClaimed(authToken?: string): Promise<boolean> {
     const token = authToken || this.currentAuthToken || '';
 
     const port = this.currentPort;
@@ -468,7 +501,7 @@ export class NodeDaemonManager {
           const tokenMatch = /auth_token:\s*["']?([a-zA-Z0-9_-]+)["']?/.exec(content);
           const existingToken = tokenMatch ? tokenMatch[1] : '';
           if (existingToken) {
-            const serverName = os.hostname();
+            const nodeName = os.hostname();
             const apiBase = getApiBaseUrl().replace(/\/$/, '');
             const backendClaimUrl = `${apiBase}/api/v1/library/nodes/claim-direct`;
             await net.fetch(backendClaimUrl, {
@@ -478,8 +511,8 @@ export class NodeDaemonManager {
                 ...(token ? { Authorization: `Bearer ${token}` } : {}),
               },
               body: JSON.stringify({
-                node_name: serverName,
-                server_name: serverName,
+                node_name: nodeName,
+                server_name: nodeName,
                 auth_token: existingToken,
                 port,
                 local_endpoints: [`http://127.0.0.1:${port}`],
@@ -498,7 +531,7 @@ export class NodeDaemonManager {
     const claimCode = statusRes.claim_code;
     if (!claimCode) return false;
 
-    const serverName = os.hostname();
+    const nodeName = os.hostname();
     const nodeAuthToken = crypto.randomBytes(24).toString('hex');
     const apiBase = getApiBaseUrl().replace(/\/$/, '');
 
@@ -512,8 +545,8 @@ export class NodeDaemonManager {
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
         body: JSON.stringify({
-          node_name: serverName,
-          server_name: serverName,
+          node_name: nodeName,
+          server_name: nodeName,
           auth_token: nodeAuthToken,
           port,
           local_endpoints: [`http://127.0.0.1:${port}`],
@@ -537,7 +570,8 @@ export class NodeDaemonManager {
         body: JSON.stringify({
           claim_code: claimCode,
           auth_token: nodeAuthToken,
-          server_name: serverName,
+          node_name: nodeName,
+          server_name: nodeName,
           username: 'me',
           registry_url: `${apiBase}/api`,
         }),
@@ -550,7 +584,7 @@ export class NodeDaemonManager {
       }
 
       this.localNodeAuthToken = nodeAuthToken;
-      console.log(`[node-daemon] Successfully claimed embedded Otix Node for user account (${serverName})`);
+      console.log(`[node-daemon] Successfully claimed embedded Otix Node for user account (${nodeName})`);
       this.notifyStatus();
       return true;
     } catch (err) {
@@ -581,7 +615,7 @@ export class NodeDaemonManager {
     }
   }
 
-  /** Returns the local node server auth token from config.yaml or node-config.yaml */
+  /** Returns the local node companion auth token from config.yaml or node-config.yaml */
   public getNodeAuthToken(): string {
     if (this.localNodeAuthToken) return this.localNodeAuthToken;
 
@@ -705,12 +739,12 @@ export class NodeDaemonManager {
           this.localNodeAuthToken = tokenMatch[1];
         }
 
-        const indentMatch = /server:\s*\r?\n(\s+)/.exec(content);
+        const indentMatch = /(?:server|node):\s*\r?\n(\s+)/i.exec(content);
         const indent = indentMatch ? indentMatch[1] : '  ';
 
         const hasRegistry = /registry_url:\s*["']?([^"'\r\n]+)["']?/.test(content);
         if (!hasRegistry) {
-          content = content.replace(/(server:\s*\r?\n)/i, `$1${indent}registry_url: "${apiRegistry}"\n`);
+          content = content.replace(/((?:server|node):\s*\r?\n)/i, `$1${indent}registry_url: "${apiRegistry}"\n`);
           modified = true;
           console.log(`[node-daemon] Added missing registry_url to ${configPath}`);
         } else if (apiRegistry !== 'http://127.0.0.1:8000/api' && content.includes('http://127.0.0.1:8000/api')) {
@@ -721,7 +755,7 @@ export class NodeDaemonManager {
 
         const hasDisableTray = /disable_tray:\s*(true|false)/i.test(content);
         if (!hasDisableTray) {
-          content = content.replace(/(server:\s*\r?\n)/i, `$1${indent}disable_tray: true\n`);
+          content = content.replace(/((?:server|node):\s*\r?\n)/i, `$1${indent}disable_tray: true\n`);
           modified = true;
           console.log(`[node-daemon] Added disable_tray: true to ${configPath}`);
         }

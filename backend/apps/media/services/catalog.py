@@ -270,7 +270,7 @@ def attach_media_urls(items: list[MediaItem], context: str = "general") -> None:
 
 
 def external_ids_for(
-    items: list[MediaItem], providers=("tmdb", "igdb", "tvdb", "imdb", "steam")
+    items: list[MediaItem], providers=("tmdb", "igdb", "tvdb", "imdb", "steam", "playstation", "ps_id")
 ) -> dict[int, dict[str, str]]:
     """Resolve provider external ids for a batch of media items."""
     ids = [item.id for item in items]

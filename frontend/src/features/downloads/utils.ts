@@ -80,14 +80,15 @@ export const findReleaseQueueItem = (
   trackedNzoId?: string,
 ): ServerSabnzbdQueueItem | null => {
   if (trackedNzoId) {
-    const direct = queueItems.find((item) => item.nzo_id === trackedNzoId)
+    const direct = queueItems.find((item) => (item.nzoId || item.nzo_id) === trackedNzoId)
     if (direct) return direct
   }
   const cleanTitle = normalizeReleaseKey(release.title)
   if (!cleanTitle) return null
   return (
     queueItems.find((item) => {
-      if (item.nzo_id === release.guid) return true
+      const id = item.nzoId || item.nzo_id
+      if (id === release.guid) return true
       const itemTitle = normalizeReleaseKey(item.filename)
       if (!itemTitle) return false
       return itemTitle === cleanTitle || itemTitle.includes(cleanTitle) || cleanTitle.includes(itemTitle)
@@ -101,14 +102,15 @@ export const findReleaseHistoryItem = (
   trackedNzoId?: string,
 ): ServerDownloadHistoryItem | null => {
   if (trackedNzoId) {
-    const direct = historyItems.find((item) => item.nzo_id === trackedNzoId)
+    const direct = historyItems.find((item) => (item.nzoId || item.nzo_id) === trackedNzoId)
     if (direct) return direct
   }
   const cleanTitle = normalizeReleaseKey(release.title)
   if (!cleanTitle) return null
   return (
     historyItems.find((item) => {
-      if (item.nzo_id === release.guid) return true
+      const id = item.nzoId || item.nzo_id
+      if (id === release.guid) return true
       const itemTitle = normalizeReleaseKey(item.title)
       if (!itemTitle) return false
       return itemTitle === cleanTitle || itemTitle.includes(cleanTitle) || cleanTitle.includes(itemTitle)
@@ -125,16 +127,17 @@ export const isRawDownloadId = (name?: string | null, nzoId?: string | null): bo
 }
 
 export const resolveDownloadDisplayTitle = (
-  item: { title?: string | null; filename?: string | null; nzo_id?: string | null },
+  item: { title?: string | null; filename?: string | null; nzo_id?: string | null; nzoId?: string | null },
   fallback = 'Usenet Download',
 ): string => {
-  if (item.title && !isRawDownloadId(item.title, item.nzo_id)) {
+  const nzoId = item.nzoId || item.nzo_id
+  if (item.title && !isRawDownloadId(item.title, nzoId)) {
     return item.title
   }
-  if (item.filename && !isRawDownloadId(item.filename, item.nzo_id)) {
+  if (item.filename && !isRawDownloadId(item.filename, nzoId)) {
     return item.filename
   }
-  return item.title || item.filename || item.nzo_id || fallback
+  return item.title || item.filename || nzoId || fallback
 }
 
 export const formatRelativeTime = (isoString?: string | null): string => {
@@ -187,7 +190,8 @@ export const filterHistoryItems = (
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase().trim()
       const titleMatch = (item.title || '').toLowerCase().includes(q)
-      const nzoMatch = (item.nzo_id || '').toLowerCase().includes(q)
+      const nzoId = item.nzoId || item.nzo_id || ''
+      const nzoMatch = nzoId.toLowerCase().includes(q)
       if (!titleMatch && !nzoMatch) return false
     }
     return true

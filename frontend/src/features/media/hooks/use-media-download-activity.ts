@@ -189,7 +189,7 @@ export const useMediaDownloadActivity = (
 
   const gameUsenetItem = useMemo(() => {
     if (!gameDownload?.sabnzbdNzoId) return null
-    return usenetItems.find((u) => u.nzo_id === gameDownload.sabnzbdNzoId) || null
+    return usenetItems.find((u) => (u.nzoId || u.nzo_id) === gameDownload.sabnzbdNzoId) || null
   }, [gameDownload, usenetItems])
 
   const { allComplete, anyDownloading } = useMemo(() => {

@@ -22,6 +22,7 @@ import {
   buildTextMenuItems,
   buildInputMenuItems,
   buildPageMenuItems,
+  buildContinueWatchingMenuItems,
 } from './utils/menu-builders'
 import type { ContextMenuItemDef } from './types'
 
@@ -94,6 +95,9 @@ export const GlobalContextMenuListener = () => {
           break
         case 'page':
           items = buildPageMenuItems(target, context)
+          break
+        case 'continue-watching':
+          items = buildContinueWatchingMenuItems(target, context)
           break
       }
 

@@ -1,10 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
-import {
-  JellyfinAudioProvider,
-  useJellyfinPlayer,
-  type JellyfinTrackInfo,
-} from '../jellyfin-audio-provider'
+import { JellyfinAudioProvider } from '../jellyfin-audio-provider'
+import { useJellyfinPlayer } from '../hooks/use-jellyfin-player'
+import type { JellyfinTrackInfo } from '../types'
 import { PlexAudioProvider } from '../plex-audio-provider'
 import { PlayerProvider, usePlayer } from '../use-player'
 

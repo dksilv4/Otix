@@ -90,8 +90,8 @@ export const DownloadQueuePage = () => {
   const { data: usenetQueueData, refetch: refetchUsenetQueue } = useServerUsenetQueue(activeServerId);
   const { data: usenetHistory = [], isLoading: historyLoading } = useServerUsenetHistory(activeServerId);
   const cancelUsenetDownloadMutation = useCancelServerQueueDownload(activeServerId);
-  const activeUsenetIds = new Set((usenetQueueData?.items ?? []).map((item) => item.nzo_id));
-  const usenetHistoryItems = usenetHistory.filter((item) => !activeUsenetIds.has(item.nzo_id));
+  const activeUsenetIds = new Set((usenetQueueData?.items ?? []).map((item) => item.nzoId || item.nzo_id).filter(Boolean));
+  const usenetHistoryItems = usenetHistory.filter((item) => !activeUsenetIds.has(item.nzoId || item.nzo_id));
   const usenetActiveItems = usenetQueueData?.items ?? [];
 
   const { data: sonarrQueueData, refetch: refetchSonarrQueue } = useServerSonarrQueue(activeServerId);
@@ -106,7 +106,8 @@ export const DownloadQueuePage = () => {
   const usenetByNzoId = useMemo(() => {
     const map = new Map<string, (typeof usenetActiveItems)[0]>();
     for (const item of usenetActiveItems) {
-      if (item.nzo_id) map.set(item.nzo_id, item);
+      const id = item.nzoId || item.nzo_id;
+      if (id) map.set(id, item);
     }
     return map;
   }, [usenetActiveItems]);
@@ -126,7 +127,10 @@ export const DownloadQueuePage = () => {
   }, [sonarrRecords, radarrRecords]);
 
   const standaloneUsenetItems = useMemo(() => {
-    return usenetActiveItems.filter((item) => !claimedNzoIds.has(item.nzo_id));
+    return usenetActiveItems.filter((item) => {
+      const id = item.nzoId || item.nzo_id;
+      return !id || !claimedNzoIds.has(id);
+    });
   }, [usenetActiveItems, claimedNzoIds]);
 
   const [gamesDownloadPath, setGamesDownloadPath] = useState<string>(() => {
@@ -563,15 +567,21 @@ export const DownloadQueuePage = () => {
 
               <div className="space-y-3">
                 {standaloneUsenetItems.map((item) => {
+                  const nzoId = item.nzoId || item.nzo_id || '';
+                  const sizeMb = item.sizeMb ?? item.size_mb ?? 0;
+                  const sizeLeftMb = item.sizeLeftMb ?? item.size_left_mb ?? 0;
+                  const timeLeft = item.timeLeft || item.time_left || '';
+                  const speed = item.speed || usenetQueueData?.speed;
+
                   const parsed = parseEpisodeRelease(item.filename || item.title);
                   if (parsed.seasonNumber != null && parsed.episodeNumber != null) {
                     const arrItem: ServerArrQueueItem = {
-                      id: Number(item.nzo_id.replace(/\D/g, '')) || 1,
+                      id: Number(nzoId.replace(/\D/g, '')) || 1,
                       title: item.filename || item.title || 'Episode',
                       status: item.status || 'Downloading',
-                      size: item.size_mb * 1024 * 1024,
-                      sizeLeft: item.size_left_mb * 1024 * 1024,
-                      timeleft: item.time_left,
+                      size: sizeMb * 1024 * 1024,
+                      sizeLeft: sizeLeftMb * 1024 * 1024,
+                      timeleft: timeLeft,
                       protocol: 'usenet',
                       seasonNumber: parsed.seasonNumber,
                       episodeNumber: parsed.episodeNumber,
@@ -580,21 +590,21 @@ export const DownloadQueuePage = () => {
                     };
                     return (
                       <DownloadEpisodeCard
-                        key={item.nzo_id}
+                        key={nzoId || item.filename}
                         item={arrItem}
-                        onCancel={() => cancelUsenetDownloadMutation.mutate(item.nzo_id)}
-                        liveSpeed={item.speed || usenetQueueData?.speed}
+                        onCancel={() => cancelUsenetDownloadMutation.mutate(nzoId)}
+                        liveSpeed={speed}
                       />
                     );
                   }
 
                   const displayTitle = resolveDownloadDisplayTitle(item);
-                  const totalBytes = item.size_mb * 1024 * 1024;
-                  const downloadedBytes = Math.max(0, (item.size_mb - item.size_left_mb) * 1024 * 1024);
+                  const totalBytes = sizeMb * 1024 * 1024;
+                  const downloadedBytes = Math.max(0, (sizeMb - sizeLeftMb) * 1024 * 1024);
 
                   return (
                     <div
-                      key={item.nzo_id}
+                      key={nzoId || item.filename}
                       className="p-3.5 rounded-xl bg-muted/30 space-y-2.5 border border-white/[0.04]"
                     >
                       <div className="flex items-center justify-between text-xs gap-3">
@@ -612,7 +622,7 @@ export const DownloadQueuePage = () => {
                           </span>
                           <button
                             type="button"
-                            onClick={() => cancelUsenetDownloadMutation.mutate(item.nzo_id)}
+                            onClick={() => cancelUsenetDownloadMutation.mutate(nzoId)}
                             className="text-[11px] text-destructive hover:opacity-80 font-medium cursor-pointer"
                           >
                             Cancel
@@ -630,16 +640,16 @@ export const DownloadQueuePage = () => {
                       <div className="flex items-center justify-between text-[11px] text-muted-foreground flex-wrap gap-2">
                         <div className="flex items-center gap-2">
                           <span className="font-medium text-foreground capitalize">{item.status || 'Downloading'}</span>
-                          {item.size_mb > 0 && (
+                          {sizeMb > 0 && (
                             <span>
-                              {item.size_left_mb > 0
+                              {sizeLeftMb > 0
                                 ? `${formatBytes(downloadedBytes)} / ${formatBytes(totalBytes)}`
                                 : formatBytes(totalBytes)}
                             </span>
                           )}
-                          {item.speed && item.speed !== '0 B/s' && <span>· {item.speed}</span>}
+                          {speed && speed !== '0 B/s' && <span>· {speed}</span>}
                         </div>
-                        {item.time_left && <span className="font-mono">ETA: {item.time_left}</span>}
+                        {timeLeft && <span className="font-mono">ETA: {timeLeft}</span>}
                       </div>
                     </div>
                   );

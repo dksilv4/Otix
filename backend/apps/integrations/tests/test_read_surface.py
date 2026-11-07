@@ -452,6 +452,38 @@ class PlexLibrariesTests(_ApiTestBase):
         self.assertEqual(resp.json(), {"libraries": []})
 
 
+class PlexMusicSectionsTests(_ApiTestBase):
+    URL = "/api/v1/integrations/plex/music/sections"
+
+    def test_music_sections_empty(self):
+        resp = self.client.get(self.URL)
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json(), {"sections": []})
+
+    def test_music_sections_filtering(self):
+        srv = _make_server(self.user, name="MediaServer")
+        UserPlexLibrary.objects.create(
+            user=self.user, server=srv, section_key="1", title="Movies", library_type="movie"
+        )
+        UserPlexLibrary.objects.create(
+            user=self.user, server=srv, section_key="5", title="Music Library", library_type="artist"
+        )
+        resp = self.client.get(self.URL)
+        self.assertEqual(resp.status_code, 200)
+        sections = resp.json()["sections"]
+        self.assertEqual(len(sections), 1)
+        self.assertEqual(sections[0]["title"], "Music Library")
+        self.assertEqual(sections[0]["library_type"], "artist")
+
+    def test_music_sections_post_scan(self):
+        self.user.plex_auth_token = "valid-plex-token"
+        self.user.save()
+        with mock.patch("apps.integrations.services.discover_plex_servers", return_value=[]):
+            resp = self.client.post(self.URL)
+            self.assertEqual(resp.status_code, 200)
+            self.assertIn("sections", resp.json())
+
+
 SESSION_MOVIE_ITEM = {
     "type": "movie",
     "ratingKey": "100",
@@ -762,6 +794,114 @@ class PlexContinueWatchingTests(TestCase):
         self.assertEqual(items[0]["rating_key"], "999")
         self.assertEqual(items[0]["title"], "Dune")
         self.assertEqual(items[0]["progress_percent"], 33.3)
+
+    def test_delete_continue_watching(self):
+        UserPlexItem.objects.create(
+            user=self.user,
+            server=self.server,
+            rating_key="201",
+            media_type="movie",
+            title="Interstellar",
+            view_offset=4500000,
+            duration=10000000,
+            viewed=False,
+        )
+
+        calls = []
+
+        def _fake(url, method="GET", *args, **kwargs):
+            calls.append((url, method))
+            return 200, ""
+
+        with mock.patch.object(integrations_services.plex, "_request", side_effect=_fake):
+            resp = self.client.delete(self.URL, data={"rating_key": "201"}, format="json")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json(), {"success": True})
+        self.assertTrue(any("removeFromContinueWatching" in c[0] and c[1] == "PUT" for c in calls))
+
+        # Check local offset cleared
+        item = UserPlexItem.objects.get(user=self.user, rating_key="201")
+        self.assertEqual(item.view_offset, 0)
+
+
+class PlexScrobbleTests(TestCase):
+    URL = "/api/v1/integrations/plex/scrobble"
+
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username="alice_scrobble",
+            password="pw",
+            plex_auth_token="alice-tok",
+            plex_id="plex-alice",
+        )
+        self.server = _make_server(self.user, token="srv-tok", machine="srv-scrobble")
+        self.client = APIClient()
+        self.client.force_authenticate(user=self.user)
+
+    def test_scrobble_watched(self):
+        item = UserPlexItem.objects.create(
+            user=self.user,
+            server=self.server,
+            rating_key="201",
+            media_type="movie",
+            title="Interstellar",
+            view_offset=4500000,
+            duration=10000000,
+            viewed=False,
+        )
+        calls = []
+
+        def _fake(url, method="GET", *args, **kwargs):
+            calls.append((url, method))
+            return 200, ""
+
+        with mock.patch.object(integrations_services.plex, "_request", side_effect=_fake):
+            resp = self.client.post(self.URL, data={"rating_key": "201", "watched": True}, format="json")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json(), {"success": True})
+        self.assertTrue(any("/:/scrobble" in c[0] for c in calls))
+
+        item.refresh_from_db()
+        self.assertTrue(item.viewed)
+        self.assertEqual(item.view_offset, 10000000)
+
+    def test_scrobble_unwatched(self):
+        item = UserPlexItem.objects.create(
+            user=self.user,
+            server=self.server,
+            rating_key="201",
+            media_type="movie",
+            title="Interstellar",
+            view_offset=4500000,
+            duration=10000000,
+            viewed=True,
+        )
+        calls = []
+
+        def _fake(url, method="GET", *args, **kwargs):
+            calls.append((url, method))
+            return 200, ""
+
+        with mock.patch.object(integrations_services.plex, "_request", side_effect=_fake):
+            resp = self.client.post(self.URL, data={"rating_key": "201", "watched": False}, format="json")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json(), {"success": True})
+        self.assertTrue(any("/:/unscrobble" in c[0] for c in calls))
+
+        item.refresh_from_db()
+        self.assertFalse(item.viewed)
+        self.assertEqual(item.view_offset, 0)
+
+    def test_missing_rating_key_400(self):
+        resp = self.client.post(self.URL, data={}, format="json")
+        self.assertEqual(resp.status_code, 400)
+
+    def test_unlinked_user_400(self):
+        bob = User.objects.create_user(username="bob_scrobble", password="pw")
+        client = APIClient()
+        client.force_authenticate(user=bob)
+        resp = client.post(self.URL, data={"rating_key": "201"}, format="json")
+        self.assertEqual(resp.status_code, 400)
 
 
 class PlexWebhookTests(TestCase):

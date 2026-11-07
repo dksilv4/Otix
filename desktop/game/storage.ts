@@ -7,16 +7,43 @@ import { getDb } from '../db';
 import type { LocalGame } from '../preload-api';
 import { isUpdateFile, isDlcFile } from './local-scanner';
 import { resolveUncPath } from '../unc-resolver';
+import { clearTitleKeyCache } from './title-key';
 
 let __db: Database.Database | null = null;
+const _stmtCache = new Map<string, Database.Statement>();
+const MAX_STMT_CACHE_SIZE = 200;
+
 function db(): Database.Database {
-  if (!__db) __db = getDb();
+  if (!__db) {
+    __db = getDb();
+    _stmtCache.clear();
+  }
   return __db;
 }
 
+export function getCachedStatement(sql: string): Database.Statement {
+  let stmt = _stmtCache.get(sql);
+  if (!stmt) {
+    if (_stmtCache.size >= MAX_STMT_CACHE_SIZE) {
+      const it = _stmtCache.keys();
+      for (let i = 0; i < 50; i++) {
+        const k = it.next().value;
+        if (k) _stmtCache.delete(k);
+      }
+    }
+    stmt = db().prepare(sql);
+    _stmtCache.set(sql, stmt);
+  }
+  return stmt;
+}
+
+export function clearStatementCache(): void {
+  _stmtCache.clear();
+}
+
 type DbRow = Record<string, any>;
-const __get = (sql: string, ...params: any[]) => db().prepare(sql).get(...params) as any;
-const __all = (sql: string, ...params: any[]) => db().prepare(sql).all(...params) as any[];
+const __get = (sql: string, ...params: any[]) => getCachedStatement(sql).get(...params) as any;
+const __all = (sql: string, ...params: any[]) => getCachedStatement(sql).all(...params) as any[];
 
 // ── Constants & Utilities ──────────────────────────────────────────────
 
@@ -63,6 +90,16 @@ export function ensureScannedGamesIndexes(): void {
     CREATE INDEX IF NOT EXISTS idx_scanned_games_otix_media_id ON scanned_games(otix_media_id);
     CREATE INDEX IF NOT EXISTS idx_scanned_games_install_dir ON scanned_games(install_dir);
     CREATE INDEX IF NOT EXISTS idx_scanned_games_exe_path ON scanned_games(exe_path);
+    CREATE INDEX IF NOT EXISTS idx_scanned_games_title ON scanned_games(title);
+    CREATE INDEX IF NOT EXISTS idx_scanned_games_last_played ON scanned_games(last_played_at);
+    CREATE INDEX IF NOT EXISTS idx_scanned_games_plat_media ON scanned_games(platform, otix_media_id);
+    CREATE INDEX IF NOT EXISTS idx_game_matches_title ON game_matches(otix_title);
+
+    -- Prune any legacy corrupted records (e.g. PC games pointing to .zip/archive files or internal app0 subfolders)
+    DELETE FROM scanned_games
+    WHERE (platform = 'pc' AND (exe_path LIKE '%.zip' OR exe_path LIKE '%.rar' OR exe_path LIKE '%.7z'))
+       OR (platform = 'pc' AND exe_path LIKE '%eboot.bin%')
+       OR (title = 'App 0' AND install_dir LIKE '%app0%');
   `);
 }
 
@@ -73,6 +110,7 @@ export type GamePlatform = LocalGame['platform'];
 export interface GameRow {
   id: string;
   title: string;
+  titleId?: string;
   exePath: string;
   localExePath?: string;
   installDir: string;
@@ -91,7 +129,7 @@ export interface GameRow {
   isApp?: boolean;
   gameType?: string;
   version?: string | null;
-  data?: { id: string; title: string; platform: string; version?: string | null; iconUrl?: string; posterUrl?: string; backdropUrl?: string; logoUrl?: string; textlessPosterUrl?: string; sizeBytes?: number; modifiedAt?: string };
+  data?: { id: string; title: string; titleId?: string; platform: string; version?: string | null; iconUrl?: string; posterUrl?: string; backdropUrl?: string; logoUrl?: string; textlessPosterUrl?: string; sizeBytes?: number; modifiedAt?: string };
   matchSuggestion?: { id: string; title: string; platform: string; iconUrl?: string; posterUrl?: string; _candidates?: any[] };
   otixMatchSuggestion?: { id: string; title: string; platform: string; iconUrl?: string; posterUrl?: string; _candidates?: any[] };
   updateFiles?: { name: string; path: string }[];
@@ -381,18 +419,56 @@ export function getPeVersion(filePath: string): string | null {
   return null;
 }
 
+/** In-memory cache for resolved row metadata (size, version, mtime, localExePath) */
+const _rowMetaCache = new Map<string, { sizeBytes?: number; version?: string; modifiedAt?: string; localExePath?: string }>();
+/** Negative cache for paths that do not exist to avoid repeated OS stats */
+const _missingPathCache = new Set<string>();
+/** In-memory cache for parsed JSON structures (sources, updateFiles, matchSuggestion) */
+const _jsonParseCache = new Map<string, any>();
+
+function parseJsonFast(raw: string | null | undefined): any | undefined {
+  if (!raw) return undefined;
+  const cached = _jsonParseCache.get(raw);
+  if (cached !== undefined) return cached;
+  try {
+    const parsed = JSON.parse(raw);
+    if (_jsonParseCache.size > 5000) _jsonParseCache.clear();
+    _jsonParseCache.set(raw, parsed);
+    return parsed;
+  } catch {
+    return undefined;
+  }
+}
+
+function pathExistsFast(p: string): boolean {
+  if (!p) return false;
+  if (_missingPathCache.has(p)) return false;
+  try {
+    const exists = fs.existsSync(p);
+    if (!exists) {
+      if (_missingPathCache.size < 5000) _missingPathCache.add(p);
+    }
+    return exists;
+  } catch {
+    return false;
+  }
+}
+
 /** Clears the internal otix_data parse cache. Call after bulk mutations. */
 export function clearRowCache(): void {
   _otixDataCache?.clear();
   _otixDataCache = null;
   _dirSizeCache.clear();
   _peVersionCache.clear();
+  _rowMetaCache.clear();
+  _missingPathCache.clear();
+  _jsonParseCache.clear();
+  clearStatementCache();
+  clearTitleKeyCache();
 }
 
 function rowToGame(row: DbRow): GameRow {
-  const matchSuggestion = row.otix_match_suggestion
-    ? (() => { try { return JSON.parse(row.otix_match_suggestion as string); } catch { return undefined; } })()
-    : undefined;
+  const matchSuggestion = parseJsonFast(row.otix_match_suggestion as string | undefined);
 
   let sources: any[] | undefined = undefined;
   let isDlc = false;
@@ -403,21 +479,20 @@ function rowToGame(row: DbRow): GameRow {
   let gameType: string | undefined = undefined;
 
   if (row.sources) {
-    try {
-      sources = JSON.parse(row.sources as string);
-      if (Array.isArray(sources)) {
-        for (const s of sources) {
-          if (typeof s === 'object' && s !== null) {
-            if (s.isDlc) isDlc = true;
-            if (s.dlcOf) dlcOf = String(s.dlcOf);
-            if (s.isBeta) isBeta = true;
-            if (s.betaOf) betaOf = String(s.betaOf);
-            if (s.isApp) isApp = true;
-            if (s.gameType) gameType = String(s.gameType);
-          }
+    const parsedSources = parseJsonFast(row.sources as string);
+    if (Array.isArray(parsedSources)) {
+      sources = parsedSources;
+      for (const s of sources) {
+        if (typeof s === 'object' && s !== null) {
+          if (s.isDlc) isDlc = true;
+          if (s.dlcOf) dlcOf = String(s.dlcOf);
+          if (s.isBeta) isBeta = true;
+          if (s.betaOf) betaOf = String(s.betaOf);
+          if (s.isApp) isApp = true;
+          if (s.gameType) gameType = String(s.gameType);
         }
       }
-    } catch {}
+    }
   }
 
   // Parse otix_data once and reuse for both overview and data fields
@@ -443,20 +518,36 @@ function rowToGame(row: DbRow): GameRow {
     (row.version as string | undefined) ||
     undefined;
 
+  let titleId: string | undefined =
+    (otixDataParsed?.titleId as string | undefined) ||
+    (otixDataParsed?.title_id as string | undefined) ||
+    (otixDataParsed?.ps_id as string | undefined) ||
+    undefined;
+  if (!titleId) {
+    const tm = ((row.exe_path as string) || (row.install_dir as string) || '').match(/\b((?:PPSA|ELJS|ECAS|CUSA)\d{5})\b/i);
+    if (tm) titleId = tm[1].toUpperCase();
+  }
+
   let localExePath = (row.local_exe_path as string) || undefined;
   let resolvedExePath = (row.exe_path as string) || undefined;
 
-  // On-demand disk stat fallback for existing or unmatched scanned games
-  if ((sizeBytes == null || sizeBytes <= 0 || !modifiedAt || !version || !localExePath) && (row.exe_path || row.install_dir || row.local_exe_path)) {
+  const rowId = row.id as string;
+  const cachedMeta = _rowMetaCache.get(rowId);
+  if (cachedMeta) {
+    if (sizeBytes == null || sizeBytes <= 0) sizeBytes = cachedMeta.sizeBytes;
+    if (!version) version = cachedMeta.version;
+    if (!modifiedAt) modifiedAt = cachedMeta.modifiedAt;
+    if (!localExePath) localExePath = cachedMeta.localExePath;
+  } else if ((sizeBytes == null || sizeBytes <= 0 || !modifiedAt || !version || !localExePath) && (row.exe_path || row.install_dir || row.local_exe_path)) {
     try {
       const dirTarget =
-        (row.install_dir as string) && fs.existsSync(row.install_dir as string)
+        (row.install_dir as string) && pathExistsFast(row.install_dir as string)
           ? (row.install_dir as string)
           : null;
       let fileTarget =
-        (row.local_exe_path as string) && fs.existsSync(row.local_exe_path as string)
+        (row.local_exe_path as string) && pathExistsFast(row.local_exe_path as string)
           ? (row.local_exe_path as string)
-          : (row.exe_path as string) && !String(row.exe_path).startsWith('steam://') && fs.existsSync(row.exe_path as string)
+          : (row.exe_path as string) && !String(row.exe_path).startsWith('steam://') && pathExistsFast(row.exe_path as string)
             ? (row.exe_path as string)
             : null;
 
@@ -496,6 +587,9 @@ function rowToGame(row: DbRow): GameRow {
         const peVer = getPeVersion(fileTarget);
         if (peVer) version = peVer;
       }
+
+      if (_rowMetaCache.size > 5000) _rowMetaCache.clear();
+      _rowMetaCache.set(rowId, { sizeBytes, version, modifiedAt, localExePath });
     } catch {
       // non-fatal
     }
@@ -508,6 +602,7 @@ function rowToGame(row: DbRow): GameRow {
   return {
     id: row.id as string,
     title: row.title as string,
+    titleId,
     exePath: resolvedExePath || '',
     localExePath,
     installDir: row.install_dir as string,
@@ -530,12 +625,16 @@ function rowToGame(row: DbRow): GameRow {
     betaOf,
     isApp,
     gameType,
-    updateFiles: row.update_files ? (() => { try { return JSON.parse(row.update_files as string); } catch { return undefined; } })() : undefined,
+    updateFiles: parseJsonFast(row.update_files as string | undefined),
     lastPlayedAt: (row.last_played_at as string) || undefined,
     data: (() => {
+      const rawOtixMediaId = (row.otix_media_id as string) || undefined;
+      const cleanOtixMediaId = rawOtixMediaId ? rawOtixMediaId.trim().replace(/\.0+$/, '') : undefined;
+      const otixMediaId = cleanOtixMediaId && !/^(pc_file_|iso[:_]file_|steam_|rom_|ps\d+_|xbox|switch_|file_)/i.test(cleanOtixMediaId) ? cleanOtixMediaId : undefined;
       const base = {
-        id: (row.otix_media_id as string) || (row.id as string),
+        id: otixMediaId || (row.id as string),
         title: (row.otix_media_title as string) || (row.title as string),
+        titleId,
         platform: row.platform as GamePlatform,
         version,
         iconUrl: (row.otix_icon_url as string) || (row.icon_url as string) || undefined,
@@ -550,6 +649,7 @@ function rowToGame(row: DbRow): GameRow {
         return {
           ...base,
           ...otixDataParsed,
+          titleId: titleId ?? otixDataParsed.titleId,
           platform: row.platform as GamePlatform,
           posterUrl: base.posterUrl || otixDataParsed.posterUrl || otixDataParsed.poster_url,
           backdropUrl: base.backdropUrl || otixDataParsed.backdropUrl || otixDataParsed.backdrop_url,
@@ -563,7 +663,11 @@ function rowToGame(row: DbRow): GameRow {
     })(),
     matchSuggestion,
     otixMatchSuggestion: matchSuggestion,  // alias for backward compat
-    otixMediaId: (row.otix_media_id as string) || undefined,
+    otixMediaId: (() => {
+      const r = (row.otix_media_id as string) || undefined;
+      const c = r ? r.trim().replace(/\.0+$/, '') : undefined;
+      return c && !/^(pc_file_|iso[:_]file_|steam_|rom_|ps\d+_|xbox|switch_|file_)/i.test(c) ? c : undefined;
+    })(),
     otixMediaTitle: (row.otix_media_title as string) || undefined,
     otixMediaSlug: (row.otix_media_slug as string) || undefined,
     otixConfidence: row.otix_confidence != null ? Number(row.otix_confidence) : undefined,
@@ -662,24 +766,52 @@ export function getGameById(id: string): GameRow | null {
   return row ? rowToGame(row) : null;
 }
 
+export function getGamesByIds(ids: string[]): GameRow[] {
+  if (!ids || ids.length === 0) return [];
+  const uniqueIds = [...new Set(ids.filter(Boolean))];
+  if (uniqueIds.length === 0) return [];
+
+  const chunks = chunkArray(uniqueIds, SQLITE_PARAM_LIMIT);
+  const results: GameRow[] = [];
+  for (const chunk of chunks) {
+    const chunkSet = new Set(chunk);
+    const placeholders = chunk.map(() => '?').join(',');
+    const sql = `SELECT * FROM scanned_games WHERE id IN (${placeholders})`;
+    const rows = __all(sql, ...chunk);
+    for (const r of rows) {
+      if (!chunkSet.has(r.id as string)) continue;
+      const g = rowToGame(r);
+      if (!g.isApp) results.push(g);
+    }
+  }
+  return results;
+}
+
 // ── Mutations ──────────────────────────────────────────────────────────
 
 export function upsertGames(games: GameRow[], scopePaths?: string[]): void {
   withTransaction(() => {
-    const existingMap = new Map<string, DbRow>();
-    const existingRows = __all(
-      'SELECT id, seeded, otix_media_id, otix_media_title, otix_match_suggestion, otix_data, otix_poster_url, otix_backdrop_url, otix_icon_url, otix_confidence, poster_url FROM scanned_games'
-    );
-    for (const r of existingRows) {
-      if (r && r.id != null) {
-        existingMap.set(r.id as string, r);
-      }
-    }
-
-    const newIds = [...new Set(games.map((g) => g.id))];
+    const newIds = [...new Set(games.map((g) => g.id).filter(Boolean))];
     const newIdSet = new Set(newIds);
     const platforms = [...new Set(games.map((g) => g.platform))];
     const platformSet = new Set(platforms);
+
+    const existingMap = new Map<string, DbRow>();
+    if (newIds.length > 0) {
+      const idChunks = chunkArray(newIds, SQLITE_PARAM_LIMIT);
+      for (const chunk of idChunks) {
+        const placeholders = chunk.map(() => '?').join(',');
+        const existingRows = __all(
+          `SELECT id, seeded, otix_media_id, otix_media_title, otix_match_suggestion, otix_data, otix_poster_url, otix_backdrop_url, otix_icon_url, otix_confidence, poster_url FROM scanned_games WHERE id IN (${placeholders})`,
+          ...chunk
+        );
+        for (const r of existingRows) {
+          if (r && r.id != null) {
+            existingMap.set(r.id as string, r);
+          }
+        }
+      }
+    }
 
     if (scopePaths && scopePaths.length > 0) {
       const deleteScopedStmt = db().prepare('DELETE FROM scanned_games WHERE id = ?');
@@ -982,34 +1114,70 @@ export function hydrateGame(
   textlessPosterUrl?: string | null,
   logoUrl?: string | null,
 ): void {
-  const backdrop = backdropUrl || (fullData?.backdropUrl as string) || (fullData?.backdrop_url as string) || (fullData?.otixBackdropUrl as string) || null
-  const textless = textlessPosterUrl || (fullData?.textlessPosterUrl as string) || (fullData?.textless_poster_url as string) || (fullData?.otixTextlessPosterUrl as string) || null
-  const logo = logoUrl || (fullData?.logoUrl as string) || (fullData?.logo_url as string) || (fullData?.otixLogoUrl as string) || null
-  const icon = iconUrl || (fullData?.iconUrl as string) || (fullData?.icon_url as string) || (fullData?.otixIconUrl as string) || null
-  const poster = posterUrl || (fullData?.posterUrl as string) || (fullData?.poster_url as string) || (fullData?.otixPosterUrl as string) || null
+  const backdrop = backdropUrl || (fullData?.backdropUrl as string) || (fullData?.backdrop_url as string) || (fullData?.otixBackdropUrl as string) || null;
+  const textless = textlessPosterUrl || (fullData?.textlessPosterUrl as string) || (fullData?.textless_poster_url as string) || (fullData?.otixTextlessPosterUrl as string) || null;
+  const logo = logoUrl || (fullData?.logoUrl as string) || (fullData?.logo_url as string) || (fullData?.otixLogoUrl as string) || null;
+  const icon = iconUrl || (fullData?.iconUrl as string) || (fullData?.icon_url as string) || (fullData?.otixIconUrl as string) || null;
+  const poster = posterUrl || (fullData?.posterUrl as string) || (fullData?.poster_url as string) || (fullData?.otixPosterUrl as string) || null;
+  let cleanMediaId = mediaId ? String(mediaId).trim().replace(/\.0+$/, '') : null;
+  if (cleanMediaId && /^(pc_file_|iso[:_]file_|steam_|rom_|ps\d+_|xbox|switch_|file_)/i.test(cleanMediaId)) {
+    cleanMediaId = null;
+  }
+
+  const candidateIds = getCandidateGameIds(id);
+  const placeholders = candidateIds.map(() => '?').join(',');
+  const existing = __get(
+    `SELECT otix_data, otix_poster_url, poster_url, otix_media_id FROM scanned_games WHERE id IN (${placeholders}) OR install_dir = ? OR exe_path = ? LIMIT 1`,
+    ...candidateIds, id, id
+  ) as { otix_data?: string; otix_poster_url?: string; poster_url?: string; otix_media_id?: string } | undefined;
+
+  let otixDataObj: Record<string, any> = {};
+  if (existing?.otix_data) {
+    try {
+      otixDataObj = JSON.parse(existing.otix_data);
+    } catch {
+      otixDataObj = {};
+    }
+  }
+
+  if (fullData && typeof fullData === 'object') {
+    Object.assign(otixDataObj, fullData);
+  }
+  if (title) otixDataObj.title = title;
+  if (poster) otixDataObj.posterUrl = poster;
+  if (backdrop) otixDataObj.backdropUrl = backdrop;
+  if (icon) otixDataObj.iconUrl = icon;
+  if (logo) otixDataObj.logoUrl = logo;
+  if (textless) otixDataObj.textlessPosterUrl = textless;
+  if (cleanMediaId) otixDataObj.id = cleanMediaId;
+  const otixDataStr = Object.keys(otixDataObj).length > 0 ? JSON.stringify(otixDataObj) : null;
+
   db().prepare(
     `UPDATE scanned_games SET
       otix_media_id = COALESCE(?, otix_media_id),
       otix_media_title = ?,
       otix_icon_url = COALESCE(?, otix_icon_url),
       otix_poster_url = COALESCE(?, otix_poster_url),
+      poster_url = COALESCE(?, poster_url, otix_poster_url),
       otix_backdrop_url = COALESCE(?, otix_backdrop_url),
       otix_textless_poster_url = COALESCE(?, otix_textless_poster_url),
       otix_logo_url = COALESCE(?, otix_logo_url),
-      otix_data = ?,
-      otix_confidence = ?,
+      otix_data = COALESCE(?, otix_data),
+      otix_confidence = COALESCE(?, otix_confidence, 1.0),
       updated_at = datetime('now')
-    WHERE id = ? OR id = ?`
+    WHERE id IN (${placeholders}) OR install_dir = ? OR exe_path = ?`
   ).run(
-    mediaId ?? null,
+    cleanMediaId ?? null,
     title,
     icon,
+    poster,
     poster,
     backdrop,
     textless,
     logo,
-    fullData ? JSON.stringify(fullData) : null,
+    otixDataStr,
     confidence ?? null,
+    ...candidateIds,
     id,
     id,
   );
@@ -1113,10 +1281,18 @@ export function acceptSuggestion(
   if (suggestion.overview) otixDataObj.overview = suggestion.overview;
   if (suggestion.releaseDate) otixDataObj.releaseDate = suggestion.releaseDate;
   if (suggestion.releaseYear) otixDataObj.year = suggestion.releaseYear;
+  if ((suggestion as any).genres) otixDataObj.genres = (suggestion as any).genres;
+  if ((suggestion as any).developers) otixDataObj.developers = (suggestion as any).developers;
+  if ((suggestion as any).titleId) otixDataObj.titleId = (suggestion as any).titleId;
+  if ((suggestion as any).ps_id) otixDataObj.titleId = (suggestion as any).ps_id;
   const otixDataStr = Object.keys(otixDataObj).length > 0 ? JSON.stringify(otixDataObj) : existing?.otix_data ?? null;
 
   const poster = suggestion.posterUrl ?? null;
   const backdrop = suggestion.backdropUrl ?? null;
+  let cleanMediaId = suggestion.id ? String(suggestion.id).trim().replace(/\.0+$/, '') : null;
+  if (cleanMediaId && /^(pc_file_|iso[:_]file_|steam_|rom_|ps\d+_|xbox|switch_|file_)/i.test(cleanMediaId)) {
+    cleanMediaId = null;
+  }
 
   db().prepare(
     `UPDATE scanned_games SET
@@ -1131,7 +1307,7 @@ export function acceptSuggestion(
       updated_at = datetime('now')
     WHERE id IN (${placeholders}) OR install_dir = ? OR exe_path = ?`
   ).run(
-    suggestion.id, suggestion.title, suggestion.slug ?? null,
+    cleanMediaId, suggestion.title, suggestion.slug ?? null,
     poster,
     poster,
     backdrop,

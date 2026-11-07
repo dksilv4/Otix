@@ -5,6 +5,7 @@ import {
   getRequestServiceLabel,
   getRequestStatusBadgeClass,
   getRequestStatusLabel,
+  resolveEffectiveRequestStatus,
 } from '../utils/requests'
 import type { MediaRequestItem } from '../use-media-requests'
 
@@ -75,5 +76,46 @@ describe('requests-utils', () => {
     expect(filterMediaRequests(items, '', 'movie')[0].title).toBe('Gladiator II')
     expect(filterMediaRequests(items, 'shogun', 'all')).toHaveLength(1)
     expect(filterMediaRequests(items, 'nonexistent', 'all')).toHaveLength(0)
+  })
+
+  it('resolves effective request status from media activity catalog', () => {
+    const item: MediaRequestItem = {
+      id: 10,
+      userId: 1,
+      mediaType: 'show',
+      title: 'VisionQuest',
+      tmdbId: '213375',
+      tvdbId: '426606',
+      service: 'sonarr',
+      status: 'requested',
+      progress: 0,
+      searchNow: true,
+      monitored: true,
+    }
+
+    // When no activity exists, preserves persisted status
+    expect(resolveEffectiveRequestStatus(item, null)).toEqual({
+      status: 'requested',
+      isAvailable: false,
+    })
+
+    // Resolves as available when activity item matched via tvdbId or tmdbId is available
+    const activityItems = {
+      'tvdb:show:426606': {
+        status: 'available' as const,
+        mediaType: 'show',
+        tvdbId: '426606',
+        tmdbId: '213375',
+        title: 'VisionQuest',
+        isOwned: true,
+        isPartial: true,
+        episodeCount: 7,
+        totalEpisodes: 8,
+      },
+    }
+    const result = resolveEffectiveRequestStatus(item, activityItems as any)
+    expect(result.status).toBe('available')
+    expect(result.isAvailable).toBe(true)
+    expect(result.nodeActivity?.episodeCount).toBe(7)
   })
 })

@@ -18,6 +18,9 @@ import migration011 from './migrations/011_media_status'
 import migration012 from './migrations/downloads/012_download_source'
 import migration013 from './migrations/013_achievements'
 import migration014 from './migrations/downloads/014_scanned_games_indexes'
+import migration015 from './migrations/downloads/015_performance_indexes'
+import migration016 from './migrations/downloads/016_purge_scanned_anomalies'
+import migration017 from './migrations/downloads/017_purge_legacy_sidecar_data'
 
 // Sequential chain against one schema_version table. The plugin migration was
 // id 1 in its own file; it becomes id 7 in the consolidated chain.
@@ -36,6 +39,9 @@ const migrations = [
   migration012,
   migration013,
   migration014,
+  migration015,
+  migration016,
+  migration017,
 ]
 
 export async function initDatabase(): Promise<void> {

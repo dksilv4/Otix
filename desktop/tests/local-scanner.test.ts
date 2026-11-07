@@ -280,11 +280,13 @@ describe('Native Local Scanner', () => {
       expect(hkGame).toBeDefined();
       expect(hkGame?.platform).toBe('ps5');
       expect(hkGame?.exePath).toBe(path.join(hkDir, 'eboot.bin'));
+      expect(hkGame?.installDir).toBe(hkDir);
 
       const raymanGame = result.games.find((g) => g.title === 'Rayman 30th Anniversary Edition');
       expect(raymanGame).toBeDefined();
       expect(raymanGame?.platform).toBe('ps5');
       expect(raymanGame?.exePath).toBe(path.join(raymanApp0, 'eboot.bin'));
+      expect(raymanGame?.installDir).toBe(raymanDir);
     });
   });
 });

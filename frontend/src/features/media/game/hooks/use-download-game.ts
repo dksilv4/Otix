@@ -381,7 +381,7 @@ export function useDownloadGame(): DownloadGameState {
 
       const downloadUrl = releaseDownloadUrl(match.baseRelease)
       const protocol = inferReleaseProtocol(match.baseRelease)
-      const dlRes = await apiClient.post<{ nzo_id?: string }>(
+      const dlRes = await apiClient.post<{ nzoId?: string; nzo_id?: string }>(
         `/library/nodes/${activeServer.id}/usenet/download`,
         {
           title: match.baseRelease.title,
@@ -424,7 +424,7 @@ export function useDownloadGame(): DownloadGameState {
           status: 'downloading',
           media_item_id: mediaId ? Number(mediaId) || null : null,
           poster_url: (data as { posterUrl?: string })?.posterUrl || null,
-          external_id: dlRes.data?.nzo_id || match.baseRelease.guid,
+          external_id: dlRes.data?.nzoId || dlRes.data?.nzo_id || match.baseRelease.guid,
         })
       } catch {
         // non-fatal
@@ -545,7 +545,10 @@ export function useDownloadGame(): DownloadGameState {
 
   const handleCancelServerQueue = () => {
     if (activeServerQueueItem) {
-      cancelServerQueue.mutate(activeServerQueueItem.nzo_id)
+      const nzoId = activeServerQueueItem.nzoId || activeServerQueueItem.nzo_id
+      if (nzoId) {
+        cancelServerQueue.mutate(nzoId)
+      }
     }
   }
 

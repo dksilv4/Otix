@@ -401,15 +401,7 @@ export async function findDownloadedContent(
             const nonNoiseSubdirs = subEntries.filter(
               (e) => e.isDirectory() && !SKIP_DIRS.has(e.name.toLowerCase()) && !e.name.startsWith('.') && !e.name.startsWith('$')
             );
-            let hasOtix = subFiles.some((f) => f.toLowerCase() === '.otix');
-            if (!hasOtix && nonNoiseSubdirs.length === 1) {
-              try {
-                const deepFiles = await fs.readdir(path.join(fullPath, nonNoiseSubdirs[0].name));
-                if (deepFiles.some((f) => f.toLowerCase() === '.otix')) {
-                  hasOtix = true;
-                }
-              } catch {}
-            }
+            let hasOtix = false;
             const subHasIso = subFiles.some((f) => /\.(iso|img|mdf|bin)$/i.test(f));
             const subDirectExe = isGameExecutableName(entry.name) ? false : subFiles.some((f) => isGameExecutableName(f));
             let packagePath = fullPath;
@@ -871,73 +863,8 @@ export async function smartOrganizePreview(
       type: item.type,
     };
 
-    let hasSidecar = false;
     const actualItemPath = resolveUncPath(item.path);
-    if (item.type === 'pc_game') {
-      try {
-        let otixPath = path.join(actualItemPath, '.otix');
-        try {
-          await fs.access(otixPath);
-        } catch {
-          const children = await fs.readdir(actualItemPath, { withFileTypes: true });
-          const nonNoiseDirs = children.filter(
-            (c) => c.isDirectory() && !SKIP_DIRS.has(c.name.toLowerCase()) && !c.name.startsWith('.') && !c.name.startsWith('$')
-          );
-          // Only check child directory if there is EXACTLY ONE child directory.
-          if (nonNoiseDirs.length === 1) {
-            const deepOtix = path.join(actualItemPath, nonNoiseDirs[0].name, '.otix');
-            try {
-              await fs.access(deepOtix);
-              otixPath = deepOtix;
-            } catch {}
-          }
-        }
-        const otixRaw = await fs.readFile(otixPath, 'utf8');
-        const sc = JSON.parse(otixRaw);
-        if (sc) {
-          hasSidecar = Boolean(sc.title || sc.media_id || sc.mediaId || sc.id);
-        }
-        if (sc.title) {
-          const otixTitle = cleanGameTitle(sc.title);
-          if (otixTitle) {
-            title = otixTitle;
-            release.title = otixTitle;
-            release.cleanTitle = otixTitle;
-          }
-        }
-        if (sc.releaseGroup || sc.release_group) {
-          if (!release.group) release.group = sc.releaseGroup || sc.release_group;
-        }
-        if (sc.gameVersion || sc.version) {
-          if (!release.version) release.version = sc.gameVersion || sc.version;
-        }
-        if (sc.edition) {
-          if (!release.edition) release.edition = sc.edition;
-        }
-        if (sc.titleId || sc.title_id) {
-          if (!release.titleId) release.titleId = sc.titleId || sc.title_id;
-        }
-        const sidecarPlat = resolveSidecarPlatform(sc, release.platform || 'PC');
-        if (item.platform) {
-          // Explicit console folder detected from structure
-          release.platform = item.platform;
-        } else if (sidecarPlat === 'PC' || !release.platform) {
-          release.platform = 'PC';
-        }
-      } catch {}
-    } else {
-      try {
-        await fs.access(resolveUncPath(`${item.path}.otix`));
-        hasSidecar = true;
-      } catch {
-        try {
-          await fs.access(resolveUncPath(`${item.path}.otixmeta`));
-          hasSidecar = true;
-        } catch {}
-      }
-    }
-
-    let isMatched = hasSidecar;
+    let isMatched = false;
     if (!isMatched) {
       try {
         const row = getDb().prepare(`

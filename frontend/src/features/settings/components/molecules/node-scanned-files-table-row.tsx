@@ -4,16 +4,12 @@ import {
   Disc,
   Copy,
   Check,
-  Sparkles,
   ChevronRight,
   CornerDownRight,
   FileCode,
   AlertTriangle,
   Layers,
-  Unlink,
 } from 'lucide-react'
-import { DkButton } from '@ui/atoms/button'
-import { getDesktopAPI } from '@/lib/desktop/api'
 import type { ScannedGameItem } from '../../utils/scanned-summary'
 import {
   type NodeScanColumnId,
@@ -33,7 +29,7 @@ export interface NodeScannedFilesTableRowProps {
   item: ScannedGameItem
   isExpanded: boolean
   onToggleExpand: (id: string | number) => void
-  onOpenMatchModal: (game: ScannedGameItem) => void
+  onOpenMatchModal?: (game: ScannedGameItem) => void
   onOpenDetails: (game: ScannedGameItem) => void
   onUnlinkSource?: (primaryId: string | number, sourceId: string | number) => void
   visibleColumns?: Record<NodeScanColumnId, boolean>
@@ -43,9 +39,9 @@ export const NodeScannedFilesTableRow = ({
   item,
   isExpanded,
   onToggleExpand,
-  onOpenMatchModal,
+  onOpenMatchModal: _onOpenMatchModal,
   onOpenDetails,
-  onUnlinkSource,
+  onUnlinkSource: _onUnlinkSource,
   visibleColumns = DEFAULT_VISIBLE_COLUMNS,
 }: NodeScannedFilesTableRowProps) => {
   const [copiedPath, setCopiedPath] = useState<string | null>(null)
@@ -89,7 +85,7 @@ export const NodeScannedFilesTableRow = ({
         {visibleColumns.icon && (
           <td
             className={cn(
-              'py-2.5 px-3 text-center border-y border-white/[0.04] first:border-l first:border-white/[0.04] first:rounded-l-2xl transition-all',
+              'py-4 px-3 text-center border-y border-white/[0.04] first:border-l first:border-white/[0.04] first:rounded-l-2xl last:border-r last:border-white/[0.04] last:rounded-r-2xl transition-all',
               cellBg,
               item.matched && 'first:border-l-2',
             )}
@@ -117,7 +113,7 @@ export const NodeScannedFilesTableRow = ({
                 <img
                   src={effectiveIcon}
                   alt=""
-                  className="h-6 w-6 rounded-md object-contain bg-[var(--dk-surface-base)] transition-shadow"
+                  className="h-9 w-9 rounded-xl object-contain bg-[var(--dk-surface-base)] transition-shadow"
                   style={
                     theme
                       ? {
@@ -130,7 +126,7 @@ export const NodeScannedFilesTableRow = ({
                 />
               ) : (
                 <div
-                  className="h-6 w-6 rounded-md bg-[var(--dk-surface-base)] border border-white/[0.04] flex items-center justify-center text-muted-foreground/60 transition-shadow"
+                  className="h-9 w-9 rounded-xl bg-[var(--dk-surface-base)] border border-white/[0.04] flex items-center justify-center text-muted-foreground/60 transition-shadow"
                   style={
                     theme
                       ? {
@@ -141,9 +137,9 @@ export const NodeScannedFilesTableRow = ({
                   }
                 >
                   {badge.isIso ? (
-                    <Disc className="h-3.5 w-3.5" />
+                    <Disc className="h-4.5 w-4.5" />
                   ) : (
-                    <Gamepad2 className="h-3.5 w-3.5" />
+                    <Gamepad2 className="h-4.5 w-4.5" />
                   )}
                 </div>
               )}
@@ -154,8 +150,7 @@ export const NodeScannedFilesTableRow = ({
         {/* Title & Info */}
         <td
           className={cn(
-            'py-2.5 px-3 min-w-[170px] max-w-xs sm:max-w-sm border-y border-white/[0.04] transition-all',
-            !visibleColumns.icon && 'first:border-l first:border-white/[0.04] first:rounded-l-2xl',
+            'py-4 px-3.5 min-w-[170px] max-w-xs sm:max-w-sm border-y border-white/[0.04] first:border-l first:border-white/[0.04] first:rounded-l-2xl last:border-r last:border-white/[0.04] last:rounded-r-2xl transition-all',
             cellBg,
           )}
         >
@@ -174,7 +169,7 @@ export const NodeScannedFilesTableRow = ({
               />
             </div>
           )}
-          <div className="flex items-center gap-1.5 flex-wrap">
+          <div className="flex items-center gap-2 flex-wrap">
             {hasUpdates && (
               <button
                 type="button"
@@ -187,26 +182,26 @@ export const NodeScannedFilesTableRow = ({
               >
                 <ChevronRight
                   className={cn(
-                    'h-3.5 w-3.5 transition-transform duration-200',
+                    'h-4 w-4 transition-transform duration-200',
                     isExpanded && 'rotate-90 text-primary',
                   )}
                 />
               </button>
             )}
 
-            <span className="font-semibold text-foreground truncate text-xs sm:text-sm">
+            <span className="font-semibold text-foreground truncate text-sm sm:text-base">
               {item.title}
             </span>
 
             {item.releaseYear && (
-              <span className="text-[10px] px-1.5 py-0.2 rounded bg-[var(--dk-surface-base)]/80 backdrop-blur-sm text-muted-foreground shrink-0 font-medium">
+              <span className="text-[11px] px-2 py-0.5 rounded-md bg-[var(--dk-surface-base)]/80 backdrop-blur-sm text-muted-foreground shrink-0 font-medium">
                 {item.releaseYear}
               </span>
             )}
 
             {/* Inline version badge for compact mobile layout */}
             {version && (
-              <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-primary/10 text-primary border border-primary/20 font-medium shrink-0 sm:hidden">
+              <span className="text-[11px] font-mono px-2 py-0.5 rounded-md bg-primary/10 text-primary border border-primary/20 font-medium shrink-0 sm:hidden">
                 {version}
               </span>
             )}
@@ -218,10 +213,10 @@ export const NodeScannedFilesTableRow = ({
                   e.stopPropagation()
                   onToggleExpand(item.id)
                 }}
-                className="text-[10px] px-1.5 py-0.2 rounded-full bg-primary/10 text-primary border border-primary/20 font-medium hover:bg-primary/20 transition-colors cursor-pointer shrink-0 inline-flex items-center gap-1"
+                className="text-[11px] px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20 font-medium hover:bg-primary/20 transition-colors cursor-pointer shrink-0 inline-flex items-center gap-1"
                 title={`${item.sources!.length} sources unified: ${item.sources!.map((s) => s.format).join(', ')}`}
               >
-                <Layers className="h-2.5 w-2.5" />
+                <Layers className="h-3 w-3" />
                 <span>
                   +{secondarySources.length} {item.hasInstalledSource && item.hasIsoSource ? 'Installed + ISO' : 'Sources'}
                 </span>
@@ -235,7 +230,7 @@ export const NodeScannedFilesTableRow = ({
                   e.stopPropagation()
                   onToggleExpand(item.id)
                 }}
-                className="text-[10px] px-1.5 py-0.2 rounded-full bg-primary/10 text-primary border border-primary/20 font-medium hover:bg-primary/20 transition-colors cursor-pointer shrink-0"
+                className="text-[11px] px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20 font-medium hover:bg-primary/20 transition-colors cursor-pointer shrink-0"
                 title={`${item.updates!.length} updates attached to this game`}
               >
                 +{item.updates!.length} {item.updates!.length === 1 ? 'update' : 'updates'}
@@ -244,7 +239,7 @@ export const NodeScannedFilesTableRow = ({
           </div>
 
           {/* Mobile filename fallback */}
-          <div className="text-[11px] font-mono font-medium text-muted-foreground truncate md:hidden mt-0.5" title={item.path}>
+          <div className="text-xs font-mono font-medium text-muted-foreground truncate md:hidden mt-0.5" title={item.path}>
             {filename}
           </div>
         </td>
@@ -253,13 +248,13 @@ export const NodeScannedFilesTableRow = ({
         {visibleColumns.filename && (
           <td
             className={cn(
-              'py-2.5 px-3 hidden md:table-cell max-w-xs lg:max-w-sm border-y border-white/[0.04] transition-all',
+              'py-4 px-3.5 hidden md:table-cell max-w-xs lg:max-w-sm border-y border-white/[0.04] last:border-r last:border-white/[0.04] last:rounded-r-2xl transition-all',
               cellBg,
             )}
           >
             <div className="flex items-center gap-1.5 min-w-0">
               <span
-                className="font-mono text-[11px] font-semibold text-foreground truncate select-all"
+                className="font-mono text-xs font-semibold text-foreground truncate select-all"
                 title={item.path}
               >
                 {filename}
@@ -298,11 +293,11 @@ export const NodeScannedFilesTableRow = ({
         {visibleColumns.platform && (
           <td
             className={cn(
-              'py-2.5 px-3 text-center border-y border-white/[0.04] transition-all',
+              'py-4 px-3 text-center border-y border-white/[0.04] last:border-r last:border-white/[0.04] last:rounded-r-2xl transition-all',
               cellBg,
             )}
           >
-            <span className="text-[10px] font-semibold uppercase px-2 py-0.5 rounded-md bg-[var(--dk-surface-base)]/80 backdrop-blur-sm text-foreground/90 border border-white/[0.04]">
+            <span className="text-[11px] font-semibold uppercase px-2.5 py-1 rounded-lg bg-[var(--dk-surface-base)]/80 backdrop-blur-sm text-foreground/90 border border-white/[0.04]">
               {platformLabel}
             </span>
           </td>
@@ -312,16 +307,16 @@ export const NodeScannedFilesTableRow = ({
         {visibleColumns.version && (
           <td
             className={cn(
-              'py-2.5 px-2 text-center border-y border-white/[0.04] transition-all',
+              'py-4 px-2 text-center border-y border-white/[0.04] last:border-r last:border-white/[0.04] last:rounded-r-2xl transition-all',
               cellBg,
             )}
           >
             {version ? (
-              <span className="font-mono text-[10px] font-semibold px-2 py-0.5 rounded-md bg-[var(--dk-surface-base)]/80 backdrop-blur-sm text-foreground/90 border border-white/[0.04]">
+              <span className="font-mono text-[11px] font-semibold px-2.5 py-1 rounded-lg bg-[var(--dk-surface-base)]/80 backdrop-blur-sm text-foreground/90 border border-white/[0.04]">
                 {version}
               </span>
             ) : (
-              <span className="text-[11px] text-muted-foreground/40 font-mono select-none">—</span>
+              <span className="text-xs text-muted-foreground/40 font-mono select-none">—</span>
             )}
           </td>
         )}
@@ -330,11 +325,11 @@ export const NodeScannedFilesTableRow = ({
         {visibleColumns.format && (
           <td
             className={cn(
-              'py-2.5 px-2 text-center border-y border-white/[0.04] transition-all',
+              'py-4 px-2 text-center border-y border-white/[0.04] last:border-r last:border-white/[0.04] last:rounded-r-2xl transition-all',
               cellBg,
             )}
           >
-            <span className="text-[10px] font-semibold uppercase px-2 py-0.5 rounded-md bg-[var(--dk-surface-base)]/80 backdrop-blur-sm text-muted-foreground border border-white/[0.04]">
+            <span className="text-[11px] font-semibold uppercase px-2.5 py-1 rounded-lg bg-[var(--dk-surface-base)]/80 backdrop-blur-sm text-muted-foreground border border-white/[0.04]">
               {badge.label}
             </span>
           </td>
@@ -344,7 +339,7 @@ export const NodeScannedFilesTableRow = ({
         {visibleColumns.size && (
           <td
             className={cn(
-              'py-2.5 px-3 text-right font-mono text-[11px] text-muted-foreground whitespace-nowrap border-y border-white/[0.04] transition-all',
+              'py-4 px-3 text-right font-mono text-xs text-muted-foreground whitespace-nowrap border-y border-white/[0.04] last:border-r last:border-white/[0.04] last:rounded-r-2xl transition-all',
               cellBg,
             )}
           >
@@ -356,7 +351,7 @@ export const NodeScannedFilesTableRow = ({
         {visibleColumns.date && (
           <td
             className={cn(
-              'py-2.5 px-3 text-center font-mono text-[11px] text-muted-foreground whitespace-nowrap hidden lg:table-cell border-y border-white/[0.04] transition-all',
+              'py-4 px-3 text-center font-mono text-xs text-muted-foreground whitespace-nowrap hidden lg:table-cell border-y border-white/[0.04] last:border-r last:border-white/[0.04] last:rounded-r-2xl transition-all',
               cellBg,
             )}
           >
@@ -368,7 +363,7 @@ export const NodeScannedFilesTableRow = ({
         {visibleColumns.status && (
           <td
             className={cn(
-              'py-2.5 px-2 text-center whitespace-nowrap border-y border-white/[0.04] transition-all',
+              'py-4 px-3 text-center whitespace-nowrap border-y border-white/[0.04] last:border-r last:border-white/[0.04] last:rounded-r-2xl transition-all',
               cellBg,
             )}
           >
@@ -382,7 +377,7 @@ export const NodeScannedFilesTableRow = ({
                     : 'Matched'
                 }
               >
-                <Check className="h-4 w-4" strokeWidth={2.5} />
+                <Check className="h-4.5 w-4.5" strokeWidth={2.5} />
               </div>
             ) : (
               <div className="flex items-center justify-center text-muted-foreground/40" title="Unmatched">
@@ -391,31 +386,6 @@ export const NodeScannedFilesTableRow = ({
             )}
           </td>
         )}
-
-        {/* Actions (Last cell: rounded-r-2xl, border-r) */}
-        <td
-          className={cn(
-            'py-2.5 px-3 text-right whitespace-nowrap border-y border-white/[0.04] last:border-r last:border-white/[0.04] last:rounded-r-2xl transition-all',
-            cellBg,
-          )}
-        >
-          <div className="flex items-center justify-end gap-1.5">
-            <DkButton
-              type="button"
-              size="sm"
-              variant="ghost"
-              onClick={(e) => {
-                e.stopPropagation()
-                onOpenMatchModal(item)
-              }}
-              style={theme ? { color: theme.accentColor } : undefined}
-              className="h-7 px-2.5 text-[11px] font-medium rounded-lg text-primary hover:bg-primary/10"
-            >
-              <Sparkles className="h-3 w-3 mr-1" />
-              <span>{item.matched ? 'Edit Match' : 'Match'}</span>
-            </DkButton>
-          </div>
-        </td>
       </tr>
 
       {/* ── Secondary / Sub-Rows for Scanned Updates (Floating Sub-Card) ── */}
@@ -434,9 +404,9 @@ export const NodeScannedFilesTableRow = ({
             >
               {/* Branch indicator (rounded-l-xl) */}
               {visibleColumns.icon && (
-                <td className="py-2 px-3 text-center bg-[var(--dk-surface-ghost)]/30 group-hover/upd:bg-[var(--dk-surface-ghost)]/60 border-y border-white/[0.03] first:border-l first:border-white/[0.03] first:rounded-l-xl transition-all">
+                <td className="py-3 px-3 text-center bg-[var(--dk-surface-ghost)]/30 group-hover/upd:bg-[var(--dk-surface-ghost)]/60 border-y border-white/[0.03] first:border-l first:border-white/[0.03] first:rounded-l-xl last:border-r last:border-white/[0.03] last:rounded-r-xl transition-all">
                   <div className="flex items-center justify-center text-primary/70">
-                    <CornerDownRight className="h-3.5 w-3.5" />
+                    <CornerDownRight className="h-4 w-4" />
                   </div>
                 </td>
               )}
@@ -444,8 +414,7 @@ export const NodeScannedFilesTableRow = ({
               {/* Update Title */}
               <td
                 className={cn(
-                  'py-2 px-3 bg-[var(--dk-surface-ghost)]/30 group-hover/upd:bg-[var(--dk-surface-ghost)]/60 border-y border-white/[0.03] transition-all',
-                  !visibleColumns.icon && 'first:border-l first:border-white/[0.03] first:rounded-l-xl',
+                  'py-3 px-3.5 bg-[var(--dk-surface-ghost)]/30 group-hover/upd:bg-[var(--dk-surface-ghost)]/60 border-y border-white/[0.03] first:border-l first:border-white/[0.03] first:rounded-l-xl last:border-r last:border-white/[0.03] last:rounded-r-xl transition-all',
                 )}
               >
                 <div className="flex items-center gap-1.5">
@@ -461,9 +430,9 @@ export const NodeScannedFilesTableRow = ({
 
               {/* Update File Name */}
               {visibleColumns.filename && (
-                <td className="py-2 px-3 hidden md:table-cell max-w-xs lg:max-w-sm bg-[var(--dk-surface-ghost)]/30 group-hover/upd:bg-[var(--dk-surface-ghost)]/60 border-y border-white/[0.03] transition-all">
+                <td className="py-3 px-3.5 hidden md:table-cell max-w-xs lg:max-w-sm bg-[var(--dk-surface-ghost)]/30 group-hover/upd:bg-[var(--dk-surface-ghost)]/60 border-y border-white/[0.03] last:border-r last:border-white/[0.03] last:rounded-r-xl transition-all">
                   <div className="flex items-center gap-1.5 min-w-0">
-                    <span className="font-mono text-[11px] font-semibold text-foreground truncate select-all" title={upd.path}>
+                    <span className="font-mono text-xs font-semibold text-foreground truncate select-all" title={upd.path}>
                       {updFilename}
                     </span>
                     <button
@@ -487,7 +456,7 @@ export const NodeScannedFilesTableRow = ({
 
               {/* Platform */}
               {visibleColumns.platform && (
-                <td className="py-2 px-3 text-center bg-[var(--dk-surface-ghost)]/30 group-hover/upd:bg-[var(--dk-surface-ghost)]/60 border-y border-white/[0.03] transition-all">
+                <td className="py-3 px-3 text-center bg-[var(--dk-surface-ghost)]/30 group-hover/upd:bg-[var(--dk-surface-ghost)]/60 border-y border-white/[0.03] last:border-r last:border-white/[0.03] last:rounded-r-xl transition-all">
                   <span className="text-[9px] uppercase font-semibold text-muted-foreground px-1.5 py-0.5 rounded bg-[var(--dk-surface-base)] border border-white/[0.04]">
                     Patch
                   </span>
@@ -496,20 +465,20 @@ export const NodeScannedFilesTableRow = ({
 
               {/* Version */}
               {visibleColumns.version && (
-                <td className="py-2 px-2 text-center bg-[var(--dk-surface-ghost)]/30 group-hover/upd:bg-[var(--dk-surface-ghost)]/60 border-y border-white/[0.03] transition-all">
+                <td className="py-3 px-2 text-center bg-[var(--dk-surface-ghost)]/30 group-hover/upd:bg-[var(--dk-surface-ghost)]/60 border-y border-white/[0.03] last:border-r last:border-white/[0.03] last:rounded-r-xl transition-all">
                   {updVersion ? (
                     <span className="font-mono text-[9px] font-semibold text-primary px-1.5 py-0.5 rounded bg-primary/10 border border-primary/20">
                       {updVersion}
                     </span>
                   ) : (
-                    <span className="text-[10px] text-muted-foreground/40 font-mono select-none">—</span>
+                    <span className="text-xs text-muted-foreground/40 font-mono select-none">—</span>
                   )}
                 </td>
               )}
 
               {/* Format */}
               {visibleColumns.format && (
-                <td className="py-2 px-2 text-center bg-[var(--dk-surface-ghost)]/30 group-hover/upd:bg-[var(--dk-surface-ghost)]/60 border-y border-white/[0.03] transition-all">
+                <td className="py-3 px-2 text-center bg-[var(--dk-surface-ghost)]/30 group-hover/upd:bg-[var(--dk-surface-ghost)]/60 border-y border-white/[0.03] last:border-r last:border-white/[0.03] last:rounded-r-xl transition-all">
                   <span className="text-[9px] uppercase font-semibold text-primary px-1.5 py-0.5 rounded bg-primary/10 border border-primary/20">
                     {updBadge.label}
                   </span>
@@ -518,29 +487,24 @@ export const NodeScannedFilesTableRow = ({
 
               {/* Size */}
               {visibleColumns.size && (
-                <td className="py-2 px-3 text-right font-mono text-[11px] text-muted-foreground whitespace-nowrap bg-[var(--dk-surface-ghost)]/30 group-hover/upd:bg-[var(--dk-surface-ghost)]/60 border-y border-white/[0.03] transition-all">
+                <td className="py-3 px-3 text-right font-mono text-xs text-muted-foreground whitespace-nowrap bg-[var(--dk-surface-ghost)]/30 group-hover/upd:bg-[var(--dk-surface-ghost)]/60 border-y border-white/[0.03] last:border-r last:border-white/[0.03] last:rounded-r-xl transition-all">
                   {formatScanSize(upd.sizeBytes)}
                 </td>
               )}
 
               {/* Date */}
               {visibleColumns.date && (
-                <td className="py-2 px-3 text-center font-mono text-[11px] text-muted-foreground whitespace-nowrap hidden lg:table-cell bg-[var(--dk-surface-ghost)]/30 group-hover/upd:bg-[var(--dk-surface-ghost)]/60 border-y border-white/[0.03] transition-all">
+                <td className="py-3 px-3 text-center font-mono text-xs text-muted-foreground whitespace-nowrap hidden lg:table-cell bg-[var(--dk-surface-ghost)]/30 group-hover/upd:bg-[var(--dk-surface-ghost)]/60 border-y border-white/[0.03] last:border-r last:border-white/[0.03] last:rounded-r-xl transition-all">
                   {formatScanDate(upd.modifiedAt)}
                 </td>
               )}
 
               {/* Status */}
               {visibleColumns.status && (
-                <td className="py-2 px-2 text-center bg-[var(--dk-surface-ghost)]/30 group-hover/upd:bg-[var(--dk-surface-ghost)]/60 border-y border-white/[0.03] transition-all">
+                <td className="py-3 px-3 text-center bg-[var(--dk-surface-ghost)]/30 group-hover/upd:bg-[var(--dk-surface-ghost)]/60 border-y border-white/[0.03] last:border-r last:border-white/[0.03] last:rounded-r-xl transition-all">
                   <span className="text-[10px] text-muted-foreground/50 select-none">•</span>
                 </td>
               )}
-
-              {/* Actions (rounded-r-xl) */}
-              <td className="py-2 px-3 text-right whitespace-nowrap bg-[var(--dk-surface-ghost)]/30 group-hover/upd:bg-[var(--dk-surface-ghost)]/60 border-y border-white/[0.03] last:border-r last:border-white/[0.03] last:rounded-r-xl transition-all">
-                <span className="text-[10px] text-muted-foreground/60 italic">Linked Update</span>
-              </td>
             </tr>
           )
         })}
@@ -555,13 +519,14 @@ export const NodeScannedFilesTableRow = ({
           return (
             <tr
               key={`src-${source.id}`}
-              className="group/src relative transition-all duration-150 hover:bg-white/[0.02]"
+              onClick={() => onOpenDetails(source)}
+              className="group/src relative transition-all duration-150 hover:bg-white/[0.02] cursor-pointer"
             >
               {/* Indent Indicator */}
               {visibleColumns.icon && (
-                <td className="py-2 px-3 text-center bg-[var(--dk-surface-ghost)]/30 group-hover/src:bg-[var(--dk-surface-ghost)]/60 border-y border-white/[0.03] first:border-l first:border-white/[0.03] first:rounded-l-xl transition-all">
+                <td className="py-3 px-3 text-center bg-[var(--dk-surface-ghost)]/30 group-hover/src:bg-[var(--dk-surface-ghost)]/60 border-y border-white/[0.03] first:border-l first:border-white/[0.03] first:rounded-l-xl last:border-r last:border-white/[0.03] last:rounded-r-xl transition-all">
                   <div className="flex items-center justify-center text-muted-foreground/50">
-                    <CornerDownRight className="h-3.5 w-3.5" />
+                    <CornerDownRight className="h-4 w-4" />
                   </div>
                 </td>
               )}
@@ -569,8 +534,7 @@ export const NodeScannedFilesTableRow = ({
               {/* Source Title & Type Label */}
               <td
                 className={cn(
-                  'py-2 px-3 bg-[var(--dk-surface-ghost)]/30 group-hover/src:bg-[var(--dk-surface-ghost)]/60 border-y border-white/[0.03] transition-all',
-                  !visibleColumns.icon && 'first:border-l first:border-white/[0.03] first:rounded-l-xl',
+                  'py-3 px-3.5 bg-[var(--dk-surface-ghost)]/30 group-hover/src:bg-[var(--dk-surface-ghost)]/60 border-y border-white/[0.03] first:border-l first:border-white/[0.03] first:rounded-l-xl last:border-r last:border-white/[0.03] last:rounded-r-xl transition-all',
                 )}
               >
                 <div className="flex items-center gap-1.5 flex-wrap">
@@ -590,9 +554,9 @@ export const NodeScannedFilesTableRow = ({
 
               {/* Source File Name & Copy */}
               {visibleColumns.filename && (
-                <td className="py-2 px-3 hidden md:table-cell max-w-xs lg:max-w-sm bg-[var(--dk-surface-ghost)]/30 group-hover/src:bg-[var(--dk-surface-ghost)]/60 border-y border-white/[0.03] transition-all">
+                <td className="py-3 px-3.5 hidden md:table-cell max-w-xs lg:max-w-sm bg-[var(--dk-surface-ghost)]/30 group-hover/src:bg-[var(--dk-surface-ghost)]/60 border-y border-white/[0.03] last:border-r last:border-white/[0.03] last:rounded-r-xl transition-all">
                   <div className="flex items-center gap-1.5 min-w-0">
-                    <span className="font-mono text-[11px] font-semibold text-foreground truncate select-all" title={source.path}>
+                    <span className="font-mono text-xs font-semibold text-foreground truncate select-all" title={source.path}>
                       {srcFilename}
                     </span>
                     <button
@@ -616,7 +580,7 @@ export const NodeScannedFilesTableRow = ({
 
               {/* Platform */}
               {visibleColumns.platform && (
-                <td className="py-2 px-3 text-center bg-[var(--dk-surface-ghost)]/30 group-hover/src:bg-[var(--dk-surface-ghost)]/60 border-y border-white/[0.03] transition-all">
+                <td className="py-3 px-3 text-center bg-[var(--dk-surface-ghost)]/30 group-hover/src:bg-[var(--dk-surface-ghost)]/60 border-y border-white/[0.03] last:border-r last:border-white/[0.03] last:rounded-r-xl transition-all">
                   <span className="text-[9px] uppercase font-semibold text-muted-foreground px-1.5 py-0.5 rounded bg-[var(--dk-surface-base)] border border-white/[0.04]">
                     {source.platform ? String(source.platform).toUpperCase() : 'PC'}
                   </span>
@@ -625,20 +589,20 @@ export const NodeScannedFilesTableRow = ({
 
               {/* Version */}
               {visibleColumns.version && (
-                <td className="py-2 px-2 text-center bg-[var(--dk-surface-ghost)]/30 group-hover/src:bg-[var(--dk-surface-ghost)]/60 border-y border-white/[0.03] transition-all">
+                <td className="py-3 px-2 text-center bg-[var(--dk-surface-ghost)]/30 group-hover/src:bg-[var(--dk-surface-ghost)]/60 border-y border-white/[0.03] last:border-r last:border-white/[0.03] last:rounded-r-xl transition-all">
                   {source.version ? (
                     <span className="font-mono text-[9px] font-semibold text-primary px-1.5 py-0.5 rounded bg-primary/10 border border-primary/20">
                       {source.version}
                     </span>
                   ) : (
-                    <span className="text-[10px] text-muted-foreground/40 font-mono select-none">—</span>
+                    <span className="text-xs text-muted-foreground/40 font-mono select-none">—</span>
                   )}
                 </td>
               )}
 
               {/* Format */}
               {visibleColumns.format && (
-                <td className="py-2 px-2 text-center bg-[var(--dk-surface-ghost)]/30 group-hover/src:bg-[var(--dk-surface-ghost)]/60 border-y border-white/[0.03] transition-all">
+                <td className="py-3 px-2 text-center bg-[var(--dk-surface-ghost)]/30 group-hover/src:bg-[var(--dk-surface-ghost)]/60 border-y border-white/[0.03] last:border-r last:border-white/[0.03] last:rounded-r-xl transition-all">
                   <span className="text-[9px] uppercase font-semibold text-primary px-1.5 py-0.5 rounded bg-primary/10 border border-primary/20">
                     {source.format || (isIsoSrc ? 'ISO' : 'PC')}
                   </span>
@@ -647,67 +611,24 @@ export const NodeScannedFilesTableRow = ({
 
               {/* Size */}
               {visibleColumns.size && (
-                <td className="py-2 px-3 text-right font-mono text-[11px] text-muted-foreground whitespace-nowrap bg-[var(--dk-surface-ghost)]/30 group-hover/src:bg-[var(--dk-surface-ghost)]/60 border-y border-white/[0.03] transition-all">
+                <td className="py-3 px-3 text-right font-mono text-xs text-muted-foreground whitespace-nowrap bg-[var(--dk-surface-ghost)]/30 group-hover/src:bg-[var(--dk-surface-ghost)]/60 border-y border-white/[0.03] last:border-r last:border-white/[0.03] last:rounded-r-xl transition-all">
                   {formatScanSize(source.sizeBytes)}
                 </td>
               )}
 
               {/* Date */}
               {visibleColumns.date && (
-                <td className="py-2 px-3 text-center font-mono text-[11px] text-muted-foreground whitespace-nowrap hidden lg:table-cell bg-[var(--dk-surface-ghost)]/30 group-hover/src:bg-[var(--dk-surface-ghost)]/60 border-y border-white/[0.03] transition-all">
+                <td className="py-3 px-3 text-center font-mono text-xs text-muted-foreground whitespace-nowrap hidden lg:table-cell bg-[var(--dk-surface-ghost)]/30 group-hover/src:bg-[var(--dk-surface-ghost)]/60 border-y border-white/[0.03] last:border-r last:border-white/[0.03] last:rounded-r-xl transition-all">
                   {formatScanDate(source.modifiedAt)}
                 </td>
               )}
 
               {/* Status */}
               {visibleColumns.status && (
-                <td className="py-2 px-2 text-center bg-[var(--dk-surface-ghost)]/30 group-hover/src:bg-[var(--dk-surface-ghost)]/60 border-y border-white/[0.03] transition-all">
+                <td className="py-3 px-3 text-center bg-[var(--dk-surface-ghost)]/30 group-hover/src:bg-[var(--dk-surface-ghost)]/60 border-y border-white/[0.03] last:border-r last:border-white/[0.03] last:rounded-r-xl transition-all">
                   <span className="text-[10px] text-muted-foreground/50 select-none">•</span>
                 </td>
               )}
-
-              {/* Actions (rounded-r-xl) */}
-              <td className="py-2 px-3 text-right whitespace-nowrap bg-[var(--dk-surface-ghost)]/30 group-hover/src:bg-[var(--dk-surface-ghost)]/60 border-y border-white/[0.03] last:border-r last:border-white/[0.03] last:rounded-r-xl transition-all">
-                <div className="flex items-center justify-end gap-1.5">
-                  {isIsoSrc && (
-                    <DkButton
-                      type="button"
-                      size="sm"
-                      variant="ghost"
-                      onClick={async (e) => {
-                        e.stopPropagation()
-                        const api = getDesktopAPI()
-                        if (api?.mountIso) {
-                          try {
-                            await api.mountIso(source.path)
-                          } catch (mountErr) {
-                            console.error('Failed to mount ISO:', mountErr)
-                          }
-                        }
-                      }}
-                      title="Mount ISO disc image"
-                      className="h-6 px-2 text-[10px] rounded-lg cursor-pointer"
-                    >
-                      <Disc className="h-3 w-3 mr-1 text-primary" />
-                      <span>Mount</span>
-                    </DkButton>
-                  )}
-
-                  {onUnlinkSource && (
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        onUnlinkSource(item.id, source.id)
-                      }}
-                      title="Unlink source to display as independent row"
-                      className="p-1 rounded-lg text-muted-foreground/60 hover:text-foreground hover:bg-white/[0.06] transition-colors cursor-pointer"
-                    >
-                      <Unlink className="h-3.5 w-3.5" />
-                    </button>
-                  )}
-                </div>
-              </td>
             </tr>
           )
         })}

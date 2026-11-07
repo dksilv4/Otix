@@ -14,7 +14,20 @@ const COMBINING_MARK_RE = /\p{Mn}/gu;
 const PUNCT_RE = /[,.;!?()[\]{}]/g;
 const WS_RE = /\s+/g;
 
+const _normalizeTitleCache = new Map<string, string>();
+const _comparisonKeyCache = new Map<string, string>();
+const MAX_TITLE_CACHE_SIZE = 8000;
+
+export function clearTitleKeyCache(): void {
+  _normalizeTitleCache.clear();
+  _comparisonKeyCache.clear();
+}
+
 export function normalizeTitle(raw: string): string {
+  if (!raw) return '';
+  const cached = _normalizeTitleCache.get(raw);
+  if (cached !== undefined) return cached;
+
   // Strip ™®© BEFORE NFKD (NFKD decomposes ™ → TM)
   let clean = raw.replace(TRADEMARK_RE, '');
   // NFKD: decompose accented chars (é → e + combining acute)
@@ -25,6 +38,11 @@ export function normalizeTitle(raw: string): string {
   clean = clean.replace(PUNCT_RE, '');
   // Collapse whitespace
   clean = clean.replace(WS_RE, ' ').trim();
+
+  if (_normalizeTitleCache.size >= MAX_TITLE_CACHE_SIZE) {
+    _normalizeTitleCache.clear();
+  }
+  _normalizeTitleCache.set(raw, clean);
   return clean;
 }
 
@@ -126,6 +144,10 @@ const SEP_HYPHEN_RE = /\s*[-–—]\s*/g;
  * canonicalization, and hyphen/colon subtitle collapsing.
  */
 export function comparisonKey(raw: string): string {
+  if (!raw) return '';
+  const cached = _comparisonKeyCache.get(raw);
+  if (cached !== undefined) return cached;
+
   let t = stripEditionMarkers(raw);
   // Descriptive subtitle clauses stores omit ("Tomb Raider I-III Remastered
   // Starring Lara Croft") — drop so both sides compare on the base title.
@@ -140,5 +162,11 @@ export function comparisonKey(raw: string): string {
   t = t.replace(SEP_HYPHEN_RE, ' ');
   // Colons delimit subtitles across stores; strip for key equality.
   t = t.replace(/:/g, '');
-  return t.replace(WS_RE, ' ').trim().toLowerCase();
+  const key = t.replace(WS_RE, ' ').trim().toLowerCase();
+
+  if (_comparisonKeyCache.size >= MAX_TITLE_CACHE_SIZE) {
+    _comparisonKeyCache.clear();
+  }
+  _comparisonKeyCache.set(raw, key);
+  return key;
 }

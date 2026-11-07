@@ -1,12 +1,7 @@
-import { createContext, useCallback, useEffect, useRef, useState } from 'react'
-import { getJellyfinClientId } from './utils'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { getJellyfinClientId, JELLYFIN_PLAYER_VOLUME_KEY } from './utils'
 import type { JellyfinTrackInfo, JellyfinPlayerContextValue } from './types'
-
-export type { JellyfinTrackInfo, JellyfinPlayerContextValue }
-
-export const JellyfinPlayerContext = createContext<JellyfinPlayerContextValue | null>(null)
-
-const VOLUME_KEY = 'jellyfin-player-volume'
+import { JellyfinPlayerContext, playerProgressStore } from './player-context'
 
 export const JellyfinAudioProvider = ({ children }: { children: React.ReactNode }) => {
   const audioRef = useRef<HTMLAudioElement | null>(null)
@@ -16,7 +11,7 @@ export const JellyfinAudioProvider = ({ children }: { children: React.ReactNode 
   const [duration, setDuration] = useState(0)
   const [volume, setVolumeState] = useState(() => {
     if (typeof localStorage === 'undefined') return 0.7
-    const saved = localStorage.getItem(VOLUME_KEY)
+    const saved = localStorage.getItem(JELLYFIN_PLAYER_VOLUME_KEY)
     return saved ? parseFloat(saved) : 0.7
   })
   const [queue, setQueue] = useState<JellyfinTrackInfo[]>([])
@@ -68,10 +63,16 @@ export const JellyfinAudioProvider = ({ children }: { children: React.ReactNode 
     audio.volume = volume
     audioRef.current = audio
 
-    const onTimeUpdate = () => setPosition(Math.round(audio.currentTime * 1000))
+    const onTimeUpdate = () => {
+      const pos = Math.round(audio.currentTime * 1000)
+      const dur = audio.duration && !isNaN(audio.duration) ? Math.round(audio.duration * 1000) : 0
+      playerProgressStore.setProgress(pos, dur)
+    }
     const onLoadedMetadata = () => {
       if (audio.duration && !isNaN(audio.duration)) {
-        setDuration(Math.round(audio.duration * 1000))
+        const dur = Math.round(audio.duration * 1000)
+        setDuration(dur)
+        playerProgressStore.setProgress(Math.round(audio.currentTime * 1000), dur)
       }
     }
     const onEnded = () => {
@@ -194,7 +195,7 @@ export const JellyfinAudioProvider = ({ children }: { children: React.ReactNode 
   const setVolume = useCallback((vol: number) => {
     const clamped = Math.max(0, Math.min(1, vol))
     setVolumeState(clamped)
-    if (typeof localStorage !== 'undefined') localStorage.setItem(VOLUME_KEY, String(clamped))
+    if (typeof localStorage !== 'undefined') localStorage.setItem(JELLYFIN_PLAYER_VOLUME_KEY, String(clamped))
     if (audioRef.current) audioRef.current.volume = clamped
   }, [])
 
@@ -254,6 +255,4 @@ export const JellyfinAudioProvider = ({ children }: { children: React.ReactNode 
       {children}
     </JellyfinPlayerContext.Provider>
   )
-};
-
-export { useJellyfinPlayer } from './hooks/use-jellyfin-player'
+}

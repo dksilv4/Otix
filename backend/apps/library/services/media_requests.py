@@ -104,6 +104,18 @@ def record_media_request(
         except (TypeError, ValueError):
             pass
 
+    if media_item:
+        if title.isdigit() or not title:
+            title = media_item.title
+        if not poster_url and media_item.poster_url:
+            poster_url = media_item.poster_url
+        if not tmdb_id and getattr(media_item, "tmdb_id", None):
+            tmdb_id = str(media_item.tmdb_id)
+        if not tvdb_id and getattr(media_item, "tvdb_id", None):
+            tvdb_id = str(media_item.tvdb_id)
+        if year_int is None and media_item.release_date:
+            year_int = media_item.release_date.year
+
     req_status = str(data.get("status") or "").strip().lower()
     if not req_status or req_status not in [c[0] for c in UserMediaRequest.STATUS_CHOICES]:
         req_status = (
@@ -193,6 +205,64 @@ def serialize_media_request(req: UserMediaRequest) -> dict[str, Any]:
     }
 
 
+def reconcile_media_requests(user, requests: list[UserMediaRequest]) -> None:
+    """Check pending requests against media activity and mark as available if downloaded."""
+    pending = [
+        r for r in requests
+        if r.status not in (UserMediaRequest.STATUS_AVAILABLE, UserMediaRequest.STATUS_COMPLETED)
+    ]
+    if not pending:
+        return
+
+    try:
+        import re
+        from django.utils import timezone
+        from apps.library.services.media_activity import get_user_media_activity
+
+        activity = get_user_media_activity(user, queue_only=False)
+        items = activity.get("items") or {}
+
+        to_update = []
+        for req in pending:
+            m_type = req.media_type or "movie"
+            matched_activity = None
+
+            # 1. Match by tmdb_id
+            if req.tmdb_id:
+                matched_activity = items.get(f"tmdb:{m_type}:{req.tmdb_id}") or items.get(str(req.tmdb_id))
+            # 2. Match by tvdb_id
+            if not matched_activity and req.tvdb_id:
+                matched_activity = (
+                    items.get(f"tvdb:{m_type}:{req.tvdb_id}")
+                    or items.get(str(req.tvdb_id))
+                    or items.get(f"tmdb:{m_type}:{req.tvdb_id}")
+                )
+            # 3. Match by normalized title
+            if not matched_activity and req.title:
+                norm = re.sub(r"[^a-z0-9]", "", str(req.title).lower())
+                matched_activity = items.get(f"{m_type}:title:{norm}")
+
+            if matched_activity:
+                act_status = matched_activity.get("status")
+                if act_status == "available":
+                    req.status = UserMediaRequest.STATUS_AVAILABLE
+                    if not req.completed_at:
+                        req.completed_at = timezone.now()
+                    to_update.append(req)
+                elif act_status == "processing":
+                    req.status = UserMediaRequest.STATUS_DOWNLOADING
+                    prog = matched_activity.get("progress")
+                    if prog is not None:
+                        req.progress = float(prog)
+                    to_update.append(req)
+
+        if to_update:
+            for r in to_update:
+                r.save(update_fields=["status", "progress", "completed_at", "updated_at"])
+    except Exception as exc:
+        logger.warning("Failed to reconcile media requests: %s", exc)
+
+
 def list_media_requests(
     user,
     server_id: int | None = None,
@@ -213,6 +283,7 @@ def list_media_requests(
         qs = qs.filter(status=status)
 
     requests = list(qs[:limit])
+    reconcile_media_requests(user, requests)
     return [serialize_media_request(r) for r in requests]
 
 

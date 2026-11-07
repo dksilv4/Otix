@@ -19,6 +19,7 @@ import { IndexerSearchHost } from "@/features/downloads/molecules/indexer-search
 import { CookieBanner } from "@/components/cookie-banner"
 import { AppMicroFooter } from "@/components/app-micro-footer"
 import { UpdateNotificationToast, UpdateModal, ReleaseNotesModal } from "@/features/updater"
+import { GlobalMusicBar } from "@/features/music/components/molecules/global-music-bar"
 import { safeLazy } from "@/lib/utils/chunk-reload"
 
 const PluginPermissionModal = safeLazy(() =>
@@ -126,6 +127,7 @@ export const RootLayout = () => {
       <LevelUpHost />
       <GamingXpHost />
       <IndexerSearchHost />
+      <GlobalMusicBar />
       <ModalRoot />
       <CookieBanner />
       <UpdateNotificationToast />

@@ -13,10 +13,6 @@ function getGamesRepo(): GamesRepository {
   return _gamesRepo
 }
 
-export function setAchievementTracker(tracker: AchievementTracker): void {
-  trackerInstance = tracker
-}
-
 export function registerAchievementsIPC(tracker?: AchievementTracker): void {
   if (tracker) {
     trackerInstance = tracker

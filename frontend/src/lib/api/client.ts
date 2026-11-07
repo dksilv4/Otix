@@ -221,10 +221,58 @@ apiClient.interceptors.response.use(
 
     // Token refresh flow — skip for endpoints that return 401 for reasons
     // other than an expired access token (login, register, refresh itself).
-    const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean }
+    const originalRequest = error.config as InternalAxiosRequestConfig & {
+      _retry?: boolean
+      _networkRetryCount?: number
+    }
     const skipRefresh = ['/auth/login', '/auth/register', '/auth/refresh'].some(
       (path) => originalRequest?.url?.includes(path),
     )
+
+    // Handle transient network errors & server startup connection refused for idempotent requests
+    const method = originalRequest?.method?.toLowerCase() || ''
+    const isIdempotent = method === 'get' || method === 'head' || method === 'options'
+    const isNetworkError =
+      !error.response ||
+      error.code === 'ECONNABORTED' ||
+      error.code === 'ERR_NETWORK' ||
+      error.code === 'ECONNREFUSED' ||
+      error.code === 'ERR_CONNECTION_REFUSED' ||
+      error.message?.includes('Network Error') ||
+      [502, 503, 504].includes(error.response?.status || 0)
+
+    const retryCount = originalRequest?._networkRetryCount || 0
+    if (isIdempotent && isNetworkError && retryCount < 2 && !skipRefresh) {
+      if (originalRequest) {
+        originalRequest._networkRetryCount = retryCount + 1
+      }
+      const backoffMs = retryCount === 0 ? 250 : 600
+      await new Promise((resolve) => setTimeout(resolve, backoffMs))
+      return apiClient(originalRequest)
+    }
+
+    // Synthesize structured error response for pure network failures (e.g. ECONNREFUSED)
+    if (!error.response && originalRequest) {
+      const isRefused =
+        error.code === 'ECONNREFUSED' ||
+        error.code === 'ERR_CONNECTION_REFUSED' ||
+        /refused/i.test(error.message || '')
+      const detailMsg = isRefused
+        ? 'Connection refused: Otix backend service is offline or restarting.'
+        : error.message || 'Network error: failed to communicate with Otix server.'
+      error.response = {
+        data: {
+          detail: detailMsg,
+          error: detailMsg,
+          code: isRefused ? 'connection_refused' : 'network_error',
+        },
+        status: 503,
+        statusText: 'Service Unavailable',
+        headers: {},
+        config: originalRequest,
+      } as any
+    }
+
     if (error.response?.status !== 401 || originalRequest?._retry || skipRefresh) {
       return Promise.reject(error)
     }

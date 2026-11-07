@@ -70,12 +70,16 @@ class PlexStreamableIdsView(APIView):
             return Response({"media_ids": []})
         from apps.integrations.models import UserPlexItem
 
-        media_ids = list(
-            UserPlexItem.objects.filter(user=request.user, media_item__isnull=False)
-            .values_list("media_item_id", flat=True)
-            .distinct()
-        )
-        return Response({"media_ids": [str(m) for m in media_ids]})
+        items = UserPlexItem.objects.filter(user=request.user).values_list("media_item_id", "guids")
+        ids = set()
+        for media_item_id, guids in items:
+            if media_item_id:
+                ids.add(str(media_item_id))
+            if guids and isinstance(guids, dict):
+                tmdb = guids.get("tmdb")
+                if tmdb:
+                    ids.add(str(tmdb))
+        return Response({"media_ids": list(ids)})
 
 
 class PlexConnectInfoView(APIView):
@@ -127,7 +131,9 @@ class PlexSessionsView(APIView):
 
 
 class PlexContinueWatchingView(APIView):
-    """GET /integrations/plex/continue-watching"""
+    """GET /integrations/plex/continue-watching
+    DELETE /integrations/plex/continue-watching
+    """
 
     def get(self, request):
         if not getattr(request.user, "plex_auth_token", None) and not getattr(
@@ -135,6 +141,78 @@ class PlexContinueWatchingView(APIView):
         ):
             return Response({"items": []})
         return Response({"items": integrations_services.get_plex_continue_watching(request.user)})
+
+    def delete(self, request):
+        if not getattr(request.user, "plex_auth_token", None) and not getattr(
+            request.user, "plex_id", None
+        ):
+            return Response({"detail": "No Plex account linked"}, status=400)
+
+        rating_key = request.data.get("rating_key") or request.query_params.get("rating_key")
+        server_id = request.data.get("server_id") or request.query_params.get("server_id")
+
+        if not rating_key:
+            return Response({"detail": "rating_key is required"}, status=400)
+
+        success = integrations_services.remove_plex_continue_watching(
+            request.user,
+            rating_key=str(rating_key),
+            server_id=server_id,
+        )
+        return Response({"success": success})
+
+
+class PlexScrobbleView(APIView):
+    """POST /integrations/plex/scrobble — mark media item as watched/unwatched on Plex.
+
+    Accepts:
+    - rating_key: str (required)
+    - watched: bool (default True)
+    - server_id: str (optional)
+    """
+
+    def post(self, request):
+        if not getattr(request.user, "plex_auth_token", None) and not getattr(
+            request.user, "plex_id", None
+        ):
+            return Response({"detail": "No Plex account linked"}, status=400)
+
+        rating_key = request.data.get("rating_key")
+        watched = request.data.get("watched", True)
+        if isinstance(watched, str):
+            watched = watched.lower() in ("true", "1", "yes")
+        server_id = request.data.get("server_id")
+
+        if not rating_key:
+            return Response({"detail": "rating_key is required"}, status=400)
+
+        success = integrations_services.scrobble_plex_item(
+            request.user,
+            rating_key=str(rating_key),
+            watched=bool(watched),
+            server_id=server_id,
+        )
+        return Response({"success": success})
+
+    def delete(self, request):
+        if not getattr(request.user, "plex_auth_token", None) and not getattr(
+            request.user, "plex_id", None
+        ):
+            return Response({"detail": "No Plex account linked"}, status=400)
+
+        rating_key = request.data.get("rating_key") or request.query_params.get("rating_key")
+        server_id = request.data.get("server_id") or request.query_params.get("server_id")
+
+        if not rating_key:
+            return Response({"detail": "rating_key is required"}, status=400)
+
+        success = integrations_services.scrobble_plex_item(
+            request.user,
+            rating_key=str(rating_key),
+            watched=False,
+            server_id=server_id,
+        )
+        return Response({"success": success})
 
 
 class PlexTimelineView(APIView):
@@ -297,3 +375,140 @@ class PlexStreamView(APIView):
         if url is None:
             raise NotFound("Stream URL not available")
         return HttpResponse(status=302, headers={"Location": url})
+
+
+class PlexAlbumTracksView(APIView):
+    """GET /integrations/plex/album-tracks/{media_identifier}"""
+
+    def get(self, request, media_identifier: str):
+        try:
+            data = integrations_services.get_plex_album_tracks(
+                request.user, media_identifier
+            )
+        except integrations_services.PlexConnectInfoNotFound as exc:
+            raise NotFound(exc.detail) from None
+        except integrations_services.PlexAlbumTracksFetchError as exc:
+            return Response({"detail": exc.detail}, status=502)
+        return Response(data)
+
+
+class PlexMusicSectionsView(APIView):
+    """GET /integrations/plex/music/sections
+    POST /integrations/plex/music/sections — live discovery scan
+    """
+
+    def get(self, request):
+        sections = integrations_services.get_plex_music_sections(request.user)
+        # If no sections are stored and the user has Plex connected, auto-discover
+        if not sections and (
+            getattr(request.user, "plex_auth_token", None)
+            or getattr(request.user, "plex_id", None)
+        ):
+            try:
+                servers = list(UserPlexServer.objects.filter(user=request.user))
+                if not servers:
+                    servers = integrations_services.discover_plex_servers(request.user)
+                for server in servers:
+                    try:
+                        integrations_services.discover_plex_libraries(request.user, server)
+                    except Exception:
+                        pass
+                sections = integrations_services.get_plex_music_sections(request.user)
+            except Exception:
+                pass
+        return Response({"sections": sections})
+
+    def post(self, request):
+        """Force a live discovery scan of Plex servers & music libraries."""
+        if not (
+            getattr(request.user, "plex_auth_token", None)
+            or getattr(request.user, "plex_id", None)
+        ):
+            return Response({"detail": "No Plex account linked", "sections": []}, status=400)
+        try:
+            servers = integrations_services.discover_plex_servers(request.user)
+            for server in servers:
+                try:
+                    integrations_services.discover_plex_libraries(request.user, server)
+                except Exception:
+                    pass
+        except Exception as exc:
+            logger.warning("Plex discovery error during music section scan: %s", exc)
+
+        sections = integrations_services.get_plex_music_sections(request.user)
+        return Response({"sections": sections})
+
+
+class PlexMusicBrowseView(APIView):
+    """GET /integrations/plex/music/browse"""
+
+    def get(self, request):
+        library_id = request.query_params.get("library_id") or request.query_params.get("libraryId")
+        if not library_id:
+            sections = integrations_services.get_plex_music_sections(request.user)
+            if not sections:
+                return Response({"items": [], "sections": []})
+            library_id = sections[0]["id"]
+
+        browse_type = (
+            request.query_params.get("browse_type")
+            or request.query_params.get("browseType")
+            or "albums"
+        )
+        query = request.query_params.get("query") or request.query_params.get("q") or ""
+        artist_rating_key = (
+            request.query_params.get("artist_rating_key")
+            or request.query_params.get("artistRatingKey")
+            or ""
+        )
+
+        limit_param = request.query_params.get("limit")
+        offset_param = request.query_params.get("offset")
+        limit = int(limit_param) if limit_param and limit_param.isdigit() else 60
+        offset = int(offset_param) if offset_param and offset_param.isdigit() else 0
+
+        try:
+            data = integrations_services.browse_plex_music(
+                request.user,
+                library_id,
+                browse_type=browse_type,
+                query=query,
+                artist_rating_key=artist_rating_key,
+                limit=limit,
+                offset=offset,
+            )
+        except integrations_services.PlexConnectInfoNotFound as exc:
+            raise NotFound(exc.detail) from None
+        return Response(data)
+
+
+class PlexMusicAlbumTracksView(APIView):
+    """GET /integrations/plex/music/album/{rating_key}"""
+
+    def get(self, request, rating_key: str):
+        server_id = request.query_params.get("server_id") or request.query_params.get("serverId") or "0"
+        try:
+            data = integrations_services.get_plex_album_tracks_by_rating_key(
+                request.user, server_id, rating_key
+            )
+        except integrations_services.PlexConnectInfoNotFound as exc:
+            raise NotFound(exc.detail) from None
+        except integrations_services.PlexAlbumTracksFetchError as exc:
+            return Response({"detail": exc.detail}, status=502)
+        return Response(data)
+
+
+class PlexMusicArtistDetailsView(APIView):
+    """GET /integrations/plex/music/artist/{rating_key}"""
+
+    def get(self, request, rating_key: str):
+        server_id = request.query_params.get("server_id") or request.query_params.get("serverId") or "0"
+        try:
+            data = integrations_services.get_plex_artist_details(
+                request.user, server_id, rating_key
+            )
+        except integrations_services.PlexConnectInfoNotFound as exc:
+            raise NotFound(exc.detail) from None
+        except integrations_services.PlexAlbumTracksFetchError as exc:
+            return Response({"detail": exc.detail}, status=502)
+        return Response(data)

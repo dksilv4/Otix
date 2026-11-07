@@ -19,8 +19,15 @@ export function getDbPath(): string {
 export function getDb(): Database.Database {
   if (_db) return _db
   _db = new Database(getDbPath())
-  _db.pragma('journal_mode = WAL')
-  _db.pragma('foreign_keys = ON')
+  _db.exec(`
+    PRAGMA journal_mode = WAL;
+    PRAGMA foreign_keys = ON;
+    PRAGMA synchronous = NORMAL;
+    PRAGMA cache_size = -64000;
+    PRAGMA temp_store = MEMORY;
+    PRAGMA mmap_size = 268435456;
+    PRAGMA busy_timeout = 5000;
+  `)
   return _db
 }
 

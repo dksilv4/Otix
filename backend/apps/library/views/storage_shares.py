@@ -323,7 +323,13 @@ class GameMatchConfirmView(APIView):
         if not getattr(request.user, "is_authenticated", False):
             return Response({"status": "ok", "record_id": record_id})
         try:
-            record = confirm_match(request.user, record_id, serializer.validated_data["media_item_id"])
+            record = confirm_match(
+                request.user,
+                record_id,
+                serializer.validated_data["media_item_id"],
+                title_id=serializer.validated_data.get("title_id"),
+                ps_id=serializer.validated_data.get("ps_id"),
+            )
         except GameMatchRecord.DoesNotExist as err:
             raise NotFound("Game match record not found") from err
         except (MediaItem.DoesNotExist, ValueError) as err:

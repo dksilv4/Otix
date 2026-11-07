@@ -1,10 +1,12 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import {
   resolveUncPath,
   unresolveUncPath,
   registerMachineMapping,
   syncMachineMappings,
   getRegisteredMachineMappings,
+  syncMachineMappingsFromBackend,
+  clearMachineMappingSyncCache,
 } from '../unc-resolver';
 
 describe('UNC Resolver', () => {
@@ -65,5 +67,116 @@ describe('UNC Resolver', () => {
     expect(resolveUncPath('')).toBe('');
     expect(unresolveUncPath('')).toBe('');
     expect(resolveUncPath(null as any)).toBe(null);
+  });
+
+  it('correctly operates the offline host circuit breaker with TTL', async () => {
+    const { isHostOffline, markHostOffline, markHostOnline, extractUncHost } = await import('../unc-resolver');
+    expect(isHostOffline('MY-NAS')).toBe(false);
+
+    markHostOffline('MY-NAS', 50); // 50ms TTL for test
+    expect(isHostOffline('MY-NAS')).toBe(true);
+    expect(isHostOffline('my-nas')).toBe(true);
+
+    markHostOnline('MY-NAS');
+    expect(isHostOffline('MY-NAS')).toBe(false);
+
+    markHostOffline('MY-NAS', 10);
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(isHostOffline('MY-NAS')).toBe(false);
+
+    expect(extractUncHost('\\\\NAS-BOX\\share\\folder')).toBe('NAS-BOX');
+    expect(extractUncHost('C:\\Games')).toBeNull();
+  });
+
+  it('uses LRU cache for rapid repeated path lookups', async () => {
+    const { clearUncCache } = await import('../unc-resolver');
+    clearUncCache();
+
+    const p1 = '\\\\SERVER\\Games\\File1.iso';
+    const r1 = resolveUncPath(p1);
+    const r2 = resolveUncPath(p1);
+    expect(r1).toBe('\\\\192.168.1.58\\Games\\File1.iso');
+    expect(r2).toBe(r1);
+
+    const ipP = '\\\\192.168.1.58\\Games\\File1.iso';
+    const u1 = unresolveUncPath(ipP);
+    const u2 = unresolveUncPath(ipP);
+    expect(u1).toBe('\\\\SERVER\\Games\\File1.iso');
+    expect(u2).toBe(u1);
+  });
+
+  it('supports node_name and local_endpoints in syncMachineMappings', () => {
+    syncMachineMappings([
+      {
+        node_name: 'Otix-LivingRoom-Node',
+        local_endpoints: ['http://192.168.1.77:8090'],
+      },
+    ]);
+
+    expect(resolveUncPath('\\\\Otix-LivingRoom-Node\\share\\roms')).toBe('\\\\192.168.1.77\\share\\roms');
+  });
+
+  it('attempts /api/v1/library/nodes first during syncMachineMappingsFromBackend', async () => {
+    clearMachineMappingSyncCache();
+    const fetchCalls: string[] = [];
+    const origFetch = global.fetch;
+
+    global.fetch = vi.fn().mockImplementation(async (url: string) => {
+      fetchCalls.push(url);
+      if (url.includes('/api/v1/library/nodes')) {
+        return {
+          ok: true,
+          json: async () => [
+            {
+              node_name: 'BackendNode1',
+              host: '10.50.0.5',
+            },
+          ],
+        } as any;
+      }
+      return { ok: false, status: 404 } as any;
+    });
+
+    try {
+      await syncMachineMappingsFromBackend('http://localhost:8000', 'token123', true);
+      expect(fetchCalls[0]).toBe('http://localhost:8000/api/v1/library/nodes');
+      expect(resolveUncPath('\\\\BackendNode1\\games')).toBe('\\\\10.50.0.5\\games');
+    } finally {
+      global.fetch = origFetch;
+    }
+  });
+
+  it('falls back to /api/v1/library/server-machines if /nodes endpoint returns 404', async () => {
+    clearMachineMappingSyncCache();
+    const fetchCalls: string[] = [];
+    const origFetch = global.fetch;
+
+    global.fetch = vi.fn().mockImplementation(async (url: string) => {
+      fetchCalls.push(url);
+      if (url.includes('/api/v1/library/nodes')) {
+        return { ok: false, status: 404 } as any;
+      }
+      if (url.includes('/api/v1/library/server-machines')) {
+        return {
+          ok: true,
+          json: async () => [
+            {
+              name: 'LegacyServerMachine',
+              host: '10.50.0.99',
+            },
+          ],
+        } as any;
+      }
+      return { ok: false } as any;
+    });
+
+    try {
+      await syncMachineMappingsFromBackend('http://localhost:8000', 'token123', true);
+      expect(fetchCalls).toContain('http://localhost:8000/api/v1/library/nodes');
+      expect(fetchCalls).toContain('http://localhost:8000/api/v1/library/server-machines');
+      expect(resolveUncPath('\\\\LegacyServerMachine\\data')).toBe('\\\\10.50.0.99\\data');
+    } finally {
+      global.fetch = origFetch;
+    }
   });
 });

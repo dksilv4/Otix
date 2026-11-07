@@ -14,6 +14,11 @@ export interface ScannedLocalGame {
   localExePath?: string;
   updateFiles?: Array<{ name: string; path: string }>;
   isDlc?: boolean;
+  localIconUrl?: string;
+  posterUrl?: string;
+  backdropUrl?: string;
+  version?: string;
+  titleId?: string;
 }
 
 export interface LocalScanOptions {
@@ -70,6 +75,9 @@ export const IGNORED_DIRS = new Set([
   '_commonredist', 'commonredist', 'redist', '_redist', 'directx',
   'vcredist', 'prerequisites', 'mono',
   'sce_module', 'sce_pfs', 'fakelib', '_duplex_',
+  'mods', 'mod', 'saves', 'save', 'screenshots', 'backup', 'backups',
+  'patch', 'patches', 'dlc', 'updates',
+  'menu-simulations', 'menu-simulation', 'plugins', 'cleaner', 'defaultprojects', 'legacy',
 ]);
 
 export const NOISE_EXE_NAMES = [
@@ -77,6 +85,7 @@ export const NOISE_EXE_NAMES = [
   'helper', 'register', 'patch', 'dxsetup', 'vcredist', 'dotnet',
   'easyanticheat', 'battleye', 'epic_online_services', 'benchmark',
   'bugreport', 'restarter', 'dowser', 'quicksfv', 'autorun',
+  'vconsole2', 'cleaner', 'sheep', 'csgo_legacy_app', 'steam_api64',
 ];
 
 export const GENERIC_FOLDER_NAMES = new Set([
@@ -88,6 +97,7 @@ export const GENERIC_FOLDER_NAMES = new Set([
   'update', 'updates', 'patch', 'patches', 'dlc', 'support',
   'redist', 'commonredist', '_commonredist', 'directx', 'vcredist',
   'prerequisites', 'prereq', 'mono', 'dotnet', 'mods',
+  'plugins', 'cleaner', 'defaultprojects', 'legacy', 'menu-simulations', 'app0',
 ]);
 
 export const KNOWN_ENGINE_PROJECTS = new Set([
@@ -132,6 +142,10 @@ export async function pickBestExe(exes: string[], installDirName: string): Promi
       score += 50;
     }
 
+    if (exeName === 'cs2' && (cleanInstallDir.includes('counterstrike') || cleanInstallDir.includes('csgo'))) {
+      score += 200;
+    }
+
     try {
       const s = await fs.promises.stat(exe);
       score += Math.min(30, Math.floor((s.size || 0) / (1024 * 1024)));
@@ -162,7 +176,7 @@ export async function scanExecutables(dir: string, maxDepth: number = 5): Promis
         const fullPath = path.join(currentDir, entry.name);
         if (entry.isDirectory()) {
           const nl = entry.name.toLowerCase();
-          if (nl.startsWith('$') || IGNORED_DIRS.has(nl) || nl.startsWith('app0') || /^[a-z]{4}\d{5}-app\d+$/i.test(nl)) continue;
+          if (nl.startsWith('$') || IGNORED_DIRS.has(nl) || nl.startsWith('app0') || /^[a-z]{4}\d{5}/i.test(nl)) continue;
           await traverse(fullPath, depth + 1);
         } else if (entry.isFile() || entry.isSymbolicLink()) {
           if (entry.name.toLowerCase().endsWith('.exe')) {
@@ -189,13 +203,108 @@ export const ROM_EXTENSIONS = new Set([
 export function detectPlatformFromTags(text: string): string | null {
   if (!text) return null;
   const upper = text.toUpperCase();
-  if (upper.includes('[PS5]') || upper.includes('(PS5)')) return 'ps5';
-  if (upper.includes('[PS4]') || upper.includes('(PS4)')) return 'ps4';
-  if (upper.includes('[PS3]') || upper.includes('(PS3)')) return 'ps3';
-  if (upper.includes('[PS2]') || upper.includes('(PS2)')) return 'ps2';
-  if (upper.includes('[PS1]') || upper.includes('(PS1)') || upper.includes('[PSX]') || upper.includes('(PSX)')) return 'ps1';
-  if (upper.includes('[PSP]') || upper.includes('(PSP)')) return 'psp';
-  if (upper.includes('[PSVITA]') || upper.includes('(PSVITA)') || upper.includes('[VITA]') || upper.includes('(VITA)')) return 'psvita';
+
+  // PS5: tags, delimiters, and title IDs (PPSA, ELJS, ECAS)
+  if (
+    upper.includes('[PS5]') ||
+    upper.includes('(PS5)') ||
+    upper.includes('.PS5.') ||
+    upper.includes('.PS5-') ||
+    upper.includes('-PS5-') ||
+    upper.includes('_PS5_') ||
+    upper.includes('-PS5.') ||
+    /(?:^|[._\-\s[(])(?:PPSA|ELJS|ECAS)\d{5}(?:[._\-\s\])]|$)/i.test(text)
+  ) {
+    return 'ps5';
+  }
+
+  // PS4: tags, delimiters, and title IDs (CUSA)
+  if (
+    upper.includes('[PS4]') ||
+    upper.includes('(PS4)') ||
+    upper.includes('.PS4.') ||
+    upper.includes('.PS4-') ||
+    upper.includes('-PS4-') ||
+    upper.includes('_PS4_') ||
+    upper.includes('-PS4.') ||
+    /(?:^|[._\-\s[(])CUSA\d{5}(?:[._\-\s\])]|$)/i.test(text)
+  ) {
+    return 'ps4';
+  }
+
+  // PS3: tags, delimiters, and title IDs
+  if (
+    upper.includes('[PS3]') ||
+    upper.includes('(PS3)') ||
+    upper.includes('.PS3.') ||
+    upper.includes('.PS3-') ||
+    upper.includes('-PS3-') ||
+    upper.includes('_PS3_') ||
+    /(?:^|[._\-\s[(])(?:BCUS|BLES|BLUS|NPEB|NPUB|NPUA|BLAS|BCES)\d{5}(?:[._\-\s\])]|$)/i.test(text)
+  ) {
+    return 'ps3';
+  }
+
+  // PS2: tags, delimiters, and title IDs
+  if (
+    upper.includes('[PS2]') ||
+    upper.includes('(PS2)') ||
+    upper.includes('.PS2.') ||
+    upper.includes('.PS2-') ||
+    upper.includes('-PS2-') ||
+    upper.includes('_PS2_') ||
+    /(?:^|[._\-\s[(])(?:SLUS|SLES|SCES|SCUS|SLPM|SLPS)\d{5}(?:[._\-\s\])]|$)/i.test(text)
+  ) {
+    return 'ps2';
+  }
+
+  // PS1 / PSX
+  if (
+    upper.includes('[PS1]') ||
+    upper.includes('(PS1)') ||
+    upper.includes('[PSX]') ||
+    upper.includes('(PSX)') ||
+    upper.includes('.PS1.') ||
+    upper.includes('.PSX.')
+  ) {
+    return 'ps1';
+  }
+
+  // PSP
+  if (
+    upper.includes('[PSP]') ||
+    upper.includes('(PSP)') ||
+    upper.includes('.PSP.') ||
+    /(?:^|[._\-\s[(])(?:ULES|ULUS|UCES|UCUS|ULJM|ULJS)\d{5}(?:[._\-\s\])]|$)/i.test(text)
+  ) {
+    return 'psp';
+  }
+
+  // PSVita
+  if (
+    upper.includes('[PSVITA]') ||
+    upper.includes('(PSVITA)') ||
+    upper.includes('[VITA]') ||
+    upper.includes('(VITA)') ||
+    upper.includes('.VITA.') ||
+    upper.includes('.PSVITA.') ||
+    /(?:^|[._\-\s[(])(?:PCSB|PCSF|PCSE|PCSG|PCSA)\d{5}(?:[._\-\s\])]|$)/i.test(text)
+  ) {
+    return 'psvita';
+  }
+
+  // Switch
+  if (
+    upper.includes('[SWITCH]') ||
+    upper.includes('(SWITCH)') ||
+    upper.includes('[NSW]') ||
+    upper.includes('(NSW)') ||
+    upper.includes('.SWITCH.') ||
+    upper.includes('.NSW.')
+  ) {
+    return 'switch';
+  }
+
   if (upper.includes('[DREAMCAST]') || upper.includes('(DREAMCAST)') || upper.includes('[DC]') || upper.includes('(DC)')) return 'dreamcast';
   if (upper.includes('[SATURN]') || upper.includes('(SATURN)') || upper.includes('[SS]') || upper.includes('(SS)')) return 'saturn';
   if (upper.includes('[GAMECUBE]') || upper.includes('(GAMECUBE)') || upper.includes('[GC]') || upper.includes('(GC)')) return 'gamecube';
@@ -205,6 +314,130 @@ export function detectPlatformFromTags(text: string): string | null {
   if (upper.includes('[XBOX]') || upper.includes('(XBOX)')) return 'xbox';
   if (upper.includes('[ARCADE]') || upper.includes('(ARCADE)') || upper.includes('[MAME]') || upper.includes('(MAME)')) return 'arcade';
   return null;
+}
+
+export interface Ps5DumpMetadata {
+  titleId?: string;
+  titleName?: string;
+  version?: string;
+  contentId?: string;
+  localIconUrl?: string;
+  posterUrl?: string;
+  backdropUrl?: string;
+}
+
+export function extractPs5DumpMetadata(targetPath: string): Ps5DumpMetadata {
+  const result: Ps5DumpMetadata = {};
+  try {
+    let dumpDir = targetPath;
+    try {
+      const stat = fs.statSync(targetPath);
+      if (!stat.isDirectory()) {
+        dumpDir = path.dirname(targetPath);
+      }
+    } catch {
+      dumpDir = path.dirname(targetPath);
+    }
+
+    const rootDir = getRootGameDir(targetPath);
+    const candidateSceSysDirs = new Set<string>();
+
+    candidateSceSysDirs.add(path.join(dumpDir, 'sce_sys'));
+    candidateSceSysDirs.add(path.join(rootDir, 'sce_sys'));
+    candidateSceSysDirs.add(path.join(path.dirname(dumpDir), 'sce_sys'));
+
+    try {
+      if (fs.existsSync(rootDir)) {
+        const rootEntries = fs.readdirSync(rootDir, { withFileTypes: true });
+        for (const re of rootEntries) {
+          if (re.isDirectory()) {
+            const rel = re.name.toLowerCase();
+            if (rel.startsWith('app0') || /^[a-z]{4}\d{5}/i.test(rel) || rel === 'usrdir') {
+              candidateSceSysDirs.add(path.join(rootDir, re.name, 'sce_sys'));
+            }
+          }
+        }
+      }
+    } catch {}
+
+    for (const sceSys of candidateSceSysDirs) {
+      const paramJsonPath = path.join(sceSys, 'param.json');
+      if (fs.existsSync(paramJsonPath)) {
+        try {
+          const raw = JSON.parse(fs.readFileSync(paramJsonPath, 'utf-8'));
+          if (raw.titleId && !result.titleId) {
+            result.titleId = String(raw.titleId);
+          }
+          if (raw.contentId && !result.contentId) {
+            result.contentId = String(raw.contentId);
+          }
+          if (!result.version) {
+            result.version = raw.appVersion || raw.masterVersion || raw.contentVersion || undefined;
+          }
+          if (!result.titleName) {
+            const loc = raw.localizedParameters || {};
+            for (const lang of ['en-US', 'en-GB', 'en', 'defaultLanguage']) {
+              if (loc[lang]?.titleName) {
+                result.titleName = loc[lang].titleName;
+                break;
+              }
+            }
+            if (!result.titleName && typeof loc === 'object') {
+              for (const key of Object.keys(loc)) {
+                if (loc[key]?.titleName) {
+                  result.titleName = loc[key].titleName;
+                  break;
+                }
+              }
+            }
+            if (!result.titleName && raw.titleName) {
+              result.titleName = raw.titleName;
+            }
+          }
+        } catch {}
+      }
+
+      if (!result.localIconUrl) {
+        const iconPath = path.join(sceSys, 'icon0.png');
+        if (fs.existsSync(iconPath)) {
+          try {
+            const stat = fs.statSync(iconPath);
+            if (stat.size > 0 && stat.size <= 5 * 1024 * 1024) {
+              const buf = fs.readFileSync(iconPath);
+              result.localIconUrl = `data:image/png;base64,${buf.toString('base64')}`;
+            }
+          } catch {}
+        }
+      }
+
+      if (!result.backdropUrl) {
+        for (const picName of ['pic0.png', 'pic1.png', 'pic0.jpg']) {
+          const picPath = path.join(sceSys, picName);
+          if (fs.existsSync(picPath)) {
+            try {
+              const stat = fs.statSync(picPath);
+              if (stat.size > 0 && stat.size <= 5 * 1024 * 1024) {
+                const buf = fs.readFileSync(picPath);
+                const mime = picName.endsWith('.jpg') ? 'image/jpeg' : 'image/png';
+                const dataUrl = `data:${mime};base64,${buf.toString('base64')}`;
+                result.backdropUrl = dataUrl;
+                if (!result.posterUrl) {
+                  result.posterUrl = dataUrl;
+                }
+                break;
+              }
+            } catch {}
+          }
+        }
+      }
+
+      if (result.titleName && result.localIconUrl && result.backdropUrl) {
+        break;
+      }
+    }
+  } catch {}
+
+  return result;
 }
 
 export const ROM_PLATFORMS: Record<string, string> = {
@@ -231,14 +464,22 @@ export async function scanImagesAndRoms(dir: string, maxDepth: number = 5): Prom
       if (directEboot) {
         const fullPath = path.join(currentDir, directEboot.name);
         const tagged = detectPlatformFromTags(directEboot.name) || detectPlatformFromTags(path.basename(currentDir)) || detectPlatformFromTags(path.basename(path.dirname(currentDir)));
-        const pl = fullPath.toLowerCase();
-        const plat = tagged || (pl.includes('ps5') ? 'ps5' : pl.includes('ps4') ? 'ps4' : pl.includes('ps3') ? 'ps3' : 'ps5');
+        let plat = tagged;
+        if (!plat) {
+          if (fs.existsSync(path.join(currentDir, 'sce_sys', 'param.json')) || fs.existsSync(path.join(currentDir, 'param.json'))) {
+            plat = 'ps5';
+          }
+        }
+        if (!plat) {
+          const pl = fullPath.toLowerCase();
+          plat = pl.includes('ps5') ? 'ps5' : pl.includes('ps4') ? 'ps4' : pl.includes('ps3') ? 'ps3' : 'ps5';
+        }
         found.push({ path: fullPath, ext: '.bin', platform: plat });
         return;
       }
 
       // 2. Nested app0 PS5 dump check: if currentDir has an app0 child containing eboot.bin, index it and skip walking interior files
-      const app0Child = entries.find((e) => e.isDirectory() && (e.name.toLowerCase().startsWith('app0') || /^[a-z]{4}\d{5}-app\d+$/i.test(e.name)));
+      const app0Child = entries.find((e) => e.isDirectory() && (e.name.toLowerCase().startsWith('app0') || /^[a-z]{4}\d{5}/i.test(e.name) || e.name.toLowerCase() === 'usrdir'));
       if (app0Child) {
         const app0Path = path.join(currentDir, app0Child.name);
         try {
@@ -247,8 +488,16 @@ export async function scanImagesAndRoms(dir: string, maxDepth: number = 5): Prom
           if (subEb) {
             const fullPath = path.join(app0Path, subEb);
             const tagged = detectPlatformFromTags(path.basename(currentDir)) || detectPlatformFromTags(app0Child.name);
-            const pl = fullPath.toLowerCase();
-            const plat = tagged || (pl.includes('ps5') ? 'ps5' : pl.includes('ps4') ? 'ps4' : pl.includes('ps3') ? 'ps3' : 'ps5');
+            let plat = tagged;
+            if (!plat) {
+              if (fs.existsSync(path.join(app0Path, 'sce_sys', 'param.json')) || fs.existsSync(path.join(currentDir, 'sce_sys', 'param.json'))) {
+                plat = 'ps5';
+              }
+            }
+            if (!plat) {
+              const pl = fullPath.toLowerCase();
+              plat = pl.includes('ps5') ? 'ps5' : pl.includes('ps4') ? 'ps4' : pl.includes('ps3') ? 'ps3' : 'ps5';
+            }
             found.push({ path: fullPath, ext: '.bin', platform: plat });
             return;
           }
@@ -259,7 +508,7 @@ export async function scanImagesAndRoms(dir: string, maxDepth: number = 5): Prom
         const fullPath = path.join(currentDir, entry.name);
         if (entry.isDirectory()) {
           const nl = entry.name.toLowerCase();
-          if (nl.startsWith('$') || IGNORED_DIRS.has(nl) || nl.startsWith('app0') || /^[a-z]{4}\d{5}-app\d+$/i.test(nl)) continue;
+          if (nl.startsWith('$') || IGNORED_DIRS.has(nl) || nl.startsWith('app0') || /^[a-z]{4}\d{5}/i.test(nl)) continue;
           await traverse(fullPath, depth + 1);
         } else if (entry.isFile() || entry.isSymbolicLink()) {
           const nl = entry.name.toLowerCase();
@@ -280,7 +529,7 @@ export async function scanImagesAndRoms(dir: string, maxDepth: number = 5): Prom
                 const upperName = entry.name.toUpperCase();
                 if (upperName.includes('CUSA')) {
                   plat = 'ps4';
-                } else if (upperName.includes('PPSA')) {
+                } else if (upperName.includes('PPSA') || upperName.includes('ELJS') || upperName.includes('ECAS')) {
                   plat = 'ps5';
                 } else if (upperName.includes('BCUS') || upperName.includes('BLES') || upperName.includes('BLUS') || upperName.includes('NPEB') || upperName.includes('NPUB')) {
                   plat = 'ps3';
@@ -304,22 +553,42 @@ export async function scanImagesAndRoms(dir: string, maxDepth: number = 5): Prom
   return found;
 }
 
+// Pre-compiled static patterns for update and DLC detection (avoids recreating RegExp inside loops)
+const RE_UPD_GUARD1 = /(?:incl|including|includes|with|all|\+)[._\-\s]+(?:all[._\-\s]+)?(?:upd|update|patch)/i;
+const RE_UPD_GUARD2 = /update[._\-\s]+(?:included|bundle|complete|pack)/i;
+const RE_UPD_GUARD3 = /\[.*(?:incl|with|all|\+).*(?:upd|patch).*\]|\(.*(?:incl|with|all|\+).*(?:upd|patch).*\)/i;
+const RE_UPD_TITLE_ID = /(?:\[|\()0100[0-9a-fA-F]{8,10}800(?:\)|\])/i;
+const RE_UPD_TAGS = /\[(?:upd|update|patch|hotfix)[^\]]*\]|\((?:upd|update|patch|hotfix)[^)]*\)/i;
+const RE_UPD_VERSION = /(?:\[|\()v(?:65536|131072|196608|262144|\d{5,})(?:\)|\])|(?:^|[._\-\s])v(?:65536|131072|196608|262144|\d{5,})\b/i;
+const RE_UPD_A_CODE = /-A\d{4}-V\d{4}|-A\d{4}/i;
+const RE_UPD_WORD = /(?:^|[._\-\s])(?:update|patch)[._\-\s]*v?[\d.]+\b/i;
+const RE_UPD_EXT = /(?:^|[._\-\s])(?:update|patch)\.(?:pkg|nsp|xci|iso|bin|exe)$/i;
+
+const RE_DLC_GUARD1 = /(?:incl|including|includes|with|all|\+)[._\-\s]+(?:all[._\-\s]+)?dlc/i;
+const RE_DLC_GUARD2 = /dlc[._\-\s]+(?:included|bundle|complete|edition)/i;
+const RE_DLC_GUARD3 = /\[.*(?:incl|with|all|\+).*dlc.*\]|\(.*(?:incl|with|all|\+).*dlc.*\)/i;
+const RE_DLC_TITLE_ID = /(?:\[|\()0100[0-9a-fA-F]{8,10}(?!000|800)[0-9a-fA-F]{3}(?:\)|\])/i;
+const RE_DLC_TAG1 = /\[(?:dlc|addon|expansion)\]|\((?:dlc|addon|expansion)\)/i;
+const RE_DLC_TAG2 = /\[(?:dlc|addon|expansion)[._\-\s]*\d*\]/i;
+const RE_DLC_WORD = /(?:^|[._\-\s])dlc[._\-\s]*\d+\b/i;
+const RE_DLC_EXT = /(?:^|[._\-\s])(?:dlc|addon|expansion)\.(?:pkg|nsp|xci|iso|bin)$/i;
+
 export function isUpdateFile(name: unknown, filePath?: unknown): boolean {
   if (typeof name !== 'string') return false;
   const nl = name.toLowerCase();
   const pl = typeof filePath === 'string' ? filePath.toLowerCase() : '';
 
   // Guard against full games stating they include updates
-  if (/(?:incl|including|includes|with|all|\+)[._\-\s]+(?:all[._\-\s]+)?(?:upd|update|patch)/i.test(nl)) return false;
-  if (/update[._\-\s]+(?:included|bundle|complete|pack)/i.test(nl)) return false;
-  if (/\[.*(?:incl|with|all|\+).*(?:upd|patch).*\]/i.test(nl) || /\(.*(?:incl|with|all|\+).*(?:upd|patch).*\)/i.test(nl)) return false;
+  if (RE_UPD_GUARD1.test(nl)) return false;
+  if (RE_UPD_GUARD2.test(nl)) return false;
+  if (RE_UPD_GUARD3.test(nl)) return false;
 
-  if (/(?:\[|\()0100[0-9a-fA-F]{8,10}800(?:\)|\])/i.test(nl)) return true;
-  if (/\[(?:upd|update|patch|hotfix)[^\]]*\]/i.test(nl) || /\((?:upd|update|patch|hotfix)[^)]*\)/i.test(nl)) return true;
-  if (/(?:\[|\()v(?:65536|131072|196608|262144|\d{5,})(?:\)|\])|(?:^|[._\-\s])v(?:65536|131072|196608|262144|\d{5,})\b/i.test(nl)) return true;
-  if (/-A\d{4}-V\d{4}/i.test(nl) || /-A\d{4}/i.test(nl)) return true;
-  if (/(?:^|[._\-\s])(?:update|patch)[._\-\s]*v?[\d.]+\b/i.test(nl)) return true;
-  if (/(?:^|[._\-\s])(?:update|patch)\.(?:pkg|nsp|xci|iso|bin|exe)$/i.test(nl)) return true;
+  if (RE_UPD_TITLE_ID.test(nl)) return true;
+  if (RE_UPD_TAGS.test(nl)) return true;
+  if (RE_UPD_VERSION.test(nl)) return true;
+  if (RE_UPD_A_CODE.test(nl)) return true;
+  if (RE_UPD_WORD.test(nl)) return true;
+  if (RE_UPD_EXT.test(nl)) return true;
 
   const parentFolder = path.basename(path.dirname(typeof filePath === 'string' ? filePath : ''));
   if (parentFolder.toLowerCase() === 'updates' || parentFolder.toLowerCase() === 'patches') return true;
@@ -334,15 +603,15 @@ export function isDlcFile(name: unknown, filePath?: unknown): boolean {
   const pl = typeof filePath === 'string' ? filePath.toLowerCase() : '';
 
   // Guard against full games that state they bundle DLCs
-  if (/(?:incl|including|includes|with|all|\+)[._\-\s]+(?:all[._\-\s]+)?dlc/i.test(nl)) return false;
-  if (/dlc[._\-\s]+(?:included|bundle|complete|edition)/i.test(nl)) return false;
-  if (/\[.*(?:incl|with|all|\+).*dlc.*\]/i.test(nl) || /\(.*(?:incl|with|all|\+).*dlc.*\)/i.test(nl)) return false;
+  if (RE_DLC_GUARD1.test(nl)) return false;
+  if (RE_DLC_GUARD2.test(nl)) return false;
+  if (RE_DLC_GUARD3.test(nl)) return false;
 
-  if (/(?:\[|\()0100[0-9a-fA-F]{8,10}(?!000|800)[0-9a-fA-F]{3}(?:\)|\])/i.test(nl)) return true;
-  if (/\[(?:dlc|addon|expansion)\]/i.test(nl) || /\((?:dlc|addon|expansion)\)/i.test(nl)) return true;
-  if (/\[(?:dlc|addon|expansion)[._\-\s]*\d*\]/i.test(nl)) return true;
-  if (/(?:^|[._\-\s])dlc[._\-\s]*\d+\b/i.test(nl)) return true;
-  if (/(?:^|[._\-\s])(?:dlc|addon|expansion)\.(?:pkg|nsp|xci|iso|bin)$/i.test(nl)) return true;
+  if (RE_DLC_TITLE_ID.test(nl)) return true;
+  if (RE_DLC_TAG1.test(nl)) return true;
+  if (RE_DLC_TAG2.test(nl)) return true;
+  if (RE_DLC_WORD.test(nl)) return true;
+  if (RE_DLC_EXT.test(nl)) return true;
 
   const parentFolder = path.basename(path.dirname(typeof filePath === 'string' ? filePath : ''));
   if (parentFolder.toLowerCase() === 'dlc' || parentFolder.toLowerCase() === 'dlcs') return true;
@@ -426,19 +695,6 @@ export function deduplicateGames(games: ScannedLocalGame[]): ScannedLocalGame[] 
   return deduped;
 }
 
-export function getGameFolder(exePath: string, rootDir: string): string {
-  let cur = path.dirname(exePath);
-  const normRoot = path.resolve(rootDir).toLowerCase();
-  while (cur && path.resolve(cur).toLowerCase() !== normRoot) {
-    const parent = path.dirname(cur);
-    if (path.resolve(parent).toLowerCase() === normRoot) {
-      return cur;
-    }
-    cur = parent;
-  }
-  return path.dirname(exePath);
-}
-
 export function getRootGameDir(filePath: string): string {
   let cur = path.dirname(filePath);
   while (cur && path.dirname(cur) !== cur) {
@@ -448,7 +704,7 @@ export function getRootGameDir(filePath: string): string {
       b === 'ps3_game' ||
       b === 'ps4_game' ||
       b.startsWith('app0') ||
-      /^[a-z]{4}\d{5}-app\d+$/i.test(b)
+      /^[a-z]{4}\d{5}/i.test(b)
     ) {
       cur = path.dirname(cur);
     } else if (cur.toLowerCase().includes('app0')) {
@@ -537,7 +793,17 @@ export async function scanLocalFiles(options: LocalScanOptions): Promise<LocalSc
       // ── 2. Disc Images & ROMs Scan ──
       try {
         const images = await scanImagesAndRoms(dir, 5);
-        const baseImages: Array<{ path: string; ext: string; platform: string; cleanTitle: string }> = [];
+        const baseImages: Array<{
+          path: string;
+          ext: string;
+          platform: string;
+          cleanTitle: string;
+          localIconUrl?: string;
+          posterUrl?: string;
+          backdropUrl?: string;
+          version?: string;
+          titleId?: string;
+        }> = [];
         const updateOrDlcFiles: Array<{ path: string; name: string; isDlc: boolean; platform: string; cleanTitle: string }> = [];
 
         for (const img of images) {
@@ -545,35 +811,41 @@ export async function scanLocalFiles(options: LocalScanOptions): Promise<LocalSc
           const isSfb = fn.toUpperCase() === 'PS3_DISC.SFB';
           const isEboot = fn.toLowerCase() === 'eboot.bin';
           let nameWithoutExt = path.basename(img.path, img.ext);
+          let localIconUrl: string | undefined;
+          let posterUrl: string | undefined;
+          let backdropUrl: string | undefined;
+          let version: string | undefined;
+
           if (isSfb || isEboot) {
             let parent = path.basename(path.dirname(img.path));
-            if (GENERIC_FOLDER_NAMES.has(parent.toLowerCase()) || /^[a-z]{4}\d{5}-app\d+$/i.test(parent) || parent.toLowerCase().includes('app0') || parent.toLowerCase() === 'usrdir') {
+            if (GENERIC_FOLDER_NAMES.has(parent.toLowerCase()) || /^[a-z]{4}\d{5}/i.test(parent) || parent.toLowerCase().includes('app0') || parent.toLowerCase() === 'usrdir') {
               parent = path.basename(path.dirname(path.dirname(img.path)));
             }
             nameWithoutExt = parent;
 
+            let titleId: string | undefined = undefined;
             if (isEboot) {
-              try {
-                const dumpDir = path.dirname(img.path);
-                const parentDir = path.dirname(dumpDir);
-                const candidates = [
-                  path.join(dumpDir, 'sce_sys', 'param.json'),
-                  path.join(parentDir, 'sce_sys', 'param.json'),
-                ];
-                for (const cand of candidates) {
-                  if (fs.existsSync(cand)) {
-                    const raw = JSON.parse(fs.readFileSync(cand, 'utf-8'));
-                    const loc = raw.localizedParameters || {};
-                    for (const lang of ['en-GB', 'en-US', 'defaultLanguage', 'en']) {
-                      if (loc[lang]?.titleName) {
-                        nameWithoutExt = loc[lang].titleName;
-                        break;
-                      }
-                    }
-                    break;
-                  }
-                }
-              } catch {}
+              const ps5Meta = extractPs5DumpMetadata(img.path);
+              if (ps5Meta.titleName) {
+                nameWithoutExt = ps5Meta.titleName;
+              }
+              if (ps5Meta.titleId || ps5Meta.titleName || ps5Meta.version) {
+                img.platform = 'ps5';
+              }
+              if (ps5Meta.titleId) {
+                titleId = ps5Meta.titleId;
+              }
+              localIconUrl = ps5Meta.localIconUrl;
+              posterUrl = ps5Meta.posterUrl;
+              backdropUrl = ps5Meta.backdropUrl;
+              version = ps5Meta.version;
+            }
+
+            if (!titleId) {
+              const mId = (img.path || '').match(/\b((?:PPSA|ELJS|ECAS|CUSA)\d{5})\b/i);
+              if (mId) {
+                titleId = mId[1].toUpperCase();
+              }
             }
           } else if (fn.toLowerCase().endsWith('.nsp.hdf')) {
             nameWithoutExt = fn.substring(0, fn.length - '.nsp.hdf'.length);
@@ -585,7 +857,20 @@ export async function scanLocalFiles(options: LocalScanOptions): Promise<LocalSc
           } else if (!isSfb && !isEboot && isDlcFile(fn, img.path)) {
             updateOrDlcFiles.push({ path: img.path, name: fn, isDlc: true, platform: img.platform, cleanTitle: cleaned });
           } else {
-            baseImages.push({ ...img, cleanTitle: cleaned });
+            let titleId: string | undefined = undefined;
+            const mId = (img.path || '').match(/\b((?:PPSA|ELJS|ECAS|CUSA)\d{5})\b/i);
+            if (mId) {
+              titleId = mId[1].toUpperCase();
+            }
+            baseImages.push({
+              ...img,
+              cleanTitle: cleaned,
+              localIconUrl,
+              posterUrl,
+              backdropUrl,
+              version,
+              titleId: (img as any).titleId || titleId,
+            });
           }
         }
 
@@ -630,9 +915,14 @@ export async function scanLocalFiles(options: LocalScanOptions): Promise<LocalSc
             id: generateLocalGameId(img.path, img.platform || 'iso'),
             title: img.cleanTitle || cleanGameTitle(path.basename(img.path, img.ext)),
             exePath: img.path,
-            installDir: path.dirname(img.path),
+            installDir: getRootGameDir(img.path),
             platform: img.platform || 'iso',
+            titleId: (img as any).titleId,
             updateFiles: updates,
+            localIconUrl: img.localIconUrl,
+            posterUrl: img.posterUrl,
+            backdropUrl: img.backdropUrl,
+            version: img.version,
           });
         }
       } catch (imgErr: any) {
@@ -705,6 +995,8 @@ export async function scanLocalFiles(options: LocalScanOptions): Promise<LocalSc
                   const catEntries = await fs.promises.readdir(gf, { withFileTypes: true });
                   for (const ce of catEntries) {
                     if (ce.isDirectory() && !ce.name.startsWith('.') && !ce.name.startsWith('$') && !IGNORED_DIRS.has(ce.name.toLowerCase())) {
+                      const ceLower = ce.name.toLowerCase();
+                      if (ceLower.startsWith('app0') || /^[a-z]{4}\d{5}/i.test(ceLower) || ceLower === 'usrdir' || ceLower === 'sce_sys') continue;
                       potentialGameDirs.push({ dirPath: path.join(gf, ce.name), dirName: ce.name, category: nl });
                     }
                   }
@@ -717,11 +1009,11 @@ export async function scanLocalFiles(options: LocalScanOptions): Promise<LocalSc
             }
 
             for (const pgd of potentialGameDirs) {
-              // Avoid duplicate if an ISO/ROM image was already discovered in this directory
+              // Avoid duplicate if an ISO/ROM image or game was already discovered in or containing this directory
               const alreadyHasImage = allGames.some((g) => {
                 const gDir = path.resolve(g.installDir || '').toLowerCase();
                 const targetDir = path.resolve(pgd.dirPath).toLowerCase();
-                return gDir === targetDir || gDir.startsWith(targetDir + path.sep);
+                return gDir === targetDir || targetDir.startsWith(gDir + path.sep) || gDir.startsWith(targetDir + path.sep);
               });
               if (alreadyHasImage) continue;
 
@@ -754,7 +1046,7 @@ export async function scanLocalFiles(options: LocalScanOptions): Promise<LocalSc
                       ebootPath = path.join(pgd.dirPath, ce.name);
                       break;
                     }
-                    if (ce.isDirectory() && (ce.name.toLowerCase().includes('app0') || ce.name.toLowerCase() === 'usrdir')) {
+                    if (ce.isDirectory() && (ce.name.toLowerCase().includes('app0') || /^[a-z]{4}\d{5}/i.test(ce.name) || ce.name.toLowerCase() === 'usrdir')) {
                       const subEb = path.join(pgd.dirPath, ce.name, 'eboot.bin');
                       if (fs.existsSync(subEb)) {
                         ebootPath = subEb;
@@ -768,13 +1060,25 @@ export async function scanLocalFiles(options: LocalScanOptions): Promise<LocalSc
               let archivePath: string | null = null;
               if (!best && !ebootPath) {
                 try {
-                  const topFiles = await fs.promises.readdir(pgd.dirPath);
-                  const topArchive = topFiles.find((f) => {
-                    const fl = f.toLowerCase();
-                    return (fl.endsWith('.rar') || fl.endsWith('.zip') || fl.endsWith('.7z')) && !isUpdateFile(fl) && !isDlcFile(fl);
-                  });
-                  if (topArchive) {
-                    archivePath = path.join(pgd.dirPath, topArchive);
+                  const dirLower = pgd.dirName.toLowerCase();
+                  const fullDirLower = pgd.dirPath.toLowerCase();
+                  const isInternalAssetDir =
+                    ['tutorials', 'scenarios', 'plugins', 'plugin', 'data', 'base', 'x86_64', 'x64', 'x86', 'menu-simulations', 'menu-simulation', 'blueprint', 'icons', 'mods', 'mod'].includes(dirLower) ||
+                    GENERIC_FOLDER_NAMES.has(dirLower) ||
+                    fullDirLower.includes('steamapps') ||
+                    fullDirLower.includes('menu-simulation') ||
+                    fullDirLower.includes('/mods/') ||
+                    fullDirLower.includes('\\mods\\');
+
+                  if (!isInternalAssetDir) {
+                    const topFiles = await fs.promises.readdir(pgd.dirPath);
+                    const topArchive = topFiles.find((f) => {
+                      const fl = f.toLowerCase();
+                      return (fl.endsWith('.rar') || fl.endsWith('.zip') || fl.endsWith('.7z')) && !isUpdateFile(fl) && !isDlcFile(fl);
+                    });
+                    if (topArchive) {
+                      archivePath = path.join(pgd.dirPath, topArchive);
+                    }
                   }
                 } catch {}
               }
@@ -791,14 +1095,29 @@ export async function scanLocalFiles(options: LocalScanOptions): Promise<LocalSc
                 });
               } else if (ebootPath) {
                 const updates = await findUpdateFilesForGame(ebootPath);
-                const plat = pgd.category && pgd.category.startsWith('ps') ? pgd.category : (pgd.dirPath.toLowerCase().includes('ps5') ? 'ps5' : 'ps4');
+                const ps5Meta = extractPs5DumpMetadata(ebootPath);
+                const isPs5 = Boolean(
+                  (ps5Meta.titleId && /^(?:PPSA|ELJS|ECAS)\d{5}/i.test(ps5Meta.titleId)) ||
+                  detectPlatformFromTags(pgd.dirName) === 'ps5' ||
+                  detectPlatformFromTags(ebootPath) === 'ps5' ||
+                  pgd.dirPath.toLowerCase().includes('ps5') ||
+                  (pgd.category && pgd.category.toLowerCase() === 'ps5')
+                );
+                const plat = isPs5
+                  ? 'ps5'
+                  : (detectPlatformFromTags(pgd.dirName) || (pgd.category && pgd.category.startsWith('ps') ? pgd.category : 'ps4'));
+                const rootDir = getRootGameDir(ebootPath);
                 allGames.push({
                   id: generateLocalGameId(ebootPath, plat),
-                  title: cleanGameTitle(pgd.dirName),
+                  title: ps5Meta.titleName || cleanGameTitle(pgd.dirName),
                   exePath: ebootPath,
-                  installDir: pgd.dirPath,
+                  installDir: rootDir,
                   platform: plat,
                   updateFiles: updates,
+                  localIconUrl: ps5Meta.localIconUrl,
+                  posterUrl: ps5Meta.posterUrl,
+                  backdropUrl: ps5Meta.backdropUrl,
+                  version: ps5Meta.version,
                 });
               } else if (archivePath) {
                 allGames.push({

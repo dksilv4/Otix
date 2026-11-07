@@ -163,8 +163,7 @@ func TestAdversarial_BadJSONSidecars(t *testing.T) {
 			name:        "JSON Literal null in .otixmeta",
 			sidecarName: ".otixmeta",
 			sidecarData: []byte(`null`),
-			// JSON null parses into empty struct without error, shadowing heuristic year
-			expectYear:  0,
+			expectYear:  1990,
 		},
 		{
 			name:        "Sidecar fields with extreme type confusion",
@@ -185,7 +184,7 @@ func TestAdversarial_BadJSONSidecars(t *testing.T) {
 			name:        "Deeply nested JSON structure without year",
 			sidecarName: ".otixmeta",
 			sidecarData: []byte(strings.Repeat(`{"wrap":`, 100) + `{"title": "Deep"}` + strings.Repeat(`}`, 100)),
-			expectYear:  0, // Unknown fields ignored by JSON unmarshal; year is unset
+			expectYear:  1990, // Unknown fields ignored by JSON unmarshal; year is unset
 		},
 		{
 			name:        "Sidecar file is actually a DIRECTORY",

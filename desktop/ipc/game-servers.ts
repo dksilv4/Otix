@@ -1,11 +1,12 @@
 import { ipcMain } from 'electron';
-import { probeGameServer, type GameServerProbeParams, type GameServerQueryResult } from '../game/server-query';
+import type { GameServerProbeParams, GameServerQueryResult } from '../game/server-query';
 
 export function registerGameServersIPC(): void {
   ipcMain.handle(
     'gameserver:query',
     async (_event, params: GameServerProbeParams): Promise<GameServerQueryResult> => {
       try {
+        const { probeGameServer } = await import('../game/server-query');
         return await probeGameServer(params);
       } catch (err: unknown) {
         return {

@@ -21,12 +21,14 @@ import {
   useDeleteMediaRequest,
   type MediaRequestItem,
 } from '../use-media-requests'
+import { useMediaActivityCatalog } from '@/features/media/hooks/use-media-activity'
 import {
   filterMediaRequests,
   formatRequestRelativeTime,
   getRequestServiceLabel,
   getRequestStatusBadgeClass,
   getRequestStatusLabel,
+  resolveEffectiveRequestStatus,
 } from '../utils/requests'
 
 export interface DownloadRequestsPanelProps {
@@ -39,6 +41,7 @@ export const DownloadRequestsPanel = ({
   serverId,
 }: DownloadRequestsPanelProps) => {
   const { data, isLoading } = useMediaRequests({ serverId })
+  const { data: activityCatalog } = useMediaActivityCatalog()
   const deleteMutation = useDeleteMediaRequest()
   const [searchQuery, setSearchQuery] = useState('')
   const [typeFilter, setTypeFilter] = useState<'all' | 'movie' | 'show' | 'game'>('all')
@@ -185,8 +188,12 @@ export const DownloadRequestsPanel = ({
             const isShow = item.mediaType === 'show'
             const isGame = item.mediaType === 'game' || item.mediaType === 'usenet'
             const serviceLabel = getRequestServiceLabel(item.service, item.mediaType)
-            const statusLabel = getRequestStatusLabel(item.status)
-            const statusBadgeClass = getRequestStatusBadgeClass(item.status)
+            const { status: effectiveStatus, isAvailable, nodeActivity } = resolveEffectiveRequestStatus(
+              item,
+              activityCatalog?.items,
+            )
+            const statusLabel = getRequestStatusLabel(effectiveStatus)
+            const statusBadgeClass = getRequestStatusBadgeClass(effectiveStatus)
             const relativeTime = formatRequestRelativeTime(item.createdAt)
 
             const detailLink =
@@ -285,6 +292,11 @@ export const DownloadRequestsPanel = ({
                           <span>{item.qualityProfileName}</span>
                         </span>
                       )}
+                      {nodeActivity?.episodeCount ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-primary/10 text-primary font-medium">
+                          <span>{`${nodeActivity.episodeCount}/${nodeActivity.totalEpisodes || nodeActivity.episodeCount} ep`}</span>
+                        </span>
+                      ) : null}
                       {item.monitored && (
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-primary/10 text-primary font-medium">
                           <Radio className="h-2.5 w-2.5" />
@@ -306,9 +318,14 @@ export const DownloadRequestsPanel = ({
                     {detailLink && (
                       <Link
                         to={detailLink as any}
-                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-muted/40 hover:bg-muted text-foreground font-medium transition-colors"
+                        className={cn(
+                          'inline-flex items-center gap-1 px-2.5 py-1 rounded-lg font-medium transition-colors',
+                          isAvailable
+                            ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+                            : 'bg-muted/40 hover:bg-muted text-foreground',
+                        )}
                       >
-                        <span>View</span>
+                        <span>{isAvailable ? 'Stream' : 'View'}</span>
                         <ExternalLink className="h-3 w-3" />
                       </Link>
                     )}

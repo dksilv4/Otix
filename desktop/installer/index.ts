@@ -872,34 +872,6 @@ export function getSilentArgs(type: InstallerType, targetDir: string): string[] 
   }
 }
 
-/** Run installer silently with given args. Returns true if exit code was 0. */
-export async function runSilentInstall(
-  setupPath: string,
-  args: string[],
-  onProgress?: (p: InstallProgress) => void,
-): Promise<boolean> {
-  // Start-Process with -ArgumentList array avoids quoting issues with /DIR="path"
-  const escapedPath = setupPath.replace(/'/g, "''");
-  const argStr = args.map((a) => `'${a.replace(/'/g, "''")}'`).join(', ');
-  const cmd = `powershell -Command "Start-Process -FilePath '${escapedPath}' -ArgumentList @(${argStr}) -Wait"`;
-
-  console.log(`[runSilentInstall] ${cmd}`);
-
-  onProgress?.({
-    phase: 'installing',
-    progress: 40,
-    message: 'Running silent installer...',
-  });
-
-  try {
-    await execPromise(cmd);
-    return true;
-  } catch (err) {
-    console.warn(`[runSilentInstall] Failed:`, err);
-    return false;
-  }
-}
-
 // Multi-instance install tracking — Map<installId, handle>
 const _currentInstalls = new Map<string, { proc: import('child_process').ChildProcess | null; pid: number | null; killed: boolean }>();
 // Metadata for active installs (survives proc cleanup for status queries)
@@ -1410,42 +1382,6 @@ async function extractWithProgress(
       } else { resolve(false); }
     });
   });
-}
-
-/** Try to extract with 7z (handles some InnoSetup installers too). */
-async function extractWith7z(setupPath: string, targetDir: string): Promise<boolean> {
-  try {
-    const cmd = process.platform === 'win32' ? 'where 7z 2>nul' : 'which 7z 2>/dev/null';
-    const result = execSync(cmd, { encoding: 'utf-8', windowsHide: true });
-    const sevenZipPath = result.trim().split('\n')[0]?.trim();
-    if (!sevenZipPath || !existsSync(sevenZipPath)) return false;
-    execSync(`"${sevenZipPath}" x "${setupPath}" -o"${targetDir}" -y`, { stdio: 'ignore', timeout: 120000 });
-    return true;
-  } catch { return false; }
-}
-
-/** Extract an InnoSetup installer — innounp preferred, 7z fallback. */
-export async function extractInnoSetup(
-  setupPath: string,
-  targetDir: string,
-): Promise<boolean> {
-  // innounp — completely skips installer GUI (no dialogs, no sound, no usernames)
-  const innounpPath = await ensureInnounp();
-  if (innounpPath) {
-    try {
-      await execPromise(`"${innounpPath}" -x -d"${targetDir}" -y "${setupPath}"`);
-      console.log(`[extractInnoSetup] Success`);
-      return true;
-    } catch (err) {
-      console.warn('[extractInnoSetup] innounp failed:', err);
-    }
-  }
-
-  // 7z fallback — handles some InnoSetup variants
-  const sevenZipOk = await extractWith7z(setupPath, targetDir);
-  if (sevenZipOk) { console.log(`[extractInnoSetup] 7z success`); return true; }
-
-  return false;
 }
 
 /**

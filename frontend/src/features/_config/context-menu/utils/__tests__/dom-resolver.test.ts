@@ -274,6 +274,50 @@ describe('resolveContextMenuTarget', () => {
     })
   })
 
+  it('resolves continue-watching elements with data-context-type="continue-watching"', () => {
+    const card = document.createElement('div')
+    card.setAttribute('data-context-type', 'continue-watching')
+    card.setAttribute('data-rating-key', 'cw-123')
+    card.setAttribute('data-server-id', 'srv-456')
+    card.setAttribute('data-media-item-id', '789')
+    card.setAttribute('data-media-type', 'show')
+    card.setAttribute('data-media-title', 'Severance')
+    card.setAttribute('data-show-title', 'Severance')
+    card.setAttribute('data-episode-title', 'The You You Are')
+    card.setAttribute('data-season-number', '1')
+    card.setAttribute('data-episode-number', '4')
+    card.setAttribute('data-view-offset', '1800000')
+    card.setAttribute('data-duration', '3600000')
+    card.setAttribute('data-progress-percent', '50')
+    document.body.appendChild(card)
+
+    const resolved = resolveContextMenuTarget(card, null)
+    expect(resolved).toEqual({
+      type: 'continue-watching',
+      id: 'cw-123',
+      ratingKey: 'cw-123',
+      grandparentRatingKey: undefined,
+      mediaItemId: '789',
+      mediaType: 'show',
+      title: 'Severance',
+      showTitle: 'Severance',
+      episodeTitle: 'The You You Are',
+      seasonNumber: 1,
+      episodeNumber: 4,
+      subtitle: undefined,
+      thumb: undefined,
+      stillUrl: undefined,
+      backdropUrl: undefined,
+      viewOffset: 1800000,
+      duration: 3600000,
+      progressPercent: 50,
+      year: undefined,
+      serverId: 'srv-456',
+      serverName: undefined,
+      serverUrl: undefined,
+    })
+  })
+
   it('falls back to page target on empty or unannotated elements', () => {
     const div = document.createElement('div')
     document.body.appendChild(div)

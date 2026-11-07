@@ -2,12 +2,20 @@
 
 from rest_framework import serializers
 
-from apps.library.models import GameMatchRecord, NodeLibraryPath, StorageShare
+from apps.library.models import GameMatchRecord, NodeLibraryPath, StorageShare, UserMachine
+from apps.media.models import ExternalID, MediaItem
 from apps.media.serializers.catalog import MediaItemSummarySerializer
+from django.contrib.contenttypes.models import ContentType
 
 
 class StorageShareSerializer(serializers.ModelSerializer):
     node_count = serializers.SerializerMethodField()
+    server_machine_id = serializers.PrimaryKeyRelatedField(
+        source="machine",
+        queryset=UserMachine.objects.all(),
+        required=False,
+        allow_null=True,
+    )
 
     def get_node_count(self, obj: StorageShare) -> int:
         return obj.node_paths.values("node_id").distinct().count()
@@ -69,6 +77,17 @@ class GameMatchRecordSerializer(serializers.ModelSerializer):
         source="storage_share.name", read_only=True, allow_null=True
     )
     node_name = serializers.CharField(source="node.name", read_only=True, allow_null=True)
+    external_ids = serializers.SerializerMethodField()
+
+    def get_external_ids(self, obj: GameMatchRecord) -> dict[str, str]:
+        if not obj.media_item_id:
+            return {}
+        ct = ContentType.objects.get_for_model(MediaItem)
+        return dict(
+            ExternalID.objects.filter(content_type=ct, object_id=obj.media_item_id).values_list(
+                "provider", "external_id"
+            )
+        )
 
     class Meta:
         model = GameMatchRecord
@@ -87,6 +106,7 @@ class GameMatchRecordSerializer(serializers.ModelSerializer):
             "user_override",
             "media_item_id",
             "media",
+            "external_ids",
             "storage_share_id",
             "storage_share_name",
             "node_id",
@@ -100,3 +120,5 @@ class GameMatchRecordSerializer(serializers.ModelSerializer):
 
 class ConfirmMatchPayloadSerializer(serializers.Serializer):
     media_item_id = serializers.CharField(required=True)
+    title_id = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    ps_id = serializers.CharField(required=False, allow_blank=True, allow_null=True)

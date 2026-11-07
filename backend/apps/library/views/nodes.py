@@ -195,11 +195,12 @@ def _resolve_user(request: Request):
     return None
 
 
-def _get_node_or_404(request: Request, server_id: int) -> UserNode:
+def _get_node_or_404(request: Request, server_id: int | str) -> UserNode:
     resolved_user = _resolve_user(request)
     if not resolved_user:
         raise NotAuthenticated("User authentication required")
-    if server_id == -1:
+    raw_id = str(server_id).strip()
+    if raw_id == "-1":
         server = (
             UserNode.objects.filter(user=resolved_user, is_local_desktop=True)
             .exclude(local_url__startswith="otix://")
@@ -223,16 +224,24 @@ def _get_node_or_404(request: Request, server_id: int) -> UserNode:
                 },
             )
         return server
-    server = UserNode.objects.filter(id=server_id, user=resolved_user).first()
+    server = None
+    if raw_id.isdigit():
+        server = UserNode.objects.filter(id=int(raw_id), user=resolved_user).first()
+    if not server:
+        try:
+            server = UserNode.objects.filter(machine_id=raw_id, user=resolved_user).first()
+        except Exception:
+            pass
     if server:
         return server
-    share = (
-        UserNodeShare.objects.filter(
-            node_id=server_id, shared_with=resolved_user, node__is_active=True
-        )
-        .select_related("node")
-        .first()
-    )
+    share_qs = UserNodeShare.objects.filter(shared_with=resolved_user, node__is_active=True)
+    if raw_id.isdigit():
+        share = share_qs.filter(node_id=int(raw_id)).select_related("node").first()
+    else:
+        try:
+            share = share_qs.filter(node__machine_id=raw_id).select_related("node").first()
+        except Exception:
+            share = None
     if share:
         if request.method in ("DELETE", "POST", "PUT", "PATCH") and share.permission != "admin":
             from rest_framework.exceptions import PermissionDenied
@@ -3398,7 +3407,7 @@ class NodeInstanceHeartbeatView(APIView):
     authentication_classes = ()
     permission_classes = (AllowAny,)
 
-    def post(self, request: Request, node_id: int) -> Response:
+    def post(self, request: Request, node_id: str | int) -> Response:
         payload = request.data if isinstance(request.data, dict) else {}
         token = payload.get("auth_token") or payload.get("api_key") or ""
         if not token:
@@ -3406,9 +3415,27 @@ class NodeInstanceHeartbeatView(APIView):
             if auth_header.startswith("Bearer "):
                 token = auth_header[7:].strip()
 
-        node = UserNode.objects.filter(id=node_id).first()
+        node = None
+        raw_id = str(node_id).strip()
+        if raw_id.isdigit():
+            node = UserNode.objects.filter(id=int(raw_id)).first()
         if not node:
-            raise NotFound("Node not found")
+            try:
+                node = UserNode.objects.filter(machine_id=raw_id).first()
+            except Exception:
+                pass
+        if not node:
+            local_desktop = UserNode.objects.filter(is_local_desktop=True).first()
+            if local_desktop:
+                try:
+                    local_desktop.machine_id = uuid.UUID(raw_id)
+                    local_desktop.save(update_fields=["machine_id", "updated_at"])
+                    node = local_desktop
+                except Exception:
+                    pass
+        if not node:
+            apply_node_heartbeat({**payload, "machine_id": raw_id})
+            return Response({"status": "pending", "machine_id": raw_id})
 
         user = getattr(request, "user", None)
         is_user_auth = bool(user and user.is_authenticated and user.id == node.user_id)

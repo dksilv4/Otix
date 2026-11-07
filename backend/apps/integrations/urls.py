@@ -14,9 +14,15 @@ from apps.integrations.views import (
     GOGLibraryScanView,
     GOGResolveSteamGridView,
     GOGStatusView,
+    PlexAlbumTracksView,
     PlexConnectInfoView,
     PlexContinueWatchingView,
     PlexLibrariesView,
+    PlexMusicAlbumTracksView,
+    PlexMusicArtistDetailsView,
+    PlexMusicBrowseView,
+    PlexMusicSectionsView,
+    PlexScrobbleView,
     PlexServersView,
     PlexSessionsView,
     PlexStorageRecommendationsView,
@@ -56,6 +62,23 @@ urlpatterns = [
     # Plex read/library-state surface.
     path("plex/servers", PlexServersView.as_view(), name="plex-servers"),
     path("plex/libraries", PlexLibrariesView.as_view(), name="plex-libraries"),
+    path("plex/music/sections", PlexMusicSectionsView.as_view(), name="plex-music-sections"),
+    path("plex/music/browse", PlexMusicBrowseView.as_view(), name="plex-music-browse"),
+    path(
+        "plex/music/album/<str:rating_key>",
+        PlexMusicAlbumTracksView.as_view(),
+        name="plex-music-album-tracks",
+    ),
+    path(
+        "plex/music/artist/<str:rating_key>",
+        PlexMusicArtistDetailsView.as_view(),
+        name="plex-music-artist-details",
+    ),
+    path(
+        "plex/album-tracks/<str:media_identifier>",
+        PlexAlbumTracksView.as_view(),
+        name="plex-album-tracks",
+    ),
     path("plex/streamable-ids", PlexStreamableIdsView.as_view(), name="plex-streamable-ids"),
     path("plex/stream/<str:rating_key>", PlexStreamView.as_view(), name="plex-stream"),
     path(
@@ -69,6 +92,7 @@ urlpatterns = [
         PlexContinueWatchingView.as_view(),
         name="plex-continue-watching",
     ),
+    path("plex/scrobble", PlexScrobbleView.as_view(), name="plex-scrobble"),
     path("plex/timeline", PlexTimelineView.as_view(), name="plex-timeline"),
     path(
         "plex/watchlist/sync",

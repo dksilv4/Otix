@@ -47,6 +47,7 @@ import { createChatRoutes } from '@/features/chat'
 import { createDocsRoutes } from '@/features/docs/router'
 import { createDownloadRoutes } from '@/features/download-page/router'
 import { createGameServersRoutes } from '@/features/gameservers/router'
+import { createMusicRoutes } from '@/features/music/router'
 import { RoutePending } from './route-pending'
 import { RouteError } from './route-error'
 
@@ -131,6 +132,7 @@ const routeTree = rootRoute.addChildren([
   ...createMediaRoutes(rootRoute),
   ...createGenreRoutes(rootRoute),
   ...createLauncherRoutes(rootRoute),
+  ...createMusicRoutes(rootRoute),
   ...createLibraryRoutes(rootRoute),
   ...createSettingsRoutes(rootRoute, []),
   ...createListRoutes(rootRoute),

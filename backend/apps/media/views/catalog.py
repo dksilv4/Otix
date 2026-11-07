@@ -39,6 +39,9 @@ def resolve_media_pk(media_type: str | None, media_id: str | int) -> int | None:
     if not raw:
         return None
 
+    if raw.endswith(".0") and raw[:-2].isdigit():
+        raw = raw[:-2]
+
     # 1. If raw is digits, check exact PK first;
     # if absent, check if it's a canonical provider external ID
     if raw.isdigit():

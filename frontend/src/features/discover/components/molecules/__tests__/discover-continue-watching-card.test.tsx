@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { DiscoverContinueWatchingCard } from '../discover-continue-watching-card'
+import { ContextMenuProvider } from '@/features/_config/context-menu'
 import type { DiscoverContinueWatchingItem } from '../../../types'
 
 // Mock tanstack router Link
@@ -10,6 +11,7 @@ vi.mock('@tanstack/react-router', () => ({
       {children}
     </a>
   ),
+  useNavigate: () => vi.fn(),
 }))
 
 describe('DiscoverContinueWatchingCard', () => {
@@ -119,5 +121,25 @@ describe('DiscoverContinueWatchingCard', () => {
     expect(screen.getByText('S1:E7')).toBeInTheDocument()
     expect(screen.queryByTestId('discover-continue-watching-progress')).not.toBeInTheDocument()
     expect(screen.queryByText(/left$/)).not.toBeInTheDocument()
+  })
+
+  it('renders context menu attributes and options button', () => {
+    const onPlay = vi.fn()
+    render(
+      <ContextMenuProvider>
+        <DiscoverContinueWatchingCard item={mockShowItem} onPlay={onPlay} />
+      </ContextMenuProvider>,
+    )
+
+    const card = screen.getByTestId('discover-continue-watching-card')
+    expect(card).toHaveAttribute('data-context-type', 'continue-watching')
+    expect(card).toHaveAttribute('data-rating-key', '101')
+    expect(card).toHaveAttribute('data-media-item-id', '42')
+
+    const optionsBtn = screen.getByTestId('discover-continue-watching-options-btn')
+    expect(optionsBtn).toBeInTheDocument()
+    expect(optionsBtn).toHaveAttribute('aria-label', 'Options for Severance')
+
+    fireEvent.click(optionsBtn)
   })
 })

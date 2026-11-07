@@ -1,5 +1,5 @@
 import { useContext } from 'react'
-import { PlexPlayerContext } from '../plex-audio-provider'
+import { PlexPlayerContext } from '../player-context'
 import type { PlexPlayerContextValue } from '../types'
 
 export const usePlexPlayer = (): PlexPlayerContextValue => {

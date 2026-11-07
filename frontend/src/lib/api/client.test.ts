@@ -408,5 +408,54 @@ describe('apiClient', () => {
       expect(detail).toContain('Invalid credentials.')
     }
   })
+
+  it('retries idempotent GET requests on connection refused and succeeds when server recovers', async () => {
+    const { apiClient } = await import('./client')
+    let attempts = 0
+    const testAdapter = async (config: InternalAxiosRequestConfig): Promise<AxiosResponse> => {
+      attempts++
+      if (attempts === 1) {
+        const err = new Error('connect ECONNREFUSED 127.0.0.1:8000') as unknown as {
+          code: string
+          config: InternalAxiosRequestConfig
+        }
+        err.code = 'ECONNREFUSED'
+        err.config = config
+        throw err
+      }
+      return jsonResponse(config, { recovered: true })
+    }
+    apiClient.defaults.adapter = testAdapter
+    axios.defaults.adapter = testAdapter
+
+    const res = await apiClient.get('/health')
+    expect(res.data).toEqual({ recovered: true })
+    expect(attempts).toBe(2)
+  })
+
+  it('synthesizes structured 503 error response when connection refused exhausts retries', async () => {
+    const { apiClient } = await import('./client')
+    const testAdapter = async (config: InternalAxiosRequestConfig): Promise<AxiosResponse> => {
+      const err = new Error('connect ECONNREFUSED 127.0.0.1:8000') as unknown as {
+        code: string
+        config: InternalAxiosRequestConfig
+      }
+      err.code = 'ECONNREFUSED'
+      err.config = config
+      throw err
+    }
+    apiClient.defaults.adapter = testAdapter
+    axios.defaults.adapter = testAdapter
+
+    try {
+      await apiClient.get('/unreachable')
+      expect.unreachable('Should have failed')
+    } catch (e: unknown) {
+      const err = e as { response?: { status: number; data: { detail: string; code: string } } }
+      expect(err.response?.status).toBe(503)
+      expect(err.response?.data?.code).toBe('connection_refused')
+      expect(err.response?.data?.detail).toContain('Connection refused')
+    }
+  })
 })
 

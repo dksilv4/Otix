@@ -1,6 +1,18 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { DownloadQueuePage } from '../download-queue'
+
+const queryClient = new QueryClient({
+  defaultOptions: { queries: { retry: false } },
+})
+
+const renderPage = () =>
+  render(
+    <QueryClientProvider client={queryClient}>
+      <DownloadQueuePage />
+    </QueryClientProvider>,
+  )
 
 vi.mock('@tanstack/react-router', () => ({
   Link: ({ children, to, params, className }: any) => (
@@ -15,6 +27,10 @@ vi.mock('@tanstack/react-router', () => ({
 
 vi.mock('@/lib/providers/auth', () => ({
   useAuth: () => ({
+    user: { id: 1, username: 'testuser', isAdmin: true },
+    isAuthenticated: true,
+  }),
+  useOptionalAuth: () => ({
     user: { id: 1, username: 'testuser', isAdmin: true },
     isAuthenticated: true,
   }),
@@ -92,13 +108,15 @@ const mockHistoryItems = [
   },
 ]
 
+let currentMockQueueItems = mockQueueItems
+
 vi.mock('../../use-server-usenet', () => ({
   useServerUsenetQueue: () => ({
     data: {
       status: 'Downloading',
       speed: '45.2 MB/s',
       time_left: '0:14:00',
-      items: mockQueueItems,
+      items: currentMockQueueItems,
     },
     refetch: vi.fn(),
   }),
@@ -163,6 +181,7 @@ vi.mock('../../use-media-requests', () => ({
 describe('DownloadQueuePage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    currentMockQueueItems = mockQueueItems
     mockSonarrRecords = []
     mockRadarrRecords = []
   })
@@ -227,7 +246,7 @@ describe('DownloadQueuePage', () => {
   })
 
   it('switches to the Requests tab and displays media requests sent from Otix', () => {
-    render(<DownloadQueuePage />)
+    renderPage()
 
     const requestsTab = screen.getByRole('button', { name: /requests/i })
     fireEvent.click(requestsTab)
@@ -235,5 +254,36 @@ describe('DownloadQueuePage', () => {
     expect(screen.getByText('Oppenheimer')).toBeInTheDocument()
     expect(screen.getAllByText('Requested').length).toBeGreaterThanOrEqual(1)
     expect(screen.queryByText('Forza Horizon 5 Premium')).not.toBeInTheDocument()
+  })
+
+  it('safely renders Usenet TV episode items with camelCase nzoId without crashing or throwing replace error', () => {
+    currentMockQueueItems = [
+      {
+        nzoId: 'SABnzbd_nzo_tv123',
+        filename: 'One.Piece.1999.S19E01.WEB-DL.MULTi.1080p.x265',
+        percentage: 42.5,
+        sizeMb: 500,
+        sizeLeftMb: 280,
+        speed: '12.5 MB/s',
+        timeLeft: '0:02:10',
+        status: 'Downloading',
+      } as any,
+      {
+        // Item with missing/undefined nzo_id and nzoId to test ultimate resilience
+        filename: 'Monster.S02E02.2160p.WEB-DL',
+        percentage: 10,
+        sizeMb: 4000,
+        sizeLeftMb: 3600,
+        speed: '25 MB/s',
+        timeLeft: '0:05:00',
+        status: 'Downloading',
+      } as any,
+    ]
+
+    render(<DownloadQueuePage />)
+
+    expect(screen.getByText('Server Usenet Downloads (SABnzbd)')).toBeInTheDocument()
+    expect(screen.getByText('S19E01')).toBeInTheDocument()
+    expect(screen.getByText('S02E02')).toBeInTheDocument()
   })
 })

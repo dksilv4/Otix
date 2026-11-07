@@ -18,7 +18,7 @@ import {
 } from '@/features/downloads/use-server-arr'
 import { readyArrInstances, type ArrServiceInstance } from '@/features/downloads/arr-instances'
 import { findBestArrInstance } from '@/features/downloads/utils/arr-routing'
-import { mediaActivityKeys } from './use-media-activity'
+import { mediaActivityKeys, useMediaActivity } from './use-media-activity'
 import { showToast } from '@ui/molecules/toast'
 import type { ServerArrQueueItem } from '@/features/downloads/arr-types'
 import { mediaQueries } from '@media/queries/media-queries'
@@ -31,6 +31,7 @@ import {
   fileFromSonarrLookup,
   instanceLabel,
   isArrMediaType,
+  libraryIdFromLookup,
   lookupTmdbTerm,
   makeServerArrInstanceId,
   matchArrQueueItem,
@@ -180,13 +181,21 @@ export function useRequestMedia(): RequestMediaState {
     qualityProfiles[0]?.id
   const isSingleOrAutoRouted = instances.length === 1 || Boolean(autoMatchedInstance)
 
+  const nodeActivity = useMediaActivity(
+    mediaType,
+    tmdbId,
+    detail?.id ? String(detail.id) : mediaId,
+    tvdbId,
+    mediaTitle,
+  )
+
   const statusQuery = useQuery({
     queryKey: requestMediaKeys.status(serverId, mediaType, identifier),
     queryFn: async () => {
       if (!serverId || (!tmdbId && !tvdbId && !mediaTitle)) return [] as RequestInstance[]
       const term = isMovie
         ? (tmdbId ? lookupTmdbTerm(tmdbId) : mediaTitle)
-        : (tvdbId ? `tvdb:${tvdbId}` : (tmdbId ? lookupTmdbTerm(tmdbId) : mediaTitle))
+        : (tvdbId ? `tvdb:${tvdbId}` : (mediaTitle || (tmdbId ? lookupTmdbTerm(tmdbId) : '')))
       return Promise.all(
         instances.map(async (instance) => {
           const id = makeServerArrInstanceId(serverId, instance.id)
@@ -196,8 +205,26 @@ export function useRequestMedia(): RequestMediaState {
             const match = isMovie
               ? (tmdbId ? matchLookupByTmdb(results, tmdbId) : (results[0] as Record<string, unknown> | undefined))
               : (tvdbId || tmdbId ? matchLookupByTvdbOrTmdb(results, tvdbId, tmdbId) : (results[0] as Record<string, unknown> | undefined))
-            const status = isMovie ? radarrStatusFromLookup((match as any) ?? null) : sonarrStatusFromLookup((match as any) ?? null)
-            const file = isMovie ? fileFromRadarrLookup((match as any) ?? null) : fileFromSonarrLookup((match as any) ?? null)
+            let status = isMovie ? radarrStatusFromLookup((match as any) ?? null) : sonarrStatusFromLookup((match as any) ?? null)
+            let file = isMovie ? fileFromRadarrLookup((match as any) ?? null) : fileFromSonarrLookup((match as any) ?? null)
+
+            if (nodeActivity?.status === 'available') {
+              if (status === 'requested' || (match && libraryIdFromLookup(match as any))) {
+                status = nodeActivity.isPartial ? 'partially_available' : 'downloaded'
+                if (!file || (!file.size && !file.quality)) {
+                  file = {
+                    name: null,
+                    size: nodeActivity.sizeOnDisk ?? null,
+                    quality: nodeActivity.episodeCount
+                      ? `${nodeActivity.episodeCount}/${nodeActivity.totalEpisodes || nodeActivity.episodeCount} episodes`
+                      : 'Available to stream',
+                    video: null,
+                    audio: null,
+                  }
+                }
+              }
+            }
+
             return toRequestInstance(id, name, status, file)
           } catch {
             return toRequestInstance(id, name, 'error')

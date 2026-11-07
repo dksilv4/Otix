@@ -1,11 +1,9 @@
 package indexer
 
 import (
-	"crypto/md5"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
-	"fmt"
 	"io"
 	"net"
 	"os"
@@ -16,7 +14,6 @@ import (
 	"time"
 
 	"github.com/dksilv4/otix/node/internal/config"
-	"github.com/dksilv4/otix/node/internal/otixmeta"
 )
 
 var SkipExtensions = map[string]bool{
@@ -43,6 +40,8 @@ var GenericFolderNames = map[string]bool{
 	"engine": true, "system": true, "system32": true, "shipping": true, "retail": true,
 	"release": true, "debug": true, "build": true, "client": true, "server": true,
 	"resources": true, "res": true, "prerequisites": true, "prereq": true,
+	"plugins": true, "plugin": true, "cleaner": true, "mods": true, "menu-simulations": true,
+	"app0": true, "sce_sys": true, "usrdir": true, "defaultprojects": true, "legacy": true,
 }
 
 var KnownEngineProjectFolders = map[string]bool{
@@ -76,6 +75,7 @@ var NoiseExecutablePatterns = []string{
 	"dedicatedserver", "benchmark",
 	"bugreporter", "restarter", "dowser", "quicksfv", "launcher-installer",
 	"ereg", "easyinfo",
+	"vconsole2", "cleaner", "steam_api64", "sheep", "csgo_legacy_app",
 }
 
 var NoiseDirectoryNames = map[string]bool{
@@ -98,6 +98,8 @@ var NoiseDirectoryNames = map[string]bool{
 	"__pycache__": true, ".egstore": true, "!downloads": true,
 	// PS5 / console internal noise directories that should never be scanned as separate folders
 	"sce_module": true, "sce_pfs": true, "fakelib": true, "_duplex_": true,
+	"menu-simulations": true, "menu-simulation": true, "mods": true, "mod": true,
+	"plugins": true, "plugin": true, "cleaner": true, "defaultprojects": true, "legacy": true,
 }
 
 var InstallerHeaderSignatures = []string{
@@ -420,6 +422,9 @@ func IsNoiseHostedPackage(filename, fullPath string) bool {
 		if strings.Contains(lowerPath, "/emulators/") {
 			return true
 		}
+		if strings.Contains(lowerPath, "/menu-simulation") || strings.Contains(lowerPath, "/mods/") || strings.Contains(lowerPath, "/steamapps/common/") || strings.Contains(lowerPath, "_data/") {
+			return true
+		}
 		if strings.Contains(lowerName, "prodkeys") || strings.Contains(lowerName, "yuzu") {
 			return true
 		}
@@ -625,14 +630,16 @@ func RelativeLibraryPath(fullPath, libraryPath string) string {
 }
 
 func TitleFromInstallerPath(filename, fullPath, libraryPath string) string {
-	if IsGenericInstallerName(filename) {
+	if IsGenericInstallerName(filename) || strings.EqualFold(filename, "eboot.bin") || strings.EqualFold(filename, "ps3_disc.sfb") {
 		rel := RelativeLibraryPath(fullPath, libraryPath)
 		parts := strings.Split(rel, "/")
 		if len(parts) > 1 {
 			// Find nearest non-generic ancestor folder
 			for i := len(parts) - 2; i >= 0; i-- {
 				ancestor := parts[i]
-				if !GenericFolderNames[strings.ToLower(ancestor)] {
+				al := strings.ToLower(ancestor)
+
+				if !GenericFolderNames[al] && !strings.HasPrefix(al, "app0") && !strings.Contains(al, "-app") {
 					return CleanTitleFromFilename(ancestor)
 				}
 			}
@@ -653,7 +660,9 @@ func FindGameRootFolder(candidatePath, libraryPath string) (rootDir string, root
 	firstNonGenericIdx := -1
 	for i := len(parts) - 2; i >= 0; i-- {
 		part := parts[i]
-		if !GenericFolderNames[strings.ToLower(part)] {
+		pl := strings.ToLower(part)
+
+		if !GenericFolderNames[pl] && !strings.HasPrefix(pl, "app0") && !strings.Contains(pl, "-app") {
 			firstNonGenericIdx = i
 			break
 		}
@@ -722,39 +731,8 @@ func GameRootForFile(filepathAbs, libraryPath string) string {
 	return filepath.Dir(filepathAbs)
 }
 
-// AttachOtixSidecar loads `.otix` next to the game root and fills HostedFile otix_* fields.
+// AttachOtixSidecar is disabled: sidecar files (.otix) are no longer supported or read.
 func AttachOtixSidecar(hf *HostedFile, libraryPath string) {
-	if hf == nil || hf.Filepath == "" {
-		return
-	}
-	root := hf.RootDir
-	if root == "" {
-		root = GameRootForFile(hf.Filepath, libraryPath)
-		hf.RootDir = root
-	}
-	sc, err := otixmeta.Read(root)
-	if err != nil || sc == nil {
-		return
-	}
-	hf.OtixPath = otixmeta.Path(root)
-	hf.OtixMediaID = sc.MediaID
-	hf.OtixTitle = sc.Title
-	hf.OtixSlug = sc.Slug
-	hf.OtixConfidence = sc.Confidence
-	hf.OtixOverview = sc.Overview
-	if len(sc.Images) > 0 {
-		hf.OtixImages = make(map[string]OtixImageRef, len(sc.Images))
-		for role, ref := range sc.Images {
-			if ref == nil {
-				continue
-			}
-			local := ""
-			if ref.Local != nil {
-				local = *ref.Local
-			}
-			hf.OtixImages[role] = OtixImageRef{URL: ref.URL, Local: local}
-		}
-	}
 }
 
 func parsePS5ParamJSON(paramJsonPath string) (string, string) {
@@ -871,27 +849,6 @@ func detectPS5GameDump(dir string) (bool, string, string, string) {
 		titleId, titleName = parsePS5ParamJSON(paramJsonPath)
 	}
 
-	// Also check .otix sidecar if present
-	if sc, scErr := otixmeta.Read(dir); scErr == nil && sc != nil {
-		if strings.HasPrefix(strings.ToUpper(sc.TitleID), "PPSA") {
-			hasPs5InName = true
-		}
-		for _, p := range sc.Platforms {
-			for _, v := range p {
-				if s, ok := v.(string); ok && strings.Contains(strings.ToUpper(s), "PS5") {
-					hasPs5InName = true
-				}
-			}
-		}
-		if hasPs5InName {
-			if titleId == "" {
-				titleId = sc.TitleID
-			}
-			if titleName == "" {
-				titleName = sc.Title
-			}
-		}
-	}
 
 	isPS5 := false
 	if strings.HasPrefix(strings.ToUpper(titleId), "PPSA") {
@@ -1241,561 +1198,9 @@ func (si *StorageIndexer) ScanAllWithDeep(deep bool) []HostedFile {
 	si.scanMu.Lock()
 	defer si.scanMu.Unlock()
 
-	si.mu.RLock()
-	libs := make([]config.LibraryConfig, len(si.libraries))
-	copy(libs, si.libraries)
-	cachedFiles := make(map[string]HostedFile, len(si.filesByID))
-	for k, v := range si.filesByID {
-		cachedFiles[k] = v
+	pipeline := newScanPipeline(si, deep)
+	for _, lib := range pipeline.libs {
+		pipeline.scanLibrary(lib)
 	}
-	cachedByPath := make(map[string]string, len(si.filesByPath))
-	for k, v := range si.filesByPath {
-		cachedByPath[k] = v
-	}
-	cachedMtimes := make(map[string]int64, len(si.mtimesByPath))
-	for k, v := range si.mtimesByPath {
-		cachedMtimes[k] = v
-	}
-	store := si.store
-	si.mu.RUnlock()
-
-	startTime := time.Now()
-	si.statusMu.Lock()
-	si.status = ScanStatus{
-		Phase:        ScanPhaseScanning,
-		StartedAt:    startTime,
-		FilesScanned: 0,
-		TotalFiles:   len(cachedFiles),
-	}
-	si.statusMu.Unlock()
-	si.broadcastProgress(ScanProgressEvent{
-		Event: "scan_started",
-		Data:  si.GetStatus(),
-	})
-
-	newFiles := make(map[string]HostedFile)
-	newFilesByPath := make(map[string]string)
-	newMtimes := make(map[string]int64)
-	var indexed []HostedFile
-	var filesToPersist []HostedFile
-	activePathsPerLib := make(map[string]map[string]bool)
-
-	// Real-time file registration closures: update in-memory maps, persist to SQLite, and broadcast progress
-	registerHostedFile := func(hf HostedFile, mtimeUnix int64, paths ...string) {
-		newFiles[hf.ID] = hf
-		for _, p := range paths {
-			newFilesByPath[p] = hf.ID
-			newMtimes[p] = mtimeUnix
-		}
-		indexed = append(indexed, hf)
-		filesToPersist = append(filesToPersist, hf)
-
-		si.mu.Lock()
-		si.filesByID[hf.ID] = hf
-		for _, p := range paths {
-			si.filesByPath[p] = hf.ID
-			si.mtimesByPath[p] = mtimeUnix
-		}
-		si.mu.Unlock()
-
-		if store != nil {
-			_ = store.UpsertFiles([]HostedFile{hf})
-		}
-
-		si.statusMu.Lock()
-		si.status.TotalFiles = len(newFiles)
-		si.statusMu.Unlock()
-
-		si.broadcastProgress(ScanProgressEvent{
-			Event: "file_indexed",
-			Data:  hf,
-			File:  &hf,
-		})
-		if hf.FormatCategory != "update" {
-			si.broadcastProgress(ScanProgressEvent{
-				Event: "game_found",
-				Data:  hf,
-				File:  &hf,
-			})
-		}
-	}
-
-	registerExisting := func(existing HostedFile, mtimeUnix int64, paths ...string) {
-		newFiles[existing.ID] = existing
-		for _, p := range paths {
-			newFilesByPath[p] = existing.ID
-			newMtimes[p] = mtimeUnix
-		}
-		indexed = append(indexed, existing)
-
-		si.mu.Lock()
-		si.filesByID[existing.ID] = existing
-		for _, p := range paths {
-			si.filesByPath[p] = existing.ID
-			si.mtimesByPath[p] = mtimeUnix
-		}
-		si.mu.Unlock()
-
-		si.statusMu.Lock()
-		si.status.TotalFiles = len(newFiles)
-		si.statusMu.Unlock()
-	}
-
-	totalFilesScanned := 0
-	lastBroadcast := time.Now()
-
-	for _, lib := range libs {
-		libName := lib.Name
-		if libName == "" {
-			libName = "Default"
-		}
-		libPath := lib.Path
-		if !IsPathReachable(libPath) {
-			// If the library path is inaccessible (e.g. offline network share, missing drive, or network timeout),
-			// preserve any existing cached files for this library so we do not wipe them
-			// from memory or delete them from the persistent SQLite store.
-			cleanLibPath := filepath.Clean(libPath)
-			for id, cf := range cachedFiles {
-				if cf.LibraryName == libName || strings.HasPrefix(filepath.Clean(cf.Filepath), cleanLibPath) {
-					newFiles[id] = cf
-					newFilesByPath[cf.Filepath] = id
-					if m, ok := cachedMtimes[cf.Filepath]; ok {
-						newMtimes[cf.Filepath] = m
-					}
-				}
-			}
-			continue
-		}
-		activePathsPerLib[libName] = make(map[string]bool)
-
-		allowedExts := lib.AllowedExtensions
-		if len(allowedExts) == 0 {
-			allowedExts = config.DefaultAllowedExtensions(lib.Kind)
-		}
-		allowedMap := make(map[string]bool, len(allowedExts))
-		for _, ext := range allowedExts {
-			allowedMap[strings.ToLower(ext)] = true
-		}
-
-		dirCandidates := make(map[string][]candidateExe)
-		dirRootNames := make(map[string]string)
-		activeRootDir := ""
-
-		flushRootDirCandidates := func(rootDir string) {
-			candidates := dirCandidates[rootDir]
-			if len(candidates) == 0 {
-				delete(dirCandidates, rootDir)
-				delete(dirRootNames, rootDir)
-				return
-			}
-			delete(dirCandidates, rootDir)
-
-			rootName := dirRootNames[rootDir]
-			delete(dirRootNames, rootDir)
-			if rootName == "" {
-				rootName = filepath.Base(rootDir)
-			}
-
-			var gameCandidates []candidateExe
-			var installerCandidates []candidateExe
-
-			for _, c := range candidates {
-				if c.isInstaller {
-					installerCandidates = append(installerCandidates, c)
-				} else {
-					c.score = ScoreGameCandidate(c.path, rootName, c.info, false)
-					gameCandidates = append(gameCandidates, c)
-				}
-			}
-
-			var elected candidateExe
-			var formatCategory string
-
-			if len(gameCandidates) > 0 {
-				best := gameCandidates[0]
-				for _, gc := range gameCandidates[1:] {
-					if gc.score > best.score {
-						best = gc
-					}
-				}
-				elected = best
-				formatCategory = "game"
-			} else {
-				best := installerCandidates[0]
-				for _, ic := range installerCandidates[1:] {
-					stem := strings.ToLower(strings.TrimSuffix(ic.filename, filepath.Ext(ic.filename)))
-					if stem == "setup" || stem == "install" {
-						best = ic
-						break
-					}
-				}
-				elected = best
-				formatCategory = "installer"
-			}
-
-			mtimeUnix := elected.info.ModTime().Unix()
-			cachedID, hasCached := cachedByPath[elected.path]
-			cachedMt, hasMt := cachedMtimes[elected.path]
-
-			if !deep && hasCached && hasMt && cachedMt == mtimeUnix {
-				if existing, ok := cachedFiles[cachedID]; ok {
-					registerExisting(existing, mtimeUnix, elected.path)
-					return
-				}
-			}
-
-			fileSize := elected.info.Size()
-			modTime := elected.info.ModTime().UTC().Format(time.RFC3339)
-			headHash := ComputeHeadHash(elected.path)
-
-			hasher := md5.New()
-			hasher.Write([]byte(elected.path))
-			fileID := fmt.Sprintf("file_%s", hex.EncodeToString(hasher.Sum(nil))[:12])
-
-			rel := RelativeLibraryPath(elected.path, libPath)
-			title := TitleFromInstallerPath(elected.filename, elected.path, libPath)
-			if formatCategory == "game" {
-				if !GenericFolderNames[strings.ToLower(rootName)] && rootName != "." {
-					title = CleanTitleFromFilename(rootName)
-				}
-			}
-
-			ext := strings.ToLower(filepath.Ext(elected.filename))
-			hf := HostedFile{
-				ID:             fileID,
-				Filename:       elected.filename,
-				Filepath:       elected.path,
-				RelativePath:   rel,
-				Filesize:       fileSize,
-				SHA256Head:     headHash,
-				Extension:      ext,
-				FormatCategory: formatCategory,
-				Platform:       string(DeterminePlatform(elected.filename, elected.path)),
-				LibraryName:    libName,
-				GameTitle:      title,
-				ModifiedAt:     modTime,
-				RootDir:        rootDir,
-			}
-			AttachOtixSidecar(&hf, libPath)
-
-			registerHostedFile(hf, mtimeUnix, elected.path)
-		}
-
-		_ = filepath.Walk(libPath, func(path string, info os.FileInfo, err error) error {
-			if err != nil {
-				return nil
-			}
-
-			name := info.Name()
-			if strings.HasPrefix(name, ".") {
-				if info.IsDir() {
-					return filepath.SkipDir
-				}
-				return nil
-			}
-
-			totalFilesScanned++
-			if time.Since(lastBroadcast) > 120*time.Millisecond {
-				lastBroadcast = time.Now()
-				si.updateStatus(func(s *ScanStatus) {
-					s.CurrentDirectory = filepath.Dir(path)
-					s.FilesScanned = totalFilesScanned
-					s.ElapsedMs = time.Since(startTime).Milliseconds()
-				})
-			}
-
-			// If moving outside activeRootDir, finalize and register candidate game immediately
-			if activeRootDir != "" && path != activeRootDir && !strings.HasPrefix(filepath.Clean(path), filepath.Clean(activeRootDir)+string(filepath.Separator)) {
-				flushRootDirCandidates(activeRootDir)
-				activeRootDir = ""
-			}
-
-			// Handle macOS .app bundle
-			if info.IsDir() {
-				if path == libPath {
-					return nil
-				}
-				if ContainerFolderNames[strings.ToLower(name)] {
-					return nil
-				}
-
-				// Optimized PS5 game dump package detection: detect dump directly, index the game,
-				// and skip walking the thousands of internal asset, texture, shader, and prx files!
-				if isPS5, exePath, _, titleName := detectPS5GameDump(path); isPS5 {
-					mtimeUnix := info.ModTime().Unix()
-					activePathsPerLib[libName][path] = true
-					activePathsPerLib[libName][exePath] = true
-
-					cachedID, hasCached := cachedByPath[exePath]
-					if !hasCached {
-						cachedID, hasCached = cachedByPath[path]
-					}
-					cachedMt, hasMt := cachedMtimes[exePath]
-					if !hasMt {
-						cachedMt, hasMt = cachedMtimes[path]
-					}
-
-					if !deep && hasCached && hasMt && cachedMt == mtimeUnix {
-						if existing, ok := cachedFiles[cachedID]; ok {
-							registerExisting(existing, mtimeUnix, path, exePath)
-							return filepath.SkipDir
-						}
-					}
-
-					fileSize := int64(0)
-					headHash := "0000000000000000000000000000000000000000000000000000000000000000"
-					if st, sErr := os.Stat(exePath); sErr == nil {
-						fileSize = st.Size()
-						headHash = ComputeHeadHash(exePath)
-					}
-
-					modTime := info.ModTime().UTC().Format(time.RFC3339)
-					hasher := md5.New()
-					hasher.Write([]byte(exePath))
-					fileID := fmt.Sprintf("file_%s", hex.EncodeToString(hasher.Sum(nil))[:12])
-					rel := RelativeLibraryPath(exePath, libPath)
-
-					title := titleName
-					if title == "" {
-						title = CleanTitleFromFilename(name)
-					}
-
-					hf := HostedFile{
-						ID:             fileID,
-						Filename:       filepath.Base(exePath),
-						Filepath:       exePath,
-						RelativePath:   rel,
-						Filesize:       fileSize,
-						SHA256Head:     headHash,
-						Extension:      strings.ToLower(filepath.Ext(exePath)),
-						FormatCategory: "game",
-						Platform:       "PS5",
-						LibraryName:    libName,
-						GameTitle:      title,
-						ModifiedAt:     modTime,
-						RootDir:        path,
-					}
-					AttachOtixSidecar(&hf, libPath)
-					registerHostedFile(hf, mtimeUnix, path, exePath)
-					return filepath.SkipDir
-				}
-
-				if strings.HasSuffix(strings.ToLower(name), ".app") {
-					plist := filepath.Join(path, "Contents", "Info.plist")
-					macosDir := filepath.Join(path, "Contents", "MacOS")
-					if _, errP := os.Stat(plist); errP == nil || func() bool { _, errM := os.Stat(macosDir); return errM == nil }() {
-						mtimeUnix := info.ModTime().Unix()
-						activePathsPerLib[libName][path] = true
-						cachedID, hasCached := cachedByPath[path]
-						cachedMt, hasMt := cachedMtimes[path]
-
-						if !deep && hasCached && hasMt && cachedMt == mtimeUnix {
-							if existing, ok := cachedFiles[cachedID]; ok {
-								registerExisting(existing, mtimeUnix, path)
-								return filepath.SkipDir
-							}
-						}
-
-						modTime := info.ModTime().UTC().Format(time.RFC3339)
-						hasher := md5.New()
-						hasher.Write([]byte(path))
-						fileID := fmt.Sprintf("file_%s", hex.EncodeToString(hasher.Sum(nil))[:12])
-						rel := RelativeLibraryPath(path, libPath)
-						title := CleanTitleFromFilename(strings.TrimSuffix(name, ".app"))
-						cat := "game"
-						if strings.Contains(strings.ToLower(name), "install") || strings.Contains(strings.ToLower(name), "setup") {
-							cat = "installer"
-						}
-
-						hf := HostedFile{
-							ID:             fileID,
-							Filename:       name,
-							Filepath:       path,
-							RelativePath:   rel,
-							Filesize:       info.Size(),
-							SHA256Head:     "0000000000000000000000000000000000000000000000000000000000000000",
-							Extension:      ".app",
-							FormatCategory: cat,
-							LibraryName:    libName,
-							GameTitle:      title,
-							ModifiedAt:     modTime,
-							RootDir:        path,
-						}
-						AttachOtixSidecar(&hf, libPath)
-						registerHostedFile(hf, mtimeUnix, path)
-						return filepath.SkipDir
-					}
-				}
-
-				if strings.HasPrefix(name, ".") && path != libPath {
-					return filepath.SkipDir
-				}
-				if NoiseDirectoryNames[strings.ToLower(name)] {
-					return filepath.SkipDir
-				}
-				if path != libPath {
-					rel := RelativeLibraryPath(path, libPath)
-					parts := strings.Split(rel, "/")
-					if len(parts) > 7 {
-						return filepath.SkipDir
-					}
-				}
-				return nil
-			}
-
-			if strings.HasPrefix(name, ".") {
-				return nil
-			}
-
-			lowerName := strings.ToLower(name)
-			ext := strings.ToLower(filepath.Ext(path))
-			if strings.HasSuffix(lowerName, ".nsp.hdf") {
-				ext = ".nsp"
-			}
-			isConsoleExe := strings.EqualFold(name, "eboot.bin")
-			if len(allowedMap) > 0 && !allowedMap[ext] && !isConsoleExe {
-				return nil
-			}
-			if IsInstallerPayloadFile(name) {
-				return nil
-			}
-			if ext == ".bin" && !isConsoleExe && SkipExtensions[ext] {
-				return nil
-			}
-			if IsNoiseHostedPackage(name, path) {
-				return nil
-			}
-
-			activePathsPerLib[libName][path] = true
-			mtimeUnix := info.ModTime().Unix()
-
-			indexFile := func(cat, title string) {
-				cachedID, hasCached := cachedByPath[path]
-				cachedMt, hasMt := cachedMtimes[path]
-
-				if !deep && hasCached && hasMt && cachedMt == mtimeUnix {
-					if existing, ok := cachedFiles[cachedID]; ok {
-						registerExisting(existing, mtimeUnix, path)
-						return
-					}
-				}
-
-				fileSize := info.Size()
-				modTime := info.ModTime().UTC().Format(time.RFC3339)
-				headHash := ComputeHeadHash(path)
-				hasher := md5.New()
-				hasher.Write([]byte(path))
-				fileID := fmt.Sprintf("file_%s", hex.EncodeToString(hasher.Sum(nil))[:12])
-				rel := RelativeLibraryPath(path, libPath)
-				hf := HostedFile{
-					ID:             fileID,
-					Filename:       name,
-					Filepath:       path,
-					RelativePath:   rel,
-					Filesize:       fileSize,
-					SHA256Head:     headHash,
-					Extension:      ext,
-					FormatCategory: cat,
-					Platform:       string(DeterminePlatform(name, path)),
-					LibraryName:    libName,
-					GameTitle:      title,
-					ModifiedAt:     modTime,
-					RootDir:        GameRootForFile(path, libPath),
-				}
-				AttachOtixSidecar(&hf, libPath)
-				registerHostedFile(hf, mtimeUnix, path)
-			}
-
-			if IsUpdateOrPatchArtifact(name, path) {
-				indexFile("update", ParentGameTitleForUpdate(name, path, libPath))
-				return nil
-			}
-
-			if ext == ".exe" {
-				if IsNoiseOrUtilityExecutable(name, path) {
-					return nil
-				}
-
-				isInst := DetectInstallerType(path, name) != ""
-				rootDir, rootName := FindGameRootFolder(path, libPath)
-				if activeRootDir != "" && activeRootDir != rootDir {
-					flushRootDirCandidates(activeRootDir)
-				}
-				activeRootDir = rootDir
-				dirCandidates[rootDir] = append(dirCandidates[rootDir], candidateExe{
-					path:        path,
-					filename:    name,
-					info:        info,
-					isInstaller: isInst,
-				})
-				dirRootNames[rootDir] = rootName
-				return nil
-			}
-
-			cat := DetermineFileFormatCategory(path, name)
-			if cat == "file" {
-				return nil
-			}
-
-			indexFile(cat, TitleFromInstallerPath(name, path, libPath))
-			return nil
-		})
-
-		// Flush any remaining candidates for this library
-		if activeRootDir != "" {
-			flushRootDirCandidates(activeRootDir)
-			activeRootDir = ""
-		}
-		for rootDir := range dirCandidates {
-			flushRootDirCandidates(rootDir)
-		}
-	}
-
-	// Persist changes and prune missing files in SQLite store
-	if store != nil {
-		if len(filesToPersist) > 0 {
-			_ = store.UpsertFiles(filesToPersist)
-		}
-		for libName, activeMap := range activePathsPerLib {
-			_, _ = store.DeleteMissing(activeMap, libName)
-		}
-		var activeLibNames []string
-		for _, lib := range libs {
-			name := lib.Name
-			if name == "" {
-				name = "Default"
-			}
-			activeLibNames = append(activeLibNames, name)
-		}
-		_ = store.PruneRemovedLibraries(activeLibNames)
-	}
-
-	si.mu.Lock()
-	si.filesByID = newFiles
-	si.filesByPath = newFilesByPath
-	si.mtimesByPath = newMtimes
-	si.lastScanned = time.Now()
-	si.mu.Unlock()
-
-	elapsed := time.Since(startTime).Milliseconds()
-	si.statusMu.Lock()
-	si.status = ScanStatus{
-		Phase:            ScanPhaseCompleted,
-		CurrentDirectory: "",
-		FilesScanned:     totalFilesScanned,
-		TotalFiles:       len(newFiles),
-		Percentage:       100.0,
-		StartedAt:        startTime,
-		ElapsedMs:        elapsed,
-		LastCompletedAt:  time.Now(),
-	}
-	completedStatus := si.status
-	si.statusMu.Unlock()
-
-	si.broadcastProgress(ScanProgressEvent{
-		Event: "scan_completed",
-		Data:  completedStatus,
-	})
-
-	return indexed
+	return pipeline.finalize()
 }

@@ -236,14 +236,16 @@ export async function getHostNodeAndHardware(forceRefresh = false): Promise<Host
   // 1. Try local node HTTP probe (default port 8090)
   const nodeStatus = await httpGetJson<{
     status?: string;
+    node_name?: string;
     server_name?: string;
+    name?: string;
     claimed?: boolean;
     claimed_by?: string;
   }>('http://127.0.0.1:8090/api/v1/status', 600);
 
-  if (nodeStatus && (nodeStatus.status === 'online' || nodeStatus.server_name)) {
+  if (nodeStatus && (nodeStatus.status === 'online' || nodeStatus.node_name || nodeStatus.server_name || nodeStatus.name)) {
     nodeInfo = {
-      name: nodeStatus.server_name || os.hostname(),
+      name: nodeStatus.node_name || nodeStatus.name || nodeStatus.server_name || os.hostname(),
       url: 'http://127.0.0.1:8090',
       installed: true,
       running: true,

@@ -46,13 +46,28 @@ class MigrationService {
   }
 
   runMigrations(migrations: Migration[]): void {
+    const latestKnown = migrations.length > 0 ? Math.max(...migrations.map((m) => m.id), 0) : 0;
+    if (typeof this.db.pragma === 'function') {
+      try {
+        const userVersion = this.db.pragma('user_version', { simple: true });
+        if (typeof userVersion === 'number' && userVersion >= latestKnown && latestKnown > 0) {
+          return;
+        }
+      } catch {}
+    }
+
     this.ensureSchemaVersionTable()
     const currentVersion = this.getCurrentVersion()
 
     const sorted = [...migrations].sort((a, b) => a.id - b.id)
     const pending = sorted.filter((m) => m.id > currentVersion)
 
-    if (pending.length === 0) return
+    if (pending.length === 0) {
+      if (typeof this.db.pragma === 'function') {
+        try { this.db.pragma('user_version = ' + latestKnown); } catch {}
+      }
+      return;
+    }
 
     const runner: SqlRunner = {
       exec: (sql: string) => this.db.exec(sql),
@@ -65,6 +80,9 @@ class MigrationService {
         this.setVersion(migration.id, migration.name)
       }
       this.db.transaction(migrate)()
+    }
+    if (typeof this.db.pragma === 'function') {
+      try { this.db.pragma('user_version = ' + latestKnown); } catch {}
     }
   }
 }

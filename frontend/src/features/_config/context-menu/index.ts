@@ -24,6 +24,7 @@ export {
   buildTextMenuItems,
   buildInputMenuItems,
   buildPageMenuItems,
+  buildContinueWatchingMenuItems,
 } from './utils/menu-builders'
 export type {
   ContextMenuItemDef,
@@ -51,5 +52,6 @@ export type {
   ResolvedTextTarget,
   ResolvedInputTarget,
   ResolvedPageTarget,
+  ResolvedContinueWatchingTarget,
 } from './utils/dom-resolver'
 export type { MenuBuilderContext } from './utils/menu-builders'

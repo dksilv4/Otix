@@ -2,6 +2,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
   normalizeMac,
   verifyHomeNetwork,
+  probeLocalNode,
+  probeLocalServer,
   HomeNetworkProfile,
   CurrentNetworkInfo,
 } from '../network-detector';
@@ -139,6 +141,45 @@ describe('network-detector', () => {
 
       const result = await verifyHomeNetwork(mockHomeProfile, currentNet);
       expect(result.status).toBe('offline');
+      expect(result.details.nodePingOk).toBe(false);
+      expect(result.details.serverPingOk).toBe(false);
+    });
+
+    it('verifies home network using localNodeUrl and nodeProber with progressive aliasing', async () => {
+      const nodeProfile: HomeNetworkProfile = {
+        wifiSsid: 'MySweetHome',
+        gatewayMac: 'aa:bb:cc:11:22:33',
+        bssid: 'aa:bb:cc:dd:ee:01',
+        localNodeUrl: 'http://192.168.1.150:8090',
+      };
+
+      const currentNet: CurrentNetworkInfo = {
+        ssid: 'MySweetHome',
+        bssid: 'aa:bb:cc:dd:ee:01',
+        gatewayIp: '192.168.1.1',
+        gatewayMac: 'aa:bb:cc:11:22:33',
+        localIp: '192.168.1.50',
+        isWifi: true,
+      };
+
+      let probedUrl = '';
+      const result = await verifyHomeNetwork(nodeProfile, {
+        currentNet,
+        nodeProber: async (url) => {
+          probedUrl = url;
+          return true;
+        },
+      });
+
+      expect(result.status).toBe('verified_home');
+      expect(probedUrl).toBe('http://192.168.1.150:8090');
+      expect(result.details.nodePingOk).toBe(true);
+      expect(result.details.serverPingOk).toBe(true);
+    });
+
+    it('exports probeLocalNode with backwards-compatible probeLocalServer alias', () => {
+      expect(typeof probeLocalNode).toBe('function');
+      expect(probeLocalServer).toBe(probeLocalNode);
     });
   });
 });

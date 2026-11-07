@@ -216,7 +216,7 @@ describe('Scanned Files Duplicate Unification & Multi-Source Management', () => 
     expect(isosOnly).toHaveLength(2)
   })
 
-  it('renders the multi-source pill in table row and expands nested secondary source with actions', () => {
+  it('renders the multi-source pill in table row and expands nested secondary source, opening details on click', () => {
     const item: ScannedGameItem = {
       id: 'pc-row',
       title: 'Cyberpunk 2077',
@@ -250,7 +250,7 @@ describe('Scanned Files Duplicate Unification & Multi-Source Management', () => 
     }
 
     const onToggleExpand = vi.fn()
-    const onUnlinkSource = vi.fn()
+    const onOpenDetails = vi.fn()
 
     const { rerender } = render(
       <table>
@@ -260,8 +260,7 @@ describe('Scanned Files Duplicate Unification & Multi-Source Management', () => 
             isExpanded={false}
             onToggleExpand={onToggleExpand}
             onOpenMatchModal={vi.fn()}
-            onOpenDetails={vi.fn()}
-            onUnlinkSource={onUnlinkSource}
+            onOpenDetails={onOpenDetails}
           />
         </tbody>
       </table>,
@@ -283,8 +282,7 @@ describe('Scanned Files Duplicate Unification & Multi-Source Management', () => 
             isExpanded={true}
             onToggleExpand={onToggleExpand}
             onOpenMatchModal={vi.fn()}
-            onOpenDetails={vi.fn()}
-            onUnlinkSource={onUnlinkSource}
+            onOpenDetails={onOpenDetails}
           />
         </tbody>
       </table>,
@@ -294,14 +292,10 @@ describe('Scanned Files Duplicate Unification & Multi-Source Management', () => 
     expect(screen.getByText('Source ISO')).toBeInTheDocument()
     expect(screen.getAllByText('Cyberpunk 2077 Disc 1.iso').length).toBeGreaterThanOrEqual(1)
 
-    // Mount button is rendered on ISO
-    const mountBtn = screen.getByRole('button', { name: /mount/i })
-    expect(mountBtn).toBeInTheDocument()
-
-    // Unlink button triggers onUnlinkSource
-    const unlinkBtn = screen.getByTitle(/unlink source to display as independent row/i)
-    fireEvent.click(unlinkBtn)
-    expect(onUnlinkSource).toHaveBeenCalledWith('pc-row', 'iso-row')
+    // Clicking secondary source row opens details modal for that source
+    const isoTitle = screen.getAllByText('Cyberpunk 2077 Disc 1.iso')[0]
+    fireEvent.click(isoTitle)
+    expect(onOpenDetails).toHaveBeenCalledWith(item.sources![1])
   })
 
   it('renders Discovered Sources section with Mount and Unlink actions in Game Details Modal', () => {

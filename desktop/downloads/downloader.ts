@@ -28,16 +28,31 @@ import type {
 } from '../preload-api';
 
 let __db: Database.Database | null = null;
+const _downloaderStmtCache = new Map<string, Database.Statement>();
+
 function db(): Database.Database {
-  if (!__db) __db = getDb();
+  if (!__db) {
+    __db = getDb();
+    _downloaderStmtCache.clear();
+  }
   return __db;
 }
 
-const __get = (sql: string, ...params: any[]) => db().prepare(sql).get(...params) as any;
-const __all = (sql: string, ...params: any[]) => db().prepare(sql).all(...params) as any[];
-const __run = (sql: string, ...params: any[]) => db().prepare(sql).run(...params);
+function getDownloaderStmt(sql: string): Database.Statement {
+  let s = _downloaderStmtCache.get(sql);
+  if (!s) {
+    if (_downloaderStmtCache.size > 100) _downloaderStmtCache.clear();
+    s = db().prepare(sql);
+    _downloaderStmtCache.set(sql, s);
+  }
+  return s;
+}
 
-// ── Cache for NZB searches (1 hour TTL) ───────────────────────────────────
+const __get = (sql: string, ...params: any[]) => getDownloaderStmt(sql).get(...params) as any;
+const __all = (sql: string, ...params: any[]) => getDownloaderStmt(sql).all(...params) as any[];
+const __run = (sql: string, ...params: any[]) => getDownloaderStmt(sql).run(...params);
+
+// ── Cache for NZB searches (1 hour TTL, max 100 entries) ─────────────────
 
 interface CacheEntry {
   results: NZBResult[];
@@ -45,18 +60,44 @@ interface CacheEntry {
 }
 const searchCache = new Map<string, CacheEntry>();
 const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
+const MAX_SEARCH_CACHE_SIZE = 100;
+
+function pruneExpiredSearchCache(): void {
+  const now = Date.now();
+  for (const [key, entry] of searchCache.entries()) {
+    if (now - entry.fetchedAt >= CACHE_TTL_MS) {
+      searchCache.delete(key);
+    }
+  }
+}
 
 function getCachedSearch(query: string): NZBResult[] | null {
   const key = query.toLowerCase().trim();
   const entry = searchCache.get(key);
-  if (entry && Date.now() - entry.fetchedAt < CACHE_TTL_MS) {
-    return entry.results;
+  if (entry) {
+    if (Date.now() - entry.fetchedAt < CACHE_TTL_MS) {
+      // Re-insert to keep LRU recency
+      searchCache.delete(key);
+      searchCache.set(key, entry);
+      return entry.results;
+    } else {
+      searchCache.delete(key);
+    }
   }
   return null;
 }
 
 function setCachedSearch(query: string, results: NZBResult[]): void {
+  pruneExpiredSearchCache();
   const key = query.toLowerCase().trim();
+  if (searchCache.has(key)) {
+    searchCache.delete(key);
+  } else if (searchCache.size >= MAX_SEARCH_CACHE_SIZE) {
+    const oldestKey = searchCache.keys().next().value;
+    if (oldestKey !== undefined) {
+      searchCache.delete(oldestKey);
+    }
+  }
   searchCache.set(key, { results, fetchedAt: Date.now() });
 }
 

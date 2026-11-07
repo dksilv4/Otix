@@ -488,7 +488,7 @@ def _match_keys(title: str) -> list[str]:
 
 
 _SCENE_FOLDER_TAGS = re.compile(
-    r"\b(?:repack|fitgirl|dodi|gog|elamigos|codex|skidrow|flt|rune|tenoke|goldberg|razor1911|fairlight|hoodlum|empress|cpy|reloaded|prophet|plaza|tinyiso|chronos|tiki|kaos|darck|xatab|selax|setup|unleashed|onlinefix|crackfix|proper|earlyaccess|multi\d*)\b",
+    r"\b(?:repack|fitgirl|dodi|gog|elamigos|codex|skidrow|flt|rune|tenoke|goldberg|razor1911|fairlight|hoodlum|empress|cpy|reloaded|prophet|plaza|tinyiso|chronos|tiki|kaos|darck|xatab|selax|setup|unleashed|onlinefix|crackfix|proper|earlyaccess|multi\d*|duplex|ps5|ps4)\b",
     re.IGNORECASE,
 )
 
@@ -517,11 +517,18 @@ def folder_titles_from_path(path: str | None) -> list[str]:
     for part in reversed(parts):
         if not part or part in (".", "..", "/", "\\") or len(part) <= 1:
             continue
-        if part.lower() in GENERIC_FOLDER_NAMES:
+        p_lower = part.lower()
+        if (
+            p_lower in GENERIC_FOLDER_NAMES
+            or p_lower in {"app0", "sce_sys", "usrdir", "param.json", "eboot.bin"}
+            or re.match(r"^(?:ppsa|eljs|ecas|cusa|bcus|bles|sles|slus)\d{5}(-app\d+)?$", p_lower)
+        ):
             continue
         spaced = re.sub(r"[\._]+", " ", part)
         spaced = spaced.replace("-", " ")
         spaced = _SCENE_FOLDER_TAGS.sub(" ", spaced)
+        spaced = re.sub(r"\[(?:ppsa|eljs|ecas|cusa|bcus|bles)\d{5}\]", " ", spaced, flags=re.IGNORECASE)
+        spaced = re.sub(r"\((?:ppsa|eljs|ecas|cusa|bcus|bles)\d{5}\)", " ", spaced, flags=re.IGNORECASE)
         spaced = re.sub(r"\s+", " ", spaced).strip()
         key = _lookup_key(spaced)
         if not key or key in GENERIC_FOLDER_NAMES or key in seen:
@@ -531,8 +538,12 @@ def folder_titles_from_path(path: str | None) -> list[str]:
     return titles
 
 
+_PS_TAGS_STRIP = re.compile(r"(\[|\()(?:PPSA|ELJS|ECAS|CUSA|BCUS|BLES)\d{5}(\]|\))", re.IGNORECASE)
+
+
 def _stripped_title(title: str) -> str:
-    return _NOISE_TAIL.sub("", _UPDATE_TAIL.sub("", title).strip()).strip()
+    cleaned = _PS_TAGS_STRIP.sub("", title)
+    return _NOISE_TAIL.sub("", _UPDATE_TAIL.sub("", cleaned).strip()).strip()
 
 
 def _extend_keys(keys: list[str], title: str) -> None:

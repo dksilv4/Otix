@@ -88,12 +88,13 @@ export function sonarrStatusFromLookup(item: ArrLookupItem | null): ArrRequestSt
   const total = asNumber(pick(stats, 'totalEpisodeCount', 'total_episode_count'))
     ?? asNumber(pick(stats, 'episodeCount', 'episode_count'))
     ?? 0
+  const percent = asNumber(pick(stats, 'percentOfEpisodes', 'percent_of_episodes')) ?? 0
   const sizeOnDisk = asNumber(pick(stats, 'sizeOnDisk', 'size_on_disk')) ?? 0
   const hasFile = Boolean(pick(item, 'hasFile', 'has_file'))
   const statusStr = String(pick(item, 'status') ?? '').toLowerCase()
   if (statusStr === 'downloaded') return 'downloaded'
-  if (files > 0 || (hasFile && sizeOnDisk > 0)) {
-    if (total > 0 && files < total) {
+  if (files > 0 || sizeOnDisk > 0 || hasFile || percent > 0) {
+    if (total > 0 && files < total && percent < 100) {
       return 'partially_available'
     }
     return 'downloaded'

@@ -1,7 +1,6 @@
 package indexer
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -9,7 +8,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/dksilv4/otix/node/internal/otixmeta"
 )
 
 func init() {
@@ -410,146 +408,8 @@ func parseYearFromAny(val any) int {
 	return 0
 }
 
-// ParseSidecarMetadata checks for .otix and .otixmeta sidecar files in the given directory or for the file.
+// ParseSidecarMetadata is disabled: sidecar files (.otix/.otixmeta) are deprecated and no longer supported.
 func ParseSidecarMetadata(folderName, filename string) (*GameMetadataMatch, error) {
-	if folderName == "" && filename == "" {
-		return nil, fmt.Errorf("empty paths")
-	}
-
-	dirsToCheck := []string{}
-	if folderName != "" {
-		dirsToCheck = append(dirsToCheck, folderName)
-	}
-	if filename != "" && filepath.IsAbs(filename) {
-		dirsToCheck = append(dirsToCheck, filepath.Dir(filename))
-	}
-
-	// 1. First check for standard .otix via otixmeta package
-	for _, dir := range dirsToCheck {
-		if sc, err := otixmeta.Read(dir); err == nil && sc != nil {
-			match := &GameMetadataMatch{
-				Title:           sc.Title,
-				NormalizedTitle: CleanSearchKey(sc.Title),
-				Overview:        sc.Overview,
-				Confidence:      sc.Confidence,
-				Source:          "sidecar",
-				Artwork:         make(map[string]string),
-			}
-			if match.Confidence == 0 {
-				match.Confidence = 1.0
-			}
-
-			// Extract developer / publisher from companies
-			for _, comp := range sc.Companies {
-				if name, ok := comp["name"].(string); ok && name != "" {
-					if match.Developer == "" {
-						match.Developer = name
-					} else if match.Publisher == "" {
-						match.Publisher = name
-					}
-				}
-			}
-
-			// Extract platform from platforms
-			if len(sc.Platforms) > 0 {
-				if pName, ok := sc.Platforms[0]["name"].(string); ok {
-					match.Platform = DeterminePlatform(pName)
-				}
-			}
-			if match.Platform == "" || match.Platform == PlatformUnknown {
-				match.Platform = DeterminePlatform(filename, folderName)
-			}
-
-			// Extract artwork
-			for role, ref := range sc.Images {
-				if ref != nil {
-					if ref.Local != nil && *ref.Local != "" {
-						match.Artwork[role] = *ref.Local
-					} else if ref.URL != "" {
-						match.Artwork[role] = ref.URL
-					}
-				}
-			}
-
-			return match, nil
-		}
-	}
-
-	// 2. Check for .otixmeta or <stem>.otixmeta or <stem>.otix
-	sidecarNames := []string{".otixmeta", ".otix"}
-	if filename != "" {
-		base := filepath.Base(filename)
-		stem := strings.TrimSuffix(base, filepath.Ext(base))
-		sidecarNames = append(sidecarNames, stem+".otixmeta", stem+".otix", base+".otixmeta", base+".otix")
-	}
-
-	for _, dir := range dirsToCheck {
-		for _, name := range sidecarNames {
-			scPath := filepath.Join(dir, name)
-			data, err := os.ReadFile(scPath)
-			if err != nil {
-				continue
-			}
-
-			var om SidecarOtixMeta
-			if err := json.Unmarshal(data, &om); err != nil {
-				continue
-			}
-
-			title := om.Title
-			if title == "" {
-				title = NormalizeTitle(filepath.Base(dir))
-			}
-
-			year := parseYearFromAny(om.Year)
-			if year == 0 {
-				year = parseYearFromAny(om.ReleaseYear)
-			}
-			if year == 0 && om.ReleaseDate != "" {
-				year = parseYearFromAny(om.ReleaseDate)
-			}
-
-			plat := PlatformType(om.Platform)
-			if plat == "" || plat == PlatformUnknown {
-				plat = DeterminePlatform(filename, folderName)
-			}
-
-			confidence := om.Confidence
-			if confidence == 0 {
-				confidence = 1.0
-			}
-
-			art := make(map[string]string)
-			for k, v := range om.Artwork {
-				art[k] = v
-			}
-			for k, v := range om.Images {
-				if strVal, ok := v.(string); ok {
-					art[k] = strVal
-				} else if m, ok := v.(map[string]any); ok {
-					if u, ok := m["url"].(string); ok {
-						art[k] = u
-					} else if l, ok := m["local"].(string); ok {
-						art[k] = l
-					}
-				}
-			}
-
-			return &GameMetadataMatch{
-				Title:           title,
-				NormalizedTitle: CleanSearchKey(title),
-				Year:            year,
-				Platform:        plat,
-				Confidence:      confidence,
-				Developer:       om.Developer,
-				Publisher:       om.Publisher,
-				Overview:        om.Overview,
-				Artwork:         art,
-				Source:          "sidecar",
-			}, nil
-		}
-	}
-
 	return nil, os.ErrNotExist
 }
 
@@ -559,10 +419,6 @@ func MatchMetadata(filename string, folderName string) (*GameMetadataMatch, erro
 		return nil, fmt.Errorf("both filename and folderName are empty")
 	}
 
-	// 1. Check for sidecar metadata (.otix or .otixmeta)
-	if match, err := ParseSidecarMetadata(folderName, filename); err == nil && match != nil {
-		return match, nil
-	}
 
 	// 2. Fall back to heuristic normalization
 	candidate := filename

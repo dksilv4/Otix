@@ -15,9 +15,6 @@ function getInitialApiBaseUrl(): string {
 }
 
 let _apiBaseUrl = getInitialApiBaseUrl();
-ipcRenderer.on('desktop:api-base-url-changed', (_event, url: string) => {
-  if (url) _apiBaseUrl = url;
-});
 
 contextBridge.exposeInMainWorld('desktopAPI', {
   /** Wait for the main process to finish registering all IPC handlers. */
@@ -407,6 +404,7 @@ contextBridge.exposeInMainWorld('desktopAPI', {
   // ── Network & Home Verification ──
   network: {
     detectCurrent: () => ipcRenderer.invoke('network:detect-current'),
+    probeNode: (url: string, timeoutMs?: number) => ipcRenderer.invoke('network:probe-node', url, timeoutMs),
     probeServer: (url: string, timeoutMs?: number) => ipcRenderer.invoke('network:probe-server', url, timeoutMs),
     verifyHome: (profile: any) => ipcRenderer.invoke('network:verify-home', profile),
   },

@@ -11,21 +11,42 @@ import {
   addPathMapping,
   removePathMapping,
 } from '../framework/downloads';
-import {
-  searchNzbPlanet,
-  testNzbPlanetConnection,
-  testSabnzbdConnection,
-  searchAndDownload,
-  pollAndUpdateDownloads,
-  postProcessDownload,
-  scanWishlist,
-  deleteDownloadWithJob,
-  scheduledUpdateCheck,
-  filterQualityResults,
-  autoPickBest,
-} from '../downloads/downloader';
-import { previewNamingTemplate, validateNamingTemplate } from '../downloads/organizer';
-import { getRemoteDownloadManager, type RemoteDownloadOptions } from '../downloads/remote-downloader';
+import type { RemoteDownloadOptions } from '../downloads/remote-downloader';
+
+// Lazy loader for heavy downloader engine
+let _downloader: typeof import('../downloads/downloader') | null = null;
+async function dl() {
+  if (!_downloader) {
+    _downloader = await import('../downloads/downloader');
+  }
+  return _downloader;
+}
+
+// Lazy loader for RemoteDownloadManager
+let _remoteManager: import('../downloads/remote-downloader').RemoteDownloadManager | null = null;
+async function getRemoteMgr() {
+  if (!_remoteManager) {
+    const { getRemoteDownloadManager } = await import('../downloads/remote-downloader');
+    _remoteManager = getRemoteDownloadManager();
+    _remoteManager.on('progress', (progress) => {
+      for (const win of BrowserWindow.getAllWindows()) {
+        if (!win.isDestroyed()) {
+          win.webContents.send('downloads:remote:progress', progress);
+        }
+      }
+    });
+
+    _remoteManager.on('completed', (data) => {
+      for (const win of BrowserWindow.getAllWindows()) {
+        if (!win.isDestroyed()) {
+          win.webContents.send('downloads:remote:completed', data);
+          win.webContents.send('scanner:game-updated');
+        }
+      }
+    });
+  }
+  return _remoteManager;
+}
 
 // ── IPC handler registration ─────────────────────────────────────────────
 
@@ -51,25 +72,30 @@ export function registerDownloadsIPC(): void {
   // ── Search & Filter (native implementation) ────────────────────────────
 
   ipcMain.handle('downloads:search', async (_, query: string, apiKey?: string) => {
-    return await searchNzbPlanet(query, apiKey);
+    const d = await dl();
+    return await d.searchNzbPlanet(query, apiKey);
   });
 
-  ipcMain.handle('downloads:filter-results', (_, results: any[]) => {
-    return filterQualityResults(results);
+  ipcMain.handle('downloads:filter-results', async (_, results: any[]) => {
+    const d = await dl();
+    return d.filterQualityResults(results);
   });
 
-  ipcMain.handle('downloads:auto-pick', (_, results: any[], allowHypervisor?: boolean) => {
-    return autoPickBest(results, undefined, allowHypervisor);
+  ipcMain.handle('downloads:auto-pick', async (_, results: any[], allowHypervisor?: boolean) => {
+    const d = await dl();
+    return d.autoPickBest(results, undefined, allowHypervisor);
   });
 
   // ── Search & Download (native implementation) ──────────────────────────
 
   ipcMain.handle('downloads:scan-wishlist', async (_, userId: string, wishlistGames: { id: string; title: string }[]) => {
-    return await scanWishlist(userId, wishlistGames);
+    const d = await dl();
+    return await d.scanWishlist(userId, wishlistGames);
   });
 
   ipcMain.handle('downloads:search-and-download', async (_, userId: string, mediaItemId: string | null, gameName: string, allowHypervisor?: boolean) => {
-    return await searchAndDownload(userId, mediaItemId, gameName, allowHypervisor);
+    const d = await dl();
+    return await d.searchAndDownload(userId, mediaItemId, gameName, allowHypervisor);
   });
 
   // ── Download CRUD ──────────────────────────────────────────────────────
@@ -92,23 +118,27 @@ export function registerDownloadsIPC(): void {
   });
 
   ipcMain.handle('downloads:delete', async (_, id: string) => {
-    return await deleteDownloadWithJob(id);
+    const d = await dl();
+    return await d.deleteDownloadWithJob(id);
   });
 
   // ── Poll queue (native SABnzbd polling) ─────────────────────────────────
 
   ipcMain.handle('downloads:poll-queue', async (_, userId?: string) => {
-    return await pollAndUpdateDownloads(userId);
+    const d = await dl();
+    return await d.pollAndUpdateDownloads(userId);
   });
 
   // ── Connection testing (native SABnzbd & NZBPlanet) ────────────────────
 
   ipcMain.handle('downloads:test-sabnzbd', async (_, host?: string, port?: number, apiKey?: string, useSsl?: boolean) => {
-    return await testSabnzbdConnection(host, port, apiKey, useSsl);
+    const d = await dl();
+    return await d.testSabnzbdConnection(host, port, apiKey, useSsl);
   });
 
   ipcMain.handle('downloads:test-nzbplanet', async (_, apiKey?: string) => {
-    return await testNzbPlanetConnection(apiKey);
+    const d = await dl();
+    return await d.testNzbPlanetConnection(apiKey);
   });
 
   // ── Wishlist tracking (direct DB access) ───────────────────────────────
@@ -124,7 +154,8 @@ export function registerDownloadsIPC(): void {
   // ── Post-process (native auto-organizer / relocation) ──────────────────
 
   ipcMain.handle('downloads:post-process', async (_, downloadId: string, configId?: string, fallbackSource?: string, fallbackDest?: string) => {
-    return await postProcessDownload(downloadId, configId, fallbackSource, fallbackDest);
+    const d = await dl();
+    return await d.postProcessDownload(downloadId, configId, fallbackSource, fallbackDest);
   });
 
   // ── Path mappings (direct DB access) ───────────────────────────────────
@@ -157,57 +188,46 @@ export function registerDownloadsIPC(): void {
   // ── Update check (native update checker) ───────────────────────────────
 
   ipcMain.handle('downloads:check-updates', async () => {
-    return await scheduledUpdateCheck();
+    const d = await dl();
+    return await d.scheduledUpdateCheck();
   });
 
-  // ── Naming template helpers (direct imports) ───────────────────────────
+  // ── Naming template helpers (dynamic imports) ──────────────────────────
 
-  ipcMain.handle('downloads:preview-naming-template', (_, template: string, sampleName: string) => {
+  ipcMain.handle('downloads:preview-naming-template', async (_, template: string, sampleName: string) => {
+    const { previewNamingTemplate } = await import('../downloads/organizer');
     return previewNamingTemplate(template, sampleName);
   });
 
-  ipcMain.handle('downloads:validate-naming-template', (_, template: string) => {
+  ipcMain.handle('downloads:validate-naming-template', async (_, template: string) => {
+    const { validateNamingTemplate } = await import('../downloads/organizer');
     return validateNamingTemplate(template);
   });
 
   // ── Remote Server Downloads (HTTP Range chunked streaming) ─────────────
 
-  const remoteManager = getRemoteDownloadManager();
-
-  remoteManager.on('progress', (progress) => {
-    for (const win of BrowserWindow.getAllWindows()) {
-      if (!win.isDestroyed()) {
-        win.webContents.send('downloads:remote:progress', progress);
-      }
-    }
-  });
-
-  remoteManager.on('completed', (data) => {
-    for (const win of BrowserWindow.getAllWindows()) {
-      if (!win.isDestroyed()) {
-        win.webContents.send('downloads:remote:completed', data);
-        win.webContents.send('scanner:game-updated');
-      }
-    }
-  });
-
   ipcMain.handle('downloads:remote:start', async (_, options: RemoteDownloadOptions) => {
-    return await remoteManager.startDownload(options);
+    const rm = await getRemoteMgr();
+    return await rm.startDownload(options);
   });
 
   ipcMain.handle('downloads:remote:pause', async (_, downloadId: string) => {
-    return remoteManager.pauseDownload(downloadId);
+    const rm = await getRemoteMgr();
+    return rm.pauseDownload(downloadId);
   });
 
   ipcMain.handle('downloads:remote:resume', async (_, downloadId: string) => {
-    return remoteManager.resumeDownload(downloadId);
+    const rm = await getRemoteMgr();
+    return rm.resumeDownload(downloadId);
   });
 
   ipcMain.handle('downloads:remote:cancel', async (_, downloadId: string) => {
-    return remoteManager.cancelDownload(downloadId);
+    const rm = await getRemoteMgr();
+    return rm.cancelDownload(downloadId);
   });
 
-  ipcMain.handle('downloads:remote:get-active', () => {
-    return remoteManager.getActiveTransfers();
+  ipcMain.handle('downloads:remote:get-active', async () => {
+    const rm = await getRemoteMgr();
+    return rm.getActiveTransfers();
   });
 }

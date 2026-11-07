@@ -143,6 +143,35 @@ describe('probeLocalGameNode', () => {
     })
     await expect(probeLocalGameNode(fetcher as unknown as typeof fetch)).resolves.toBeNull()
   })
+
+  it('falls back to /api/v1/ping and retrieves claimCode when /status fails', async () => {
+    const fetcher = vi.fn(async (url: string) => {
+      if (String(url).includes('/api/v1/status')) {
+        throw new Error('Connection refused')
+      }
+      if (String(url).includes('/api/v1/ping')) {
+        return {
+          ok: true,
+          json: async () => ({ server_name: 'Resilient Node', claimed: false }),
+        }
+      }
+      if (String(url).includes('/api/v1/claim/status')) {
+        return {
+          ok: true,
+          json: async () => ({ claim_code: 'PIN-8899', claimed: false }),
+        }
+      }
+      return { ok: false, text: async () => '' }
+    })
+    const res = await probeLocalGameNode(fetcher as unknown as typeof fetch)
+    expect(res).toEqual({
+      serverName: 'Resilient Node',
+      localUrl: 'http://127.0.0.1:8090',
+      authToken: '',
+      claimCode: 'PIN-8899',
+      claimed: false,
+    })
+  })
 })
 
 describe('isNodeOrphaned', () => {

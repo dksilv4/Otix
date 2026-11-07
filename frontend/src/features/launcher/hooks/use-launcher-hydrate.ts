@@ -74,8 +74,9 @@ async function autoMatchUnmatchedGames(
     const row = byId.get(game.id)
     const match = row?.autoMatch
     if (!match?.mediaItemId || match.confidence < AUTO_MATCH_MIN_CONFIDENCE) continue
+    const cleanMediaItemId = String(match.mediaItemId).trim().replace(/\.0+$/, '')
     const next = applyAutoMatchToGame(game, {
-      mediaItemId: match.mediaItemId,
+      mediaItemId: cleanMediaItemId,
       title: match.title || game.title,
       posterUrl: match.posterUrl,
       backdropUrl: match.backdropUrl,
@@ -83,7 +84,7 @@ async function autoMatchUnmatchedGames(
     patchLocalGame(queryClient, next)
     if (api?.acceptSuggestion) {
       await api.acceptSuggestion(next.id, {
-        id: match.mediaItemId,
+        id: cleanMediaItemId,
         title: next.title,
         slug: next.otixMediaSlug || '',
         posterUrl: match.posterUrl ?? null,
@@ -95,9 +96,20 @@ async function autoMatchUnmatchedGames(
   return accepted
 }
 
+/** Extract and sanitize a valid catalog media ID from a LocalGame, or null if unmatched. */
+export function getCatalogMediaId(g: LocalGame): string | null {
+  const rawId = g.otixMediaId || (g.data?.id && g.data.id !== g.id ? g.data.id : null)
+  if (!rawId || rawId === 'undefined' || rawId === 'null') return null
+  const cleaned = String(rawId).trim().replace(/\.0+$/, '')
+  if (!cleaned || /^(pc_file_|iso[:_]file_|steam_|rom_|ps\d+_|xbox|switch_|file_)/i.test(cleaned)) {
+    return null
+  }
+  return cleaned
+}
+
 /** Check if a local game is missing rich catalog data or artwork. */
 function needsHydration(g: LocalGame): boolean {
-  if (!g.otixMediaId && !g.data?.id) return false
+  if (!getCatalogMediaId(g)) return false
   const hasPoster = !!(g.data?.posterUrl || g.otixPosterUrl)
   const hasLogo = !!(g.data?.logoUrl || g.otixLogoUrl)
   const hasBackdrop = !!(g.data?.backdropUrl || g.otixBackdropUrl)
@@ -129,8 +141,8 @@ async function hydrateGame(
   g: LocalGame,
   queryClient: ReturnType<typeof useQueryClient>,
 ): Promise<void> {
-  const mediaId = g.otixMediaId || g.data?.id
-  if (!mediaId || mediaId === 'undefined' || mediaId === 'null') return
+  const mediaId = getCatalogMediaId(g)
+  if (!mediaId) return
   if (_hydrated.has(g.id) || _inflight.has(g.id)) return
   _inflight.add(g.id)
   try {
@@ -225,7 +237,7 @@ export function useHydrateLocalGames(): void {
       const toHydrate: LocalGame[] = []
       for (const g of [...newlyMatched, ...merged]) {
         if (seen.has(g.id)) continue
-        if (!(g.otixMediaId || g.data?.id) || !needsHydration(g) || _hydrated.has(g.id) || _inflight.has(g.id)) continue
+        if (!getCatalogMediaId(g) || !needsHydration(g) || _hydrated.has(g.id) || _inflight.has(g.id)) continue
         seen.add(g.id)
         toHydrate.push(g)
       }

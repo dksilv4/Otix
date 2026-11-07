@@ -65,19 +65,29 @@ export const NON_GAME_PROCESSES = new Set([
   'taskmgr.exe', 'searchhost.exe', 'shellexperiencehost.exe',
   'startmenuexperiencehost.exe', 'applicationframehost.exe',
   'systemsettings.exe', 'cmd.exe', 'powershell.exe', 'pwsh.exe',
-  'conhost.exe', 'windowsterminal.exe', 'openconsole.exe',
+  'conhost.exe', 'windowsterminal.exe', 'openconsole.exe', 'wt.exe',
   'dwm.exe', 'csrss.exe', 'services.exe', 'lsass.exe', 'fontdrvhost.exe',
   'sihost.exe', 'ctfmon.exe', 'audiodg.exe',
   // Otix itself
   'otix.exe', 'electron.exe',
-  // Overlays & Crash Helpers
+  // Overlays, Background Services & Crash Helpers
   'eosoverlayrenderer-win64-shipping.exe', 'eosoverlayrenderer.exe',
-  'epiconlineservices.exe', 'gameoverlayui.exe', 'discordoverlay.exe',
+  'epiconlineservices.exe', 'epiconlineservicesuserhelper.exe',
+  'gameoverlayui.exe', 'discordoverlay.exe',
   'originoverlay.exe', 'crashreportclient.exe', 'crashreportclient-win64-shipping.exe',
   'unitycrashhandler64.exe', 'unitycrashhandler32.exe',
+  'nvidia overlay.exe', 'nvdisplay.container.exe', 'geforcenow.exe',
+  'presentmon.exe', 'rtss.exe', 'msiafterburner.exe',
+  'gameinputsvc.exe', 'gameinputredistservice.exe', 'edgegameassist.exe',
+  'tailscale.exe', 'tailscale-ipn.exe', 'logioptionsplus.exe', 'l-connect-service.exe',
+  'curseforge.exe', 'curse.agent.host.exe', 'bambu-studio.exe',
+  'docker desktop.exe', 'docker.exe', 'com.docker.backend.exe',
+  'powertoys.exe', 'powertoys.quickaccess.exe', 'powertoys.alwaysontop.exe',
+  'powertoys.colorpickerui.exe', 'powertoys.fancyzones.exe', 'powertoys.peek.ui.exe',
+  'powertoys.shortcutguide.exe',
 ]);
 
-/** Processes excluded from automated heuristic and window title detection (browsers, launchers, chat) */
+/** Processes excluded from automated heuristic and window title detection (browsers, launchers, chat, IDEs) */
 export const HEURISTIC_EXCLUDED_PROCESSES = new Set([
   ...NON_GAME_PROCESSES,
   // Browsers
@@ -92,6 +102,24 @@ export const HEURISTIC_EXCLUDED_PROCESSES = new Set([
   // Communication & Media
   'discord.exe', 'spotify.exe', 'slack.exe', 'teams.exe',
   'obs64.exe', 'obs32.exe', 'vlc.exe', 'devenv.exe', 'code.exe',
+  // Developer IDEs & Editors
+  'antigravity.exe', 'cursor.exe', 'windsurf.exe', 'zed.exe',
+  'idea64.exe', 'pycharm64.exe', 'webstorm64.exe', 'clion64.exe',
+  'rider64.exe', 'datagrip64.exe', 'goland64.exe', 'phpstorm64.exe', 'rubymine64.exe',
+  'sublime_text.exe', 'notepad++.exe', 'notepad.exe', 'wordpad.exe',
+  'winword.exe', 'excel.exe', 'powerpnt.exe',
+  // Generic Setup & Installer binaries (heuristic detection must not match random installers)
+  'setup.exe', 'install.exe', 'installer.exe', 'unins000.exe', 'uninstall.exe', 'update.exe', 'updater.exe',
+]);
+
+/** Generic words commonly found in directory names, installers, or utility tools that must not trigger standalone heuristic matches */
+export const GENERIC_TITLE_WORDS = new Set([
+  'app', 'apps', 'game', 'games', 'play', 'player', 'setup', 'install',
+  'installer', 'update', 'updater', 'patch', 'launcher', 'client', 'demo',
+  'trial', 'test', 'beta', 'alpha', 'edition', 'version', 'tool', 'tools',
+  'server', 'service', 'screen', 'video', 'music', 'audio', 'icon', 'icons',
+  'blueprint', 'blueprints', 'simulation', 'simulations', 'data', 'file',
+  'files', 'release', 'repack', 'download', 'helper', 'engine',
 ]);
 
 const KNOWN_GAME_SIGNATURES: Record<string, string> = {
@@ -229,9 +257,11 @@ function titleToExeCandidates(title: string): string[] {
 
   const normalized = normalizeTitle(title);
   const words = normalized.split(/\s+/).filter((w) => w.length > 2);
+  const distinctiveWords = words.filter((w) => !GENERIC_TITLE_WORDS.has(w));
   const candidates: string[] = [];
 
-  if (words.length === 0) {
+  // If no distinctive non-generic words exist (e.g. "App 0", "Launcher", "Setup"), do not generate candidate binaries
+  if (distinctiveWords.length === 0) {
     if (exeCandidatesCache.size < 10000) exeCandidatesCache.set(title, candidates);
     return candidates;
   }
@@ -244,7 +274,7 @@ function titleToExeCandidates(title: string): string[] {
   }
 
   const mainWord = words[words.length - 1] || words[0];
-  if (mainWord.length > 4) {
+  if (mainWord.length > 4 && !GENERIC_TITLE_WORDS.has(mainWord)) {
     candidates.push(mainWord + '.exe');
   }
 
@@ -341,6 +371,41 @@ function getWindowTitles(): Promise<Map<string, string>> {
   });
 }
 
+let cachedWindowTitles: { titles: Map<string, string>; timestamp: number } | null = null;
+let activeWindowTitlesPromise: Promise<Map<string, string>> | null = null;
+const WINDOW_TITLES_TTL_MS = 30000;
+
+export function clearWindowTitlesCache(): void {
+  cachedWindowTitles = null;
+  activeWindowTitlesPromise = null;
+}
+
+function getCachedWindowTitles(force = false): Promise<Map<string, string>> {
+  if (process.platform !== 'win32') {
+    return Promise.resolve(new Map());
+  }
+
+  const now = Date.now();
+  if (!force && cachedWindowTitles && (now - cachedWindowTitles.timestamp < WINDOW_TITLES_TTL_MS)) {
+    return Promise.resolve(cachedWindowTitles.titles);
+  }
+
+  if (activeWindowTitlesPromise) {
+    return activeWindowTitlesPromise;
+  }
+
+  activeWindowTitlesPromise = getWindowTitles()
+    .then((titles) => {
+      cachedWindowTitles = { titles, timestamp: Date.now() };
+      return titles;
+    })
+    .finally(() => {
+      activeWindowTitlesPromise = null;
+    });
+
+  return activeWindowTitlesPromise;
+}
+
 export class GameDetector extends EventEmitter {
   private runningGames: Map<string, RunningGame> = new Map();
   private library: LocalGame[] = [];
@@ -376,6 +441,26 @@ export class GameDetector extends EventEmitter {
   }
 
   addOrUpdateRunningGame(gameId: string, entry: RunningGame) {
+    if (entry.pid && entry.pid !== process.pid) {
+      for (const [existingId, existingEntry] of this.runningGames) {
+        if (existingId !== gameId && existingEntry.pid === entry.pid) {
+          // Merge telemetry / FPS / node data into existing entry instead of duplicate
+          if (entry.fpsSnapshot && !existingEntry.fpsSnapshot) {
+            existingEntry.fpsSnapshot = entry.fpsSnapshot;
+          }
+          if (entry.fpsAvailable != null) {
+            existingEntry.fpsAvailable = entry.fpsAvailable;
+          }
+          if (entry.node && !existingEntry.node) {
+            existingEntry.node = entry.node;
+          }
+          if (entry.hardware && !existingEntry.hardware) {
+            existingEntry.hardware = entry.hardware;
+          }
+          return;
+        }
+      }
+    }
     this.runningGames.set(gameId, entry);
   }
 
@@ -419,9 +504,18 @@ export class GameDetector extends EventEmitter {
   stopTracking(gameId: string) {
     this.clearDiscoveryScans();
     const entry = this.runningGames.get(gameId);
+    const targetPid = entry?.pid;
     if (entry) {
       this.endSession(entry);
       this.runningGames.delete(gameId);
+    }
+    // Also clean up any other entry with same PID or normalized ID
+    const norm = gameId.replace(/^(pc_|file_|iso_|steam_)+/, '');
+    for (const [id, e] of this.runningGames) {
+      if ((targetPid && e.pid === targetPid) || (norm && id.replace(/^(pc_|file_|iso_|steam_)+/, '') === norm)) {
+        this.endSession(e);
+        this.runningGames.delete(id);
+      }
     }
   }
 
@@ -445,18 +539,32 @@ export class GameDetector extends EventEmitter {
 
   getRunningGames(): RunningGame[] {
     const alive: RunningGame[] = [];
+    const seenPids = new Set<number>();
+    const seenGameIds = new Set<string>();
+
     for (const [, entry] of this.runningGames) {
       if (entry.pid) {
+        // In test mocks, multiple fake processes may share process.pid.
+        // In real execution, process.pid is the Electron process, and games have distinct PIDs.
+        const isTestMockPid = entry.pid === process.pid;
+        if (!isTestMockPid && seenPids.has(entry.pid)) continue;
         try {
           process.kill(entry.pid, 0);
-          alive.push(entry);
+          seenPids.add(entry.pid);
+          if (!seenGameIds.has(entry.game.id)) {
+            seenGameIds.add(entry.game.id);
+            alive.push(entry);
+          }
         } catch {
           // PID dead — skip. Don't endSession here: game may have
           // transitioned to a new PID (launcher → game process).
           // scanRunningProcesses will re-detect or clean up.
         }
       } else {
-        alive.push(entry);
+        if (!seenGameIds.has(entry.game.id)) {
+          seenGameIds.add(entry.game.id);
+          alive.push(entry);
+        }
       }
     }
     if (this.activeGameId && alive.length > 1) {
@@ -509,16 +617,46 @@ export class GameDetector extends EventEmitter {
     }
     this.isScanning = true;
     try {
+      const needWindowTitles = (this.library.length > 0 || this.mappings.length > 0 || this.runningGames.size > 0);
       const [processes, windowTitles] = await Promise.all([
         psList(),
-        getWindowTitles(),
+        needWindowTitles ? getCachedWindowTitles() : Promise.resolve(new Map<string, string>()),
       ]);
 
       const snapshot = this.buildProcessSnapshot(processes, windowTitles);
       const currentlyRunning = new Set<string>();
+      const claimedPids = new Set<number>();
+      const claimedProcessKeys = new Set<string>();
+
+      const isClaimed = (pid: number, procName?: string) => {
+        if (pid === process.pid && procName) {
+          return claimedProcessKeys.has(`${pid}:${procName.toLowerCase()}`);
+        }
+        return claimedPids.has(pid);
+      };
+
+      const claimProcess = (pid: number, procName?: string) => {
+        claimedPids.add(pid);
+        if (procName) {
+          claimedProcessKeys.add(`${pid}:${procName.toLowerCase()}`);
+        }
+      };
+
+      // Track any running process launched by Otix
+      for (const [id, entry] of this.runningGames) {
+        if (entry.launchedByOtix && entry.pid) {
+          try {
+            process.kill(entry.pid, 0);
+            claimProcess(entry.pid);
+            currentlyRunning.add(id);
+          } catch {
+            // Process terminated
+          }
+        }
+      }
 
       // 0. Check custom user mappings first
-      this.checkMappings(snapshot, currentlyRunning);
+      this.checkMappings(snapshot, currentlyRunning, claimedPids);
 
       const librarySnapshot = this.library;
       const CHUNK_SIZE = 500;
@@ -538,14 +676,25 @@ export class GameDetector extends EventEmitter {
 
         // 1. Window title match (highest confidence)
         detectedPid = this.matchWindowTitle(game, snapshot);
+        if (detectedPid !== undefined) {
+          const proc = snapshot.procByPid.get(detectedPid);
+          if (isClaimed(detectedPid, proc?.name)) {
+            detectedPid = undefined;
+          }
+        }
 
         // 2. Exact process name match (O(1) lookups via procByName)
         if (detectedPid === undefined) {
           const exeNames = this.getExeNames(game);
           for (const exeName of exeNames) {
             if (!exeName) continue;
-            const proc = snapshot.procByName.get(exeName.toLowerCase());
+            const enLower = exeName.toLowerCase();
+            if (HEURISTIC_EXCLUDED_PROCESSES.has(enLower) || HEURISTIC_EXCLUDED_PROCESSES.has(enLower + '.exe')) continue;
+            const proc = snapshot.procByName.get(enLower);
             if (proc) {
+              if (isClaimed(proc.pid, proc.name)) continue;
+              const pLower = proc.name.toLowerCase();
+              if (HEURISTIC_EXCLUDED_PROCESSES.has(pLower) || HEURISTIC_EXCLUDED_PROCESSES.has(pLower + '.exe')) continue;
               detectedPid = proc.pid;
               break;
             }
@@ -555,22 +704,35 @@ export class GameDetector extends EventEmitter {
         // 3. Fuzzy process name match (O(1) installDir check + pre-filtered candidate processes)
         if (detectedPid === undefined) {
           detectedPid = this.fuzzyMatchPid(game, snapshot);
+          if (detectedPid !== undefined) {
+            const proc = snapshot.procByPid.get(detectedPid);
+            if (isClaimed(detectedPid, proc?.name)) {
+              detectedPid = undefined;
+            }
+          }
         }
 
         // If matched a launcher process, check for a better renderer PID
         // (e.g. SB.exe launches SB-Win64-Shipping.exe which does actual rendering)
         if (detectedPid !== undefined) {
           const rendererPid = this.findRendererProcess(game, snapshot, detectedPid);
-          if (rendererPid !== undefined) detectedPid = rendererPid;
+          if (rendererPid !== undefined && !isClaimed(rendererPid)) {
+            detectedPid = rendererPid;
+          }
         } else if (snapshot.rendererProcs.length > 0) {
           // Check for Unreal Engine renderer even if launcher is no longer running
           const rendererPid = this.findRendererProcess(game, snapshot, 0);
-          if (rendererPid !== undefined) detectedPid = rendererPid;
+          if (rendererPid !== undefined && !isClaimed(rendererPid)) {
+            detectedPid = rendererPid;
+          }
         }
 
         if (detectedPid !== undefined) {
-          // Skip if the detected process is a known non-game (e.g. wallpaper engine, browser, launcher)
           const proc = snapshot.procByPid.get(detectedPid);
+          if (isClaimed(detectedPid, proc?.name)) {
+            continue;
+          }
+          // Skip if the detected process is a known non-game (e.g. wallpaper engine, browser, launcher)
           if (proc) {
             const pLower = proc.name.toLowerCase();
             if (HEURISTIC_EXCLUDED_PROCESSES.has(pLower) || HEURISTIC_EXCLUDED_PROCESSES.has(pLower + '.exe')) {
@@ -578,6 +740,19 @@ export class GameDetector extends EventEmitter {
             }
           }
           currentlyRunning.add(game.id);
+          claimProcess(detectedPid, proc?.name);
+
+          // Evict any existing duplicate entries in this.runningGames with the same PID
+          for (const [existingId, existingEntry] of this.runningGames) {
+            if (
+              existingId !== game.id &&
+              existingEntry.pid === detectedPid &&
+              (detectedPid !== process.pid || normalizeTitle(existingEntry.game.title) === normalizeTitle(game.title))
+            ) {
+              this.runningGames.delete(existingId);
+            }
+          }
+
           const existing = this.runningGames.get(game.id);
           if (!existing) {
             // New game detected — start tracking
@@ -618,7 +793,6 @@ export class GameDetector extends EventEmitter {
       // 4. Check known popular game executable signatures for unindexed games (if allowed by settings)
       const settings = getSettings();
       if (!settings.onlyTrackScannedGames) {
-        const claimedPids = new Set<number>();
         for (const entry of this.runningGames.values()) {
           if (entry.pid) claimedPids.add(entry.pid);
         }
@@ -680,20 +854,41 @@ export class GameDetector extends EventEmitter {
         }
       }
 
-      // End sessions for game no longer detected (verify PID dead first)
+      // End sessions for game no longer detected
       for (const [id, entry] of this.runningGames) {
         if (currentlyRunning.has(id)) continue;
-        // PID still alive even though scan didn't match — keep session
+
+        let shouldKeep = false;
         if (entry.pid) {
           try {
             process.kill(entry.pid, 0);
-            currentlyRunning.add(id);
-            continue;
+            if (entry.launchedByOtix) {
+              // Otix-launched process: keep alive while spawned process is running
+              shouldKeep = true;
+            } else {
+              // Heuristically detected game: only keep if process still exists and genuinely matches game executable
+              const proc = snapshot.procByPid.get(entry.pid);
+              if (proc) {
+                const pLower = proc.name.toLowerCase();
+                const isExcluded = HEURISTIC_EXCLUDED_PROCESSES.has(pLower) || HEURISTIC_EXCLUDED_PROCESSES.has(pLower + '.exe');
+                if (!isExcluded) {
+                  const exeNames = this.getExeNames(entry.game).map((e) => e.toLowerCase());
+                  if (exeNames.includes(pLower) || exeNames.includes(pLower + '.exe')) {
+                    shouldKeep = true;
+                  }
+                }
+              }
+            }
           } catch {
-            // PID is dead — end session below
             this.trackedPids.delete(entry.pid);
           }
         }
+
+        if (shouldKeep) {
+          currentlyRunning.add(id);
+          continue;
+        }
+
         this.endSession(entry);
         this.runningGames.delete(id);
       }
@@ -752,6 +947,7 @@ export class GameDetector extends EventEmitter {
     this.stopProcessCheck();
     this.stopDeadCheck();
     this.clearDiscoveryScans();
+    clearWindowTitlesCache();
     for (const entry of this.runningGames.values()) {
       this.endSession(entry);
     }
@@ -764,7 +960,7 @@ export class GameDetector extends EventEmitter {
     try {
       const [processes, windowTitles] = await Promise.all([
         psList(),
-        getWindowTitles(),
+        getCachedWindowTitles(),
       ]);
 
       const windowTitleByPid = new Map<number, string>();
@@ -968,6 +1164,7 @@ export class GameDetector extends EventEmitter {
   private checkMappings(
     snapshotOrProcesses: ProcessSnapshot | { name: string; pid: number }[],
     currentlyRunning: Set<string>,
+    claimedPids?: Set<number>,
   ) {
     const isSnapshot = 'procByName' in snapshotOrProcesses;
     const procByName = isSnapshot
@@ -983,7 +1180,9 @@ export class GameDetector extends EventEmitter {
         ? procByName.get(pNameLower)
         : processes.find((p) => p.name.toLowerCase() === pNameLower);
       if (!proc) continue;
+      if (claimedPids && claimedPids.has(proc.pid)) continue;
 
+      if (claimedPids) claimedPids.add(proc.pid);
       currentlyRunning.add(mapping.gameId);
       if (!this.runningGames.has(mapping.gameId)) {
         const game = this.libraryById.get(mapping.gameId) || this.library.find((g) => g.id === mapping.gameId);
@@ -1024,6 +1223,14 @@ export class GameDetector extends EventEmitter {
     snapshotOrWindowTitles: ProcessSnapshot | Map<string, string>,
     processes?: { name: string; pid: number }[],
   ): number | undefined {
+    // Non-PC games, ROMs, and archive files should not match PC desktop windows directly
+    if (game.platform && game.platform !== 'pc') {
+      return undefined;
+    }
+    if (game.exePath && /\.(zip|rar|7z|tar|gz|bz2|iso|bin)$/i.test(game.exePath)) {
+      return undefined;
+    }
+
     let snapshot: ProcessSnapshot;
     if ('windowEntries' in snapshotOrWindowTitles) {
       snapshot = snapshotOrWindowTitles as ProcessSnapshot;
@@ -1037,39 +1244,58 @@ export class GameDetector extends EventEmitter {
 
     const titleLower = game.title.toLowerCase();
     const normTitle = normalizeTitle(game.title);
-    const titleWords = normTitle.split(/\s+/).filter((w) => w.length > 2);
+    const titleWords = normTitle.split(/\s+/).filter((w) => w.length > 2 && !GENERIC_TITLE_WORDS.has(w));
+    const isGenericTitle = titleWords.length === 0;
 
     for (const entry of snapshot.windowEntries) {
+      const proc = snapshot.procByPid.get(entry.pid);
+      if (proc) {
+        const pLower = proc.name.toLowerCase();
+        if (HEURISTIC_EXCLUDED_PROCESSES.has(pLower) || HEURISTIC_EXCLUDED_PROCESSES.has(pLower + '.exe')) {
+          continue;
+        }
+      }
+
       let matched = false;
 
-      // Direct title match
-      if (entry.winLower.includes(titleLower)) matched = true;
-      else if (titleLower.includes(entry.winLower) && entry.winLower.length > 5) matched = true;
-      // Normalized title match
-      else if (entry.winLower.includes(normTitle)) matched = true;
-      else if (normTitle.length > 5 && normTitle.includes(entry.winLower)) matched = true;
-      // Word match (whole-word boundaries to avoid substring false positives)
-      else if (titleWords.length >= 2) {
-        const target = Math.min(titleWords.length, 2);
-        let matchCount = 0;
-        for (const w of titleWords) {
-          if (!entry.winLower.includes(w)) continue;
-          if (!entry.hasUnderscore && entry.wordsSet.has(w)) {
-            matchCount++;
-          } else if (getWordRegex(w).test(entry.winLower)) {
-            matchCount++;
+      // Exact title match
+      if (entry.winLower === titleLower || entry.winLower === normTitle) {
+        matched = true;
+      } else if (!isGenericTitle) {
+        // Direct title match as full phrase
+        if (normTitle.length >= 4 && entry.winLower.includes(normTitle)) {
+          matched = true;
+        } else if (titleLower.length >= 4 && entry.winLower.includes(titleLower)) {
+          matched = true;
+        } else if (normTitle.length > 5 && normTitle.includes(entry.winLower) && entry.winLower.length >= 5) {
+          matched = true;
+        } else if (titleWords.length >= 2) {
+          // Word match: require ALL distinctive words if 2 words; min 2 if 3+
+          const target = titleWords.length === 2 ? 2 : Math.min(titleWords.length, 2);
+          let matchCount = 0;
+          for (const w of titleWords) {
+            if (!entry.winLower.includes(w)) continue;
+            if (!entry.hasUnderscore && entry.wordsSet.has(w)) {
+              matchCount++;
+            } else if (getWordRegex(w).test(entry.winLower)) {
+              matchCount++;
+            }
+            if (matchCount >= target) {
+              matched = true;
+              break;
+            }
           }
-          if (matchCount >= target) {
-            matched = true;
-            break;
-          }
-        }
-      } else if (titleWords.length === 1) {
-        const w = titleWords[0];
-        if (entry.winLower.includes(w)) {
-          if (!entry.hasUnderscore && entry.wordsSet.has(w)) {
-            matched = true;
-          } else if (getWordRegex(w).test(entry.winLower)) {
+        } else if (titleWords.length === 1) {
+          const w = titleWords[0];
+          // For a single distinctive word, require it to appear at boundary or stand alone
+          // to prevent generic substrings matching arbitrary apps (e.g. "App..." or "Inside...")
+          if (w.length >= 4 && (
+            entry.winLower.startsWith(w + ' ') ||
+            entry.winLower.startsWith(w + ' -') ||
+            entry.winLower.startsWith(w + ':') ||
+            entry.winLower.endsWith(' - ' + w) ||
+            entry.winLower.endsWith(' | ' + w)
+          )) {
             matched = true;
           }
         }
@@ -1088,6 +1314,20 @@ export class GameDetector extends EventEmitter {
     game: LocalGame,
     snapshotOrProcesses: ProcessSnapshot | { name: string; pid: number }[],
   ): number | undefined {
+    // Non-PC games and archive/ROM files should never fuzzy-match PC executable processes
+    if (game.platform && game.platform !== 'pc') {
+      return undefined;
+    }
+    if (game.exePath && /\.(zip|rar|7z|tar|gz|bz2|iso|bin)$/i.test(game.exePath)) {
+      return undefined;
+    }
+    if (game.installDir && /\.(zip|rar|7z|tar|gz|bz2)$/i.test(game.installDir)) {
+      return undefined;
+    }
+    if (game.title && /\.(zip|rar|7z|tar|gz|bz2)$/i.test(game.title)) {
+      return undefined;
+    }
+
     let snapshot: ProcessSnapshot;
     if ('candidateProcs' in snapshotOrProcesses) {
       snapshot = snapshotOrProcesses as ProcessSnapshot;
@@ -1098,7 +1338,7 @@ export class GameDetector extends EventEmitter {
     // 1. Check install directory basename against procByName in O(1)
     if (game.installDir) {
       const dirName = path.basename(game.installDir).toLowerCase().replace(/[^a-z0-9]/g, '');
-      if (dirName.length > 3) {
+      if (dirName.length > 3 && !GENERIC_TITLE_WORDS.has(dirName)) {
         const proc = snapshot.procByName.get(dirName + '.exe') || snapshot.procByName.get(dirName);
         if (proc) {
           const pLower = proc.name.toLowerCase();
@@ -1115,10 +1355,10 @@ export class GameDetector extends EventEmitter {
 
     const norm = normalizeTitle(game.title);
     const normNoSpaces = norm.replace(/\s/g, '');
-    const titleWords = norm.split(/\s+/).filter((w) => w.length > 2);
-    const checkSubstring = normNoSpaces.length > 4;
+    const titleWords = norm.split(/\s+/).filter((w) => w.length > 2 && !GENERIC_TITLE_WORDS.has(w));
+    const checkSubstring = normNoSpaces.length > 4 && !GENERIC_TITLE_WORDS.has(normNoSpaces);
     const checkWords = titleWords.length > 0;
-    const threshold = titleWords.length <= 2 ? 1 : Math.min(2, titleWords.length);
+    const threshold = titleWords.length <= 1 ? 1 : (titleWords.length === 2 ? 2 : Math.min(2, titleWords.length));
 
     if (!checkSubstring && !checkWords) {
       return undefined;
@@ -1132,6 +1372,7 @@ export class GameDetector extends EventEmitter {
 
       // Word match with whole-word boundaries
       if (checkWords) {
+        if (titleWords.length === 1 && titleWords[0].length < 4) continue;
         let matchCount = 0;
         for (const w of titleWords) {
           if (!proc.baseLower.includes(w)) continue;

@@ -518,6 +518,29 @@ export const NodeGameDetailsModal = ({
         </DkButton>
 
         <div className="flex items-center gap-2">
+          {(badge.isIso || game.isIso || game.format?.toUpperCase() === 'ISO') && (
+            <DkButton
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={async () => {
+                const api = getDesktopAPI()
+                if (api?.mountIso) {
+                  try {
+                    await api.mountIso(exactFilePath)
+                  } catch (err) {
+                    console.error('Failed to mount ISO:', err)
+                  }
+                }
+              }}
+              className="text-xs rounded-xl"
+              title="Mount ISO virtual disk image"
+            >
+              <Disc className="h-3.5 w-3.5 mr-1.5 text-primary" />
+              <span>Mount Disc</span>
+            </DkButton>
+          )}
+
           {onOpenMatch && (
             <DkButton
               type="button"

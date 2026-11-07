@@ -170,11 +170,3 @@ export function validateConfig(
   }
   return { valid: errors.length === 0, errors }
 }
-
-/** True when the manifest declares a config schema for this key. */
-export function hasConfigField(
-  manifest: Pick<PluginManifest, 'config'>,
-  key: string,
-): boolean {
-  return Boolean(manifest.config?.[key])
-}

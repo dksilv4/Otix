@@ -184,7 +184,7 @@ export const NodeGameSearchModal = ({
         media_item_id: mediaItemId || null,
         size: release.size || null,
       })
-      const nzoId = (res as { nzo_id?: string } | undefined)?.nzo_id
+      const nzoId = (res as { nzoId?: string; nzo_id?: string } | undefined)?.nzoId || (res as { nzoId?: string; nzo_id?: string } | undefined)?.nzo_id
       if (nzoId) {
         setTrackedNzoMap((prev) => new Map(prev).set(release.guid, nzoId))
       }
@@ -748,7 +748,7 @@ const PackBlock = ({
             queueItem={qItem}
             isHistoryCompleted={isHistoryCompleted}
             onQueue={() => onQueue(item.release, pack.updates.map((update) => update.release))}
-            onCancelQueue={qItem ? () => onCancelQueue(qItem.nzo_id, item.release.guid) : undefined}
+            onCancelQueue={qItem ? () => onCancelQueue(qItem.nzoId || qItem.nzo_id || '', item.release.guid) : undefined}
           />
         )
       })}
@@ -786,7 +786,7 @@ const PackBlock = ({
                   queueItem={qItem}
                   isHistoryCompleted={isHistoryCompleted}
                   onQueue={() => onQueue(item.release)}
-                  onCancelQueue={qItem ? () => onCancelQueue(qItem.nzo_id, item.release.guid) : undefined}
+                  onCancelQueue={qItem ? () => onCancelQueue(qItem.nzoId || qItem.nzo_id || '', item.release.guid) : undefined}
                 />
               )
             })}

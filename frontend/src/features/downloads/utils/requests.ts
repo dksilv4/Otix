@@ -1,4 +1,36 @@
 import type { MediaRequestItem } from '../use-media-requests'
+import type { MediaActivityItem } from '@/features/media/types/media-activity'
+import { resolveActivityLookupKeys } from '@/features/media/utils/media-activity'
+
+export function resolveEffectiveRequestStatus(
+  item: MediaRequestItem,
+  activityItems?: Record<string, MediaActivityItem> | null,
+): { status: string; isAvailable: boolean; nodeActivity?: MediaActivityItem } {
+  if (item.status === 'available' || item.status === 'completed') {
+    return { status: 'available', isAvailable: true }
+  }
+
+  if (activityItems) {
+    const keys = resolveActivityLookupKeys(
+      item.mediaType,
+      item.tmdbId,
+      item.mediaItemId ? String(item.mediaItemId) : null,
+      item.tvdbId,
+      item.title,
+    )
+    for (const key of keys) {
+      const act = activityItems[key]
+      if (act && act.status === 'available') {
+        return { status: 'available', isAvailable: true, nodeActivity: act }
+      }
+      if (act && act.status === 'processing') {
+        return { status: 'downloading', isAvailable: false, nodeActivity: act }
+      }
+    }
+  }
+
+  return { status: item.status, isAvailable: false }
+}
 
 export function getRequestStatusLabel(status: string): string {
   switch (status.toLowerCase()) {

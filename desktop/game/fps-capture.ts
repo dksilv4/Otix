@@ -86,7 +86,6 @@ const INTERFERING_SESSIONS = [
 ];
 const GAMING_SERVICES = ['GamingServices', 'GamingServicesNet'];
 
-export const TAG_NONE = 0;
 export const TAG_BACKGROUND = 1 << 0;
 export const TAG_LOADING_STALL = 1 << 1;
 export const TAG_LOADING_BLOCK = 1 << 2;
@@ -111,6 +110,7 @@ export interface IForegroundWatcher {
  */
 export class WindowsForegroundWatcher implements IForegroundWatcher {
   private child: ChildProcess | null = null;
+  private rl: ReturnType<typeof createInterface> | null = null;
   private currentPid = 0;
   private running = false;
 
@@ -147,8 +147,8 @@ while ($true) {
         stdio: ['ignore', 'pipe', 'ignore'],
       });
 
-      const rl = createInterface({ input: this.child.stdout! });
-      rl.on('line', (line) => {
+      this.rl = createInterface({ input: this.child.stdout! });
+      this.rl.on('line', (line) => {
         const val = parseInt(line.trim(), 10);
         if (!isNaN(val)) {
           this.currentPid = val;
@@ -160,6 +160,12 @@ while ($true) {
       });
 
       this.child.on('exit', () => {
+        if (this.rl) {
+          try {
+            this.rl.close();
+          } catch {}
+          this.rl = null;
+        }
         this.child = null;
         this.running = false;
       });
@@ -170,6 +176,12 @@ while ($true) {
 
   public stop(): void {
     this.running = false;
+    if (this.rl) {
+      try {
+        this.rl.close();
+      } catch {}
+      this.rl = null;
+    }
     if (this.child) {
       try {
         this.child.kill();

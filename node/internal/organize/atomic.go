@@ -233,36 +233,5 @@ func syncPS5Sidecar(targetDir string) {
 }
 
 func syncSidecarMetadata(src, dst string) {
-	origName := filepath.Base(src)
-	rel := ParseReleaseName(origName)
-	sc, _ := otixmeta.Read(dst)
-	if sc == nil {
-		sc = &otixmeta.Sidecar{
-			Version: 1,
-		}
-	}
-	updated := false
-	if sc.OriginalName == "" && origName != filepath.Base(dst) {
-		sc.OriginalName = origName
-		updated = true
-	}
-	if sc.ReleaseGroup == "" && rel.ReleaseGroup != "" {
-		sc.ReleaseGroup = rel.ReleaseGroup
-		updated = true
-	}
-	if sc.GameVersion == "" && rel.Version != "" {
-		sc.GameVersion = rel.Version
-		updated = true
-	}
-	if sc.Edition == "" && rel.Edition != "" {
-		sc.Edition = rel.Edition
-		updated = true
-	}
-	if sc.Title == "" && rel.Title != "" {
-		sc.Title = rel.Title
-		updated = true
-	}
-	if updated {
-		_ = otixmeta.Write(dst, sc)
-	}
+	// Disabled: zero sidecar writeback enforced
 }

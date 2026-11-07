@@ -84,12 +84,12 @@ export const matchEpisodeRecord = (
  */
 export const resolveItemSpeed = (
   record: ServerArrQueueItem,
-  usenetItems?: Array<{ nzo_id?: string; speed?: string }>,
+  usenetItems?: Array<{ nzoId?: string; nzo_id?: string; speed?: string }>,
   fallbackSpeed?: string | null,
 ): string | null => {
   const downloadId = record.downloadId || (record as any).download_id
   if (downloadId && usenetItems && usenetItems.length > 0) {
-    const matched = usenetItems.find((u) => u.nzo_id === downloadId)
+    const matched = usenetItems.find((u) => (u.nzoId || u.nzo_id) === downloadId)
     if (matched?.speed && matched.speed !== '0 B/s' && matched.speed !== '0 KB/s') {
       return matched.speed
     }
@@ -121,7 +121,7 @@ export interface AggregatedQueueProgress {
  */
 export const aggregateQueueProgress = (
   records: ServerArrQueueItem[],
-  usenetItems?: Array<{ nzo_id?: string; speed?: string }>,
+  usenetItems?: Array<{ nzoId?: string; nzo_id?: string; speed?: string }>,
   fallbackSpeed?: string | null,
 ): AggregatedQueueProgress => {
   if (!records || records.length === 0) {

@@ -10,6 +10,7 @@ sync + SSE surfaces are deferred to the platform wave (task #6).
 
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 import re
@@ -19,6 +20,7 @@ import unicodedata
 import urllib.error
 import urllib.parse
 import urllib.request
+from concurrent.futures import ThreadPoolExecutor
 from difflib import SequenceMatcher
 from typing import Any
 
@@ -35,16 +37,26 @@ from django.db.models import (
 from django.db.models.functions import Coalesce
 
 from apps.integrations.models import UserPlexItem, UserPlexLibrary, UserPlexServer
+from apps.integrations.services import plex_connect
 
 logger = logging.getLogger(__name__)
 
 CONNECT_INFO_ITEM_NOT_FOUND = "Media item not found in your Plex library"
 CONNECT_INFO_SERVER_NOT_FOUND = "Plex server not found"
+ALBUM_TRACKS_FETCH_ERROR = "Could not fetch Plex album tracks"
 
 
 class PlexConnectInfoNotFound(Exception):
     """Raised when a Plex lookup cannot be satisfied; carries the legacy 404
     detail string."""
+
+    def __init__(self, detail: str) -> None:
+        self.detail = detail
+        super().__init__(detail)
+
+
+class PlexAlbumTracksFetchError(Exception):
+    """Raised when no Plex connection succeeds in serving the album's tracks."""
 
     def __init__(self, detail: str) -> None:
         self.detail = detail
@@ -524,299 +536,36 @@ def get_plex_connect_info(
 
     t_start = time.perf_counter()
     ident = str(media_identifier).strip()
-    plex_item = None
-    target_media_item = None
 
-    if ident.isdigit():
-        from apps.media.models import MediaItem
-
-        target_media_item = MediaItem.objects.filter(id=int(ident)).first()
-
-    if target_media_item is None:
-        from apps.media.models import MediaItem
-
-        target_media_item = MediaItem.objects.filter(slug=ident).first()
-
-    # Also resolve target_media_item via tmdb_id / imdb_id / tvdb_id ExternalID if not resolved yet
-    if target_media_item is None and (tmdb_id or imdb_id or tvdb_id):
-        from apps.media.models import ExternalID, MediaItem
-
-        ext_obj = None
-        if tmdb_id:
-            ext_obj = ExternalID.objects.filter(provider="tmdb", external_id=str(tmdb_id)).first()
-        if ext_obj is None and imdb_id:
-            ext_obj = ExternalID.objects.filter(provider="imdb", external_id=str(imdb_id)).first()
-        if ext_obj is None and tvdb_id:
-            ext_obj = ExternalID.objects.filter(provider="tvdb", external_id=str(tvdb_id)).first()
-        if ext_obj and ext_obj.object_id:
-            target_media_item = MediaItem.objects.filter(id=ext_obj.object_id).first()
-
-    # Plex integration only supports movie/show/music/episode items, NEVER games
+    # 1. Resolve catalog media item and reject non-media (e.g. games)
+    target_media_item = plex_connect.resolve_target_media_item(
+        ident, tmdb_id=tmdb_id, imdb_id=imdb_id, tvdb_id=tvdb_id
+    )
     if target_media_item is not None and getattr(target_media_item, "media_type", None) == "game":
         raise PlexConnectInfoNotFound(CONNECT_INFO_ITEM_NOT_FOUND)
 
-    if target_media_item is not None:
-        cand = (
-            UserPlexItem.objects.filter(user=user, media_item_id=target_media_item.id)
-            .select_related("server")
-            .first()
-        )
-        if cand:
-            if _is_compatible_plex_match(
-                cand,
-                target_media_item,
-                has_guid_match=True,
-                req_tmdb_id=tmdb_id,
-                req_imdb_id=imdb_id,
-                req_tvdb_id=tvdb_id,
-            ):
-                plex_item = cand
-            else:
-                # Clean up previously corrupted match in DB
-                cand.media_item = None
-                cand.save(update_fields=["media_item"])
-
-        if plex_item is None:
-            from django.contrib.contenttypes.models import ContentType
-
-            from apps.media.models import ExternalID
-
-            ct = ContentType.objects.get_for_model(target_media_item.__class__)
-            exts = {
-                e.provider: e.external_id
-                for e in ExternalID.objects.filter(content_type=ct, object_id=target_media_item.id)
-            }
-            tmdb_ext = exts.get("tmdb")
-            imdb_ext = exts.get("imdb")
-            tvdb_ext = exts.get("tvdb")
-
-            p_filter_type = [target_media_item.media_type]
-            if target_media_item.media_type == "show":
-                p_filter_type = ["show", "episode"]
-
-            if tmdb_ext:
-                cand = (
-                    UserPlexItem.objects.filter(
-                        user=user, media_type__in=p_filter_type, guids__tmdb=str(tmdb_ext)
-                    )
-                    .select_related("server")
-                    .first()
-                )
-                if _is_compatible_plex_match(
-                    cand,
-                    target_media_item,
-                    has_guid_match=True,
-                    req_tmdb_id=tmdb_id,
-                    req_imdb_id=imdb_id,
-                    req_tvdb_id=tvdb_id,
-                ):
-                    plex_item = cand
-            if plex_item is None and imdb_ext:
-                cand = (
-                    UserPlexItem.objects.filter(
-                        user=user, media_type__in=p_filter_type, guids__imdb=str(imdb_ext)
-                    )
-                    .select_related("server")
-                    .first()
-                )
-                if _is_compatible_plex_match(
-                    cand,
-                    target_media_item,
-                    has_guid_match=True,
-                    req_tmdb_id=tmdb_id,
-                    req_imdb_id=imdb_id,
-                    req_tvdb_id=tvdb_id,
-                ):
-                    plex_item = cand
-            if plex_item is None and tvdb_ext:
-                cand = (
-                    UserPlexItem.objects.filter(
-                        user=user, media_type__in=p_filter_type, guids__tvdb=str(tvdb_ext)
-                    )
-                    .select_related("server")
-                    .first()
-                )
-                if _is_compatible_plex_match(
-                    cand,
-                    target_media_item,
-                    has_guid_match=True,
-                    req_tmdb_id=tmdb_id,
-                    req_imdb_id=imdb_id,
-                    req_tvdb_id=tvdb_id,
-                ):
-                    plex_item = cand
-            if plex_item is None:
-                title_cands = UserPlexItem.objects.filter(
-                    user=user,
-                    media_type__in=p_filter_type,
-                    title__iexact=target_media_item.title,
-                ).select_related("server")
-                for c in title_cands:
-                    if _is_compatible_plex_match(
-                        c,
-                        target_media_item,
-                        has_guid_match=False,
-                        req_tmdb_id=tmdb_id,
-                        req_imdb_id=imdb_id,
-                        req_tvdb_id=tvdb_id,
-                    ):
-                        plex_item = c
-                        break
-
-            # Fallback: title matching with +/- 1 year tolerance
-            if plex_item is None and target_media_item.release_date:
-                t_year_val = target_media_item.release_date.year
-                year_cands = UserPlexItem.objects.filter(
-                    user=user,
-                    media_type__in=p_filter_type,
-                    year__gte=t_year_val - 1,
-                    year__lte=t_year_val + 1,
-                ).select_related("server")
-                for c in year_cands:
-                    if _is_compatible_plex_match(
-                        c,
-                        target_media_item,
-                        has_guid_match=False,
-                        req_tmdb_id=tmdb_id,
-                        req_imdb_id=imdb_id,
-                        req_tvdb_id=tvdb_id,
-                    ):
-                        plex_item = c
-                        break
-
-            if (
-                plex_item is not None
-                and plex_item.media_item_id != target_media_item.id
-                and _is_compatible_plex_match(
-                    plex_item,
-                    target_media_item,
-                    has_guid_match=True,
-                    req_tmdb_id=tmdb_id,
-                    req_imdb_id=imdb_id,
-                    req_tvdb_id=tvdb_id,
-                )
-            ):
-                plex_item.media_item = target_media_item
-                plex_item.save(update_fields=["media_item"])
-
-    # Query param fallbacks for unified single-roundtrip finding
-    t_year = (
-        target_media_item.release_date.year
-        if (target_media_item and getattr(target_media_item, "release_date", None))
-        else (int(year) if year and str(year).isdigit() else None)
+    # 2. Resolve matching UserPlexItem through priority-based cascading fallback
+    plex_item = plex_connect.resolve_user_plex_item(
+        user,
+        target_media_item,
+        ident,
+        tmdb_id=tmdb_id,
+        imdb_id=imdb_id,
+        tvdb_id=tvdb_id,
+        title=title,
+        year=year,
+        media_type=media_type,
     )
-    p_type_filter = []
-    if media_type:
-        p_type_filter = (
-            ["show", "episode"] if media_type in ("show", "series", "tv") else [media_type]
-        )
-
-    if plex_item is None and tmdb_id:
-        qs = UserPlexItem.objects.filter(user=user, guids__tmdb=str(tmdb_id))
-        if p_type_filter:
-            qs = qs.filter(media_type__in=p_type_filter)
-        cand = qs.select_related("server").first()
-        if _is_compatible_plex_match(
-            cand,
-            target_media_item,
-            target_media_type=media_type,
-            target_year=t_year,
-            has_guid_match=True,
-            req_tmdb_id=tmdb_id,
-            req_imdb_id=imdb_id,
-            req_tvdb_id=tvdb_id,
-        ):
-            plex_item = cand
-    if plex_item is None and tvdb_id:
-        qs = UserPlexItem.objects.filter(user=user, guids__tvdb=str(tvdb_id))
-        if p_type_filter:
-            qs = qs.filter(media_type__in=p_type_filter)
-        cand = qs.select_related("server").first()
-        if _is_compatible_plex_match(
-            cand,
-            target_media_item,
-            target_media_type=media_type,
-            target_year=t_year,
-            has_guid_match=True,
-            req_tmdb_id=tmdb_id,
-            req_imdb_id=imdb_id,
-            req_tvdb_id=tvdb_id,
-        ):
-            plex_item = cand
-    if plex_item is None and imdb_id:
-        qs = UserPlexItem.objects.filter(user=user, guids__imdb=str(imdb_id))
-        if p_type_filter:
-            qs = qs.filter(media_type__in=p_type_filter)
-        cand = qs.select_related("server").first()
-        if _is_compatible_plex_match(
-            cand,
-            target_media_item,
-            target_media_type=media_type,
-            target_year=t_year,
-            has_guid_match=True,
-            req_tmdb_id=tmdb_id,
-            req_imdb_id=imdb_id,
-            req_tvdb_id=tvdb_id,
-        ):
-            plex_item = cand
-    if plex_item is None and title:
-        qs = UserPlexItem.objects.filter(user=user, title__iexact=str(title).strip())
-        if target_media_item:
-            p_filter_type = [target_media_item.media_type]
-            if target_media_item.media_type == "show":
-                p_filter_type = ["show", "episode"]
-            qs = qs.filter(media_type__in=p_filter_type)
-        elif p_type_filter:
-            qs = qs.filter(media_type__in=p_type_filter)
-        title_cands = qs.select_related("server")
-        for c in title_cands:
-            if _is_compatible_plex_match(
-                c,
-                target_media_item,
-                target_media_type=media_type,
-                target_year=t_year,
-                has_guid_match=False,
-                req_tmdb_id=tmdb_id,
-                req_imdb_id=imdb_id,
-                req_tvdb_id=tvdb_id,
-            ):
-                plex_item = c
-                break
-
-    # Direct rating_key lookup ONLY when target_media_item is None (e.g. caller passed a raw Plex rating key)
-    if plex_item is None and target_media_item is None:
-        cand = (
-            UserPlexItem.objects.filter(user=user, rating_key=ident)
-            .select_related("server")
-            .first()
-        )
-        if cand:
-            plex_item = cand
-
-    if (
-        plex_item is not None
-        and target_media_item is not None
-        and plex_item.media_item_id != target_media_item.id
-        and _is_compatible_plex_match(
-            plex_item,
-            target_media_item,
-            has_guid_match=True,
-            req_tmdb_id=tmdb_id,
-            req_imdb_id=imdb_id,
-            req_tvdb_id=tvdb_id,
-        )
-    ):
-        plex_item.media_item = target_media_item
-        plex_item.save(update_fields=["media_item"])
-
     if plex_item is None:
         raise PlexConnectInfoNotFound(CONNECT_INFO_ITEM_NOT_FOUND)
+
     server = plex_item.server
     if server is None:
         raise PlexConnectInfoNotFound(CONNECT_INFO_SERVER_NOT_FOUND)
 
     db_match_ms = round((time.perf_counter() - t_start) * 1000, 2)
 
+    # 3. Resolve connection URLs and server token
     t_res_start = time.perf_counter()
     alt_urls = _get_alternative_plex_urls(server, user)
     plex_resources_ms = round((time.perf_counter() - t_res_start) * 1000, 2)
@@ -833,168 +582,27 @@ def get_plex_connect_info(
             f"{base_urls[0]}/library/metadata/{plex_item.rating_key}/thumb?X-Plex-Token={token}"
         )
 
-    # Resolve active playback item (supports shows -> episodes with resume & specific S/E)
-    active_rating_key = plex_item.rating_key
-    active_title = plex_item.title
-    active_media_type = plex_item.media_type
-    active_season_num: int | None = None
-    active_episode_num: int | None = None
-    active_ep_title: str | None = None
-    active_offset = int(plex_item.view_offset or 0)
-    active_duration = int(plex_item.duration or 0)
-    active_viewed = bool(plex_item.viewed)
-
-    target_leaf = None
+    # 4. Resolve active playback item & user watch progress
     t_meta_start = time.perf_counter()
-
-    if plex_item.media_type == "show" or season is not None or episode is not None:
-        try:
-            selected_leaf, working_base = _resolve_show_playable_item(
-                server, user, plex_item, season=season, episode=episode
-            )
-            if working_base and working_base in base_urls:
-                base_urls.remove(working_base)
-                base_urls.insert(0, working_base)
-
-            if selected_leaf:
-                target_leaf = selected_leaf
-                active_rating_key = str(selected_leaf.get("ratingKey"))
-                active_ep_title = selected_leaf.get("title")
-                active_title = active_ep_title or active_title
-                active_media_type = "episode"
-                if selected_leaf.get("parentIndex") is not None:
-                    active_season_num = int(selected_leaf.get("parentIndex"))
-                if selected_leaf.get("index") is not None:
-                    active_episode_num = int(selected_leaf.get("index"))
-                active_duration = int(selected_leaf.get("duration") or 0)
-
-                # Strictly isolate watch progress per user
-                user_ep = UserPlexItem.objects.filter(
-                    user=user, rating_key=active_rating_key
-                ).first()
-                if user_ep and user_ep.view_offset:
-                    active_offset = int(user_ep.view_offset)
-                    active_viewed = bool(user_ep.viewed)
-                elif server.owned:
-                    active_offset = int(selected_leaf.get("viewOffset") or 0)
-                    active_viewed = int(selected_leaf.get("viewCount") or 0) > 0
-                else:
-                    active_offset = 0
-                    active_viewed = False
-        except Exception as e:
-            logger.warning(
-                "Failed to resolve targeted episode for show %s: %s", plex_item.rating_key, e
-            )
-    else:
-        try:
-            live_res = _plex_server_get(server, user, f"/library/metadata/{plex_item.rating_key}")
-            if live_res:
-                meta_data, working_base = live_res
-                if working_base in base_urls:
-                    base_urls.remove(working_base)
-                    base_urls.insert(0, working_base)
-                meta = meta_data.get("MediaContainer", {}).get("Metadata", [{}])[0]
-                target_leaf = meta
-                # Strictly isolate watch progress: only use PMS live viewOffset if this user has no progress and owns server
-                if active_offset == 0 and server.owned and meta.get("viewOffset") is not None:
-                    active_offset = int(meta.get("viewOffset"))
-                if meta.get("duration") is not None:
-                    active_duration = int(meta.get("duration"))
-                if not active_viewed and server.owned and meta.get("viewCount") is not None:
-                    active_viewed = int(meta.get("viewCount")) > 0
-        except Exception as e:
-            logger.debug("Failed to query live movie metadata for %s: %s", plex_item.rating_key, e)
-
+    playback, target_leaf = plex_connect.resolve_active_playback_item(
+        server, user, plex_item, base_urls, season=season, episode=episode
+    )
     metadata_ms = round((time.perf_counter() - t_meta_start) * 1000, 2)
 
+    active_duration = playback["active_duration"]
+    active_offset = playback["active_offset"]
     progress_percent = (
         round((active_offset / active_duration) * 100, 1)
         if active_duration and active_offset
         else 0.0
     )
 
-    # Pre-resolve stream specifications for direct browser playback
-    audio_tracks: list[dict] = []
-    subtitles: list[dict] = []
-    part_key: str | None = None
-    container: str = "mp4"
-    video_codec: str = "h264"
-    audio_codec: str = "aac"
-
-    if target_leaf is None and plex_item.raw:
-        target_leaf = plex_item.raw
-
-    if target_leaf:
-        media_list = _as_list(target_leaf.get("Media"))
-        if media_list:
-            m_obj = media_list[0]
-            container = m_obj.get("container") or "mp4"
-            video_codec = m_obj.get("videoCodec") or "h264"
-            audio_codec = m_obj.get("audioCodec") or "aac"
-            part_list = _as_list(m_obj.get("Part"))
-            if part_list:
-                part_obj = part_list[0]
-                part_key = part_obj.get("key")
-                for s in _as_list(part_obj.get("Stream")):
-                    stype = s.get("streamType")
-                    sid = str(s.get("id", ""))
-                    sidx = int(s.get("index", 0))
-                    codec = str(s.get("codec") or "")
-                    lang = s.get("languageCode") or s.get("language") or "und"
-                    disp = s.get("displayTitle") or s.get("title")
-                    if stype == 2:  # Audio
-                        audio_tracks.append(
-                            {
-                                "id": sid,
-                                "index": sidx,
-                                "label": disp or f"{lang} ({codec})",
-                                "language": lang,
-                                "codec": codec,
-                                "channels": int(s.get("channels") or 2),
-                            }
-                        )
-                    elif stype == 3:  # Subtitle
-                        sub_format = (
-                            "pgs"
-                            if codec == "pgs"
-                            else ("ass" if codec == "ass" else ("srt" if codec == "srt" else "vtt"))
-                        )
-                        sub_key = s.get("key")
-                        sub_url = (
-                            f"{base_urls[0]}{sub_key}?X-Plex-Token={token}"
-                            if (sub_key and base_urls and token)
-                            else None
-                        )
-                        subtitles.append(
-                            {
-                                "id": sid,
-                                "index": sidx,
-                                "label": disp or lang or "Subtitles",
-                                "language": lang,
-                                "url": sub_url,
-                                "format": sub_format,
-                                "is_external": bool(sub_key),
-                                "requires_burn_in": codec in ("pgs", "ass"),
-                            }
-                        )
-
-    primary_url = base_urls[0] if base_urls else None
-    direct_url = (
-        f"{primary_url}{part_key}?X-Plex-Token={token}"
-        if (primary_url and part_key and token)
-        else None
+    # 5. Extract stream specifications (codecs, tracks, subtitles, direct/HLS URLs)
+    streams = plex_connect.extract_stream_specs(
+        target_leaf, plex_item, base_urls, token, playback["active_rating_key"]
     )
-    hls_url = None
-    if primary_url and token and active_rating_key:
-        encoded_path = urllib.parse.quote(f"/library/metadata/{active_rating_key}", safe="")
-        encoded_token = urllib.parse.quote(token, safe="")
-        hls_url = (
-            f"{primary_url}/video/:/transcode/universal/start.m3u8?"
-            f"path={encoded_path}&mediaIndex=0&partIndex=0&protocol=hls&fastSeek=1&directPlay=0&directStream=1&hasMDE=1&"
-            f"X-Plex-Client-Identifier=otix-web&X-Plex-Product=Otix&X-Plex-Platform=Web&"
-            f"X-Plex-Token={encoded_token}"
-        )
 
+    # 6. Performance timings & stats
     total_ms = round((time.perf_counter() - t_start) * 1000, 2)
     server_timings = (
         f'db;dur={db_match_ms};desc="DB Match", '
@@ -1013,31 +621,31 @@ def get_plex_connect_info(
         "base_url": base_urls[0] if base_urls else None,
         "base_urls": base_urls,
         "token": token,
-        "rating_key": active_rating_key,
+        "rating_key": playback["active_rating_key"],
         "album_thumb_url": album_thumb_url,
         "provider": "plex",
         "provider_label": "Plex",
         "server_name": server.name,
         "server_id": server.machine_identifier or str(server.id),
         "is_shared_server": not server.owned,
-        "media_type": active_media_type,
-        "title": active_title,
+        "media_type": playback["active_media_type"],
+        "title": playback["active_title"],
         "year": plex_item.year,
-        "season_number": active_season_num,
-        "episode_number": active_episode_num,
-        "episode_title": active_ep_title,
+        "season_number": playback["active_season_num"],
+        "episode_number": playback["active_episode_num"],
+        "episode_title": playback["active_ep_title"],
         "view_offset": active_offset,
         "duration": active_duration,
         "progress_percent": progress_percent,
-        "viewed": active_viewed,
+        "viewed": playback["active_viewed"],
         "view_count": int(plex_item.view_count or 0),
-        "audio_tracks": audio_tracks,
-        "subtitles": subtitles,
-        "container": container,
-        "video_codec": video_codec,
-        "audio_codec": audio_codec,
-        "direct_url": direct_url,
-        "hls_url": hls_url,
+        "audio_tracks": streams["audio_tracks"],
+        "subtitles": streams["subtitles"],
+        "container": streams["container"],
+        "video_codec": streams["video_codec"],
+        "audio_codec": streams["audio_codec"],
+        "direct_url": streams["direct_url"],
+        "hls_url": streams["hls_url"],
         "stats": stats,
         "server_timings": server_timings,
     }
@@ -1095,7 +703,9 @@ def _container_items(data: dict) -> list[dict]:
     return _as_list(container.get("Metadata") or container.get("Directory"))
 
 
-def _plex_server_get(server: UserPlexServer, user, path: str) -> tuple[dict, str] | None:
+def _plex_server_get(
+    server: UserPlexServer, user, path: str, extra_headers: dict | None = None
+) -> tuple[dict, str] | None:
     """GET a Plex server path, trying alternative base URLs on failure.
 
     Returns ``(data, working_base_url)`` from the first base URL that answers
@@ -1118,11 +728,15 @@ def _plex_server_get(server: UserPlexServer, user, path: str) -> tuple[dict, str
         if url not in base_urls:
             base_urls.append(url)
 
+    req_headers = _plex_headers()
+    if extra_headers:
+        req_headers.update(extra_headers)
+
     for base_url in base_urls:
         try:
             status, raw = _request(
                 _with_token(f"{base_url}{path}", token),
-                headers=_plex_headers(),
+                headers=req_headers,
                 timeout=3.0,
             )
             if status != 200:
@@ -1132,6 +746,417 @@ def _plex_server_get(server: UserPlexServer, user, path: str) -> tuple[dict, str
         except Exception:
             continue
     return None
+
+
+def get_plex_album_tracks(user, media_identifier: str | int) -> dict:
+    """Return the user's Plex album tracks for a catalog music media item."""
+    ident = str(media_identifier).strip()
+    plex_item = None
+    if ident.isdigit():
+        plex_item = (
+            UserPlexItem.objects.filter(user=user, media_item_id=int(ident))
+            .select_related("server")
+            .first()
+        )
+    if plex_item is None:
+        plex_item = (
+            UserPlexItem.objects.filter(user=user, rating_key=ident)
+            .select_related("server")
+            .first()
+        )
+    if plex_item is None:
+        raise PlexConnectInfoNotFound(CONNECT_INFO_ITEM_NOT_FOUND)
+    server = plex_item.server
+    if server is None:
+        raise PlexConnectInfoNotFound(CONNECT_INFO_SERVER_NOT_FOUND)
+
+    result = _plex_server_get(
+        server, user, f"/library/metadata/{plex_item.rating_key}/children"
+    )
+    if result is None:
+        raise PlexAlbumTracksFetchError(ALBUM_TRACKS_FETCH_ERROR)
+    data, working_base_url = result
+
+    token = server.access_token or getattr(user, "plex_auth_token", None)
+    album_thumb_url = None
+    if working_base_url and token and plex_item.rating_key:
+        album_thumb_url = (
+            f"{working_base_url}/library/metadata/{plex_item.rating_key}/thumb"
+            f"?X-Plex-Token={token}"
+        )
+
+    tracks = [
+        {
+            "rating_key": str(item.get("ratingKey", "")),
+            "title": item.get("title", ""),
+            "artist": item.get("grandparentTitle", "") or item.get("originalTitle", "") or item.get("parentTitle", ""),
+            "track_number": item.get("index", 0),
+            "disc_number": item.get("parentIndex", 1),
+            "duration_ms": item.get("duration"),
+        }
+        for item in _container_items(data)
+    ]
+    return {
+        "tracks": tracks,
+        "base_url": working_base_url,
+        "token": token,
+        "rating_key": plex_item.rating_key,
+        "album_thumb_url": album_thumb_url,
+    }
+
+
+def get_plex_music_sections(user) -> list[dict]:
+    """Return all music libraries configured on user's Plex servers."""
+    libraries = (
+        UserPlexLibrary.objects.filter(user=user, library_type__in=["artist", "music"])
+        .select_related("server")
+        .order_by("server__name", "title")
+    )
+    return [
+        {
+            "id": lib.id,
+            "server_id": lib.server.id if lib.server else None,
+            "server_name": lib.server.name if lib.server else "",
+            "section_key": lib.section_key,
+            "title": lib.title,
+            "library_type": lib.library_type,
+        }
+        for lib in libraries
+    ]
+
+
+def browse_plex_music(
+    user,
+    library_id: int | str,
+    browse_type: str = "albums",
+    query: str = "",
+    artist_rating_key: str = "",
+    limit: int = 60,
+    offset: int = 0,
+) -> dict:
+    """Browse artists, albums, playlists, or tracks from a specific Plex music library."""
+    lib = (
+        UserPlexLibrary.objects.filter(user=user, id=int(library_id))
+        .select_related("server")
+        .first()
+    )
+    if lib is None or not lib.server:
+        raise PlexConnectInfoNotFound("Plex music library not found")
+
+    server = lib.server
+    query_hash = hashlib.md5(f"{query}:{artist_rating_key}".encode()).hexdigest()
+    cache_key = f"plex_music_browse:{lib.id}:{browse_type}:{offset}:{limit}:{query_hash}"
+    cached_result = cache.get(cache_key)
+    if cached_result is not None:
+        return cached_result
+
+    type_map = {
+        "artists": 8,
+        "albums": 9,
+        "tracks": 10,
+    }
+    p_type = type_map.get(browse_type, 9)
+
+    raw_items: list[dict] = []
+    working_base_url: str | None = None
+    token = server.access_token or getattr(user, "plex_auth_token", None)
+    container_meta: dict = {}
+
+    extra_headers = {
+        "X-Plex-Container-Start": str(offset),
+        "X-Plex-Container-Size": str(limit),
+    }
+
+    if artist_rating_key:
+        # Direct drilldown for an artist: children gives albums
+        sub_path = f"/library/metadata/{artist_rating_key}/children?X-Plex-Container-Start={offset}&X-Plex-Container-Size={limit}"
+        res = _plex_server_get(server, user, sub_path, extra_headers=extra_headers)
+        if res:
+            data, working_base_url = res
+            container_meta = data.get("MediaContainer", {})
+            raw_items = _container_items(data)
+    elif browse_type == "playlists":
+        sub_path = f"/playlists?X-Plex-Container-Start={offset}&X-Plex-Container-Size={limit}"
+        res = _plex_server_get(server, user, sub_path, extra_headers=extra_headers)
+        if res:
+            data, working_base_url = res
+            container_meta = data.get("MediaContainer", {})
+            raw_items = _container_items(data)
+    elif query:
+        encoded_query = urllib.parse.quote(query)
+        # 1. Use /hubs/search for full-text, fuzzy, artist-aware music search
+        hub_res = _plex_server_get(
+            server,
+            user,
+            f"/hubs/search?query={encoded_query}&sectionId={lib.section_key}&limit={limit}",
+            extra_headers=extra_headers,
+        )
+        if hub_res:
+            data, working_base_url = hub_res
+            container_meta = data.get("MediaContainer", {})
+            hubs = container_meta.get("Hub", [])
+            target_hub_type = (
+                "album"
+                if browse_type == "albums"
+                else ("artist" if browse_type == "artists" else "track")
+            )
+            for h in hubs:
+                h_type = h.get("type") or h.get("hubIdentifier")
+                if h_type == target_hub_type:
+                    for meta in h.get("Metadata", []):
+                        meta_section = str(meta.get("librarySectionID", ""))
+                        if not meta_section or meta_section == str(lib.section_key):
+                            raw_items.append(meta)
+
+        # 2. Fallback to /all?title%=... (contains) if hub search returned no items
+        if not raw_items:
+            sub_path = f"/library/sections/{lib.section_key}/all?type={p_type}&title%={encoded_query}&X-Plex-Container-Start={offset}&X-Plex-Container-Size={limit}"
+            res = _plex_server_get(server, user, sub_path, extra_headers=extra_headers)
+            if res:
+                data, working_base_url = res
+                container_meta = data.get("MediaContainer", {})
+                raw_items = _container_items(data)
+
+        # 3. Fallback to exact title match
+        if not raw_items:
+            sub_path = f"/library/sections/{lib.section_key}/all?type={p_type}&title={encoded_query}&X-Plex-Container-Start={offset}&X-Plex-Container-Size={limit}"
+            res = _plex_server_get(server, user, sub_path, extra_headers=extra_headers)
+            if res:
+                data, working_base_url = res
+                container_meta = data.get("MediaContainer", {})
+                raw_items = _container_items(data)
+    else:
+        sub_path = f"/library/sections/{lib.section_key}/all?type={p_type}&X-Plex-Container-Start={offset}&X-Plex-Container-Size={limit}"
+        res = _plex_server_get(server, user, sub_path, extra_headers=extra_headers)
+        if res:
+            data, working_base_url = res
+            container_meta = data.get("MediaContainer", {})
+            raw_items = _container_items(data)
+
+    if working_base_url is None:
+        working_base_url = (server.base_url or "").rstrip("/")
+
+    total_count = len(raw_items)
+    if container_meta:
+        total_size = container_meta.get("totalSize")
+        if total_size is not None:
+            try:
+                total_count = int(total_size)
+            except (ValueError, TypeError):
+                total_count = len(raw_items)
+        elif "size" in container_meta:
+            try:
+                total_count = max(len(raw_items), int(container_meta["size"]))
+            except (ValueError, TypeError):
+                total_count = len(raw_items)
+
+    items = []
+    for item in raw_items:
+        rkey = str(item.get("ratingKey", ""))
+        thumb_path = item.get("thumb") or item.get("parentThumb")
+        thumb_url = (
+            f"{working_base_url}{thumb_path}?X-Plex-Token={token}"
+            if (thumb_path and working_base_url and token)
+            else None
+        )
+        part_key = (
+            item.get("Media", [{}])[0].get("Part", [{}])[0].get("key", "")
+            if item.get("Media")
+            else ""
+        )
+
+        items.append({
+            "rating_key": rkey,
+            "title": item.get("title", ""),
+            "artist": (
+                item.get("parentTitle", "")
+                or item.get("grandparentTitle", "")
+                or item.get("originalTitle", "")
+            ),
+            "thumb_url": thumb_url,
+            "year": item.get("year"),
+            "track_count": item.get("leafCount") or item.get("childCount"),
+            "duration_ms": item.get("duration"),
+            "type": item.get("type", browse_type),
+            "part_key": part_key,
+        })
+
+    result = {
+        "items": items,
+        "total_count": total_count,
+        "offset": offset,
+        "limit": limit,
+        "base_url": working_base_url,
+        "token": token,
+        "server_id": server.id,
+        "library_id": lib.id,
+    }
+    cache.set(cache_key, result, timeout=300)
+    return result
+
+
+def get_plex_artist_details(user, server_id: int | str, rating_key: str) -> dict:
+    """Return artist info, albums, and tracks for an artist directly from Plex."""
+    server = UserPlexServer.objects.filter(user=user, id=int(server_id)).first()
+    if not server:
+        server = UserPlexServer.objects.filter(user=user).first()
+    if not server:
+        raise PlexConnectInfoNotFound(CONNECT_INFO_SERVER_NOT_FOUND)
+
+    cache_key = f"plex_music_artist_details:{server.id}:{rating_key}"
+    cached_result = cache.get(cache_key)
+    if cached_result is not None:
+        return cached_result
+
+    # Fetch artist metadata, albums, and tracks concurrently using ThreadPoolExecutor(max_workers=3)
+    with ThreadPoolExecutor(max_workers=3) as executor:
+        future_art = executor.submit(_plex_server_get, server, user, f"/library/metadata/{rating_key}")
+        future_alb = executor.submit(_plex_server_get, server, user, f"/library/metadata/{rating_key}/children")
+        future_trk = executor.submit(_plex_server_get, server, user, f"/library/metadata/{rating_key}/allLeaves")
+
+        art_res = future_art.result()
+        alb_res = future_alb.result()
+        trk_res = future_trk.result()
+
+    if art_res is None:
+        raise PlexAlbumTracksFetchError("Could not fetch artist from Plex")
+    art_data, working_base_url = art_res
+    token = server.access_token or getattr(user, "plex_auth_token", None)
+    artist_items = _container_items(art_data)
+    art_meta = artist_items[0] if artist_items else {}
+
+    thumb_path = art_meta.get("thumb")
+    art_path = art_meta.get("art")
+    thumb_url = (
+        f"{working_base_url}{thumb_path}?X-Plex-Token={token}"
+        if (thumb_path and working_base_url and token)
+        else None
+    )
+    art_url = (
+        f"{working_base_url}{art_path}?X-Plex-Token={token}"
+        if (art_path and working_base_url and token)
+        else None
+    )
+
+    artist_name = art_meta.get("title", "")
+    artist_info = {
+        "rating_key": rating_key,
+        "name": artist_name,
+        "summary": art_meta.get("summary", ""),
+        "thumb_url": thumb_url,
+        "art_url": art_url,
+    }
+
+    albums = []
+    if alb_res:
+        alb_data, _ = alb_res
+        for item in _container_items(alb_data):
+            alb_thumb = item.get("thumb") or item.get("parentThumb")
+            alb_thumb_url = (
+                f"{working_base_url}{alb_thumb}?X-Plex-Token={token}"
+                if (alb_thumb and working_base_url and token)
+                else None
+            )
+            albums.append({
+                "rating_key": str(item.get("ratingKey", "")),
+                "title": item.get("title", ""),
+                "artist": item.get("parentTitle", "") or artist_name,
+                "year": item.get("year"),
+                "track_count": item.get("leafCount"),
+                "thumb_url": alb_thumb_url,
+                "type": "album",
+            })
+
+    tracks = []
+    if trk_res:
+        trk_data, _ = trk_res
+        for item in _container_items(trk_data):
+            part_key = (
+                item.get("Media", [{}])[0].get("Part", [{}])[0].get("key", "")
+                if item.get("Media")
+                else ""
+            )
+            tracks.append({
+                "rating_key": str(item.get("ratingKey", "")),
+                "title": item.get("title", ""),
+                "artist": item.get("grandparentTitle", "") or artist_name,
+                "album_name": item.get("parentTitle", ""),
+                "track_number": item.get("index", 0),
+                "disc_number": item.get("parentIndex", 1),
+                "duration_ms": item.get("duration"),
+                "part_key": part_key,
+            })
+
+    result = {
+        "artist": artist_info,
+        "albums": albums,
+        "tracks": tracks,
+        "base_url": working_base_url,
+        "token": token,
+        "server_id": server.id,
+    }
+    cache.set(cache_key, result, timeout=600)
+    return result
+
+
+def get_plex_artist_tracks_by_rating_key(user, server_id: int | str, rating_key: str) -> dict:
+    """Return all tracks for an artist rating key directly from the target Plex server."""
+    details = get_plex_artist_details(user, server_id, rating_key)
+    return {
+        "tracks": details["tracks"],
+        "base_url": details["base_url"],
+        "token": details["token"],
+        "artist": details["artist"],
+    }
+
+
+def get_plex_album_tracks_by_rating_key(user, server_id: int | str, rating_key: str) -> dict:
+    """Return tracks for an album rating key directly from the target Plex server."""
+    server = UserPlexServer.objects.filter(user=user, id=int(server_id)).first()
+    if not server:
+        # Fallback to any connected server for this user
+        server = UserPlexServer.objects.filter(user=user).first()
+    if not server:
+        raise PlexConnectInfoNotFound(CONNECT_INFO_SERVER_NOT_FOUND)
+
+    cache_key = f"plex_music_album_tracks:{server.id}:{rating_key}"
+    cached_result = cache.get(cache_key)
+    if cached_result is not None:
+        return cached_result
+
+    result = _plex_server_get(server, user, f"/library/metadata/{rating_key}/children")
+    if result is None:
+        raise PlexAlbumTracksFetchError(ALBUM_TRACKS_FETCH_ERROR)
+    data, working_base_url = result
+    token = server.access_token or getattr(user, "plex_auth_token", None)
+
+    album_thumb_url = f"{working_base_url}/library/metadata/{rating_key}/thumb?X-Plex-Token={token}" if (working_base_url and token) else None
+
+    tracks = [
+        {
+            "rating_key": str(item.get("ratingKey", "")),
+            "title": item.get("title", ""),
+            "artist": item.get("grandparentTitle", "") or item.get("originalTitle", "") or item.get("parentTitle", ""),
+            "track_number": item.get("index", 0),
+            "disc_number": item.get("parentIndex", 1),
+            "duration_ms": item.get("duration"),
+            "part_key": (
+                item.get("Media", [{}])[0].get("Part", [{}])[0].get("key", "")
+                if item.get("Media")
+                else ""
+            ),
+        }
+        for item in _container_items(data)
+    ]
+    res_data = {
+        "tracks": tracks,
+        "base_url": working_base_url,
+        "token": token,
+        "rating_key": rating_key,
+        "album_thumb_url": album_thumb_url,
+    }
+    cache.set(cache_key, res_data, timeout=600)
+    return res_data
 
 
 def _to_int(value: Any) -> int | None:
@@ -1734,6 +1759,142 @@ def get_plex_continue_watching(user) -> list[dict]:
     return items
 
 
+def _resolve_plex_servers_for_action(
+    user, rating_key: str, server_id: str | None = None
+) -> list[UserPlexServer]:
+    if server_id:
+        srv = UserPlexServer.objects.filter(user=user, machine_identifier=server_id).first()
+        if srv:
+            return [srv]
+    p_item = (
+        UserPlexItem.objects.filter(user=user, rating_key=str(rating_key))
+        .select_related("server")
+        .first()
+    )
+    if p_item and p_item.server:
+        return [p_item.server]
+
+    servers = list(UserPlexServer.objects.filter(user=user, selected=True))
+    if not servers:
+        servers = list(UserPlexServer.objects.filter(user=user))
+    return servers
+
+
+def _plex_server_action(
+    server: UserPlexServer,
+    user,
+    path: str,
+    method: str = "GET",
+    timeout: float = 5.0,
+) -> bool:
+    token = server.access_token or (getattr(user, "plex_auth_token", None) if user else None)
+    if not token:
+        return False
+
+    working_cache_key = f"plex_server_working_base:{server.pk}"
+    cached_working = cache.get(working_cache_key)
+
+    alt_urls = _get_alternative_plex_urls(server, user)
+    base_urls: list[str] = []
+    if cached_working and (cached_working == server.base_url or cached_working in alt_urls):
+        base_urls.append(cached_working)
+    if server.base_url and server.base_url not in base_urls:
+        base_urls.append(server.base_url)
+    for url in alt_urls:
+        if url not in base_urls:
+            base_urls.append(url)
+
+    for base_url in base_urls:
+        try:
+            url = _with_token(f"{base_url}{path}", token)
+            status, _ = _request(
+                url,
+                method=method,
+                headers=_plex_headers(),
+                timeout=timeout,
+            )
+            if status in (200, 201, 204):
+                cache.set(working_cache_key, base_url, timeout=600)
+                return True
+        except Exception:
+            continue
+    return False
+
+
+def scrobble_plex_item(
+    user,
+    rating_key: str,
+    watched: bool = True,
+    server_id: str | None = None,
+) -> bool:
+    """Mark a media item as watched (scrobble) or unwatched (unscrobble) on Plex.
+
+    Sends /:/scrobble or /:/unscrobble to the relevant PMS instance, updates
+    local UserPlexItem rows, and synchronises local Otix catalog interactions
+    if a matched media item is present.
+    """
+    action_path = (
+        f"/:/scrobble?key={rating_key}&identifier=com.plexapp.plugins.library"
+        if watched
+        else f"/:/unscrobble?key={rating_key}&identifier=com.plexapp.plugins.library"
+    )
+    servers = _resolve_plex_servers_for_action(user, rating_key, server_id)
+    success = False
+    for srv in servers:
+        if _plex_server_action(srv, user, action_path, method="GET"):
+            success = True
+            break
+
+    try:
+        p_items = list(UserPlexItem.objects.filter(user=user, rating_key=str(rating_key)))
+        for p_item in p_items:
+            p_item.viewed = watched
+            if watched:
+                p_item.view_offset = p_item.duration or 0
+                p_item.view_count = (p_item.view_count or 0) + 1
+            else:
+                p_item.view_offset = 0
+            p_item.save(update_fields=["viewed", "view_offset", "view_count", "updated_at"])
+
+            if p_item.media_item_id:
+                from apps.media.services.interaction import set_interaction, remove_interaction
+
+                if watched:
+                    set_interaction(user, p_item.media_item_id, "watched", {"source": "plex"})
+                else:
+                    remove_interaction(user, p_item.media_item_id, "watched")
+    except Exception:
+        logger.debug("Failed updating local interaction after plex scrobble", exc_info=True)
+
+    return success
+
+
+def remove_plex_continue_watching(
+    user,
+    rating_key: str,
+    server_id: str | None = None,
+) -> bool:
+    """Remove a media item from the Continue Watching hub on Plex.
+
+    Uses PUT /actions/removeFromContinueWatching?ratingKey=... and clears the
+    local view_offset on matching UserPlexItem rows.
+    """
+    action_path = f"/actions/removeFromContinueWatching?ratingKey={rating_key}"
+    servers = _resolve_plex_servers_for_action(user, rating_key, server_id)
+    success = False
+    for srv in servers:
+        if _plex_server_action(srv, user, action_path, method="PUT"):
+            success = True
+            break
+
+    try:
+        UserPlexItem.objects.filter(user=user, rating_key=str(rating_key)).update(view_offset=0)
+    except Exception:
+        logger.debug("Failed clearing local view_offset for continue-watching removal", exc_info=True)
+
+    return success
+
+
 # ── Discovery (GET /integrations/plex/servers) ───────────────────────────
 
 DISCOVER_NO_LINKED_ACCOUNT = "User has no linked Plex account"
@@ -1965,7 +2126,7 @@ def discover_plex_libraries(user, server: UserPlexServer) -> list[UserPlexLibrar
     libraries: list[UserPlexLibrary] = []
     for item in _container_items(data):
         lib_type = item.get("type")
-        if lib_type not in {"movie", "show", "artist"}:
+        if lib_type not in {"movie", "show", "artist", "music"}:
             continue
         key = str(item.get("key") or "")
         if not key:
@@ -1977,7 +2138,7 @@ def discover_plex_libraries(user, server: UserPlexServer) -> list[UserPlexLibrar
                 server=server,
                 section_key=key,
                 title=str(item.get("title") or "Plex Library"),
-                library_type=lib_type,
+                library_type="artist" if lib_type == "music" else lib_type,
             )
         library.title = str(item.get("title") or library.title)
         library.library_type = lib_type

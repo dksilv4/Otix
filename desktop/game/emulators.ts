@@ -37,7 +37,7 @@ export interface DetectedEmulator {
 export const CONSOLE_PLATFORMS = new Set([
   'nes', 'snes', 'n64', 'gamecube', 'wii', 'wiiu', 'switch',
   'gb', 'gbc', 'gba', 'nds', '3ds',
-  'ps1', 'ps2', 'ps3', 'psp', 'psvita',
+  'ps1', 'ps2', 'ps3', 'ps4', 'ps5', 'psp', 'psvita',
   'genesis', 'mastersystem', 'gamegear', 'saturn', 'dreamcast',
   'xbox', 'xbox360', 'arcade',
 ]);
@@ -71,14 +71,14 @@ export const EXTENSION_PLATFORM_MAP: Record<string, string> = {
 
 export const AMBIGUOUS_EXTENSIONS: Record<string, string[]> = {
   '.iso': ['pc', 'ps2', 'gamecube', 'wii', 'psp', 'ps1', 'xbox', 'xbox360'],
-  '.bin': ['ps1', 'ps2', 'saturn', 'genesis'],
+  '.bin': ['ps1', 'ps2', 'ps4', 'ps5', 'saturn', 'genesis'],
   '.cue': ['ps1', 'ps2', 'saturn', 'genesis'],
   '.chd': ['ps1', 'ps2', 'dreamcast', 'saturn', 'arcade'],
   '.zip': ['arcade', 'nes', 'snes', 'gba', 'genesis'],
   '.7z': ['arcade', 'nes', 'snes', 'gba', 'genesis'],
   '.pbp': ['ps1', 'psp'],
   '.img': ['ps1', 'ps2', 'saturn'],
-  '.pkg': ['ps4', 'ps3', 'psvita'],
+  '.pkg': ['ps5', 'ps4', 'ps3', 'psvita'],
 };
 
 // ── Built-in Canonical Emulator Profiles ───────────────────────────────
@@ -353,9 +353,9 @@ export const BUILTIN_EMULATORS: EmulatorDefinition[] = [
   {
     id: 'shadps4',
     name: 'shadPS4',
-    description: 'PlayStation 4 emulator for running PS4 pkg titles',
-    platforms: ['ps4'],
-    extensions: ['.pkg'],
+    description: 'PlayStation 4 & PlayStation 5 emulator for running PS4/PS5 pkg titles and dumps',
+    platforms: ['ps4', 'ps5'],
+    extensions: ['.pkg', 'eboot.bin', '.bin'],
     defaultExecutable: 'shadps4.exe',
     executableLookup: [
       '%LOCALAPPDATA%/Programs/shadPS4/shadps4.exe',
@@ -507,6 +507,7 @@ export function isRomGame(game: RomGameLike): boolean {
     const ext = path.extname(game.exePath).toLowerCase();
     if (ext in EXTENSION_PLATFORM_MAP) return true;
     if (ext in AMBIGUOUS_EXTENSIONS && ext !== '.exe') return true;
+    if (path.basename(game.exePath).toLowerCase() === 'eboot.bin') return true;
   }
 
   return false;

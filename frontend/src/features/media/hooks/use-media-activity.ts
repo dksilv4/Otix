@@ -41,18 +41,20 @@ export const useMediaActivity = (
   mediaType?: string,
   tmdbId?: string | number | null,
   mediaId?: string | number | null,
+  tvdbId?: string | number | null,
+  title?: string | null,
 ): MediaActivityItem | undefined => {
   const { data } = useMediaActivityCatalog()
   const items = data?.items
 
   return useMemo(() => {
     if (!items) return undefined
-    const keys = resolveActivityLookupKeys(mediaType, tmdbId, mediaId)
+    const keys = resolveActivityLookupKeys(mediaType, tmdbId, mediaId, tvdbId, title)
     for (const key of keys) {
       if (items[key]) {
         return items[key]
       }
     }
     return undefined
-  }, [items, mediaType, tmdbId, mediaId])
+  }, [items, mediaType, tmdbId, mediaId, tvdbId, title])
 }

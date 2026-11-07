@@ -93,4 +93,39 @@ describe('useMediaActivity hooks', () => {
     expect(result.current?.isOwned).toBe(false)
     expect(result.current?.owner.username).toBe('bob')
   })
+
+  it('matches show activity using tvdbId or title fallback (VisionQuest)', async () => {
+    const mockCatalog = {
+      items: {
+        'tvdb:show:426606': {
+          status: 'available',
+          mediaType: 'show',
+          tvdbId: '426606',
+          title: 'VisionQuest',
+          nodeName: 'Main Node',
+          isOwned: true,
+          canManage: true,
+          isPartial: true,
+          episodeCount: 7,
+          totalEpisodes: 8,
+          owner: { id: 1, username: 'admin' },
+        },
+      },
+      summary: { totalProcessing: 0, totalRequested: 0, totalAvailable: 1 },
+    }
+
+    vi.mocked(apiClient.get).mockResolvedValue({ data: mockCatalog })
+
+    // Frontend queries with TMDb ID and TVDb ID
+    const { result } = renderHook(
+      () => useMediaActivity('show', '213375', 'tmdb:show:213375', '426606', 'VisionQuest'),
+      { wrapper: createWrapper() },
+    )
+
+    await waitFor(() => expect(result.current).toBeDefined())
+    expect(result.current?.status).toBe('available')
+    expect(result.current?.title).toBe('VisionQuest')
+    expect(result.current?.episodeCount).toBe(7)
+    expect(result.current?.isPartial).toBe(true)
+  })
 })

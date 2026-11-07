@@ -219,26 +219,25 @@ export const NodeScannedFilesTable = ({
         <div className="px-3 pt-3 pb-1.5">
           <table className="w-full text-left text-xs table-fixed">
             <colgroup>
-              {visibleColumns.icon && <col style={{ width: '48px' }} />}
+              {visibleColumns.icon && <col style={{ width: '56px' }} />}
               <col />
               {visibleColumns.filename && (
                 <col className="hidden md:table-column" style={{ width: '28%' }} />
               )}
-              {visibleColumns.platform && <col style={{ width: '80px' }} />}
-              {visibleColumns.version && <col style={{ width: '75px' }} />}
-              {visibleColumns.format && <col style={{ width: '70px' }} />}
-              {visibleColumns.size && <col style={{ width: '85px' }} />}
+              {visibleColumns.platform && <col style={{ width: '85px' }} />}
+              {visibleColumns.version && <col style={{ width: '80px' }} />}
+              {visibleColumns.format && <col style={{ width: '75px' }} />}
+              {visibleColumns.size && <col style={{ width: '90px' }} />}
               {visibleColumns.date && (
-                <col className="hidden lg:table-column" style={{ width: '95px' }} />
+                <col className="hidden lg:table-column" style={{ width: '100px' }} />
               )}
-              {visibleColumns.status && <col style={{ width: '60px' }} />}
-              <col style={{ width: '130px' }} />
+              {visibleColumns.status && <col style={{ width: '64px' }} />}
             </colgroup>
             <thead>
               <tr className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider select-none">
                 {/* Icon header: hosts the Column Settings button per user request */}
                 {visibleColumns.icon && (
-                  <th className="py-2 px-2 text-center" aria-label="Customize columns">
+                  <th className="py-2.5 px-2 text-center" aria-label="Customize columns">
                     <NodeScanColumnSettings
                       visibleColumns={visibleColumns}
                       onToggleColumn={handleToggleColumn}
@@ -364,12 +363,6 @@ export const NodeScannedFilesTable = ({
                     </button>
                   </th>
                 )}
-
-                <th className="py-3 px-3 text-right">
-                  <div className="flex items-center justify-end gap-1.5">
-                    <span>Actions</span>
-                  </div>
-                </th>
               </tr>
             </thead>
           </table>
@@ -414,22 +407,21 @@ export const NodeScannedFilesTable = ({
       ) : (
         /* Floating Rows */
         <div className="px-3">
-          <table className="w-full text-left text-xs table-fixed border-separate border-spacing-y-2.5">
+          <table className="w-full text-left text-xs table-fixed border-separate border-spacing-y-3.5">
             <colgroup>
-              {visibleColumns.icon && <col style={{ width: '48px' }} />}
+              {visibleColumns.icon && <col style={{ width: '56px' }} />}
               <col />
               {visibleColumns.filename && (
                 <col className="hidden md:table-column" style={{ width: '28%' }} />
               )}
-              {visibleColumns.platform && <col style={{ width: '80px' }} />}
-              {visibleColumns.version && <col style={{ width: '75px' }} />}
-              {visibleColumns.format && <col style={{ width: '70px' }} />}
-              {visibleColumns.size && <col style={{ width: '85px' }} />}
+              {visibleColumns.platform && <col style={{ width: '85px' }} />}
+              {visibleColumns.version && <col style={{ width: '80px' }} />}
+              {visibleColumns.format && <col style={{ width: '75px' }} />}
+              {visibleColumns.size && <col style={{ width: '90px' }} />}
               {visibleColumns.date && (
-                <col className="hidden lg:table-column" style={{ width: '95px' }} />
+                <col className="hidden lg:table-column" style={{ width: '100px' }} />
               )}
-              {visibleColumns.status && <col style={{ width: '60px' }} />}
-              <col style={{ width: '130px' }} />
+              {visibleColumns.status && <col style={{ width: '64px' }} />}
             </colgroup>
             <tbody>
               {files.map((item) => (

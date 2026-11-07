@@ -199,38 +199,6 @@ export function setAllowPrerelease(enabled: boolean): void {
 }
 
 /**
- * Attempt to resolve a GitHub token to allow checking/downloading releases
- * from private GitHub repositories.
- */
-export function resolveGitHubToken(): string | null {
-  if (process.env.GH_TOKEN && process.env.GH_TOKEN.trim()) {
-    return process.env.GH_TOKEN.trim();
-  }
-  if (process.env.GITHUB_TOKEN && process.env.GITHUB_TOKEN.trim()) {
-    return process.env.GITHUB_TOKEN.trim();
-  }
-  try {
-    const settings = getSettings();
-    if (settings?.githubToken && settings.githubToken.trim()) {
-      return settings.githubToken.trim();
-    }
-  } catch {
-    // ignore
-  }
-  try {
-    const token = execSync('gh auth token', {
-      encoding: 'utf-8',
-      stdio: ['pipe', 'pipe', 'ignore'],
-      timeout: 1500,
-    }).trim();
-    if (token) return token;
-  } catch {
-    // ignore
-  }
-  return null;
-}
-
-/**
  * Configure autoUpdater feed URL for public GitHub releases.
  */
 export function configureAutoUpdaterFeed(): void {
@@ -560,7 +528,22 @@ export function registerUpdaterIPC(win: BrowserWindow | null): void {
     });
   });
 
-  // Handle IPC calls from renderer
+  // Handle IPC calls from renderer (ensure idempotent registration)
+  const UPDATER_IPC_CHANNELS = [
+    'updater:get-status',
+    'updater:get-version',
+    'updater:check-for-updates',
+    'updater:download-update',
+    'updater:install-update',
+    'updater:validate-token',
+  ];
+
+  for (const channel of UPDATER_IPC_CHANNELS) {
+    try {
+      ipcMain.removeHandler(channel);
+    } catch {}
+  }
+
   ipcMain.handle('updater:get-status', () => {
     return currentPayload;
   });

@@ -3,7 +3,7 @@ import { useNavigate } from '@tanstack/react-router'
 import {
   ListMusic, Pause, Play, SkipBack, SkipForward,
   Volume1, Volume2, VolumeX, ChevronLeft, Clock,
-  Minimize2, Maximize2,
+  Minimize2, Maximize2, HardDrive,
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { usePlayer } from '@/lib/player/use-player'
@@ -25,6 +25,7 @@ export const ActivityModulePlayer = () => {
     togglePlay, skipNext, skipPrevious, seek, setVolume,
     plexQueue, plexPreviousTracks, skipPlexToIndex,
     jellyfinQueue, jellyfinPreviousTracks, skipJellyfinToIndex,
+    localQueue, localPreviousTracks, skipLocalToIndex,
   } = usePlayer()
 
   const [isCompact, setIsCompact] = useState(() => {
@@ -60,8 +61,8 @@ export const ActivityModulePlayer = () => {
 
   const hasScrolledRef = useRef(false)
 
-  const activeQueue = source === 'jellyfin' ? jellyfinQueue : plexQueue
-  const activePrev = source === 'jellyfin' ? jellyfinPreviousTracks : plexPreviousTracks
+  const activeQueue = source === 'jellyfin' ? jellyfinQueue : source === 'local' ? localQueue : plexQueue
+  const activePrev = source === 'jellyfin' ? jellyfinPreviousTracks : source === 'local' ? localPreviousTracks : plexPreviousTracks
 
   const queueItems = activeQueue.slice(1).map(normalizeTrack)
 
@@ -121,6 +122,8 @@ export const ActivityModulePlayer = () => {
       skipPlexToIndex(displayIndex + 1)
     } else if (source === 'jellyfin') {
       skipJellyfinToIndex(displayIndex + 1)
+    } else if (source === 'local') {
+      skipLocalToIndex(displayIndex + 1)
     }
   }
 
@@ -129,6 +132,8 @@ export const ActivityModulePlayer = () => {
       skipPlexToIndex(index)
     } else if (source === 'jellyfin') {
       skipJellyfinToIndex(index)
+    } else if (source === 'local') {
+      skipLocalToIndex(index)
     }
   }
 
@@ -190,6 +195,10 @@ export const ActivityModulePlayer = () => {
               {source === 'jellyfin' ? (
                 <span className="inline-flex items-center justify-center rounded-full p-0.5 bg-sky-500/20 text-sky-400" title="Jellyfin">
                   <JellyfinIcon className="h-2 w-2" />
+                </span>
+              ) : source === 'local' ? (
+                <span className="inline-flex items-center justify-center rounded-full p-0.5 bg-white/20 text-white/90" title="Local Files">
+                  <HardDrive className="h-2 w-2" />
                 </span>
               ) : (
                 <span className="inline-flex items-center justify-center rounded-full p-0.5 bg-amber-400/20 text-amber-400" title="Plex">
@@ -303,6 +312,10 @@ export const ActivityModulePlayer = () => {
                     {source === 'jellyfin' ? (
                       <span className="inline-flex items-center justify-center rounded-full p-1.5 bg-sky-500/20 text-sky-400" title="Jellyfin">
                         <JellyfinIcon className="h-3.5 w-3.5" />
+                      </span>
+                    ) : source === 'local' ? (
+                      <span className="inline-flex items-center justify-center rounded-full p-1.5 bg-white/20 text-white/90" title="Local Files">
+                        <HardDrive className="h-3.5 w-3.5" />
                       </span>
                     ) : (
                       <span className="inline-flex items-center justify-center rounded-full p-1.5 bg-amber-400/20 text-amber-400" title="Plex">

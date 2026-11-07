@@ -8,6 +8,14 @@ export interface PlexTrackInfo {
   durationMs: number
   plexBaseUrl: string | null
   plexToken: string | null
+  partKey?: string | null
+}
+
+export type RepeatMode = 'off' | 'all' | 'one'
+
+export interface PlayerProgressContextValue {
+  position: number
+  duration: number
 }
 
 export interface PlexPlayerContextValue {
@@ -18,6 +26,8 @@ export interface PlexPlayerContextValue {
   volume: number
   queue: PlexTrackInfo[]
   previousTracks: PlexTrackInfo[]
+  repeatMode: RepeatMode
+  isShuffled: boolean
   error: string | null
   playTrack: (track: PlexTrackInfo) => Promise<void>
   playAlbum: (tracks: PlexTrackInfo[], startIndex?: number) => Promise<void>
@@ -29,6 +39,10 @@ export interface PlexPlayerContextValue {
   skipNext: () => void
   skipPrevious: () => void
   skipToIndex: (index: number) => void
+  removeFromQueue: (index: number) => void
+  moveQueueItem: (fromIndex: number, toIndex: number) => void
+  toggleShuffle: () => void
+  setRepeatMode: (mode: RepeatMode) => void
   stop: () => void
 }
 
@@ -66,7 +80,48 @@ export interface JellyfinPlayerContextValue {
   stop: () => void
 }
 
-export type PlayerSource = 'plex' | 'jellyfin' | 'none'
+export interface LocalTrackInfo {
+  id: string
+  file?: File
+  url: string
+  title: string
+  artist: string
+  albumName: string
+  albumArt: string | null
+  durationMs: number
+  trackNumber?: number
+  path?: string
+}
+
+export interface LocalPlayerContextValue {
+  isPlaying: boolean
+  currentTrack: LocalTrackInfo | null
+  position: number
+  duration: number
+  volume: number
+  queue: LocalTrackInfo[]
+  previousTracks: LocalTrackInfo[]
+  repeatMode: RepeatMode
+  isShuffled: boolean
+  error: string | null
+  playTrack: (track: LocalTrackInfo) => Promise<void>
+  playTracks: (tracks: LocalTrackInfo[], startIndex?: number) => Promise<void>
+  togglePlay: () => void
+  pause: () => void
+  resume: () => void
+  seek: (ms: number) => void
+  setVolume: (vol: number) => void
+  skipNext: () => void
+  skipPrevious: () => void
+  skipToIndex: (index: number) => void
+  removeFromQueue: (index: number) => void
+  moveQueueItem: (fromIndex: number, toIndex: number) => void
+  toggleShuffle: () => void
+  setRepeatMode: (mode: RepeatMode) => void
+  stop: () => void
+}
+
+export type PlayerSource = 'plex' | 'jellyfin' | 'local' | 'none'
 
 export interface PlayerTrackInfo {
   id: string
@@ -92,6 +147,14 @@ export interface PlayerContextValue {
   volume: number
   error: string | null
 
+  // Advanced playback controls
+  repeatMode: RepeatMode
+  isShuffled: boolean
+  toggleShuffle: () => void
+  setRepeatMode: (mode: RepeatMode) => void
+  removeFromQueue: (index: number) => void
+  moveQueueItem: (fromIndex: number, toIndex: number) => void
+
   // Core transport actions (delegate to active source)
   togglePlay: () => Promise<void>
   skipNext: () => Promise<void>
@@ -109,10 +172,17 @@ export interface PlayerContextValue {
   playJellyfinAlbum: (tracks: JellyfinTrackInfo[], startIndex?: number) => Promise<void>
   skipJellyfinToIndex: (index: number) => void
 
+  playLocalTrack: (track: LocalTrackInfo) => Promise<void>
+  playLocalTracks: (tracks: LocalTrackInfo[], startIndex?: number) => Promise<void>
+  skipLocalToIndex: (index: number) => void
+
   // Provider-specific state exposed for specialized UI
   plexQueue: PlexTrackInfo[]
   plexPreviousTracks: PlexTrackInfo[]
 
   jellyfinQueue: JellyfinTrackInfo[]
   jellyfinPreviousTracks: JellyfinTrackInfo[]
+
+  localQueue: LocalTrackInfo[]
+  localPreviousTracks: LocalTrackInfo[]
 }

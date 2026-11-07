@@ -121,6 +121,11 @@ export class LibraryWatcher {
 
       watcher.on('error', (err) => {
         console.warn(`[LibraryWatcher] Watcher error on ${targetPath}:`, err);
+        try {
+          watcher.close();
+        } catch {
+          // Ignore close error
+        }
         this.watchers.delete(targetPath);
       });
 

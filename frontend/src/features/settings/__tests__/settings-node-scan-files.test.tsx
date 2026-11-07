@@ -321,12 +321,11 @@ describe('NodeScannedFilesTable component', () => {
     expect(screen.getAllByText('patch_2.1.exe').length).toBeGreaterThan(0)
   })
 
-  it('triggers onOpenMatchModal when clicking Match or Edit Match', () => {
+  it('opens details modal when clicking row to access actions including match', () => {
     render(<NodeScannedFilesTable {...defaultProps} />)
-    const matchBtns = screen.getAllByRole('button', { name: /edit match/i })
-    expect(matchBtns.length).toBe(2)
-    fireEvent.click(matchBtns[0])
-    expect(defaultProps.onOpenMatchModal).toHaveBeenCalledWith(mockFiles[0])
+    const rowTitle = screen.getByText('Cyberpunk 2077')
+    fireEvent.click(rowTitle)
+    expect(defaultProps.onOpenDetails).toHaveBeenCalledWith(mockFiles[0])
   })
 
   it('does not throw Rules of Hooks error when transitioning an unmatched game to matched', () => {

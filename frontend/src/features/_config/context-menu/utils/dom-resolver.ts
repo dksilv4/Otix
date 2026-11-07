@@ -126,6 +126,31 @@ export interface ResolvedPageTarget {
   title: string
 }
 
+export interface ResolvedContinueWatchingTarget {
+  type: 'continue-watching'
+  id: string
+  ratingKey: string
+  grandparentRatingKey?: string
+  mediaItemId?: string
+  mediaType: 'movie' | 'show'
+  title: string
+  showTitle?: string
+  episodeTitle?: string
+  seasonNumber?: number
+  episodeNumber?: number
+  subtitle?: string
+  stillUrl?: string
+  thumb?: string
+  backdropUrl?: string
+  viewOffset?: number
+  duration?: number
+  progressPercent?: number
+  year?: string
+  serverId?: string
+  serverName?: string
+  serverUrl?: string
+}
+
 export type ContextMenuResolvedTarget =
   | ResolvedMediaTarget
   | ResolvedGameTarget
@@ -143,6 +168,7 @@ export type ContextMenuResolvedTarget =
   | ResolvedTextTarget
   | ResolvedInputTarget
   | ResolvedPageTarget
+  | ResolvedContinueWatchingTarget
 
 export const resolveContextMenuTarget = (
   target: HTMLElement | null,
@@ -292,6 +318,33 @@ export const resolveContextMenuTarget = (
         title: contextEl.dataset.trackTitle || '',
         artist: contextEl.dataset.trackArtist,
         album: contextEl.dataset.trackAlbum,
+      }
+    }
+
+    if (rawType === 'continue-watching') {
+      return {
+        type: 'continue-watching',
+        id: contextEl.dataset.mediaId || contextEl.dataset.ratingKey || '',
+        ratingKey: contextEl.dataset.ratingKey || contextEl.dataset.mediaId || '',
+        grandparentRatingKey: contextEl.dataset.grandparentRatingKey,
+        mediaItemId: contextEl.dataset.mediaItemId,
+        mediaType: (contextEl.dataset.mediaType as 'movie' | 'show') || 'movie',
+        title: contextEl.dataset.mediaTitle || contextEl.dataset.episodeTitle || '',
+        showTitle: contextEl.dataset.showTitle,
+        episodeTitle: contextEl.dataset.episodeTitle,
+        seasonNumber: contextEl.dataset.seasonNumber ? Number(contextEl.dataset.seasonNumber) : undefined,
+        episodeNumber: contextEl.dataset.episodeNumber ? Number(contextEl.dataset.episodeNumber) : undefined,
+        subtitle: contextEl.dataset.subtitle,
+        thumb: contextEl.dataset.thumb || contextEl.dataset.mediaPoster,
+        stillUrl: contextEl.dataset.episodeStill || contextEl.dataset.thumb,
+        backdropUrl: contextEl.dataset.backdropUrl,
+        viewOffset: contextEl.dataset.viewOffset ? Number(contextEl.dataset.viewOffset) : undefined,
+        duration: contextEl.dataset.duration ? Number(contextEl.dataset.duration) : undefined,
+        progressPercent: contextEl.dataset.progressPercent ? Number(contextEl.dataset.progressPercent) : undefined,
+        year: contextEl.dataset.mediaYear,
+        serverId: contextEl.dataset.serverId,
+        serverName: contextEl.dataset.serverName,
+        serverUrl: contextEl.dataset.serverUrl,
       }
     }
   }

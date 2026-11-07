@@ -16,6 +16,7 @@ export interface HomeNetworkProfile {
   wifiSsid?: string;
   gatewayMac?: string;
   bssid?: string;
+  localNodeUrl?: string;
   localServerUrl?: string;
 }
 
@@ -32,6 +33,7 @@ export interface HomeVerificationResult {
     currentBssid?: string;
     currentGatewayMac?: string;
     hardwareMatched: boolean;
+    nodePingOk: boolean;
     serverPingOk: boolean;
     reason: string;
   };
@@ -249,9 +251,9 @@ export function detectCurrentNetwork(): CurrentNetworkInfo {
 }
 
 /**
- * Probes the local server endpoint to verify identity and presence on the LAN.
+ * Probes the local node endpoint to verify identity and presence on the LAN.
  */
-export async function probeLocalServer(targetUrl: string, timeoutMs = 2000): Promise<boolean> {
+export async function probeLocalNode(targetUrl: string, timeoutMs = 2000): Promise<boolean> {
   if (!targetUrl) return false;
 
   return new Promise((resolve) => {
@@ -297,8 +299,12 @@ export async function probeLocalServer(targetUrl: string, timeoutMs = 2000): Pro
   });
 }
 
+/** Legacy alias for probeLocalNode */
+export const probeLocalServer = probeLocalNode;
+
 export interface VerifyHomeOptions {
   currentNet?: CurrentNetworkInfo;
+  nodeProber?: (url: string, timeoutMs?: number) => Promise<boolean>;
   serverProber?: (url: string, timeoutMs?: number) => Promise<boolean>;
 }
 
@@ -310,13 +316,15 @@ export async function verifyHomeNetwork(
   optionsOrNet?: CurrentNetworkInfo | VerifyHomeOptions
 ): Promise<HomeVerificationResult> {
   let current: CurrentNetworkInfo;
-  let prober = probeLocalServer;
+  let prober = probeLocalNode;
 
   if (optionsOrNet && 'localIp' in optionsOrNet) {
     current = optionsOrNet;
   } else if (optionsOrNet) {
     current = optionsOrNet.currentNet || detectCurrentNetwork();
-    if (optionsOrNet.serverProber) {
+    if (optionsOrNet.nodeProber) {
+      prober = optionsOrNet.nodeProber;
+    } else if (optionsOrNet.serverProber) {
       prober = optionsOrNet.serverProber;
     }
   } else {
@@ -329,6 +337,7 @@ export async function verifyHomeNetwork(
       status: 'offline',
       details: {
         hardwareMatched: false,
+        nodePingOk: false,
         serverPingOk: false,
         reason: 'No local network interface or IP address available.',
       },
@@ -353,6 +362,7 @@ export async function verifyHomeNetwork(
           currentBssid: current.bssid,
           currentGatewayMac: current.gatewayMac,
           hardwareMatched: false,
+          nodePingOk: false,
           serverPingOk: false,
           reason: `Current Wi-Fi (${current.ssid || 'None/Ethernet'}) does not match home Wi-Fi (${profile.wifiSsid}).`,
         },
@@ -380,6 +390,7 @@ export async function verifyHomeNetwork(
             currentBssid: current.bssid,
             currentGatewayMac: current.gatewayMac,
             hardwareMatched: false,
+            nodePingOk: false,
             serverPingOk: false,
             reason: `Wi-Fi name matches “${profile.wifiSsid}”, but router hardware MAC does not match home profile (Foreign Network).`,
           },
@@ -389,10 +400,11 @@ export async function verifyHomeNetwork(
       hardwareMatched = true;
     }
 
-    // 3. Hardware verified (or no hardware profile specified). Now probe local server if configured
+    // 3. Hardware verified (or no hardware profile specified). Now probe local node if configured
     let serverPingOk = true;
-    if (profile.localServerUrl) {
-      serverPingOk = await prober(profile.localServerUrl);
+    const targetNodeUrl = profile.localNodeUrl || profile.localServerUrl;
+    if (targetNodeUrl) {
+      serverPingOk = await prober(targetNodeUrl);
       if (!serverPingOk) {
         return {
           status: 'duplicate_ssid_foreign',
@@ -401,8 +413,9 @@ export async function verifyHomeNetwork(
             currentBssid: current.bssid,
             currentGatewayMac: current.gatewayMac,
             hardwareMatched,
+            nodePingOk: false,
             serverPingOk: false,
-            reason: `Wi-Fi matches, but home server at ${profile.localServerUrl} is unreachable on this LAN.`,
+            reason: `Wi-Fi matches, but home node at ${targetNodeUrl} is unreachable on this LAN.`,
           },
         };
       }
@@ -415,15 +428,17 @@ export async function verifyHomeNetwork(
         currentBssid: current.bssid,
         currentGatewayMac: current.gatewayMac,
         hardwareMatched,
+        nodePingOk: serverPingOk,
         serverPingOk,
-        reason: 'Successfully verified home Wi-Fi, hardware MAC, and local server presence.',
+        reason: 'Successfully verified home Wi-Fi, hardware MAC, and local node presence.',
       },
     };
   }
 
-  // If no SSID was configured on Home profile, check if localServerUrl is reachable on this network
-  if (profile.localServerUrl) {
-    const serverPingOk = await prober(profile.localServerUrl);
+  // If no SSID was configured on Home profile, check if localNodeUrl/localServerUrl is reachable on this network
+  const fallbackNodeUrl = profile.localNodeUrl || profile.localServerUrl;
+  if (fallbackNodeUrl) {
+    const serverPingOk = await prober(fallbackNodeUrl);
     if (serverPingOk) {
       return {
         status: 'verified_home',
@@ -432,8 +447,9 @@ export async function verifyHomeNetwork(
           currentBssid: current.bssid,
           currentGatewayMac: current.gatewayMac,
           hardwareMatched: true,
+          nodePingOk: true,
           serverPingOk: true,
-          reason: `Local server at ${profile.localServerUrl} responded successfully on this network.`,
+          reason: `Local node at ${fallbackNodeUrl} responded successfully on this network.`,
         },
       };
     }
@@ -446,8 +462,9 @@ export async function verifyHomeNetwork(
       currentBssid: current.bssid,
       currentGatewayMac: current.gatewayMac,
       hardwareMatched: false,
+      nodePingOk: false,
       serverPingOk: false,
-      reason: 'No matching home network profile or local server found.',
+      reason: 'No matching home network profile or local node found.',
     },
   };
 }

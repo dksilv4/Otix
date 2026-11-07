@@ -65,7 +65,13 @@ export const MediaHero = ({ className = '' }: MediaHeroProps) => {
   const { activePromotion } = useGameFreePromotions(detail)
 
   const activeMediaId = detail?.id ? String(detail.id) : (detail?.slug || mediaId)
-  const activity = useMediaActivity(mediaType, detail?.tmdbId, activeMediaId)
+  const activity = useMediaActivity(
+    mediaType,
+    detail?.tmdbId,
+    activeMediaId,
+    (detail as any)?.tvdbId,
+    detail?.title,
+  )
   const downloadActivity = useMediaDownloadActivity(mediaType, activeMediaId, {
     tmdbId: detail?.tmdbId,
     tvdbId: (detail as any)?.tvdbId,

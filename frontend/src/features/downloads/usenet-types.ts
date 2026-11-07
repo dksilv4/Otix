@@ -111,36 +111,48 @@ export interface ServerProwlarrRelease {
 }
 
 export interface ServerSabnzbdQueueItem {
-  nzo_id: string;
+  nzoId?: string;
+  nzo_id?: string;
   filename: string;
   title?: string;
   percentage: number;
-  size_mb: number;
-  size_left_mb: number;
+  sizeMb?: number;
+  size_mb?: number;
+  sizeLeftMb?: number;
+  size_left_mb?: number;
   speed: string;
-  time_left: string;
+  timeLeft?: string;
+  time_left?: string;
   status: string;
 }
 
 export interface ServerDownloadQueueData {
   status: string;
   speed: string;
-  time_left: string;
+  timeLeft?: string;
+  time_left?: string;
   items: ServerSabnzbdQueueItem[];
 }
 
 export interface ServerDownloadHistoryItem {
   id: number;
-  nzo_id: string;
+  nzoId?: string;
+  nzo_id?: string;
   title: string;
   protocol: string;
   status: string;
   percentage: number;
-  size_bytes: number;
+  sizeBytes?: number;
+  size_bytes?: number;
+  errorMessage?: string | null;
   error_message?: string | null;
+  mediaItemId?: string | null;
   media_item_id?: string | null;
+  completedAt?: string | null;
   completed_at?: string | null;
+  createdAt?: string | null;
   created_at?: string | null;
+  updatedAt?: string | null;
   updated_at?: string | null;
 }
 

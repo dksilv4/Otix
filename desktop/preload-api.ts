@@ -15,11 +15,12 @@ export interface GameFilter {
 export interface LocalGame {
   id: string;
   title: string;
+  titleId?: string;
   exePath: string;
   localExePath?: string;
   installDir: string;
   version?: string | null;
-  platform: 'steam' | 'pc' | 'iso' | 'epic' | 'gog' | 'battlenet' | 'ubisoft' | 'origin' | 'ea' | 'riot' | 'xbox' | 'itch' | 'server' | 'unknown' | string;
+  platform: 'steam' | 'pc' | 'iso' | 'epic' | 'gog' | 'battlenet' | 'ubisoft' | 'origin' | 'ea' | 'riot' | 'xbox' | 'itch' | 'node' | 'server' | 'unknown' | string;
   localIconUrl?: string; // base64 data URL from .exe icon
   iconUrl?: string; // Icon URL from plugin enrichment
   posterUrl?: string; // Poster URL from plugin enrichment
@@ -74,6 +75,7 @@ export interface HomeNetworkProfile {
   wifiSsid?: string;
   gatewayMac?: string;
   bssid?: string;
+  localNodeUrl?: string;
   localServerUrl?: string;
 }
 
@@ -90,6 +92,7 @@ export interface HomeVerificationResult {
     currentBssid?: string;
     currentGatewayMac?: string;
     hardwareMatched: boolean;
+    nodePingOk: boolean;
     serverPingOk: boolean;
     reason: string;
   };
@@ -380,7 +383,8 @@ export interface Download {
 export interface RemoteDownloadOptions {
   id?: string;
   userId?: string;
-  serverUrl: string;
+  nodeUrl?: string;
+  serverUrl?: string;
   fileId: string;
   filename: string;
   filesize: number;
@@ -402,17 +406,9 @@ export interface RemoteDownloadProgress {
   etaSeconds: number;
   isoPath?: string | null;
   error?: string | null;
+  nodeUrl?: string;
   serverUrl: string;
   fileId: string;
-}
-
-export interface SabQueueItem {
-  nzoId: string;
-  name: string;
-  size: number;
-  sizeLeft: number;
-  status: string;
-  percentage: number;
 }
 
 export interface WishlistTrackingEntry {
@@ -806,6 +802,7 @@ export interface IDesktopAPI {
   // ── Network & Home Verification ──
   network: {
     detectCurrent: () => Promise<CurrentNetworkInfo>;
+    probeNode: (url: string, timeoutMs?: number) => Promise<boolean>;
     probeServer: (url: string, timeoutMs?: number) => Promise<boolean>;
     verifyHome: (profile: HomeNetworkProfile) => Promise<HomeVerificationResult>;
   };

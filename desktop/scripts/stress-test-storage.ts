@@ -597,8 +597,8 @@ async function runAllStressTests() {
   await runTest('6.2 SQLite uses secondary index for platform queries (EXPLAIN QUERY PLAN)', () => {
     const plan = db.prepare("EXPLAIN QUERY PLAN SELECT id FROM scanned_games WHERE platform = 'steam'").all();
     const planStr = JSON.stringify(plan);
-    if (!planStr.includes('idx_scanned_games_platform')) {
-      throw new Error(`Query plan does not use idx_scanned_games_platform: ${planStr}`);
+    if (!planStr.includes('idx_scanned_games_platform') && !planStr.includes('idx_scanned_games_plat_media')) {
+      throw new Error(`Query plan does not use platform index: ${planStr}`);
     }
   });
 

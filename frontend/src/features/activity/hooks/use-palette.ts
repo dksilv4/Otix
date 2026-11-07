@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 
-interface ExtractedPalette {
+export interface ExtractedPalette {
   background: { r: number; g: number; b: number }
   surface: { r: number; g: number; b: number }
   accent: { r: number; g: number; b: number }
@@ -8,6 +8,8 @@ interface ExtractedPalette {
 }
 
 type Rgb = { r: number; g: number; b: number }
+
+const paletteCache = new Map<string, ExtractedPalette>()
 
 function rgbToHsl(r: number, g: number, b: number): [number, number, number] {
   r /= 255; g /= 255; b /= 255
@@ -112,7 +114,7 @@ function extractPalette(imageData: ImageData): ExtractedPalette {
   }
 }
 
-const DEFAULT_PALETTE: ExtractedPalette = {
+export const DEFAULT_PALETTE: ExtractedPalette = {
   background: { r: 18, g: 19, b: 24 },
   surface: { r: 30, g: 32, b: 40 },
   accent: { r: 204, g: 190, b: 150 },
@@ -127,15 +129,26 @@ export function rgbaCss(color: Rgb, alpha: number): string {
   return `rgba(${color.r}, ${color.g}, ${color.b}, ${alpha})`
 }
 
-export function usePalette(imageUrl: string | null) {
-  const [palette, setPalette] = useState<ExtractedPalette>(DEFAULT_PALETTE)
+export function usePalette(imageUrl: string | null | undefined) {
+  const cached = imageUrl ? paletteCache.get(imageUrl) : undefined
+  const [palette, setPalette] = useState<ExtractedPalette>(cached ?? DEFAULT_PALETTE)
 
   useEffect(() => {
-    if (!imageUrl) return
+    if (!imageUrl) {
+      setPalette(DEFAULT_PALETTE)
+      return
+    }
+
+    if (paletteCache.has(imageUrl)) {
+      setPalette(paletteCache.get(imageUrl)!)
+      return
+    }
 
     let cancelled = false
     const img = new Image()
-    img.crossOrigin = 'anonymous'
+    if (!imageUrl.startsWith('blob:') && !imageUrl.startsWith('data:')) {
+      img.crossOrigin = 'anonymous'
+    }
     img.decoding = 'async'
     img.referrerPolicy = 'no-referrer'
 
@@ -150,17 +163,22 @@ export function usePalette(imageUrl: string | null) {
         ctx.drawImage(img, 0, 0, 64, 64)
         const imageData = ctx.getImageData(0, 0, 64, 64)
         const p = extractPalette(imageData)
+        paletteCache.set(imageUrl, p)
         if (!cancelled) setPalette(p)
       } catch {
         if (!cancelled) setPalette(DEFAULT_PALETTE)
       }
     }
 
-    img.onerror = () => { if (!cancelled) setPalette(DEFAULT_PALETTE) }
+    img.onerror = () => {
+      if (!cancelled) setPalette(DEFAULT_PALETTE)
+    }
 
     img.src = imageUrl
-    return () => { cancelled = true }
+    return () => {
+      cancelled = true
+    }
   }, [imageUrl])
 
-  return imageUrl ? palette : DEFAULT_PALETTE
+  return imageUrl ? (paletteCache.get(imageUrl) ?? palette) : DEFAULT_PALETTE
 }

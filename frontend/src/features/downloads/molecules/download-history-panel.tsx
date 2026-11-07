@@ -145,11 +145,16 @@ export const DownloadHistoryPanel = ({
           {filteredItems.map((item) => {
             const badge = statusBadgeConfig(item.status)
             const title = resolveDownloadDisplayTitle(item)
-            const timeAgo = formatRelativeTime(item.completed_at || item.created_at)
+            const completedAt = item.completedAt || item.completed_at
+            const createdAt = item.createdAt || item.created_at
+            const timeAgo = formatRelativeTime(completedAt || createdAt)
+            const nzoId = item.nzoId || item.nzo_id
+            const sizeBytes = item.sizeBytes ?? item.size_bytes ?? 0
+            const errorMessage = item.errorMessage || item.error_message
 
             return (
               <div
-                key={item.nzo_id || item.id}
+                key={nzoId || item.id}
                 className="p-4 rounded-2xl bg-[var(--dk-surface-glass)] backdrop-blur-xl shadow-[var(--dk-shadow-glass)] border border-white/[0.04] space-y-2 transition-all hover:bg-[var(--dk-surface-raised)]/60"
               >
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
@@ -178,8 +183,8 @@ export const DownloadHistoryPanel = ({
                         <span className="font-semibold uppercase tracking-wider text-[9px] px-1.5 py-0.5 rounded bg-primary/10 text-primary">
                           {item.protocol || 'Usenet'}
                         </span>
-                        {item.size_bytes > 0 && (
-                          <span>{formatBytes(item.size_bytes)}</span>
+                        {sizeBytes > 0 && (
+                          <span>{formatBytes(sizeBytes)}</span>
                         )}
                         {timeAgo && (
                           <>
@@ -187,14 +192,14 @@ export const DownloadHistoryPanel = ({
                             <span>{timeAgo}</span>
                           </>
                         )}
-                        {item.nzo_id && (
+                        {nzoId && (
                           <>
                             <span>&bull;</span>
                             <span
                               className="font-mono text-[10px] text-muted-foreground/70"
-                              title={`NZO ID: ${item.nzo_id}`}
+                              title={`NZO ID: ${nzoId}`}
                             >
-                              ID: {item.nzo_id.length > 20 ? `${item.nzo_id.slice(0, 18)}...` : item.nzo_id}
+                              ID: {nzoId.length > 20 ? `${nzoId.slice(0, 18)}...` : nzoId}
                             </span>
                           </>
                         )}
@@ -203,10 +208,10 @@ export const DownloadHistoryPanel = ({
                   </div>
                 </div>
 
-                {item.status === 'failed' && item.error_message ? (
+                {item.status === 'failed' && errorMessage ? (
                   <div className="p-2.5 rounded-xl bg-destructive/10 border border-white/[0.04] text-xs text-destructive flex items-start gap-2">
                     <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
-                    <p className="leading-relaxed break-words">{item.error_message}</p>
+                    <p className="leading-relaxed break-words">{errorMessage}</p>
                   </div>
                 ) : null}
               </div>

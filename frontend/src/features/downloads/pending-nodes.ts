@@ -147,55 +147,62 @@ export async function probeLocalGameNode(fetcher: typeof fetch = fetch, customPo
     let authToken = ''
     let reached = false
 
+    // 1. Try /api/v1/status
     try {
       const statusResp = await fetcher(`${baseUrl}/api/v1/status`, {
-        signal: AbortSignal.timeout(600),
+        signal: AbortSignal.timeout(1500),
       })
       if (statusResp.ok) {
-        reached = true
         const data = await statusResp.json()
-        if (data.server_name || data.serverName) serverName = data.server_name || data.serverName
-        if (data.claim_code) claimCode = data.claim_code
-        if (data.claimed !== undefined) claimed = Boolean(data.claimed)
-        if (data.claimed_by) claimedBy = data.claimed_by
+        if (data && typeof data === 'object') {
+          reached = true
+          if (data.server_name || data.serverName) serverName = data.server_name || data.serverName
+          if (data.claim_code) claimCode = data.claim_code
+          if (data.claimed !== undefined) claimed = Boolean(data.claimed)
+          if (data.claimed_by) claimedBy = data.claimed_by
+        }
       } else if (statusResp.status === 404) {
-        // Server exists on port but has an older endpoint structure
         reached = true
       }
     } catch {
-      // Nothing is listening on port or request was blocked; abort probe immediately
-      return null
+      // Do not abort; continue probing fallback endpoints
     }
 
+    // 2. Try /api/v1/ping if not yet reached
     if (!reached) {
       try {
         const pingResp = await fetcher(`${baseUrl}/api/v1/ping`, {
-          signal: AbortSignal.timeout(600),
+          signal: AbortSignal.timeout(1500),
         })
         if (pingResp.ok) {
-          reached = true
           const pingData = await pingResp.json()
-          if (pingData.server_name) serverName = pingData.server_name
-          if (pingData.claimed !== undefined) claimed = Boolean(pingData.claimed)
-          if (pingData.claimed_by) claimedBy = pingData.claimed_by
+          if (pingData && typeof pingData === 'object') {
+            reached = true
+            if (pingData.server_name) serverName = pingData.server_name
+            if (pingData.claimed !== undefined) claimed = Boolean(pingData.claimed)
+            if (pingData.claimed_by) claimedBy = pingData.claimed_by
+          }
         }
       } catch {
-        // ignore
+        // Continue to claim status
       }
     }
 
-    if (!reached) {
+    // 3. Try /api/v1/claim/status if not reached or if unclaimed and missing claim code
+    if (!reached || (!claimed && !claimCode)) {
       try {
         const claimResp = await fetcher(`${baseUrl}/api/v1/claim/status`, {
-          signal: AbortSignal.timeout(600),
+          signal: AbortSignal.timeout(1500),
         })
         if (claimResp.ok) {
-          reached = true
           const claimData = await claimResp.json()
-          claimed = Boolean(claimData.claimed)
-          claimCode = claimData.claim_code || ''
-          if (claimData.server_name) serverName = claimData.server_name
-          if (claimData.username) claimedBy = claimData.username
+          if (claimData && typeof claimData === 'object') {
+            reached = true
+            if (claimData.claimed !== undefined) claimed = Boolean(claimData.claimed)
+            if (claimData.claim_code) claimCode = claimData.claim_code
+            if (claimData.server_name) serverName = claimData.server_name
+            if (claimData.username) claimedBy = claimData.username
+          }
         }
       } catch {
         // ignore
@@ -204,31 +211,16 @@ export async function probeLocalGameNode(fetcher: typeof fetch = fetch, customPo
 
     if (!reached) return null
 
+    // 4. Extract token from WebUI HTML if available
     try {
-      const home = await fetcher(`${baseUrl}/`, { signal: AbortSignal.timeout(600) })
+      const home = await fetcher(`${baseUrl}/`, { signal: AbortSignal.timeout(1500) })
       if (home.ok) {
-        const html = await home.text()
+        const html = await home.text().catch(() => '')
         const match = html.match(/id="node-access-token"[^>]*value="([^"]*)"/) || html.match(/const TOKEN\s*=\s*"([^"]*)"/)
         if (match?.[1]) authToken = match[1]
       }
     } catch {
       // ignore
-    }
-
-    if (!claimed && !claimCode) {
-      try {
-        const claimResp = await fetcher(`${baseUrl}/api/v1/claim/status`, {
-          signal: AbortSignal.timeout(600),
-        })
-        if (claimResp.ok) {
-          const claimData = await claimResp.json()
-          claimCode = claimData.claim_code || ''
-          claimed = Boolean(claimData.claimed)
-          if (claimData.username) claimedBy = claimData.username
-        }
-      } catch {
-        // ignore
-      }
     }
 
     const res: PendingNode = {

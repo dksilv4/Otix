@@ -729,6 +729,10 @@ def probe_node_reachability(server: UserNode) -> dict:
         local_targets.extend(contact_urls(server.primary_url))
     if server.local_url and server.local_url != probe_target:
         local_targets.extend(contact_urls(server.local_url))
+    if getattr(server, "local_ip", None) and getattr(server, "port", None):
+        ip_cand = f"http://{server.local_ip}:{server.port}"
+        if ip_cand != probe_target:
+            local_targets.extend(contact_urls(ip_cand))
 
     seen: set[str] = set()
     deduped_local: list[str] = []
@@ -1209,6 +1213,10 @@ def _proxy_candidate_targets(server: UserNode) -> list[str]:
         clean = (raw or "").strip()
         if clean and clean not in cands:
             cands.append(clean)
+    if getattr(server, "local_ip", None) and getattr(server, "port", None):
+        ip_cand = f"http://{server.local_ip}:{server.port}"
+        if ip_cand not in cands:
+            cands.append(ip_cand)
     if getattr(server, "is_local", False):
         detected_port: int | None = None
         for cand in cands:

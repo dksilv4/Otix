@@ -79,7 +79,7 @@ function mockSpawn() {
 
 /** Make psList return a given process list with real PIDs. */
 function mockProcesses(names: string[]) {
-  vi.mocked(psList).mockResolvedValue(names.map((n) => ({ name: n, pid: process.pid, ppid: 0, cpu: 0, memory: 0 })))
+  vi.mocked(psList).mockResolvedValue(names.map((n, idx) => ({ name: n, pid: process.pid + idx, ppid: 0, cpu: 0, memory: 0 })))
 }
 
 /** Resolve to an empty process list. */

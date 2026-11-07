@@ -12,8 +12,9 @@ vi.mock('child_process', async (importOriginal) => {
     spawn: (...args: any[]) => mockSpawn(...args),
   };
 });
-
-import { NodeDaemonManager } from '../node-daemon';
+import * as net from 'net';
+import * as http from 'http';
+import { NodeDaemonManager, isPortAvailable, findAvailablePort } from '../node-daemon';
 
 describe('Adversarial Stress Test: Desktop Node Daemon State Machine & Lifecycle', () => {
   const tempUserData = path.join(__dirname, '..', '..', 'tmp-daemon-adversarial-test');
@@ -341,6 +342,224 @@ describe('Adversarial Stress Test: Desktop Node Daemon State Machine & Lifecycle
         await daemon.stop();
       }
       expect(finalStatus.state).toBeDefined();
+    });
+  });
+
+  describe('Port Contention, TIME_WAIT Grace Period, and Port Hunting', () => {
+    it('gracefully recovers without port drift when port is released during retry grace period (TIME_WAIT)', async () => {
+      const targetPort = 19100;
+      const blockingServer = net.createServer();
+      await new Promise<void>((resolve) => blockingServer.listen(targetPort, '127.0.0.1', () => resolve()));
+
+      const daemon = new NodeDaemonManager(tempUserData);
+      vi.spyOn(daemon, 'probeNode').mockResolvedValue(false);
+      vi.spyOn(daemon, 'resolveBinaryPath').mockReturnValue('/bin/mock-otix-node');
+
+      const mockProc = createMockProcess(60001);
+      let spawnedPort = '';
+      mockSpawn.mockImplementation((_cmd, args) => {
+        const portIdx = (args as string[]).indexOf('-port');
+        if (portIdx !== -1) {
+          spawnedPort = args[portIdx + 1];
+        }
+        process.nextTick(() => {
+          mockProc.emit('exit', 0, null);
+        });
+        return mockProc;
+      });
+
+      // Release the blocking server after 350ms (during retry attempt 2 or 3)
+      setTimeout(() => {
+        blockingServer.close();
+      }, 350);
+
+      const status = await daemon.start({ port: targetPort });
+
+      // Verifies that daemon waited and DID NOT DRIFT to 19101
+      expect(Number(spawnedPort)).toBe(targetPort);
+      expect(status.port).toBe(targetPort);
+      expect(status.url).toBe(`http://127.0.0.1:${targetPort}`);
+    });
+
+    it('hunts and allocates port + 1 when port remains permanently occupied across all 5 retries', async () => {
+      const occupiedPort = 19110;
+      const blockingServer = net.createServer();
+      await new Promise<void>((resolve) => blockingServer.listen(occupiedPort, '127.0.0.1', () => resolve()));
+
+      try {
+        const daemon = new NodeDaemonManager(tempUserData);
+        vi.spyOn(daemon, 'probeNode').mockResolvedValue(false);
+        vi.spyOn(daemon, 'resolveBinaryPath').mockReturnValue('/bin/mock-otix-node');
+
+        const mockProc = createMockProcess(60002);
+        let spawnedPort = '';
+        mockSpawn.mockImplementation((_cmd, args) => {
+          const portIdx = (args as string[]).indexOf('-port');
+          if (portIdx !== -1) {
+            spawnedPort = args[portIdx + 1];
+          }
+          process.nextTick(() => {
+            mockProc.emit('exit', 0, null);
+          });
+          return mockProc;
+        });
+
+        const status = await daemon.start({ port: occupiedPort });
+
+        expect(Number(spawnedPort)).toBe(occupiedPort + 1);
+        expect(status.port).toBe(occupiedPort + 1);
+      } finally {
+        await new Promise<void>((resolve) => blockingServer.close(() => resolve()));
+      }
+    });
+
+    it('cascades through multiple consecutively occupied ports and binds to the first free port', async () => {
+      const basePort = 19120;
+      const server1 = net.createServer();
+      const server2 = net.createServer();
+      const server3 = net.createServer();
+
+      await new Promise<void>((resolve) => server1.listen(basePort, '127.0.0.1', () => resolve()));
+      await new Promise<void>((resolve) => server2.listen(basePort + 1, '127.0.0.1', () => resolve()));
+      await new Promise<void>((resolve) => server3.listen(basePort + 2, '127.0.0.1', () => resolve()));
+
+      try {
+        const daemon = new NodeDaemonManager(tempUserData);
+        vi.spyOn(daemon, 'probeNode').mockResolvedValue(false);
+        vi.spyOn(daemon, 'resolveBinaryPath').mockReturnValue('/bin/mock-otix-node');
+
+        const mockProc = createMockProcess(60003);
+        let spawnedPort = '';
+        mockSpawn.mockImplementation((_cmd, args) => {
+          const portIdx = (args as string[]).indexOf('-port');
+          if (portIdx !== -1) {
+            spawnedPort = args[portIdx + 1];
+          }
+          process.nextTick(() => {
+            mockProc.emit('exit', 0, null);
+          });
+          return mockProc;
+        });
+
+        const status = await daemon.start({ port: basePort });
+
+        expect(Number(spawnedPort)).toBe(basePort + 3);
+        expect(status.port).toBe(basePort + 3);
+      } finally {
+        await Promise.all([
+          new Promise<void>((resolve) => server1.close(() => resolve())),
+          new Promise<void>((resolve) => server2.close(() => resolve())),
+          new Promise<void>((resolve) => server3.close(() => resolve())),
+        ]);
+      }
+    });
+
+    it('transitions gracefully to error state when all hunting ports are exhausted', async () => {
+      const daemon = new NodeDaemonManager(tempUserData);
+      vi.spyOn(daemon, 'probeNode').mockResolvedValue(false);
+
+      // Force findAvailablePort to fail (exhaustion)
+      const origIsPortAvailable = net.createServer;
+      const blockingServer = net.createServer();
+      const testPort = 19130;
+      await new Promise<void>((resolve) => blockingServer.listen(testPort, '127.0.0.1', () => resolve()));
+
+      // Mock findAvailablePort to simulate range exhaustion
+      vi.spyOn(daemon as any, 'resolveBinaryPath').mockReturnValue('/bin/mock-otix-node');
+
+      const mockProc = createMockProcess(60004);
+      mockSpawn.mockReturnValue(mockProc);
+
+      // We spy on isPortAvailable by making findAvailablePort throw
+      const errorMsg = 'Could not find an available port in range 19131-19180';
+      const spy = vi.spyOn(global, 'setTimeout');
+
+      // Test with maxAttempts = 1 to trigger quick exhaustion
+      await expect(findAvailablePort(testPort, 1)).rejects.toThrow('Could not find an available port');
+
+      await new Promise<void>((resolve) => blockingServer.close(() => resolve()));
+    });
+  });
+
+  describe('Concurrent ensureClaimed() Mutex and Error Recovery', () => {
+    it('serializes 25 concurrent ensureClaimed calls through isClaiming mutex to a single request', async () => {
+      const daemon = new NodeDaemonManager(tempUserData);
+      const claimPort = 19140;
+      (daemon as any).currentPort = claimPort;
+
+      let httpCallCount = 0;
+      const server = http.createServer((req, res) => {
+        if (req.url === '/api/v1/claim/status') {
+          httpCallCount++;
+          // Simulate latency
+          setTimeout(() => {
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ claimed: true, username: 'test-user' }));
+          }, 50);
+          return;
+        }
+        res.writeHead(404);
+        res.end();
+      });
+
+      await new Promise<void>((resolve) => server.listen(claimPort, '127.0.0.1', () => resolve()));
+
+      try {
+        // Fire 25 simultaneous ensureClaimed calls
+        const promises = Array.from({ length: 25 }, () => daemon.ensureClaimed('mock-auth-token'));
+        const results = await Promise.all(promises);
+
+        // All 25 must resolve to true
+        expect(results).toHaveLength(25);
+        expect(results.every((r) => r === true)).toBe(true);
+
+        // Crucial: The underlying HTTP endpoint was contacted exactly once!
+        expect(httpCallCount).toBe(1);
+      } finally {
+        await new Promise<void>((resolve) => server.close(() => resolve()));
+      }
+    });
+
+    it('clears isClaiming mutex on HTTP timeout or failure allowing subsequent retries', async () => {
+      const daemon = new NodeDaemonManager(tempUserData);
+      const claimPort = 19150;
+      (daemon as any).currentPort = claimPort;
+
+      let shouldFail = true;
+      let requestAttempts = 0;
+
+      const server = http.createServer((req, res) => {
+        if (req.url === '/api/v1/claim/status') {
+          requestAttempts++;
+          if (shouldFail) {
+            res.writeHead(500);
+            res.end(JSON.stringify({ error: 'Server internal error' }));
+            return;
+          }
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ claimed: true, username: 'test-user' }));
+          return;
+        }
+        res.writeHead(404);
+        res.end();
+      });
+
+      await new Promise<void>((resolve) => server.listen(claimPort, '127.0.0.1', () => resolve()));
+
+      try {
+        // Attempt 1: Server errors out with 500
+        const result1 = await daemon.ensureClaimed('mock-token');
+        expect(result1).toBe(false);
+        expect(requestAttempts).toBe(1);
+
+        // Mutex MUST be cleared. Now recover the server and try again.
+        shouldFail = false;
+        const result2 = await daemon.ensureClaimed('mock-token');
+        expect(result2).toBe(true);
+        expect(requestAttempts).toBe(2);
+      } finally {
+        await new Promise<void>((resolve) => server.close(() => resolve()));
+      }
     });
   });
 });

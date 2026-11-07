@@ -1,13 +1,7 @@
-// TODO: Review this file
-import { createContext, useCallback, useEffect, useRef, useState } from "react"
-import { getPlexClientId, generateSessionId } from "./utils"
-import type { PlexTrackInfo, PlexPlayerContextValue } from "./types"
-
-export type { PlexTrackInfo, PlexPlayerContextValue }
-
-export const PlexPlayerContext = createContext<PlexPlayerContextValue | null>(null)
-
-const VOLUME_KEY = "plex-player-volume"
+import { useCallback, useEffect, useRef, useState } from "react"
+import { getPlexClientId, generateSessionId, PLEX_PLAYER_VOLUME_KEY } from "./utils"
+import type { PlexTrackInfo, RepeatMode } from "./types"
+import { PlexPlayerContext, playerProgressStore } from "./player-context"
 
 export const PlexAudioProvider = ({ children }: { children: React.ReactNode }) => {
   const audioRef = useRef<HTMLAudioElement | null>(null)
@@ -16,20 +10,28 @@ export const PlexAudioProvider = ({ children }: { children: React.ReactNode }) =
   const [position, setPosition] = useState(0)
   const [duration, setDuration] = useState(0)
   const [volume, setVolumeState] = useState(() => {
-    const saved = localStorage.getItem(VOLUME_KEY)
+    const saved = localStorage.getItem(PLEX_PLAYER_VOLUME_KEY)
     return saved ? parseFloat(saved) : 0.7
   })
   const [queue, setQueue] = useState<PlexTrackInfo[]>([])
   const [currentIndex, setCurrentIndex] = useState(-1)
+  const [repeatMode, setRepeatModeState] = useState<RepeatMode>('off')
+  const [isShuffled, setIsShuffled] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
   const queueRef = useRef<PlexTrackInfo[]>([])
+  const originalQueueRef = useRef<PlexTrackInfo[]>([])
   const currentIndexRef = useRef(-1)
+  const repeatModeRef = useRef<RepeatMode>('off')
+  const activeRequestIdRef = useRef(0)
+  const consecutiveErrorCountRef = useRef(0)
 
   // Plex session identifiers for timeline reporting
   const clientIdRef = useRef(getPlexClientId())
   const sessionIdRef = useRef("")
   const commandIdRef = useRef(0)
   const timelineIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const timelineTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Ref holders for state consumed by stable callbacks.
   const durationRef = useRef(duration)
@@ -47,12 +49,40 @@ export const PlexAudioProvider = ({ children }: { children: React.ReactNode }) =
     currentIndexRef.current = currentIndex
   }, [currentIndex])
 
+  useEffect(() => {
+    repeatModeRef.current = repeatMode
+  }, [repeatMode])
+
+  useEffect(() => {
+    queueRef.current = queue
+  }, [queue])
+
   // Resolve a Plex track's Part key (direct file URL) from its metadata.
   const resolvePartUrl = useCallback(async (track: PlexTrackInfo): Promise<string> => {
     const baseUrl = track.plexBaseUrl
     const token = track.plexToken
     if (!baseUrl || !token) {
       throw new Error("Missing Plex connection info. Try re-syncing your Plex library in Settings.")
+    }
+
+    const buildStreamUrl = (partKey: string): string => {
+      const params = new URLSearchParams()
+      params.set("X-Plex-Token", token)
+      params.set("X-Plex-Client-Identifier", clientIdRef.current)
+      if (sessionIdRef.current) {
+        params.set("X-Plex-Session-Identifier", sessionIdRef.current)
+        params.set("X-Plex-Playback-Session-Id", sessionIdRef.current)
+      }
+      params.set("X-Plex-Product", "Otix")
+      params.set("X-Plex-Platform", "Web")
+      const cleanBase = baseUrl.replace(/\/+$/, "")
+      const cleanPart = partKey.startsWith("/") ? partKey : `/${partKey}`
+      return `${cleanBase}${cleanPart}?${params.toString()}`
+    }
+
+    // Direct part streaming: if partKey is present, construct stream URL directly with zero extra network round-trips
+    if (track.partKey) {
+      return buildStreamUrl(track.partKey)
     }
 
     const metaUrl = `${baseUrl}/library/metadata/${track.ratingKey}?X-Plex-Token=${encodeURIComponent(token)}`
@@ -71,27 +101,27 @@ export const PlexAudioProvider = ({ children }: { children: React.ReactNode }) =
     const part = item.Media?.[0]?.Part?.[0]
     if (!part?.key) throw new Error("No streamable part found for track")
 
-    const params = new URLSearchParams()
-    params.set("X-Plex-Token", token)
-    params.set("X-Plex-Client-Identifier", clientIdRef.current)
-    if (sessionIdRef.current) {
-      params.set("X-Plex-Session-Identifier", sessionIdRef.current)
-      params.set("X-Plex-Playback-Session-Id", sessionIdRef.current)
-    }
-    params.set("X-Plex-Product", "Otix")
-    params.set("X-Plex-Platform", "Web")
-
-    return `${baseUrl}${part.key}?${params.toString()}`
+    return buildStreamUrl(part.key)
   }, [])
 
   // Stable refs for callbacks used by the audio event handlers.
-  const loadAndPlayIndexRef = useRef<(index: number, startNewSession?: boolean) => Promise<void>>(async () => {})
+  const loadAndPlayIndexRef = useRef<
+    (index: number, startNewSession?: boolean, autoPlay?: boolean) => Promise<void>
+  >(async () => {})
   const reportTimelineRef = useRef<(state: "playing" | "paused" | "stopped" | "buffering") => void>(() => {})
-  const startTimelineReportingRef = useRef<() => void>(() => {})
-  const stopTimelineReportingRef = useRef<() => void>(() => {})
+
+  const clearTimelineTimers = useCallback(() => {
+    if (timelineTimeoutRef.current) {
+      clearTimeout(timelineTimeoutRef.current)
+      timelineTimeoutRef.current = null
+    }
+    if (timelineIntervalRef.current) {
+      clearInterval(timelineIntervalRef.current)
+      timelineIntervalRef.current = null
+    }
+  }, [])
 
   // Report playback state to Plex so it appears on the dashboard.
-  // Defined as a stable callback using only refs (no state dependencies).
   const reportTimeline = useCallback((state: "playing" | "paused" | "stopped" | "buffering") => {
     const track = queueRef.current[currentIndexRef.current]
     if (!track?.plexBaseUrl || !track?.plexToken) return
@@ -136,46 +166,36 @@ export const PlexAudioProvider = ({ children }: { children: React.ReactNode }) =
 
   // Start periodic timeline reporting while playing.
   const startTimelineReporting = useCallback(() => {
-    if (timelineIntervalRef.current) {
-      clearInterval(timelineIntervalRef.current)
-      timelineIntervalRef.current = null
-    }
+    clearTimelineTimers()
     reportTimelineRef.current("buffering")
-    setTimeout(() => reportTimelineRef.current("playing"), 500)
+    timelineTimeoutRef.current = setTimeout(() => {
+      timelineTimeoutRef.current = null
+      reportTimelineRef.current("playing")
+    }, 500)
     timelineIntervalRef.current = setInterval(() => {
       reportTimelineRef.current("playing")
     }, 5000)
-  }, [])
-
-  useEffect(() => {
-    startTimelineReportingRef.current = startTimelineReporting
-  }, [startTimelineReporting])
+  }, [clearTimelineTimers])
 
   const stopTimelineReporting = useCallback(() => {
-    if (timelineIntervalRef.current) {
-      clearInterval(timelineIntervalRef.current)
-      timelineIntervalRef.current = null
-    }
+    clearTimelineTimers()
     reportTimelineRef.current("stopped")
-  }, [])
+  }, [clearTimelineTimers])
 
-  useEffect(() => {
-    stopTimelineReportingRef.current = stopTimelineReporting
-  }, [stopTimelineReporting])
-
-  // Load and play a track by queue index. Streams directly from Plex — no blob download.
-  // Set startNewSession=true when the user explicitly starts a new playback context
-  // (playTrack/playAlbum), so Plex sees track changes within a queue as one session.
-  const loadAndPlayIndex = useCallback(async (index: number, startNewSession = false) => {
+  // Load and play a track by queue index with monotonic request sequence tracking.
+  const loadAndPlayIndex = useCallback(async (index: number, startNewSession = false, autoPlay = true) => {
     const audio = audioRef.current
     if (!audio) return
     const q = queueRef.current
     if (index < 0 || index >= q.length) return
 
     const track = q[index]
+    const requestId = ++activeRequestIdRef.current
+
     currentIndexRef.current = index
     setCurrentIndex(index)
     setCurrentTrack(track)
+    setPosition(0)
     setError(null)
 
     try {
@@ -185,16 +205,35 @@ export const PlexAudioProvider = ({ children }: { children: React.ReactNode }) =
       }
 
       const streamUrl = await resolvePartUrl(track)
+      // Discard stale in-flight request if another track was requested
+      if (activeRequestIdRef.current !== requestId) return
+
       audio.src = streamUrl
-      await audio.play()
+      audio.currentTime = 0
+      if (autoPlay) {
+        await audio.play()
+        if (activeRequestIdRef.current === requestId) {
+          consecutiveErrorCountRef.current = 0
+          playerProgressStore.setProgress(0, track.durationMs || 0)
+        }
+      } else {
+        isPlayingRef.current = false
+        setIsPlaying(false)
+        audio.pause()
+        clearTimelineTimers()
+        reportTimelineRef.current("paused")
+        if (activeRequestIdRef.current === requestId) {
+          playerProgressStore.setProgress(0, track.durationMs || 0)
+        }
+      }
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : String(e)
-      // Ignore AbortError from rapid track changes — the next play will supersede.
+      if (activeRequestIdRef.current !== requestId) return
       if (e instanceof DOMException && e.name === "AbortError") return
+      const msg = e instanceof Error ? e.message : String(e)
       console.error("[PlexAudio] play() failed:", msg)
       setError(msg)
     }
-  }, [resolvePartUrl])
+  }, [clearTimelineTimers, resolvePartUrl])
 
   useEffect(() => {
     loadAndPlayIndexRef.current = loadAndPlayIndex
@@ -204,42 +243,82 @@ export const PlexAudioProvider = ({ children }: { children: React.ReactNode }) =
   useEffect(() => {
     const audio = new Audio()
     audio.preload = "auto"
+    audio.volume = volume
     audioRef.current = audio
 
-    const onTimeUpdate = () => setPosition(audio.currentTime * 1000)
+    const onTimeUpdate = () => {
+      const pos = Math.round(audio.currentTime * 1000)
+      const dur = isFinite(audio.duration) && audio.duration > 0
+        ? Math.round(audio.duration * 1000)
+        : (durationRef.current || 0)
+      playerProgressStore.setProgress(pos, dur)
+    }
     const onDurationChange = () => {
-      if (isFinite(audio.duration)) setDuration(audio.duration * 1000)
+      if (isFinite(audio.duration)) {
+        const dur = Math.round(audio.duration * 1000)
+        setDuration(dur)
+        playerProgressStore.setProgress(Math.round(audio.currentTime * 1000), dur)
+      }
     }
     const onPlay = () => {
       setIsPlaying(true)
-      startTimelineReportingRef.current()
+      startTimelineReporting()
     }
     const onPause = () => {
       setIsPlaying(false)
+      clearTimelineTimers()
       reportTimelineRef.current("paused")
     }
     const onEnded = () => {
-      stopTimelineReportingRef.current()
+      stopTimelineReporting()
+      if (repeatModeRef.current === 'one') {
+        audio.currentTime = 0
+        audio.play().catch((err) => {
+          console.warn('[Audio] Loop play rejected:', err)
+        })
+        return
+      }
       const nextIdx = currentIndexRef.current + 1
       if (nextIdx < queueRef.current.length) {
-        loadAndPlayIndexRef.current(nextIdx)
+        void loadAndPlayIndexRef.current(nextIdx)
+      } else if (repeatModeRef.current === 'all' && queueRef.current.length > 0) {
+        void loadAndPlayIndexRef.current(0)
       } else {
         setIsPlaying(false)
-        setCurrentTrack(null)
-        currentIndexRef.current = -1
+        audio.pause()
+        audio.currentTime = 0
+        setCurrentIndex(0)
+        if (queueRef.current.length > 0) {
+          setCurrentTrack(queueRef.current[0])
+        }
       }
     }
     const onError = () => {
       const msg = audio.error ? `Audio error: ${audio.error.message}` : "Unknown audio error"
       console.error("[PlexAudio] audio element error:", msg, audio.error)
       setError(msg)
-      stopTimelineReportingRef.current()
+      stopTimelineReporting()
+
+      consecutiveErrorCountRef.current++
+      if (consecutiveErrorCountRef.current >= Math.max(1, queueRef.current.length)) {
+        console.warn('[PlexAudio] All tracks in queue failed to load. Halting playback.')
+        setIsPlaying(false)
+        consecutiveErrorCountRef.current = 0
+        return
+      }
+
       const nextIdx = currentIndexRef.current + 1
       if (nextIdx < queueRef.current.length) {
-        loadAndPlayIndexRef.current(nextIdx)
+        void loadAndPlayIndexRef.current(nextIdx)
+      } else if (repeatModeRef.current === 'all' && queueRef.current.length > 0) {
+        void loadAndPlayIndexRef.current(0)
       } else {
         setIsPlaying(false)
-        setCurrentTrack(null)
+        consecutiveErrorCountRef.current = 0
+        setCurrentIndex(0)
+        if (queueRef.current.length > 0) {
+          setCurrentTrack(queueRef.current[0])
+        }
       }
     }
 
@@ -257,41 +336,43 @@ export const PlexAudioProvider = ({ children }: { children: React.ReactNode }) =
       audio.removeEventListener("pause", onPause)
       audio.removeEventListener("ended", onEnded)
       audio.removeEventListener("error", onError)
-      stopTimelineReportingRef.current()
+      stopTimelineReporting()
       audio.pause()
       audio.src = ""
     }
-  }, [])
+  }, [clearTimelineTimers, startTimelineReporting, stopTimelineReporting])
 
   // Clean up timeline reporting on unmount.
   useEffect(() => {
     return () => {
-      if (timelineIntervalRef.current) {
-        clearInterval(timelineIntervalRef.current)
-      }
+      clearTimelineTimers()
     }
-  }, [])
+  }, [clearTimelineTimers])
 
   useEffect(() => {
     if (audioRef.current) audioRef.current.volume = volume
   }, [volume])
 
   const playTrack = useCallback(async (track: PlexTrackInfo) => {
-    stopTimelineReportingRef.current()
+    stopTimelineReporting()
+    originalQueueRef.current = [track]
     queueRef.current = [track]
     setQueue([track])
+    setIsShuffled(false)
     setError(null)
     await loadAndPlayIndexRef.current(0, true)
-  }, [])
+  }, [stopTimelineReporting])
 
   const playAlbum = useCallback(async (tracks: PlexTrackInfo[], startIndex = 0) => {
     if (tracks.length === 0) return
-    stopTimelineReportingRef.current()
-    queueRef.current = tracks
-    setQueue(tracks)
+    stopTimelineReporting()
+    originalQueueRef.current = [...tracks]
+    queueRef.current = [...tracks]
+    setQueue([...tracks])
+    setIsShuffled(false)
     setError(null)
     await loadAndPlayIndexRef.current(startIndex, true)
-  }, [])
+  }, [stopTimelineReporting])
 
   const togglePlay = useCallback(() => {
     const audio = audioRef.current
@@ -304,45 +385,59 @@ export const PlexAudioProvider = ({ children }: { children: React.ReactNode }) =
   }, [])
 
   const pause = useCallback(() => {
+    clearTimelineTimers()
     audioRef.current?.pause()
-  }, [])
+  }, [clearTimelineTimers])
 
   const resume = useCallback(() => {
     audioRef.current?.play().catch(() => {})
   }, [])
 
   const seek = useCallback((ms: number) => {
-    if (audioRef.current) audioRef.current.currentTime = ms / 1000
+    if (audioRef.current) {
+      audioRef.current.currentTime = ms / 1000
+      setPosition(ms)
+      playerProgressStore.setProgress(ms, durationRef.current || 0)
+    }
   }, [])
 
   const setVolume = useCallback((vol: number) => {
     const clamped = Math.max(0, Math.min(1, vol))
     setVolumeState(clamped)
-    localStorage.setItem(VOLUME_KEY, String(clamped))
+    try {
+      localStorage.setItem(PLEX_PLAYER_VOLUME_KEY, String(clamped))
+    } catch {
+      // ignore
+    }
   }, [])
 
   const skipNext = useCallback(async () => {
-    stopTimelineReportingRef.current()
-    await loadAndPlayIndexRef.current(currentIndexRef.current + 1)
-  }, [])
+    stopTimelineReporting()
+    const nextIdx = currentIndexRef.current + 1
+    if (nextIdx < queueRef.current.length) {
+      await loadAndPlayIndexRef.current(nextIdx)
+    } else if (repeatModeRef.current === 'all' && queueRef.current.length > 0) {
+      await loadAndPlayIndexRef.current(0)
+    }
+  }, [stopTimelineReporting])
 
   const skipPrevious = useCallback(async () => {
-    stopTimelineReportingRef.current()
+    stopTimelineReporting()
     const prevIdx = currentIndexRef.current - 1
     if (prevIdx >= 0) {
       await loadAndPlayIndexRef.current(prevIdx)
     } else if (audioRef.current) {
       audioRef.current.currentTime = 0
     }
-  }, [])
+  }, [stopTimelineReporting])
 
   const skipToIndex = useCallback((index: number) => {
-    stopTimelineReportingRef.current()
+    stopTimelineReporting()
     loadAndPlayIndexRef.current(index)
-  }, [])
+  }, [stopTimelineReporting])
 
   const stop = useCallback(() => {
-    stopTimelineReportingRef.current()
+    stopTimelineReporting()
     const audio = audioRef.current
     if (audio) {
       audio.pause()
@@ -352,11 +447,107 @@ export const PlexAudioProvider = ({ children }: { children: React.ReactNode }) =
     setCurrentTrack(null)
     setPosition(0)
     setDuration(0)
+    playerProgressStore.setProgress(0, 0)
     queueRef.current = []
+    originalQueueRef.current = []
     setQueue([])
     setError(null)
     currentIndexRef.current = -1
     setCurrentIndex(-1)
+  }, [stopTimelineReporting])
+
+  const removeFromQueue = useCallback((index: number) => {
+    const currentQ = queueRef.current
+    if (index < 0 || index >= currentQ.length) return
+
+    const itemToRemove = currentQ[index]
+    const updated = currentQ.filter((_, i) => i !== index)
+    queueRef.current = updated
+    setQueue(updated)
+
+    // Keep originalQueueRef synchronized so un-shuffle does not resurrect deleted tracks.
+    // Splice out only the single matching instance to prevent purging duplicate tracks in queue.
+    const origIdx = originalQueueRef.current.findIndex((t) => t.id === itemToRemove.id)
+    if (origIdx !== -1) {
+      originalQueueRef.current.splice(origIdx, 1)
+    }
+
+    const currIdx = currentIndexRef.current
+    if (index === currIdx) {
+      if (updated.length === 0) {
+        stop()
+      } else {
+        const nextIdx = index < updated.length ? index : 0
+        void loadAndPlayIndexRef.current(nextIdx, false, isPlayingRef.current)
+      }
+    } else if (index < currIdx) {
+      currentIndexRef.current = currIdx - 1
+      setCurrentIndex(currIdx - 1)
+    }
+  }, [stop])
+
+  const moveQueueItem = useCallback((fromIndex: number, toIndex: number) => {
+    const currentQ = queueRef.current
+    if (fromIndex < 0 || fromIndex >= currentQ.length || toIndex < 0 || toIndex >= currentQ.length) return
+    const item = currentQ[fromIndex]
+    const updated = [...currentQ]
+    updated.splice(fromIndex, 1)
+    updated.splice(toIndex, 0, item)
+    queueRef.current = updated
+    setQueue(updated)
+
+    if (!isShuffled) {
+      originalQueueRef.current = [...updated]
+    }
+
+    const currIdx = currentIndexRef.current
+    if (fromIndex === currIdx) {
+      currentIndexRef.current = toIndex
+      setCurrentIndex(toIndex)
+    } else if (fromIndex < currIdx && toIndex >= currIdx) {
+      currentIndexRef.current = currIdx - 1
+      setCurrentIndex(currIdx - 1)
+    } else if (fromIndex > currIdx && toIndex <= currIdx) {
+      currentIndexRef.current = currIdx + 1
+      setCurrentIndex(currIdx + 1)
+    }
+  }, [isShuffled])
+
+  const toggleShuffle = useCallback(() => {
+    setIsShuffled((prev) => {
+      const next = !prev
+      if (next) {
+        const curr = queueRef.current[currentIndexRef.current]
+        const remaining = queueRef.current.filter((_, i) => i !== currentIndexRef.current)
+        for (let i = remaining.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [remaining[i], remaining[j]] = [remaining[j], remaining[i]]
+        }
+        const shuffled = curr ? [curr, ...remaining] : remaining
+        queueRef.current = shuffled
+        setQueue(shuffled)
+        const newIdx = curr ? 0 : -1
+        currentIndexRef.current = newIdx
+        setCurrentIndex(newIdx)
+      } else {
+        const original = originalQueueRef.current
+        if (original.length > 0) {
+          const curr = queueRef.current[currentIndexRef.current]
+          const origIdx = curr ? original.findIndex((t) => t.id === curr.id) : -1
+          queueRef.current = [...original]
+          setQueue([...original])
+          const newIdx = origIdx >= 0 ? origIdx : 0
+          currentIndexRef.current = newIdx
+          setCurrentIndex(newIdx)
+        }
+      }
+      return next
+    })
+  }, [])
+
+  const setRepeatMode = useCallback((mode: RepeatMode) => {
+    repeatModeRef.current = mode
+    setRepeatModeState(mode)
   }, [])
 
   const previousTracks = queue.slice(0, Math.max(0, currentIndex))
@@ -371,6 +562,8 @@ export const PlexAudioProvider = ({ children }: { children: React.ReactNode }) =
         volume,
         queue,
         previousTracks,
+        repeatMode,
+        isShuffled,
         error,
         playTrack,
         playAlbum,
@@ -382,12 +575,14 @@ export const PlexAudioProvider = ({ children }: { children: React.ReactNode }) =
         skipNext,
         skipPrevious,
         skipToIndex,
+        removeFromQueue,
+        moveQueueItem,
+        toggleShuffle,
+        setRepeatMode,
         stop,
       }}
     >
       {children}
     </PlexPlayerContext.Provider>
   )
-};
-
-export { usePlexPlayer } from './hooks/use-plex-player'
+}

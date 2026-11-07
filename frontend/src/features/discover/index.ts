@@ -21,4 +21,10 @@ export { DiscoverContinueWatchingSection } from './components/organisms/discover
 export { DiscoverContinueWatchingCard } from './components/molecules/discover-continue-watching-card'
 export { useDiscoverContinueWatching } from './hooks/use-discover-continue-watching'
 export { useClaimedFreeGames } from './hooks/use-claimed-free-games'
+export {
+  markContinueWatchingWatched,
+  markContinueWatchingUnwatched,
+  removeContinueWatchingItem,
+  type ContinueWatchingPlexActionParams,
+} from './utils/continue-watching-actions'
 export type { DiscoverContinueWatchingItem } from './types'

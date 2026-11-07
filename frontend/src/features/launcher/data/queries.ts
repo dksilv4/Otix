@@ -39,12 +39,15 @@ export const popularGamesOptions = () =>
     staleTime: 1000 * 60 * 2,
   })
 
-export const gameDetailOptions = (id: string) =>
-  queryOptions({
-    queryKey: gameKeys.detail(id),
+export const gameDetailOptions = (id: string) => {
+  const cleanId = id ? String(id).trim().replace(/\.0+$/, '') : ''
+  const isInvalid = !cleanId || /^(pc_file_|iso[:_]file_|steam_|rom_|ps\d+_|xbox|switch_|file_)/i.test(cleanId)
+  return queryOptions({
+    queryKey: gameKeys.detail(cleanId || id),
     queryFn: async (): Promise<CatalogGameDetail | null> => {
+      if (isInvalid) return null
       try {
-        const { data } = await apiClient.get<MediaItemDetail>(`/media/game/${id}`)
+        const { data } = await apiClient.get<MediaItemDetail>(`/media/game/${cleanId}`)
         return {
           ...data,
           isFree: data.game?.isFree ?? false,
@@ -54,9 +57,10 @@ export const gameDetailOptions = (id: string) =>
         return null
       }
     },
-    enabled: !!id,
+    enabled: Boolean(cleanId && !isInvalid),
     staleTime: 1000 * 60 * 5,
   })
+}
 
 export const gameSearchOptions = (query: string) =>
   queryOptions({

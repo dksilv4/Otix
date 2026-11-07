@@ -1,6 +1,6 @@
 import { useEffect, useRef, useCallback } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { Calendar, Compass, Search, Gamepad2, Settings, List, Download, MessageSquare } from "lucide-react"
+import { Calendar, Compass, Search, Gamepad2, Settings, List, Download, MessageSquare, Music } from "lucide-react"
 import { useNavigation } from "@navigation/hooks/use-navigation"
 import { NavLink } from "@navigation/components/atoms/navigation-link"
 import { useDesktopPlatform } from "@/lib/desktop/platform"
@@ -17,6 +17,7 @@ export const MenuDropdownContent = () => {
       <NavLink to="/search" icon={<Search className="h-4 w-4" />} label="Search" />
       <NavLink to="/calendar" icon={<Calendar className="h-4 w-4" />} label="Calendar" />
       <NavLink to="/launcher" icon={<Gamepad2 className="h-4 w-4" />} label="Launcher" />
+      <NavLink to="/music" icon={<Music className="h-4 w-4" />} label="Music" />
       <NavLink to="/library" icon={<List className="h-4 w-4" />} label="Library" />
       <NavLink to="/messages" icon={<MessageSquare className="h-4 w-4" />} label="Messages" badge={chatUnreadCount} />
       <NavLink to="/settings" icon={<Settings className="h-4 w-4" />} label="Settings" />

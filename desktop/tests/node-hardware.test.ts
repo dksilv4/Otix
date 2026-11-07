@@ -40,6 +40,19 @@ describe('node-hardware', () => {
     expect(diskCheck.name).toBe('LivingRoom-PC');
   });
 
+  it('detects node when config file uses node root block instead of server', () => {
+    vi.mocked(fs.existsSync).mockImplementation((filePath) => {
+      return typeof filePath === 'string' && filePath.includes('config.yaml');
+    });
+    vi.mocked(fs.readFileSync).mockReturnValue(
+      'node:\n  name: "Office-Node"\n  port: 8090\n',
+    );
+
+    const diskCheck = checkNodeInstalledOnDisk();
+    expect(diskCheck.installed).toBe(true);
+    expect(diskCheck.name).toBe('Office-Node');
+  });
+
   it('returns cached snapshot via getCachedHostNodeAndHardware', () => {
     vi.mocked(fs.existsSync).mockReturnValue(false);
 

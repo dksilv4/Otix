@@ -43,10 +43,6 @@ export function clearActivity(pluginId: string): void {
   store.delete(pluginId)
 }
 
-export function getPluginActivity(pluginId: string): PluginActivityItem[] {
-  return prune(store.get(pluginId) || [])
-}
-
 export function getAllActivity(): Array<{ pluginId: string; activities: PluginActivityItem[] }> {
   const entries: Array<{ pluginId: string; activities: PluginActivityItem[] }> = []
   for (const [pluginId, items] of store.entries()) {

@@ -1,7 +1,13 @@
-import { memo } from 'react'
-import { Link } from '@tanstack/react-router'
-import { Play, Loader2 } from 'lucide-react'
+import { memo, useMemo, useCallback } from 'react'
+import { Link, useNavigate } from '@tanstack/react-router'
+import { Play, Loader2, MoreVertical } from 'lucide-react'
 import { DkImage } from '@ui/atoms/image'
+import { useModal } from '@/lib/modals'
+import {
+  ContextMenuTrigger,
+  useOptionalMenuContext,
+  buildContinueWatchingMenuItems,
+} from '@/features/_config/context-menu'
 import type { DiscoverContinueWatchingItem } from '../../types'
 import {
   formatContinueWatchingRemaining,
@@ -17,6 +23,10 @@ interface DiscoverContinueWatchingCardProps {
 
 export const DiscoverContinueWatchingCard = memo(
   ({ item, isPlaying = false, onPlay }: DiscoverContinueWatchingCardProps) => {
+    const navigate = useNavigate()
+    const { openModal } = useModal()
+    const menu = useOptionalMenuContext()
+
     const artwork = getContinueWatchingArtwork(item)
     const subtitle = getContinueWatchingSubtitle(item)
     const remainingText = formatContinueWatchingRemaining(item.viewOffset, item.duration)
@@ -29,21 +39,74 @@ export const DiscoverContinueWatchingCard = memo(
       onPlay(item)
     }
 
+    const menuItems = useMemo(() => {
+      return buildContinueWatchingMenuItems(
+        {
+          type: 'continue-watching',
+          id: String(item.mediaItemId || item.ratingKey),
+          ratingKey: item.ratingKey,
+          grandparentRatingKey: item.grandparentRatingKey ?? undefined,
+          mediaItemId: item.mediaItemId ? String(item.mediaItemId) : undefined,
+          mediaType: item.mediaType,
+          title: item.title,
+          showTitle: item.showTitle ?? undefined,
+          episodeTitle: item.episodeTitle ?? undefined,
+          seasonNumber: item.seasonNumber ?? undefined,
+          episodeNumber: item.episodeNumber ?? undefined,
+          subtitle: subtitle ?? undefined,
+          thumb: artwork || undefined,
+          stillUrl: artwork || undefined,
+          backdropUrl: item.backdropUrl ?? undefined,
+          viewOffset: item.viewOffset,
+          duration: item.duration,
+          progressPercent: item.progressPercent,
+          year: item.year ? String(item.year) : undefined,
+          serverId: item.serverId,
+          serverName: item.serverName,
+          serverUrl: item.serverUrl,
+        },
+        { navigate, openModal },
+        { onPlay },
+      )
+    }, [item, subtitle, artwork, navigate, openModal, onPlay])
+
+    const handleMenuClick = useCallback(
+      (e: React.MouseEvent) => {
+        e.preventDefault()
+        e.stopPropagation()
+        menu?.open(e.nativeEvent, menuItems, {
+          mediaType: item.mediaType,
+          targetType: 'continue-watching',
+          data: { itemId: item.id, ratingKey: item.ratingKey },
+        })
+      },
+      [menu, menuItems, item.mediaType, item.id, item.ratingKey],
+    )
+
     const cardContent = (
       <div
         data-testid="discover-continue-watching-card"
-        data-context-type={item.mediaType === 'show' && item.episodeNumber != null ? 'episode' : 'media'}
-        data-episode-id={String(item.mediaItemId)}
-        data-episode-number={item.episodeNumber ?? undefined}
-        data-season-number={item.seasonNumber ?? undefined}
-        data-episode-title={item.title}
-        data-show-id={String(item.mediaItemId)}
-        data-show-title={item.title}
-        data-episode-still={artwork || undefined}
-        data-media-id={String(item.mediaItemId)}
+        data-context-type="continue-watching"
+        data-rating-key={item.ratingKey}
+        data-server-id={item.serverId ?? undefined}
+        data-server-name={item.serverName ?? undefined}
+        data-server-url={item.serverUrl ?? undefined}
+        data-media-id={String(item.mediaItemId || item.ratingKey)}
+        data-media-item-id={item.mediaItemId ? String(item.mediaItemId) : undefined}
         data-media-type={item.mediaType}
         data-media-title={item.title}
+        data-show-title={item.showTitle ?? undefined}
+        data-episode-title={item.episodeTitle ?? undefined}
+        data-season-number={item.seasonNumber ?? undefined}
+        data-episode-number={item.episodeNumber ?? undefined}
+        data-subtitle={subtitle ?? undefined}
         data-media-poster={artwork || undefined}
+        data-episode-still={artwork || undefined}
+        data-backdrop-url={item.backdropUrl ?? undefined}
+        data-view-offset={item.viewOffset ?? undefined}
+        data-duration={item.duration ?? undefined}
+        data-progress-percent={item.progressPercent ?? undefined}
+        data-media-year={item.year ? String(item.year) : undefined}
         className="group relative flex flex-col w-full text-left select-none cursor-pointer"
       >
         {/* 16:9 Thumbnail Pod with Soft Glassmorphic Tonal Surface */}
@@ -61,7 +124,7 @@ export const DiscoverContinueWatchingCard = memo(
           {/* Atmospheric Vignette Gradients */}
           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent pointer-events-none" />
 
-          {/* Top Row Badges: Episode index / Remaining duration */}
+          {/* Top Row Badges: Episode index / Remaining duration / Options Button */}
           <div className="absolute top-2.5 inset-x-2.5 flex items-center justify-between z-10 pointer-events-none">
             {item.mediaType === 'show' && item.seasonNumber != null && item.episodeNumber != null ? (
               <span className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold text-foreground bg-background/60 backdrop-blur-xl shadow-sm">
@@ -71,11 +134,23 @@ export const DiscoverContinueWatchingCard = memo(
               <span />
             )}
 
-            {remainingText && (
-              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-medium text-foreground/90 bg-background/60 backdrop-blur-xl shadow-sm">
-                {remainingText}
-              </span>
-            )}
+            <div className="flex items-center gap-1.5 pointer-events-auto">
+              {remainingText && (
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-medium text-foreground/90 bg-background/60 backdrop-blur-xl shadow-sm">
+                  {remainingText}
+                </span>
+              )}
+
+              <button
+                type="button"
+                aria-label={`Options for ${item.title}`}
+                data-testid="discover-continue-watching-options-btn"
+                onClick={handleMenuClick}
+                className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 p-1 rounded-full bg-background/60 backdrop-blur-xl text-foreground hover:bg-background/80 hover:text-primary shadow-sm cursor-pointer"
+              >
+                <MoreVertical className="w-3.5 h-3.5" />
+              </button>
+            </div>
           </div>
 
           {/* Hover Play Button Overlay */}
@@ -125,27 +200,23 @@ export const DiscoverContinueWatchingCard = memo(
       </div>
     )
 
-    if (item.mediaItemId) {
-      return (
-        <Link
-          to="/media/$mediaType/$mediaId"
-          params={{
-            mediaType: item.mediaType,
-            mediaId: String(item.mediaItemId),
-          }}
-          search={
-            item.mediaType === 'show' && item.seasonNumber != null
-              ? { season: item.seasonNumber }
-              : undefined
-          }
-          className="block w-full focus-visible:outline-none"
-        >
-          {cardContent}
-        </Link>
-      )
-    }
-
-    return (
+    const content = item.mediaItemId ? (
+      <Link
+        to="/media/$mediaType/$mediaId"
+        params={{
+          mediaType: item.mediaType,
+          mediaId: String(item.mediaItemId),
+        }}
+        search={
+          item.mediaType === 'show' && item.seasonNumber != null
+            ? { season: item.seasonNumber }
+            : undefined
+        }
+        className="block w-full focus-visible:outline-none"
+      >
+        {cardContent}
+      </Link>
+    ) : (
       <div
         role="button"
         tabIndex={0}
@@ -156,10 +227,20 @@ export const DiscoverContinueWatchingCard = memo(
             onPlay(item)
           }
         }}
-        className="block w-full focus-visible:outline-none"
+        className="block w-full text-left focus-visible:outline-none"
       >
         {cardContent}
       </div>
+    )
+
+    return (
+      <ContextMenuTrigger
+        items={menuItems}
+        mediaType={item.mediaType}
+        data={{ itemId: item.id, ratingKey: item.ratingKey }}
+      >
+        {content}
+      </ContextMenuTrigger>
     )
   },
 )

@@ -14,7 +14,8 @@ export type RemoteDownloadStatus =
 export interface RemoteDownloadOptions {
   id?: string;
   userId?: string;
-  serverUrl: string;
+  nodeUrl?: string;
+  serverUrl?: string;
   fileId: string;
   filename: string;
   filesize: number;
@@ -22,6 +23,7 @@ export interface RemoteDownloadOptions {
   mediaItemId?: string | null;
   authToken?: string | null;
   destDir?: string | null;
+  source?: 'node' | 'server';
 }
 
 export interface RemoteDownloadProgress {
@@ -36,6 +38,7 @@ export interface RemoteDownloadProgress {
   etaSeconds: number;
   isoPath?: string | null;
   error?: string | null;
+  nodeUrl?: string;
   serverUrl: string;
   fileId: string;
 }

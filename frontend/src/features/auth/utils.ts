@@ -159,6 +159,11 @@ export const setCachedUser = (user: import('@auth/types').User | null): void => 
 export const fetchAuthenticatedUser = async (): Promise<import('@auth/types').User | null> => {
   const { apiClient } = await import('@/lib/api/client')
   const { ACCESS_TOKEN_KEY } = await import('@/lib/config')
+  const token = typeof window !== 'undefined' ? localStorage.getItem(ACCESS_TOKEN_KEY) : null
+  if (!token) {
+    setCachedUser(null)
+    return null
+  }
   try {
     const [meRes, intRes] = await Promise.all([
       apiClient.get('/auth/me'),

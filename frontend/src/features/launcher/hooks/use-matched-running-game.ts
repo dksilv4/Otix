@@ -251,7 +251,8 @@ export const useMatchedRunningGame = (customGame?: RunningGameData): {
 
   const rawTitle = runningGame?.game.title || ''
   const exePath = runningGame?.game.exePath || ''
-  const otixMediaId = runningGame?.game.otixMediaId || (runningGame?.game.id && !/^file_/i.test(runningGame.game.id) ? runningGame.game.id : '')
+  const rawMediaId = runningGame?.game.otixMediaId || (runningGame?.game.id && !/^(pc_file_|iso[:_]file_|steam_|rom_|ps\d+_|xbox|switch_|file_)/i.test(runningGame.game.id) ? runningGame.game.id : '')
+  const otixMediaId = rawMediaId ? String(rawMediaId).trim().replace(/\.0+$/, '') : ''
   const cleanedTitle = useMemo(() => cleanGameTitle(rawTitle, exePath), [rawTitle, exePath])
 
   const { data: matchedGame, isLoading: isMatching } = useQuery<MatchedGameInfo | null>({

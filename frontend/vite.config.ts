@@ -76,11 +76,32 @@ export default defineConfig({
         xfwd: true,
         timeout: 0,
         proxyTimeout: 0,
+        configure: (proxy) => {
+          proxy.on('error', (_err, _req, res) => {
+            if (res && 'writeHead' in res && !(res as any).headersSent) {
+              ;(res as any).writeHead(503, { 'Content-Type': 'application/json' })
+              ;(res as any).end(
+                JSON.stringify({
+                  detail: 'Otix backend server is currently unavailable or restarting.',
+                  code: 'backend_unavailable',
+                }),
+              )
+            }
+          })
+        },
       },
       '/uploads': {
         target: process.env.VITE_API_PROXY_TARGET || 'http://127.0.0.1:8000',
         changeOrigin: true,
         xfwd: true,
+        configure: (proxy) => {
+          proxy.on('error', (_err, _req, res) => {
+            if (res && 'writeHead' in res && !(res as any).headersSent) {
+              ;(res as any).writeHead(503, { 'Content-Type': 'application/json' })
+              ;(res as any).end(JSON.stringify({ detail: 'Upload service unavailable' }))
+            }
+          })
+        },
       },
       '/media': {
         target: process.env.VITE_API_PROXY_TARGET || 'http://127.0.0.1:8000',
@@ -90,6 +111,14 @@ export default defineConfig({
           if (req.headers.accept?.includes('text/html')) {
             return '/index.html'
           }
+        },
+        configure: (proxy) => {
+          proxy.on('error', (_err, _req, res) => {
+            if (res && 'writeHead' in res && !(res as any).headersSent) {
+              ;(res as any).writeHead(503, { 'Content-Type': 'application/json' })
+              ;(res as any).end(JSON.stringify({ detail: 'Media service unavailable' }))
+            }
+          })
         },
       },
     },

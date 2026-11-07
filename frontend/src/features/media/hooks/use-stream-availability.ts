@@ -148,8 +148,16 @@ export const useStreamAvailability = ({
 
   // Targeted single-item lookup for Plex if not present in initial shelf
   useEffect(() => {
-    if (!isPlexConnected || mediaType === 'game' || !mediaId || isCatalogMatch) {
+    if (!isPlexConnected || mediaType === 'game' || !mediaId || isCatalogMatch || catalogLoading) {
       setTargetedStreamable(null)
+      return
+    }
+
+    // If streamable catalog has finished loading and this item is not in the streamable set,
+    // we know it's not present in the user's Plex library. Avoid making an unnecessary speculative
+    // connect-info request that would return 404.
+    if (!catalogLoading && streamableIds.size > 0 && !isCatalogMatch) {
+      setTargetedStreamable(false)
       return
     }
 

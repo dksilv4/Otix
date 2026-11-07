@@ -5,13 +5,6 @@ import {
   applyDesktopSettings,
   type DesktopSettings,
 } from '../desktop-settings';
-import {
-  setAutoDownloadUpdates,
-  setAllowPrerelease,
-  configureAutoUpdaterFeed,
-  startPeriodicUpdateChecks,
-  stopPeriodicUpdateChecks,
-} from './updater';
 
 import type { NodeDaemonManager } from '../node-daemon';
 import { getHostNodeAndHardware, httpGetJson, httpPostJson } from '../game/node-hardware';
@@ -94,24 +87,29 @@ export function registerDesktopSettingsIPC(
       saveDesktopSettings(merged);
       applyDesktopSettings(merged, mainWindow, tray);
 
-      if (partial.autoDownloadUpdates !== undefined) {
-        setAutoDownloadUpdates(partial.autoDownloadUpdates);
-      }
-
-      if (partial.allowPrerelease !== undefined) {
-        setAllowPrerelease(partial.allowPrerelease);
-      }
-
-      if (partial.autoCheckUpdates !== undefined) {
-        if (partial.autoCheckUpdates) {
-          startPeriodicUpdateChecks();
-        } else {
-          stopPeriodicUpdateChecks();
+      if (
+        partial.autoDownloadUpdates !== undefined ||
+        partial.allowPrerelease !== undefined ||
+        partial.autoCheckUpdates !== undefined ||
+        partial.githubToken !== undefined
+      ) {
+        const updater = await import('./updater');
+        if (partial.autoDownloadUpdates !== undefined) {
+          updater.setAutoDownloadUpdates(partial.autoDownloadUpdates);
         }
-      }
-
-      if (partial.githubToken !== undefined) {
-        configureAutoUpdaterFeed();
+        if (partial.allowPrerelease !== undefined) {
+          updater.setAllowPrerelease(partial.allowPrerelease);
+        }
+        if (partial.autoCheckUpdates !== undefined) {
+          if (partial.autoCheckUpdates) {
+            updater.startPeriodicUpdateChecks();
+          } else {
+            updater.stopPeriodicUpdateChecks();
+          }
+        }
+        if (partial.githubToken !== undefined) {
+          updater.configureAutoUpdaterFeed();
+        }
       }
 
       if (nodeDaemon && partial.embeddedNodeEnabled !== undefined) {

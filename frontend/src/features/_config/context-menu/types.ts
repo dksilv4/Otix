@@ -40,6 +40,7 @@ export type ContextMenuTargetType =
   | 'text'
   | 'input'
   | 'page'
+  | 'continue-watching'
   | 'generic'
 
 export interface ContextMenuState {

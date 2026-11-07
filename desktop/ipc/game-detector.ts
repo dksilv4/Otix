@@ -28,10 +28,17 @@ async function getRunningGamesMerged(gameDetector: GameDetector | null): Promise
         ? nodeData.games
         : (nodeData.game ? [nodeData.game] : []);
 
+      const normalizeId = (id: string) => id.replace(/^(pc_|file_|iso_|steam_)+/, '');
       const merged = [...local];
       for (const g of rawList) {
         const gameId = g.id || g.game_id || '';
-        const match = merged.find((lg) => lg.game.id === gameId || (g.pid && lg.pid === g.pid));
+        const normGId = normalizeId(gameId);
+        const match = merged.find((lg) => {
+          if (g.pid && lg.pid && lg.pid === g.pid) return true;
+          if (lg.game.id === gameId) return true;
+          if (normGId && normalizeId(lg.game.id) === normGId) return true;
+          return false;
+        });
         const rawFps = g.fps_snapshot || g.fpsSnapshot;
         const fpsSnapshot = rawFps ? {
           currentFps: rawFps.fps ?? rawFps.current_fps ?? rawFps.currentFps ?? 0,
@@ -72,7 +79,19 @@ async function getRunningGamesMerged(gameDetector: GameDetector | null): Promise
           }
         }
       }
-      return merged;
+      // Strictly deduplicate by PID and normalized ID
+      const deduped: RunningGame[] = [];
+      const seenPids = new Set<number>();
+      const seenIds = new Set<string>();
+      for (const item of merged) {
+        if (item.pid && seenPids.has(item.pid)) continue;
+        const normId = normalizeId(item.game.id);
+        if (normId && seenIds.has(normId)) continue;
+        if (item.pid) seenPids.add(item.pid);
+        if (normId) seenIds.add(normId);
+        deduped.push(item);
+      }
+      return deduped;
     }
   } catch {
     // node daemon unavailable or timed out
@@ -101,6 +120,7 @@ export function registerGameDetectorIPC(
           detached: true,
           stdio: 'ignore',
         });
+        child.on('error', (err) => console.warn('[launcher] Child error:', err));
         gameDetector?.startTracking(game, child.pid);
         child.unref();
         return true;
@@ -117,6 +137,7 @@ export function registerGameDetectorIPC(
           detached: true,
           stdio: 'ignore',
         });
+        child.on('error', (err) => console.warn('[launcher] Child error:', err));
         gameDetector?.startTracking(game, child.pid);
         child.unref();
         return true;

@@ -4,6 +4,8 @@ export const resolveActivityLookupKeys = (
   mediaType?: string,
   tmdbId?: string | number | null,
   mediaId?: string | number | null,
+  tvdbId?: string | number | null,
+  title?: string | null,
 ): string[] => {
   const keys: string[] = []
   const type = mediaType === 'show' ? 'show' : 'movie'
@@ -11,6 +13,12 @@ export const resolveActivityLookupKeys = (
   if (tmdbId) {
     keys.push(`tmdb:${type}:${tmdbId}`)
     keys.push(String(tmdbId))
+  }
+
+  if (tvdbId) {
+    keys.push(`tvdb:${type}:${tvdbId}`)
+    keys.push(String(tvdbId))
+    keys.push(`tmdb:${type}:${tvdbId}`)
   }
 
   if (mediaId) {
@@ -22,6 +30,20 @@ export const resolveActivityLookupKeys = (
     if (parsedTmdb) {
       keys.push(`tmdb:${type}:${parsedTmdb}`)
       keys.push(parsedTmdb)
+    }
+
+    const parsedTvdb = /^tvdb:(?:movie:|show:)?(\d+)$/i.exec(rawId)?.[1]
+    if (parsedTvdb) {
+      keys.push(`tvdb:${type}:${parsedTvdb}`)
+      keys.push(parsedTvdb)
+      keys.push(`tmdb:${type}:${parsedTvdb}`)
+    }
+  }
+
+  if (title) {
+    const normalized = title.toLowerCase().replace(/[^a-z0-9]/g, '')
+    if (normalized) {
+      keys.push(`${type}:title:${normalized}`)
     }
   }
 

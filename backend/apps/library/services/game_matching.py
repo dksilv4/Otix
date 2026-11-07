@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import logging
+import re
 from typing import Any
 
+from django.contrib.contenttypes.models import ContentType
 from django.db.models import Q
 from django.utils import timezone
 
@@ -14,7 +16,7 @@ from apps.library.services.server_catalog import (
     _SCENE_FOLDER_TAGS,
     title_keys_for_file,
 )
-from apps.media.models import MediaItem
+from apps.media.models import ExternalID, MediaItem
 from apps.media.services.catalog import attach_media_urls
 from apps.media.services.game_matcher import _comparison_key, _normalize_title
 
@@ -50,6 +52,35 @@ def find_matching_candidates(
     limit: int = 5,
 ) -> list[dict[str, Any]]:
     """Search MediaItem catalog and compute confidence-scored candidates."""
+    # 0) Direct Title ID match check (PS5 / PS4 Title IDs like PPSA*, ELJS*, CUSA*)
+    haystack = f"{filename or ''} {relative_path or ''} {title or ''}"
+    ps_match = re.search(r"\b((?:PPSA|ELJS|ECAS|CUSA)\d{5})\b", haystack, re.IGNORECASE)
+    if ps_match:
+        ps_code = ps_match.group(1).upper()
+        ct = ContentType.objects.get_for_model(MediaItem)
+        ext = ExternalID.objects.filter(
+            content_type=ct,
+            provider__in=["playstation", "ps_id"],
+            external_id=ps_code,
+        ).first()
+        if ext and isinstance(ext.target, MediaItem):
+            exact_item = ext.target
+            try:
+                attach_media_urls([exact_item])
+            except Exception:
+                pass
+            return [
+                {
+                    "media_id": str(exact_item.id),
+                    "title": exact_item.title,
+                    "slug": exact_item.slug,
+                    "poster_url": getattr(exact_item, "poster_url", "") or "",
+                    "backdrop_url": getattr(exact_item, "backdrop_url", "") or "",
+                    "release_year": exact_item.release_date.year if exact_item.release_date else None,
+                    "confidence": 1.0,
+                }
+            ]
+
     keys = title_keys_for_file(filename, title, relative_path)
     if not keys:
         norm = _normalize_title(title).strip()
@@ -244,6 +275,16 @@ def sync_node_manifest(node: UserNode, files: list[dict[str, Any]], prune: bool 
             platform = f.get("platform") or "pc"
             cover_url = f.get("cover_image_url") or getattr(matched_media, "poster_url", "") or ""
 
+            # Check for PS Title ID
+            haystack = f"{rel} {filename} {fp} {game_title}"
+            ps_match = re.search(r"\b((?:PPSA|ELJS|ECAS|CUSA)\d{5})\b", haystack, re.IGNORECASE)
+            extracted_title_id = f.get("title_id") or f.get("titleId") or f.get("ps_id") or (ps_match.group(1).upper() if ps_match else "")
+            if extracted_title_id:
+                if str(extracted_title_id).upper().startswith(("PPSA", "ELJS", "ECAS")) and platform in ("pc", "iso", "rom", "unknown"):
+                    platform = "ps5"
+                elif str(extracted_title_id).upper().startswith("CUSA") and platform in ("pc", "iso", "rom", "unknown"):
+                    platform = "ps4"
+
             # Group under canonical UserGame: check media_item first, then clean_title
             user_game = None
             if matched_media:
@@ -308,6 +349,8 @@ def sync_node_manifest(node: UserNode, files: list[dict[str, Any]], prune: bool 
                         "formatCategory": format_cat,
                         "candidatesCount": len(candidates),
                         "confidence": confidence,
+                        "titleId": str(extracted_title_id).upper() if extracted_title_id else "",
+                        "ps_id": str(extracted_title_id).upper() if extracted_title_id else "",
                     },
                 },
             )
@@ -328,7 +371,13 @@ def sync_node_manifest(node: UserNode, files: list[dict[str, Any]], prune: bool 
     return stats
 
 
-def confirm_match(user, record_id: int, media_item_id: str | int) -> GameMatchRecord:
+def confirm_match(
+    user,
+    record_id: int,
+    media_item_id: str | int,
+    title_id: str | None = None,
+    ps_id: str | None = None,
+) -> GameMatchRecord:
     """Manually link a game match record to a catalog media item."""
     record = GameMatchRecord.objects.get(id=record_id, user=user)
     media = None
@@ -337,7 +386,6 @@ def confirm_match(user, record_id: int, media_item_id: str | int) -> GameMatchRe
     except (ValueError, TypeError):
         pass
     if not media:
-        from apps.media.models import ExternalID
         ext = ExternalID.objects.filter(external_id=str(media_item_id)).first()
         if ext and isinstance(ext.content_object, MediaItem):
             media = ext.content_object
@@ -358,6 +406,41 @@ def confirm_match(user, record_id: int, media_item_id: str | int) -> GameMatchRe
                 logger.warning("Failed to import IGDB game %s: %s", igdb_id, e)
     if not media:
         raise MediaItem.DoesNotExist(f"MediaItem {media_item_id} not found")
+
+    # Resolve PS ID / Title ID
+    resolved_ps_id = (title_id or ps_id or "").strip().upper()
+    if not resolved_ps_id:
+        haystack = f"{record.relative_path} {record.raw_title} {record.cleaned_title} {record.canonical_key}"
+        m = re.search(r"\b((?:PPSA|ELJS|ECAS|CUSA)\d{5})\b", haystack, re.IGNORECASE)
+        if m:
+            resolved_ps_id = m.group(1).upper()
+
+    from apps.library.models.game_source import NodeGameSource, UserGame
+    source = (
+        NodeGameSource.objects.filter(
+            user_game__user=user,
+            canonical_path=record.relative_path,
+        ).first()
+        or NodeGameSource.objects.filter(
+            user_game__user=user,
+            relative_path=record.relative_path,
+        ).first()
+    )
+    if not resolved_ps_id and source and isinstance(source.format_details, dict):
+        resolved_ps_id = (source.format_details.get("titleId") or source.format_details.get("ps_id") or "").strip().upper()
+
+    # Update or create external_id rows on the matched MediaItem
+    if resolved_ps_id:
+        ct = ContentType.objects.get_for_model(MediaItem)
+        for prov in ("playstation", "ps_id"):
+            ExternalID.objects.update_or_create(
+                content_type=ct,
+                object_id=media.id,
+                provider=prov,
+                media_type="game",
+                defaults={"external_id": resolved_ps_id},
+            )
+
     record.media_item = media
     record.match_status = "matched"
     record.confidence = 1.0
@@ -365,6 +448,42 @@ def confirm_match(user, record_id: int, media_item_id: str | int) -> GameMatchRe
     record.save(
         update_fields=["media_item", "match_status", "confidence", "user_override", "updated_at"]
     )
+
+    # Link relational UserGame and update NodeGameSource
+    try:
+        sources = NodeGameSource.objects.filter(
+            user_game__user=user,
+        ).filter(
+            Q(canonical_path=record.relative_path)
+            | Q(relative_path=record.relative_path)
+            | Q(user_game__clean_title=record.cleaned_title)
+        )
+        for src in sources:
+            ug = src.user_game
+            ug_updates = []
+            if ug.media_item != media:
+                ug.media_item = media
+                ug_updates.append("media_item")
+            if not ug.cover_image_url and getattr(media, "poster_url", ""):
+                ug.cover_image_url = media.poster_url
+                ug_updates.append("cover_image_url")
+            if resolved_ps_id:
+                if resolved_ps_id.startswith(("PPSA", "ELJS", "ECAS")) and ug.platform in ("pc", "iso", "rom", "unknown"):
+                    ug.platform = "ps5"
+                    ug_updates.append("platform")
+                elif resolved_ps_id.startswith("CUSA") and ug.platform in ("pc", "iso", "rom", "unknown"):
+                    ug.platform = "ps4"
+                    ug_updates.append("platform")
+            if ug_updates:
+                ug_updates.append("updated_at")
+                ug.save(update_fields=ug_updates)
+            if resolved_ps_id and isinstance(src.format_details, dict):
+                src.format_details["titleId"] = resolved_ps_id
+                src.format_details["ps_id"] = resolved_ps_id
+                src.save(update_fields=["format_details", "updated_at"])
+    except Exception:
+        logger.exception("Failed to update UserGame/NodeGameSource on confirm_match")
+
     return record
 
 

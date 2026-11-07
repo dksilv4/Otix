@@ -172,6 +172,48 @@ class StorageSharesAndMatchingTests(TestCase):
         self.assertEqual(unmatch_resp.data["match_status"], "unmatched")
         self.assertIsNone(unmatch_resp.data["media_item_id"])
 
+    def test_ps5_dump_confirmation_updates_external_ids(self):
+        ps5_media = MediaItem.objects.create(
+            title="Demon's Souls",
+            slug="demons-souls",
+            media_type="game",
+        )
+        record = GameMatchRecord.objects.create(
+            user=self.user,
+            canonical_key="node:1:ps5/demons souls [ppsa01234]/ppsa01234-app0/eboot.bin",
+            raw_title="eboot.bin",
+            cleaned_title="Demon's Souls [PPSA01234]",
+            relative_path="PS5/Demon's Souls [PPSA01234]/PPSA01234-app0/eboot.bin",
+            match_status="needs_review",
+        )
+
+        confirm_resp = self.client.post(
+            f"/api/v1/library/matches/{record.id}/confirm",
+            {"media_item_id": str(ps5_media.id), "title_id": "PPSA01234"},
+            format="json",
+        )
+        self.assertEqual(confirm_resp.status_code, status.HTTP_200_OK)
+        self.assertEqual(confirm_resp.data["match_status"], "matched")
+        self.assertEqual(confirm_resp.data["media_item_id"], ps5_media.id)
+        # Check external_ids exposed in serializer response
+        self.assertIn("external_ids", confirm_resp.data)
+        self.assertEqual(confirm_resp.data["external_ids"].get("playstation"), "PPSA01234")
+
+        # Verify ExternalID model rows in database
+        from apps.media.models import ExternalID
+        from django.contrib.contenttypes.models import ContentType
+        ct = ContentType.objects.get_for_model(MediaItem)
+        ext = ExternalID.objects.filter(content_type=ct, object_id=ps5_media.id, provider="playstation").first()
+        self.assertIsNotNone(ext)
+        self.assertEqual(ext.external_id, "PPSA01234")
+
+        # Verify subsequent manifest search matches immediately via PS ID
+        from apps.library.services.game_matching import find_matching_candidates
+        cands = find_matching_candidates("Unknown Game", "eboot.bin", "PS5/PPSA01234-app0/eboot.bin")
+        self.assertEqual(len(cands), 1)
+        self.assertEqual(cands[0]["media_id"], str(ps5_media.id))
+        self.assertEqual(cands[0]["confidence"], 1.0)
+
     def test_manifest_ingest_with_uuid_machine_id(self):
         remote_node = UserNode.objects.create(
             user=self.user,

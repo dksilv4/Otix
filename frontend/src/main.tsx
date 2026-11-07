@@ -18,7 +18,8 @@ import { FeatureProvider } from '@/features/_config'
 import { PageMetaProvider } from '@/lib/providers/page-context'
 import { PlexAudioProvider } from '@/lib/player/plex-audio-provider'
 import { JellyfinAudioProvider } from '@/lib/player/jellyfin-audio-provider'
-import { PlayerProvider } from '@/lib/player/use-player'
+import { LocalAudioProvider } from '@/lib/player/local-audio-provider'
+import { PlayerProvider } from '@/lib/player/player-provider'
 import { MediaStreamPlayerProvider } from '@/features/media/hooks/use-media-stream-player'
 import { MediaStreamPlayerModal } from '@/features/media/components/organisms/media-stream-player-modal'
 import { DkToastProvider, showErrorToast } from '@ui/molecules/toast'
@@ -106,22 +107,24 @@ createRoot(document.getElementById('root')!).render(
                     <DkToastProvider>
                       <PlexAudioProvider>
                         <JellyfinAudioProvider>
-                          <PlayerProvider>
-                            <MediaStreamPlayerProvider>
-                              <PageMetaProvider>
-                                <ContextMenuProvider>
-                                  <ModalProvider>
-                                    <RouterProvider
-                                      router={router}
-                                      context={{ queryClient, isAuthenticated: false, isAuthLoaded: false }}
-                                    />
-                                    <MediaStreamPlayerModal />
-                                  </ModalProvider>
-                                  <ContextMenuPortal />
-                                </ContextMenuProvider>
-                              </PageMetaProvider>
-                            </MediaStreamPlayerProvider>
-                          </PlayerProvider>
+                          <LocalAudioProvider>
+                            <PlayerProvider>
+                              <MediaStreamPlayerProvider>
+                                <PageMetaProvider>
+                                  <ContextMenuProvider>
+                                    <ModalProvider>
+                                      <RouterProvider
+                                        router={router}
+                                        context={{ queryClient, isAuthenticated: false, isAuthLoaded: false }}
+                                      />
+                                      <MediaStreamPlayerModal />
+                                    </ModalProvider>
+                                    <ContextMenuPortal />
+                                  </ContextMenuProvider>
+                                </PageMetaProvider>
+                              </MediaStreamPlayerProvider>
+                            </PlayerProvider>
+                          </LocalAudioProvider>
                         </JellyfinAudioProvider>
                       </PlexAudioProvider>
                     </DkToastProvider>

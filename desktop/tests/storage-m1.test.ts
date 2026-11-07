@@ -276,6 +276,8 @@ import {
   type GameRow,
 } from '../game/storage';
 import migration014 from '../db/migrations/downloads/014_scanned_games_indexes';
+import migration016 from '../db/migrations/downloads/016_purge_scanned_anomalies';
+import migration017 from '../db/migrations/downloads/017_purge_legacy_sidecar_data';
 
 describe('Milestone M1: Database Hardening, Transactions, Chunking & IPC Debounce', () => {
   beforeEach(() => {
@@ -722,6 +724,54 @@ describe('Milestone M1: Database Hardening, Transactions, Chunking & IPC Debounc
       expect(lastExec).toContain('idx_scanned_games_otix_media_id');
       expect(lastExec).toContain('idx_scanned_games_install_dir');
       expect(lastExec).toContain('idx_scanned_games_exe_path');
+    });
+  });
+
+  describe('Migration 016: purge_scanned_anomalies', () => {
+    it('has migration id 16 and name purge_scanned_anomalies', () => {
+      expect(migration016.id).toBe(16);
+      expect(migration016.name).toBe('purge_scanned_anomalies');
+    });
+
+    it('executes cleanup SQL statements targeting menu simulations, duplicate console dumps, and encoding artifacts', () => {
+      const statements: string[] = [];
+      const runner = {
+        exec: (sql: string) => statements.push(sql),
+        getDb: () => mockDb,
+      };
+
+      migration016.up(runner as any);
+
+      expect(statements.length).toBe(1);
+      const sql = statements[0];
+      expect(sql).toContain('DELETE FROM scanned_games');
+      expect(sql).toContain('Menu Simulation %');
+      expect(sql).toContain('App 0');
+      expect(sql).toContain('UPDATE scanned_games');
+    });
+  });
+
+  describe('Migration 017: purge_legacy_sidecar_data', () => {
+    it('has migration id 17 and name purge_legacy_sidecar_data', () => {
+      expect(migration017.id).toBe(17);
+      expect(migration017.name).toBe('purge_legacy_sidecar_data');
+    });
+
+    it('executes SQL statements nullifying all legacy sidecar metadata and clearing game_matches', () => {
+      const statements: string[] = [];
+      const runner = {
+        exec: (sql: string) => statements.push(sql),
+        getDb: () => mockDb,
+      };
+
+      migration017.up(runner as any);
+
+      expect(statements.length).toBe(1);
+      const sql = statements[0];
+      expect(sql).toContain('UPDATE scanned_games SET');
+      expect(sql).toContain('otix_media_id = NULL');
+      expect(sql).toContain('otix_data = NULL');
+      expect(sql).toContain('DELETE FROM game_matches');
     });
   });
 });

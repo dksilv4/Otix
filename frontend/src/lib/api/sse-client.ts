@@ -90,16 +90,25 @@ export async function* createSseStream(
 ): AsyncGenerator<SseEvent> {
   const { url, token, signal } = options
 
-  const response = await fetch(url, {
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
-    signal,
-  })
+  let response: Response
+  try {
+    response = await fetch(url, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      signal,
+    })
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err)
+    throw new SseHttpError(503, `Network connection failed (${msg})`)
+  }
 
   if (!response.ok) {
     throw new SseHttpError(response.status, response.statusText)
   }
+  if (!response.body) {
+    throw new SseHttpError(502, 'Response body is empty')
+  }
 
-  const reader = response.body!.getReader()
+  const reader = response.body.getReader()
   const decoder = new TextDecoder()
   let buffer = ''
 
@@ -159,7 +168,7 @@ export async function connectTaskSseStream(
   config: TaskStreamConfig,
   onEvent?: (event: SseEvent) => void,
 ): Promise<SseEvent> {
-  const baseUrl = API_BASE_URL
+  const baseUrl = (config.baseUrl || API_BASE_URL).replace(/\/+$/, '')
   const { token, signal } = config
 
   // ── 1. Create the background task ──────────────────────────────
@@ -170,7 +179,14 @@ export async function connectTaskSseStream(
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
   }
-  const createResponse = await fetch(`${baseUrl}${config.createEndpoint}`, {
+  const createPath = config.createEndpoint.startsWith('/')
+    ? config.createEndpoint
+    : `/${config.createEndpoint}`
+  const createUrl = createPath.startsWith('/api/v1')
+    ? `${baseUrl.replace(/\/api\/v1$/, '')}${createPath}`
+    : `${baseUrl}${createPath}`
+
+  const createResponse = await fetch(createUrl, {
     method: 'POST',
     headers,
     body: '{}',
@@ -197,10 +213,15 @@ export async function connectTaskSseStream(
 
   // ── 2. Connect to the event stream ─────────────────────────────
 
-  const streamUrl =
-    typeof config.streamEndpoint === 'function'
-      ? `${baseUrl}${config.streamEndpoint(taskId)}`
-      : `${baseUrl}${config.streamEndpoint}`
+  const rawStreamEndpoint = typeof config.streamEndpoint === 'function'
+    ? config.streamEndpoint(taskId)
+    : config.streamEndpoint
+  const streamPath = rawStreamEndpoint.startsWith('/')
+    ? rawStreamEndpoint
+    : `/${rawStreamEndpoint}`
+  const streamUrl = streamPath.startsWith('/api/v1')
+    ? `${baseUrl.replace(/\/api\/v1$/, '')}${streamPath}`
+    : `${baseUrl}${streamPath}`
 
   const stream = createSseStream({ url: streamUrl, token, signal })
 

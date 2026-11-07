@@ -14,6 +14,7 @@ import {
   type Download,
 } from './index';
 import { getSettings } from '../desktop-settings';
+import { resolveUncPath, unresolveUncPath } from '../unc-resolver';
 import type {
   RemoteDownloadOptions,
   RemoteDownloadProgress,
@@ -29,13 +30,23 @@ export class RemoteDownloadManager extends EventEmitter {
 
   constructor() {
     super();
-    this.startProgressTicker();
   }
 
-  private startProgressTicker(): void {
+  private hasActiveDownloading(): boolean {
+    for (const t of this.activeTransfers.values()) {
+      if (t.status === 'downloading') return true;
+    }
+    return false;
+  }
+
+  private ensureProgressTicker(): void {
     if (this.progressInterval) return;
 
     this.progressInterval = setInterval(() => {
+      if (this.activeTransfers.size === 0 || !this.hasActiveDownloading()) {
+        this.stopProgressTicker();
+        return;
+      }
       const now = Date.now();
       for (const [id, t] of this.activeTransfers.entries()) {
         if (t.status === 'downloading') {
@@ -55,6 +66,10 @@ export class RemoteDownloadManager extends EventEmitter {
 
     // Sync progress to SQLite DB every 2.5 seconds
     this.dbInterval = setInterval(() => {
+      if (this.activeTransfers.size === 0 || !this.hasActiveDownloading()) {
+        this.stopProgressTicker();
+        return;
+      }
       for (const [id, t] of this.activeTransfers.entries()) {
         if (t.status === 'downloading') {
           const pct = t.totalBytes > 0 ? Math.min(99, Math.floor((t.bytesDownloaded / t.totalBytes) * 100)) : 0;
@@ -66,10 +81,44 @@ export class RemoteDownloadManager extends EventEmitter {
     }, 2500);
   }
 
+  private stopProgressTicker(): void {
+    if (this.progressInterval) {
+      clearInterval(this.progressInterval);
+      this.progressInterval = null;
+    }
+    if (this.dbInterval) {
+      clearInterval(this.dbInterval);
+      this.dbInterval = null;
+    }
+  }
+
+  private checkIdleAndStopTicker(): void {
+    if (!this.hasActiveDownloading()) {
+      this.stopProgressTicker();
+    }
+  }
+
+  public dispose(): void {
+    this.stopProgressTicker();
+    for (const [, t] of this.activeTransfers.entries()) {
+      if (t.req) {
+        try { t.req.destroy(); } catch {}
+        t.req = null;
+      }
+      if (t.fileStream) {
+        try { t.fileStream.close(); } catch {}
+        t.fileStream = null;
+      }
+    }
+    this.activeTransfers.clear();
+    this.removeAllListeners();
+  }
+
   private emitProgress(id: string): void {
     const t = this.activeTransfers.get(id);
     if (!t) return;
 
+    const targetUrl = (t.options.nodeUrl || t.options.serverUrl || '').replace(/\/$/, '');
     const pct = t.totalBytes > 0 ? Math.min(100, Math.floor((t.bytesDownloaded / t.totalBytes) * 100)) : 0;
     const progress: RemoteDownloadProgress = {
       id,
@@ -81,9 +130,10 @@ export class RemoteDownloadManager extends EventEmitter {
       percentage: pct,
       speedBytesPerSec: t.speedBytesPerSec,
       etaSeconds: t.etaSeconds,
-      isoPath: t.status === 'completed' ? t.finalPath : undefined,
+      isoPath: t.status === 'completed' ? unresolveUncPath(t.finalPath) : undefined,
       error: t.error,
-      serverUrl: t.options.serverUrl,
+      nodeUrl: targetUrl,
+      serverUrl: targetUrl,
       fileId: t.options.fileId,
     };
     this.emit('progress', progress);
@@ -92,14 +142,22 @@ export class RemoteDownloadManager extends EventEmitter {
   async startDownload(options: RemoteDownloadOptions): Promise<string> {
     const config = await getConfig();
     const desktopSettings = getSettings();
-    const downloadDir =
+    const rawDownloadDir =
       options.destDir ||
       desktopSettings?.gamesDownloadPath ||
       config?.downloadPath ||
       path.join(process.env.HOME || process.env.USERPROFILE || '.', 'Downloads', 'Games');
 
+    const downloadDir = resolveUncPath(rawDownloadDir);
+
     if (!fs.existsSync(downloadDir)) {
-      fs.mkdirSync(downloadDir, { recursive: true });
+      try {
+        fs.mkdirSync(downloadDir, { recursive: true });
+      } catch (err: any) {
+        throw new Error(
+          `Failed to create download directory '${rawDownloadDir}' (resolved: '${downloadDir}'): ${err.message}`
+        );
+      }
     }
 
     const finalPath = path.join(downloadDir, options.filename);
@@ -115,7 +173,8 @@ export class RemoteDownloadManager extends EventEmitter {
     }
 
     const userId = options.userId || 'default';
-    const downloadUrl = `${options.serverUrl.replace(/\/$/, '')}/api/v1/files/${options.fileId}/download`;
+    const targetUrl = (options.nodeUrl || options.serverUrl || '').replace(/\/$/, '');
+    const downloadUrl = `${targetUrl}/api/v1/files/${options.fileId}/download`;
 
     // Create or retrieve DB entry
     const dlRow = await createDownload(
@@ -126,12 +185,12 @@ export class RemoteDownloadManager extends EventEmitter {
       options.filesize,
       downloadUrl,
       null,
-      'server',
+      options.source || 'node',
     );
     const downloadId = dlRow.id;
 
     const transfer: ActiveTransfer = {
-      options: { ...options, id: downloadId },
+      options: { ...options, id: downloadId, nodeUrl: targetUrl, serverUrl: targetUrl },
       status: 'downloading',
       bytesDownloaded: existingBytes,
       totalBytes: options.filesize,
@@ -146,6 +205,7 @@ export class RemoteDownloadManager extends EventEmitter {
     };
 
     this.activeTransfers.set(downloadId, transfer);
+    this.ensureProgressTicker();
     this.executeStream(downloadId);
     return downloadId;
   }
@@ -154,7 +214,8 @@ export class RemoteDownloadManager extends EventEmitter {
     const t = this.activeTransfers.get(downloadId);
     if (!t || t.status !== 'downloading') return;
 
-    const downloadUrl = `${t.options.serverUrl.replace(/\/$/, '')}/api/v1/files/${t.options.fileId}/download`;
+    const targetUrl = (t.options.nodeUrl || t.options.serverUrl || '').replace(/\/$/, '');
+    const downloadUrl = `${targetUrl}/api/v1/files/${t.options.fileId}/download`;
     const urlObj = new URL(downloadUrl);
     const isHttps = urlObj.protocol === 'https:';
     const client = isHttps ? https : http;
@@ -181,6 +242,7 @@ export class RemoteDownloadManager extends EventEmitter {
           // Update URL and retry
           try {
             const redirectedUrl = new URL(res.headers.location, urlObj).toString();
+            t.options.nodeUrl = redirectedUrl;
             t.options.serverUrl = redirectedUrl;
             this.executeStream(downloadId);
           } catch (err: any) {
@@ -276,6 +338,7 @@ export class RemoteDownloadManager extends EventEmitter {
     const pct = t.totalBytes > 0 ? Math.min(100, Math.floor((t.bytesDownloaded / t.totalBytes) * 100)) : 0;
     updateDownloadStatus(downloadId, 'paused', undefined, pct);
     this.emitProgress(downloadId);
+    this.checkIdleAndStopTicker();
     return true;
   }
 
@@ -294,6 +357,7 @@ export class RemoteDownloadManager extends EventEmitter {
     t.lastTickTime = Date.now();
     updateDownloadStatus(downloadId, 'downloading');
     this.emitProgress(downloadId);
+    this.ensureProgressTicker();
     this.executeStream(downloadId);
     return true;
   }
@@ -309,6 +373,7 @@ export class RemoteDownloadManager extends EventEmitter {
       }
       this.emitProgress(downloadId);
       this.activeTransfers.delete(downloadId);
+      this.checkIdleAndStopTicker();
     }
     deleteDownload(downloadId);
     return true;
@@ -334,7 +399,7 @@ export class RemoteDownloadManager extends EventEmitter {
     }
 
     // Update SQLite download row
-    updateDownloadIsoPath(downloadId, t.finalPath);
+    updateDownloadIsoPath(downloadId, unresolveUncPath(t.finalPath));
     updateDownloadStatus(downloadId, 'completed', undefined, 100);
 
     // Auto-register in scanned_games table so launcher detects it
@@ -344,8 +409,8 @@ export class RemoteDownloadManager extends EventEmitter {
       gamesRepo.insertGame({
         id: `remote_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
         title: t.options.gameTitle,
-        exe_path: t.finalPath,
-        install_dir: path.dirname(t.finalPath),
+        exe_path: unresolveUncPath(t.finalPath),
+        install_dir: unresolveUncPath(path.dirname(t.finalPath)),
         platform: isIso ? 'iso' : 'pc',
       });
     } catch (e) {
@@ -353,8 +418,9 @@ export class RemoteDownloadManager extends EventEmitter {
     }
 
     this.emitProgress(downloadId);
-    this.emit('completed', { downloadId, finalPath: t.finalPath, gameTitle: t.options.gameTitle });
+    this.emit('completed', { downloadId, finalPath: unresolveUncPath(t.finalPath), gameTitle: t.options.gameTitle });
     this.activeTransfers.delete(downloadId);
+    this.checkIdleAndStopTicker();
   }
 
   private failTransfer(downloadId: string, errorMsg: string): void {
@@ -371,11 +437,13 @@ export class RemoteDownloadManager extends EventEmitter {
     const pct = t.totalBytes > 0 ? Math.min(100, Math.floor((t.bytesDownloaded / t.totalBytes) * 100)) : 0;
     updateDownloadStatus(downloadId, 'failed', errorMsg, pct);
     this.emitProgress(downloadId);
+    this.checkIdleAndStopTicker();
   }
 
   getActiveTransfers(): RemoteDownloadProgress[] {
     const list: RemoteDownloadProgress[] = [];
     for (const [id, t] of this.activeTransfers.entries()) {
+      const targetUrl = (t.options.nodeUrl || t.options.serverUrl || '').replace(/\/$/, '');
       const pct = t.totalBytes > 0 ? Math.min(100, Math.floor((t.bytesDownloaded / t.totalBytes) * 100)) : 0;
       list.push({
         id,
@@ -387,9 +455,10 @@ export class RemoteDownloadManager extends EventEmitter {
         percentage: pct,
         speedBytesPerSec: t.speedBytesPerSec,
         etaSeconds: t.etaSeconds,
-        isoPath: t.status === 'completed' ? t.finalPath : undefined,
+        isoPath: t.status === 'completed' ? unresolveUncPath(t.finalPath) : undefined,
         error: t.error,
-        serverUrl: t.options.serverUrl,
+        nodeUrl: targetUrl,
+        serverUrl: targetUrl,
         fileId: t.options.fileId,
       });
     }

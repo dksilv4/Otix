@@ -1,5 +1,5 @@
 import { useContext } from 'react'
-import { JellyfinPlayerContext } from '../jellyfin-audio-provider'
+import { JellyfinPlayerContext } from '../player-context'
 import type { JellyfinPlayerContextValue } from '../types'
 
 export const useJellyfinPlayer = (): JellyfinPlayerContextValue => {

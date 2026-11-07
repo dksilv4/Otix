@@ -16,6 +16,7 @@ import {
   buildTextMenuItems,
   buildInputMenuItems,
   buildPageMenuItems,
+  buildContinueWatchingMenuItems,
 } from '../menu-builders'
 
 describe('menu-builders', () => {
@@ -433,5 +434,55 @@ describe('menu-builders', () => {
     expect(ids).toContain('command-palette')
     expect(ids).toContain('copy-url')
     expect(ids).toContain('copy-markdown')
+  })
+
+  it('buildContinueWatchingMenuItems creates playback, Plex actions, catalog and search actions', () => {
+    const navigate = vi.fn()
+    const onPlay = vi.fn()
+    const target = {
+      type: 'continue-watching' as const,
+      id: 'cw-101',
+      ratingKey: '101',
+      serverId: 'srv-1',
+      mediaItemId: '42',
+      mediaType: 'show' as const,
+      title: 'Severance',
+      showTitle: 'Severance',
+      episodeTitle: 'The You You Are',
+      seasonNumber: 1,
+      episodeNumber: 4,
+      thumb: 'https://example.com/ep.jpg',
+      viewOffset: 1800000,
+      duration: 3600000,
+      progressPercent: 50,
+    }
+
+    const items = buildContinueWatchingMenuItems(target, { navigate }, { onPlay })
+    const ids = items.map((i) => i.id)
+
+    expect(ids).toContain('resume-continue-watching')
+    expect(ids).toContain('plex-mark-watched')
+    expect(ids).toContain('plex-mark-unwatched')
+    expect(ids).toContain('plex-remove-continue-watching')
+    expect(ids).toContain('view-details')
+    expect(ids).toContain('open-new-tab')
+    expect(ids).toContain('add-to-list')
+    expect(ids).toContain('copy-title')
+    expect(ids).toContain('view-artwork')
+    expect(ids).toContain('external-search')
+
+    // Test onPlay callback
+    const resumeItem = items.find((i) => i.id === 'resume-continue-watching')
+    resumeItem?.onClick?.()
+    expect(onPlay).toHaveBeenCalledWith(target)
+
+    // Test navigate callback
+    const viewDetails = items.find((i) => i.id === 'view-details')
+    viewDetails?.onClick?.()
+    expect(navigate).toHaveBeenCalledWith({
+      to: '/media/$mediaType/$mediaId',
+      params: { mediaType: 'show', mediaId: '42' },
+      search: { season: 1 },
+    })
   })
 })

@@ -24,9 +24,11 @@ export interface GroupedServerGame {
   dlc: ClassifiedServerFile[]
 }
 
-export function hasCatalogMatch(game: Pick<LocalGame, 'otixMediaId' | 'data'>): boolean {
-  const id = game.otixMediaId || game.data?.id
-  return Boolean(id && id !== 'undefined' && id !== 'null')
+export function hasCatalogMatch(game: Pick<LocalGame, 'otixMediaId' | 'data'> & { id?: string }): boolean {
+  const rawId = game.otixMediaId || (game.data?.id && game.data.id !== game.id ? game.data.id : null)
+  if (!rawId || rawId === 'undefined' || rawId === 'null') return false
+  const cleaned = String(rawId).trim().replace(/\.0+$/, '')
+  return Boolean(cleaned && !/^(pc_file_|iso[:_]file_|steam_|rom_|ps\d+_|xbox|switch_|file_)/i.test(cleaned))
 }
 
 export function serverGameId(gameKey: string): string {
@@ -291,7 +293,7 @@ function catalogFromGroup(group: GroupedServerGame) {
   ]
   const withOtix = allFiles.find((f: any) => f.otix_media_id || f.otixMediaId) as any
   if (withOtix) {
-    const id = String(withOtix.otix_media_id || withOtix.otixMediaId || '')
+    const id = String(withOtix.otix_media_id || withOtix.otixMediaId || '').trim().replace(/\.0+$/, '')
     const title = withOtix.otix_title || withOtix.otixTitle || group.title
     const slug = withOtix.otix_slug || withOtix.otixSlug || group.gameKey
     const images = withOtix.otix_images || withOtix.otixImages || {}

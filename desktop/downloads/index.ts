@@ -388,82 +388,6 @@ export async function skipWishlistItem(userId: string, mediaItemId: string): Pro
   }
 }
 
-// ── Game and ISO scan database handlers ──
-
-export async function getScannedGamesFromDb(): Promise<any[]> {
-  const rows = __all('SELECT * FROM scanned_games', []);
-  return rows.map((r: DbRow) => ({
-    id: r.id,
-    title: r.title,
-    exePath: r.exe_path,
-    localExePath: r.local_exe_path || undefined,
-    installDir: r.install_dir,
-    platform: r.platform,
-    iconUrl: r.icon_url || undefined,
-    posterUrl: r.poster_url || undefined,
-    updateFiles: r.update_files ? JSON.parse(r.update_files) : undefined,
-    otixMediaId: r.otix_media_id || undefined,
-    otixMediaTitle: r.otix_media_title || undefined,
-    otixMediaSlug: r.otix_media_slug || undefined,
-    otixConfidence: r.otix_confidence != null ? Number(r.otix_confidence) : undefined,
-    otixPosterUrl: r.otix_poster_url || undefined,
-    otixBackdropUrl: r.otix_backdrop_url || undefined,
-    otixTextlessPosterUrl: r.otix_textless_poster_url || undefined,
-    otixLogoUrl: r.otix_logo_url || undefined,
-    otixIconUrl: r.otix_icon_url || undefined,
-    otixMatchSuggestion: r.otix_match_suggestion ? JSON.parse(r.otix_match_suggestion) : undefined,
-    seeded: r.seeded === 1,
-  }));
-}
-
-export async function saveScannedGamesToDb(games: any[]): Promise<void> {
-  // Preserve `seeded` flag for games that were already in the DB.
-  // The DELETE-then-INSERT pattern would lose it, so we snapshot first.
-  const existingSeeded = new Map<string, number>();
-  const existingRows = __all('SELECT id, seeded FROM scanned_games');
-  for (const r of existingRows) {
-    existingSeeded.set(r.id, r.seeded as number);
-  }
-
-  // Delete games that are no longer present in this scan batch
-  const newIds = [...new Set(games.map((g) => g.id))];
-  if (newIds.length > 0) {
-    const placeholders = newIds.map(() => '?').join(',');
-    db().prepare(`DELETE FROM scanned_games WHERE id NOT IN (${placeholders})`).run(newIds);
-  } else {
-    db().prepare('DELETE FROM scanned_games').run();
-  }
-
-  // Upsert each game, restoring the seeded flag when the game already existed
-  for (const g of games) {
-    const seeded = existingSeeded.get(g.id) ?? 0;
-    db().prepare(`
-      INSERT OR REPLACE INTO scanned_games (
-        id, title, exe_path, local_exe_path, install_dir, platform, icon_url, poster_url,
-        update_files, otix_media_id, otix_media_title, otix_media_slug,
-        otix_confidence, otix_match_suggestion, sources, seeded
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(
-      g.id,
-      g.title,
-      g.exePath,
-      g.localExePath || null,
-      g.installDir,
-      g.platform,
-      g.iconUrl || null,
-      g.posterUrl || null,
-      g.updateFiles ? JSON.stringify(g.updateFiles) : null,
-      g.otixMediaId || null,
-      g.otixMediaTitle || null,
-      g.otixMediaSlug || null,
-      g.otixConfidence != null ? g.otixConfidence : null,
-      g.otixMatchSuggestion ? JSON.stringify(g.otixMatchSuggestion) : null,
-      g.sources ? JSON.stringify(g.sources) : '[]',
-      seeded,
-    );
-  }
-}
-
 /**
  * Update a scanned game's paths in the local DB after a file move.
  * Searches by exe_path and updates exe_path + install_dir.
@@ -527,12 +451,6 @@ export async function getScanPathsFromDb(): Promise<{ path: string; type: 'game'
   }));
 }
 
-export async function saveScanPathsToDb(paths: { path: string; type: 'game' | 'iso' }[]): Promise<void> {
-  db().prepare('DELETE FROM game_scan_paths').run();
-  for (const p of paths) {
-    db().prepare('INSERT OR REPLACE INTO game_scan_paths (path, type) VALUES (?, ?)').run([p.path, p.type]);
-  }
-}
 export async function getLocalGamesMapFromDb(): Promise<Record<string, any>> {
   const rows = __all('SELECT * FROM local_games_map');
   const map: Record<string, any> = {};
@@ -550,18 +468,6 @@ export async function saveLocalGamesMapEntryToDb(mediaId: string, game: any | nu
   } else {
     db().prepare('DELETE FROM local_games_map WHERE media_id = ?').run(mediaId);
   }
-}
-
-// ── Config migration ──────────────────────────────────────────────────────
-
-/**
- * Check whether a legacy monolithic config exists in the DB.
- * The actual migration to plugin-level configs is manual for now.
- */
-export async function migrateLegacyConfigToPlugins(): Promise<{ migrated: boolean; errors: string[] }> {
-  const row = __get('SELECT * FROM download_configs ORDER BY updated_at DESC LIMIT 1');
-  if (!row) return { migrated: false, errors: ['No legacy config found'] };
-  return { migrated: true, errors: [] };
 }
 
 export * from './downloader';

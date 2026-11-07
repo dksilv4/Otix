@@ -89,6 +89,9 @@ export function cleanGameTitle(filename: string): string {
   let name = filename;
   if (!name) return '';
 
+  // Strip trademark, copyright symbols, and unicode replacement characters
+  name = name.replace(/[\u2122\u00AE\u00A9\uFFFD]/g, '');
+
   // Strip leading update/part sequence prefix like "1 - ", "2 - ", "01. "
   name = name.replace(RE_LEADING_SEQ, '');
 
@@ -294,6 +297,18 @@ export const REPACK_GROUPS = [
   'ElAmigos',
 ];
 
+const PRECOMPILED_SCENE_PATTERNS = SCENE_GROUPS.map((g) => ({
+  group: g,
+  testRe: new RegExp(`(?:[-_.]|\\b)${g}\\b`, 'i'),
+  replaceRe: new RegExp(`(?:[-_.]|\\b)${g}\\b`, 'gi'),
+}));
+
+const PRECOMPILED_REPACK_PATTERNS = REPACK_GROUPS.map((g) => ({
+  group: g,
+  testRe: new RegExp(`(?:[-_.]|\\b|\\[)${g}\\b`, 'i'),
+  replaceRe: new RegExp(`(?:[-_.]|\\b|\\[)${g}\\b`, 'gi'),
+}));
+
 export const EDITIONS = [
   { pattern: /(?:[-_.]|\b)goty(?:\s+edition|\.edition)?\b/i, name: 'GOTY Edition' },
   { pattern: /(?:[-_.]|\b)special(?:\s+edition|\.edition)\b/i, name: 'Special Edition' },
@@ -388,23 +403,21 @@ export function parseReleaseName(rawName: string, extHint?: string, parentDirHin
   let group = '';
   let isScene = false;
 
-  for (const g of SCENE_GROUPS) {
-    const re = new RegExp(`(?:[-_.]|\\b)${g}\\b`, 'gi');
-    if (re.test(s)) {
+  for (const { group: g, testRe, replaceRe } of PRECOMPILED_SCENE_PATTERNS) {
+    if (testRe.test(s)) {
       group = g;
       isScene = true;
-      s = s.replace(re, ' ');
+      s = s.replace(replaceRe, ' ');
       break;
     }
   }
 
   if (!group) {
-    for (const g of REPACK_GROUPS) {
-      const re = new RegExp(`(?:[-_.]|\\b|\\[)${g}\\b`, 'gi');
-      if (re.test(s)) {
+    for (const { group: g, testRe, replaceRe } of PRECOMPILED_REPACK_PATTERNS) {
+      if (testRe.test(s)) {
         group = g;
         isScene = false;
-        s = s.replace(re, ' ');
+        s = s.replace(replaceRe, ' ');
         break;
       }
     }
@@ -800,211 +813,5 @@ export function validateNamingTemplate(template: string): { valid: boolean; erro
     return { valid: false, error: 'Template must include {Title} or {CleanTitle}' };
   }
   return { valid: true };
-}
-
-// ── previewNamingTemplate ───────────────────────────────────────────────────
-
-export function previewNamingTemplate(
-  template: string,
-  sampleName: string,
-): { valid: boolean; result?: string; error?: string } {
-  const validation = validateNamingTemplate(template);
-  if (!validation.valid) return validation;
-
-  const release = parseReleaseName(sampleName);
-  const ext = sampleName.includes('.iso') ? 'iso' : 'exe';
-  const fileInfo: FileInfo = { name: sampleName, ext, type: 'iso' };
-  const target = applyNamingTemplate(release, template, fileInfo, '/');
-  return { valid: true, result: target.replace(/^\//, '') };
-}
-
-// ── analyzeRepackArchiveIntegrity ───────────────────────────────────────────
-
-export interface RepackArchiveAnomaly {
-  file?: string;
-  type:
-    | 'INCOMPLETE_DOWNLOAD'
-    | 'DUPLICATE_NAME_COLLISION'
-    | 'NAMING_VARIATION'
-    | 'MISSING_ELAMIGOS_PREFIX'
-    | 'MISSING_FITGIRL_PREFIX'
-    | 'MISSING_SEQUENCE_CHUNK';
-  suggested?: string;
-  missing?: string;
-  message: string;
-}
-
-export interface RepackArchiveAnalysis {
-  isRepack: boolean;
-  archiveType?: 'ElAmigos' | 'FitGirl' | 'DODI' | 'InnoSetup';
-  health: 'HEALTHY' | 'CORRECTABLE_ANOMALY' | 'INCOMPLETE_DOWNLOAD' | 'GENERIC';
-  anomalies: RepackArchiveAnomaly[];
-  suggestedRenames: Record<string, string>;
-}
-
-export function analyzeRepackArchiveIntegrity(
-  childFiles: string[] = [],
-  folderName: string = '',
-  releaseGroup: string = '',
-): RepackArchiveAnalysis {
-  const anomalies: RepackArchiveAnomaly[] = [];
-  const suggestedRenames: Record<string, string> = {};
-  const lowerFolder = folderName.toLowerCase();
-  const lowerGroup = (releaseGroup || '').toLowerCase();
-
-  const isElAmigos =
-    lowerGroup.includes('elamigos') ||
-    lowerFolder.includes('elamigos') ||
-    childFiles.some((f) => f.toLowerCase().includes('elamigos'));
-  const isFitGirl =
-    lowerGroup.includes('fitgirl') ||
-    lowerFolder.includes('fitgirl') ||
-    childFiles.some((f) => f.toLowerCase().includes('fitgirl'));
-  const isDodi =
-    lowerGroup.includes('dodi') ||
-    lowerFolder.includes('dodi') ||
-    childFiles.some((f) => f.toLowerCase().includes('dodi'));
-
-  const archiveFiles = childFiles.filter((f) => {
-    const l = f.toLowerCase();
-    return (
-      l.endsWith('.bin') ||
-      l.endsWith('.cab') ||
-      l.endsWith('.doi') ||
-      /\.bin(?:\.part|\.tmp|\.crdownload|\.downloading|\.bak|\.orig|\s*\(\d+\))$/i.test(l) ||
-      /\b(?:setup|elamigos|data|game|archive)[-_0-9]+.*(?:\.bin|\.cab|\.doi)/i.test(l)
-    );
-  });
-
-  if (archiveFiles.length === 0) {
-    return { isRepack: false, anomalies, suggestedRenames, health: 'GENERIC' };
-  }
-
-  if (isElAmigos) {
-    archiveFiles.forEach((f, idx) => {
-      const lower = f.toLowerCase();
-
-      if (/\.(part|crdownload|tmp|downloading)$/i.test(lower)) {
-        anomalies.push({
-          file: f,
-          type: 'INCOMPLETE_DOWNLOAD',
-          message: `Incomplete download part detected: '${f}'. The ElAmigos installer will fail until downloaded completely.`,
-        });
-        return;
-      }
-
-      const dupMatch =
-        lower.match(/^(el[-_]?amigos[-_]?\d+)\s*\(\d+\)\.bin$/) ||
-        lower.match(/^(el[-_]?amigos[-_]?\d+)\s*-\s*copy\.bin$/);
-      if (dupMatch) {
-        const canonical = `${dupMatch[1].replace(/[-_]+/g, '-')}.bin`;
-        suggestedRenames[f] = canonical;
-        anomalies.push({
-          file: f,
-          type: 'DUPLICATE_NAME_COLLISION',
-          suggested: canonical,
-          message: `Improperly named duplicate: '${f}'. ElAmigos setup.exe will fail ('File not found: ${canonical}'). Renaming to '${canonical}' required.`,
-        });
-        return;
-      }
-
-      const varMatch =
-        lower.match(/^el[-_]amigos[-_](\d+)\.bin$/) || lower.match(/^elamigos_(\d+)\.bin$/);
-      if (varMatch) {
-        const canonical = `elamigos-${varMatch[1]}.bin`;
-        if (f !== canonical) {
-          suggestedRenames[f] = canonical;
-          anomalies.push({
-            file: f,
-            type: 'NAMING_VARIATION',
-            suggested: canonical,
-            message: `Non-canonical separator: '${f}'. ElAmigos installer expects '${canonical}'.`,
-          });
-        }
-        return;
-      }
-
-      if (!lower.startsWith('elamigos-') && !lower.startsWith('elamigos.')) {
-        const numMatch = lower.match(/(?:^|[-_.a-z])(\d+)\.bin$/i);
-        const chunkNum = numMatch ? numMatch[1] : archiveFiles.length === 1 ? '1' : String(idx + 1);
-        const canonical = `elamigos-${chunkNum}.bin`;
-
-        suggestedRenames[f] = canonical;
-        anomalies.push({
-          file: f,
-          type: 'MISSING_ELAMIGOS_PREFIX',
-          suggested: canonical,
-          message: `ElAmigos bin file missing prefix: '${f}' does not have 'elamigos-' in its name. The installer will fail to find it ('File not found: ${canonical}'). Renaming to '${canonical}' fixes the installer.`,
-        });
-      }
-    });
-
-    const foundIndices = new Set<number>();
-    archiveFiles.forEach((f) => {
-      const targetName = suggestedRenames[f] || f;
-      const m = targetName.toLowerCase().match(/^elamigos-(\d+)\.bin$/);
-      if (m) foundIndices.add(parseInt(m[1], 10));
-    });
-
-    if (foundIndices.size > 0) {
-      const maxIndex = Math.max(...foundIndices);
-      for (let i = 1; i <= maxIndex; i++) {
-        if (!foundIndices.has(i)) {
-          anomalies.push({
-            type: 'MISSING_SEQUENCE_CHUNK',
-            missing: `elamigos-${i}.bin`,
-            message: `Missing archive chunk: 'elamigos-${i}.bin' is missing from the package sequence (found up to chunk ${maxIndex}). The installer will stop midway.`,
-          });
-        }
-      }
-    }
-  } else if (isFitGirl) {
-    archiveFiles.forEach((f, idx) => {
-      const lower = f.toLowerCase();
-      if (!lower.startsWith('setup-fitgirl-') && !lower.startsWith('fg-') && lower.endsWith('.bin')) {
-        const numMatch = lower.match(/(\d+)\.bin$/);
-        const chunk = numMatch ? numMatch[1] : String(idx + 1);
-        const canonical = `setup-fitgirl-${chunk}.bin`;
-        suggestedRenames[f] = canonical;
-        anomalies.push({
-          file: f,
-          type: 'MISSING_FITGIRL_PREFIX',
-          suggested: canonical,
-          message: `FitGirl bin file missing prefix: '${f}'. Installer expects '${canonical}'.`,
-        });
-      }
-    });
-  } else {
-    archiveFiles.forEach((f) => {
-      const lower = f.toLowerCase();
-      const dupMatch = lower.match(/^(setup[-_]?\d+)\s*\(\d+\)\.bin$/);
-      if (dupMatch) {
-        const canonical = `${dupMatch[1].replace(/[-_]+/g, '-')}.bin`;
-        suggestedRenames[f] = canonical;
-        anomalies.push({
-          file: f,
-          type: 'DUPLICATE_NAME_COLLISION',
-          suggested: canonical,
-          message: `Improperly named duplicate: '${f}'. Installer expects '${canonical}'.`,
-        });
-      }
-    });
-  }
-
-  const hasIncomplete = anomalies.some((a) => a.type === 'INCOMPLETE_DOWNLOAD');
-  const hasRenames = Object.keys(suggestedRenames).length > 0;
-  const health = hasIncomplete
-    ? 'INCOMPLETE_DOWNLOAD'
-    : hasRenames
-    ? 'CORRECTABLE_ANOMALY'
-    : 'HEALTHY';
-
-  return {
-    isRepack: true,
-    archiveType: isElAmigos ? 'ElAmigos' : isFitGirl ? 'FitGirl' : isDodi ? 'DODI' : 'InnoSetup',
-    health,
-    anomalies,
-    suggestedRenames,
-  };
 }
 

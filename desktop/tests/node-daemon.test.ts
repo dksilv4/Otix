@@ -135,6 +135,23 @@ describe('NodeDaemonManager', () => {
     expect(updated).toContain('disable_tray: true');
   });
 
+  it('updates existing config with disable_tray: true if missing when using node: block instead of server:', async () => {
+    const daemon = new NodeDaemonManager(tempUserData);
+    const configPath = path.join(tempUserData, 'existing-node-config.yaml');
+    const existingContent = `node:
+  name: "Existing Node"
+  port: 8090
+  host: "127.0.0.1"
+  registry_url: "http://127.0.0.1:8000/api"
+`;
+    fs.writeFileSync(configPath, existingContent, 'utf-8');
+
+    (daemon as any).ensureConfigFile(configPath, 8090);
+
+    const updated = fs.readFileSync(configPath, 'utf-8');
+    expect(updated).toContain('disable_tray: true');
+  });
+
   it('spawns binary with -headless, -no-tray, windowsHide: true, and OTIX_NO_TRAY: 1', async () => {
     const daemon = new NodeDaemonManager(tempUserData);
     vi.spyOn(daemon, 'probeNode').mockResolvedValue(false);
@@ -292,6 +309,8 @@ describe('NodeDaemonManager', () => {
         const backendPayload = JSON.parse(backendCall?.options?.body);
         expect(backendPayload.claim_code).toBe(claimCode);
         expect(backendPayload.port).toBe(testPort);
+        expect(backendPayload.node_name).toBeDefined();
+        expect(backendPayload.server_name).toBe(backendPayload.node_name);
         expect(backendPayload.is_local).toBe(true);
         expect(backendPayload.is_local_desktop).toBe(true);
 
@@ -300,6 +319,7 @@ describe('NodeDaemonManager', () => {
         const confirmPayload = JSON.parse(confirmCall?.options?.body);
         expect(confirmPayload.claim_code).toBe(claimCode);
         expect(confirmPayload.auth_token).toBe(backendPayload.auth_token);
+        expect(confirmPayload.node_name).toBe(confirmPayload.server_name);
       } finally {
         await new Promise<void>((resolve) => localNodeServer.close(() => resolve()));
       }

@@ -58,7 +58,7 @@ export const computeDownloadsSummary = ({
     if (r.download_id) claimedNzos.add(r.download_id)
   }
 
-  const unclaimedServer = serverItems.filter((item) => !claimedNzos.has(item.nzo_id))
+  const unclaimedServer = serverItems.filter((item) => !claimedNzos.has(item.nzoId || item.nzo_id || ''))
 
   const totalActive =
     activeLocal.length + unclaimedServer.length + activeSonarr.length + activeRadarr.length

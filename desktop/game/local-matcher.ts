@@ -39,11 +39,11 @@ export class LocalMatcher {
    *   keyed by queryId — applied before cross-source reuse and self-match.
    */
   matchBatch(games: ScannedGame[], catalog?: Map<string, CatalogMatchCandidate>): LocalMatchResult[] {
-    const byKey = this.buildTitleIndex();
+    const { byKey, bySourceId } = this.buildIndexes();
     const results: LocalMatchResult[] = [];
     for (const g of games) {
       try {
-        results.push(this.matchOne(g, byKey, catalog));
+        results.push(this.matchOne(g, byKey, bySourceId, catalog));
       } catch (itemErr: any) {
         console.warn(`[LocalMatcher] Error matching item "${String(g?.title ?? '')}" (${g?.id}):`, itemErr);
         results.push({
@@ -58,19 +58,21 @@ export class LocalMatcher {
     return results;
   }
 
-  private buildTitleIndex(): Map<string, GameMatch> {
+  private buildIndexes(): { byKey: Map<string, GameMatch>; bySourceId: Map<string, GameMatch> } {
     const byKey = new Map<string, GameMatch>();
+    const bySourceId = new Map<string, GameMatch>();
     try {
       for (const m of getAllGameMatches()) {
+        bySourceId.set(`${m.source}:${m.sourceGameId}`, m);
         if (!m.otixTitle) continue;
         const key = comparisonKey(m.otixTitle);
         const cur = byKey.get(key);
         if (!cur || this.score(m) > this.score(cur)) byKey.set(key, m);
       }
     } catch (err: any) {
-      console.warn('[LocalMatcher] Failed to build title index:', err);
+      console.warn('[LocalMatcher] Failed to build match indexes:', err);
     }
-    return byKey;
+    return { byKey, bySourceId };
   }
 
   /** Prefer manual user-confirmed matches, then higher confidence. */
@@ -81,6 +83,7 @@ export class LocalMatcher {
   private matchOne(
     g: ScannedGame,
     byKey: Map<string, GameMatch>,
+    bySourceId: Map<string, GameMatch>,
     catalog?: Map<string, CatalogMatchCandidate>,
   ): LocalMatchResult {
     const source = g?.platform || 'unknown';
@@ -90,8 +93,8 @@ export class LocalMatcher {
     const title = rawTitle.trim();
     const base = { source, sourceGameId, queryId, queryTitle: title };
 
-    // 1) Already matched by exact source id — leave untouched.
-    const existing = getGameMatch(source, sourceGameId);
+    // 1) Already matched by exact source id — in-memory index first, fallback to DB
+    const existing = bySourceId.get(queryId) || getGameMatch(source, sourceGameId);
     if (existing) {
       return {
         ...base,
@@ -116,11 +119,13 @@ export class LocalMatcher {
         catalogMatch.backdropUrl || null, confidence, source, sourceGameId,
       );
       // Register so later games in the batch reuse the catalog identity.
-      byKey.set(comparisonKey(catalogMatch.title), {
+      const matchObj: GameMatch = {
         source, sourceGameId, otixMediaId: catalogMatch.mediaId, otixTitle: catalogMatch.title,
         otixPosterUrl: catalogMatch.posterUrl || undefined, otixConfidence: confidence,
         matchType: 'auto', status: 'approved',
-      } as GameMatch);
+      } as GameMatch;
+      byKey.set(comparisonKey(catalogMatch.title), matchObj);
+      bySourceId.set(queryId, matchObj);
       return {
         ...base,
         status: 'matched',
@@ -141,6 +146,12 @@ export class LocalMatcher {
         reuse.otixPosterUrl || null, g.logoUrl || null, reuse.otixBackdropUrl || null,
         REUSE_CONFIDENCE, source, sourceGameId,
       );
+      const reuseObj: GameMatch = {
+        source, sourceGameId, otixMediaId: reuse.otixMediaId, otixTitle: reuse.otixTitle || title,
+        otixPosterUrl: reuse.otixPosterUrl, otixConfidence: REUSE_CONFIDENCE,
+        matchType: 'auto', status: 'approved',
+      } as GameMatch;
+      bySourceId.set(queryId, reuseObj);
       return {
         ...base,
         status: 'matched',
@@ -158,11 +169,13 @@ export class LocalMatcher {
     const logoUrl = g?.logoUrl || null;
     this.persistMatch(g, mediaId, title, posterUrl, logoUrl, null, SELF_CONFIDENCE, source, sourceGameId);
     // Register for later games in the same batch.
-    byKey.set(key, {
+    const selfObj: GameMatch = {
       source, sourceGameId, otixMediaId: mediaId, otixTitle: title,
       otixPosterUrl: posterUrl || undefined, otixConfidence: SELF_CONFIDENCE,
       matchType: 'auto', status: 'approved',
-    } as GameMatch);
+    } as GameMatch;
+    byKey.set(key, selfObj);
+    bySourceId.set(queryId, selfObj);
     return {
       ...base,
       status: 'matched',

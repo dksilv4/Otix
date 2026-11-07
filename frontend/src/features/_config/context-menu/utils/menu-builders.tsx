@@ -76,7 +76,13 @@ import type {
   ResolvedTextTarget,
   ResolvedInputTarget,
   ResolvedPageTarget,
+  ResolvedContinueWatchingTarget,
 } from './dom-resolver'
+import {
+  markContinueWatchingWatched,
+  markContinueWatchingUnwatched,
+  removeContinueWatchingItem,
+} from '@/features/discover/utils/continue-watching-actions'
 
 const safeCopy = async (text: string, title = 'Copied to clipboard') => {
   try {
@@ -2041,4 +2047,242 @@ export const buildPageMenuItems = (
       },
     },
   ]
+}
+
+export const buildContinueWatchingMenuItems = (
+  target: ResolvedContinueWatchingTarget,
+  context?: MenuBuilderContext,
+  options?: {
+    onPlay?: (item: any) => void
+  },
+): ContextMenuItemDef[] => {
+  const {
+    ratingKey,
+    serverId,
+    mediaItemId,
+    mediaType,
+    title,
+    showTitle,
+    episodeTitle,
+    seasonNumber,
+    episodeNumber,
+    stillUrl,
+    thumb,
+  } = target
+
+  const displayTitle =
+    mediaType === 'show' && seasonNumber != null && episodeNumber != null
+      ? `S${seasonNumber < 10 ? `0${seasonNumber}` : seasonNumber}E${episodeNumber < 10 ? `0${episodeNumber}` : episodeNumber} - ${episodeTitle || title}`
+      : title
+
+  const detailPath = mediaItemId ? `/media/${mediaType}/${mediaItemId}` : null
+  const queryStr = `${showTitle ? `${showTitle} ` : ''}${seasonNumber != null && episodeNumber != null ? `S${seasonNumber}E${episodeNumber} ` : ''}${episodeTitle || title}`
+  const artwork = stillUrl || thumb
+
+  const items: ContextMenuItemDef[] = []
+
+  // 1. Play / Resume Playback
+  items.push({
+    id: 'resume-continue-watching',
+    label:
+      mediaType === 'show' && seasonNumber != null && episodeNumber != null
+        ? `Resume Playback (${displayTitle})`
+        : `Resume Playback (${title})`,
+    icon: Play,
+    onClick: () => {
+      if (options?.onPlay) {
+        options.onPlay(target)
+      } else if (mediaItemId) {
+        openQuickStream({
+          mediaId: mediaItemId,
+          mediaType,
+          title: showTitle || title,
+        })
+      }
+    },
+  })
+
+  // 2. Plex Actions
+  items.push(
+    { id: 'sep-plex', separator: true },
+    {
+      id: 'plex-mark-watched',
+      label: 'Mark as Watched on Plex',
+      icon: CheckCircle2,
+      onClick: () => {
+        void markContinueWatchingWatched({
+          ratingKey,
+          serverId,
+          mediaItemId,
+          mediaType,
+          title: episodeTitle || title,
+        })
+      },
+    },
+    {
+      id: 'plex-mark-unwatched',
+      label: 'Mark as Unwatched on Plex',
+      icon: Circle,
+      onClick: () => {
+        void markContinueWatchingUnwatched({
+          ratingKey,
+          serverId,
+          mediaItemId,
+          mediaType,
+          title: episodeTitle || title,
+        })
+      },
+    },
+    {
+      id: 'plex-remove-continue-watching',
+      label: 'Remove from Continue Watching',
+      icon: Trash2,
+      destructive: true,
+      onClick: () => {
+        void removeContinueWatchingItem({
+          ratingKey,
+          serverId,
+          title: episodeTitle || title,
+        })
+      },
+    },
+  )
+
+  // 3. Catalog details (if matched)
+  if (detailPath && mediaItemId) {
+    items.push(
+      { id: 'sep-details', separator: true },
+      {
+        id: 'view-details',
+        label: 'View Details',
+        icon: Info,
+        onClick: () => {
+          if (context?.navigate) {
+            context.navigate({
+              to: '/media/$mediaType/$mediaId',
+              params: { mediaType, mediaId: mediaItemId },
+              search:
+                mediaType === 'show' && seasonNumber != null
+                  ? { season: seasonNumber }
+                  : undefined,
+            })
+          } else if (typeof window !== 'undefined') {
+            window.location.href = detailPath
+          }
+        },
+      },
+      {
+        id: 'open-new-tab',
+        label: 'Open in New Tab',
+        icon: ExternalLink,
+        onClick: () => {
+          if (typeof window !== 'undefined') {
+            window.open(detailPath, '_blank')
+          }
+        },
+      },
+      {
+        id: 'add-to-list',
+        label: 'Add to List...',
+        icon: FolderPlus,
+        onClick: () => {
+          if (context?.openModal) {
+            let close: () => void = () => {}
+            close = context.openModal(
+              <AddToListModal
+                mediaItemId={mediaItemId}
+                mediaTitle={showTitle || title}
+                mediaType={mediaType}
+                onClose={() => close()}
+              />,
+            )
+          }
+        },
+      },
+    )
+  }
+
+  // 4. Copy & Artwork
+  items.push(
+    { id: 'sep-copy', separator: true },
+    {
+      id: 'copy-title',
+      label: 'Copy Title',
+      icon: Copy,
+      onClick: () => safeCopy(displayTitle, 'Copied title'),
+    },
+  )
+
+  if (artwork) {
+    items.push({
+      id: 'view-artwork',
+      label: 'View Artwork',
+      icon: Maximize2,
+      onClick: () => {
+        if (context?.openModal) {
+          let close: () => void = () => {}
+          close = context.openModal(
+            <MediaScreenshotLightboxModal
+              screenshots={[{ url: artwork }]}
+              onClose={() => close()}
+            />,
+          )
+        }
+      },
+    })
+  }
+
+  // 5. External search
+  items.push(
+    { id: 'sep-search', separator: true },
+    {
+      id: 'external-search',
+      label: 'Search On...',
+      icon: Search,
+      subItems: [
+        {
+          id: 'search-tmdb',
+          label: 'The Movie Database (TMDb)',
+          icon: Film,
+          onClick: () =>
+            window.open(
+              `https://www.themoviedb.org/search?query=${encodeURIComponent(queryStr)}`,
+              '_blank',
+            ),
+        },
+        {
+          id: 'search-imdb',
+          label: 'IMDb',
+          icon: Tv,
+          onClick: () =>
+            window.open(
+              `https://www.imdb.com/find?q=${encodeURIComponent(queryStr)}`,
+              '_blank',
+            ),
+        },
+        {
+          id: 'search-youtube',
+          label: 'YouTube',
+          icon: Globe,
+          onClick: () =>
+            window.open(
+              `https://www.youtube.com/results?search_query=${encodeURIComponent(queryStr)}`,
+              '_blank',
+            ),
+        },
+        {
+          id: 'search-google',
+          label: 'Google Search',
+          icon: Globe,
+          onClick: () =>
+            window.open(
+              `https://www.google.com/search?q=${encodeURIComponent(queryStr)}`,
+              '_blank',
+            ),
+        },
+      ],
+    },
+  )
+
+  return items
 }

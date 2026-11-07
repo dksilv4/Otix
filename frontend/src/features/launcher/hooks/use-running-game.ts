@@ -20,7 +20,7 @@ const parseNodeGames = (data: any): RunningGameData[] => {
     ? data.games
     : (data.game ? [data.game] : [])
 
-  return rawList.map((g) => {
+  const list = rawList.map((g) => {
     const rawStart = new Date(g.startTime || g.start_time || g.startedAt).getTime()
     const duration = g.currentDurationSeconds ?? g.current_duration_seconds ?? 0
     const elapsedFallback = Date.now() - (duration * 1000)
@@ -48,6 +48,19 @@ const parseNodeGames = (data: any): RunningGameData[] => {
       } : null,
     }
   })
+
+  const deduped: RunningGameData[] = []
+  const seenPids = new Set<number>()
+  const seenIds = new Set<string>()
+  for (const g of list) {
+    if (g.pid && seenPids.has(g.pid)) continue
+    const normId = g.game.id.replace(/^(pc_|file_|iso_|steam_)+/, '')
+    if (normId && seenIds.has(normId)) continue
+    if (g.pid) seenPids.add(g.pid)
+    if (normId) seenIds.add(normId)
+    deduped.push(g)
+  }
+  return deduped
 }
 
 const areRunningGamesEqual = (a: RunningGameData[], b: RunningGameData[]): boolean => {
@@ -213,14 +226,32 @@ export const useRunningGame = () => {
             if (Array.isArray(list)) {
               setRunningGames((prev) => {
                 const merged = list.map((item) => {
-                  const existing = prev.find((p) => p.game.id === item.game.id || (p.pid && p.pid === item.pid))
+                  const normItemId = item.game.id.replace(/^(pc_|file_|iso_|steam_)+/, '')
+                  const existing = prev.find((p) => {
+                    if (item.pid && p.pid && p.pid === item.pid) return true
+                    if (p.game.id === item.game.id) return true
+                    if (normItemId && p.game.id.replace(/^(pc_|file_|iso_|steam_)+/, '') === normItemId) return true
+                    return false
+                  })
                   if (existing && existing.fpsSnapshot && !item.fpsSnapshot) {
                     return { ...item, fpsSnapshot: existing.fpsSnapshot }
                   }
                   return item
                 })
-                if (areRunningGamesEqual(prev, merged)) return prev
-                return merged
+                // Deduplicate by PID and normalized game.id
+                const deduped: RunningGameData[] = []
+                const seenPids = new Set<number>()
+                const seenIds = new Set<string>()
+                for (const g of merged) {
+                  if (g.pid && seenPids.has(g.pid)) continue
+                  const normId = g.game.id.replace(/^(pc_|file_|iso_|steam_)+/, '')
+                  if (normId && seenIds.has(normId)) continue
+                  if (g.pid) seenPids.add(g.pid)
+                  if (normId) seenIds.add(normId)
+                  deduped.push(g)
+                }
+                if (areRunningGamesEqual(prev, deduped)) return prev
+                return deduped
               })
               return
             }
@@ -242,14 +273,28 @@ export const useRunningGame = () => {
 
       // Listen for game started
       const unsubStart = api.onGameStarted((data: RunningGameData) => {
-        setRunningGames((prev) => [data, ...prev.filter((g) => g.game.id !== data.game.id)])
+        const normDataId = data.game.id.replace(/^(pc_|file_|iso_|steam_)+/, '')
+        setRunningGames((prev) => [
+          data,
+          ...prev.filter((g) => {
+            if (g.game.id === data.game.id) return false
+            if (data.pid && g.pid && g.pid === data.pid) return false
+            if (normDataId && g.game.id.replace(/^(pc_|file_|iso_|steam_)+/, '') === normDataId) return false
+            return true
+          }),
+        ])
       })
 
       // Listen for game ended
       const unsubEnd = api.onGameEnded((data?: { gameId?: string; gameTitle?: string }) => {
         setRunningGames((prev) => {
           if (data?.gameId) {
-            return prev.filter((g) => g.game.id !== data.gameId)
+            const normEndedId = data.gameId.replace(/^(pc_|file_|iso_|steam_)+/, '')
+            return prev.filter((g) => {
+              if (g.game.id === data.gameId) return false
+              if (normEndedId && g.game.id.replace(/^(pc_|file_|iso_|steam_)+/, '') === normEndedId) return false
+              return true
+            })
           }
           return []
         })

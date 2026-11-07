@@ -118,10 +118,6 @@ export function getSavesByProfile(profileId: string): VaultSaveRow[] {
   return db().prepare('SELECT * FROM vault_saves WHERE profile_id = ?').all(profileId) as VaultSaveRow[];
 }
 
-export function getSavesByGame(gameId: string): VaultSaveRow[] {
-  return db().prepare('SELECT * FROM vault_saves WHERE game_id = ?').all(gameId) as VaultSaveRow[];
-}
-
 export function upsertVaultSave(
   id: string,
   gameId: string,

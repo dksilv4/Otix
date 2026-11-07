@@ -129,7 +129,11 @@ let trayRef: Tray | null = null;
 let winRef: BrowserWindow | null = null;
 
 function settingsPath(): string {
-  return path.join(app.getPath('userData'), 'desktop-settings.json');
+  try {
+    return path.join(app && typeof app.getPath === 'function' ? app.getPath('userData') : '', 'desktop-settings.json');
+  } catch {
+    return 'desktop-settings.json';
+  }
 }
 
 export function loadDesktopSettings(): DesktopSettings {
@@ -177,9 +181,4 @@ export function applyDesktopSettings(
 
   // Always on top
   mainWindow.setAlwaysOnTop(settings.alwaysOnTop);
-}
-
-/** Set the tray reference so close-to-tray logic can call tray methods later. */
-export function setTrayRef(tray: Tray | null): void {
-  trayRef = tray;
 }

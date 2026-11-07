@@ -15,6 +15,7 @@ import {
   notifyGamesChanged,
   upsertGames,
   getAllGames,
+  getGamesByIds,
   getGameCount,
   withTransaction,
   GameRow,
@@ -24,6 +25,7 @@ import { buildCatalogRequests, normalizeCatalogResponse } from './catalog-match'
 import type { CatalogMatchCandidate } from './catalog-match';
 import { cleanGameTitle } from './parser';
 import { isUpdateFile, isDlcFile } from './local-scanner';
+import { downloadAndHydrateGameOffline } from './offline-cache';
 
 // ── Types ──────────────────────────────────────────────────────────────
 
@@ -605,6 +607,12 @@ export class GameScanOrchestrator extends EventEmitter {
                     mediaId,
                     backdrop || null,
                   );
+                  if (this.apiBaseUrl && mediaId) {
+                    void downloadAndHydrateGameOffline(targetId, mediaId, matchedTitle, {
+                      authToken: this.authToken,
+                      apiBaseUrl: this.apiBaseUrl,
+                    }).catch(() => {});
+                  }
                 } else if (apiCandidates.length > 0) {
                   saveMatchSuggestion(targetId, {
                     id: mediaId,
@@ -748,8 +756,9 @@ export class GameScanOrchestrator extends EventEmitter {
       const rematchMissing = !!options?.rematchMissingArtwork;
 
       if (options?.gameIds && options.gameIds.length > 0) {
+        
         const idSet = new Set(options.gameIds);
-        const games = getAllGames().filter((g) => idSet.has(g.id) && !g.isApp);
+        const games = getGamesByIds(options.gameIds).filter((g) => idSet.has(g.id));
         if (rematchAll) {
           return games;
         }
@@ -760,10 +769,10 @@ export class GameScanOrchestrator extends EventEmitter {
         });
       }
 
+      if (rematchAll) return getAllGames();
+      if (!rematchMissing) return getAllGames({ matched: false });
       const all = getAllGames();
-      if (rematchAll) {
-        return all.filter((g) => !g.isApp);
-      }
+
       return all.filter((g) => {
         if (g.isApp) return false;
         if (!g.otixMediaId || g.otixMediaId === '') return true;
@@ -1315,6 +1324,12 @@ export class GameScanOrchestrator extends EventEmitter {
                 r.mediaId,
                 backdrop || null,
               );
+              if (this.apiBaseUrl && r.mediaId) {
+                void downloadAndHydrateGameOffline(targetId, r.mediaId, r.otixTitle || r.queryTitle, {
+                  authToken: this.authToken,
+                  apiBaseUrl: this.apiBaseUrl,
+                }).catch(() => {});
+              }
             }
           }
         } catch {}
@@ -1531,6 +1546,12 @@ export class GameScanOrchestrator extends EventEmitter {
                 null,
                 logoUrl,
               );
+              if (this.apiBaseUrl && mediaId) {
+                void downloadAndHydrateGameOffline(targetId, mediaId, mediaTitle, {
+                  authToken: this.authToken,
+                  apiBaseUrl: this.apiBaseUrl,
+                }).catch(() => {});
+              }
             } catch (writeErr) {
               console.warn(`[Orchestrator] Error persisting match for ${targetId}:`, writeErr);
             }
@@ -1555,6 +1576,12 @@ export class GameScanOrchestrator extends EventEmitter {
               null,
               logoUrl,
             );
+            if (this.apiBaseUrl && mediaId) {
+              void downloadAndHydrateGameOffline(scannedGameId, mediaId, mediaTitle, {
+                authToken: this.authToken,
+                apiBaseUrl: this.apiBaseUrl,
+              }).catch(() => {});
+            }
           } catch (writeErr) {
             console.warn(`[Orchestrator] Error persisting match for ${scannedGameId}:`, writeErr);
           }
@@ -1602,7 +1629,9 @@ export class GameScanOrchestrator extends EventEmitter {
     } catch { return; }
     if (!this.authToken) return;
 
-    const url = new URL(`/api/v1/media/${mediaItemId}/claim`, this.apiBaseUrl);
+    const cleanMediaId = mediaItemId ? String(mediaItemId).trim().replace(/\.0+$/, '') : '';
+    if (!cleanMediaId || /^(pc_file_|iso[:_]file_|steam_|rom_|ps\d+_|xbox|switch_|file_)/i.test(cleanMediaId)) return;
+    const url = new URL(`/api/v1/media/${cleanMediaId}/claim`, this.apiBaseUrl);
     const client = url.protocol === 'https:' ? https : http;
     const req = client.request(url, { method: 'POST', headers: { 'Authorization': `Bearer ${this.authToken}` }, timeout: 10_000 });
     req.on('error', (err) => console.warn(`[Orchestrator] Claim failed for ${mediaItemId}:`, err.message));

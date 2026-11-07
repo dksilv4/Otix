@@ -1,27 +1,26 @@
 import { ipcMain } from 'electron';
-import {
-  detectCurrentNetwork,
-  probeLocalServer,
-  verifyHomeNetwork,
-  type CurrentNetworkInfo,
-  type HomeNetworkProfile,
-  type HomeVerificationResult,
+import type {
+  CurrentNetworkInfo,
+  HomeNetworkProfile,
+  HomeVerificationResult,
 } from '../network-detector';
 
 export function registerNetworkIPC(): void {
   ipcMain.handle(
     'network:detect-current',
     async (): Promise<CurrentNetworkInfo> => {
+      const { detectCurrentNetwork } = await import('../network-detector');
       return detectCurrentNetwork();
     }
   );
 
-  ipcMain.handle(
-    'network:probe-server',
-    async (_event, url: string, timeoutMs?: number): Promise<boolean> => {
-      return await probeLocalServer(url, timeoutMs);
-    }
-  );
+  const probeHandler = async (_event: any, url: string, timeoutMs?: number): Promise<boolean> => {
+    const { probeLocalNode } = await import('../network-detector');
+    return await probeLocalNode(url, timeoutMs);
+  };
+
+  ipcMain.handle('network:probe-node', probeHandler);
+  ipcMain.handle('network:probe-server', probeHandler);
 
   ipcMain.handle(
     'network:verify-home',
@@ -29,6 +28,7 @@ export function registerNetworkIPC(): void {
       _event,
       profile: HomeNetworkProfile
     ): Promise<HomeVerificationResult> => {
+      const { verifyHomeNetwork } = await import('../network-detector');
       return await verifyHomeNetwork(profile);
     }
   );
