@@ -9,13 +9,17 @@ Keys the greenfield models do not carry (Steam/Plex/embedding-only fields)
 serialize as ``None``/empty rather than being dropped.
 """
 
+from __future__ import annotations
+
 from datetime import date
+from typing import Any
 
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ObjectDoesNotExist
 from rest_framework import serializers
 
 from apps.media.models import Episode, ExternalID, Game, MediaAsset, MediaItem, Movie, Season, Show
+from apps.media.serializers.game_edition import GameEditionOutSerializer
 
 
 class GenreOutSerializer(serializers.Serializer):
@@ -268,15 +272,81 @@ class GameDetailSerializer(serializers.Serializer):
     price_json = serializers.JSONField(allow_null=True)
     recommendations = serializers.IntegerField(allow_null=True)
     review_summary = serializers.CharField(allow_null=True)
-    is_free = serializers.BooleanField()
-    has_multiplayer = serializers.BooleanField()
+    is_free = serializers.BooleanField(default=False)
+    has_multiplayer = serializers.BooleanField(default=False)
     time_to_beat = serializers.JSONField(allow_null=True)
     game_type = serializers.CharField(allow_null=True)
     parent_game_id = serializers.IntegerField(allow_null=True)
     parent_game_title = serializers.CharField(allow_null=True)
-    is_dlc = serializers.BooleanField()
-    is_beta = serializers.BooleanField()
-    is_demo = serializers.BooleanField()
+    is_dlc = serializers.BooleanField(default=False)
+    is_beta = serializers.BooleanField(default=False)
+    is_demo = serializers.BooleanField(default=False)
+    editions = GameEditionOutSerializer(many=True, required=False, default=list)
+
+    def to_representation(self, instance: Game | dict[str, Any]) -> dict[str, Any]:
+        if isinstance(instance, dict):
+            return instance
+
+        game: Game = instance
+        media_item: MediaItem | None = getattr(game, "media_item", None)
+
+        steam_id = getattr(media_item, "steam_app_id", None) if media_item else None
+        store_ids: dict[str, str] = {}
+
+        if media_item:
+            # Check prefetch cache first to prevent N+1 query
+            ext_ids = getattr(media_item, "_prefetched_objects_cache", {}).get("external_ids")
+            if ext_ids is None and hasattr(media_item, "external_ids"):
+                ext_ids = media_item.external_ids.all()
+
+            if ext_ids is not None:
+                for ext in ext_ids:
+                    if ext.provider and ext.external_id:
+                        store_ids[ext.provider] = ext.external_id
+                        if ext.provider == "steam" and not steam_id and ext.external_id.isdigit():
+                            steam_id = int(ext.external_id)
+
+        if steam_id and "steam" not in store_ids:
+            store_ids["steam"] = str(steam_id)
+
+        # Fast editions extraction using prefetched cache
+        editions = game.editions.all()
+        editions_data = [
+            {
+                "id": ed.id,
+                "name": ed.name,
+                "raw_title": ed.raw_title,
+                "igdb_id": ed.igdb_id,
+                "release_date": ed.release_date.isoformat() if ed.release_date else None,
+                "external_ids": ed.external_ids or {},
+                "cover_image_id": ed.cover_image_id,
+                "summary": ed.summary,
+                "is_default": bool(ed.is_default),
+            }
+            for ed in editions
+        ]
+
+        game_type = game.game_type or "main_game"
+        return {
+            "release_status": game.release_status,
+            "website": game.website,
+            "steam_app_id": steam_id,
+            "store_ids": store_ids or None,
+            "current_players": game.current_players,
+            "price_json": game.price_json,
+            "recommendations": game.recommendations,
+            "review_summary": game.review_summary,
+            "is_free": game.is_free,
+            "has_multiplayer": game.has_multiplayer,
+            "time_to_beat": game.time_to_beat,
+            "game_type": game_type,
+            "parent_game_id": game.parent_game_id,
+            "parent_game_title": game.parent_game_title,
+            "is_dlc": game_type == "dlc",
+            "is_beta": game_type == "beta",
+            "is_demo": game_type == "demo",
+            "editions": editions_data,
+        }
 
 
 class MediaCreditPersonOutSerializer(serializers.Serializer):
@@ -648,46 +718,7 @@ class MediaItemDetailSerializer(serializers.Serializer):
         game: Game | None = self._subtype(obj, "game")
         if game is None:
             return None
-        steam_id = getattr(obj, "steam_app_id", None)
-        if steam_id is None:
-            prefetched = getattr(obj, "_prefetched_objects_cache", {}).get("external_ids")
-            if prefetched is not None:
-                for ext in prefetched:
-                    if ext.provider == "steam" and (ext.media_type == "game" or not ext.media_type):
-                        steam_str = ext.external_id
-                        steam_id = int(steam_str) if steam_str and steam_str.isdigit() else None
-                        break
-            if steam_id is None:
-                steam_str = (
-                    ExternalID.objects.filter(
-                        content_type=ContentType.objects.get_for_model(MediaItem),
-                        object_id=obj.pk,
-                        provider="steam",
-                        media_type="game",
-                    )
-                    .values_list("external_id", flat=True)
-                    .first()
-                )
-                steam_id = int(steam_str) if steam_str and steam_str.isdigit() else None
-        return {
-            "release_status": game.release_status,
-            "website": game.website,
-            "steam_app_id": steam_id,
-            "store_ids": {"steam": str(steam_id)} if steam_id else None,
-            "current_players": game.current_players,
-            "price_json": game.price_json,
-            "recommendations": game.recommendations,
-            "review_summary": game.review_summary,
-            "is_free": game.is_free,
-            "has_multiplayer": game.has_multiplayer,
-            "time_to_beat": game.time_to_beat,
-            "game_type": game.game_type or "main_game",
-            "parent_game_id": game.parent_game_id,
-            "parent_game_title": game.parent_game_title,
-            "is_dlc": (game.game_type or "") == "dlc",
-            "is_beta": (game.game_type or "") == "beta",
-            "is_demo": (game.game_type or "") == "demo",
-        }
+        return GameDetailSerializer(game).data
 
     def get_album(self, _obj):
         return None

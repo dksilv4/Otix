@@ -240,7 +240,7 @@ export const UnifiedMediaPlayerModal = (props: UnifiedMediaPlayerModalProps = {}
                     showQualityMenu={state.controls.showQualityMenu}
                     currentQuality={state.currentQuality}
                     availableQualities={state.availableQualities}
-                    activeLevelHeight={state.activeLevelHeight}
+                    activeLevelHeight={state.activeLevelHeight ?? undefined}
                     isOverallPip={state.isOverallPip}
                     onTogglePlay={state.controls.handleTogglePlay}
                     onSeekRelative={state.controls.handleSeekRelative}
@@ -290,7 +290,7 @@ export const UnifiedMediaPlayerModal = (props: UnifiedMediaPlayerModalProps = {}
                 showQualityMenu={state.controls.showQualityMenu}
                 currentQuality={state.currentQuality}
                 availableQualities={state.availableQualities}
-                activeLevelHeight={state.activeLevelHeight}
+                activeLevelHeight={state.activeLevelHeight ?? undefined}
                 isOverallPip={state.isOverallPip}
                 onTogglePlay={state.controls.handleTogglePlay}
                 onSeekRelative={state.controls.handleSeekRelative}

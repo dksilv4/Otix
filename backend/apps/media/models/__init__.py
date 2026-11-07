@@ -20,6 +20,7 @@ from apps.media.models.blocked import BlockedRecommendation
 from apps.media.models.character import Character, CharacterAsset, MediaCharacter
 from apps.media.models.external_id import ExternalID
 from apps.media.models.franchise import Franchise, FranchiseItem
+from apps.media.models.game_edition import GameEdition
 from apps.media.models.genre import (
     Genre,
     Keyword,
@@ -49,6 +50,7 @@ __all__ = [
     "Franchise",
     "FranchiseItem",
     "Game",
+    "GameEdition",
     "GameMode",
     "Genre",
     "Keyword",

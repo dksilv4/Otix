@@ -3,6 +3,7 @@
 import logging
 
 import httpx
+from django.db.models import Count
 from django.http import Http404
 from rest_framework import permissions, status
 from rest_framework.request import Request
@@ -30,7 +31,10 @@ class UserHomeListCreateView(APIView):
         user = _resolve_user(request)
         if not user:
             return Response([], status=status.HTTP_401_UNAUTHORIZED)
-        homes = UserHome.objects.filter(user=user)
+        homes = UserHome.objects.filter(user=user).annotate(
+            nodes_count=Count("nodes", distinct=True),
+            machines_count=Count("machines", distinct=True),
+        )
         # If user has no homes yet, create a default "Home"
         if not homes.exists():
             default_home = UserHome.objects.create(
@@ -39,7 +43,10 @@ class UserHomeListCreateView(APIView):
                 description="Default home network & homelab environment",
                 is_default=True,
             )
-            homes = UserHome.objects.filter(id=default_home.id)
+            homes = UserHome.objects.filter(id=default_home.id).annotate(
+                nodes_count=Count("nodes", distinct=True),
+                machines_count=Count("machines", distinct=True),
+            )
 
         serializer = UserHomeSerializer(homes, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)

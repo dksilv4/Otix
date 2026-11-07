@@ -519,7 +519,7 @@ export const NodeScannedFilesTableRow = ({
           return (
             <tr
               key={`src-${source.id}`}
-              onClick={() => onOpenDetails(source)}
+              onClick={() => onOpenDetails(source as unknown as ScannedGameItem)}
               className="group/src relative transition-all duration-150 hover:bg-white/[0.02] cursor-pointer"
             >
               {/* Indent Indicator */}

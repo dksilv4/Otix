@@ -18,6 +18,8 @@ class StorageShareSerializer(serializers.ModelSerializer):
     )
 
     def get_node_count(self, obj: StorageShare) -> int:
+        if hasattr(obj, "node_count") and obj.node_count is not None:
+            return obj.node_count
         return obj.node_paths.values("node_id").distinct().count()
 
     class Meta:
@@ -82,6 +84,15 @@ class GameMatchRecordSerializer(serializers.ModelSerializer):
     def get_external_ids(self, obj: GameMatchRecord) -> dict[str, str]:
         if not obj.media_item_id:
             return {}
+        if hasattr(obj, "_cached_external_ids"):
+            return obj._cached_external_ids
+        context_cache = self.context.get("external_ids_by_media_id")
+        if context_cache is not None and obj.media_item_id in context_cache:
+            return context_cache[obj.media_item_id]
+        if hasattr(obj, "media_item") and obj.media_item:
+            prefetched = getattr(obj.media_item, "_prefetched_objects_cache", {}).get("external_ids")
+            if prefetched is not None:
+                return {e.provider: e.external_id for e in prefetched}
         ct = ContentType.objects.get_for_model(MediaItem)
         return dict(
             ExternalID.objects.filter(content_type=ct, object_id=obj.media_item_id).values_list(

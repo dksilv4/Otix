@@ -15,7 +15,7 @@ export async function resolveAndSyncScanPaths(
   authHeaders: Record<string, string>,
   nodeDaemon: any
 ): Promise<ScanPathsResult> {
-  const hasClientPaths = (paths && paths.length > 0) || (isoPaths && isoPaths.length > 0);
+  const hasClientPaths = Boolean((paths && paths.length > 0) || (isoPaths && isoPaths.length > 0));
   const allPathsMap = new Map<string, 'game' | 'iso'>();
 
   if (hasClientPaths) {

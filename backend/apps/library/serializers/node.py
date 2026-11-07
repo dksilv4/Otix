@@ -17,26 +17,30 @@ class UserNodeSerializer(serializers.ModelSerializer):
     home_name = serializers.SerializerMethodField()
     pending_updates = serializers.SerializerMethodField()
 
-    def get_home_id(self, obj: UserNode) -> int | None:
-        if obj.home_id:
-            return obj.home_id
-        parent = (
+    def _get_parent_machine(self, obj: UserNode):
+        prefetched = getattr(obj, "_prefetched_objects_cache", {}).get("hosted_machines")
+        if prefetched is not None:
+            for m in prefetched:
+                if getattr(m, "home_id", None):
+                    return m
+            return None
+        return (
             getattr(obj, "hosted_machines", obj.hosted_server_machines)
             .filter(home__isnull=False)
             .select_related("home")
             .first()
         )
+
+    def get_home_id(self, obj: UserNode) -> int | None:
+        if obj.home_id:
+            return obj.home_id
+        parent = self._get_parent_machine(obj)
         return parent.home_id if parent else None
 
     def get_home_name(self, obj: UserNode) -> str | None:
         if obj.home_id and obj.home:
             return obj.home.name
-        parent = (
-            getattr(obj, "hosted_machines", obj.hosted_server_machines)
-            .filter(home__isnull=False)
-            .select_related("home")
-            .first()
-        )
+        parent = self._get_parent_machine(obj)
         return parent.home.name if parent and parent.home else None
 
     class Meta:

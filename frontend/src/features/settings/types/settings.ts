@@ -76,6 +76,7 @@ export interface NodesViewContextValue {
 }
 
 export type SteamProfile = {
+  steamid?: string | null
   personaname: string | null
   avatarfull: string | null
   profileurl: string | null
@@ -117,7 +118,7 @@ export interface IntegrationDef {
   id: string
   name: string
   category: IntegrationCategory
-  keywords: string
+  keywords: string | string[]
   description: string
   isConnected: boolean
   brandColor: string

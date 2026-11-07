@@ -58,7 +58,7 @@ export const usePathsSectionState = ({
           : null
   const isLocalNode = desktop && ((nodeId != null && isLocalDesktopNodeId(nodeId)) || isLocalDesktopNode(activeNode))
   const remoteNodeId = !desktop ? (isGlobalProfile ? null : effectiveServerId) : (isLocalNode ? null : effectiveServerId)
-  const folderTarget = remoteNodeId ? 'server' : desktop ? 'local' : 'server'
+  const folderTarget: 'server' | 'local' = remoteNodeId ? 'server' : desktop ? 'local' : 'server'
 
   // View & Filter State
   const [viewMode, setViewMode] = useState<PathsViewMode>(() => loadStoredPathsViewMode())

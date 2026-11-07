@@ -148,7 +148,7 @@ def get_conversation_for_user(conversation_id: str | uuid.UUID, user_id: int) ->
     if not conv:
         raise NotFound("Conversation not found.")
 
-    is_participant = conv.participants.filter(user_id=user_id).exists()
+    is_participant = any(p.user_id == user_id for p in conv.participants.all())
     if not is_participant:
         raise PermissionDenied("You are not a participant in this conversation.")
 

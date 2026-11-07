@@ -20,6 +20,8 @@ export interface StreamQualityOption {
   videoResolution?: string
 }
 
+export type QualityOption = StreamQualityOption
+
 export interface SubtitleTrack {
   id: string
   index: number

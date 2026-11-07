@@ -607,6 +607,7 @@ def media_detail_queryset(media_id: int) -> MediaItem | None:
             "movie__collection__movies__media_item__assets",
             "external_ratings",
             "external_ids",
+            "game__editions",
         )
         .filter(pk=media_id)
         .first()

@@ -20,13 +20,24 @@ function createMockDb() {
         cols.forEach((col: string, i: number) => { row[col] = args[i] })
         table.set(id, row)
       } else if (parsed.type === 'update') {
-        // UPDATE scanned_games SET col1=?, col2=? WHERE id = ?
-        // args are: [val1, val2, ..., id]
-        const id = args[args.length - 1] as string  // last arg is WHERE id
-        const row = table.get(id)
+        let row: Record<string, any> | undefined
+        for (const a of args) {
+          if (typeof a === 'string' && table.has(a)) {
+            row = table.get(a)
+            break
+          }
+        }
+        if (!row) {
+          const id = args[args.length - 1] as string
+          row = table.get(id)
+        }
         if (row) {
           const setCols = parsed.setColumns || []
-          setCols.forEach((col: string, i: number) => { row[col] = args[i] })
+          setCols.forEach((col: string, i: number) => {
+            if (args[i] !== undefined && args[i] !== null) {
+              row![col] = args[i]
+            }
+          })
         }
       }
     }),
@@ -76,7 +87,22 @@ function parseSql(sql: string) {
     const table = tableMatch?.[1] || 'scanned_games'
     let setColumns: string[] = []
     if (setMatch) {
-      setColumns = setMatch[1].split(',').map((s: string) => {
+      const parts: string[] = []
+      let depth = 0
+      let cur = ''
+      for (let i = 0; i < setMatch[1].length; i++) {
+        const ch = setMatch[1][i]
+        if (ch === '(') depth++
+        else if (ch === ')') depth--
+        else if (ch === ',' && depth === 0) {
+          parts.push(cur.trim())
+          cur = ''
+          continue
+        }
+        cur += ch
+      }
+      if (cur.trim()) parts.push(cur.trim())
+      setColumns = parts.filter(s => s.includes('?')).map((s: string) => {
         const eqIdx = s.indexOf('=')
         return eqIdx > 0 ? s.substring(0, eqIdx).trim() : s.trim()
       })

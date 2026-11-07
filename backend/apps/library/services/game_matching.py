@@ -167,6 +167,21 @@ def sync_node_manifest(node: UserNode, files: list[dict[str, Any]], prune: bool 
 
     seen_keys: set[str] = set()
 
+    from apps.library.models.game_source import NodeGameSource, UserGame
+
+    # Pre-fetch existing GameMatchRecords, MediaItems, and UserGames in batch to eliminate N+1 loops
+    existing_records = {
+        r.canonical_key: r
+        for r in GameMatchRecord.objects.filter(user=user, node=node)
+    }
+    media_ids_to_fetch = set()
+    for f in files:
+        mid = f.get("otix_media_id") or (f.get("catalog_item") or {}).get("id")
+        if mid and str(mid).isdigit():
+            media_ids_to_fetch.add(int(mid))
+    prefetched_media = {m.id: m for m in MediaItem.objects.filter(id__in=media_ids_to_fetch)} if media_ids_to_fetch else {}
+    existing_user_games = list(UserGame.objects.filter(user=user))
+
     for f in files:
         stats["total_processed"] += 1
         fp = f.get("filepath") or ""
@@ -188,7 +203,7 @@ def sync_node_manifest(node: UserNode, files: list[dict[str, Any]], prune: bool 
         canonical_key = generate_canonical_key(storage_share, node, rel, sha256)
         seen_keys.add(canonical_key)
 
-        existing = GameMatchRecord.objects.filter(user=user, canonical_key=canonical_key).first()
+        existing = existing_records.get(canonical_key)
 
         if existing and existing.user_override:
             # Preserve user's manual match choice
@@ -210,7 +225,10 @@ def sync_node_manifest(node: UserNode, files: list[dict[str, Any]], prune: bool 
 
         if existing_media_id:
             try:
-                matched_media = MediaItem.objects.filter(id=int(existing_media_id)).first()
+                mid_int = int(existing_media_id)
+                matched_media = prefetched_media.get(mid_int) or MediaItem.objects.filter(id=mid_int).first()
+                if matched_media:
+                    prefetched_media[mid_int] = matched_media
             except (ValueError, TypeError):
                 matched_media = None
             if matched_media:
@@ -288,18 +306,16 @@ def sync_node_manifest(node: UserNode, files: list[dict[str, Any]], prune: bool 
             # Group under canonical UserGame: check media_item first, then clean_title
             user_game = None
             if matched_media:
-                user_game = UserGame.objects.filter(
-                    user=user,
-                    media_item=matched_media,
-                    platform=platform,
-                ).first()
+                user_game = next(
+                    (ug for ug in existing_user_games if ug.media_item_id == matched_media.id and ug.platform == platform),
+                    None,
+                )
 
             if not user_game:
-                user_game = UserGame.objects.filter(
-                    user=user,
-                    clean_title=clean_game_title,
-                    platform=platform,
-                ).first()
+                user_game = next(
+                    (ug for ug in existing_user_games if (ug.clean_title or "").lower() == clean_game_title.lower() and ug.platform == platform),
+                    None,
+                )
 
             if not user_game:
                 user_game, _ = UserGame.objects.get_or_create(
@@ -311,6 +327,7 @@ def sync_node_manifest(node: UserNode, files: list[dict[str, Any]], prune: bool 
                         "cover_image_url": cover_url,
                     },
                 )
+                existing_user_games.append(user_game)
             else:
                 updated_fields = []
                 if matched_media and user_game.media_item != matched_media:

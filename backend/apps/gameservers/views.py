@@ -80,7 +80,7 @@ class GameServerListCreateView(APIView):
             qs = qs.filter(server_type=server_type)
 
         qs = qs.select_related("owner", "media_item", "machine").prefetch_related(
-            "shares", "invites"
+            "shares", "invites", "media_item__assets"
         )
         serializer = DedicatedGameServerSerializer(qs, many=True, context={"request": request})
         return Response(serializer.data)
@@ -425,7 +425,8 @@ class GameServersByGameView(APIView):
                     media_item_id=media_pk,
                 )
                 .distinct()
-                .select_related("owner", "media_item")
+                .select_related("owner", "media_item", "machine")
+                .prefetch_related("shares", "invites", "media_item__assets")
             )
         else:
             qs = (
@@ -434,7 +435,8 @@ class GameServersByGameView(APIView):
                     game_title__iexact=media_id,
                 )
                 .distinct()
-                .select_related("owner", "media_item")
+                .select_related("owner", "media_item", "machine")
+                .prefetch_related("shares", "invites", "media_item__assets")
             )
 
         serializer = DedicatedGameServerSerializer(qs, many=True, context={"request": request})

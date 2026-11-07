@@ -5,7 +5,7 @@ import { extractIntegrationMessage } from '../utils/integrations'
 import { EpicCodeModal } from '../components/organisms/epic-code-modal'
 import type { SettingsUser } from '../types'
 
-export const useEpicIntegration = (user: SettingsUser | null | undefined, openModal: (modal: any) => void) => {
+export const useEpicIntegration = (user: SettingsUser | null | undefined, openModal: any) => {
   const [epicConnected, setEpicConnected] = useState(Boolean(user?.epicAccountId))
   const [epicDisplayName, setEpicDisplayName] = useState<string | null>(user?.epicDisplayName ?? null)
   const [epicAccountId, setEpicAccountId] = useState<string | null>(user?.epicAccountId ?? null)

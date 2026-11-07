@@ -98,6 +98,7 @@ def scan_epic_library(user, server=None) -> dict:
 
     matched = 0
     new_rows = []
+    rows_to_update = []
     for game in games:
         app_name = game.get("app_name")
         if not app_name:
@@ -137,10 +138,12 @@ def scan_epic_library(user, server=None) -> dict:
         if any(getattr(row, field) != value for field, value in defaults.items()):
             for field, value in defaults.items():
                 setattr(row, field, value)
-            row.save(update_fields=tuple(defaults) + ("updated_at",))
+            rows_to_update.append(row)
 
     if new_rows:
         UserEpicGame.objects.bulk_create(new_rows)
+    if rows_to_update:
+        UserEpicGame.objects.bulk_update(rows_to_update, fields=["media_item_id", "namespace", "catalog_item_id", "offer_id", "title", "updated_at"])
 
     logger.info("epic library scanned user=%s total=%s matched=%s", user.id, len(games), matched)
     return {

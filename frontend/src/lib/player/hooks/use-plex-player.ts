@@ -1,6 +1,8 @@
 import { useContext } from 'react'
 import { PlexPlayerContext } from '../player-context'
-import type { PlexPlayerContextValue } from '../types'
+import type { PlexPlayerContextValue, PlexTrackInfo } from '../types'
+
+export type { PlexTrackInfo }
 
 export const usePlexPlayer = (): PlexPlayerContextValue => {
   const ctx = useContext(PlexPlayerContext)

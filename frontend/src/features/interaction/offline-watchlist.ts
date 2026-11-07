@@ -134,14 +134,18 @@ export async function syncOfflineWatchlist(): Promise<{ synced: number; failed: 
   const items = getSnapshot()
   let synced = 0
   let failed = 0
-  for (const item of items) {
-    try {
-      await apiClient.put(
+  const results = await Promise.allSettled(
+    items.map((item) =>
+      apiClient.put(
         `/media/${item.mediaType}/${item.mediaId}/interactions/watchlisted`,
         {},
-      )
+      ),
+    ),
+  )
+  for (const r of results) {
+    if (r.status === 'fulfilled') {
       synced++
-    } catch {
+    } else {
       failed++
     }
   }

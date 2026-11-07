@@ -67,55 +67,78 @@ class Command(BaseCommand):
         total_xp_all = 0
         updated_users = 0
 
+        user_ids = list(users_qs.values_list("id", flat=True))
+        if not user_ids:
+            self.stdout.write("No users to process.")
+            return
+
+        from collections import defaultdict
+        from django.db.models import Count
+
+        # 1. Bulk Reviews
+        reviews_by_user = defaultdict(list)
+        reviewed_media_ids_by_user = defaultdict(set)
+        for uid, content, mid in Review.objects.filter(user_id__in=user_ids).values_list("user_id", "content", "media_item_id"):
+            reviews_by_user[uid].append(content)
+            if mid:
+                reviewed_media_ids_by_user[uid].add(mid)
+
+        # 2. Standalone ratings
+        ratings_by_user = defaultdict(int)
+        for uid, mid in MediaItemRating.objects.filter(user_id__in=user_ids).values_list("user_id", "media_item_id"):
+            if mid not in reviewed_media_ids_by_user[uid]:
+                ratings_by_user[uid] += 1
+
+        # 3. Interactions
+        interactions_by_user = defaultdict(list)
+        for uid, itype in UserMediaInteraction.objects.filter(user_id__in=user_ids).values_list("user_id", "interaction_type"):
+            interactions_by_user[uid].append(itype)
+
+        # 4. Workouts
+        workouts_by_user = dict(Workout.objects.filter(user_id__in=user_ids).values("user_id").annotate(c=Count("id")).values_list("user_id", "c"))
+
+        # 5. Lists
+        lists_by_user = dict(UserList.objects.filter(user_id__in=user_ids).values("user_id").annotate(c=Count("id")).values_list("user_id", "c"))
+
+        # 6. Mood check-ins
+        mood_by_user = dict(UserMoodCheckIn.objects.filter(user_id__in=user_ids, status="submitted").values("user_id").annotate(c=Count("id")).values_list("user_id", "c"))
+
+        # 7. Claimed Badges
+        badges_by_user = defaultdict(list)
+        for uid, bkey in UserBadge.objects.filter(user_id__in=user_ids, claimed=True).values_list("user_id", "badge_key"):
+            badges_by_user[uid].append(bkey)
+
         for user in users_qs:
             user_xp = 0
 
             # 1. Reviews
-            reviews = Review.objects.filter(user_id=user.id).values_list("content", flat=True)
-            for content in reviews:
+            for content in reviews_by_user.get(user.id, []):
                 if content and content.strip():
                     user_xp += REVIEW_WITH_CONTENT
                 else:
                     user_xp += REVIEW_SCORE_ONLY
 
             # 2. Standalone ratings (not linked to reviews)
-            reviewed_media_ids = set(
-                Review.objects.filter(user_id=user.id).values_list("media_item_id", flat=True)
-            )
-            standalone_ratings = (
-                MediaItemRating.objects.filter(user_id=user.id)
-                .exclude(media_item_id__in=reviewed_media_ids)
-                .count()
-            )
-            user_xp += standalone_ratings * RATING_SUBMIT
+            user_xp += ratings_by_user.get(user.id, 0) * RATING_SUBMIT
 
             # 3. Media Interactions
-            interactions = UserMediaInteraction.objects.filter(user_id=user.id).values_list(
-                "interaction_type", flat=True
-            )
-            for itype in interactions:
+            for itype in interactions_by_user.get(user.id, []):
                 if itype in ("watched", "played", "listened"):
                     user_xp += INTERACTION_WATCHED_PLAYED_LISTENED
                 elif itype in ("liked", "watchlisted", "started"):
                     user_xp += INTERACTION_LIKE_WATCHLIST_STARTED
 
             # 4. Workouts
-            workouts_count = Workout.objects.filter(user_id=user.id).count()
-            user_xp += workouts_count * WORKOUT_COMPLETE
+            user_xp += workouts_by_user.get(user.id, 0) * WORKOUT_COMPLETE
 
             # 5. Lists
-            lists_count = UserList.objects.filter(user_id=user.id).count()
-            user_xp += lists_count * LIST_CREATE
+            user_xp += lists_by_user.get(user.id, 0) * LIST_CREATE
 
             # 6. Mood check-ins
-            mood_count = UserMoodCheckIn.objects.filter(user_id=user.id, status="submitted").count()
-            user_xp += mood_count * MOOD_CHECKIN
+            user_xp += mood_by_user.get(user.id, 0) * MOOD_CHECKIN
 
             # 7. Claimed Badges
-            claimed_badges = UserBadge.objects.filter(user_id=user.id, claimed=True).values_list(
-                "badge_key", flat=True
-            )
-            for bkey in claimed_badges:
+            for bkey in badges_by_user.get(user.id, []):
                 bdef = BADGE_DEFS.get(bkey)
                 if bdef:
                     user_xp += bdef.xp_reward

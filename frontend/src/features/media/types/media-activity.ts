@@ -15,6 +15,7 @@ export interface MediaActivityItem {
   year?: number
   progress?: number
   size?: number
+  sizeOnDisk?: number
   sizeLeft?: number
   timeleft?: string | null
   speed?: string | null

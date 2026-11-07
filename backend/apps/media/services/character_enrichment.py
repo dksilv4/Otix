@@ -206,11 +206,15 @@ def enrich_character(
                 if mc:
                     target_media = mc.media_item
 
-            if target_media:
+            if target_media and f_data.actors:
+                actor_names = [actor.name.strip() for actor in f_data.actors if getattr(actor, "name", None)]
+                existing_actors = {p.name.lower(): p for p in Person.objects.filter(name__in=actor_names)}
                 for a_idx, actor in enumerate(f_data.actors):
-                    person = Person.objects.filter(name=actor.name).first()
+                    p_name = actor.name.strip()
+                    person = existing_actors.get(p_name.lower())
                     if not person:
-                        person = Person.objects.create(name=actor.name)
+                        person = Person.objects.create(name=p_name)
+                        existing_actors[p_name.lower()] = person
                         changed = True
                     if not person.photo_url:
                         backfill_person_photo(person)

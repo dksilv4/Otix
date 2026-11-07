@@ -301,11 +301,11 @@ export const useLocalMusic = () => {
     if (folder?.handle) {
       try {
         let perm = 'granted'
-        if (typeof folder.handle.queryPermission === 'function') {
-          perm = await folder.handle.queryPermission({ mode: 'read' })
+        if (typeof (folder.handle as any).queryPermission === 'function') {
+          perm = await (folder.handle as any).queryPermission({ mode: 'read' })
         }
-        if (perm === 'prompt' && typeof folder.handle.requestPermission === 'function') {
-          perm = await folder.handle.requestPermission({ mode: 'read' })
+        if (perm === 'prompt' && typeof (folder.handle as any).requestPermission === 'function') {
+          perm = await (folder.handle as any).requestPermission({ mode: 'read' })
         }
         if (perm === 'granted') {
           let currentDir: FileSystemDirectoryHandle = folder.handle

@@ -44,8 +44,8 @@ export const useUnifiedPlayerControls = ({
   isVisible,
 }: UseUnifiedPlayerControlsProps) => {
   const {
-    streamIsPlaying,
-    streamIsTheater,
+    isPlaying: streamIsPlaying,
+    isTheater: streamIsTheater,
     isInAppPip,
     closeStream,
     togglePlay: streamTogglePlay,

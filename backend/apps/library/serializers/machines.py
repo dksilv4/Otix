@@ -33,9 +33,13 @@ class UserHomeSerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "created_at", "updated_at"]
 
     def get_nodes_count(self, obj: UserHome) -> int:
+        if hasattr(obj, "nodes_count") and obj.nodes_count is not None:
+            return obj.nodes_count
         return obj.nodes.count()
 
     def get_machines_count(self, obj: UserHome) -> int:
+        if hasattr(obj, "machines_count") and obj.machines_count is not None:
+            return obj.machines_count
         return obj.machines.count()
 
     def get_server_machines_count(self, obj: UserHome) -> int:
@@ -117,11 +121,17 @@ class UserMachineSerializer(serializers.ModelSerializer):
         ]
 
     def get_smb_node_ids(self, obj: UserMachine) -> list[int]:
+        prefetched = getattr(obj, "_prefetched_objects_cache", {}).get("smb_nodes")
+        if prefetched is not None:
+            return [n.id for n in prefetched]
         return list(obj.smb_nodes.values_list("id", flat=True))
 
     def get_smb_nodes(self, obj: UserMachine) -> list[dict]:
+        prefetched = getattr(obj, "_prefetched_objects_cache", {}).get("smb_nodes")
+        nodes = prefetched if prefetched is not None else obj.smb_nodes.all()
         return [
-            {"id": n.id, "name": n.name, "primary_url": n.primary_url} for n in obj.smb_nodes.all()
+            {"id": n.id, "name": n.name, "primary_url": getattr(n, "primary_url", "")}
+            for n in nodes
         ]
 
 

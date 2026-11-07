@@ -51,7 +51,7 @@ def _int_param(request: Request, name: str, default: int, low: int, high: int) -
 def _media_list_payload(items: list[MediaItem], has_more: bool, next_cursor: str | None) -> dict:
     """Assemble the legacy ``MediaItemListResponse`` envelope."""
     return {
-        "items": [MediaItemSummarySerializer(item).data for item in items],
+        "items": MediaItemSummarySerializer(items, many=True).data,
         "next_cursor": next_cursor,
         "has_more": has_more,
         "total": None,

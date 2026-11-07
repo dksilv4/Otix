@@ -8,7 +8,7 @@ import {
 } from 'lucide-react'
 import { DkButton } from '@ui/atoms/button'
 import { cn } from '@/lib/utils'
-import type { PathsFilterTab, PathsViewMode } from '../../utils/paths'
+import type { PathsFilterTab, PathsViewMode } from '../../../utils/paths'
 
 export interface PathsToolbarProps {
   filterTab: PathsFilterTab

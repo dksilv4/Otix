@@ -29,6 +29,7 @@ import {
 import type {
   SteamProfile,
   IntegrationDef,
+  PlexIntegration,
 } from '../types'
 
 export const useIntegrationsPageState = () => {

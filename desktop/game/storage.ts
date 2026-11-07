@@ -877,10 +877,10 @@ export function upsertGames(games: GameRow[], scopePaths?: string[]): void {
       const backdropUrl = (g as any).backdropUrl || (g as any).otixBackdropUrl || (existing as any)?.otix_backdrop_url || null;
       const iconUrl = g.iconUrl || (g as any).otixIconUrl || (existing as any)?.otix_icon_url || null;
       const confidence = g.otixConfidence ?? (existing as any)?.otix_confidence ?? null;
-      let resolvedSizeBytes = g.sizeBytes ?? (g.data as any)?.sizeBytes;
-      let resolvedModifiedAt = g.modifiedAt ?? (g.data as any)?.modifiedAt;
-      let resolvedVersion = g.version ?? (g.data as any)?.version ?? (g.data as any)?.gameVersion;
-      let resolvedLocalExePath = g.localExePath;
+      let resolvedSizeBytes = g.sizeBytes ?? (g.data as any)?.sizeBytes ?? (existing as any)?.size_bytes;
+      let resolvedModifiedAt = g.modifiedAt ?? (g.data as any)?.modifiedAt ?? (existing as any)?.modified_at;
+      let resolvedVersion = g.version ?? (g.data as any)?.version ?? (g.data as any)?.gameVersion ?? (existing as any)?.version;
+      let resolvedLocalExePath = g.localExePath ?? (existing as any)?.local_exe_path;
 
       if ((resolvedSizeBytes == null || resolvedSizeBytes <= 0 || !resolvedModifiedAt || !resolvedVersion || !resolvedLocalExePath) && (g.installDir || g.exePath || g.localExePath)) {
         try {

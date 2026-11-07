@@ -24,7 +24,7 @@ export interface TopologyNodesLayerProps {
   draggingItemId: string | null
   setSelectedItem: (item: NodeMapItem | null) => void
   handleNodeDragStart: (e: React.PointerEvent, id: string) => void
-  handleStartConnecting: (item: NodeMapItem) => void
+  handleStartConnecting: (e: React.MouseEvent | React.PointerEvent, item: NodeMapItem) => void
   handleCancelConnecting: () => void
   handleNodeClickInConnectMode: (item: NodeMapItem) => void
   setConnectPickerItem: (item: NodeMapItem | null) => void

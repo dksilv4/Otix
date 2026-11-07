@@ -62,16 +62,23 @@ async def hydrate_game_credits(
         count = 0
         people_to_backfill: list[Person] = []
         with transaction.atomic():
+            # Pre-load existing persons in batch to prevent N+1 queries
+            cast_names = [c["person_name"].strip() for c in cast_entries if c.get("person_name")]
+            crew_names = [cr["person_name"].strip() for cr in crew_entries if cr.get("person_name")]
+            all_person_names = list({n for n in (cast_names + crew_names) if n})
+            existing_persons = {p.name.lower(): p for p in Person.objects.filter(name__in=all_person_names)}
+
             # 1. Apply cast
             for order, c in enumerate(cast_entries):
                 p_name = c["person_name"]
                 c_name = c["character_name"]
-                person = Person.objects.filter(name=p_name).first()
+                person = existing_persons.get(p_name.lower())
                 if not person:
                     person = Person.objects.create(
                         name=p_name,
                         photo_url=c.get("photo_url"),
                     )
+                    existing_persons[p_name.lower()] = person
                 elif not person.photo_url and c.get("photo_url"):
                     person.photo_url = c["photo_url"]
                     person.save(update_fields=["photo_url"])
@@ -123,12 +130,13 @@ async def hydrate_game_credits(
             for order, cr in enumerate(crew_entries):
                 p_name = cr["person_name"]
                 role = cr["role"]
-                person = Person.objects.filter(name=p_name).first()
+                person = existing_persons.get(p_name.lower())
                 if not person:
                     person = Person.objects.create(
                         name=p_name,
                         photo_url=cr.get("photo_url"),
                     )
+                    existing_persons[p_name.lower()] = person
                 elif not person.photo_url and cr.get("photo_url"):
                     person.photo_url = cr["photo_url"]
                     person.save(update_fields=["photo_url"])

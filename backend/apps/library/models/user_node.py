@@ -110,6 +110,12 @@ class UserNode(TimestampedModel):
         """Return the directly assigned home or inherit from parent hosting machine."""
         if self.home_id:
             return self.home
+        prefetched = getattr(self, "_prefetched_objects_cache", {}).get("hosted_machines")
+        if prefetched is not None:
+            for m in prefetched:
+                if getattr(m, "home_id", None) and getattr(m, "home", None):
+                    return m.home
+            return None
         parent = (
             self.hosted_machines.filter(home__isnull=False).select_related("home").first()
         )

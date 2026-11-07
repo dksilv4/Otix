@@ -285,13 +285,20 @@ class NodeListCreateView(APIView):
             | Q(name__istartswith="Safari on")
             | Q(name__istartswith="Browser on")
         ).delete()
-        servers = list(UserNode.objects.filter(user=user))
+        servers = list(
+            UserNode.objects.filter(user=user)
+            .select_related("home", "user")
+            .prefetch_related("hosted_machines__home")
+        )
         now = timezone.now()
+        stale_ids = []
         for server in servers:
             if getattr(server, "is_local_desktop", False) and server.is_online:
                 if not server.last_seen_at or (now - server.last_seen_at).total_seconds() > 90:
                     server.is_online = False
-                    server.save(update_fields=["is_online", "updated_at"])
+                    stale_ids.append(server.id)
+        if stale_ids:
+            UserNode.objects.filter(id__in=stale_ids).update(is_online=False, updated_at=now)
         return Response(
             UserNodeSerializer(servers, many=True, context={"request": request}).data
         )

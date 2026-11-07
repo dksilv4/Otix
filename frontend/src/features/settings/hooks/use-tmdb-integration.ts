@@ -91,6 +91,7 @@ export const useTmdbIntegration = (user: SettingsUser | null | undefined, handle
   return {
     tmdbConnected,
     isTmdbConnected: tmdbConnected,
+    setTmdbConnected,
     tmdbUsername,
     setTmdbUsername,
     tmdbAvatarUrl,

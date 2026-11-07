@@ -175,9 +175,9 @@ export const cleanTitleForDeduplication = (title: string): string => {
 // Deduplicate games from local disk scan and backend API endpoints.
 export const deduplicateGames = (items: any[]): any[] => {
   const merged: any[] = []
-  const seenIds = new Set<string>()
-  const seenMediaIds = new Set<string>()
-  const seenSteamAppIds = new Set<string>()
+  const idMap = new Map<string, any>()
+  const mediaIdMap = new Map<string, any>()
+  const steamAppIdMap = new Map<string, any>()
   const titleMap = new Map<string, any>()
 
   for (const item of items) {
@@ -198,19 +198,12 @@ export const deduplicateGames = (items: any[]): any[] => {
 
     let existing: any = null
 
-    if (item.id && seenIds.has(item.id)) {
-      existing = merged.find((m) => m.id === item.id)
-    } else if (mediaId && seenMediaIds.has(mediaId)) {
-      existing = merged.find((m) => String(m.otixMediaId) === mediaId)
-    } else if (steamAppId && seenSteamAppIds.has(steamAppId)) {
-      existing = merged.find((m) => {
-        const mSteamAppId = m.steamAppId
-          ? String(m.steamAppId)
-          : m.id?.startsWith?.('steam-')
-          ? m.id.replace('steam-', '').replace('unmatched-', '')
-          : null
-        return mSteamAppId === steamAppId
-      })
+    if (item.id && idMap.has(item.id)) {
+      existing = idMap.get(item.id)
+    } else if (mediaId && mediaIdMap.has(mediaId)) {
+      existing = mediaIdMap.get(mediaId)
+    } else if (steamAppId && steamAppIdMap.has(steamAppId)) {
+      existing = steamAppIdMap.get(steamAppId)
     } else if (normTitle && titleMap.has(titleKey)) {
       existing = titleMap.get(titleKey)
     }
@@ -218,6 +211,7 @@ export const deduplicateGames = (items: any[]): any[] => {
     if (existing) {
       if (!existing.otixMediaId && item.otixMediaId) {
         existing.otixMediaId = item.otixMediaId
+        if (mediaId) mediaIdMap.set(mediaId, existing)
       }
       if (!existing.posterUrl && item.posterUrl) {
         existing.posterUrl = item.posterUrl
@@ -233,6 +227,7 @@ export const deduplicateGames = (items: any[]): any[] => {
       }
       if (!existing.steamAppId && item.steamAppId) {
         existing.steamAppId = item.steamAppId
+        if (steamAppId) steamAppIdMap.set(steamAppId, existing)
       }
       if (item.steamPlaytimeForever && (!existing.steamPlaytimeForever || item.steamPlaytimeForever > existing.steamPlaytimeForever)) {
         existing.steamPlaytimeForever = item.steamPlaytimeForever
@@ -249,9 +244,9 @@ export const deduplicateGames = (items: any[]): any[] => {
     } else {
       const newItem = { ...item }
       merged.push(newItem)
-      if (newItem.id) seenIds.add(newItem.id)
-      if (mediaId) seenMediaIds.add(mediaId)
-      if (steamAppId) seenSteamAppIds.add(steamAppId)
+      if (newItem.id) idMap.set(newItem.id, newItem)
+      if (mediaId) mediaIdMap.set(mediaId, newItem)
+      if (steamAppId) steamAppIdMap.set(steamAppId, newItem)
       if (normTitle) titleMap.set(titleKey, newItem)
     }
   }

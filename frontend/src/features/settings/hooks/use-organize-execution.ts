@@ -229,6 +229,7 @@ export const useOrganizeExecution = ({
   return {
     executing,
     executionError,
+    setExecutionError,
     executedCount,
     setExecutedCount,
     progress,

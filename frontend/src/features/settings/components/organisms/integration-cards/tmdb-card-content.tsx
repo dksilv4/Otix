@@ -31,7 +31,7 @@ export const TmdbCardContent = ({ state }: { state: ReturnType<typeof useIntegra
           )}
           <IntegrationAction label="Rating Sync" description="Sync ratings between Otix and TMDb" result={state.tmdbSyncResult ? `${state.tmdbSyncResult.imported > 0 ? `${state.tmdbSyncResult.imported} imported` : ''}${state.tmdbSyncResult.imported > 0 && state.tmdbSyncResult.exported > 0 ? ', ' : ''}${state.tmdbSyncResult.exported > 0 ? `${state.tmdbSyncResult.exported} exported` : ''}${state.tmdbSyncResult.skipped > 0 ? ` (${state.tmdbSyncResult.skipped} skipped)` : ''}` : null} buttonLabel={state.tmdbSyncing ? 'Syncing...' : 'Sync Ratings'} buttonIcon={RefreshCw} onPress={state.handleTmdbRatingSync} loading={state.tmdbSyncing} disabled={state.tmdbSyncDirection === 'disabled'}>
             <div className="mt-2">
-              <DkDropdown options={state.tmdbSyncDirections} value={state.tmdbSyncDirection} onChange={state.handleTmdbDirectionChange} placeholder="Direction" />
+              <DkDropdown options={state.tmdbSyncDirections} value={state.tmdbSyncDirection} onChange={state.setTmdbSyncDirection} placeholder="Direction" />
             </div>
           </IntegrationAction>
           <IntegrationAction label="Watchlist Import" description="Import your TMDb watchlist into Otix" result={state.tmdbWatchlistResult ? `${state.tmdbWatchlistResult.imported} imported, ${state.tmdbWatchlistResult.skipped} skipped` : null} buttonLabel={state.tmdbWatchlistImporting ? 'Importing...' : state.tmdbWatchlistResult ? 'Re-import' : 'Import'} buttonIcon={Download} onPress={state.handleTmdbWatchlistImport} loading={state.tmdbWatchlistImporting} muted />

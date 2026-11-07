@@ -179,39 +179,41 @@ export async function replicateNodeSettings({
     }
   }
 
-  for (const targetId of targetNodeIds) {
-    try {
-      if (isGlobalProfileId(targetId)) {
-        // Not a valid target for node replication
-        continue
-      }
-
-      if (organizePayload) {
-        await apiClient.post(`/library/nodes/${targetId}/organize`, organizePayload)
-      }
-
-      if (pathsPayload) {
-        if (pathsPayload.libraries.length > 0) {
-          await apiClient.put(`/library/nodes/${targetId}/libraries`, {
-            libraries: pathsPayload.libraries,
-          })
+  await Promise.all(
+    targetNodeIds.map(async (targetId) => {
+      try {
+        if (isGlobalProfileId(targetId)) {
+          // Not a valid target for node replication
+          return
         }
-        if (pathsPayload.downloadPath) {
-          await apiClient.post(`/library/nodes/${targetId}/desktop`, {
-            games_download_path: pathsPayload.downloadPath,
-          })
-        }
-      }
 
-      successCount++
-    } catch (err: unknown) {
-      failedCount++
-      errors.push({
-        nodeId: targetId,
-        message: (err as { message?: string })?.message || `Failed to apply settings to node #${targetId}`,
-      })
-    }
-  }
+        if (organizePayload) {
+          await apiClient.post(`/library/nodes/${targetId}/organize`, organizePayload)
+        }
+
+        if (pathsPayload) {
+          if (pathsPayload.libraries.length > 0) {
+            await apiClient.put(`/library/nodes/${targetId}/libraries`, {
+              libraries: pathsPayload.libraries,
+            })
+          }
+          if (pathsPayload.downloadPath) {
+            await apiClient.post(`/library/nodes/${targetId}/desktop`, {
+              games_download_path: pathsPayload.downloadPath,
+            })
+          }
+        }
+
+        successCount++
+      } catch (err: unknown) {
+        failedCount++
+        errors.push({
+          nodeId: targetId,
+          message: (err as { message?: string })?.message || `Failed to apply settings to node #${targetId}`,
+        })
+      }
+    })
+  )
 
   return { successCount, failedCount, errors }
 }

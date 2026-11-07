@@ -81,7 +81,8 @@ vi.mock('../db', () => ({
                 } else if (sql.includes('otix_media_id = COALESCE')) {
                   if (params[0] != null) row.otix_media_id = params[0];
                   if (params[1] != null) row.otix_media_title = params[1];
-                  if (params[params.length - 3] != null) row.otix_confidence = params[params.length - 3];
+                  const conf = params[9] !== undefined ? params[9] : params[params.length - 3];
+                  if (conf != null) row.otix_confidence = conf;
                 }
               }
             }

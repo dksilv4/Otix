@@ -103,9 +103,13 @@ class DedicatedGameServerSerializer(serializers.ModelSerializer):
             if resolved:
                 return resolved
             if hasattr(obj.media_item, "assets"):
-                asset = obj.media_item.assets.filter(asset_type="poster").first()
-                if asset:
-                    return asset.url
+                for asset in obj.media_item.assets.all():
+                    if (getattr(asset, "asset_type", "") or "").lower() == "poster":
+                        return asset.url
+                if not getattr(obj.media_item, "_prefetched_objects_cache", {}).get("assets"):
+                    asset = obj.media_item.assets.filter(asset_type="poster").first()
+                    if asset:
+                        return asset.url
         return None
 
     def get_is_owner(self, obj: DedicatedGameServer) -> bool:
@@ -120,7 +124,10 @@ class DedicatedGameServerSerializer(serializers.ModelSerializer):
             return False
         if obj.owner_id == request.user.id:
             return True
-        return obj.shares.filter(user_id=request.user.id).exists()
+        prefetched = getattr(obj, "_prefetched_objects_cache", {}).get("shares")
+        if prefetched is not None:
+            return any(s.user_id == request.user.id for s in prefetched)
+        return any(s.user_id == request.user.id for s in obj.shares.all())
 
     def get_user_permission(self, obj: DedicatedGameServer) -> str:
         request = self.context.get("request")
@@ -128,8 +135,12 @@ class DedicatedGameServerSerializer(serializers.ModelSerializer):
             return "viewer"
         if obj.owner_id == request.user.id:
             return "admin"
-        share = obj.shares.filter(user_id=request.user.id).first()
-        return share.permission if share else "viewer"
+        prefetched = getattr(obj, "_prefetched_objects_cache", {}).get("shares")
+        shares = prefetched if prefetched is not None else obj.shares.all()
+        for share in shares:
+            if share.user_id == request.user.id:
+                return share.permission
+        return "viewer"
 
     def get_active_invite_code(self, obj: DedicatedGameServer) -> str | None:
         request = self.context.get("request")
@@ -137,8 +148,11 @@ class DedicatedGameServerSerializer(serializers.ModelSerializer):
             return None
         # Only owner or admins see invite code
         if obj.owner_id == request.user.id or obj.is_public_link:
-            invite = obj.invites.filter(is_active=True).first()
-            return invite.code if invite else None
+            prefetched = getattr(obj, "_prefetched_objects_cache", {}).get("invites")
+            invites = prefetched if prefetched is not None else obj.invites.all()
+            for invite in invites:
+                if invite.is_active:
+                    return invite.code
         return None
 
 

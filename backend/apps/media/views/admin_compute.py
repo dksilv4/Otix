@@ -536,6 +536,12 @@ class AdminComputeSubmitEnrichmentView(APIView):
         distributors_added = 0
 
         with transaction.atomic():
+            # Pre-load existing persons in batch to prevent N+1 queries
+            cast_names = [c.get("person_name", "").strip() for c in cast_entries if c.get("person_name")]
+            crew_names = [cr.get("person_name", "").strip() for cr in crew_entries if cr.get("person_name")]
+            all_person_names = list({n for n in (cast_names + crew_names) if n})
+            existing_persons = {p.name.lower(): p for p in Person.objects.filter(name__in=all_person_names)}
+
             # 1. Cast
             for order, c in enumerate(cast_entries):
                 p_name = (c.get("person_name") or "").strip()
@@ -544,9 +550,10 @@ class AdminComputeSubmitEnrichmentView(APIView):
                 c_name = (c.get("character_name") or "").strip()
                 photo = c.get("photo_url")
 
-                person = Person.objects.filter(name=p_name).first()
+                person = existing_persons.get(p_name.lower())
                 if not person:
                     person = Person.objects.create(name=p_name, photo_url=photo)
+                    existing_persons[p_name.lower()] = person
                 elif photo and not person.photo_url:
                     person.photo_url = photo
                     person.save(update_fields=["photo_url"])
@@ -637,9 +644,10 @@ class AdminComputeSubmitEnrichmentView(APIView):
                     continue
                 photo = cr.get("photo_url")
 
-                person = Person.objects.filter(name=p_name).first()
+                person = existing_persons.get(p_name.lower())
                 if not person:
                     person = Person.objects.create(name=p_name, photo_url=photo)
+                    existing_persons[p_name.lower()] = person
                 elif photo and not person.photo_url:
                     person.photo_url = photo
                     person.save(update_fields=["photo_url"])

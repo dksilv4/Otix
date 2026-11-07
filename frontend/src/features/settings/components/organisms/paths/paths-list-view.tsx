@@ -1,6 +1,6 @@
 import { AddPathFolderCard } from '../../molecules/add-path-folder-card'
 import { PathFolderRow } from '../../molecules/path-folder-row'
-import type { ConfiguredFolderItem, SuggestedPathItem } from '../../utils/paths'
+import type { ConfiguredFolderItem, SuggestedPathItem } from '../../../utils/paths'
 
 export interface PathsListViewProps {
   isAddingFolder: boolean

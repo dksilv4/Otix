@@ -90,6 +90,7 @@ def scan_gog_library(user, server=None, auto_resolve: bool = False) -> dict:
 
     matched = 0
     new_rows = []
+    rows_to_update = []
     for game in games:
         game_id = str(game.get("game_id") or "")
         if not game_id:
@@ -125,10 +126,12 @@ def scan_gog_library(user, server=None, auto_resolve: bool = False) -> dict:
         if any(getattr(row, field) != value for field, value in defaults.items()):
             for field, value in defaults.items():
                 setattr(row, field, value)
-            row.save(update_fields=tuple(defaults) + ("updated_at",))
+            rows_to_update.append(row)
 
     if new_rows:
         UserGOGGame.objects.bulk_create(new_rows)
+    if rows_to_update:
+        UserGOGGame.objects.bulk_update(rows_to_update, fields=["media_item_id", "title", "slug", "image", "updated_at"])
 
     failed = len(games) - matched
     if auto_resolve and failed > 0:

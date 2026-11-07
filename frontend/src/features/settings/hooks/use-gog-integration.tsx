@@ -5,7 +5,7 @@ import { extractIntegrationMessage } from '../utils/integrations'
 import { GOGCodeModal } from '../components/organisms/gog-code-modal'
 import type { SettingsUser } from '../types'
 
-export const useGogIntegration = (user: SettingsUser | null | undefined, openModal: (modal: any) => void) => {
+export const useGogIntegration = (user: SettingsUser | null | undefined, openModal: any) => {
   const [gogConnected, setGOGConnected] = useState(Boolean(user?.gogAccountId))
   const [gogDisplayName, setGOGDisplayName] = useState<string | null>(user?.gogDisplayName ?? null)
   const [gogAccountId, setGOGAccountId] = useState<string | null>(user?.gogAccountId ?? null)

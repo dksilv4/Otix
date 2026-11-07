@@ -1,3 +1,5 @@
+export type { PlexIntegration } from './types/settings'
+export type { GameServer } from '@/features/downloads/types'
 export * from './types/index'
 
 export interface SettingsUser {
@@ -18,4 +20,12 @@ export interface SettingsUser {
   plexId?: string | null
   tmdbUsername?: string | null
   country?: string | null
+  googleId?: string | null
+  googleName?: string | null
+  googleEmail?: string | null
+  googleAvatarUrl?: string | null
+  driveConnected?: boolean
+  plexWatchHistoryEnabled?: boolean
+  tmdbAvatarUrl?: string | null
+  tmdbRatingSyncDirection?: string | null
 }

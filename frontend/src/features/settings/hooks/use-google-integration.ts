@@ -104,6 +104,11 @@ export const useGoogleIntegration = (user: SettingsUser | null | undefined, hand
   return {
     googleConnected,
     isGoogleConnected: googleConnected,
+    setGoogleConnected,
+    setGoogleName,
+    setGoogleEmail,
+    setGoogleAvatarUrl,
+    setDriveConnected,
     googleName,
     googleEmail,
     googleAvatarUrl,
