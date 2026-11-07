@@ -1,4 +1,3 @@
-// TODO: Review this file
 import { Flame } from 'lucide-react'
 import './streak-display.scss'
 

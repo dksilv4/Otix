@@ -54,6 +54,8 @@ export interface UserServerMachine {
   freeStorageBytes: number
   isOnline: boolean
   notes?: string
+  nodesCount?: number
+  machinesCount?: number
   createdAt: string
   updatedAt: string
 }

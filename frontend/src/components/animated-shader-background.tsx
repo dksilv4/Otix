@@ -1,4 +1,3 @@
-// TODO: Review this file
 import './animated-shader-background.scss'
 import { useEffect, useRef, useState } from 'react'
 import { Scene, OrthographicCamera, WebGLRenderer, ShaderMaterial, Vector2, PlaneGeometry, Mesh } from 'three'

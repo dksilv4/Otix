@@ -1,4 +1,3 @@
-// TODO: Review this file
 /**
  * Hooks for SABnzbd + NZBPlanet download integration.
  * All calls go through window.desktopAPI (Electron IPC).

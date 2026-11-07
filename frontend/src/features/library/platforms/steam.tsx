@@ -1,4 +1,3 @@
-// TODO: Review this file
 import { useState, useRef, useMemo, useEffect } from "react"
 import { useInView, motion, AnimatePresence } from "framer-motion"
 import { useNavigate } from "@tanstack/react-router"

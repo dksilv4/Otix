@@ -1,4 +1,3 @@
-// TODO: Review this file
 import { Link } from '@tanstack/react-router';
 import { Loader2, CheckCircle2, XCircle, Clock, FolderOpen, X, Trash2, ArchiveX } from 'lucide-react';
 import type { Download as DownloadType } from '../types';

@@ -1,4 +1,3 @@
-// TODO: Review this file
 import './user-rating-section.scss'
 import { Link, useLocation } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'

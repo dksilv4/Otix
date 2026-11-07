@@ -1,4 +1,3 @@
-// TODO: Review this file
 import { queryOptions } from '@tanstack/react-query'
 import { apiClient } from '@/lib/api'
 import { emitOtixEvent } from '@/lib/plugin-events'

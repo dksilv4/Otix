@@ -1,4 +1,3 @@
-// TODO: Review this file
 import { useState, useRef, useCallback } from "react"
 
 interface SwipeState {

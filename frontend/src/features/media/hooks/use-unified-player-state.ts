@@ -37,7 +37,6 @@ export const useUnifiedPlayerState = ({
     playbackMethod,
     setQuality,
     setInAppPip,
-    toggleInAppPip,
     toggleOverallPip,
     onTimeUpdate,
     onBufferedUpdate,
@@ -70,8 +69,7 @@ export const useUnifiedPlayerState = ({
     return () => window.removeEventListener('resize', checkExternalSpace)
   }, [checkExternalSpace])
 
-  // Dragging progress ref passed to engine
-  const isDraggingProgressRef = useRef(false)
+  const [isDraggingProgress, setIsDraggingProgress] = useState(false)
 
   // Video / Audio Playback Engine
   const engine = useUnifiedPlayerEngine({
@@ -81,7 +79,7 @@ export const useUnifiedPlayerState = ({
     streamPlayer,
     trailerIsMuted,
     trailerVolume,
-    isDraggingProgress: isDraggingProgressRef.current,
+    isDraggingProgress,
     setTrailerIsMutedState,
   })
 
@@ -120,9 +118,9 @@ export const useUnifiedPlayerState = ({
     setTrailerIsTheaterState,
     onClose: propOnClose,
     isVisible,
+    isDraggingProgress,
+    setIsDraggingProgress,
   })
-
-  isDraggingProgressRef.current = controls.isDraggingProgress
 
   // Metrics calculation
   const progressPercent = effectiveDuration > 0 ? (effectiveCurrentTime / effectiveDuration) * 100 : 0

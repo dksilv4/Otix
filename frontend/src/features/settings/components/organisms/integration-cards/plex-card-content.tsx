@@ -3,8 +3,6 @@ import {
   Tv,
   Music,
   FolderOpen,
-  Sparkles,
-  Download,
   HardDrive,
   RefreshCw,
   Check,

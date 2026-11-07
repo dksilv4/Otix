@@ -1,4 +1,3 @@
-// TODO: Review this file
 import { useState } from "react"
 import { AlertTriangle, Lock } from "lucide-react"
 import { DkButton } from "@ui/atoms/button"

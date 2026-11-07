@@ -2,7 +2,6 @@ import { useState, useEffect, useRef } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/lib/providers/auth'
 import { apiClient } from '@/lib/api/client'
-import { connectTaskSseStream, type SseEvent } from '@/lib/api/sse-client'
 import SteamIcon from '@/assets/provider-logos/steam.svg?react'
 import EpicIcon from '@/assets/provider-logos/epic.svg?react'
 import GOGIcon from '@/assets/provider-logos/gog.svg?react'
@@ -36,7 +35,7 @@ export const useIntegrationsPageState = () => {
   const { openModal } = useModal()
   const { user, isAuthenticated, isLoading: authLoading } = useAuth()
   const queryClient = useQueryClient()
-  const { servers, setSelectedNodeId } = useSettingsNode()
+  const { servers } = useSettingsNode()
   useSettingsHashScroll()
 
   const activeAbortControllerRef = useRef<AbortController | null>(null)

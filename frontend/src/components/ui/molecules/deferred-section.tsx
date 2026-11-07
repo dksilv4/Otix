@@ -1,4 +1,3 @@
-// TODO: Review this file
 import { useEffect, useRef, useState } from 'react'
 
 interface DkDeferredSectionProps {

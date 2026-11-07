@@ -1,4 +1,3 @@
-// TODO: Review this file
 import "./review-section.scss"
 import { useQuery } from "@tanstack/react-query"
 import { Star, Pencil } from "lucide-react"

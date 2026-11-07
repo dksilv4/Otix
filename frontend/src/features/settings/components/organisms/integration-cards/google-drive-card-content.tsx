@@ -1,4 +1,3 @@
-import { ShieldCheck } from 'lucide-react'
 import type { useIntegrationsPageState } from '../../../hooks/use-integrations-page-state'
 
 export const GoogleDriveCardContent = ({ state }: { state: ReturnType<typeof useIntegrationsPageState> }) => {

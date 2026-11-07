@@ -1,4 +1,3 @@
-// TODO: Review this file
 import { useState, useCallback } from 'react'
 import Cropper, { type Area } from 'react-easy-crop'
 import { SlidersHorizontal, Check, X, AlertTriangle } from 'lucide-react'

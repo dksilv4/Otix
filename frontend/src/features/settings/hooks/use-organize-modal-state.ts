@@ -25,7 +25,7 @@ export interface UseOrganizeModalStateProps {
 
 export const useOrganizeModalState = ({
   open,
-  onOpenChange,
+  onOpenChange: _onOpenChange,
   nodeId,
   template,
   isoDirectory,
@@ -52,7 +52,7 @@ export const useOrganizeModalState = ({
   const [matchReviewOpen, setMatchReviewOpen] = useState(false)
 
   const fetchRealPreview = useCallback(
-    async (folderPath?: string, preserveExecuted = false) => {
+    async (folderPath?: string, _preserveExecuted = false) => {
       const folderToScan = (folderPath ?? pathsState.selectedFolder).trim()
       if (!open || !folderToScan) return
       setLoading(true)

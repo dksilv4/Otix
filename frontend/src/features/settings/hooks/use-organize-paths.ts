@@ -1,6 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import {
-  type PreviewItem,
   getOrganizerApi,
   loadStoredCustomPaths,
   saveStoredCustomPaths,

@@ -1,4 +1,3 @@
-// TODO: Review this file
 import { UserPlus, UserCheck } from 'lucide-react'
 import { DkButton } from '@ui/atoms/button'
 import { useAuth } from '@/lib/providers/auth'

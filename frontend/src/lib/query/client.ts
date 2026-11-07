@@ -1,4 +1,3 @@
-// TODO: Review this file
 import { QueryClient, QueryCache, MutationCache } from '@tanstack/react-query'
 import type { Persister, PersistedClient } from '@tanstack/react-query-persist-client'
 import { getDesktopAPI } from '../desktop/api'

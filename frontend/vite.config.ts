@@ -128,6 +128,13 @@ export default defineConfig({
       output: {
         manualChunks(id: string) {
           if (id.includes('node_modules/three')) return 'three'
+          if (id.includes('node_modules/hls.js')) return 'hls'
+          if (id.includes('node_modules/compromise')) return 'compromise'
+          if (id.includes('node_modules/date-fns')) return 'date-fns'
+          if (id.includes('node_modules/react-easy-crop')) return 'cropper'
+          if (id.includes('node_modules/zod')) return 'zod'
+          if (id.includes('node_modules/fuse.js')) return 'fuse'
+          if (id.includes('node_modules/@floating-ui')) return 'floating-ui'
           if (id.includes('node_modules/framer-motion')) return 'framer-motion'
           if (id.includes('node_modules/react-dom') || id.includes('node_modules/react/')) return 'react'
           if (id.includes('node_modules/@tanstack')) return 'tanstack'

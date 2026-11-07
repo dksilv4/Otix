@@ -1,4 +1,3 @@
-// TODO: Review this file
 /** Shared types for the downloads feature. Mirrors @desktop/preload-api. */
 
 export interface NZBResult {
@@ -79,6 +78,8 @@ export interface OtixNode {
   storageFreeBytes: number;
   storageTotalBytes: number;
   isActive: boolean;
+  machineId?: number | null;
+  machineName?: string | null;
   homeId?: number | null;
   homeName?: string | null;
   createdAt: string;

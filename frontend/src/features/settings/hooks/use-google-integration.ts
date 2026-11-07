@@ -124,6 +124,7 @@ export const useGoogleIntegration = (user: SettingsUser | null | undefined, hand
     youtubeSyncing,
     youtubeSyncResult,
     youtubeProgress,
+    setYoutubeProgress,
     youtubeError,
     youtubeMessage,
     setYoutubeError,

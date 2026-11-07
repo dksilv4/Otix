@@ -1,4 +1,3 @@
-// TODO: Review this file
 import { Star } from "lucide-react"
 import { cn } from "@/lib/utils"
 import "./interactive-star.scss"

@@ -11,6 +11,8 @@ export interface DedicatedGameServer {
   mediaItemPoster?: string | null
   serverMachineId?: number | null
   serverMachineName?: string | null
+  machineId?: number | null
+  machineName?: string | null
   serverType: GameServerType
   host: string
   port: number

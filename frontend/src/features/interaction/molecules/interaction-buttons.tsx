@@ -1,4 +1,3 @@
-// TODO: Review this file
 import { Heart, Bookmark, CheckCircle2, Gamepad2, Play } from 'lucide-react'
 import './interaction-buttons.scss'
 import { type ReactNode, useState, useEffect, useRef } from 'react'

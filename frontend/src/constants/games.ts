@@ -1,4 +1,3 @@
-// TODO: Review this file
 
 /**
  * Display labels for game launcher platforms.

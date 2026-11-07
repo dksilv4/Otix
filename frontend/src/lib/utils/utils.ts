@@ -1,4 +1,3 @@
-// TODO: DEPRECATE cn()
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
 import { getDesktopPlatform } from "../desktop/platform"

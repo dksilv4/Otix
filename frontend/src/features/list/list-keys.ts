@@ -1,4 +1,3 @@
-// TODO: Review this file
 export const listKeys = {
   all: () => ["lists"] as const,
   mine: () => [...listKeys.all(), "mine"] as const,

@@ -22,26 +22,30 @@ export interface UseUnifiedPlayerControlsProps {
   setTrailerIsTheaterState: (updater: (prev: boolean) => boolean) => void
   onClose?: () => void
   isVisible: boolean
+  isDraggingProgress?: boolean
+  setIsDraggingProgress?: (dragging: boolean) => void
 }
 
 export const useUnifiedPlayerControls = ({
   isTrailer,
   streamPlayer,
   engine,
-  effectiveIsPlaying,
-  effectiveIsMuted,
-  effectiveVolume,
+  effectiveIsPlaying: _effectiveIsPlaying,
+  effectiveIsMuted: _effectiveIsMuted,
+  effectiveVolume: _effectiveVolume,
   effectiveDuration,
   trailerVolume,
   setTrailerVolumeState,
   trailerIsMuted,
   setTrailerIsMutedState,
-  isZoomedOut,
+  isZoomedOut: _isZoomedOut,
   setIsZoomedOutState,
-  trailerIsTheater,
+  trailerIsTheater: _trailerIsTheater,
   setTrailerIsTheaterState,
   onClose,
   isVisible,
+  isDraggingProgress: propIsDraggingProgress,
+  setIsDraggingProgress: propSetIsDraggingProgress,
 }: UseUnifiedPlayerControlsProps) => {
   const {
     isPlaying: streamIsPlaying,
@@ -70,7 +74,9 @@ export const useUnifiedPlayerControls = ({
   const [showQualityMenu, setShowQualityMenu] = useState(false)
   const [showShortcutsModal, setShowShortcutsModal] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(false)
-  const [isDraggingProgress, setIsDraggingProgress] = useState(false)
+  const [localDraggingProgress, setLocalDraggingProgress] = useState(false)
+  const isDraggingProgress = propIsDraggingProgress ?? localDraggingProgress
+  const setIsDraggingProgress = propSetIsDraggingProgress ?? setLocalDraggingProgress
 
   const progressBarRef = useRef<HTMLDivElement | null>(null)
   const volumeContainerRef = useRef<HTMLDivElement | null>(null)

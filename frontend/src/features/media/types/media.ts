@@ -90,3 +90,15 @@ export interface OpenMediaRequestModalOptions {
   initialInstanceId?: string
   onWatch?: () => void
 }
+
+export interface GameEdition {
+  id: number
+  name: string
+  rawTitle: string
+  igdbId?: string | null
+  releaseDate?: string | null
+  externalIds: Record<string, string | number>
+  coverImageId?: string | null
+  summary?: string | null
+  isDefault: boolean
+}

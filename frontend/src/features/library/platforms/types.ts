@@ -1,4 +1,3 @@
-// TODO: Review this file
 import type { ReactNode, ComponentType } from "react"
 import type { User } from "@/features/auth/types"
 

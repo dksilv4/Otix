@@ -1,4 +1,3 @@
-// TODO: Review this file
 import axios, { AxiosError, type InternalAxiosRequestConfig } from 'axios'
 import { ACCESS_TOKEN_KEY, API_BASE_URL, resolveApiBaseUrl } from '@/lib/config/config'
 import { isDesktop } from '@/lib/desktop/api'
