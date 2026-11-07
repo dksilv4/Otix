@@ -1023,16 +1023,16 @@ export class StagedBootManager {
       this.ctx.cs2GsiManager?.stop().catch(() => {});
       this.ctx.fetchBridge?.stop();
       try {
-        const { closeDb } = await import('../db');
-        closeDb();
-      } catch (err) {
-        console.error('[main] Failed to close database connections:', err);
-      }
-      try {
         const { cancelCurrentInstall } = require('../installer');
         cancelCurrentInstall();
       } catch {}
       if (process.platform !== 'darwin') {
+        try {
+          const { closeDb } = await import('../db');
+          closeDb();
+        } catch (err) {
+          console.error('[main] Failed to close database connections:', err);
+        }
         app.quit();
       }
     });

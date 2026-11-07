@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { getPlexClientId, generateSessionId, PLEX_PLAYER_VOLUME_KEY } from "./utils"
-export type { PlexTrackInfo } from "./types"
 import type { PlexTrackInfo, RepeatMode } from "./types"
+export type { PlexTrackInfo, RepeatMode }
 import { PlexPlayerContext, playerProgressStore } from "./player-context"
 
 export const PlexAudioProvider = ({ children }: { children: React.ReactNode }) => {

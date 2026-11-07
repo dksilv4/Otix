@@ -36,6 +36,30 @@ var sampleReleases = []sampleDef{
 }
 
 func findOtixSidecar(dir string) (*otixmeta.Sidecar, string) {
+	if sc, err := otixmeta.Read(dir); err == nil && sc != nil && (sc.MediaID != "" || sc.Title != "" || sc.TitleID != "") {
+		return sc, otixmeta.Path(dir)
+	}
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return nil, ""
+	}
+	var nonNoiseSubdirs []os.DirEntry
+	for _, e := range entries {
+		if !e.IsDir() {
+			continue
+		}
+		nameLower := strings.ToLower(e.Name())
+		if noiseDirectoryNames[nameLower] || strings.HasPrefix(nameLower, "$") || strings.HasPrefix(nameLower, ".") {
+			continue
+		}
+		nonNoiseSubdirs = append(nonNoiseSubdirs, e)
+	}
+	if len(nonNoiseSubdirs) == 1 {
+		subPath := filepath.Join(dir, nonNoiseSubdirs[0].Name())
+		if sc, err := otixmeta.Read(subPath); err == nil && sc != nil && (sc.MediaID != "" || sc.Title != "" || sc.TitleID != "") {
+			return sc, otixmeta.Path(subPath)
+		}
+	}
 	return nil, ""
 }
 

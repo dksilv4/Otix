@@ -3,7 +3,7 @@ import { Server, ChevronRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { SettingsCard } from '../molecules/settings-card'
 import { SectionHeader } from '../molecules/settings-section-header'
-import type { GameServer } from '../../types'
+import type { GameServer } from '@/features/downloads/types'
 
 interface ConnectedNodesSettingsCardProps {
   filteredNodes: GameServer[]

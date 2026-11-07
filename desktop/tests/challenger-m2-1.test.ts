@@ -71,7 +71,7 @@ vi.mock('../db', () => ({
             const tableName = um[1].toLowerCase();
             const t = dbState.tables.get(tableName);
             if (t && params.length > 0) {
-              const id = params[params.length - 2] || params[params.length - 1];
+              const id = params[10] || params[params.length - 2] || params[params.length - 1];
               const row = t.get(String(id));
               if (row) {
                 if (sql.includes('otix_media_id = ?')) {
@@ -82,7 +82,7 @@ vi.mock('../db', () => ({
                   if (params[0] != null) row.otix_media_id = params[0];
                   if (params[1] != null) row.otix_media_title = params[1];
                   const conf = params[9] !== undefined ? params[9] : params[params.length - 3];
-                  if (conf != null) row.otix_confidence = conf;
+                  if (conf != null) row.otix_confidence = !isNaN(Number(conf)) ? Number(conf) : conf;
                 }
               }
             }

@@ -1,12 +1,14 @@
 package explorer
 
 import (
+	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestIsSafeFolderName(t *testing.T) {
@@ -335,6 +337,11 @@ func TestConnectShareDarwinUnmounted(t *testing.T) {
 	if runtime.GOOS != "darwin" {
 		t.Skip("skipping macOS connect share test on non-darwin")
 	}
+	conn, err := net.DialTimeout("tcp", "192.168.1.58:445", 500*time.Millisecond)
+	if err != nil {
+		t.Skip("192.168.1.58:445 is unreachable, skipping live test")
+	}
+	conn.Close()
 
 	res, err := ConnectShare(ConnectShareRequest{URL: `\\192.168.1.58\Emulators`})
 	if err != nil {

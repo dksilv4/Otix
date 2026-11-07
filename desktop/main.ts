@@ -53,11 +53,23 @@ function flushLogBuffer() {
   }
 }
 
+function formatLogArg(a: any): string {
+  if (a instanceof Error) return a.stack || a.message;
+  if (typeof a === 'object' && a !== null) {
+    try {
+      return JSON.stringify(a);
+    } catch {
+      return String(a);
+    }
+  }
+  return String(a);
+}
+
 function fileLog(...args: any[]) {
   try {
     const text = args.length === 1 && typeof args[0] === 'string'
       ? args[0]
-      : args.map((a) => (typeof a === 'object' && a !== null ? JSON.stringify(a) : String(a))).join(' ');
+      : args.map(formatLogArg).join(' ');
     logBuffer.push(`[${new Date().toISOString()}] ${text}\n`);
     if (logBuffer.length >= 50) {
       flushLogBuffer();

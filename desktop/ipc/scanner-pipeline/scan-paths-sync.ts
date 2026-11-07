@@ -118,5 +118,5 @@ export async function resolveAndSyncScanPaths(
     }
   }
 
-  return { allPathsMap, hasClientPaths };
+  return { allPathsMap, hasClientPaths: Boolean(hasClientPaths) };
 }

@@ -106,6 +106,10 @@ describe('GameDetector', () => {
     mockNoProcesses()
     mockWindowTitles([])
     mockSpawn()
+    vi.spyOn(process, 'kill').mockImplementation(((pid: number) => {
+      if (pid === 9999) throw new Error('ESRCH')
+      return true
+    }) as any)
 
     // Suppress console.error during tests
     vi.spyOn(console, 'error').mockImplementation(() => {})

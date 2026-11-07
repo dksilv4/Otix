@@ -18,14 +18,14 @@ export interface SettingsUser {
   gogAccountId?: string | null
   gogDisplayName?: string | null
   plexId?: string | null
+  plexWatchHistoryEnabled?: boolean
   tmdbUsername?: string | null
-  country?: string | null
+  tmdbAvatarUrl?: string | null
+  tmdbRatingSyncDirection?: string | null
   googleId?: string | null
   googleName?: string | null
   googleEmail?: string | null
   googleAvatarUrl?: string | null
   driveConnected?: boolean
-  plexWatchHistoryEnabled?: boolean
-  tmdbAvatarUrl?: string | null
-  tmdbRatingSyncDirection?: string | null
+  country?: string | null
 }

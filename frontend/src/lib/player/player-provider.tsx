@@ -1,9 +1,9 @@
 import { useCallback, useMemo } from 'react'
-import { usePlexPlayer, type PlexTrackInfo } from './hooks/use-plex-player'
-import { useJellyfinPlayer, type JellyfinTrackInfo } from './hooks/use-jellyfin-player'
+import { usePlexPlayer } from './hooks/use-plex-player'
+import { useJellyfinPlayer } from './hooks/use-jellyfin-player'
 import { useLocalPlayer } from './hooks/use-local-player'
 import { useMediaSessionSync } from './hooks/use-media-session-sync'
-import type { LocalTrackInfo, PlayerContextValue, PlayerSource, PlayerTrackInfo, RepeatMode } from './types'
+import type { LocalTrackInfo, PlayerContextValue, PlayerSource, PlayerTrackInfo, RepeatMode, PlexTrackInfo, JellyfinTrackInfo } from './types'
 import { mapPlexTrack, mapJellyfinTrack, mapLocalTrack } from './utils'
 import { PlayerContext } from './player-context'
 

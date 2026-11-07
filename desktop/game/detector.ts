@@ -948,8 +948,14 @@ export class GameDetector extends EventEmitter {
     this.stopDeadCheck();
     this.clearDiscoveryScans();
     clearWindowTitlesCache();
-    for (const entry of this.runningGames.values()) {
-      this.endSession(entry);
+    for (const [id, entry] of Array.from(this.runningGames.entries())) {
+      try {
+        this.endSession(entry);
+      } catch (err) {
+        console.warn('[GameDetector] Error ending session during stopAll:', err);
+      } finally {
+        this.runningGames.delete(id);
+      }
     }
     this.runningGames.clear();
   }
@@ -1462,8 +1468,13 @@ export class GameDetector extends EventEmitter {
           } catch {
             // PID is dead — end session and clean up tracking
             this.trackedPids.delete(entry.pid);
-            this.endSession(entry);
-            this.runningGames.delete(id);
+            try {
+              this.endSession(entry);
+            } catch (err) {
+              console.warn('[GameDetector] Error ending session for dead PID:', err);
+            } finally {
+              this.runningGames.delete(id);
+            }
           }
         }
       }
@@ -1506,7 +1517,11 @@ export class GameDetector extends EventEmitter {
     };
 
     this.saveSession(session);
-    updateLastPlayedAt(entry.game.id, new Date(session.endTime).toISOString());
+    try {
+      updateLastPlayedAt(entry.game.id, new Date(session.endTime).toISOString());
+    } catch (err) {
+      console.warn('[GameDetector] Failed to update last played in DB:', err);
+    }
     this.emit('game:ended', session);
   }
 

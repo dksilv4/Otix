@@ -380,7 +380,9 @@ export const useIntegrationsPageState = () => {
     ? integrationDefs.filter(
         (i) =>
           i.name.toLowerCase().includes(query) ||
-          i.keywords.includes(query) ||
+          (Array.isArray(i.keywords)
+            ? i.keywords.some((k) => k.toLowerCase().includes(query))
+            : i.keywords.toLowerCase().includes(query)) ||
           i.description.toLowerCase().includes(query),
       )
     : integrationDefs

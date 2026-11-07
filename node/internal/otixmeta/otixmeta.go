@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 const Filename = ".otix"
@@ -65,16 +66,57 @@ func Read(gameRoot string) (*Sidecar, error) {
 	return &sc, nil
 }
 
-// Write is disabled: sidecars (.otix) are deprecated and zero disk writeback is enforced.
+// Write persists a sidecar to gameRoot/.otix.
 func Write(gameRoot string, sc *Sidecar) error {
-	return nil
+	if sc == nil {
+		return fmt.Errorf("nil sidecar")
+	}
+	if sc.Version == 0 {
+		sc.Version = Version
+	}
+	if sc.MatchedAt == "" {
+		sc.MatchedAt = time.Now().UTC().Format(time.RFC3339)
+	}
+	if err := os.MkdirAll(gameRoot, 0o755); err != nil {
+		return err
+	}
+	data, err := json.MarshalIndent(sc, "", "  ")
+	if err != nil {
+		return err
+	}
+	data = append(data, '\n')
+	return os.WriteFile(Path(gameRoot), data, 0o644)
 }
 
 var imageRoles = []string{"poster", "backdrop", "logo", "textlessPoster", "icon"}
 
-// DownloadImages is disabled: sidecars and local .otix asset files are deprecated.
+// DownloadImages fetches remote image URLs into `.otix-{role}.{ext}` siblings and sets local paths.
 func DownloadImages(gameRoot string, sc *Sidecar, client *http.Client) error {
-	return nil
+	if sc == nil {
+		return fmt.Errorf("nil sidecar")
+	}
+	if client == nil {
+		client = &http.Client{Timeout: 45 * time.Second}
+	}
+	if sc.Images == nil {
+		sc.Images = map[string]*ImageRef{}
+	}
+	var firstErr error
+	for _, role := range imageRoles {
+		ref := sc.Images[role]
+		if ref == nil || strings.TrimSpace(ref.URL) == "" {
+			continue
+		}
+		localName, err := downloadOne(client, gameRoot, role, ref.URL)
+		if err != nil {
+			if firstErr == nil {
+				firstErr = err
+			}
+			continue
+		}
+		ref.Local = &localName
+	}
+	return firstErr
 }
 
 func downloadOne(client *http.Client, gameRoot, role, rawURL string) (string, error) {

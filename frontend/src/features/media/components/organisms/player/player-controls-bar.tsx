@@ -36,7 +36,7 @@ export interface PlayerControlsBarProps {
   showQualityMenu: boolean
   currentQuality: string
   availableQualities: QualityOption[]
-  activeLevelHeight?: number
+  activeLevelHeight?: number | null
   isOverallPip: boolean
   onTogglePlay: () => void
   onSeekRelative: (seconds: number) => void

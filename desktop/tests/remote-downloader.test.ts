@@ -60,8 +60,8 @@ describe('RemoteDownloadManager UNC resolution', () => {
     );
 
     const transfer = (manager as any).activeTransfers.get('dl_test_123');
-    expect(transfer.finalPath).toContain('\\\\192.168.1.58\\Downloads\\Game.iso');
-    expect(transfer.partPath).toContain('\\\\192.168.1.58\\Downloads\\Game.iso.otixpart');
+    expect(transfer.finalPath).toContain(path.join('\\\\192.168.1.58\\Downloads', 'Game.iso'));
+    expect(transfer.partPath).toContain(path.join('\\\\192.168.1.58\\Downloads', 'Game.iso.otixpart'));
   });
 
   it('supports nodeUrl option and populates both nodeUrl and serverUrl in active transfers', async () => {

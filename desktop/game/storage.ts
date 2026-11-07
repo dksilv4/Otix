@@ -14,7 +14,7 @@ const _stmtCache = new Map<string, Database.Statement>();
 const MAX_STMT_CACHE_SIZE = 200;
 
 function db(): Database.Database {
-  if (!__db) {
+  if (!__db || !__db.open) {
     __db = getDb();
     _stmtCache.clear();
   }
@@ -540,10 +540,6 @@ function rowToGame(row: DbRow): GameRow {
     if (!localExePath) localExePath = cachedMeta.localExePath;
   } else if ((sizeBytes == null || sizeBytes <= 0 || !modifiedAt || !version || !localExePath) && (row.exe_path || row.install_dir || row.local_exe_path)) {
     try {
-      const dirTarget =
-        (row.install_dir as string) && pathExistsFast(row.install_dir as string)
-          ? (row.install_dir as string)
-          : null;
       let fileTarget =
         (row.local_exe_path as string) && pathExistsFast(row.local_exe_path as string)
           ? (row.local_exe_path as string)
@@ -551,41 +547,22 @@ function rowToGame(row: DbRow): GameRow {
             ? (row.exe_path as string)
             : null;
 
-      // If fileTarget points to a directory or is missing, try locating the game's actual executable
-      if ((!fileTarget || (fileTarget && fs.statSync(fileTarget).isDirectory())) && dirTarget) {
-        const foundExe = findMainExecutableInFolder(dirTarget);
-        if (foundExe) {
-          fileTarget = foundExe;
-          if (!localExePath) localExePath = foundExe;
-        }
-      }
-
-      if (!modifiedAt) {
-        const probe = fileTarget || dirTarget;
-        if (probe) {
-          try {
-            const st = fs.statSync(probe);
-            if (st.mtime) modifiedAt = st.mtime.toISOString();
-          } catch {}
-        }
-      }
-
-      if (sizeBytes == null || sizeBytes <= 0) {
-        if (dirTarget) {
-          const dirSize = calculateDirectorySize(dirTarget);
-          if (dirSize > 0) sizeBytes = dirSize;
-        }
-        if ((sizeBytes == null || sizeBytes <= 0) && fileTarget) {
-          try {
-            const st = fs.statSync(fileTarget);
-            if (st.size > 0) sizeBytes = st.size;
-          } catch {}
-        }
-      }
-
-      if (!version && fileTarget && fileTarget.toLowerCase().endsWith('.exe')) {
-        const peVer = getPeVersion(fileTarget);
-        if (peVer) version = peVer;
+      if (fileTarget) {
+        try {
+          const st = fs.statSync(fileTarget);
+          if (st.isFile()) {
+            if (!modifiedAt && st.mtime) {
+              modifiedAt = st.mtime.toISOString();
+            }
+            if ((sizeBytes == null || sizeBytes <= 0) && st.size > 0) {
+              sizeBytes = st.size;
+            }
+            if (!version && fileTarget.toLowerCase().endsWith('.exe')) {
+              const peVer = getPeVersion(fileTarget);
+              if (peVer) version = peVer;
+            }
+          }
+        } catch {}
       }
 
       if (_rowMetaCache.size > 5000) _rowMetaCache.clear();

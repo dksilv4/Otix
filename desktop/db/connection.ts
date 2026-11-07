@@ -17,7 +17,7 @@ export function getDbPath(): string {
 }
 
 export function getDb(): Database.Database {
-  if (_db) return _db
+  if (_db && _db.open) return _db
   _db = new Database(getDbPath())
   _db.exec(`
     PRAGMA journal_mode = WAL;

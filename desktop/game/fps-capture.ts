@@ -565,6 +565,10 @@ export class FpsCaptureService {
   }
 
   public findPresentMon(): string | null {
+    if (process.platform !== 'win32') {
+      this.presentMonPath = null;
+      return null;
+    }
     if (this.presentMonPath !== undefined) return this.presentMonPath;
 
     const paths: string[] = [];
@@ -874,6 +878,11 @@ export class FpsCaptureService {
 
       child.on('error', (err) => {
         console.warn('[fps-capture] PresentMon spawn error:', err.message);
+        this.activeSessions.delete(gameId);
+        if (this.activeSessions.size === 0 && this.pollTimer) {
+          clearInterval(this.pollTimer);
+          this.pollTimer = null;
+        }
       });
 
       const newSession: InternalActiveSession = {

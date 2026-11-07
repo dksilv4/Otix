@@ -180,7 +180,7 @@ describe('LibraryWatcher - Automatic Game Detection & Folder Monitoring', () => 
     });
 
     const watcher = new LibraryWatcher({
-      getScanPaths: () => [{ path: testGamesDir, type: 'game' }],
+      getScanPaths: () => [],
       onPerformScan: mockScan,
       debounceMs: 50,
     });
