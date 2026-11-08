@@ -7,6 +7,7 @@ filter — the same approach as the desktop Steam plugin — and keeps only
 
 from __future__ import annotations
 
+import concurrent.futures
 import logging
 import re
 from typing import Any
@@ -152,6 +153,7 @@ class SteamFreeGamesProvider(BaseFreeGamesProvider):
 
         if matches:
             total_sections = len(matches)
+            raw_candidates: list[tuple[str, str, str, str | None, str | None]] = []
             for m in matches:
                 full_tag = m.group(0)
                 content = m.group("content")
@@ -174,6 +176,29 @@ class SteamFreeGamesProvider(BaseFreeGamesProvider):
                 img_match = _IMG_RE.search(content)
                 capsule_img = img_match.group(1) if img_match else None
 
+                raw_candidates.append((kind, item_id, title, original_price, capsule_img))
+
+            # Prefetch app details concurrently to eliminate sequential network waterfalls
+            details_map: dict[str, dict | None] = {}
+            app_ids = [c[1] for c in raw_candidates if c[0] == "app"]
+            if app_ids and client:
+                if len(app_ids) == 1:
+                    details_map[app_ids[0]] = self._fetch_appdetails(client, app_ids[0])
+                else:
+                    max_workers = min(len(app_ids), 8)
+                    with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+                        future_to_id = {
+                            executor.submit(self._fetch_appdetails, client, aid): aid
+                            for aid in app_ids
+                        }
+                        for future in concurrent.futures.as_completed(future_to_id):
+                            aid = future_to_id[future]
+                            try:
+                                details_map[aid] = future.result()
+                            except Exception:
+                                details_map[aid] = None
+
+            for kind, item_id, title, original_price, capsule_img in raw_candidates:
                 item = self._build_item(
                     kind=kind,
                     item_id=item_id,
@@ -181,6 +206,7 @@ class SteamFreeGamesProvider(BaseFreeGamesProvider):
                     original_price=original_price,
                     capsule_img=capsule_img,
                     client=client,
+                    details=details_map.get(item_id),
                 )
                 if item:
                     items.append(item)
@@ -188,6 +214,7 @@ class SteamFreeGamesProvider(BaseFreeGamesProvider):
 
         # Fallback parser for older / mock HTML formats that don't match _ROW_RE
         sections = _SECTION_SPLIT_RE.split(html)
+        fallback_candidates: list[tuple[str, str, str | None, str | None]] = []
         for section in sections[1:]:
             if 'data-discount="100"' not in section and "-100%" not in section:
                 continue
@@ -207,6 +234,27 @@ class SteamFreeGamesProvider(BaseFreeGamesProvider):
             img_match = _IMG_RE.search(section)
             capsule_img = img_match.group(1) if img_match else None
 
+            fallback_candidates.append((app_id, title, original_price, capsule_img))
+
+        details_map = {}
+        if fallback_candidates and client:
+            if len(fallback_candidates) == 1:
+                details_map[fallback_candidates[0][0]] = self._fetch_appdetails(client, fallback_candidates[0][0])
+            else:
+                max_workers = min(len(fallback_candidates), 8)
+                with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+                    future_to_id = {
+                        executor.submit(self._fetch_appdetails, client, c[0]): c[0]
+                        for c in fallback_candidates
+                    }
+                    for future in concurrent.futures.as_completed(future_to_id):
+                        aid = future_to_id[future]
+                        try:
+                            details_map[aid] = future.result()
+                        except Exception:
+                            details_map[aid] = None
+
+        for app_id, title, original_price, capsule_img in fallback_candidates:
             item = self._build_item(
                 kind="app",
                 item_id=app_id,
@@ -214,6 +262,7 @@ class SteamFreeGamesProvider(BaseFreeGamesProvider):
                 original_price=original_price,
                 capsule_img=capsule_img,
                 client=client,
+                details=details_map.get(app_id),
             )
             if item:
                 items.append(item)
@@ -229,6 +278,7 @@ class SteamFreeGamesProvider(BaseFreeGamesProvider):
         original_price: str | None,
         capsule_img: str | None,
         client: httpx.Client | None,
+        details: dict | None = None,
     ) -> FreeGameItem:
         title_lower = title.lower()
         is_pack_name = (
@@ -239,8 +289,7 @@ class SteamFreeGamesProvider(BaseFreeGamesProvider):
             for w in (" dlc", "dlc ", "expansion", "add-on", "addon", "season pass", "content pack")
         )
 
-        details: dict | None = None
-        if kind == "app" and client:
+        if details is None and kind == "app" and client:
             details = self._fetch_appdetails(client, item_id)
 
         steam_type = (details.get("type") or "").lower() if details else None

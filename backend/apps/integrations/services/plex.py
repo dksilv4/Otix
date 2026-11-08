@@ -1391,47 +1391,87 @@ def get_plex_sessions(user) -> list[dict]:
     server_map = {s.machine_identifier: s for s in servers}
 
     # 2. Match remaining unmatched sessions against existing catalog MediaItem by title + type
-    for s in all_sessions:
-        if s.get("media_item_id"):
-            continue
-        m_type = "show" if s.get("media_type") == "episode" else s.get("media_type")
-        m_title = s.get("grandparent_title") if s.get("media_type") == "episode" else s.get("title")
-        if not m_title:
-            continue
-        try:
-            from apps.media.models import MediaItem
+    from apps.media.models import MediaItem
 
-            qs = MediaItem.objects.filter(media_type=m_type, title__iexact=m_title)
-            matched_item = None
-            if s.get("year"):
-                matched_item = qs.filter(release_date__year=s["year"]).first()
-                if not matched_item:
-                    matched_item = qs.filter(
-                        release_date__year__gte=s["year"] - 1,
-                        release_date__year__lte=s["year"] + 1,
-                    ).first()
-            else:
-                matched_item = qs.first()
+    unmatched_sessions = [s for s in all_sessions if not s.get("media_item_id")]
+    if unmatched_sessions:
+        titles = list({
+            (s.get("grandparent_title") if s.get("media_type") == "episode" else s.get("title") or "").strip()
+            for s in unmatched_sessions
+        } - {""})
 
-            if matched_item:
-                s["media_item_id"] = matched_item.id
-                server_obj = server_map.get(s.get("server_id"))
-                if server_obj and s.get("rating_key"):
-                    UserPlexItem.objects.update_or_create(
-                        server=server_obj,
-                        rating_key=s["rating_key"],
-                        defaults={
-                            "user": user,
-                            "media_item": matched_item,
-                            "title": s.get("title") or m_title,
-                            "media_type": s.get("media_type") or m_type,
-                            "year": s.get("year"),
-                        },
-                    )
-        except Exception:
-            logger.debug("Failed catalog title match for %s", m_title, exc_info=True)
+        candidates_by_key: dict[tuple[str, str], list] = {}
+        if titles:
+            candidate_qs = MediaItem.objects.filter(
+                title__in=titles
+            ).only("id", "media_type", "title", "release_date")
+            for item in candidate_qs:
+                k = (item.media_type, (item.title or "").strip().lower())
+                candidates_by_key.setdefault(k, []).append(item)
+
+        plex_items_to_upsert: dict[tuple[int, str], UserPlexItem] = {}
+        for s in unmatched_sessions:
+            m_type = "show" if s.get("media_type") == "episode" else s.get("media_type")
+            m_title = (s.get("grandparent_title") if s.get("media_type") == "episode" else s.get("title") or "").strip()
+            if not m_title:
+                continue
+            try:
+                candidates = candidates_by_key.get((m_type, m_title.lower()))
+                matched_item = None
+                if candidates:
+                    if s.get("year"):
+                        matched_item = next(
+                            (c for c in candidates if c.release_date and c.release_date.year == s["year"]),
+                            None,
+                        )
+                        if not matched_item:
+                            matched_item = next(
+                                (
+                                    c for c in candidates
+                                    if c.release_date and abs(c.release_date.year - s["year"]) <= 1
+                                ),
+                                None,
+                            )
+                    if not matched_item:
+                        matched_item = candidates[0]
+                else:
+                    qs = MediaItem.objects.filter(media_type=m_type, title__iexact=m_title)
+                    if s.get("year"):
+                        matched_item = qs.filter(release_date__year=s["year"]).first()
+                        if not matched_item:
+                            matched_item = qs.filter(
+                                release_date__year__gte=s["year"] - 1,
+                                release_date__year__lte=s["year"] + 1,
+                            ).first()
+                    else:
+                        matched_item = qs.first()
+
+                if matched_item:
+                    s["media_item_id"] = matched_item.id
+                    server_obj = server_map.get(s.get("server_id"))
+                    if server_obj and s.get("rating_key"):
+                        plex_items_to_upsert[(server_obj.id, str(s["rating_key"]))] = UserPlexItem(
+                            server=server_obj,
+                            rating_key=str(s["rating_key"]),
+                            user=user,
+                            media_item=matched_item,
+                            title=s.get("title") or m_title,
+                            media_type=s.get("media_type") or m_type,
+                            year=s.get("year"),
+                        )
+            except Exception:
+                logger.debug("Failed catalog title match for %s", m_title, exc_info=True)
+
+        if plex_items_to_upsert:
+            UserPlexItem.objects.bulk_create(
+                list(plex_items_to_upsert.values()),
+                update_conflicts=True,
+                unique_fields=["server", "rating_key"],
+                update_fields=["user", "media_item", "title", "media_type", "year", "updated_at"],
+            )
 
     # 3. If still unmatched, inspect Plex item metadata for TMDB/IMDb Guids and auto-resolve/seed
+    plex_guid_items_to_upsert: dict[tuple[int, str], UserPlexItem] = {}
     for s in all_sessions:
         if s.get("media_item_id"):
             continue
@@ -1492,21 +1532,27 @@ def get_plex_sessions(user) -> list[dict]:
                                 resolved_id = async_to_sync(fetch_and_seed_movie)(int(tmdb_id))
                         if resolved_id:
                             s["media_item_id"] = resolved_id
-                            UserPlexItem.objects.update_or_create(
+                            plex_guid_items_to_upsert[(server_obj.id, str(s["rating_key"]))] = UserPlexItem(
                                 server=server_obj,
-                                rating_key=s["rating_key"],
-                                defaults={
-                                    "user": user,
-                                    "media_item_id": resolved_id,
-                                    "title": s.get("title") or meta_item.get("title", ""),
-                                    "media_type": s.get("media_type") or m_type,
-                                    "year": s.get("year"),
-                                },
+                                rating_key=str(s["rating_key"]),
+                                user=user,
+                                media_item_id=resolved_id,
+                                title=s.get("title") or meta_item.get("title", ""),
+                                media_type=s.get("media_type") or m_type,
+                                year=s.get("year"),
                             )
         except Exception:
             logger.debug(
                 "Failed auto-matching plex session %s metadata", s.get("session_id"), exc_info=True
             )
+
+    if plex_guid_items_to_upsert:
+        UserPlexItem.objects.bulk_create(
+            list(plex_guid_items_to_upsert.values()),
+            update_conflicts=True,
+            unique_fields=["server", "rating_key"],
+            update_fields=["user", "media_item", "title", "media_type", "year", "updated_at"],
+        )
 
     return all_sessions
 
@@ -1857,7 +1903,7 @@ def scrobble_plex_item(
             p_item.save(update_fields=["viewed", "view_offset", "view_count", "updated_at"])
 
             if p_item.media_item_id:
-                from apps.media.services.interaction import set_interaction, remove_interaction
+                from apps.media.services.interaction import remove_interaction, set_interaction
 
                 if watched:
                     set_interaction(user, p_item.media_item_id, "watched", {"source": "plex"})

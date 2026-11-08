@@ -120,40 +120,55 @@ func (s *Store) UpsertFiles(files []HostedFile) error {
 	}
 	defer func() { _ = tx.Rollback() }()
 
-	stmt, err := tx.Prepare(`
-		INSERT INTO indexed_files (
-			id, filename, filepath, relative_path, filesize, sha256_head,
-			extension, format_category, library_name, game_title, modified_at, mtime_unix, indexed_at
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-		ON CONFLICT(filepath) DO UPDATE SET
-			id = excluded.id,
-			filename = excluded.filename,
-			relative_path = excluded.relative_path,
-			filesize = excluded.filesize,
-			sha256_head = excluded.sha256_head,
-			extension = excluded.extension,
-			format_category = excluded.format_category,
-			library_name = excluded.library_name,
-			game_title = excluded.game_title,
-			modified_at = excluded.modified_at,
-			mtime_unix = excluded.mtime_unix,
-			indexed_at = excluded.indexed_at
-	`)
-	if err != nil {
-		return err
-	}
-	defer stmt.Close()
-
 	now := time.Now().UTC().Format(time.RFC3339)
-	for _, f := range files {
-		var mtimeUnix int64
-		if t, err := time.Parse(time.RFC3339, f.ModifiedAt); err == nil {
-			mtimeUnix = t.Unix()
+	const chunkSize = 50
+	for i := 0; i < len(files); i += chunkSize {
+		end := i + chunkSize
+		if end > len(files) {
+			end = len(files)
 		}
-		if _, err := stmt.Exec(
-			f.ID, f.Filename, f.Filepath, f.RelativePath, f.Filesize, f.SHA256Head,
-			f.Extension, f.FormatCategory, f.LibraryName, f.GameTitle, f.ModifiedAt, mtimeUnix, now,
-		); err != nil {
+		batch := files[i:end]
+
+		var query strings.Builder
+		query.WriteString(`
+			INSERT INTO indexed_files (
+				id, filename, filepath, relative_path, filesize, sha256_head,
+				extension, format_category, library_name, game_title, modified_at, mtime_unix, indexed_at
+			) VALUES `)
+
+		vals := make([]interface{}, 0, len(batch)*13)
+		for idx, f := range batch {
+			if idx > 0 {
+				query.WriteString(", ")
+			}
+			query.WriteString("(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+			var mtimeUnix int64
+			if t, err := time.Parse(time.RFC3339, f.ModifiedAt); err == nil {
+				mtimeUnix = t.Unix()
+			}
+			vals = append(vals,
+				f.ID, f.Filename, f.Filepath, f.RelativePath, f.Filesize, f.SHA256Head,
+				f.Extension, f.FormatCategory, f.LibraryName, f.GameTitle, f.ModifiedAt, mtimeUnix, now,
+			)
+		}
+
+		query.WriteString(`
+			ON CONFLICT(filepath) DO UPDATE SET
+				id = excluded.id,
+				filename = excluded.filename,
+				relative_path = excluded.relative_path,
+				filesize = excluded.filesize,
+				sha256_head = excluded.sha256_head,
+				extension = excluded.extension,
+				format_category = excluded.format_category,
+				library_name = excluded.library_name,
+				game_title = excluded.game_title,
+				modified_at = excluded.modified_at,
+				mtime_unix = excluded.mtime_unix,
+				indexed_at = excluded.indexed_at
+		`)
+
+		if _, err := tx.Exec(query.String(), vals...); err != nil {
 			return err
 		}
 	}
@@ -194,14 +209,22 @@ func (s *Store) DeleteMissing(activePaths map[string]bool, libraryName string) (
 	}
 	defer func() { _ = tx.Rollback() }()
 
-	delStmt, err := tx.Prepare(`DELETE FROM indexed_files WHERE filepath = ?`)
-	if err != nil {
-		return 0, err
-	}
-	defer delStmt.Close()
+	const deleteBatchSize = 100
+	for i := 0; i < len(toDelete); i += deleteBatchSize {
+		end := i + deleteBatchSize
+		if end > len(toDelete) {
+			end = len(toDelete)
+		}
+		batch := toDelete[i:end]
 
-	for _, fp := range toDelete {
-		if _, err := delStmt.Exec(fp); err != nil {
+		placeholders := make([]string, len(batch))
+		args := make([]interface{}, len(batch))
+		for idx, fp := range batch {
+			placeholders[idx] = "?"
+			args[idx] = fp
+		}
+		query := fmt.Sprintf("DELETE FROM indexed_files WHERE filepath IN (%s)", strings.Join(placeholders, ", "))
+		if _, err := tx.Exec(query, args...); err != nil {
 			return 0, err
 		}
 	}
