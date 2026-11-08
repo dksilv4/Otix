@@ -38,11 +38,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     const token = localStorage.getItem(ACCESS_TOKEN_KEY)
     if (!token) return
-    window.desktopAPI?.plugin?.setAuthToken(token)
+    void window.desktopAPI?.plugin?.setAuthToken(token)?.catch?.(() => {})
     fetchAuthenticatedUser().then((loadedUser) => {
       const freshToken = localStorage.getItem(ACCESS_TOKEN_KEY)
       if (freshToken && freshToken !== token) {
-        window.desktopAPI?.plugin?.setAuthToken(freshToken)
+        void window.desktopAPI?.plugin?.setAuthToken(freshToken)?.catch?.(() => {})
       }
       setUser(loadedUser)
       setIsLoading(false)
@@ -57,7 +57,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       localStorage.removeItem('otix:cached-nodes')
       localStorage.removeItem('otix:cached-servers')
       localStorage.removeItem('otix:settings-selected-node')
-      window.desktopAPI?.plugin?.setAuthToken(null)
+      void window.desktopAPI?.plugin?.setAuthToken(null)?.catch?.(() => {})
       queryClient.clear()
     }
     window.addEventListener('auth:sessionExpired', handler)
@@ -86,7 +86,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const completeLogin = useCallback(async (accessToken: string) => {
     localStorage.setItem(ACCESS_TOKEN_KEY, accessToken)
-    window.desktopAPI?.plugin?.setAuthToken(accessToken)
+    void window.desktopAPI?.plugin?.setAuthToken(accessToken)?.catch?.(() => {})
     resetAuthRefreshState()
     const loaded = await fetchAuthenticatedUser()
     setUser(loaded)
@@ -135,7 +135,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
 
     localStorage.setItem(ACCESS_TOKEN_KEY, data.accessToken!)
-    window.desktopAPI?.plugin?.setAuthToken(data.accessToken!)
+    void window.desktopAPI?.plugin?.setAuthToken(data.accessToken!)?.catch?.(() => {})
     resetAuthRefreshState()
     const user = await fetchAuthenticatedUser()
     setUser(user)
@@ -151,7 +151,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       code,
     })
     localStorage.setItem(ACCESS_TOKEN_KEY, res.data.accessToken)
-    window.desktopAPI?.plugin?.setAuthToken(res.data.accessToken)
+    void window.desktopAPI?.plugin?.setAuthToken(res.data.accessToken)?.catch?.(() => {})
     resetAuthRefreshState()
     setTwoFactorChallenge(null)
     const user = await fetchAuthenticatedUser()
@@ -166,7 +166,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const register = useCallback(async (email: string, username: string, password: string, dateOfBirth: string) => {
     const res = await apiClient.post('/auth/register', { email, username, password, date_of_birth: dateOfBirth })
     localStorage.setItem(ACCESS_TOKEN_KEY, res.data.accessToken)
-    window.desktopAPI?.plugin?.setAuthToken(res.data.accessToken)
+    void window.desktopAPI?.plugin?.setAuthToken(res.data.accessToken)?.catch?.(() => {})
     resetAuthRefreshState()
     const user = await fetchAuthenticatedUser()
     setUser(user)
@@ -185,7 +185,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     localStorage.removeItem('otix:cached-servers')
     localStorage.removeItem('otix:settings-selected-node')
     setCachedUser(null)
-    window.desktopAPI?.plugin?.setAuthToken(null)
+    void window.desktopAPI?.plugin?.setAuthToken(null)?.catch?.(() => {})
     setUser(null)
     setTwoFactorChallenge(null)
     queryClient.clear()

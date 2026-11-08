@@ -117,11 +117,13 @@ export function registerPluginIPC(
     return await pluginManager.setConfig(pluginId, key, value)
   })
 
+  ipcMain.removeHandler('plugin:set-auth-token')
   ipcMain.handle('plugin:set-auth-token', async (event, token: string) => {
     validateSender(event)
     pluginManager.setAuthToken(token)
   })
 
+  ipcMain.removeHandler('plugin:set-api-base-url')
   ipcMain.handle('plugin:set-api-base-url', async (event, url: string) => {
     validateSender(event)
     const parsed = new URL(url)

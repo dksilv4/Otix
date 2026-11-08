@@ -395,7 +395,7 @@ contextBridge.exposeInMainWorld('desktopAPI', {
       ipcRenderer.on('plugin:slots-changed', handler);
       return () => ipcRenderer.removeListener('plugin:slots-changed', handler);
     },
-    setAuthToken: (token: string) => ipcRenderer.invoke('plugin:set-auth-token', token),
+    setAuthToken: (token: string) => ipcRenderer.invoke('plugin:set-auth-token', token).catch(() => {}),
     getApiBaseUrl: () => ipcRenderer.invoke('plugin:get-api-base-url'),
     setApiBaseUrl: (url: string) => ipcRenderer.invoke('plugin:set-api-base-url', url),
     testInstance: (url: string, apiKey: string) => ipcRenderer.invoke('plugin:test-instance', url, apiKey),

@@ -108,21 +108,21 @@ jobs:
           - os: macos-latest
             target: "--mac"
             artifact_pattern: |
-              desktop/release/*.dmg
-              desktop/release/*.zip
-              desktop/release/latest-mac.yml
+              dist/desktop/*.dmg
+              dist/desktop/*.zip
+              dist/desktop/latest-mac.yml
           - os: windows-2022
             target: "--win"
             artifact_pattern: |
-              desktop/release/*.exe
-              desktop/release/*.blockmap
-              desktop/release/latest.yml
+              dist/desktop/*.exe
+              dist/desktop/*.blockmap
+              dist/desktop/latest.yml
           - os: ubuntu-latest
             target: "--linux"
             artifact_pattern: |
-              desktop/release/*.AppImage
-              desktop/release/*.deb
-              desktop/release/latest-linux.yml
+              dist/desktop/*.AppImage
+              dist/desktop/*.deb
+              dist/desktop/latest-linux.yml
     runs-on: ${{ matrix.os }}
     env:
       GYP_MSVS_VERSION: "2022"

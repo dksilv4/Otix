@@ -1,4 +1,4 @@
-import { app, BrowserWindow, screen, nativeImage, session as electronSession } from 'electron';
+import { app, BrowserWindow, screen, nativeImage, session as electronSession, ipcMain } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
 import { getApiBaseUrl } from '../config';
@@ -489,6 +489,21 @@ export class StagedBootManager {
     registerDesktopSettingsIPC(win, this.ctx.tray, this.ctx.nodeDaemon);
     registerNotificationIPC(win);
 
+    // Early Plugin Auth & Base URL handlers to prevent race conditions during renderer bootstrap
+    try {
+      ipcMain.removeHandler('plugin:set-auth-token');
+      ipcMain.handle('plugin:set-auth-token', async (_event, token: string) => {
+        this.ctx.currentAuthToken = token;
+        if (this.ctx.pluginManager) {
+          this.ctx.pluginManager.setAuthToken(token);
+        }
+      });
+      ipcMain.removeHandler('plugin:get-api-base-url');
+      ipcMain.handle('plugin:get-api-base-url', async () => getApiBaseUrl());
+    } catch (err) {
+      console.warn('[boot:stage4] Early plugin IPC registration warning:', err);
+    }
+
     const startHiddenEarly = Boolean(
       settings.startMinimized ||
       process.argv.includes('--hidden') ||
@@ -653,6 +668,10 @@ export class StagedBootManager {
           }
         }
       };
+
+      if (this.ctx.currentAuthToken) {
+        plugManager.setAuthToken(this.ctx.currentAuthToken);
+      }
 
       setScanOrchestrator(orchestrator);
       setPluginManager(plugManager);
