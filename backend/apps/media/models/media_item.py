@@ -88,6 +88,8 @@ class MediaItem(TimestampedModel):
             models.Index(fields=["media_type"], name="media_items_media_type_idx"),
             models.Index(fields=["popularity"], name="media_items_popularity_idx"),
             models.Index(fields=["release_date"], name="media_items_release_date_idx"),
+            models.Index(fields=["media_type", "-popularity"], name="ix_mi_type_pop"),
+            models.Index(fields=["media_type", "-release_date"], name="ix_mi_type_rel"),
             GinIndex(
                 fields=["title"],
                 name="media_items_title_trgm_gin",

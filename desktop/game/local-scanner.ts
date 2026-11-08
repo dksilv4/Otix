@@ -326,7 +326,19 @@ export interface Ps5DumpMetadata {
   backdropUrl?: string;
 }
 
+const ps5MetaCache = new Map<string, Ps5DumpMetadata>();
+
+export function clearPs5DumpMetadataCache(): void {
+  ps5MetaCache.clear();
+}
+
 export function extractPs5DumpMetadata(targetPath: string): Ps5DumpMetadata {
+  const normalized = path.normalize(targetPath);
+  const cached = ps5MetaCache.get(normalized);
+  if (cached) {
+    return cached;
+  }
+
   const result: Ps5DumpMetadata = {};
   try {
     let dumpDir = targetPath;
@@ -362,72 +374,66 @@ export function extractPs5DumpMetadata(targetPath: string): Ps5DumpMetadata {
 
     for (const sceSys of candidateSceSysDirs) {
       const paramJsonPath = path.join(sceSys, 'param.json');
-      if (fs.existsSync(paramJsonPath)) {
-        try {
-          const raw = JSON.parse(fs.readFileSync(paramJsonPath, 'utf-8'));
-          if (raw.titleId && !result.titleId) {
-            result.titleId = String(raw.titleId);
+      try {
+        const raw = JSON.parse(fs.readFileSync(paramJsonPath, 'utf-8'));
+        if (raw.titleId && !result.titleId) {
+          result.titleId = String(raw.titleId);
+        }
+        if (raw.contentId && !result.contentId) {
+          result.contentId = String(raw.contentId);
+        }
+        if (!result.version) {
+          result.version = raw.appVersion || raw.masterVersion || raw.contentVersion || undefined;
+        }
+        if (!result.titleName) {
+          const loc = raw.localizedParameters || {};
+          for (const lang of ['en-US', 'en-GB', 'en', 'defaultLanguage']) {
+            if (loc[lang]?.titleName) {
+              result.titleName = loc[lang].titleName;
+              break;
+            }
           }
-          if (raw.contentId && !result.contentId) {
-            result.contentId = String(raw.contentId);
-          }
-          if (!result.version) {
-            result.version = raw.appVersion || raw.masterVersion || raw.contentVersion || undefined;
-          }
-          if (!result.titleName) {
-            const loc = raw.localizedParameters || {};
-            for (const lang of ['en-US', 'en-GB', 'en', 'defaultLanguage']) {
-              if (loc[lang]?.titleName) {
-                result.titleName = loc[lang].titleName;
+          if (!result.titleName && typeof loc === 'object') {
+            for (const key of Object.keys(loc)) {
+              if (loc[key]?.titleName) {
+                result.titleName = loc[key].titleName;
                 break;
               }
             }
-            if (!result.titleName && typeof loc === 'object') {
-              for (const key of Object.keys(loc)) {
-                if (loc[key]?.titleName) {
-                  result.titleName = loc[key].titleName;
-                  break;
-                }
-              }
-            }
-            if (!result.titleName && raw.titleName) {
-              result.titleName = raw.titleName;
-            }
           }
-        } catch {}
-      }
+          if (!result.titleName && raw.titleName) {
+            result.titleName = raw.titleName;
+          }
+        }
+      } catch {}
 
       if (!result.localIconUrl) {
         const iconPath = path.join(sceSys, 'icon0.png');
-        if (fs.existsSync(iconPath)) {
-          try {
-            const stat = fs.statSync(iconPath);
-            if (stat.size > 0 && stat.size <= 5 * 1024 * 1024) {
-              const buf = fs.readFileSync(iconPath);
-              result.localIconUrl = `data:image/png;base64,${buf.toString('base64')}`;
-            }
-          } catch {}
-        }
+        try {
+          const stat = fs.statSync(iconPath);
+          if (stat.size > 0 && stat.size <= 5 * 1024 * 1024) {
+            const buf = fs.readFileSync(iconPath);
+            result.localIconUrl = `data:image/png;base64,${buf.toString('base64')}`;
+          }
+        } catch {}
       }
 
       if (!result.backdropUrl) {
         for (const picName of ['pic0.png', 'pic1.png', 'pic0.jpg']) {
           const picPath = path.join(sceSys, picName);
-          if (fs.existsSync(picPath)) {
-            try {
-              const stat = fs.statSync(picPath);
-              if (stat.size > 0 && stat.size <= 5 * 1024 * 1024) {
-                const buf = fs.readFileSync(picPath);
-                const mime = picName.endsWith('.jpg') ? 'image/jpeg' : 'image/png';
-                const dataUrl = `data:${mime};base64,${buf.toString('base64')}`;
-                result.backdropUrl = dataUrl;
-                if (!result.posterUrl) {
-                  result.posterUrl = dataUrl;
-                }
-                break;
+          try {
+            const stat = fs.statSync(picPath);
+            if (stat.size > 0 && stat.size <= 5 * 1024 * 1024) {
+              const buf = fs.readFileSync(picPath);
+              const mime = picName.endsWith('.jpg') ? 'image/jpeg' : 'image/png';
+              const dataUrl = `data:${mime};base64,${buf.toString('base64')}`;
+              result.backdropUrl = dataUrl;
+              if (!result.posterUrl) {
+                result.posterUrl = dataUrl;
               }
-            } catch {}
-          }
+              break;
+            }
+          } catch {}
         }
       }
 
@@ -437,6 +443,7 @@ export function extractPs5DumpMetadata(targetPath: string): Ps5DumpMetadata {
     }
   } catch {}
 
+  ps5MetaCache.set(normalized, result);
   return result;
 }
 
@@ -718,6 +725,7 @@ export function getRootGameDir(filePath: string): string {
 }
 
 export async function scanLocalFiles(options: LocalScanOptions): Promise<LocalScanResult> {
+  clearPs5DumpMetadataCache();
   const scanDirs = (options.scanDirectories || []).filter(Boolean);
   const isoDirs = (options.isoDirectories || []).filter(Boolean);
   const allDirs = Array.from(new Set([...scanDirs, ...isoDirs]));

@@ -96,6 +96,8 @@ class DedicatedGameServer(TimestampedModel):
         indexes = [
             models.Index(fields=["owner"], name="ix_dgs_owner"),
             models.Index(fields=["media_item"], name="ix_dgs_media_item"),
+            models.Index(fields=["owner", "status"], name="ix_dgs_owner_status"),
+            models.Index(fields=["media_item", "status"], name="ix_dgs_media_status"),
         ]
 
     def __str__(self) -> str:

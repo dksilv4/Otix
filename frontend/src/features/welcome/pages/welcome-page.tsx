@@ -1,4 +1,4 @@
-import { useCallback, useRef } from 'react'
+import { useCallback, useRef, lazy, Suspense } from 'react'
 import { Helmet } from 'react-helmet-async'
 import { useModal } from '@/lib/modals'
 import { WELCOME_FEATURES, type WelcomeFeature } from '../constants/welcome-features'
@@ -8,7 +8,12 @@ import { WelcomeGettingStartedSteps } from '../components/molecules/welcome-gett
 import { FeatureIntroCard } from '../components/molecules/feature-intro-card'
 import { WelcomeVisibilityControls } from '../components/molecules/welcome-visibility-controls'
 import { FeatureGuideModal } from '../components/organisms/feature-guide-modal'
-import { SetupWizardModal } from '../components/organisms/setup-wizard-modal'
+
+const SetupWizardModal = lazy(() =>
+  import('../components/organisms/setup-wizard-modal').then((m) => ({
+    default: m.SetupWizardModal,
+  }))
+)
 
 export const WelcomePage = () => {
   const { openModal } = useModal()
@@ -17,17 +22,19 @@ export const WelcomePage = () => {
   const openSetupWizard = useCallback(() => {
     closeCurrentModalRef.current?.()
     const close = openModal(
-      <SetupWizardModal
-        isOpen={true}
-        onClose={() => {
-          close()
-          closeCurrentModalRef.current = null
-        }}
-        onCompleted={() => {
-          close()
-          closeCurrentModalRef.current = null
-        }}
-      />,
+      <Suspense fallback={null}>
+        <SetupWizardModal
+          isOpen={true}
+          onClose={() => {
+            close()
+            closeCurrentModalRef.current = null
+          }}
+          onCompleted={() => {
+            close()
+            closeCurrentModalRef.current = null
+          }}
+        />
+      </Suspense>,
     )
     closeCurrentModalRef.current = close
   }, [openModal])

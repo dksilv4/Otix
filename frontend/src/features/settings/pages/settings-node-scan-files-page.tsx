@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, lazy, Suspense } from 'react'
 import {
   ScanLine,
   Server,
@@ -16,13 +16,18 @@ import { NodeScanPathsCard } from '../components/molecules/node-scan-paths-card'
 import { NodeScannedFilesTable } from '../components/organisms/node-scanned-files-table'
 import { NodeFileMatchModal } from '../components/organisms/node-file-match-modal'
 import { NodeGameDetailsModal } from '../components/organisms/node-game-details-modal'
-import { NodeMassMatchModal } from '../components/organisms/node-mass-match-modal'
 import { ScanProgressBar } from '../components/molecules/scan-progress-bar'
 import { formatScanSize } from '../utils/node-scan-files'
 import type { ScannedGameItem } from '../utils/scanned-summary'
 import { isLocalDesktopNode } from '../local-desktop-node'
 import { isDesktop } from '@/lib/desktop/api'
 import { cn } from '@/lib/utils'
+
+const NodeMassMatchModal = lazy(() =>
+  import('../components/organisms/node-mass-match-modal').then((m) => ({
+    default: m.NodeMassMatchModal,
+  }))
+)
 
 export const SettingsNewNodeScanFilesPage = () => {
   const desktop = isDesktop()
@@ -321,13 +326,17 @@ export const SettingsNewNodeScanFilesPage = () => {
       />
 
       {/* ── Mass Match Modal ── */}
-      <NodeMassMatchModal
-        open={isMassMatchOpen}
-        onClose={() => setIsMassMatchOpen(false)}
-        unmatchedGames={unmatchedGames}
-        onMatchSuccess={handleMatchSuccess}
-        onFinish={() => void refetchFiles()}
-      />
+      {isMassMatchOpen && (
+        <Suspense fallback={null}>
+          <NodeMassMatchModal
+            open={isMassMatchOpen}
+            onClose={() => setIsMassMatchOpen(false)}
+            unmatchedGames={unmatchedGames}
+            onMatchSuccess={handleMatchSuccess}
+            onFinish={() => void refetchFiles()}
+          />
+        </Suspense>
+      )}
     </div>
   )
 }

@@ -2711,6 +2711,7 @@ def enrich_sessions_with_media(sessions: list[dict]) -> list[dict]:
             media_items = list(
                 MediaItem.objects.filter(media_type="game")
                 .filter(q)
+                .defer("embedding", "overview")
                 .prefetch_related("assets")[:100]
             )
         except Exception as exc:
@@ -2738,7 +2739,9 @@ def enrich_sessions_with_media(sessions: list[dict]) -> list[dict]:
                     extra_items = list(
                         MediaItem.objects.filter(
                             media_type="game", pk__in=new_ids
-                        ).prefetch_related("assets")
+                        )
+                        .defer("embedding", "overview")
+                        .prefetch_related("assets")
                     )
                     media_items.extend(extra_items)
         except Exception as exc:

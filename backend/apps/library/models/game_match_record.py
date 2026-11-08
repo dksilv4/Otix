@@ -67,6 +67,10 @@ class GameMatchRecord(TimestampedModel):
     class Meta(TimestampedModel.Meta):
         db_table = "game_match_records"
         ordering = ["-updated_at"]
+        indexes = [
+            models.Index(fields=["node", "match_status"], name="ix_gmr_node_status"),
+            models.Index(fields=["user", "match_status"], name="ix_gmr_user_status"),
+        ]
         constraints = [
             models.UniqueConstraint(
                 fields=["user", "canonical_key"],

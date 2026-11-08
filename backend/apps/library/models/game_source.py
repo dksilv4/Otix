@@ -35,6 +35,10 @@ class UserGame(TimestampedModel):
     class Meta(TimestampedModel.Meta):
         db_table = "user_games"
         ordering = ["clean_title"]
+        indexes = [
+            models.Index(fields=["user", "is_hidden", "is_favorite"], name="ix_ug_usr_hid_fav"),
+            models.Index(fields=["user", "-last_played_at"], name="ix_ug_usr_lastplay"),
+        ]
         constraints = [
             models.UniqueConstraint(
                 fields=["user", "clean_title", "platform"],
