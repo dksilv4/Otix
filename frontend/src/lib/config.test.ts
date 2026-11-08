@@ -33,4 +33,30 @@ describe('API_BASE_URL', () => {
       isDesktopSpy.mockRestore()
     }
   })
+
+  it('resolves to custom server url on native mobile when configured', async () => {
+    const platform = await import('./platform')
+    const isNativeSpy = vi.spyOn(platform, 'isNativeMobile').mockReturnValue(true)
+    localStorage.setItem('otix_custom_server_url', 'https://media.mydomain.com')
+    try {
+      expect(resolveApiBaseUrl()).toBe('https://media.mydomain.com/api/v1')
+    } finally {
+      localStorage.removeItem('otix_custom_server_url')
+      isNativeSpy.mockRestore()
+    }
+  })
+
+  it('resolves to otix.app backend on native mobile when no custom server set', async () => {
+    const platform = await import('./platform')
+    const isNativeSpy = vi.spyOn(platform, 'isNativeMobile').mockReturnValue(true)
+    localStorage.removeItem('otix_custom_server_url')
+    const originalDev = import.meta.env.DEV
+    try {
+      import.meta.env.DEV = false
+      expect(resolveApiBaseUrl()).toBe('https://otix.app/api/v1')
+    } finally {
+      import.meta.env.DEV = originalDev
+      isNativeSpy.mockRestore()
+    }
+  })
 })

@@ -1,0 +1,21 @@
+node_modules/
+.DS_Store
+
+# iOS Pods and build artifacts
+ios/App/Pods/
+ios/App/Podfile.lock
+ios/App/App/public/
+*.xcworkspace
+xcuserdata/
+DerivedData/
+
+# Android build artifacts and local settings
+android/.gradle/
+android/build/
+android/app/build/
+android/app/src/main/assets/public/
+android/.idea/
+android/*.iml
+android/app/*.iml
+android/local.properties
+android/.cxx/

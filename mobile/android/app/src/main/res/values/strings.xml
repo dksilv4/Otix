@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Otix</string>
+    <string name="title_activity_main">Otix</string>
+    <string name="package_name">com.otix.app</string>
+    <string name="custom_url_scheme">com.otix.app</string>
+</resources>

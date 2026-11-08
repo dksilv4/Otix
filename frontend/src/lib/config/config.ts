@@ -3,6 +3,7 @@
  */
 
 import { isDesktop, getDesktopAPI } from '../desktop/api'
+import { isNativeMobile } from '../platform'
 
 // Environment flags
 export const IS_DEV = Boolean(import.meta.env?.DEV)
@@ -12,6 +13,23 @@ export const IS_TEST = Boolean(import.meta.env?.TEST)
 export function resolveApiBaseUrl(): string {
   if (import.meta.env?.VITE_API_BASE_URL) return import.meta.env.VITE_API_BASE_URL
   const isPort5174 = typeof window !== 'undefined' && window.location.port === '5174'
+
+  // Native Mobile (iOS & Android via Capacitor)
+  if (isNativeMobile()) {
+    try {
+      const customServer = typeof localStorage !== 'undefined' ? localStorage.getItem('otix_custom_server_url') : null
+      if (customServer) {
+        return `${customServer.replace(/\/+$/, '')}/api/v1`
+      }
+    } catch {
+      // localStorage unavailable
+    }
+    if (import.meta.env?.DEV || import.meta.env?.VITE_LOCAL_BACKEND === 'true') {
+      return 'http://127.0.0.1:8000/api/v1'
+    }
+    return 'https://otix.app/api/v1'
+  }
+
   // Desktop talks to the API directly.
   // In development, desktop connects to the local dev backend.
   // In production (packaged release app), desktop connects to the production API.

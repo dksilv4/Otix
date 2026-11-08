@@ -1,9 +1,10 @@
 import { OAuthButton } from './auth-oauth-button'
 import SpotifyIcon from '@/assets/provider-logos/spotify.svg?react'
-import {openExternal} from '@/lib/utils/open-external'
-import {apiClient} from '@/lib/api/client'
-import {useFeature} from '@/features/_config'
-import type {FeatureName} from "@/features/_config/types.ts";
+import { openExternal } from '@/lib/utils/open-external'
+import { apiClient } from '@/lib/api/client'
+import { useFeature } from '@/features/_config'
+import type { FeatureName } from '@/features/_config/types.ts'
+import { getOAuthPayloadSource } from '@/features/auth/utils/oauth-source'
 
 /** Spotify OAuth login button, gated by the auth:oauth:spotify feature flag. */
 export const SpotifyOAuthButton = () => {
@@ -11,7 +12,7 @@ export const SpotifyOAuthButton = () => {
     if (!enabled) return null
 
     const handleSpotifyLogin = async () => {
-        const {data} = await apiClient.post('/auth/spotify/initiate')
+        const { data } = await apiClient.post('/auth/spotify/initiate', getOAuthPayloadSource())
         openExternal(data.authUrl)
     }
 

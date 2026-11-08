@@ -22,7 +22,8 @@ import { MediaStreamPlayerModal } from '@/features/media/components/organisms/me
 import { DkToastProvider, showErrorToast } from '@ui/molecules/toast'
 import { ModalProvider } from '@/lib/modals'
 import { ContextMenuProvider, ContextMenuPortal } from '@/features/_config/context-menu'
-import { getDesktopPlatform } from '@/lib/desktop/platform'
+import { getPlatformInfo } from '@/lib/platform'
+import { initMobileApp } from '@/lib/mobile/init'
 import './index.css'
 
 import { isChunkLoadError, reloadForNewChunk } from '@/lib/utils/chunk-reload'
@@ -34,10 +35,15 @@ if (typeof window !== 'undefined' && window.location.search.includes('otix_reloa
   window.history.replaceState({}, '', cleanUrl.pathname + (cleanUrl.search || '') + cleanUrl.hash)
 }
 
-// Set desktop platform attribute for CSS targeting
-const plat = getDesktopPlatform()
-if (plat.isDesktop && plat.platform) {
-  document.documentElement.setAttribute('data-desktop-platform', plat.platform)
+// Set platform attributes for CSS targeting
+const platformInfo = getPlatformInfo()
+if (platformInfo.isDesktop && platformInfo.platform) {
+  document.documentElement.setAttribute('data-desktop-platform', platformInfo.platform)
+}
+if (platformInfo.isNativeMobile) {
+  document.documentElement.setAttribute('data-mobile-platform', platformInfo.platform)
+  document.documentElement.classList.add('is-native-mobile')
+  void initMobileApp()
 }
 
 // Vite preload error — fired when a dynamic import chunk fails to load after a deployment

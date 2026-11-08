@@ -1,3 +1,6 @@
+import { Browser } from '@capacitor/browser'
+import { isNativeMobile } from '../platform'
+
 export interface OpenExternalOptions {
   /**
    * If true, opens the URL in a new browser tab/window (`window.open`) when running
@@ -10,13 +13,25 @@ export interface OpenExternalOptions {
 }
 
 /**
- * Opens a URL in the user's default browser.
+ * Opens a URL in the user's default browser or in-app Safari/Chrome custom tab.
  *
+ * On native mobile (Capacitor) this launches an in-app browser tab with deep-link return support.
  * In Electron this delegates to the main process (`shell.openExternal`).
- * In the browser it opens a new tab when `options?.newTab` is true, or navigates
+ * In the web browser it opens a new tab when `options?.newTab` is true, or navigates
  * the current tab via `window.location.href`.
  */
 export function openExternal(url: string, options?: OpenExternalOptions): void {
+  if (isNativeMobile()) {
+    Browser.open({ url }).catch(() => {
+      if (options?.newTab) {
+        window.open(url, '_blank', 'noopener,noreferrer')
+      } else {
+        window.location.href = url
+      }
+    })
+    return
+  }
+
   const desktopApi = window.desktopAPI as unknown as { openExternal: (url: string) => Promise<void> } | undefined
   if (desktopApi) {
     // Don't await — fire-and-forget so the renderer stays on the current page
@@ -32,6 +47,19 @@ export function openExternal(url: string, options?: OpenExternalOptions): void {
     window.open(url, '_blank', 'noopener,noreferrer')
   } else {
     window.location.href = url
+  }
+}
+
+/**
+ * Closes in-app browser tabs opened on native mobile.
+ */
+export async function closeExternalBrowser(): Promise<void> {
+  if (isNativeMobile()) {
+    try {
+      await Browser.close()
+    } catch {
+      // browser may already be closed
+    }
   }
 }
 

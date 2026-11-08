@@ -52,7 +52,7 @@ export const CallbackPage = () => {
         }
 
         const source = (data?.source as string) || params.get('source')
-        if (source === 'desktop') {
+        if (source === 'desktop' || source === 'mobile') {
           const tokenParam = token ? `&accessToken=${encodeURIComponent(token)}` : ''
           window.location.href = `otix://auth/callback/${service}?success=true${tokenParam}`
           setIsDesktopDone(true)

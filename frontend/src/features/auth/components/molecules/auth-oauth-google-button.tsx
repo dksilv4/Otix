@@ -1,10 +1,10 @@
 import { OAuthButton } from './auth-oauth-button'
 import GoogleIcon from '@/assets/provider-logos/google.svg?react'
-import { isDesktop } from '@/lib/desktop/api'
 import { openExternal } from '@/lib/utils/open-external'
 import { apiClient } from '@/lib/api/client'
 import { useFeature } from '@/features/_config'
-import type { FeatureName } from "@/features/_config/types.ts";
+import type { FeatureName } from '@/features/_config/types.ts'
+import { getOAuthPayloadSource } from '@/features/auth/utils/oauth-source'
 
 /** Google OAuth login button, gated by the auth:oauth:google feature flag. (molecule) */
 export const GoogleOAuthButton = () => {
@@ -14,7 +14,7 @@ export const GoogleOAuthButton = () => {
     const handleGoogleLogin = async () => {
         const { data } = await apiClient.post(
             '/auth/google/initiate',
-            isDesktop() ? { source: 'desktop' } : undefined,
+            getOAuthPayloadSource(),
         )
         openExternal(data.authUrl)
     }

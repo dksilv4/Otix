@@ -1,10 +1,10 @@
 import { OAuthButton } from './auth-oauth-button'
 import SteamIcon from '@/assets/provider-logos/steam.svg?react'
-import {isDesktop} from '@/lib/desktop/api'
-import {openExternal} from '@/lib/utils/open-external'
-import {apiClient} from '@/lib/api/client'
-import {useFeature} from '@/features/_config'
-import type {FeatureName} from "@/features/_config/types.ts";
+import { openExternal } from '@/lib/utils/open-external'
+import { apiClient } from '@/lib/api/client'
+import { useFeature } from '@/features/_config'
+import type { FeatureName } from '@/features/_config/types.ts'
+import { getOAuthPayloadSource } from '@/features/auth/utils/oauth-source'
 
 /** Steam OAuth login button, gated by the auth:oauth:steam feature flag. */
 export const SteamOAuthButton = () => {
@@ -12,9 +12,9 @@ export const SteamOAuthButton = () => {
     if (!enabled) return null
 
     const handleSteamLogin = async () => {
-        const {data} = await apiClient.post(
+        const { data } = await apiClient.post(
             '/auth/steam/initiate',
-            isDesktop() ? {source: 'desktop'} : undefined,
+            getOAuthPayloadSource(),
         )
         openExternal(data.authUrl)
     }

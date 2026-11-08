@@ -1,7 +1,7 @@
 {
   "name": "frontend",
   "private": true,
-  "version": "0.1.48",
+  "version": "0.1.49",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -27,6 +27,15 @@
     ]
   },
   "dependencies": {
+    "@capacitor/app": "^6.0.3",
+    "@capacitor/browser": "^6.0.6",
+    "@capacitor/core": "^6.2.3",
+    "@capacitor/haptics": "^6.0.3",
+    "@capacitor/keyboard": "^6.0.4",
+    "@capacitor/preferences": "^6.0.4",
+    "@capacitor/screen-orientation": "^6.0.4",
+    "@capacitor/splash-screen": "^6.0.4",
+    "@capacitor/status-bar": "^6.0.3",
     "@floating-ui/react": "^0.27.19",
     "@heroicons/react": "^2.2.0",
     "@radix-ui/react-slot": "^1.2.4",

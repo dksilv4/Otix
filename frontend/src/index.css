@@ -60,6 +60,13 @@
     --color-status-offline-foreground: var(--status-offline-foreground);
 }
 
+:root {
+    --sat: env(safe-area-inset-top, 0px);
+    --sar: env(safe-area-inset-right, 0px);
+    --sab: env(safe-area-inset-bottom, 0px);
+    --sal: env(safe-area-inset-left, 0px);
+}
+
 :root,
 [data-theme='light'] {
     --background: var(--dk-surface-root);
@@ -704,4 +711,37 @@
         animation-iteration-count: 1 !important;
         transition-duration: 0.01ms !important;
     }
+}
+
+/* ── Mobile Safe Area insets and touch utilities ── */
+.pt-safe {
+    padding-top: var(--sat);
+}
+.pb-safe {
+    padding-bottom: var(--sab);
+}
+.pl-safe {
+    padding-left: var(--sal);
+}
+.pr-safe {
+    padding-right: var(--sar);
+}
+.top-safe {
+    top: var(--sat);
+}
+.bottom-safe {
+    bottom: var(--sab);
+}
+
+.is-native-mobile,
+[data-mobile-platform] {
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+}
+
+.is-native-mobile input,
+.is-native-mobile textarea,
+[data-mobile-platform] input,
+[data-mobile-platform] textarea {
+    user-select: auto;
 }
