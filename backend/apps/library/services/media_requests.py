@@ -107,8 +107,18 @@ def record_media_request(
     if media_item:
         if title.isdigit() or not title:
             title = media_item.title
-        if not poster_url and media_item.poster_url:
-            poster_url = media_item.poster_url
+        if not poster_url:
+            if getattr(media_item, "poster_url", None):
+                poster_url = media_item.poster_url
+            else:
+                try:
+                    from apps.media.models import MediaAsset
+
+                    poster = MediaAsset.objects.filter(media_item=media_item, asset_type="poster").first()
+                    if poster:
+                        poster_url = poster.url
+                except Exception:
+                    pass
         if not tmdb_id and getattr(media_item, "tmdb_id", None):
             tmdb_id = str(media_item.tmdb_id)
         if not tvdb_id and getattr(media_item, "tvdb_id", None):

@@ -346,14 +346,25 @@ class TMDBProviderTests(SimpleTestCase):
 
 
 class TMDBHttpClientFactoryTests(SimpleTestCase):
+    @override_settings(TMDB_RAT="test-tmdb-rat", TMDB_REQUEST_TIMEOUT_SECONDS=10.0)
     def test_factory_binds_base_url_bearer_and_timeout(self):
         client = get_http_client()
         try:
             # httpx normalizes base_url to a trailing-slash form on construction.
             self.assertEqual(client.base_url, httpx.URL(f"{TMDBProvider.BASE_URL}/"))
-            self.assertEqual(client.headers["Authorization"], f"Bearer {settings.TMDB_RAT}")
+            self.assertEqual(client.headers["Authorization"], "Bearer test-tmdb-rat")
             self.assertEqual(client.headers["Accept"], "application/json")
-            self.assertEqual(client.timeout.read, settings.TMDB_REQUEST_TIMEOUT_SECONDS)
+            self.assertEqual(client.timeout.read, 10.0)
+        finally:
+            _run(client.aclose())
+            tmdb_module._shared_client = None
+            tmdb_module._shared_client_loop_id = None
+
+    @override_settings(TMDB_RAT="")
+    def test_factory_omits_bearer_when_rat_unset(self):
+        client = get_http_client()
+        try:
+            self.assertNotIn("Authorization", client.headers)
         finally:
             _run(client.aclose())
             tmdb_module._shared_client = None
