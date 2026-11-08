@@ -175,17 +175,17 @@ jobs:
           mkdir -p desktop/bin
           case "${{ matrix.os }}" in
             windows*)
-              (cd node && CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" -o ../desktop/bin/otix-node.exe ./main.go)
+              (cd node && CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" -o ../desktop/bin/otix-node.exe .)
               ;;
             macos-latest)
-              (cd node && CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w" -o ../desktop/bin/otix-node-arm64 ./main.go)
-              (cd node && CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w" -o ../desktop/bin/otix-node-amd64 ./main.go)
+              (cd node && CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w" -o ../desktop/bin/otix-node-arm64 .)
+              (cd node && CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w" -o ../desktop/bin/otix-node-amd64 .)
               lipo -create -output desktop/bin/otix-node desktop/bin/otix-node-arm64 desktop/bin/otix-node-amd64
               rm desktop/bin/otix-node-arm64 desktop/bin/otix-node-amd64
               chmod +x desktop/bin/otix-node
               ;;
             ubuntu-latest)
-              (cd node && CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o ../desktop/bin/otix-node ./main.go)
+              (cd node && CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o ../desktop/bin/otix-node .)
               chmod +x desktop/bin/otix-node
               ;;
           esac
