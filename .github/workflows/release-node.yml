@@ -93,18 +93,18 @@ jobs:
           ./scripts/build-all.sh
 
       - name: Copy Unraid template to dist
-        run: cp node/unraid/my-otix-server.xml node/dist/my-otix-server.xml
+        run: cp node/unraid/my-otix-server.xml dist/node/my-otix-server.xml
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: otix-node-installers
           path: |
-            node/dist/Otix-Node.dmg
-            node/dist/Otix-Node-Windows-x64.zip
-            node/dist/Otix-Node-Linux-x64.tar.gz
-            node/dist/Otix-Node-Linux-arm64.tar.gz
-            node/dist/my-otix-server.xml
+            dist/node/Otix-Node.dmg
+            dist/node/Otix-Node-Windows-x64.zip
+            dist/node/Otix-Node-Linux-x64.tar.gz
+            dist/node/Otix-Node-Linux-arm64.tar.gz
+            dist/node/my-otix-server.xml
           retention-days: 14
 
       - name: Attach Installers to GitHub Release
@@ -113,11 +113,11 @@ jobs:
         with:
           tag_name: ${{ needs.prepare-release.outputs.release_tag }}
           files: |
-            node/dist/Otix-Node.dmg
-            node/dist/Otix-Node-Windows-x64.zip
-            node/dist/Otix-Node-Linux-x64.tar.gz
-            node/dist/Otix-Node-Linux-arm64.tar.gz
-            node/dist/my-otix-server.xml
+            dist/node/Otix-Node.dmg
+            dist/node/Otix-Node-Windows-x64.zip
+            dist/node/Otix-Node-Linux-x64.tar.gz
+            dist/node/Otix-Node-Linux-arm64.tar.gz
+            dist/node/my-otix-server.xml
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -165,3 +165,4 @@ jobs:
           labels: ${{ steps.meta-node.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+

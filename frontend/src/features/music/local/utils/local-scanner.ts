@@ -3,7 +3,21 @@ import { getOrCreateBlobUrl } from '@/features/music/utils/blob-url-cache'
 import { parseAudioFileMetadata } from './id3-parser'
 import type { StoredLocalTrack } from './local-music-db'
 
-const AUDIO_EXTENSIONS = new Set(['mp3', 'flac', 'm4a', 'aac', 'wav', 'ogg', 'opus', 'wma'])
+const AUDIO_EXTENSIONS = new Set([
+  'mp3',
+  'flac',
+  'm4a',
+  'aac',
+  'wav',
+  'ogg',
+  'opus',
+  'wma',
+  'alac',
+  'aiff',
+  'aif',
+  'weba',
+  'm4b',
+])
 
 export const isAudioFile = (fileName: string): boolean => {
   const ext = fileName.split('.').pop()?.toLowerCase()
