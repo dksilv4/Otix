@@ -169,6 +169,10 @@ def execute_sync_job(job_pk: int) -> dict[str, Any]:
         summary = engine(job)
     except Exception as exc:  # noqa: BLE001 - any engine failure is a user-facing "error" frame
         logger.exception("sync job %s engine raised", task_id)
+        if not getattr(settings, "CELERY_TASK_ALWAYS_EAGER", False):
+            for conn in connections.all(initialized_only=True):
+                if not conn.in_atomic_block:
+                    conn.close_if_unusable_or_obsolete()
         return _abort(job, task_id, message=_ERROR_MESSAGE, detail=str(exc))
 
     # An engine that returns ``{"error": ...}`` signals a handled failure (e.g.

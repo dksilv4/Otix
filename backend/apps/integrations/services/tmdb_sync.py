@@ -25,11 +25,11 @@ album ingest, and the bulk catalog-seed driver are the deferred next pieces.
 
 from __future__ import annotations
 
-import asyncio
 import logging
 from collections.abc import Awaitable, Callable
 from typing import Any
 
+from asgiref.sync import async_to_sync
 from django.contrib.contenttypes.models import ContentType
 
 from apps.integrations.models import SyncJob
@@ -121,8 +121,8 @@ def _sync_tmdb_company(job: SyncJob, emit: Callable[..., None]) -> dict[str, Any
         return {"error": f"Invalid TMDB company id in sync job: {job.external_id!r}"}
 
     emit("fetching_company", tmdb_id=tmdb_id)
-    summary: dict[str, Any] = asyncio.run(
-        globals()["fetch_and_seed_company"](tmdb_id, parent_job=job)
+    summary: dict[str, Any] = async_to_sync(globals()["fetch_and_seed_company"])(
+        tmdb_id, parent_job=job
     )
     emit(
         "company_synced",
@@ -172,9 +172,9 @@ def sync_tmdb_media(job: SyncJob) -> dict[str, Any]:
     emit(f"fetching_{job.entity_type}", tmdb_id=tmdb_id)
     force = getattr(job, "phase", None) == "force"
     try:
-        media_item_id = asyncio.run(fetcher(tmdb_id, force=force))
+        media_item_id = async_to_sync(fetcher)(tmdb_id, force=force)
     except TypeError:
-        media_item_id = asyncio.run(fetcher(tmdb_id))
+        media_item_id = async_to_sync(fetcher)(tmdb_id)
     emit(
         f"{job.entity_type}_{'matched' if matched else 'seeded'}",
         tmdb_id=tmdb_id,

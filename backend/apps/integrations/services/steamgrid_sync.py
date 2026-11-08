@@ -22,10 +22,10 @@ same safety argument as the other engines.
 
 from __future__ import annotations
 
-import asyncio
 from collections.abc import Awaitable, Callable
 from typing import Any
 
+from asgiref.sync import async_to_sync
 from django.contrib.contenttypes.models import ContentType
 
 from apps.integrations.models import SyncJob
@@ -108,7 +108,7 @@ def sync_steamgrid_artwork(job: SyncJob) -> dict[str, Any]:
     driver: Callable[[int, int], Awaitable[dict[str, Any]]] = globals()[
         "fetch_and_attach_game_artwork"
     ]
-    result = asyncio.run(driver(media_item_id, app_id))
+    result = async_to_sync(driver)(media_item_id, app_id)
     emit(
         "artwork_attached",
         steam_app_id=app_id,

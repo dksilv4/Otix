@@ -356,7 +356,8 @@ def run_pending_jobs(
         qs = qs.filter(provider=provider)
     if entity_type is not None:
         qs = qs.filter(entity_type=entity_type)
-    outcomes = [execute_sync_job(job.pk) for job in qs[:limit]]
+    job_pks = list(qs[:limit].values_list("pk", flat=True))
+    outcomes = [execute_sync_job(pk) for pk in job_pks]
     succeeded = sum(1 for o in outcomes if o.get("status") == "success")
     failed = sum(1 for o in outcomes if o.get("status") == "failed")
     skipped = len(outcomes) - succeeded - failed

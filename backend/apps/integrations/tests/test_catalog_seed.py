@@ -244,6 +244,31 @@ class RunPendingJobsTests(TestCase):
         self.assertEqual(drained, [first.pk, second.pk])
         self.assertEqual(SyncJob.objects.filter(external_id="3", status="pending").exists(), True)
 
+    def test_evaluates_pks_upfront_resilient_to_connection_reset(self):
+        from django.db import connection
+
+        job1 = SyncJob.objects.create(
+            provider="tmdb", entity_type="movie", external_id="101", status="pending"
+        )
+        job2 = SyncJob.objects.create(
+            provider="tmdb", entity_type="movie", external_id="102", status="pending"
+        )
+        drained = []
+
+        def _mock_execute(pk):
+            drained.append(pk)
+            connection.close()
+            return {"status": "success"}
+
+        with mock.patch(
+            "apps.integrations.services.catalog_seed.execute_sync_job",
+            side_effect=_mock_execute,
+        ):
+            summary = run_pending_jobs(limit=2)
+
+        self.assertEqual(summary["ran"], 2)
+        self.assertEqual(drained, [job1.pk, job2.pk])
+
     def test_drains_higher_priority_first(self):
         low = SyncJob.objects.create(
             provider="tmdb", entity_type="movie", external_id="1", status="pending", priority=5

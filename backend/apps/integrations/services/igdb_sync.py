@@ -22,10 +22,10 @@ full-hydration pass.
 
 from __future__ import annotations
 
-import asyncio
 from collections.abc import Awaitable, Callable
 from typing import Any
 
+from asgiref.sync import async_to_sync
 from django.contrib.contenttypes.models import ContentType
 
 from apps.integrations.models import SyncJob
@@ -90,9 +90,9 @@ def sync_igdb_game(job: SyncJob) -> dict[str, Any]:
     fetcher: Callable[[int], Awaitable[int]] = globals()["fetch_and_seed_game"]
     force = getattr(job, "phase", None) == "force"
     try:
-        media_item_id = asyncio.run(fetcher(igdb_id, force=force))
+        media_item_id = async_to_sync(fetcher)(igdb_id, force=force)
     except TypeError:
-        media_item_id = asyncio.run(fetcher(igdb_id))
+        media_item_id = async_to_sync(fetcher)(igdb_id)
     emit(
         f"game_{'matched' if matched else 'seeded'}",
         igdb_id=igdb_id,
