@@ -106,7 +106,7 @@ export const PeopleDetailPage = () => {
   }
 
   // ── Loading state ──
-  if (isLoading) {
+  if (isLoading && !person) {
     return (
       <div id="people-detail-page" className={`w-full px-4 ${ptClass} sm:px-6 lg:px-8 space-y-8`}>
         <div className="flex flex-col items-center gap-6 sm:flex-row sm:items-start">

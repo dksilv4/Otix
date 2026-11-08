@@ -89,7 +89,7 @@ export function useGenreSectionFetch(
     return limit > 0 ? sorted.slice(0, limit) : sorted
   }, [rawGenres, limit])
 
-  const showSkeleton = !enabled || query.isLoading
+  const showSkeleton = items.length === 0 && (!enabled || query.isLoading)
   const isEmpty = enabled && query.isSuccess && items.length === 0
 
   return { ref, items, showSkeleton, isEmpty, isInView, ...query }

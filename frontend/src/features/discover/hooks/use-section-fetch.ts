@@ -25,7 +25,7 @@ export function useSectionFetch(section: PersonalizedSection, eager = false) {
     })
   }, [query.data])
 
-  const showSkeleton = !enabled || query.isLoading
+  const showSkeleton = items.length === 0 && (!enabled || query.isLoading)
   // A failed request has no items either. Keep that distinct from a real empty rail
   // so the section can show a retry instead of disappearing.
   const isEmpty = enabled && query.isSuccess && items.length === 0

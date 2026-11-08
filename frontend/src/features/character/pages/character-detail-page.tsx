@@ -17,7 +17,7 @@ export const CharacterDetailPage = () => {
   const ptClass = 'pt-4 sm:pt-6'
   const { data: character, isLoading, isError } = useQuery(characterQueries.detail(characterId))
 
-  if (isLoading) {
+  if (isLoading && !character) {
     return (
       <div className={`w-full px-4 ${ptClass} pb-16 sm:px-6 lg:px-8 space-y-8`}>
         <div className="flex flex-col sm:flex-row gap-6 p-6 rounded-3xl bg-[var(--dk-surface-ghost)] border border-[var(--dk-separator)]">

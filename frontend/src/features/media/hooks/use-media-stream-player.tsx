@@ -14,6 +14,14 @@ import { getPluginApi, getPlexClientId } from '../utils/player'
 import { switchPlexSessionServer, updatePlexSessionQuality } from '../utils/plex-stream'
 import { buildQualityOptions, DEFAULT_QUALITY_ID } from '../utils/quality'
 import {
+  buildLocalMediaSession,
+  buildLocalAudioTrack,
+  isAudioFile,
+  resolveLocalAudioPlaylist,
+} from '../utils/local-media'
+import { usePlayer } from '@/lib/player/use-player'
+import { useDeepLink } from '@/features/auth/hooks/use-deep-link'
+import {
   isOverallPipSupported,
   isOverallPipActive,
   requestOverallPip,
@@ -28,6 +36,7 @@ import { defaultPlayerContextValue } from '../utils/player-defaults'
 const MediaStreamPlayerContext = createContext<MediaStreamPlayerContextValue | null>(null)
 
 export const MediaStreamPlayerProvider = ({ children }: { children: React.ReactNode }) => {
+  const { playLocalTrack, playLocalTracks, stop: stopAudio } = usePlayer()
   const [initialSettings] = useState(loadPlayerSettings)
   const [session, setSession] = useState<StreamPlaybackSession | null>(null)
   const [isOpen, setIsOpen] = useState(false)
@@ -90,7 +99,7 @@ export const MediaStreamPlayerProvider = ({ children }: { children: React.ReactN
   const sendProgressHeartbeat = useCallback(
     async (isStopped = false) => {
       const active = sessionRef.current
-      if (!active) return
+      if (!active || active.source === 'local') return
 
       const positionMs = Math.round(currentTimeRef.current * 1000)
       const durationMs = Math.round(active.durationMs || 0)
@@ -206,11 +215,13 @@ export const MediaStreamPlayerProvider = ({ children }: { children: React.ReactN
       sendProgressHeartbeat(true)
     }
 
-    const method = determinePlaybackMethod(
-      newSession.container,
-      newSession.videoCodec,
-      newSession.audioCodec
-    )
+    const method = newSession.source === 'local'
+      ? 'direct-play'
+      : determinePlaybackMethod(
+          newSession.container,
+          newSession.videoCodec,
+          newSession.audioCodec
+        )
 
     const initialQualities = buildQualityOptions({
       hasDirectPlay: Boolean(newSession.directUrl),
@@ -261,6 +272,41 @@ export const MediaStreamPlayerProvider = ({ children }: { children: React.ReactN
     setActiveLevelHeightState(null)
     setAvailableQualities(buildQualityOptions())
   }, [sendProgressHeartbeat])
+
+  // Handle media/play deep links (e.g. from Windows "Open with Otix" or file double-click)
+  useDeepLink(
+    useCallback(
+      (data) => {
+        if (data.action === 'media/play' && data.params?.path) {
+          const filePath = data.params.path
+          if (isAudioFile(filePath)) {
+            // Audio files (.mp3, .flac, .wav, etc.) -> Otix Music Player
+            closeStream()
+            // 1. Immediately launch playback so audio starts without any delay
+            const immediateTrack = buildLocalAudioTrack(filePath)
+            void playLocalTrack(immediateTrack)
+
+            // 2. Concurrently discover folder tracks, ID3 tags, and high-res album artwork
+            void resolveLocalAudioPlaylist(filePath)
+              .then(({ tracks, initialIndex }) => {
+                if (tracks.length > 0) {
+                  void playLocalTracks(tracks, initialIndex)
+                }
+              })
+              .catch((err) => {
+                console.warn('[useMediaStreamPlayer] Failed to load audio playlist:', err)
+              })
+          } else {
+            // Video files (.mp4, .mkv, .avi, etc.) -> Otix Video Player
+            stopAudio()
+            const session = buildLocalMediaSession(filePath)
+            openStream(session)
+          }
+        }
+      },
+      [openStream, closeStream, playLocalTrack, playLocalTracks, stopAudio],
+    ),
+  )
 
   const failoverToBaseUrl = useCallback((newBaseUrl: string) => {
     setSession((prev) => {

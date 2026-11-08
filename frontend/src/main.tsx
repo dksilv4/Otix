@@ -3,7 +3,7 @@ import { createRoot } from 'react-dom/client'
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client'
 import { RouterProvider } from '@tanstack/react-router'
 import { HelmetProvider } from 'react-helmet-async'
-import { queryClient, persistOptions } from '@/lib/query/client'
+import { queryClient, persistOptions, restorePersistedCache } from '@/lib/query/client'
 import { router } from '@/lib/router'
 import { ShaderQualityProvider } from '@/lib/providers/shader-quality'
 import { MotionPreferenceProvider } from '@/lib/providers/motion-preference'
@@ -87,53 +87,57 @@ window.addEventListener('error', (event) => {
   }
 })
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <HelmetProvider>
-      <PersistQueryClientProvider
-        client={queryClient}
-        persistOptions={persistOptions}
-      >
-        <ShaderQualityProvider>
-          <MotionPreferenceProvider>
-            <ThemeProvider>
-              <FeatureProvider>
-                <AuthProvider>
-                  <AuthRouterBridge />
-                  <AuthGate>
-                    <WatchlistSyncPrompt />
-                    <PlexSyncPromptModal />
-                    <DkToastProvider>
-                      <PlexAudioProvider>
-                        <JellyfinAudioProvider>
-                          <LocalAudioProvider>
-                            <PlayerProvider>
-                              <MediaStreamPlayerProvider>
-                                <PageMetaProvider>
-                                  <ContextMenuProvider>
-                                    <ModalProvider>
-                                      <RouterProvider
-                                        router={router}
-                                        context={{ queryClient, isAuthenticated: false, isAuthLoaded: false }}
-                                      />
-                                      <MediaStreamPlayerModal />
-                                    </ModalProvider>
-                                    <ContextMenuPortal />
-                                  </ContextMenuProvider>
-                                </PageMetaProvider>
-                              </MediaStreamPlayerProvider>
-                            </PlayerProvider>
-                          </LocalAudioProvider>
-                        </JellyfinAudioProvider>
-                      </PlexAudioProvider>
-                    </DkToastProvider>
-                  </AuthGate>
-                </AuthProvider>
-              </FeatureProvider>
-            </ThemeProvider>
-          </MotionPreferenceProvider>
-        </ShaderQualityProvider>
-      </PersistQueryClientProvider>
-    </HelmetProvider>
-  </StrictMode>,
-)
+const renderApp = () => {
+  createRoot(document.getElementById('root')!).render(
+    <StrictMode>
+      <HelmetProvider>
+        <PersistQueryClientProvider
+          client={queryClient}
+          persistOptions={persistOptions}
+        >
+          <ShaderQualityProvider>
+            <MotionPreferenceProvider>
+              <ThemeProvider>
+                <FeatureProvider>
+                  <AuthProvider>
+                    <AuthRouterBridge />
+                    <AuthGate>
+                      <WatchlistSyncPrompt />
+                      <PlexSyncPromptModal />
+                      <DkToastProvider>
+                        <PlexAudioProvider>
+                          <JellyfinAudioProvider>
+                            <LocalAudioProvider>
+                              <PlayerProvider>
+                                <MediaStreamPlayerProvider>
+                                  <PageMetaProvider>
+                                    <ContextMenuProvider>
+                                      <ModalProvider>
+                                        <RouterProvider
+                                          router={router}
+                                          context={{ queryClient, isAuthenticated: false, isAuthLoaded: false }}
+                                        />
+                                        <MediaStreamPlayerModal />
+                                      </ModalProvider>
+                                      <ContextMenuPortal />
+                                    </ContextMenuProvider>
+                                  </PageMetaProvider>
+                                </MediaStreamPlayerProvider>
+                              </PlayerProvider>
+                            </LocalAudioProvider>
+                          </JellyfinAudioProvider>
+                        </PlexAudioProvider>
+                      </DkToastProvider>
+                    </AuthGate>
+                  </AuthProvider>
+                </FeatureProvider>
+              </ThemeProvider>
+            </MotionPreferenceProvider>
+          </ShaderQualityProvider>
+        </PersistQueryClientProvider>
+      </HelmetProvider>
+    </StrictMode>,
+  )
+}
+
+void restorePersistedCache().finally(renderApp)

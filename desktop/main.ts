@@ -7,6 +7,28 @@ import { getApiBaseUrl } from './config';
 import { loadDesktopSettings } from './desktop-settings';
 import type { StagedBootManager } from './boot/staged-boot';
 
+// ── Fast Early Single-Instance Lock Check ─────────────────────────────────────
+const isSetupExe =
+  path.basename(process.execPath).toLowerCase().includes('setup') ||
+  Boolean(
+    process.env.PORTABLE_EXECUTABLE_FILE &&
+    path.basename(process.env.PORTABLE_EXECUTABLE_FILE).toLowerCase().includes('setup') &&
+    process.execPath.toLowerCase().includes('temp'),
+  );
+
+const isInstallerMode = process.argv.includes('--installer') || process.env.OTIX_INSTALLER === '1' || isSetupExe;
+const isUninstallerMode = process.argv.includes('--uninstall') || process.env.OTIX_UNINSTALLER === '1';
+
+if (!isInstallerMode && !isUninstallerMode) {
+  const gotSingleLock = app.requestSingleInstanceLock();
+  if (!gotSingleLock) {
+    // A primary instance of Otix is already running.
+    // Electron's C++ layer has already forwarded process.argv to the primary instance.
+    // Terminate immediately with app.exit(0) so Windows never flashes or spawns a ghost window.
+    app.exit(0);
+  }
+}
+
 // ── High-Performance Non-Blocking Buffered File Logging ────────────────────────
 const logFile = path.join(os.homedir(), 'otix-desktop.log');
 let logStream: fs.WriteStream | null = null;
@@ -93,6 +115,17 @@ protocol.registerSchemesAsPrivileged([
       stream: true,
     },
   },
+  {
+    scheme: 'local-media',
+    privileges: {
+      standard: true,
+      bypassCSP: true,
+      secure: true,
+      supportFetchAPI: true,
+      corsEnabled: true,
+      stream: true,
+    },
+  },
 ]);
 
 import { setDefaultAutoSelectFamily } from 'node:net';
@@ -132,8 +165,28 @@ app.on('child-process-gone', (_event, details) => {
   }
 });
 
-// ── Custom Protocol (otix://) for OAuth Deep Links ────────────────────────────
+// ── Custom Protocol (otix://) and Media File Launching ─────────────────────────
 const PROTOCOL = 'otix';
+const MEDIA_EXTENSIONS = new Set([
+  '.mp4', '.mkv', '.avi', '.mov', '.wmv', '.webm', '.flv', '.m4v', '.3gp', '.ts',
+  '.mp3', '.flac', '.wav', '.ogg', '.m4a', '.aac', '.opus', '.wma',
+]);
+
+function findMediaFileArg(argv: string[]): string | null {
+  for (const raw of argv) {
+    if (!raw || typeof raw !== 'string') continue;
+    const arg = raw.replace(/^"|"$/g, '').trim();
+    if (!arg || arg.startsWith('-') || arg.startsWith(`${PROTOCOL}://`)) continue;
+    try {
+      const ext = path.extname(arg).toLowerCase();
+      if (MEDIA_EXTENSIONS.has(ext) && fs.existsSync(arg)) {
+        return path.resolve(arg);
+      }
+    } catch {}
+  }
+  return null;
+}
+
 export function registerDefaultProtocolClient(): void {
   try {
     if (process.defaultApp || !app.isPackaged) {
@@ -149,21 +202,14 @@ export function registerDefaultProtocolClient(): void {
 
 let pendingDeepLink: string | null = null;
 const initialDeepLink = process.argv.find((arg) => typeof arg === 'string' && arg.startsWith(`${PROTOCOL}://`));
+const initialMediaFile = findMediaFileArg(process.argv);
 if (initialDeepLink) {
   pendingDeepLink = initialDeepLink;
+} else if (initialMediaFile) {
+  pendingDeepLink = `otix://media/play?path=${encodeURIComponent(initialMediaFile)}`;
 }
 
-// ── Installer / Uninstaller Mode Detection ────────────────────────────────────
-const isSetupExe =
-  path.basename(process.execPath).toLowerCase().includes('setup') ||
-  Boolean(
-    process.env.PORTABLE_EXECUTABLE_FILE &&
-    path.basename(process.env.PORTABLE_EXECUTABLE_FILE).toLowerCase().includes('setup') &&
-    process.execPath.toLowerCase().includes('temp'),
-  );
-
-const isInstallerMode = process.argv.includes('--installer') || process.env.OTIX_INSTALLER === '1' || isSetupExe;
-const isUninstallerMode = process.argv.includes('--uninstall') || process.env.OTIX_UNINSTALLER === '1';
+// ── Auto-Elevation Check ──────────────────────────────────────────────────────
 
 function isProcessElevated(): boolean {
   if (process.platform !== 'win32') return false;
@@ -187,32 +233,24 @@ if (process.platform === 'win32' && (isInstallerMode || isUninstallerMode) && !i
   }
 }
 
-// Single-instance lock
+// Primary instance: register second-instance handler for deep-links and file opens
 let bootManager: StagedBootManager | null = null;
 
 if (!isInstallerMode && !isUninstallerMode) {
-  const gotSingleLock = app.requestSingleInstanceLock();
-  console.log('[main] requestSingleInstanceLock:', gotSingleLock);
-  if (!gotSingleLock) {
-    console.warn('[main] Another instance is already running; quitting');
-    app.quit();
-  } else {
-    app.on('second-instance', (_event, argv) => {
-      const dl = argv.find((a) => typeof a === 'string' && a.startsWith(`${PROTOCOL}://`));
-      if (dl && bootManager) bootManager.handleDeepLink(dl);
-      const win = bootManager?.getContext().mainWindow;
-      if (!win || win.isDestroyed()) {
-        bootManager?.boot();
-      } else {
-        if (win.isMinimized()) win.restore();
-        if (!win.isVisible()) win.show();
-        win.setAlwaysOnTop(true);
-        win.show();
-        win.focus();
-        win.setAlwaysOnTop(false);
-      }
-    });
-  }
+  app.on('second-instance', (_event, argv) => {
+    const dl = argv.find((a) => typeof a === 'string' && a.startsWith(`${PROTOCOL}://`));
+    const mediaFile = findMediaFileArg(argv);
+    const targetLink = dl || (mediaFile ? `otix://media/play?path=${encodeURIComponent(mediaFile)}` : null);
+    if (targetLink && bootManager) bootManager.handleDeepLink(targetLink);
+    const win = bootManager?.getContext().mainWindow;
+    if (!win || win.isDestroyed()) {
+      bootManager?.boot();
+    } else {
+      if (win.isMinimized()) win.restore();
+      if (!win.isVisible()) win.show();
+      win.focus();
+    }
+  });
 }
 
 app.on('open-url', (event, url) => {
@@ -220,6 +258,22 @@ app.on('open-url', (event, url) => {
   if (url.startsWith(`${PROTOCOL}://`)) {
     if (bootManager) bootManager.handleDeepLink(url);
     else pendingDeepLink = url;
+  }
+});
+
+app.on('open-file', (event, filePath) => {
+  event.preventDefault();
+  const url = `otix://media/play?path=${encodeURIComponent(filePath)}`;
+  if (bootManager) {
+    bootManager.handleDeepLink(url);
+    const win = bootManager.getContext().mainWindow;
+    if (win && !win.isDestroyed()) {
+      if (win.isMinimized()) win.restore();
+      if (!win.isVisible()) win.show();
+      win.focus();
+    }
+  } else {
+    pendingDeepLink = url;
   }
 });
 

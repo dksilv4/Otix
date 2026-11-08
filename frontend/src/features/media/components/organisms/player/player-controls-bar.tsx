@@ -124,36 +124,45 @@ export const PlayerControlsBar = ({
         )}
 
         {/* Volume popover */}
-        <div ref={volumeContainerRef} onMouseEnter={() => setShowVolumeSlider(true)} className="relative flex items-center">
+        <div
+          ref={volumeContainerRef}
+          onMouseEnter={() => setShowVolumeSlider(true)}
+          onMouseLeave={() => setShowVolumeSlider(false)}
+          onWheel={(e) => {
+            e.preventDefault()
+            const delta = e.deltaY < 0 ? 0.05 : -0.05
+            onVolumeChange(Math.min(1, Math.max(0, effectiveVolume + delta)))
+          }}
+          className="relative flex items-center group/volume"
+        >
           <button
             type="button"
             onClick={onToggleMute}
             className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:text-primary-foreground hover:bg-white/10 transition-all border-0 cursor-pointer"
             aria-label={effectiveIsMuted ? 'Unmute (M)' : 'Mute (M)'}
-            title={effectiveIsMuted ? 'Unmute (M)' : 'Mute (M)'}
+            title={effectiveIsMuted ? 'Unmute (M)' : `Volume: ${Math.round(effectiveVolume * 100)}% (scroll to adjust)`}
           >
             <VolumeIcon className="h-4 w-4" />
           </button>
           {showVolumeSlider && (
-            <div
-              className="absolute left-full ml-1.5 px-3 py-2 rounded-full bg-[var(--dk-surface-glass)] backdrop-blur-2xl shadow-xl flex items-center gap-2 border-0 z-30"
-              onMouseLeave={() => setShowVolumeSlider(false)}
-            >
-              <input
-                type="range"
-                role="slider"
-                aria-label="Volume slider"
-                aria-valuenow={effectiveIsMuted ? 0 : effectiveVolume}
-                min="0"
-                max="1"
-                step="0.05"
-                value={effectiveIsMuted ? 0 : effectiveVolume}
-                onChange={(e) => onVolumeChange(parseFloat(e.target.value))}
-                className="w-20 h-1 accent-primary cursor-pointer border-0"
-              />
-              <span className="text-[11px] font-mono text-muted-foreground w-7 text-right">
-                {Math.round((effectiveIsMuted ? 0 : effectiveVolume) * 100)}%
-              </span>
+            <div className="absolute left-full pl-2 flex items-center z-30">
+              <div className="px-3 py-2 rounded-full bg-[var(--dk-surface-glass)] backdrop-blur-2xl shadow-xl flex items-center gap-2 border border-white/[0.04]">
+                <input
+                  type="range"
+                  role="slider"
+                  aria-label="Volume slider"
+                  aria-valuenow={effectiveIsMuted ? 0 : effectiveVolume}
+                  min="0"
+                  max="1"
+                  step="0.05"
+                  value={effectiveIsMuted ? 0 : effectiveVolume}
+                  onChange={(e) => onVolumeChange(parseFloat(e.target.value))}
+                  className="w-20 h-1 accent-primary cursor-pointer border-0"
+                />
+                <span className="text-[11px] font-mono text-muted-foreground w-7 text-right">
+                  {Math.round((effectiveIsMuted ? 0 : effectiveVolume) * 100)}%
+                </span>
+              </div>
             </div>
           )}
         </div>

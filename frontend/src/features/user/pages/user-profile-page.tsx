@@ -71,7 +71,7 @@ export const UserProfilePage = () => {
   })
 
   // Loading state
-  if (profileQuery.isLoading) {
+  if (profileQuery.isLoading && !profile) {
     return (
       <div className="w-full flex flex-col">
         <div className="mx-4">

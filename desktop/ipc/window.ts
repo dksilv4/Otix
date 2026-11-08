@@ -1,4 +1,5 @@
 import { ipcMain, BrowserWindow } from 'electron';
+import { getSettings } from '../desktop-settings';
 
 let mainWindow: BrowserWindow | null = null;
 
@@ -22,7 +23,12 @@ export function registerWindowIPC(win: BrowserWindow): void {
   }
 
   ipcMain.handle('window:minimize', () => {
-    mainWindow?.minimize();
+    const s = getSettings();
+    if (s.minimizeToTray && mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.hide();
+    } else {
+      mainWindow?.minimize();
+    }
   });
 
   ipcMain.handle('window:maximize', () => {

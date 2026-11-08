@@ -107,7 +107,7 @@ export const ListDetailPage = () => {
     setDropIndex(null)
   }, [])
 
-  if (isLoading) {
+  if (isLoading && !list) {
     return (
       <div className="animate-fade-in pb-20 pt-4 sm:pt-6 px-4 sm:px-8 w-full space-y-8">
         <div className="glass-card px-6 py-6 sm:px-8 sm:py-7">

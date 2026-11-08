@@ -409,15 +409,19 @@ const parseFilenameFallback = (fileName: string): Partial<ParsedAudioMetadata> =
 }
 
 /**
- * Parses an audio File or ArrayBuffer to extract tags, duration, and embedded album art.
+ * Parses an audio File or Blob to extract tags, duration, and embedded album art.
  */
-export const parseAudioFileMetadata = async (file: File): Promise<ParsedAudioMetadata> => {
-  const fallback = parseFilenameFallback(file.name)
+export const parseAudioFileMetadata = async (
+  file: File | Blob,
+  fallbackFileName?: string,
+): Promise<ParsedAudioMetadata> => {
+  const fileName = (file as File).name || fallbackFileName || 'Unknown Audio'
+  const fallback = parseFilenameFallback(fileName)
   let partial: Partial<ParsedAudioMetadata> = {}
 
   try {
-    // Read first 512KB for headers and ID3/Vorbis tags
-    const headerSlice = file.slice(0, Math.min(file.size, 512 * 1024))
+    // Read first 1MB for headers, ID3/Vorbis tags, and embedded album art
+    const headerSlice = file.slice(0, Math.min(file.size, 1024 * 1024))
     const buffer = await headerSlice.arrayBuffer()
 
     const id3 = parseID3v2(buffer)
@@ -444,7 +448,7 @@ export const parseAudioFileMetadata = async (file: File): Promise<ParsedAudioMet
       partial.durationMs = headerDuration
     }
   } catch (err) {
-    console.warn('[id3-parser] Failed to read header tags for', file.name, err)
+    console.warn('[id3-parser] Failed to read header tags for', fileName, err)
   }
 
   let durationMs = partial.durationMs && partial.durationMs > 0 ? partial.durationMs : 0
@@ -494,7 +498,7 @@ export const parseAudioFileMetadata = async (file: File): Promise<ParsedAudioMet
   }
 
   return {
-    title: partial.title || fallback.title || file.name,
+    title: partial.title || fallback.title || fileName,
     artist: partial.artist || fallback.artist || 'Unknown Artist',
     albumName: partial.albumName || 'Unknown Album',
     trackNumber: partial.trackNumber ?? fallback.trackNumber ?? null,

@@ -269,7 +269,9 @@ export const useRunningGame = () => {
       void initGames()
       const pollTimer = setInterval(() => {
         void initGames()
-      }, 2000)
+      }, 15000)
+      const onFocus = () => void initGames()
+      window.addEventListener('focus', onFocus)
 
       // Listen for game started
       const unsubStart = api.onGameStarted((data: RunningGameData) => {
@@ -324,6 +326,7 @@ export const useRunningGame = () => {
 
       return () => {
         clearInterval(pollTimer)
+        window.removeEventListener('focus', onFocus)
         unsubStart()
         unsubEnd()
         unsubFps?.()

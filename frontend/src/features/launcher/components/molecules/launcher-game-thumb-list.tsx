@@ -1,7 +1,5 @@
 import { useEffect, useRef } from 'react'
 import { Gamepad2 } from 'lucide-react'
-import { osName } from "@/lib/utils"
-import { PREVIEW_INCOMPATIBLE_AS_AVAILABLE } from "@/features/downloads/os-compatibility"
 import GameThumb from "@/features/launcher/components/atoms/launcher-game-thumb"
 import type { DisplayGame } from "@/features/launcher/types"
 
@@ -48,31 +46,19 @@ export const GameThumbList = ({ games, activeGameId, onSelect, onHover }: GameTh
               onClick={() => onSelect(game.id)}
               onMouseEnter={() => onHover?.(game)}
               className={
-                "w-[46px] h-[46px] rounded-xl overflow-hidden cursor-pointer border-2 transition-all duration-300 relative shrink-0 " +
+                "w-[46px] h-[46px] rounded-xl overflow-hidden cursor-pointer border transition-all duration-300 relative shrink-0 " +
                 (isActive
                   ? "border-primary shadow-[var(--dk-shadow-glass)] scale-105"
                   : isRunning
-                    ? "border-primary/70 shadow-[var(--dk-shadow-glass)] opacity-100 ring-1 ring-primary/40"
+                    ? "border-primary/60 shadow-[var(--dk-shadow-glass)] opacity-100 ring-1 ring-primary/30"
                     : "border-transparent opacity-50 hover:opacity-100 hover:border-[var(--dk-separator)]"
                 )
               }
-              title={`${game.title}${isRunning ? ' ● Now Playing' : game.isInstalled ? ' ● Installed' : ''}`}
+              title={`${game.title}${game.playtime ? ` ● ${game.playtime}` : ''}`}
             >
               <GameThumb icon={game.iconUrl || game.posterUrl || undefined} alt={game.title} />
-              {isRunning ? (
-                <div className="absolute bottom-0.5 right-0.5 w-2.5 h-2.5 rounded-full bg-primary border border-background shadow-sm animate-pulse" title="Now Playing" />
-              ) : game.isInstalled ? (
-                <div className="absolute bottom-0.5 right-0.5 w-2.5 h-2.5 rounded-full bg-primary border border-background shadow-sm" />
-              ) : null}
-              {!isRunning && !game.isInstalled && game.platform === 'server' && (
-                <div className="absolute bottom-0.5 right-0.5 w-2.5 h-2.5 rounded-full bg-primary border border-background shadow-sm" title="Available on node" />
-              )}
-              {!isRunning && !game.isInstalled && game.platform === 'iso' && (
-                (PREVIEW_INCOMPATIBLE_AS_AVAILABLE || osName === 'Windows') ? (
-                  <div className="absolute bottom-0.5 right-0.5 w-2.5 h-2.5 rounded-full bg-primary border border-background shadow-sm" title="Ready to Install" />
-                ) : (
-                  <div className="absolute bottom-0.5 right-0.5 w-2.5 h-2.5 rounded-full bg-destructive border border-background shadow-sm" title="Can't install this on macOS" />
-                )
+              {isRunning && (
+                <div className="absolute inset-0 border border-primary rounded-xl animate-pulse pointer-events-none" />
               )}
             </button>
           )
@@ -80,6 +66,6 @@ export const GameThumbList = ({ games, activeGameId, onSelect, onHover }: GameTh
       )}
     </div>
   )
-};
+}
 
-export default GameThumbList;
+export default GameThumbList

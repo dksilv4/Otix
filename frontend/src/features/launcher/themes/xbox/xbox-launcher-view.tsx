@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react"
+import { useState } from "react"
 import { useNavigate } from "@tanstack/react-router"
 import { motion } from "framer-motion"
 import {
@@ -12,85 +12,32 @@ import {
   Gamepad2,
 } from "lucide-react"
 import { MediaLogo } from "@/lib/media/media-logo"
-import { useLauncherVisibleGames } from "@/features/launcher/data/game-queries"
-import { usePopularGames } from "@/features/launcher/data/queries"
+import { useLauncherGames } from "@/features/launcher/hooks/use-launcher-games"
+import { useLaunchGame } from "@/features/launcher/hooks/use-launch-game"
+import { ConsoleDisambiguationModal } from "@/features/launcher/components/molecules/console-disambiguation-modal"
 import { useRunningGame } from "@/features/launcher/hooks/use-running-game"
 import { useAuth } from "@/lib/providers/auth"
-import { useToast } from "@ui/molecules/toast"
 import { LauncherGameSheet } from "../common/launcher-game-sheet"
-import { getDesktopAPI } from "@/lib/desktop/api"
 import type { LocalGame } from "@/features/launcher/types"
 
 export const XboxLauncherView = () => {
   const navigate = useNavigate()
   const { user, isAuthenticated } = useAuth()
-  const { data: localGames = [] } = useLauncherVisibleGames()
-  const { data: popularGames = [] } = usePopularGames()
-  const { toast } = useToast()
   const { runningGame, runningGames = [], cycleActiveGame } = useRunningGame()
+  const { launchGame, disambiguationModalProps, hasDisambiguationTarget } = useLaunchGame()
 
-  const [selectedGameId, setSelectedGameId] = useState<string | null>(null)
   const [detailGame, setDetailGame] = useState<LocalGame | null>(null)
-  const [searchQuery, setSearchQuery] = useState("")
 
-  const allGames = useMemo(() => {
-    const list: LocalGame[] = [...localGames]
-    popularGames.forEach((pop) => {
-      if (!list.some((g) => g.id === pop.id || g.title.toLowerCase() === pop.title.toLowerCase())) {
-        list.push({
-          id: pop.id,
-          title: pop.title,
-          platform: "steam",
-          posterUrl: pop.posterUrl,
-          otixPosterUrl: pop.posterUrl,
-          otixBackdropUrl: pop.backdropUrl,
-          otixLogoUrl: pop.logoUrl,
-          description: (pop as any).overview || '',
-          data: pop as any,
-        })
-      }
-    })
-    return list
-  }, [localGames, popularGames])
-
-  const filteredGames = useMemo(() => {
-    if (!searchQuery.trim()) return allGames
-    return allGames.filter((g) => g.title.toLowerCase().includes(searchQuery.toLowerCase()))
-  }, [allGames, searchQuery])
-
-  const activeGame = useMemo(() => {
-    if (!filteredGames.length) return null
-    if (selectedGameId) {
-      const found = filteredGames.find((g) => g.id === selectedGameId)
-      if (found) return found
-    }
-    return filteredGames[0]
-  }, [filteredGames, selectedGameId])
+  const {
+    filteredGames,
+    activeGame,
+    selectGame,
+    searchQuery,
+    setSearchQuery,
+  } = useLauncherGames()
 
   const handlePlayGame = async (game: LocalGame) => {
-    const api = getDesktopAPI()
-    if (!api?.launchGame) {
-      toast({
-        title: "Desktop Client Required",
-        description: "Install the Otix Desktop app to launch games natively.",
-        variant: "default",
-      })
-      return
-    }
-    try {
-      await api.launchGame(game)
-      toast({
-        title: "Starting Game",
-        description: `Launching ${game.title}...`,
-        variant: "success",
-      })
-    } catch {
-      toast({
-        title: "Launch Failed",
-        description: "Could not launch game executable.",
-        variant: "error",
-      })
-    }
+    await launchGame(game)
   }
 
   const spotlightBackdrop =
@@ -331,7 +278,7 @@ export const XboxLauncherView = () => {
               return (
                 <motion.div
                   key={game.id}
-                  onClick={() => setSelectedGameId(game.id)}
+                  onClick={() => selectGame(game.id)}
                   whileHover={{ y: -4, scale: 1.02 }}
                   className={`aspect-[3/4] rounded-xl overflow-hidden cursor-pointer relative border transition-all duration-200 group ${
                     isSelected
@@ -361,6 +308,10 @@ export const XboxLauncherView = () => {
           </div>
         </div>
       </div>
+
+      {hasDisambiguationTarget && (
+        <ConsoleDisambiguationModal {...disambiguationModalProps} />
+      )}
 
       {detailGame && (
         <LauncherGameSheet

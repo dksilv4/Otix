@@ -185,9 +185,7 @@ export const titleToGradient = (title: string): string => {
     hash = title.charCodeAt(i) + ((hash << 5) - hash)
   }
   const hue = Math.abs(hash) % 360
-  const gradient = `oklch(0.25 0.08 ${hue})`
-  const gradient2 = `oklch(0.18 0.06 ${(hue + 40) % 360})`
-  return `linear-gradient(135deg, ${gradient}, ${gradient2})`
+  return `linear-gradient(135deg, hsl(${hue} 20% 16%), hsl(${(hue + 40) % 360} 18% 10%))`
 }
 
 export const PLATFORM_BADGES: Record<

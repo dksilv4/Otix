@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react"
+import { useState } from "react"
 import { useNavigate } from "@tanstack/react-router"
 import {
   Play,
@@ -10,87 +10,31 @@ import {
   Layers,
 } from "lucide-react"
 import { MediaLogo } from "@/lib/media/media-logo"
-import { useLauncherVisibleGames } from "@/features/launcher/data/game-queries"
-import { usePopularGames } from "@/features/launcher/data/queries"
-import { useRunningGame } from "@/features/launcher/hooks/use-running-game"
+import { useLauncherGames } from "@/features/launcher/hooks/use-launcher-games"
+import { useLaunchGame } from "@/features/launcher/hooks/use-launch-game"
+import { ConsoleDisambiguationModal } from "@/features/launcher/components/molecules/console-disambiguation-modal"
 import { useAuth } from "@/lib/providers/auth"
-import { getDesktopAPI, hasDesktopAPI } from "@/lib/desktop/api"
-import { useToast } from "@ui/molecules/toast"
 import { LauncherGameSheet } from "../common/launcher-game-sheet"
 import type { LocalGame } from "@/features/launcher/types"
 
 export const ForgeLauncherView = () => {
   const navigate = useNavigate()
   const { user, isAuthenticated } = useAuth()
-  const _isDesktop = hasDesktopAPI()
-  const { data: localGames = [] } = useLauncherVisibleGames()
-  const { data: popularGames = [] } = usePopularGames()
-  const { runningGame: _runningGame } = useRunningGame()
-  const { toast } = useToast()
+  const { launchGame, disambiguationModalProps, hasDisambiguationTarget } = useLaunchGame()
 
-  const [selectedGameId, setSelectedGameId] = useState<string | null>(null)
   const [detailGame, setDetailGame] = useState<LocalGame | null>(null)
-  const [searchQuery, setSearchQuery] = useState("")
   const [activeNav, setActiveNav] = useState<"store" | "library" | "unreal">("library")
 
-  const allGames = useMemo(() => {
-    const list: LocalGame[] = [...localGames]
-    popularGames.forEach((pop) => {
-      if (!list.some((g) => g.id === pop.id || g.title.toLowerCase() === pop.title.toLowerCase())) {
-        list.push({
-          id: pop.id,
-          title: pop.title,
-          platform: "steam",
-          posterUrl: pop.posterUrl ?? undefined,
-          otixPosterUrl: pop.posterUrl,
-          otixBackdropUrl: pop.backdropUrl,
-          otixLogoUrl: pop.logoUrl,
-          description: (pop as any).overview || '',
-          data: pop as any,
-        })
-      }
-    })
-    return list
-  }, [localGames, popularGames])
-
-  const filteredGames = useMemo(() => {
-    if (!searchQuery.trim()) return allGames
-    return allGames.filter((g) => g.title.toLowerCase().includes(searchQuery.toLowerCase()))
-  }, [allGames, searchQuery])
-
-  const activeGame = useMemo(() => {
-    if (!filteredGames.length) return null
-    if (selectedGameId) {
-      const found = filteredGames.find((g) => g.id === selectedGameId)
-      if (found) return found
-    }
-    return filteredGames[0]
-  }, [filteredGames, selectedGameId])
+  const {
+    filteredGames,
+    activeGame,
+    selectGame,
+    searchQuery,
+    setSearchQuery,
+  } = useLauncherGames()
 
   const handlePlayGame = async (game: LocalGame) => {
-    const api = getDesktopAPI()
-    if (!api?.launchGame) {
-      toast({
-        title: "Desktop Client Required",
-        description: "Install the Otix Desktop client to launch games.",
-        variant: "default",
-      })
-      return
-    }
-    try {
-      await api.launchGame(game)
-      toast({
-        title: "Launching Game",
-        description: `Starting ${game.title}...`,
-        variant: "success",
-      })
-    } catch {
-      toast({
-        title: "Launch Failed",
-        description: "Could not launch game executable.",
-        variant: "error",
-      })
-    }
+    await launchGame(game)
   }
 
   return (
@@ -148,10 +92,10 @@ export const ForgeLauncherView = () => {
               Favorites
             </span>
             <div className="max-h-56 overflow-y-auto no-scrollbar space-y-0.5">
-              {allGames.slice(0, 8).map((game) => (
+              {filteredGames.slice(0, 8).map((game) => (
                 <div
                   key={game.id}
-                  onClick={() => setSelectedGameId(game.id)}
+                  onClick={() => selectGame(game.id)}
                   className={`px-3 py-1.5 rounded text-xs truncate cursor-pointer transition-colors ${
                     activeGame?.id === game.id
                       ? "text-cyan-400 font-bold bg-white/5"
@@ -286,7 +230,7 @@ export const ForgeLauncherView = () => {
               return (
                 <div
                   key={game.id}
-                  onClick={() => setSelectedGameId(game.id)}
+                  onClick={() => selectGame(game.id)}
                   className={`group rounded-xl overflow-hidden cursor-pointer relative border transition-all duration-200 ${
                     isSelected
                       ? "border-cyan-400 ring-2 ring-cyan-400/40 shadow-lg shadow-cyan-500/20"
@@ -320,6 +264,10 @@ export const ForgeLauncherView = () => {
           </div>
         </div>
       </main>
+
+      {hasDisambiguationTarget && (
+        <ConsoleDisambiguationModal {...disambiguationModalProps} />
+      )}
 
       {detailGame && (
         <LauncherGameSheet

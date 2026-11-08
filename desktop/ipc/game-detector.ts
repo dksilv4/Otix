@@ -19,8 +19,9 @@ import { httpPostJson, httpGetJson } from '../game/node-hardware';
 async function getRunningGamesMerged(gameDetector: GameDetector | null): Promise<RunningGame[]> {
   const local = gameDetector?.getRunningGames() ?? [];
   try {
+    const port = getSettings().embeddedNodePort || 8090;
     const nodeData = await httpGetJson<{ running?: boolean; games?: any[]; game?: any }>(
-      'http://127.0.0.1:8090/api/v1/games/running',
+      `http://127.0.0.1:${port}/api/v1/games/running`,
       500
     );
     if (nodeData && nodeData.running) {
@@ -174,7 +175,8 @@ export function registerGameDetectorIPC(
 
   ipcMain.handle('game:cycle-active', async () => {
     try {
-      await httpPostJson('http://127.0.0.1:8090/api/v1/games/active', { action: 'cycle' });
+      const port = getSettings().embeddedNodePort || 8090;
+      await httpPostJson(`http://127.0.0.1:${port}/api/v1/games/active`, { action: 'cycle' });
     } catch {
       // fallback if node daemon is unlinked
     }
@@ -183,7 +185,8 @@ export function registerGameDetectorIPC(
 
   ipcMain.handle('game:set-active', async (_, gameId: string) => {
     try {
-      await httpPostJson('http://127.0.0.1:8090/api/v1/games/active', { game_id: gameId });
+      const port = getSettings().embeddedNodePort || 8090;
+      await httpPostJson(`http://127.0.0.1:${port}/api/v1/games/active`, { game_id: gameId });
     } catch {
       // fallback if node daemon is unlinked
     }

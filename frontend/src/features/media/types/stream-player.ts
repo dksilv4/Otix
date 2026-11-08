@@ -2,7 +2,7 @@
  * Types for the in-app media server streaming pipeline (Jellyfin & Plex).
  */
 
-export type StreamSource = 'jellyfin' | 'plex'
+export type StreamSource = 'jellyfin' | 'plex' | 'local'
 
 export type SubtitleFormat = 'vtt' | 'srt' | 'pgs' | 'ass'
 

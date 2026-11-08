@@ -1,6 +1,7 @@
 import { app, Tray, Menu, BrowserWindow, nativeImage } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
+import { getSettings } from './desktop-settings';
 
 let tray: Tray | null = null;
 let mainWindowRef: BrowserWindow | null = null;
@@ -153,13 +154,27 @@ export function createTray(mainWindow: BrowserWindow): Tray {
   tray.setToolTip('Otix');
   tray.setContextMenu(buildContextMenu());
 
-  // Clicking the tray icon shows the window
+  // Clicking the tray icon restores or toggles the window
   tray.on('click', () => {
-    if (mainWindow.isVisible()) {
-      mainWindow.focus();
+    if (mainWindow.isDestroyed()) return;
+    if (mainWindow.isVisible() && !mainWindow.isMinimized()) {
+      if (mainWindow.isFocused()) {
+        const s = getSettings();
+        if (s.minimizeToTray) {
+          mainWindow.hide();
+        } else {
+          mainWindow.minimize();
+        }
+      } else {
+        mainWindow.focus();
+      }
     } else {
       showMainWindow();
     }
+  });
+
+  tray.on('double-click', () => {
+    showMainWindow();
   });
 
   return tray;

@@ -31,7 +31,7 @@ export const WishlistTabContent = () => {
 
   const scan = useSteamWishlistScan()
 
-  if (isLoading) return <SkeletonGrid />
+  if (isLoading && items.length === 0) return <SkeletonGrid />
   if (isError) {
     if (offline) {
       return (

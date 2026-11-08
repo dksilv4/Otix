@@ -182,7 +182,7 @@ export const ModernHeader = ({
           title="Scan game libraries"
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)] text-foreground/80 hover:text-foreground border border-[var(--dk-separator)] text-xs font-semibold transition-all cursor-pointer disabled:opacity-50"
         >
-          <RefreshCw size={13} className={isScanning ? "animate-spin text-amber-500 dark:text-amber-400" : ""} />
+          <RefreshCw size={13} className={isScanning ? "animate-spin text-primary" : ""} />
           <span className="hidden sm:inline">{isScanning ? "Scanning..." : "Scan"}</span>
         </button>
 

@@ -561,6 +561,11 @@ export interface DesktopAPI {
   getRecentAchievements?: (limit?: number) => Promise<any[]>
   syncGameAchievements?: (gameId: string) => Promise<void>
   onAchievementUnlocked?: (callback: (achievement: any) => void) => () => void
+  getFolderTracks?: (filePath: string) => Promise<{
+    folder: string
+    tracks: string[]
+    folderCoverPath: string | null
+  }>
 }
 
 // ── Accessor ─────────────────────────────────────────────────────────

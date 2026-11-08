@@ -73,7 +73,7 @@ export const CalendarPage = () => {
         </button>
       </div>
 
-      {isLoading && (
+      {isLoading && !events && (
         <div className="space-y-2">
           <div className="h-64 animate-pulse rounded-2xl bg-[var(--dk-surface-ghost)]" />
         </div>

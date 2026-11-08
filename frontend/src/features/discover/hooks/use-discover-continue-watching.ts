@@ -26,7 +26,7 @@ export const useDiscoverContinueWatching = (eager = false) => {
   })
 
   const items = (query.data as DiscoverContinueWatchingItem[] | undefined) ?? []
-  const showSkeleton = isPlexConnected && (!enabled || query.isLoading)
+  const showSkeleton = isPlexConnected && items.length === 0 && (!enabled || query.isLoading)
   const isEmpty = isPlexConnected && enabled && query.isSuccess && items.length === 0
 
   return {

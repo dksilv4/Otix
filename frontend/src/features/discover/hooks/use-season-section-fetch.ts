@@ -28,7 +28,7 @@ export function useSeasonSectionFetch(eager = false) {
     })
   }, [query.data])
 
-  const showSkeleton = !enabled || query.isLoading
+  const showSkeleton = items.length === 0 && (!enabled || query.isLoading)
   const isEmpty = enabled && query.isSuccess && items.length === 0
 
   return { ref, items, showSkeleton, isEmpty, isInView, ...query }

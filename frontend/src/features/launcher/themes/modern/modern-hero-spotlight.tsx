@@ -66,17 +66,17 @@ export const ModernHeroSpotlight = ({
       <div className="absolute inset-0 z-10 flex flex-col justify-between p-8 lg:p-12">
         {/* Top meta tags */}
         <div className="flex items-center gap-2.5 flex-wrap">
-          <span className="px-2.5 py-1 rounded-lg bg-white/10 backdrop-blur-md text-white text-[10px] font-black uppercase tracking-widest border border-white/15 shadow-sm">
+          <span className="px-2.5 py-1 rounded-lg bg-[var(--dk-surface-glass)] backdrop-blur-md text-foreground text-[10px] font-black uppercase tracking-widest border border-white/[0.06] shadow-sm">
             {PLATFORM_LABELS[raw.platform] || raw.platform}
           </span>
           {raw.lastPlayedAt && (
-            <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-500/15 text-emerald-300 text-[11px] font-bold border border-emerald-500/30">
+            <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-primary/15 text-primary text-[11px] font-bold border border-primary/20">
               <Clock size={12} />
               <span>Last played {new Date(raw.lastPlayedAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}</span>
             </span>
           )}
           {detail?.avgRating && detail.avgRating > 0 && (
-            <span className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-500/15 text-amber-400 text-[11px] font-bold border border-amber-500/30">
+            <span className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-primary/15 text-primary text-[11px] font-bold border border-primary/20">
               <Star size={12} fill="currentColor" />
               <span>{(detail.avgRating / 10).toFixed(1)}</span>
             </span>

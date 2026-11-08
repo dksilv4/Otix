@@ -1,7 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { MediaCard } from '../media-card'
-import * as streamHooks from '@/features/media/hooks/use-stream-availability'
 import * as activityHooks from '@/features/media/hooks/use-media-activity'
 
 vi.mock('@tanstack/react-router', () => ({
@@ -23,20 +22,9 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
   }
 })
 
-vi.mock('@/features/media/hooks/use-stream-availability', () => ({
-  useStreamAvailability: vi.fn(),
-}))
-
 vi.mock('@/features/media/hooks/use-media-activity', () => ({
   useMediaActivity: vi.fn(),
   useMediaActivityCatalog: () => ({ data: null }),
-}))
-
-vi.mock('@/features/media/hooks/use-quick-stream', () => ({
-  useQuickStream: () => ({
-    quickStream: vi.fn(),
-    isStartingStream: false,
-  }),
 }))
 
 vi.mock('@/lib/modals/modal-context', () => ({
@@ -46,14 +34,17 @@ vi.mock('@/lib/modals/modal-context', () => ({
   }),
 }))
 
-describe('MediaCard activity & stream availability badge', () => {
-  it('renders available badge when media is streamable', () => {
-    vi.mocked(activityHooks.useMediaActivity).mockReturnValue(undefined)
-    vi.mocked(streamHooks.useStreamAvailability).mockReturnValue({
-      isStreamable: true,
-      providerLabel: 'Plex',
-      tone: 'amber',
-      isLoading: false,
+describe('MediaCard node activity & rating badge', () => {
+  it('renders available node activity badge when media is present on a node', () => {
+    vi.mocked(activityHooks.useMediaActivity).mockReturnValue({
+      status: 'available',
+      mediaType: 'movie',
+      tmdbId: '123',
+      title: 'Inception',
+      nodeName: 'Primary Node',
+      isOwned: true,
+      canManage: true,
+      owner: { id: 1, username: 'dk' },
     })
 
     render(
@@ -64,7 +55,7 @@ describe('MediaCard activity & stream availability badge', () => {
       />,
     )
 
-    const badge = screen.getByRole('button', { name: /Available to stream/i })
+    const badge = screen.getByRole('button', { name: /Available to stream · Primary Node/i })
     expect(badge).toBeInTheDocument()
   })
 
@@ -79,12 +70,6 @@ describe('MediaCard activity & stream availability badge', () => {
       isOwned: true,
       canManage: true,
       owner: { id: 1, username: 'dk' },
-    })
-    vi.mocked(streamHooks.useStreamAvailability).mockReturnValue({
-      isStreamable: false,
-      providerLabel: undefined,
-      tone: 'default',
-      isLoading: false,
     })
 
     render(
@@ -111,12 +96,6 @@ describe('MediaCard activity & stream availability badge', () => {
       canManage: false,
       owner: { id: 2, username: 'bob', displayName: 'Bob' },
     })
-    vi.mocked(streamHooks.useStreamAvailability).mockReturnValue({
-      isStreamable: false,
-      providerLabel: undefined,
-      tone: 'default',
-      isLoading: false,
-    })
 
     render(
       <MediaCard
@@ -131,14 +110,8 @@ describe('MediaCard activity & stream availability badge', () => {
     expect(badge).toHaveClass('text-amber-400')
   })
 
-  it('does not render badge when media is not streamable and has no activity', () => {
+  it('does not render activity badge when media has no active node status', () => {
     vi.mocked(activityHooks.useMediaActivity).mockReturnValue(undefined)
-    vi.mocked(streamHooks.useStreamAvailability).mockReturnValue({
-      isStreamable: false,
-      providerLabel: undefined,
-      tone: 'default',
-      isLoading: false,
-    })
 
     render(
       <MediaCard
@@ -149,15 +122,19 @@ describe('MediaCard activity & stream availability badge', () => {
     )
 
     expect(screen.queryByRole('button', { name: /Available to stream/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Downloading/i })).not.toBeInTheDocument()
   })
 
-  it('suppresses badge when hideStreamBadge is true even if streamable or active', () => {
-    vi.mocked(activityHooks.useMediaActivity).mockReturnValue(undefined)
-    vi.mocked(streamHooks.useStreamAvailability).mockReturnValue({
-      isStreamable: true,
-      providerLabel: 'Plex',
-      tone: 'amber',
-      isLoading: false,
+  it('suppresses badge when hideStreamBadge is true even if node activity exists', () => {
+    vi.mocked(activityHooks.useMediaActivity).mockReturnValue({
+      status: 'available',
+      mediaType: 'movie',
+      tmdbId: '789',
+      title: 'Dunkirk',
+      nodeName: 'Primary Node',
+      isOwned: true,
+      canManage: true,
+      owner: { id: 1, username: 'dk' },
     })
 
     render(
@@ -170,6 +147,28 @@ describe('MediaCard activity & stream availability badge', () => {
     )
 
     expect(screen.queryByRole('button', { name: /Available to stream/i })).not.toBeInTheDocument()
+  })
+
+  it('renders rating badge continuously (all the time) without hover-only opacity classes', () => {
+    vi.mocked(activityHooks.useMediaActivity).mockReturnValue(undefined)
+
+    const { container } = render(
+      <MediaCard
+        id="101"
+        mediaType="movie"
+        title="The Matrix"
+        avgRating={8.7}
+      />,
+    )
+
+    const ratingElement = screen.getByText('8.7')
+    expect(ratingElement).toBeInTheDocument()
+
+    // Container should NOT have opacity-0 or group-hover:opacity-100
+    const ratingWrapper = container.querySelector('.top-2\\.5.right-2\\.5')
+    expect(ratingWrapper).toBeInTheDocument()
+    expect(ratingWrapper).not.toHaveClass('opacity-0')
+    expect(ratingWrapper).not.toHaveClass('group-hover:opacity-100')
   })
 
   it('renders rating to the left of the activity tag without collision when both are present', () => {
@@ -204,30 +203,5 @@ describe('MediaCard activity & stream availability badge', () => {
     const ratingWrapper = container.querySelector('.right-11')
     expect(ratingWrapper).toBeInTheDocument()
     expect(ratingWrapper).toHaveClass('top-3')
-  })
-
-  it('renders rating in top-right corner when activity tag is absent', () => {
-    vi.mocked(activityHooks.useMediaActivity).mockReturnValue(undefined)
-    vi.mocked(streamHooks.useStreamAvailability).mockReturnValue({
-      isStreamable: false,
-      providerLabel: undefined,
-      tone: 'default',
-      isLoading: false,
-    })
-
-    const { container } = render(
-      <MediaCard
-        id="102"
-        mediaType="movie"
-        title="Memento"
-        avgRating={8.5}
-      />,
-    )
-
-    expect(screen.queryByRole('button', { name: /Available to stream/i })).not.toBeInTheDocument()
-    expect(screen.getByText('8.5')).toBeInTheDocument()
-
-    const ratingWrapper = container.querySelector('.top-2\\.5.right-2\\.5')
-    expect(ratingWrapper).toBeInTheDocument()
   })
 })

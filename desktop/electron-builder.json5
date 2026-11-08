@@ -45,6 +45,20 @@
       "schemes": ["otix"]
     }
   ],
+  "fileAssociations": [
+    {
+      "ext": ["mp4", "mkv", "avi", "mov", "wmv", "webm", "flv", "m4v", "3gp", "ts"],
+      "name": "Otix Video",
+      "description": "Otix Video File",
+      "role": "Viewer"
+    },
+    {
+      "ext": ["mp3", "flac", "wav", "ogg", "m4a", "aac", "opus", "wma"],
+      "name": "Otix Audio",
+      "description": "Otix Audio File",
+      "role": "Viewer"
+    }
+  ],
   "win": {
     "target": [
       {

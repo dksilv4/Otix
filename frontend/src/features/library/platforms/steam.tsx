@@ -156,7 +156,7 @@ const SteamTabContent = () => {
     }
   }, [isInView, hasNextPage, isFetchingNextPage, isLoading, fetchNextPage])
 
-  if (isLoading) return <SkeletonGrid />
+  if (isLoading && items.length === 0) return <SkeletonGrid />
   if (isError) {
     return (
       <div className="dk-library-steam__center-wrap">

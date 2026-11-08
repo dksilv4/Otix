@@ -18,13 +18,13 @@ import {
   ArrowRight,
 } from "lucide-react"
 import { MediaLogo } from "@/lib/media/media-logo"
-import { useLauncherVisibleGames } from "@/features/launcher/data/game-queries"
+import { useLauncherGames } from "@/features/launcher/hooks/use-launcher-games"
+import { useLaunchGame } from "@/features/launcher/hooks/use-launch-game"
+import { ConsoleDisambiguationModal } from "@/features/launcher/components/molecules/console-disambiguation-modal"
 import { useRunningGame } from "@/features/launcher/hooks/use-running-game"
 import { useGameAchievements } from "@/features/launcher/hooks/use-game-achievements"
 import { getDesktopAPI } from "@/lib/desktop/api"
-import { useToast } from "@ui/molecules/toast"
 import { LauncherGameSheet } from "../common/launcher-game-sheet"
-import { isApplicationGame } from "@/features/launcher/utils"
 import { PLATFORM_LABELS } from "@/constants/games"
 import { useAuth } from "@/lib/providers/auth"
 import type { LocalGame } from "@/features/launcher/types"
@@ -32,31 +32,21 @@ import type { LocalGame } from "@/features/launcher/types"
 export const SteamLauncherView = () => {
   const navigate = useNavigate()
   const { user, isAuthenticated } = useAuth()
-  const { data: localGames = [] } = useLauncherVisibleGames()
   const { runningGame, runningGames = [], cycleActiveGame } = useRunningGame()
-  const { toast } = useToast()
+  const { launchGame, disambiguationModalProps, hasDisambiguationTarget } = useLaunchGame()
 
-  const [searchQuery, setSearchQuery] = useState("")
-  const [selectedGameId, setSelectedGameId] = useState<string | null>(null)
   const [activeSteamTab, setActiveSteamTab] = useState<"library" | "store" | "community">("library")
   const [detailGame, setDetailGame] = useState<LocalGame | null>(null)
   const [showInstalledOnly, setShowInstalledOnly] = useState(false)
 
-  const games = useMemo(() => {
-    return localGames.filter((g) => !isApplicationGame(g))
-  }, [localGames])
-
-  const filteredGames = useMemo(() => {
-    let list = [...games]
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase()
-      list = list.filter((g) => g.title.toLowerCase().includes(q))
-    }
-    if (showInstalledOnly) {
-      list = list.filter((g) => !!g.exePath && g.platform !== "iso")
-    }
-    return list
-  }, [games, searchQuery, showInstalledOnly])
+  const {
+    games,
+    filteredGames,
+    activeGame,
+    selectGame,
+    searchQuery,
+    setSearchQuery,
+  } = useLauncherGames()
 
   const installedGames = useMemo(
     () => filteredGames.filter((g) => !!g.exePath && g.platform !== "iso"),
@@ -67,32 +57,10 @@ export const SteamLauncherView = () => {
     [filteredGames]
   )
 
-  const activeGame = useMemo(() => {
-    if (selectedGameId) {
-      const found = games.find((g) => g.id === selectedGameId)
-      if (found) return found
-    }
-    return installedGames[0] || games[0] || null
-  }, [selectedGameId, games, installedGames])
-
   const { stats: activeGameStats } = useGameAchievements(activeGame?.id)
 
   const handleLaunch = async (g: LocalGame) => {
-    const api = getDesktopAPI()
-    if (!api?.launchGame) {
-      toast({
-        title: "Desktop App Required",
-        description: "Otix desktop client is needed to boot games natively.",
-        variant: "default",
-      })
-      return
-    }
-    try {
-      await api.launchGame(g)
-      toast({ title: "Otix Launcher", description: `Preparing to launch ${g.title}...`, variant: "success" })
-    } catch (err) {
-      toast({ title: "Error", description: (err as Error)?.message || "Failed to launch", variant: "error" })
-    }
+    await launchGame(g)
   }
 
   const handleOpenFolder = async (g: LocalGame) => {
@@ -252,7 +220,7 @@ export const SteamLauncherView = () => {
                   return (
                     <div
                       key={game.id}
-                      onClick={() => setSelectedGameId(game.id)}
+                      onClick={() => selectGame(game.id)}
                       className={`px-4 py-1.5 flex items-center gap-2.5 cursor-pointer text-xs transition-colors ${
                         isSelected
                           ? "bg-[#2a475e] text-white font-bold"
@@ -288,7 +256,7 @@ export const SteamLauncherView = () => {
                     return (
                       <div
                         key={game.id}
-                        onClick={() => setSelectedGameId(game.id)}
+                        onClick={() => selectGame(game.id)}
                         className={`px-4 py-1.5 flex items-center gap-2.5 cursor-pointer text-xs transition-colors ${
                           isSelected
                             ? "bg-[#2a475e] text-white font-bold"
@@ -497,6 +465,8 @@ export const SteamLauncherView = () => {
         game={detailGame}
         onClose={() => setDetailGame(null)}
       />
+
+      {hasDisambiguationTarget && <ConsoleDisambiguationModal {...disambiguationModalProps} />}
     </div>
   )
 };

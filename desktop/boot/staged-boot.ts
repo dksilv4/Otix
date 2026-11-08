@@ -11,7 +11,7 @@ import { registerGameServersIPC } from '../ipc/game-servers';
 import { registerNetworkIPC } from '../ipc/network';
 import { registerInstallerIPC } from '../ipc/installer';
 import { registerSystemIPC, openStandaloneWindow } from '../ipc/system';
-import { setupSessionHeaders, registerAppProtocol, registerMediaCacheProtocol } from './protocols';
+import { setupSessionHeaders, registerAppProtocol, registerMediaCacheProtocol, registerLocalMediaProtocol } from './protocols';
 import { closeDb } from '../db';
 import type { BootContext } from './types';
 
@@ -278,6 +278,7 @@ export class StagedBootManager {
     setupSessionHeaders(sess);
     registerAppProtocol(sess, process.resourcesPath || '', appDistDir);
     registerMediaCacheProtocol(sess, app.getPath('userData'));
+    registerLocalMediaProtocol(sess);
   }
 
   /**
@@ -312,6 +313,12 @@ export class StagedBootManager {
     console.log('[boot:stage3] Creating main application window...');
     const saved = loadWindowState();
     const bounds = saved ? ensureVisible(saved) : DEFAULT_SIZE;
+    const settings = getSettings();
+    const startHidden = Boolean(
+      settings.startMinimized ||
+      process.argv.includes('--hidden') ||
+      process.argv.includes('--start-minimized')
+    );
     const isMac = process.platform === 'darwin';
 
     const p1 = process.resourcesPath ? path.join(process.resourcesPath, 'assets', 'icon.png') : '';
@@ -324,7 +331,7 @@ export class StagedBootManager {
       height: bounds.height,
       minWidth: 800,
       minHeight: 600,
-      show: true,
+      show: !startHidden,
       paintWhenInitiallyHidden: true,
       icon: iconPath,
       title: 'Otix',
@@ -365,6 +372,13 @@ export class StagedBootManager {
     win.on('unmaximize', () => {
       saveWindowState(win);
       notifyMaximizedChange(false);
+    });
+
+    win.on('minimize', () => {
+      const s = getSettings();
+      if (s.minimizeToTray && this.ctx.tray) {
+        win.hide();
+      }
     });
 
     win.on('close', (event) => {
@@ -411,8 +425,10 @@ export class StagedBootManager {
       void win.loadURL('app://otix/');
     }
 
-    win.show();
-    win.focus();
+    if (!startHidden) {
+      win.show();
+      win.focus();
+    }
 
     win.on('closed', () => {
       console.log('[main] Window closed');
@@ -473,7 +489,12 @@ export class StagedBootManager {
     registerDesktopSettingsIPC(win, this.ctx.tray, this.ctx.nodeDaemon);
     registerNotificationIPC(win);
 
-    if (settings.startMinimized && this.ctx.tray) {
+    const startHiddenEarly = Boolean(
+      settings.startMinimized ||
+      process.argv.includes('--hidden') ||
+      process.argv.includes('--start-minimized')
+    );
+    if (startHiddenEarly && win && !win.isDestroyed()) {
       win.hide();
     }
   }

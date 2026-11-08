@@ -174,11 +174,20 @@ export function applyDesktopSettings(
   winRef = mainWindow;
   trayRef = tray;
 
-  // Launch on startup
-  app.setLoginItemSettings({
-    openAtLogin: settings.launchOnStartup,
-  });
+  // Launch on startup with hidden/minimized flags if configured
+  try {
+    const startupArgs = settings.startMinimized ? ['--hidden', '--start-minimized'] : [];
+    app.setLoginItemSettings({
+      openAtLogin: settings.launchOnStartup,
+      openAsHidden: settings.startMinimized,
+      args: startupArgs,
+    });
+  } catch (err) {
+    console.error('[desktop-settings] Failed to apply login item settings:', err);
+  }
 
   // Always on top
-  mainWindow.setAlwaysOnTop(settings.alwaysOnTop);
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.setAlwaysOnTop(settings.alwaysOnTop);
+  }
 }

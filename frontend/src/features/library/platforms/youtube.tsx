@@ -147,7 +147,7 @@ export const YoutubeTabContent = () => {
     [query.data],
   )
 
-  if (query.isLoading) return <SkeletonGrid />
+  if (query.isLoading && items.length === 0) return <SkeletonGrid />
 
   if (query.isError) {
     return (

@@ -49,7 +49,7 @@ export const FreeGamesSection = () => {
   const { isClaimed, toggleClaimed, hideClaimed, setHideClaimed } = useClaimedFreeGames()
 
   // ── Loading ──
-  if (isLoading) {
+  if (isLoading && !data) {
     return (
       <motion.section
         id="discover-free-games"

@@ -233,7 +233,17 @@ export async function getHostNodeAndHardware(forceRefresh = false): Promise<Host
   let nodeInfo: SessionNodeInfo | null = null;
   let hwInfo: SessionHardwareInfo = getLocalHardwareFallback();
 
-  // 1. Try local node HTTP probe (default port 8090)
+  const port = (() => {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const { getSettings } = require('../desktop-settings');
+      return getSettings()?.embeddedNodePort || 8090;
+    } catch {
+      return 8090;
+    }
+  })();
+
+  // 1. Try local node HTTP probe (configured or default port)
   const nodeStatus = await httpGetJson<{
     status?: string;
     node_name?: string;
@@ -241,19 +251,19 @@ export async function getHostNodeAndHardware(forceRefresh = false): Promise<Host
     name?: string;
     claimed?: boolean;
     claimed_by?: string;
-  }>('http://127.0.0.1:8090/api/v1/status', 600);
+  }>(`http://127.0.0.1:${port}/api/v1/status`, 600);
 
   if (nodeStatus && (nodeStatus.status === 'online' || nodeStatus.node_name || nodeStatus.server_name || nodeStatus.name)) {
     nodeInfo = {
       name: nodeStatus.node_name || nodeStatus.name || nodeStatus.server_name || os.hostname(),
-      url: 'http://127.0.0.1:8090',
+      url: `http://127.0.0.1:${port}`,
       installed: true,
       running: true,
     };
 
     // Query node hardware endpoint
-    const nodeHw = await httpGetJson<any>('http://127.0.0.1:8090/api/v1/desktop/hardware', 1000)
-      || await httpGetJson<any>('http://127.0.0.1:8090/api/v1/hardware', 1000);
+    const nodeHw = await httpGetJson<any>(`http://127.0.0.1:${port}/api/v1/desktop/hardware`, 1000)
+      || await httpGetJson<any>(`http://127.0.0.1:${port}/api/v1/hardware`, 1000);
 
     if (nodeHw) {
       const gpus: any[] = Array.isArray(nodeHw.gpus) ? nodeHw.gpus : [];

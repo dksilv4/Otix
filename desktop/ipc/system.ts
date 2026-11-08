@@ -1,7 +1,7 @@
 import { ipcMain, shell, dialog, BrowserWindow, app } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
-import { execSync } from 'child_process';
+import { exec, execSync } from 'child_process';
 import type { FpsCaptureService } from '../game/fps-capture';
 
 function enableHistoryNavigation(win: BrowserWindow): void {
@@ -83,6 +83,41 @@ export function registerSystemIPC(getFpsService?: () => FpsCaptureService | null
     return shell.openPath(filePath);
   });
 
+  ipcMain.handle('media:get-folder-tracks', async (_event, filePath: string) => {
+    try {
+      const normalizedPath = path.normalize(filePath);
+      const dir = path.dirname(normalizedPath);
+      const entries = await fs.promises.readdir(dir, { withFileTypes: true });
+      const audioExts = new Set(['.mp3', '.flac', '.wav', '.ogg', '.m4a', '.aac', '.opus', '.wma']);
+      const files = entries
+        .filter((e) => e.isFile() && audioExts.has(path.extname(e.name).toLowerCase()))
+        .map((e) => path.join(dir, e.name))
+        .sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
+
+      // Look for folder cover artwork
+      const imageExts = new Set(['.jpg', '.jpeg', '.png', '.webp']);
+      const coverNames = new Set(['cover', 'folder', 'front', 'album', 'artwork']);
+      let folderCoverPath: string | null = null;
+      for (const e of entries) {
+        if (e.isFile() && imageExts.has(path.extname(e.name).toLowerCase())) {
+          const baseName = path.parse(e.name).name.toLowerCase();
+          if (coverNames.has(baseName)) {
+            folderCoverPath = path.join(dir, e.name);
+            break;
+          }
+        }
+      }
+
+      return {
+        folder: dir,
+        tracks: files.length > 0 ? files : [normalizedPath],
+        folderCoverPath,
+      };
+    } catch {
+      return { folder: path.dirname(filePath), tracks: [filePath], folderCoverPath: null };
+    }
+  });
+
   ipcMain.handle('dialog:select-directory', async (event, defaultPath?: string) => {
     const parentWin = (event?.sender ? BrowserWindow.fromWebContents(event.sender) : null) || BrowserWindow.getFocusedWindow();
     const opts = {
@@ -95,35 +130,56 @@ export function registerSystemIPC(getFpsService?: () => FpsCaptureService | null
     return result.filePaths[0];
   });
 
-  ipcMain.handle('get-disk-space', () => {
+  let diskSpaceCache: { timestamp: number; data: any[] } | null = null;
+
+  ipcMain.handle('get-disk-space', async () => {
+    const now = Date.now();
+    if (diskSpaceCache && now - diskSpaceCache.timestamp < 30_000) {
+      return diskSpaceCache.data;
+    }
     try {
       if (process.platform === 'win32') {
-        const out = execSync(
-          'powershell -NoProfile -Command "Get-PSDrive -PSProvider FileSystem | Select-Object Name, Used, Free | ConvertTo-Json"',
-          { encoding: 'utf-8', timeout: 5000 }
-        );
+        const out = await new Promise<string>((resolve, reject) => {
+          exec(
+            'powershell -NoProfile -Command "Get-PSDrive -PSProvider FileSystem | Select-Object Name, Used, Free | ConvertTo-Json"',
+            { encoding: 'utf-8', timeout: 5000 },
+            (err: any, stdout: string) => {
+              if (err) reject(err);
+              else resolve(stdout);
+            }
+          );
+        });
         const drives = JSON.parse(out.trim());
         const arr = Array.isArray(drives) ? drives : [drives];
-        return arr.map((d: any) => ({
+        const res = arr.map((d: any) => ({
           drive: d.Name + ':/',
           free: d.Free,
           used: d.Used,
         }));
+        diskSpaceCache = { timestamp: now, data: res };
+        return res;
       } else {
-        const out = execSync('df -k /', { encoding: 'utf-8', timeout: 5000 });
+        const out = await new Promise<string>((resolve, reject) => {
+          exec('df -k /', { encoding: 'utf-8', timeout: 5000 }, (err: any, stdout: string) => {
+            if (err) reject(err);
+            else resolve(stdout);
+          });
+        });
         const lines = out.trim().split('\n');
         if (lines.length < 2) return [];
         const parts = lines[1].split(/\s+/);
         if (parts.length < 4) return [];
-        return [{
+        const res = [{
           drive: parts[0],
           total: parseInt(parts[1], 10) * 1024,
           used: parseInt(parts[2], 10) * 1024,
           free: parseInt(parts[3], 10) * 1024,
         }];
+        diskSpaceCache = { timestamp: now, data: res };
+        return res;
       }
     } catch {
-      return [];
+      return diskSpaceCache?.data ?? [];
     }
   });
 

@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { X, Calendar, Star, HardDrive, Layers, Image as ImageIcon, BookOpen, Sparkles, Server, Trophy, Disc } from "lucide-react"
 import { getDesktopAPI } from "@/lib/desktop/api"
@@ -21,6 +21,16 @@ export const LauncherGameSheet = ({ game, onClose }: LauncherGameSheetProps) => 
   const { openModal } = useModal()
   const [selectedScreenshot, setSelectedScreenshot] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<'overview' | 'achievements' | 'updates' | 'servers'>('overview')
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        onClose()
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  }, [onClose])
 
   const raw = game ? (("rawGame" in game && game.rawGame ? game.rawGame : game) as LocalGame) : null
   const mediaId = raw?.otixMediaId || raw?.data?.mediaId || raw?.data?.id || ''
@@ -49,7 +59,7 @@ export const LauncherGameSheet = ({ game, onClose }: LauncherGameSheetProps) => 
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           onClick={onClose}
-          className="absolute inset-0 bg-black/75 backdrop-blur-md cursor-pointer"
+          className="absolute inset-0 bg-background/80 backdrop-blur-xl cursor-pointer"
         />
 
         {/* Slide-over panel */}
@@ -58,7 +68,7 @@ export const LauncherGameSheet = ({ game, onClose }: LauncherGameSheetProps) => 
           animate={{ x: 0 }}
           exit={{ x: "100%" }}
           transition={{ type: "spring", damping: 30, stiffness: 300 }}
-          className="relative z-10 w-full max-w-2xl h-full bg-[var(--dk-surface-overlay)] border-l border-[var(--dk-separator)] shadow-2xl flex flex-col overflow-hidden"
+          className="relative z-10 w-full max-w-2xl h-full bg-[var(--dk-surface-overlay)] border-l border-white/[0.06] shadow-2xl flex flex-col overflow-hidden"
         >
           {/* Header image banner */}
           <div className="relative h-64 w-full shrink-0 overflow-hidden bg-[var(--dk-surface-base)]">
@@ -74,7 +84,8 @@ export const LauncherGameSheet = ({ game, onClose }: LauncherGameSheetProps) => 
             {/* Close button */}
             <button
               onClick={onClose}
-              className="absolute top-4 right-4 z-20 w-9 h-9 rounded-full bg-black/60 hover:bg-black/90 text-white/80 hover:text-white flex items-center justify-center border border-white/15 transition-all cursor-pointer"
+              aria-label="Close sheet"
+              className="absolute top-4 right-4 z-20 w-9 h-9 rounded-full bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-glass-hover)] text-foreground flex items-center justify-center border border-white/[0.06] transition-all cursor-pointer backdrop-blur-md shadow-sm active:scale-95"
             >
               <X size={18} />
             </button>

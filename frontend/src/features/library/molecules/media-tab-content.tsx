@@ -127,7 +127,7 @@ export const MediaTabContent = ({ tab }: { tab: LibraryTab }) => {
     return <OfflineWatchlistTab items={offlineItems} />
   }
 
-  if (isLoading) return <SkeletonGrid />
+  if (isLoading && items.length === 0) return <SkeletonGrid />
   if (isError) {
     if (offline) {
       return (

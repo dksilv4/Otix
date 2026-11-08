@@ -12,7 +12,7 @@ export const CalendarTimelinePage = () => {
         <title>Timeline (Beta) — Otix</title>
       </Helmet>
 
-      {isLoading && (
+      {isLoading && !events && (
         <div className="min-h-0 flex-1 animate-pulse bg-[var(--dk-surface-ghost)]" />
       )}
 

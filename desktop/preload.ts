@@ -16,6 +16,23 @@ function getInitialApiBaseUrl(): string {
 
 let _apiBaseUrl = getInitialApiBaseUrl();
 
+let _pendingDeepLinkData: { action: string; params: Record<string, string> } | null = null;
+const _deepLinkListeners = new Set<(data: { action: string; params: Record<string, string> }) => void>();
+
+ipcRenderer.on('deep-link', (_event: any, data: { action: string; params: Record<string, string> }) => {
+  if (_deepLinkListeners.size === 0) {
+    _pendingDeepLinkData = data;
+  } else {
+    for (const listener of _deepLinkListeners) {
+      try {
+        listener(data);
+      } catch (err) {
+        console.error('[preload] deep-link listener error:', err);
+      }
+    }
+  }
+});
+
 contextBridge.exposeInMainWorld('desktopAPI', {
   /** Wait for the main process to finish registering all IPC handlers. */
   onMainIpcReady: () => _ipcReady,
@@ -66,12 +83,19 @@ contextBridge.exposeInMainWorld('desktopAPI', {
   openExternal: (url: string) => ipcRenderer.invoke('open-external', url),
   openSessionWindow: (url: string) => ipcRenderer.invoke('shell:open-session-window', url),
   selectDirectory: () => ipcRenderer.invoke('dialog:select-directory'),
+  getFolderTracks: (filePath: string) => ipcRenderer.invoke('media:get-folder-tracks', filePath),
 
-  // ── Deep link (OAuth return) ──
+  // ── Deep link (OAuth return / local media launch) ──
   onDeepLink: (callback: (data: { action: string; params: Record<string, string> }) => void) => {
-    const handler = (_event: any, data: { action: string; params: Record<string, string> }) => callback(data);
-    ipcRenderer.on('deep-link', handler);
-    return () => ipcRenderer.removeListener('deep-link', handler);
+    _deepLinkListeners.add(callback);
+    if (_pendingDeepLinkData) {
+      const initialData = _pendingDeepLinkData;
+      _pendingDeepLinkData = null;
+      queueMicrotask(() => callback(initialData));
+    }
+    return () => {
+      _deepLinkListeners.delete(callback);
+    };
   },
 
   // ── Notifications ──

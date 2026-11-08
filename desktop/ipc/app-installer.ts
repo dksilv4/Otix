@@ -377,7 +377,60 @@ export function registerAppInstallerIPC(installerWindow: BrowserWindow): void {
             `reg add "${hive}\\Software\\Classes\\otix" /ve /d "URL:Otix Protocol" /f`,
             `reg add "${hive}\\Software\\Classes\\otix" /v "URL Protocol" /d "" /f`,
             `reg add "${hive}\\Software\\Classes\\otix\\shell\\open\\command" /ve /d "\\"${targetExe}\\" \\"%1\\"" /f`,
+            // Windows Default Programs & Media Player Registration
+            `reg add "${hive}\\Software\\RegisteredApplications" /v "Otix" /d "Software\\Clients\\Media\\Otix\\Capabilities" /f`,
+            `reg add "${hive}\\Software\\Clients\\Media\\Otix" /ve /d "Otix" /f`,
+            `reg add "${hive}\\Software\\Clients\\Media\\Otix" /v "LocalizedString" /d "Otix" /f`,
+            `reg add "${hive}\\Software\\Clients\\Media\\Otix\\InstallInfo" /v "IconsVisible" /t REG_DWORD /d 1 /f`,
+            `reg add "${hive}\\Software\\Clients\\Media\\Otix\\DefaultIcon" /ve /d "\\"${finalIcon}\\",0" /f`,
+            `reg add "${hive}\\Software\\Clients\\Media\\Otix\\shell\\open\\command" /ve /d "\\"${targetExe}\\"" /f`,
+            `reg add "${hive}\\Software\\Clients\\Media\\Otix\\Capabilities" /v "ApplicationName" /d "Otix" /f`,
+            `reg add "${hive}\\Software\\Clients\\Media\\Otix\\Capabilities" /v "ApplicationDescription" /d "Otix Media Player and Library" /f`,
+            `reg add "${hive}\\Software\\Otix\\Capabilities" /v "ApplicationName" /d "Otix" /f`,
+            `reg add "${hive}\\Software\\Otix\\Capabilities" /v "ApplicationDescription" /d "Otix Media Player and Library" /f`,
+            // ProgID Otix.AssocFile
+            `reg add "${hive}\\Software\\Classes\\Otix.AssocFile" /ve /d "Otix Media File" /f`,
+            `reg add "${hive}\\Software\\Classes\\Otix.AssocFile" /v "FriendlyTypeName" /d "Otix Media File" /f`,
+            `reg add "${hive}\\Software\\Classes\\Otix.AssocFile\\DefaultIcon" /ve /d "\\"${finalIcon}\\",0" /f`,
+            `reg add "${hive}\\Software\\Classes\\Otix.AssocFile\\shell\\open\\command" /ve /d "\\"${targetExe}\\" \\"%1\\"" /f`,
+            // Applications\Otix.exe
+            `reg add "${hive}\\Software\\Classes\\Applications\\Otix.exe" /v "FriendlyAppName" /d "Otix" /f`,
+            `reg add "${hive}\\Software\\Classes\\Applications\\Otix.exe\\DefaultIcon" /ve /d "\\"${finalIcon}\\",0" /f`,
+            `reg add "${hive}\\Software\\Classes\\Applications\\Otix.exe\\shell\\open\\command" /ve /d "\\"${targetExe}\\" \\"%1\\"" /f`,
           ];
+
+          const mediaExtensions = [
+            '.mp4', '.mkv', '.avi', '.mov', '.wmv', '.webm', '.flv', '.m4v', '.3gp', '.ts',
+            '.mp3', '.flac', '.wav', '.ogg', '.m4a', '.aac', '.opus', '.wma',
+          ];
+          for (const ext of mediaExtensions) {
+            regCommands.push(
+              `reg add "${hive}\\Software\\Clients\\Media\\Otix\\Capabilities\\FileAssociations" /v "${ext}" /d "Otix.AssocFile" /f`,
+              `reg add "${hive}\\Software\\Otix\\Capabilities\\FileAssociations" /v "${ext}" /d "Otix.AssocFile" /f`,
+              `reg add "${hive}\\Software\\Classes\\Applications\\Otix.exe\\SupportedTypes" /v "${ext}" /d "" /f`,
+              `reg add "${hive}\\Software\\Classes\\${ext}\\OpenWithProgids" /v "Otix.AssocFile" /d "" /f`,
+            );
+          }
+
+          const mimeAssociations: Record<string, string> = {
+            'video/mp4': 'Otix.AssocFile',
+            'video/x-matroska': 'Otix.AssocFile',
+            'video/webm': 'Otix.AssocFile',
+            'video/quicktime': 'Otix.AssocFile',
+            'video/x-msvideo': 'Otix.AssocFile',
+            'audio/mpeg': 'Otix.AssocFile',
+            'audio/flac': 'Otix.AssocFile',
+            'audio/wav': 'Otix.AssocFile',
+            'audio/ogg': 'Otix.AssocFile',
+            'audio/aac': 'Otix.AssocFile',
+            'audio/mp4': 'Otix.AssocFile',
+          };
+          for (const [mime, progId] of Object.entries(mimeAssociations)) {
+            regCommands.push(
+              `reg add "${hive}\\Software\\Clients\\Media\\Otix\\Capabilities\\MIMEAssociations" /v "${mime}" /d "${progId}" /f`,
+              `reg add "${hive}\\Software\\Otix\\Capabilities\\MIMEAssociations" /v "${mime}" /d "${progId}" /f`,
+            );
+          }
 
           if (startOnBoot) {
             regCommands.push(
@@ -512,6 +565,16 @@ export function registerAppInstallerIPC(installerWindow: BrowserWindow): void {
           'reg delete "HKLM\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\Otix" /f',
           'reg delete "HKCU\\Software\\Classes\\otix" /f',
           'reg delete "HKLM\\Software\\Classes\\otix" /f',
+          'reg delete "HKCU\\Software\\RegisteredApplications" /v "Otix" /f',
+          'reg delete "HKLM\\Software\\RegisteredApplications" /v "Otix" /f',
+          'reg delete "HKCU\\Software\\Clients\\Media\\Otix" /f',
+          'reg delete "HKLM\\Software\\Clients\\Media\\Otix" /f',
+          'reg delete "HKCU\\Software\\Otix\\Capabilities" /f',
+          'reg delete "HKLM\\Software\\Otix\\Capabilities" /f',
+          'reg delete "HKCU\\Software\\Classes\\Otix.AssocFile" /f',
+          'reg delete "HKLM\\Software\\Classes\\Otix.AssocFile" /f',
+          'reg delete "HKCU\\Software\\Classes\\Applications\\Otix.exe" /f',
+          'reg delete "HKLM\\Software\\Classes\\Applications\\Otix.exe" /f',
           'reg delete "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run" /v "Otix" /f',
         ];
 

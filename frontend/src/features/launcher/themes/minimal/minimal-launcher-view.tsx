@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react"
+import { useState } from "react"
 import { useNavigate } from "@tanstack/react-router"
 import {
   Play,
@@ -6,83 +6,30 @@ import {
   Search,
   Sliders,
 } from "lucide-react"
-import { useLauncherVisibleGames } from "@/features/launcher/data/game-queries"
-import { usePopularGames } from "@/features/launcher/data/queries"
+import { useLauncherGames } from "@/features/launcher/hooks/use-launcher-games"
+import { useLaunchGame } from "@/features/launcher/hooks/use-launch-game"
+import { ConsoleDisambiguationModal } from "@/features/launcher/components/molecules/console-disambiguation-modal"
 import { useAuth } from "@/lib/providers/auth"
-import { useToast } from "@ui/molecules/toast"
 import { LauncherGameSheet } from "../common/launcher-game-sheet"
 import type { LocalGame } from "@/features/launcher/types"
-import { getDesktopAPI } from "@/lib/desktop/api"
 
 export const MinimalLauncherView = () => {
   const navigate = useNavigate()
   const { user, isAuthenticated } = useAuth()
-  const { data: localGames = [] } = useLauncherVisibleGames()
-  const { data: popularGames = [] } = usePopularGames()
-  const { toast } = useToast()
+  const { launchGame, disambiguationModalProps, hasDisambiguationTarget } = useLaunchGame()
 
-  const [selectedGameId, setSelectedGameId] = useState<string | null>(null)
   const [detailGame, setDetailGame] = useState<LocalGame | null>(null)
-  const [searchQuery, setSearchQuery] = useState("")
 
-  const allGames = useMemo(() => {
-    const list: LocalGame[] = [...localGames]
-    popularGames.forEach((pop) => {
-      if (!list.some((g) => g.id === pop.id || g.title.toLowerCase() === pop.title.toLowerCase())) {
-        list.push({
-          id: pop.id,
-          title: pop.title,
-          platform: "steam",
-          posterUrl: pop.posterUrl ?? undefined,
-          otixPosterUrl: pop.posterUrl,
-          otixBackdropUrl: pop.backdropUrl,
-          otixLogoUrl: pop.logoUrl,
-          description: (pop as any).overview || '',
-          data: pop as any,
-        })
-      }
-    })
-    return list
-  }, [localGames, popularGames])
-
-  const filteredGames = useMemo(() => {
-    if (!searchQuery.trim()) return allGames
-    return allGames.filter((g) => g.title.toLowerCase().includes(searchQuery.toLowerCase()))
-  }, [allGames, searchQuery])
-
-  const activeGame = useMemo(() => {
-    if (!filteredGames.length) return null
-    if (selectedGameId) {
-      const found = filteredGames.find((g) => g.id === selectedGameId)
-      if (found) return found
-    }
-    return filteredGames[0]
-  }, [filteredGames, selectedGameId])
+  const {
+    filteredGames,
+    activeGame,
+    selectGame,
+    searchQuery,
+    setSearchQuery,
+  } = useLauncherGames()
 
   const handlePlayGame = async (game: LocalGame) => {
-    const api = getDesktopAPI()
-    if (!api?.launchGame) {
-      toast({
-        title: "Desktop App Required",
-        description: "Install Otix Desktop to launch games.",
-        variant: "default",
-      })
-      return
-    }
-    try {
-      await api.launchGame(game)
-      toast({
-        title: "Launched",
-        description: `Now playing ${game.title}`,
-        variant: "success",
-      })
-    } catch {
-      toast({
-        title: "Launch Failed",
-        description: "Could not execute binary.",
-        variant: "error",
-      })
-    }
+    await launchGame(game)
   }
 
   return (
@@ -132,7 +79,7 @@ export const MinimalLauncherView = () => {
               return (
                 <div
                   key={game.id}
-                  onClick={() => setSelectedGameId(game.id)}
+                  onClick={() => selectGame(game.id)}
                   className={`group flex items-center justify-between py-2 px-2.5 rounded cursor-pointer transition-all ${
                     isSelected
                       ? "text-white font-bold bg-white/10"
@@ -227,6 +174,10 @@ export const MinimalLauncherView = () => {
           <span>PRESS ALT+T FOR THEMES</span>
         </div>
       </main>
+
+      {hasDisambiguationTarget && (
+        <ConsoleDisambiguationModal {...disambiguationModalProps} />
+      )}
 
       {detailGame && (
         <LauncherGameSheet

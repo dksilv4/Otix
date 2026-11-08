@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { LocalTrackInfo, RepeatMode } from './types'
 import { LocalPlayerContext, playerProgressStore } from './player-context'
 import { LOCAL_PLAYER_VOLUME_KEY } from './utils'
+import { localTrackCache, resolveLocalAudioTrack } from '@/features/media/utils/local-media'
 
 export const LocalAudioProvider = ({ children }: { children: React.ReactNode }) => {
   const audioRef = useRef<HTMLAudioElement | null>(null)
@@ -78,8 +79,36 @@ export const LocalAudioProvider = ({ children }: { children: React.ReactNode }) 
       }
     }
 
-    const track = list[index]
+    let track = list[index]
     if (!track) return
+
+    // If this is a local track, check cache or enrich dynamically
+    if (track.path) {
+      const cached = localTrackCache.get(track.path)
+      if (cached && (cached.albumArt || cached.durationMs > 0)) {
+        track = cached
+        list[index] = cached
+      } else {
+        const targetPath = track.path
+        void resolveLocalAudioTrack(targetPath)
+          .then((enriched) => {
+            if (currentIndexRef.current === index) {
+              setCurrentTrack(enriched)
+              if (enriched.durationMs && enriched.durationMs > 0) {
+                playerProgressStore.setProgress(
+                  audioRef.current ? Math.round(audioRef.current.currentTime * 1000) : 0,
+                  enriched.durationMs,
+                )
+              }
+            }
+            if (queueRef.current[index]) {
+              queueRef.current[index] = enriched
+              setQueue([...queueRef.current])
+            }
+          })
+          .catch(() => {})
+      }
+    }
 
     currentIndexRef.current = index
     setCurrentIndex(index)
@@ -99,6 +128,15 @@ export const LocalAudioProvider = ({ children }: { children: React.ReactNode }) 
     }
 
     try {
+      // If this audio file is already actively playing, update track metadata and progress target without restarting playback
+      const isSameSrc = audio.src === track.url || audio.src === encodeURI(track.url)
+      if (isSameSrc && isPlayingRef.current) {
+        if (track.durationMs && track.durationMs > 0) {
+          playerProgressStore.setProgress(audio.currentTime * 1000, track.durationMs)
+        }
+        return
+      }
+
       audio.src = track.url
       audio.currentTime = 0
       if (autoPlay) {

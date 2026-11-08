@@ -23,6 +23,22 @@ const MIME_TYPES: Record<string, string> = {
   '.otf': 'font/otf',
   '.mp4': 'video/mp4',
   '.webm': 'video/webm',
+  '.mkv': 'video/x-matroska',
+  '.avi': 'video/x-msvideo',
+  '.mov': 'video/quicktime',
+  '.wmv': 'video/x-ms-wmv',
+  '.flv': 'video/x-flv',
+  '.m4v': 'video/mp4',
+  '.3gp': 'video/3gpp',
+  '.ts': 'video/mp2t',
+  '.mp3': 'audio/mpeg',
+  '.flac': 'audio/flac',
+  '.wav': 'audio/wav',
+  '.ogg': 'audio/ogg',
+  '.m4a': 'audio/mp4',
+  '.aac': 'audio/aac',
+  '.opus': 'audio/opus',
+  '.wma': 'audio/x-ms-wma',
 };
 
 /**
@@ -268,6 +284,71 @@ export function registerMediaCacheProtocol(targetSession: Electron.Session, user
     } catch (err) {
       console.error('[ImageCache] Fetch failed for', originalUrl, err);
       return new Response('Fetch failed', { status: 500 });
+    }
+  });
+}
+
+/**
+ * Register local-media:// protocol handler for fast native streaming of local video and audio files.
+ * Supports HTTP Range requests (206 Partial Content) for zero-lag timeline scrubbing and seeking.
+ */
+export function registerLocalMediaProtocol(targetSession: Electron.Session): void {
+  targetSession.protocol.handle('local-media', async (request: Request) => {
+    try {
+      const url = new URL(request.url);
+      const filePathParam = url.searchParams.get('path');
+      let targetPath = filePathParam
+        ? decodeURIComponent(filePathParam)
+        : decodeURIComponent(url.pathname.replace(/^\/+/, ''));
+
+      // Normalise Windows drive letters
+      if (process.platform === 'win32' && !/^[a-zA-Z]:/.test(targetPath) && /^[a-zA-Z]\//.test(targetPath)) {
+        targetPath = targetPath[0] + ':' + targetPath.slice(1);
+      }
+
+      targetPath = path.normalize(targetPath);
+      if (!targetPath || !fs.existsSync(targetPath)) {
+        console.warn('[protocols] local-media file not found:', targetPath);
+        return new Response('Not found', { status: 404 });
+      }
+
+      try {
+        const stat = fs.statSync(targetPath);
+        if (!stat.isFile()) {
+          console.warn('[protocols] local-media target is not a file:', targetPath);
+          return new Response('Not a file', { status: 400 });
+        }
+      } catch {
+        return new Response('Not found', { status: 404 });
+      }
+
+      const fileUrl = pathToFileURL(targetPath).toString();
+      const reqHeaders = new Headers();
+      const range = request.headers.get('range');
+      if (range) {
+        reqHeaders.set('range', range);
+      }
+
+      const response = await net.fetch(fileUrl, {
+        headers: reqHeaders,
+        bypassCustomProtocolHandlers: true,
+      });
+
+      const ext = path.extname(targetPath).toLowerCase();
+      const mime = MIME_TYPES[ext] || 'application/octet-stream';
+      const headers = new Headers(response.headers);
+      headers.set('content-type', mime);
+      headers.set('accept-ranges', 'bytes');
+      headers.set('access-control-allow-origin', '*');
+
+      return new Response(response.body, {
+        status: response.status,
+        statusText: response.statusText,
+        headers,
+      });
+    } catch (err) {
+      console.error('[protocols] local-media error:', err);
+      return new Response('Media stream error', { status: 500 });
     }
   });
 }

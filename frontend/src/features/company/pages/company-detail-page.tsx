@@ -104,7 +104,7 @@ export const CompanyDetailPage = () => {
     }
   }
 
-  if (isLoading) {
+  if (isLoading && !company) {
     return (
       <div id="company-detail-page" className={`w-full px-4 ${ptClass} sm:px-6 lg:px-8 space-y-8`}>
         <div className="flex flex-col items-center gap-6 sm:flex-row sm:items-start">

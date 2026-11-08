@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react"
+import { useState, useEffect } from "react"
 import { useNavigate } from "@tanstack/react-router"
 import {
   Terminal,
@@ -10,27 +10,19 @@ import {
   Search,
   ArrowLeft,
 } from "lucide-react"
-import { useLauncherVisibleGames } from "@/features/launcher/data/game-queries"
-import { usePopularGames } from "@/features/launcher/data/queries"
-import { useRunningGame } from "@/features/launcher/hooks/use-running-game"
+import { useLauncherGames } from "@/features/launcher/hooks/use-launcher-games"
+import { useLaunchGame } from "@/features/launcher/hooks/use-launch-game"
+import { ConsoleDisambiguationModal } from "@/features/launcher/components/molecules/console-disambiguation-modal"
 import { useAuth } from "@/lib/providers/auth"
-import { getDesktopAPI, hasDesktopAPI } from "@/lib/desktop/api"
-import { useToast } from "@ui/molecules/toast"
 import { LauncherGameSheet } from "../common/launcher-game-sheet"
 import type { LocalGame } from "@/features/launcher/types"
 
 export const RetroLauncherView = () => {
   const navigate = useNavigate()
-  const { user, isAuthenticated: _isAuthenticated } = useAuth()
-  const _isDesktop = hasDesktopAPI()
-  const { data: localGames = [] } = useLauncherVisibleGames()
-  const { data: popularGames = [] } = usePopularGames()
-  const { runningGame: _runningGame } = useRunningGame()
-  const { toast } = useToast()
+  const { user } = useAuth()
+  const { launchGame, disambiguationModalProps, hasDisambiguationTarget } = useLaunchGame()
 
-  const [selectedGameId, setSelectedGameId] = useState<string | null>(null)
   const [detailGame, setDetailGame] = useState<LocalGame | null>(null)
-  const [searchQuery, setSearchQuery] = useState("")
 
   // Telemetry ticker state
   const [cpuUsage, setCpuUsage] = useState(24)
@@ -46,64 +38,16 @@ export const RetroLauncherView = () => {
     return () => clearInterval(timer)
   }, [])
 
-  const allGames = useMemo(() => {
-    const list: LocalGame[] = [...localGames]
-    popularGames.forEach((pop) => {
-      if (!list.some((g) => g.id === pop.id || g.title.toLowerCase() === pop.title.toLowerCase())) {
-        list.push({
-          id: pop.id,
-          title: pop.title,
-          platform: "steam",
-          posterUrl: pop.posterUrl,
-          otixPosterUrl: pop.posterUrl,
-          otixBackdropUrl: pop.backdropUrl,
-          otixLogoUrl: pop.logoUrl,
-          description: (pop as any).overview || '',
-          data: pop as any,
-        })
-      }
-    })
-    return list
-  }, [localGames, popularGames])
-
-  const filteredGames = useMemo(() => {
-    if (!searchQuery.trim()) return allGames
-    return allGames.filter((g) => g.title.toLowerCase().includes(searchQuery.toLowerCase()))
-  }, [allGames, searchQuery])
-
-  const activeGame = useMemo(() => {
-    if (!filteredGames.length) return null
-    if (selectedGameId) {
-      const found = filteredGames.find((g) => g.id === selectedGameId)
-      if (found) return found
-    }
-    return filteredGames[0]
-  }, [filteredGames, selectedGameId])
+  const {
+    filteredGames,
+    activeGame,
+    selectGame,
+    searchQuery,
+    setSearchQuery,
+  } = useLauncherGames()
 
   const handlePlayGame = async (game: LocalGame) => {
-    const api = getDesktopAPI()
-    if (!api?.launchGame) {
-      toast({
-        title: "DAEMON OFFLINE",
-        description: "Otix Desktop engine not detected on localhost.",
-        variant: "default",
-      })
-      return
-    }
-    try {
-      await api.launchGame(game)
-      toast({
-        title: "EXEC PROCESS INITIALIZED",
-        description: `Spawning ${game.title}...`,
-        variant: "success",
-      })
-    } catch {
-      toast({
-        title: "EXEC FAILURE",
-        description: "Process spawn returned non-zero code.",
-        variant: "error",
-      })
-    }
+    await launchGame(game)
   }
 
   return (
@@ -190,7 +134,7 @@ export const RetroLauncherView = () => {
               return (
                 <div
                   key={game.id}
-                  onClick={() => setSelectedGameId(game.id)}
+                  onClick={() => selectGame(game.id)}
                   className={`px-3 py-2 rounded text-xs cursor-pointer flex items-center justify-between border transition-all ${
                     isSelected
                       ? "bg-[#33ff33]/15 text-[#33ff33] border-[#33ff33] font-bold shadow-[0_0_12px_rgba(51,255,51,0.2)]"
@@ -305,6 +249,10 @@ export const RetroLauncherView = () => {
           </div>
         </main>
       </div>
+
+      {hasDisambiguationTarget && (
+        <ConsoleDisambiguationModal {...disambiguationModalProps} />
+      )}
 
       {detailGame && (
         <LauncherGameSheet

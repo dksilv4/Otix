@@ -13,62 +13,30 @@ import {
   RotateCw,
 } from "lucide-react"
 import { MediaLogo } from "@/lib/media/media-logo"
-import { useLauncherVisibleGames } from "@/features/launcher/data/game-queries"
-import { usePopularGames } from "@/features/launcher/data/queries"
+import { useLauncherGames } from "@/features/launcher/hooks/use-launcher-games"
+import { useLaunchGame } from "@/features/launcher/hooks/use-launch-game"
+import { ConsoleDisambiguationModal } from "@/features/launcher/components/molecules/console-disambiguation-modal"
 import { useRunningGame } from "@/features/launcher/hooks/use-running-game"
 import { useAuth } from "@/lib/providers/auth"
-import { getDesktopAPI, hasDesktopAPI } from "@/lib/desktop/api"
-import { useToast } from "@ui/molecules/toast"
 import { LauncherGameSheet } from "../common/launcher-game-sheet"
 import type { LocalGame } from "@/features/launcher/types"
 
 export const PlayStationLauncherView = () => {
   const navigate = useNavigate()
   const { user, isAuthenticated } = useAuth()
-  const _isDesktop = hasDesktopAPI()
-  const { data: localGames = [] } = useLauncherVisibleGames()
-  const { data: popularGames = [] } = usePopularGames()
   const { runningGame, runningGames = [], cycleActiveGame } = useRunningGame()
-  const { toast } = useToast()
+  const { launchGame, disambiguationModalProps, hasDisambiguationTarget } = useLaunchGame()
 
   const [soundEnabled, setSoundEnabled] = useState(true)
-  const [selectedGameId, setSelectedGameId] = useState<string | null>(null)
   const [detailGame, setDetailGame] = useState<LocalGame | null>(null)
-  const [searchQuery, setSearchQuery] = useState("")
 
-  const allGames = useMemo(() => {
-    const list: LocalGame[] = [...localGames]
-    popularGames.forEach((pop) => {
-      if (!list.some((g) => g.id === pop.id || g.title.toLowerCase() === pop.title.toLowerCase())) {
-        list.push({
-          id: pop.id,
-          title: pop.title,
-          platform: "steam",
-          posterUrl: pop.posterUrl ?? undefined,
-          otixPosterUrl: pop.posterUrl ?? undefined,
-          otixBackdropUrl: pop.backdropUrl,
-          otixLogoUrl: pop.logoUrl,
-          description: (pop as any).overview || '',
-          data: pop as any,
-        })
-      }
-    })
-    return list
-  }, [localGames, popularGames])
-
-  const filteredGames = useMemo(() => {
-    if (!searchQuery.trim()) return allGames
-    return allGames.filter((g) => g.title.toLowerCase().includes(searchQuery.toLowerCase()))
-  }, [allGames, searchQuery])
-
-  const activeGame = useMemo(() => {
-    if (!filteredGames.length) return null
-    if (selectedGameId) {
-      const found = filteredGames.find((g) => g.id === selectedGameId)
-      if (found) return found
-    }
-    return filteredGames[0]
-  }, [filteredGames, selectedGameId])
+  const {
+    filteredGames,
+    activeGame,
+    selectGame,
+    searchQuery,
+    setSearchQuery,
+  } = useLauncherGames()
 
   const activeBackdrop =
     activeGame?.otixBackdropUrl ||
@@ -77,29 +45,7 @@ export const PlayStationLauncherView = () => {
     activeGame?.posterUrl
 
   const handlePlayGame = async (game: LocalGame) => {
-    const api = getDesktopAPI()
-    if (!api?.launchGame) {
-      toast({
-        title: "Desktop Client Required",
-        description: "Install the Otix Desktop app to launch games natively.",
-        variant: "default",
-      })
-      return
-    }
-    try {
-      await api.launchGame(game)
-      toast({
-        title: "Starting Game",
-        description: `Launching ${game.title}...`,
-        variant: "success",
-      })
-    } catch {
-      toast({
-        title: "Launch Failed",
-        description: "Could not launch game executable.",
-        variant: "error",
-      })
-    }
+    await launchGame(game)
   }
 
   return (
@@ -303,7 +249,7 @@ export const PlayStationLauncherView = () => {
               <motion.div
                 key={game.id}
                 layout
-                onClick={() => setSelectedGameId(game.id)}
+                onClick={() => selectGame(game.id)}
                 whileHover={{ y: -6, scale: 1.03 }}
                 whileTap={{ scale: 0.97 }}
                 className={`relative shrink-0 rounded-2xl overflow-hidden cursor-pointer transition-all duration-300 ${
@@ -340,6 +286,8 @@ export const PlayStationLauncherView = () => {
           onClose={() => setDetailGame(null)}
         />
       )}
+
+      {hasDisambiguationTarget && <ConsoleDisambiguationModal {...disambiguationModalProps} />}
     </div>
   )
 };

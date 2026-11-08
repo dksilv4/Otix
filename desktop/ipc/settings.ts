@@ -88,6 +88,20 @@ export function registerDesktopSettingsIPC(
       applyDesktopSettings(merged, mainWindow, tray);
 
       if (
+        partial.minimizeToTray !== undefined ||
+        partial.closeToTray !== undefined ||
+        partial.startMinimized !== undefined
+      ) {
+        const needsTray = merged.minimizeToTray || merged.closeToTray || merged.startMinimized;
+        const { isTrayActive, createTray, destroyTray } = await import('../tray');
+        if (needsTray && !isTrayActive() && mainWindow && !mainWindow.isDestroyed()) {
+          createTray(mainWindow);
+        } else if (!needsTray && isTrayActive()) {
+          destroyTray();
+        }
+      }
+
+      if (
         partial.autoDownloadUpdates !== undefined ||
         partial.allowPrerelease !== undefined ||
         partial.autoCheckUpdates !== undefined ||
