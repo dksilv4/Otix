@@ -3,6 +3,7 @@ import Hls from 'hls.js'
 import { safePlay, buildYouTubeEmbedUrl } from '../utils/player'
 import { extractYoutubeIdFromUrl } from '@/features/discover/utils/hero'
 import { buildQualityOptions } from '../utils/quality'
+import { universalPlayerEngine } from '@/features/player/core/universal-player-engine'
 import { OPEN_QUICK_STREAM_EVENT, type QuickStreamEventDetail } from '../utils/open-quick-stream'
 import { useQuickStream } from './use-quick-stream'
 import type { useMediaStreamPlayer } from './use-media-stream-player'
@@ -99,6 +100,13 @@ export const useUnifiedPlayerEngine = ({
     })
     setAvailableQualities(opts)
   }, [activeStreamSession, isTrailer, setAvailableQualities])
+
+  // Audio Focus: Pause background audio when trailer is launched
+  useEffect(() => {
+    if (isTrailer) {
+      universalPlayerEngine.pause()
+    }
+  }, [isTrailer])
 
   // Trailer YouTube window message listener
   useEffect(() => {

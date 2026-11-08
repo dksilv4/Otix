@@ -32,10 +32,214 @@ import {
   registerMediaSessionActions,
 } from '../utils/pip'
 import { defaultPlayerContextValue } from '../utils/player-defaults'
+import { UniversalPlayerContext } from '@/features/player/core/universal-player-context'
+import { universalPlayerEngine } from '@/features/player/core/universal-player-engine'
+import { streamSessionToPlayableItem } from '@/features/player/utils/converters'
+import type { UniversalPlayerContextValue } from '@/features/player/types'
 
 const MediaStreamPlayerContext = createContext<MediaStreamPlayerContextValue | null>(null)
 
-export const MediaStreamPlayerProvider = ({ children }: { children: React.ReactNode }) => {
+const UniversalStreamPlayerBridge = ({
+  universal,
+  children,
+}: {
+  universal: UniversalPlayerContextValue
+  children: React.ReactNode
+}) => {
+  const isVideo = universal.currentItem?.mediaType === 'video'
+  const session = isVideo
+    ? (universal.currentItem?.providerData as StreamPlaybackSession) || null
+    : null
+  const isOpen = Boolean(isVideo && universal.status !== 'idle' && universal.viewMode !== 'hidden')
+
+  const openStream = useCallback(
+    (newSession: StreamPlaybackSession) => {
+      void universal.play(streamSessionToPlayableItem(newSession))
+    },
+    [universal],
+  )
+
+  const closeStream = useCallback(() => {
+    universal.stop()
+  }, [universal])
+
+  const failoverToBaseUrl = useCallback(
+    (newBaseUrl: string) => {
+      void universal.failoverServer(newBaseUrl)
+    },
+    [universal],
+  )
+
+  const togglePlay = useCallback(() => {
+    void universal.togglePlay()
+  }, [universal])
+
+  const play = useCallback(() => {
+    universal.resume()
+  }, [universal])
+
+  const pause = useCallback(() => {
+    universal.pause()
+  }, [universal])
+
+  const seek = useCallback(
+    (seconds: number) => {
+      universal.seek(seconds)
+    },
+    [universal],
+  )
+
+  const setVolume = useCallback(
+    (v: number) => {
+      universal.setVolume(v)
+    },
+    [universal],
+  )
+
+  const setPlaybackSpeed = useCallback(
+    (s: number) => {
+      universal.setPlaybackSpeed(s)
+    },
+    [universal],
+  )
+
+  const toggleMute = useCallback(() => {
+    universal.toggleMute()
+  }, [universal])
+
+  const setTheater = useCallback(
+    (t: boolean) => {
+      universal.setTheater(t)
+    },
+    [universal],
+  )
+
+  const setZoomedOut = useCallback(
+    (z: boolean) => {
+      universal.setZoomedOut(z)
+    },
+    [universal],
+  )
+
+  const setInAppPip = useCallback(
+    (pip: boolean) => {
+      universal.setInAppPip(pip)
+    },
+    [universal],
+  )
+
+  const toggleInAppPip = useCallback(() => {
+    universal.toggleInAppPip()
+  }, [universal])
+
+  const toggleOverallPip = useCallback(() => {
+    return universal.toggleOverallPip()
+  }, [universal])
+
+  const registerVideoElement = useCallback((el: HTMLVideoElement | null) => {
+    universalPlayerEngine.registerVideoElement(el)
+  }, [])
+
+  const setActiveSubtitle = useCallback(
+    (id: string | null) => {
+      void universal.setActiveSubtitle(id)
+    },
+    [universal],
+  )
+
+  const setActiveAudio = useCallback(
+    (index: number | null) => {
+      void universal.setActiveAudio(index)
+    },
+    [universal],
+  )
+
+  const setQuality = useCallback(
+    (qualityId: string) => {
+      void universal.setQuality(qualityId)
+    },
+    [universal],
+  )
+
+  const setAvailableQualities = useCallback((_q: StreamQualityOption[]) => {}, [])
+  const setActiveLevelHeight = useCallback((_h: number | null) => {}, [])
+  const updateSessionQuality = useCallback(
+    (q: StreamQualityOption) => {
+      void universal.setQuality(q.id)
+    },
+    [universal],
+  )
+
+  const onTimeUpdate = useCallback((_time: number, _duration: number) => {}, [])
+  const onBufferedUpdate = useCallback((_buffered: number) => {}, [])
+  const onBuffering = useCallback((_buffering: boolean) => {}, [])
+  const onError = useCallback((_err: string | null) => {}, [])
+  const fallbackToHls = useCallback(() => {}, [])
+
+  const value: MediaStreamPlayerContextValue = {
+    session,
+    isOpen,
+    isPlaying: universal.status === 'playing',
+    isBuffering: universal.status === 'buffering',
+    currentTime: universal.position,
+    duration: universal.duration,
+    bufferedTime: universal.buffered,
+    volume: universal.volume,
+    playbackSpeed: universal.playbackSpeed,
+    isMuted: universal.isMuted,
+    isTheater: universal.isTheater,
+    isZoomedOut: universal.isZoomedOut,
+    isInAppPip: universal.isInAppPip,
+    isOverallPip: universal.isOverallPip,
+    isOverallPipSupported: universal.isOverallPipSupported,
+    activeSubtitle: universal.activeSubtitle,
+    activeAudio: universal.activeAudio,
+    currentQuality: universal.currentQuality,
+    availableQualities: universal.availableQualities,
+    activeLevelHeight: universal.activeLevelHeight,
+    playbackMethod: universal.playbackMethod,
+    error: universal.error,
+
+    openStream,
+    closeStream,
+    failoverToBaseUrl,
+    togglePlay,
+    play,
+    pause,
+    seek,
+    setVolume,
+    setPlaybackSpeed,
+    toggleMute,
+    setTheater,
+    setZoomedOut,
+    setInAppPip,
+    toggleInAppPip,
+    setIsOverallPip: () => {},
+    requestOverallPip: async () => {},
+    exitOverallPip: async () => {},
+    toggleOverallPip,
+    registerVideoElement,
+    setActiveSubtitle,
+    setActiveAudio,
+    setQuality,
+    setAvailableQualities,
+    setActiveLevelHeight,
+    updateSessionQuality,
+    onTimeUpdate,
+    onBufferedUpdate,
+    onBuffering,
+    onError,
+    fallbackToHls,
+  }
+
+  return (
+    <MediaStreamPlayerContext.Provider value={value}>
+      {children}
+    </MediaStreamPlayerContext.Provider>
+  )
+}
+
+const LegacyMediaStreamPlayerProvider = ({ children }: { children: React.ReactNode }) => {
   const { playLocalTrack, playLocalTracks, stop: stopAudio } = usePlayer()
   const [initialSettings] = useState(loadPlayerSettings)
   const [session, setSession] = useState<StreamPlaybackSession | null>(null)
@@ -559,7 +763,15 @@ export const MediaStreamPlayerProvider = ({ children }: { children: React.ReactN
       {children}
     </MediaStreamPlayerContext.Provider>
   )
-};
+}
+
+export const MediaStreamPlayerProvider = ({ children }: { children: React.ReactNode }) => {
+  const universal = useContext(UniversalPlayerContext)
+  if (universal) {
+    return <UniversalStreamPlayerBridge universal={universal}>{children}</UniversalStreamPlayerBridge>
+  }
+  return <LegacyMediaStreamPlayerProvider>{children}</LegacyMediaStreamPlayerProvider>
+}
 
 // eslint-disable-next-line react-refresh/only-export-components
 export const useMediaStreamPlayer = (): MediaStreamPlayerContextValue => {
