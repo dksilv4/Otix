@@ -48,7 +48,7 @@ describe('App Installer IPC Suite (New Otix Setup)', () => {
     fs.writeFileSync(path.join(tempSourceDir, 'package.json'), '{}');
     (process as any).resourcesPath = resourcesDir;
 
-    app.getVersion = vi.fn(() => '0.1.26');
+    app.getVersion = vi.fn(() => '0.1.27');
     app.getAppPath = vi.fn(() => tempSourceDir);
     app.getPath = vi.fn((name: string) => path.join(tempSourceDir, name));
     Object.defineProperty(app, 'isPackaged', { value: true, configurable: true, writable: true });
@@ -122,7 +122,7 @@ describe('App Installer IPC Suite (New Otix Setup)', () => {
     it('returns application version, default install path, elevation status, and source dir', async () => {
       const info = await (ipcMain as any)._invoke('setup:get-info');
       expect(info).toBeDefined();
-      expect(info.version).toBe('0.1.26');
+      expect(info.version).toBe('0.1.27');
       expect(typeof info.defaultInstallPath).toBe('string');
       expect(info.defaultInstallPath.length).toBeGreaterThan(0);
       expect(typeof info.isElevated).toBe('boolean');

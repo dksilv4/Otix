@@ -11,7 +11,7 @@ describe('useInstaller Hook', () => {
     progressCallback = null
     mockDesktopAPI = {
       installerGetInfo: vi.fn().mockResolvedValue({
-        version: '0.1.26',
+        version: '0.1.27',
         defaultInstallPath: 'D:\\Games\\Otix',
         isElevated: true,
         sourcePath: 'D:\\Setup',
@@ -61,7 +61,7 @@ describe('useInstaller Hook', () => {
 
     await waitFor(() => {
       expect(result.current.installPath).toBe('D:\\Games\\Otix')
-      expect(result.current.version).toBe('0.1.26')
+      expect(result.current.version).toBe('0.1.27')
       expect(result.current.isElevated).toBe(true)
     })
   })

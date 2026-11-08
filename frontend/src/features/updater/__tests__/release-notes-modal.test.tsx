@@ -71,7 +71,7 @@ describe('ReleaseNotesModal', () => {
 
   it('fetches latest release notes when not provided initially', async () => {
     vi.spyOn(updaterUtils, 'fetchLatestReleaseNotes').mockResolvedValue({
-      version: '0.1.26',
+      version: '0.1.27',
       notes: '## Remote Notes\n* Remotely fetched bugfix',
       publishedAt: '2026-10-21T12:00:00Z',
     })

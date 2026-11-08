@@ -5,17 +5,17 @@ export const GITHUB_REPO_NAME = 'Otix'
 export const GITHUB_API_LATEST = `https://api.github.com/repos/${GITHUB_REPO_OWNER}/${GITHUB_REPO_NAME}/releases/latest`
 export const GITHUB_RELEASE_DOWNLOAD_BASE = `https://github.com/${GITHUB_REPO_OWNER}/${GITHUB_REPO_NAME}/releases/download`
 
-export const DEFAULT_RELEASE_VERSION = '0.1.26'
-export const DEFAULT_TAG_NAME = 'v0.1.26'
-export const DEFAULT_PUBLISHED_AT = '2026-10-27T09:55:00Z'
+export const DEFAULT_RELEASE_VERSION = '0.1.27'
+export const DEFAULT_TAG_NAME = 'v0.1.27'
+export const DEFAULT_PUBLISHED_AT = '2026-11-08T20:20:00Z'
 
 export const DEFAULT_RELEASE_INFO: LatestReleaseInfo = {
   version: DEFAULT_RELEASE_VERSION,
   tagName: DEFAULT_TAG_NAME,
-  name: 'Otix v0.1.26',
+  name: 'Otix v0.1.27',
   publishedAt: DEFAULT_PUBLISHED_AT,
   releaseNotes:
-    'Otix 0.1.26 delivers Go node companion auto-pairing, local game launcher and emulator profiles, library scanner and download auto-relocation, macOS ad-hoc deep code signing, full launcher theme selection, and critical Redis async socket lifecycle fixes eliminating error 500 crashes.',
+    'Otix 0.1.27 introduces multi-edition game selection and targeted download requests, native mobile support via Capacitor with seamless OAuth deep linking, enhanced background node catalog synchronization, and comprehensive stability fixes.',
   assets: [
     {
       name: `Otix-Setup-${DEFAULT_RELEASE_VERSION}.exe`,

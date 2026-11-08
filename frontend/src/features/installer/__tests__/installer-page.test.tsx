@@ -30,7 +30,7 @@ describe('InstallerPage Full Flow', () => {
 
     mockDesktopAPI = {
       installerGetInfo: vi.fn().mockResolvedValue({
-        version: '0.1.26',
+        version: '0.1.27',
         defaultInstallPath: 'C:\\Program Files\\Otix',
         isElevated: true,
         sourcePath: 'C:\\Setup',

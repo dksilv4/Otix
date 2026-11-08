@@ -7,10 +7,10 @@ on:
   workflow_dispatch:
     inputs:
       version_tag:
-        description: "Release tag (e.g. v0.1.26)"
+        description: "Release tag (e.g. v0.1.27)"
         required: false
         type: string
-        default: "v0.1.26"
+        default: "v0.1.27"
 
 permissions:
   contents: write
