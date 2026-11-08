@@ -37,3 +37,5 @@ export interface GameTab {
   label: string
   pluginId: string
 }
+
+export type { GameEdition } from '@/features/media/types/media'

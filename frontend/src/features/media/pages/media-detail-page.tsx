@@ -17,6 +17,7 @@ import { CastCrew } from '../components/organisms/media-cast-crew'
 import { GameCharacters } from '../game/components/organisms/game-characters'
 import { MediaGallery } from '../components/organisms/media-gallery'
 import { SignInCTA } from '../components/organisms/media-signin-cta'
+import { GameEditionsProvider } from '@media/game/contexts/game-editions-context'
 
 import type { ParsedBlueprint } from '@media/game/components/organisms/media-game-blueprint-vault'
 
@@ -42,6 +43,11 @@ const MediaGameUserStats = safeLazy(() =>
 )
 const GameSection = safeLazy(() =>
   import('@media/game/components/organisms/media-game-section').then((m) => ({ default: m.GameSection })),
+)
+const GameEditionsSection = safeLazy(() =>
+  import('@media/game/components/organisms/game-editions-section').then((m) => ({
+    default: m.GameEditionsSection,
+  })),
 )
 const MediaGamePlatformsSection = safeLazy(() =>
   import('@media/game/components/organisms/media-game-platforms-section').then((m) => ({
@@ -197,7 +203,12 @@ export const MediaDetailPage = () => {
   const hasCharacters = Boolean(detail.characters && detail.characters.length > 0)
 
   return (
-    <div id="media-detail" className={`animate-fade-in pb-28 ${isDesktop ? 'pt-[var(--title-bar-height,38px)]' : ''}`}>
+    <GameEditionsProvider
+      editions={detail?.game?.editions || []}
+      baseGameTitle={detail?.title || ''}
+      baseReleaseDate={detail?.releaseDate}
+    >
+      <div id="media-detail" className={`animate-fade-in pb-28 ${isDesktop ? 'pt-[var(--title-bar-height,38px)]' : ''}`}>
       {/* ── SEO ── */}
       <Helmet>
         <title>{`${titleWithYear} - Otix`}</title>
@@ -280,6 +291,13 @@ export const MediaDetailPage = () => {
               screenshots={detail.screenshots}
               title={detail.title}
             />
+
+            {/* Game Editions (GOTY, Deluxe, Definitive, etc.) */}
+            {isGame(detail) && (
+              <Suspense fallback={null}>
+                <GameEditionsSection className="glass-card p-6 sm:p-7" />
+              </Suspense>
+            )}
 
             {/* Games: Blueprints, Vault & Community */}
             {isGame(detail) && (pluginTabs.length > 0 || hasGameOverviewContent(detail)) && (
@@ -438,6 +456,7 @@ export const MediaDetailPage = () => {
         </section>
       </DeferredSection>
     </div>
+    </GameEditionsProvider>
   )
 }
 

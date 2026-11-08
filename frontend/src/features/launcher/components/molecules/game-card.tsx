@@ -5,7 +5,7 @@ import { motion } from "framer-motion"
 import { DkBadge } from "@ui/atoms/badge"
 import type { LocalGame } from "@/features/launcher/types"
 import { MediaLogo } from "@/lib/media/media-logo"
-import { getDesktopAPI, hasDesktopAPI } from "@/lib/desktop/api"
+import { getDesktopAPI } from "@/lib/desktop/api"
 import { useLaunchGame } from "@/features/launcher/hooks/use-launch-game"
 import { ConsoleDisambiguationModal } from "@/features/launcher/components/molecules/console-disambiguation-modal"
 import {

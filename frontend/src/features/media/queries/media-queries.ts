@@ -1,6 +1,8 @@
 import { queryOptions, infiniteQueryOptions, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiClient, getResolvedTheme } from '@/lib/api/client'
 import type { UserInteractionState } from '@/features/interaction/interaction-queries'
+import type { GameEdition } from '../types/media'
+export type { GameEdition } from '../types/media'
 import { mediaKeys, type SearchParams } from './media-keys'
 
 export interface MediaItemSummary {
@@ -262,6 +264,7 @@ export interface GameDetail {
     normally?: number | null
     completely?: number | null
   } | null
+  editions?: GameEdition[]
 }
 
 export interface TrackOut {

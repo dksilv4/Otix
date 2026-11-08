@@ -5,6 +5,8 @@ import { useMediaParams } from '../../hooks/use-media-params'
 import { MediaDetailPluginButtons } from './plugin-detail-actions'
 import { MediaPlaySplitButton } from '../molecules/media-play-split-button'
 import { RequestGameButton } from '@/features/media/game/components/organisms/media-download-game-button'
+import { GameEditionSelector } from '@/features/media/game/components/atoms/game-edition-selector'
+import { useGameEditions } from '@/features/media/game/hooks/use-game-editions'
 import { RequestMediaButton } from './media-request-button'
 import { useMediaDetailPluginActions } from '@/features/media/hooks/use-media-detail-plugin-actions'
 import { useRequestMedia } from '@/features/media/hooks/use-request-media'
@@ -26,6 +28,7 @@ export const MediaHeroLibraryActions = () => {
     detail?.title,
   )
   const requestMedia = useRequestMedia()
+  const gameEditions = useGameEditions()
   const hasPlayWidgets = pluginActions.playWidgets.length > 0
   const unfulfilledArrTargets = requestMedia.instances.filter(
     (item) => item.status !== 'downloaded' && item.status !== 'partially_available',
@@ -93,7 +96,20 @@ export const MediaHeroLibraryActions = () => {
 
   return (
     <>
-      {mediaType === 'game' && <RequestGameButton />}
+      {mediaType === 'game' && (
+        <div className="flex flex-wrap items-center gap-2">
+          {gameEditions.hasEditions && (
+            <GameEditionSelector
+              editions={gameEditions.editions}
+              selectedEditionId={gameEditions.selectedEditionId}
+              onSelectEdition={gameEditions.selectEdition}
+              baseGameTitle={detail?.title || 'Game'}
+              baseReleaseDate={(detail as { releaseDate?: string })?.releaseDate}
+            />
+          )}
+          <RequestGameButton />
+        </div>
+      )}
 
       {/* Movies / Shows Request & Library actions */}
       {(mediaType === 'movie' || mediaType === 'show') && (

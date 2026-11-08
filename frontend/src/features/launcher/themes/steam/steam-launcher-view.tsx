@@ -40,7 +40,6 @@ export const SteamLauncherView = () => {
   const [showInstalledOnly, setShowInstalledOnly] = useState(false)
 
   const {
-    games,
     filteredGames,
     activeGame,
     selectGame,

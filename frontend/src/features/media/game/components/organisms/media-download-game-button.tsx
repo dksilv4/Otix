@@ -6,10 +6,13 @@ import { Play, Download, Loader2, CheckCircle2, XCircle, FolderOpen, Disc, Serve
 import { cn, formatBytes } from '@/lib/utils'
 import { DOWNLOAD_STATUS_LABELS } from '../../../constants'
 import { useDownloadGame } from '../../hooks/use-download-game'
+import { useGameEditions } from '../../hooks/use-game-editions'
 import { useModal } from '@/lib/modals'
 
 export const DownloadGameButton = () => {
   const state = useDownloadGame()
+  const gameEditions = useGameEditions()
+  const effectiveTitle = gameEditions.selectedEdition ? gameEditions.selectedEdition.rawTitle : state.mediaTitle
   const { openModal } = useModal()
   const hvCloseRef = useRef<(() => void) | null>(null)
   const [menuOpen, setMenuOpen] = useState(false)
@@ -90,7 +93,7 @@ export const DownloadGameButton = () => {
         onClose={() => close()}
         serverId={server.id}
         serverName={server.name}
-        initialQuery={state.mediaTitle}
+        initialQuery={effectiveTitle}
         mediaItemId={state.mediaId || undefined}
       />,
     )

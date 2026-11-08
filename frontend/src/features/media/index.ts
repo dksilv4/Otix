@@ -1,5 +1,5 @@
 export { mediaQueries } from './queries/media-queries'
-export type { MediaItemSummary, MediaItemDetail, FreePromotionItem, MediaAssetOut, MediaListResponse, MediaWatchProvider, GameDetail, MovieDetail, AlbumDetail, TrackOut, EpisodeOut, SeasonOut } from './queries/media-queries'
+export type { MediaItemSummary, MediaItemDetail, FreePromotionItem, MediaAssetOut, MediaListResponse, MediaWatchProvider, GameDetail, GameEdition, MovieDetail, AlbumDetail, TrackOut, EpisodeOut, SeasonOut } from './queries/media-queries'
 export { mediaKeys } from './queries/media-keys'
 export { useMediaParams } from './hooks/use-media-params'
 export * from './utils'
