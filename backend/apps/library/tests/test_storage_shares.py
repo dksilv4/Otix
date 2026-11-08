@@ -1,4 +1,3 @@
-import uuid
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from rest_framework import status
@@ -200,8 +199,9 @@ class StorageSharesAndMatchingTests(TestCase):
         self.assertEqual(confirm_resp.data["external_ids"].get("playstation"), "PPSA01234")
 
         # Verify ExternalID model rows in database
-        from apps.media.models import ExternalID
         from django.contrib.contenttypes.models import ContentType
+
+        from apps.media.models import ExternalID
         ct = ContentType.objects.get_for_model(MediaItem)
         ext = ExternalID.objects.filter(content_type=ct, object_id=ps5_media.id, provider="playstation").first()
         self.assertIsNotNone(ext)

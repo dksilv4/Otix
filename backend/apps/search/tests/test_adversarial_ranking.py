@@ -21,17 +21,12 @@ from __future__ import annotations
 
 import time
 from datetime import date
-from django.db import connection
+
 from django.test import TestCase
 from rest_framework.test import APIClient
 
 from apps.media.models import Game, MediaItem, Movie, Show
 from apps.search.services.search import (
-    compute_relevance_score,
-    ensure_sqlite_search_functions,
-    py_trigram_similarity,
-    py_word_trigram_similarity,
-    rank_media_items_python,
     search_media_payload,
 )
 
@@ -180,9 +175,9 @@ class AdversarialSearchRankingTests(TestCase):
     def test_exact_match_strictly_outranks_fuzzy_prefix_substring_regardless_of_popularity(self) -> None:
         """An exact match with popularity 0.0 must rank above 1,000,000 popularity competitors."""
         dune_exact = _seed("movie", "Dune", "dune", popularity=0.0)
-        dune_prefix = _seed("movie", "Dune: Part Two", "dune-part-two", popularity=100000.0)
-        dune_sub = _seed("movie", "Frank Herbert's Dune", "frank-herberts-dune", popularity=1000000.0)
-        dune_typo = _seed("movie", "Dune Messiah", "dune-messiah", popularity=500000.0)
+        _seed("movie", "Dune: Part Two", "dune-part-two", popularity=100000.0)
+        _seed("movie", "Frank Herbert's Dune", "frank-herberts-dune", popularity=1000000.0)
+        _seed("movie", "Dune Messiah", "dune-messiah", popularity=500000.0)
 
         res = self.client.get("/api/v1/search/", {"q": "Dune"})
         self.assertEqual(res.status_code, 200)

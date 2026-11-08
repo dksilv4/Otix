@@ -11,6 +11,7 @@ Covers:
 """
 
 from datetime import date
+
 from django.core.management import call_command
 from django.db import connection
 from django.test import TestCase
@@ -23,9 +24,6 @@ from apps.search.services.search import (
     py_trigram_similarity,
     py_word_trigram_similarity,
     rank_media_items_python,
-    search_media_payload,
-    suggestions_payload,
-    grouped_payload,
 )
 
 
@@ -97,7 +95,7 @@ class HybridRelevanceRankingTests(TestCase):
     def test_typo_resolution_spidrman_to_spider_man(self) -> None:
         """Typo query 'spidrman' must resolve to 'Spider-Man'."""
         spiderman = _create_media("movie", "Spider-Man", "spider-man", popularity=80.0)
-        superman = _create_media("movie", "Superman", "superman", popularity=85.0)
+        _create_media("movie", "Superman", "superman", popularity=85.0)
 
         res = self.client.get("/api/v1/search/", {"q": "spidrman"})
         self.assertEqual(res.status_code, 200)
@@ -109,7 +107,7 @@ class HybridRelevanceRankingTests(TestCase):
     def test_punctuation_and_spacing_normalization(self) -> None:
         """Query with spacing variation ('Spider Man') must resolve to 'Spider-Man' and rank #1."""
         spiderman = _create_media("movie", "Spider-Man", "spider-man", popularity=50.0)
-        spiderman_two = _create_media(
+        _create_media(
             "movie", "Spider-Man 2", "spider-man-2", popularity=90.0
         )
 
@@ -160,7 +158,7 @@ class HybridRelevanceRankingTests(TestCase):
     def test_grouped_search_hybrid_and_best_results(self) -> None:
         """GET /api/v1/search/grouped must return typo items in media groups and best_results."""
         movie = _create_media("movie", "Inception", "inception", popularity=95.0)
-        show = _create_media("show", "Inception: The Series", "inception-series", popularity=80.0)
+        _create_media("show", "Inception: The Series", "inception-series", popularity=80.0)
 
         res = self.client.get("/api/v1/search/grouped", {"q": "inceptoin"})
         self.assertEqual(res.status_code, 200)

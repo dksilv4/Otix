@@ -17,7 +17,12 @@ from apps.accounts.models import User
 from apps.lists.models import ListItemRankHistory, MediaListCollaborator, UserList
 from apps.lists.models.user_list import LIST_COLLABORATOR_PERMISSIONS
 from apps.media.models import MediaItem
-from apps.media.services.catalog import _dominant_color, _logo_color_guess, _pick_asset, _pick_backdrop
+from apps.media.services.catalog import (
+    _dominant_color,
+    _logo_color_guess,
+    _pick_asset,
+    _pick_backdrop,
+)
 
 _COLLABORATOR_CHOICES = [(permission, permission) for permission in LIST_COLLABORATOR_PERMISSIONS]
 

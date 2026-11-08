@@ -9,6 +9,7 @@ from django.contrib import admin
 from django.http import HttpRequest, JsonResponse
 from django.urls import include, path, register_converter
 
+
 class SignedIntConverter:
     regex = r"-?\d+"
 

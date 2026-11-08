@@ -8,7 +8,6 @@ from rest_framework.test import APIClient
 
 from apps.library.models import UserNode
 from apps.library.services.node import (
-    PENDING_CACHE_KEY,
     apply_node_heartbeat,
     record_node_heartbeat,
 )
@@ -126,7 +125,7 @@ class NodeHeartbeatTests(TestCase):
 
     def test_unclaimed_heartbeat_does_not_resurrect_claimed_status(self):
         """When a node explicitly heartbeats as unclaimed, matching database URLs must NOT force it claimed."""
-        node = UserNode.objects.create(
+        UserNode.objects.create(
             user=self.user,
             name="Claimed Node",
             local_url="http://127.0.0.1:8090",

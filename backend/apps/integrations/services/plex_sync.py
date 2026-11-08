@@ -352,7 +352,9 @@ def _sync_library(user, server, library, token: str, emit) -> dict:
                     try:
                         from apps.media.models import Episode
                         if not Episode.objects.filter(season__show_id=media_item_id).exists():
-                            from apps.integrations.services.plex import hydrate_show_seasons_from_plex
+                            from apps.integrations.services.plex import (
+                                hydrate_show_seasons_from_plex,
+                            )
                             hydrate_show_seasons_from_plex(media_item_id, user=user, server=server)
                     except Exception:
                         logger.warning("Failed to hydrate show seasons for %s during library sync", media_item_id)

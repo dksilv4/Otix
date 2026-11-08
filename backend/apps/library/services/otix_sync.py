@@ -325,11 +325,11 @@ def node_match_and_write_otix(
 
     if user and user.is_authenticated:
         try:
+            from apps.library.models import GameMatchRecord
+            from apps.library.models.game_source import NodeGameSource, UserGame
+            from apps.media.models import MediaItem
             from apps.media.services.imports import _enqueue_local_game_mirror
             from apps.media.services.interaction import set_interaction
-            from apps.media.models import MediaItem
-            from apps.library.models.game_source import NodeGameSource, UserGame
-            from apps.library.models import GameMatchRecord
 
             set_interaction(user, int_media_id, "owned")
             _enqueue_local_game_mirror(int_media_id)

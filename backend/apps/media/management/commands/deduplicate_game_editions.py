@@ -3,14 +3,13 @@
 from __future__ import annotations
 
 import logging
-from typing import Any
 
 from django.contrib.contenttypes.models import ContentType
 from django.core.management.base import BaseCommand
 from django.db import transaction
 
 from apps.library.models import GameMatchRecord, UserGame, UserLocalGame, UserMediaRequest
-from apps.media.models import ExternalID, Game, GameEdition, MediaAsset, MediaItem
+from apps.media.models import ExternalID, Game, MediaAsset, MediaItem
 from apps.media.services.game_edition import (
     find_canonical_base_game,
     is_duplicate_edition,

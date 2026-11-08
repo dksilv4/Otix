@@ -216,7 +216,9 @@ def reconcile_media_requests(user, requests: list[UserMediaRequest]) -> None:
 
     try:
         import re
+
         from django.utils import timezone
+
         from apps.library.services.media_activity import get_user_media_activity
 
         activity = get_user_media_activity(user, queue_only=False)

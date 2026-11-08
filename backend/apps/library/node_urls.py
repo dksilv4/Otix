@@ -3,6 +3,7 @@
 from django.urls import path, register_converter
 
 from apps.library.converters import SignedIntConverter
+from apps.library.views.media_activity import MediaActivityView
 from apps.library.views.nodes import (
     DesktopNodeHeartbeatView,
     NodeAcknowledgeUpdatesView,
@@ -25,8 +26,8 @@ from apps.library.views.nodes import (
     NodeFilesView,
     NodeHeartbeatView,
     NodeInstanceHeartbeatView,
-    NodeInstanceUnclaimView,
     NodeInstancesImportView,
+    NodeInstanceUnclaimView,
     NodeJDownloaderConfigView,
     NodeJDownloaderTestView,
     NodeLibrariesView,
@@ -79,7 +80,6 @@ from apps.library.views.nodes import (
     NodeUsenetTestProwlarrView,
     NodeUsenetTestSabnzbdView,
 )
-from apps.library.views.media_activity import MediaActivityView
 from apps.library.views.storage_shares import (
     NodeLibraryPathDetailView,
     NodeLibraryPathsView,

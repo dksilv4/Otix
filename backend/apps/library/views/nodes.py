@@ -1,7 +1,9 @@
 """Node API views: self-hosted otix node management and library indexing."""
 
+import inspect
 import logging
 import mimetypes
+import uuid
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -18,7 +20,6 @@ from rest_framework.exceptions import NotAuthenticated, NotFound, ValidationErro
 from rest_framework.permissions import AllowAny
 from rest_framework.request import Request
 from rest_framework.response import Response
-import inspect
 from rest_framework.views import APIView as _DRFAPIView
 
 
@@ -647,7 +648,6 @@ class NodeScanCompleteView(APIView):
         payload = request.data if isinstance(request.data, dict) else {}
         token = payload.get("auth_token") or ""
         endpoints = payload.get("local_endpoints") or []
-        write_otix = False  # R5: database-only persistence, zero on-disk sidecars
         download_images = payload.get("download_images", False)
 
         query = Q()
@@ -2443,31 +2443,25 @@ class NodeConnectionsView(APIView):
 
 
 class NodeConnectionsSyncView(APIView):
-    """Push stored connections onto chosen Otix nodes (or every node)."""
+    """Push stored connections onto chosen Otix nodes (or every node), or one specific node."""
 
     permission_classes = (permissions.IsAuthenticated,)
 
-    def post(self, request: Request) -> Response:
+    def post(self, request: Request, server_id: int | None = None) -> Response:
+        if server_id is not None:
+            server = _get_server_or_404(request, server_id)
+            user = _resolve_user(request)
+            if user and server.user_id and server.user_id != user.id:
+                raise NotFound("Otix node not found")
+            kinds = push_shared_connections(server)
+            return Response({"ok": True, "server_id": server.id, "kinds": kinds})
+
         user = _resolve_user(request)
         if not user:
             return Response({"results": []})
         payload = _request_payload(request)
         results = push_shared_to_servers(user, _requested_server_ids(payload))
         return Response({"results": results})
-
-
-class NodeConnectionsSyncView(APIView):
-    """Push stored connections onto one Otix node."""
-
-    permission_classes = (permissions.IsAuthenticated,)
-
-    def post(self, request: Request, server_id: int) -> Response:
-        server = _get_server_or_404(request, server_id)
-        user = _resolve_user(request)
-        if user and server.user_id and server.user_id != user.id:
-            raise NotFound("Otix node not found")
-        kinds = push_shared_connections(server)
-        return Response({"ok": True, "server_id": server.id, "kinds": kinds})
 
 
 class NodeInstancesImportView(APIView):

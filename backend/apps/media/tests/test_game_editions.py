@@ -4,8 +4,8 @@ from datetime import date
 
 from django.test import TestCase
 
-from apps.media.models import ExternalID, Game, GameEdition, MediaItem
-from apps.media.serializers.catalog import GameDetailSerializer, MediaItemDetailSerializer
+from apps.media.models import Game, MediaItem
+from apps.media.serializers.catalog import MediaItemDetailSerializer
 from apps.media.services.game_edition import (
     find_canonical_base_game,
     is_duplicate_edition,

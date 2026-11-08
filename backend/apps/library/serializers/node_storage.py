@@ -1,11 +1,11 @@
 """Serializers for Storage Shares, Node Library Paths, and Game Matches."""
 
+from django.contrib.contenttypes.models import ContentType
 from rest_framework import serializers
 
 from apps.library.models import GameMatchRecord, NodeLibraryPath, StorageShare, UserMachine
 from apps.media.models import ExternalID, MediaItem
 from apps.media.serializers.catalog import MediaItemSummarySerializer
-from django.contrib.contenttypes.models import ContentType
 
 
 class StorageShareSerializer(serializers.ModelSerializer):

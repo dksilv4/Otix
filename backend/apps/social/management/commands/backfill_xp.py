@@ -73,6 +73,7 @@ class Command(BaseCommand):
             return
 
         from collections import defaultdict
+
         from django.db.models import Count
 
         # 1. Bulk Reviews

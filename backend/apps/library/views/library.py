@@ -13,8 +13,8 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.library.models import UserGame
 from apps.library import services
+from apps.library.models import UserGame
 from apps.library.serializers import (
     EpicUnmatchedGameSerializer,
     GOGUnmatchedGameSerializer,

@@ -1,6 +1,7 @@
 """Per-user connected Otix nodes (otix-node daemons)."""
 
 import uuid
+
 from django.conf import settings
 from django.db import models
 

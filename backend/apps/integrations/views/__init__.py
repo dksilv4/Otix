@@ -58,6 +58,7 @@ __all__ = [
     "FetchDeviceView",
     "FetchRequestStreamView",
     "FetchResultView",
+    "PlexAlbumTracksView",
     "PlexConnectInfoView",
     "PlexContinueWatchingView",
     "PlexLibrariesView",

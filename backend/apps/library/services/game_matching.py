@@ -432,7 +432,7 @@ def confirm_match(
         if m:
             resolved_ps_id = m.group(1).upper()
 
-    from apps.library.models.game_source import NodeGameSource, UserGame
+    from apps.library.models.game_source import NodeGameSource
     source = (
         NodeGameSource.objects.filter(
             user_game__user=user,

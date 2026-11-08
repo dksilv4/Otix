@@ -6,20 +6,15 @@ Explicit Sort Relevance Floor.
 
 from __future__ import annotations
 
-import math
 from datetime import date
+
 from django.db import connection
 from django.test import TestCase
 from rest_framework.test import APIClient
 
 from apps.media.models import Game, MediaItem, Movie, Show
 from apps.search.services.search import (
-    compute_relevance_score,
     ensure_sqlite_search_functions,
-    py_trigram_similarity,
-    py_word_trigram_similarity,
-    rank_media_items_python,
-    search_media_payload,
 )
 
 
@@ -152,7 +147,7 @@ class AdversarialRankingEngineStressTests(TestCase):
     def test_case_insensitive_exact_match_supremacy(self) -> None:
         """Case variations in query preserve exact match #1 rank."""
         dune = _create_item("movie", "Dune", "dune", popularity=0.0)
-        dune_two = _create_item("movie", "Dune: Part Two", "dune-part-two", popularity=100000.0)
+        _create_item("movie", "Dune: Part Two", "dune-part-two", popularity=100000.0)
 
         for q in ["dune", "DUNE", "DuNe", "Dune"]:
             res = self.client.get("/api/v1/search/", {"q": q})
@@ -164,7 +159,7 @@ class AdversarialRankingEngineStressTests(TestCase):
     def test_punctuation_stripped_supremacy_over_substring(self) -> None:
         """A punctuation-stripped match (e.g. 'spiderman' for 'Spider-Man') outranks high-pop substring matches."""
         spider_exact = _create_item("movie", "Spider-Man", "spider-man", popularity=0.0)
-        spider_sub = _create_item("movie", "The Amazing Spiderman", "the-amazing-spiderman", popularity=100000.0)
+        _create_item("movie", "The Amazing Spiderman", "the-amazing-spiderman", popularity=100000.0)
 
         res = self.client.get("/api/v1/search/", {"q": "spiderman"})
         self.assertEqual(res.status_code, 200)

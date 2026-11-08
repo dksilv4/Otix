@@ -1,7 +1,6 @@
 """Tests for the two-stage Server-Sent Events (SSE) streaming search endpoint."""
 
 import json
-from unittest.mock import patch
 
 from django.test import TestCase
 from rest_framework.test import APIClient

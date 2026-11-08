@@ -14,11 +14,10 @@ from __future__ import annotations
 from datetime import date
 from typing import Any
 
-from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ObjectDoesNotExist
 from rest_framework import serializers
 
-from apps.media.models import Episode, ExternalID, Game, MediaAsset, MediaItem, Movie, Season, Show
+from apps.media.models import Episode, Game, MediaAsset, MediaItem, Movie, Season, Show
 from apps.media.serializers.game_edition import GameEditionOutSerializer
 
 

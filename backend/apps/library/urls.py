@@ -10,16 +10,15 @@ from django.urls import include, path, register_converter
 
 from apps.library.converters import SignedIntConverter
 from apps.library.views import (
+    CanonicalGamesView,
     EpicLibraryView,
     EpicStatusView,
     EpicUnmatchedView,
     GOGLibraryView,
     GOGStatusView,
     GOGUnmatchedView,
-    CanonicalGamesView,
     InstalledGamesView,
     LibraryTabView,
-    MediaActivityView,
     NodeConnectionsSyncView,
     NodeConnectionsView,
     NodeFilesView,
@@ -125,7 +124,7 @@ urlpatterns = [
         name="library-user-game-session-detail",
     ),
     path("game-running", UserGameRunningView.as_view(), name="library-user-game-running"),
-    
+
     # ── Unified Node Routes (/api/v1/library/nodes/*) ────────────────────────
     path("nodes", NodeListCreateView.as_view(), name="library-nodes-root"),
     path("nodes/", include("apps.library.node_urls")),

@@ -1,6 +1,7 @@
 """Node service operations: connectivity probes, health checks, and metrics sync."""
 
 import errno
+import logging
 import os
 import re
 import socket
@@ -22,6 +23,8 @@ from apps.library.models import UserNode
 _LOOPBACK_HOSTS = {"127.0.0.1", "localhost", "::1"}
 PENDING_CACHE_KEY = "otix:pending-nodes"
 PENDING_TTL = 600
+
+logger = logging.getLogger(__name__)
 
 
 def contact_urls(stored_url: str) -> list[str]:
@@ -1821,9 +1824,10 @@ def enrich_radarr_queue_records(records: list[dict]) -> None:
         return
 
     try:
+        from django.contrib.contenttypes.models import ContentType
+
         from apps.media.models import MediaItem
         from apps.media.models.external_id import ExternalID
-        from django.contrib.contenttypes.models import ContentType
 
         ct_media = ContentType.objects.get_for_model(MediaItem)
         movie_cache: dict[str, Any] = {}
@@ -1887,9 +1891,10 @@ def enrich_sonarr_queue_records(records: list[dict]) -> None:
         return
 
     try:
-        from apps.media.models import MediaItem, Episode
-        from apps.media.models.external_id import ExternalID
         from django.contrib.contenttypes.models import ContentType
+
+        from apps.media.models import Episode, MediaItem
+        from apps.media.models.external_id import ExternalID
 
         ct_media = ContentType.objects.get_for_model(MediaItem)
         show_cache: dict[str, Any] = {}

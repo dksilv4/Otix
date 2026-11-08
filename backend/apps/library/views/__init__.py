@@ -1,13 +1,13 @@
 """Library API views, re-exported for convenient imports."""
 
 from apps.library.views.library import (
+    CanonicalGamesView,
     EpicLibraryView,
     EpicStatusView,
     EpicUnmatchedView,
     GOGLibraryView,
     GOGStatusView,
     GOGUnmatchedView,
-    CanonicalGamesView,
     InstalledGamesView,
     LibraryTabView,
     PlexLibraryView,
@@ -18,6 +18,16 @@ from apps.library.views.library import (
     SteamUnmatchedView,
     SteamWishlistView,
     YoutubeLibraryView,
+)
+from apps.library.views.machines import (
+    UserHomeDetailView,
+    UserHomeListCreateView,
+    UserMachineDetailView,
+    UserMachineDetectDrivesView,
+    UserMachineListCreateView,
+    UserServerMachineDetailView,
+    UserServerMachineDetectDrivesView,
+    UserServerMachineListCreateView,
 )
 from apps.library.views.media_activity import MediaActivityView
 from apps.library.views.media_requests import (
@@ -46,8 +56,8 @@ from apps.library.views.nodes import (
     NodeFilesView,
     NodeHeartbeatView,
     NodeInstanceHeartbeatView,
-    NodeInstanceUnclaimView,
     NodeInstancesImportView,
+    NodeInstanceUnclaimView,
     NodeJDownloaderConfigView,
     NodeJDownloaderTestView,
     NodeLibrariesView,
@@ -102,16 +112,6 @@ from apps.library.views.nodes import (
     UserGameRunningView,
     UserGameSessionDetailView,
     UserGameSessionsView,
-)
-from apps.library.views.machines import (
-    UserHomeDetailView,
-    UserHomeListCreateView,
-    UserMachineDetailView,
-    UserMachineDetectDrivesView,
-    UserMachineListCreateView,
-    UserServerMachineDetailView,
-    UserServerMachineDetectDrivesView,
-    UserServerMachineListCreateView,
 )
 from apps.library.views.storage_shares import (
     NodeLibraryPathsView,
