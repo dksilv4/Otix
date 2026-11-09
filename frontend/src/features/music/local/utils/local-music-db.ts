@@ -110,6 +110,19 @@ export const deleteTracksByFolderFromDb = async (folderName: string): Promise<vo
   })
 }
 
+export const getTracksByFolderFromDb = async (folderName: string): Promise<StoredLocalTrack[]> => {
+  const db = await openLocalMusicDb()
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_TRACKS, 'readonly')
+    const store = tx.objectStore(STORE_TRACKS)
+    const index = store.index('folderName')
+    const request = index.getAll(folderName)
+
+    request.onsuccess = () => resolve(request.result || [])
+    request.onerror = () => reject(request.error)
+  })
+}
+
 export const clearAllTracksFromDb = async (): Promise<void> => {
   const db = await openLocalMusicDb()
   return new Promise((resolve, reject) => {

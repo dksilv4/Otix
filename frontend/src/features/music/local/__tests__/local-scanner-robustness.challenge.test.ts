@@ -50,6 +50,8 @@ const mockClearAllTracksFromDb = vi.fn(async () => {
 vi.mock('../utils/local-music-db', () => ({
   getAllTracksFromDb: () => mockGetAllTracksFromDb(),
   getAllFoldersFromDb: () => mockGetAllFoldersFromDb(),
+  getTracksByFolderFromDb: (folderName: string) =>
+    Array.from(mockTrackStore.values()).filter((t) => t.folderName === folderName),
   saveTracksToDb: (tracks: StoredLocalTrack[]) => mockSaveTracksToDb(tracks),
   saveFolderToDb: (folder: any) => mockSaveFolderToDb(folder),
   deleteFolderFromDb: (id: string) => mockDeleteFolderFromDb(id),

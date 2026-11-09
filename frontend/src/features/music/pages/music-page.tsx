@@ -401,8 +401,8 @@ export const MusicPage = () => {
             <div className="flex flex-col gap-1 max-w-md">
               <h3 className="text-lg font-bold text-foreground">Build Your Music Library</h3>
               <p className="text-xs text-muted-foreground leading-relaxed">
-                Seamlessly play audio files directly from your computer or stream directly from your
-                connected Plex media servers.
+                Drop audio files anywhere into Otix to add to your local library and play instantly,
+                or stream directly from your connected Plex media servers.
               </p>
             </div>
             <div className="flex flex-wrap items-center justify-center gap-3 mt-2">

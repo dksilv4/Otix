@@ -97,6 +97,7 @@ export interface ProcessAudioFilesOptions {
   onProgress?: (current: number, total: number) => void
   onTrackParsed?: (track: StoredLocalTrack, file: File) => void
   signal?: AbortSignal
+  existingTracksCache?: Map<string, StoredLocalTrack>
 }
 
 export const processAudioFiles = async (
@@ -108,6 +109,7 @@ export const processAudioFiles = async (
   let onProgress: ((current: number, total: number) => void) | undefined
   let onTrackParsed: ((track: StoredLocalTrack, file: File) => void) | undefined
   let signal: AbortSignal | undefined
+  let existingTracksCache: Map<string, StoredLocalTrack> | undefined
   let concurrency = 3
 
   if (typeof onProgressOrOptions === 'function') {
@@ -117,6 +119,7 @@ export const processAudioFiles = async (
     onProgress = onProgressOrOptions.onProgress
     onTrackParsed = onProgressOrOptions.onTrackParsed ?? onTrackParsedCallback
     signal = onProgressOrOptions.signal
+    existingTracksCache = onProgressOrOptions.existingTracksCache
     if (onProgressOrOptions.concurrency && onProgressOrOptions.concurrency > 0) {
       concurrency = onProgressOrOptions.concurrency
     }
@@ -133,10 +136,23 @@ export const processAudioFiles = async (
   const parseOne = async (item: { file: File; path: string }) => {
     if (signal?.aborted) return
     const { file, path } = item
+    const trackId = `loc-${encodeURIComponent(item.path)}-${file.size}-${file.lastModified}`
+
+    // VLC-inspired Delta Scanning: If track is already indexed with identical size and mtime,
+    // reuse cached metadata immediately, bypassing heavy binary parsing and image blob decoding.
+    const cached = existingTracksCache?.get(trackId)
+    if (cached) {
+      stored.push(cached)
+      liveMap.set(trackId, file)
+      onTrackParsed?.(cached, file)
+      completedCount++
+      onProgress?.(completedCount, total)
+      return
+    }
+
     try {
       const meta = await parseAudioFileMetadata(file)
       if (signal?.aborted) return
-      const trackId = `loc-${encodeURIComponent(item.path)}-${file.size}-${file.lastModified}`
 
       let artBlob: Blob | null = meta.albumArtBlob ?? null
       if (!artBlob && meta.albumArt && meta.albumArt.startsWith('blob:')) {

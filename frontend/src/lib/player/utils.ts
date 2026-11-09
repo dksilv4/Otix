@@ -90,3 +90,31 @@ export const getJellyfinClientId = (): string => {
 export const JELLYFIN_PLAYER_VOLUME_KEY = 'jellyfin-player-volume'
 export const LOCAL_PLAYER_VOLUME_KEY = 'otix_local_player_volume'
 export const PLEX_PLAYER_VOLUME_KEY = 'plex-player-volume'
+
+let currentAudioElement: HTMLAudioElement | null = null
+const audioElementListeners = new Set<(el: HTMLAudioElement | null) => void>()
+
+export const setActiveAudioElement = (el: HTMLAudioElement | null) => {
+  if (currentAudioElement === el) return
+  currentAudioElement = el
+  for (const listener of audioElementListeners) {
+    try {
+      listener(el)
+    } catch {
+      // ignore
+    }
+  }
+}
+
+export const getActiveAudioElement = (): HTMLAudioElement | null => {
+  return currentAudioElement
+}
+
+export const subscribeActiveAudioElement = (listener: (el: HTMLAudioElement | null) => void) => {
+  audioElementListeners.add(listener)
+  listener(currentAudioElement)
+  return () => {
+    audioElementListeners.delete(listener)
+  }
+}
+

@@ -60,6 +60,16 @@ export const localTrackToPlayableItem = (track: LocalTrackInfo): PlayableMediaIt
   },
 })
 
+export const trackToPlayableItem = (track: any, source: string): PlayableMediaItem => {
+  if (source === 'plex') {
+    return plexTrackToPlayableItem(track as PlexTrackInfo)
+  }
+  if (source === 'jellyfin') {
+    return jellyfinTrackToPlayableItem(track as JellyfinTrackInfo)
+  }
+  return localTrackToPlayableItem(track as LocalTrackInfo)
+}
+
 export const streamSessionToPlayableItem = (session: StreamPlaybackSession): PlayableMediaItem => ({
   id: `${session.source}:${session.itemId}`,
   source: session.source,

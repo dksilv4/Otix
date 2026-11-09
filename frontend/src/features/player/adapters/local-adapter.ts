@@ -4,6 +4,8 @@ import type {
   ResolvedPlayback,
   ProgressReport,
 } from '../types'
+import { getSessionFile } from '@/features/music/local/utils/session-file-map'
+import { getOrCreateBlobUrl } from '@/features/music/utils/blob-url-cache'
 
 export class LocalSourceAdapter implements MediaSourceAdapter {
   readonly id = 'local'
@@ -16,6 +18,13 @@ export class LocalSourceAdapter implements MediaSourceAdapter {
   async resolvePlayback(item: PlayableMediaItem): Promise<ResolvedPlayback> {
     const data = item.providerData || {}
     let url = String(data.url || data.directUrl || '')
+
+    if (!url) {
+      const sessionFile = getSessionFile(item.id)
+      if (sessionFile) {
+        url = getOrCreateBlobUrl(sessionFile) || ''
+      }
+    }
 
     if (!url && data.path) {
       url = `local-media://localhost?path=${encodeURIComponent(data.path)}`

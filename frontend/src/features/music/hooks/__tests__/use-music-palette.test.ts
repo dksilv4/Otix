@@ -16,19 +16,25 @@ describe('useMusicPalette', () => {
     expect(result.current.glowShadow).toBe('var(--dk-shadow-dialog)')
     expect(result.current.borderColor).toBe('rgba(255, 255, 255, 0.06)')
     expect(result.current.drawerBackdropGradient).toBe('var(--dk-surface-overlay)')
+    expect(result.current.textColor).toBe('var(--foreground)')
+    expect(result.current.subtextColor).toBe('var(--muted-foreground)')
+    expect(result.current.iconColor).toBe('var(--muted-foreground)')
   })
 
-  it('computes dynamic gradients, ambient glow, and micro-border when artwork is present', () => {
+  it('computes uniform glassmorphic surface, ambient glow, and micro-border when artwork is present', () => {
     const { result } = renderHook(() => useMusicPalette('https://example.com/art.jpg'))
 
     expect(result.current.hasArtwork).toBe(true)
-    expect(result.current.containerBackground).toContain('linear-gradient')
-    expect(result.current.podBackground).toContain('linear-gradient')
+    expect(result.current.containerBackground).toBe('var(--dk-surface-overlay)')
+    expect(result.current.podBackground).toBe('var(--dk-surface-raised)')
     expect(result.current.glowShadow).toContain('var(--dk-shadow-dialog)')
-    expect(result.current.drawerBackdropGradient).toContain('radial-gradient')
+    expect(result.current.drawerBackdropGradient).toBe('var(--dk-surface-overlay)')
     expect(result.current.accentRgb).toContain('rgb(')
     expect(result.current.accentRgba(0.5)).toContain('rgba(')
     expect(result.current.accentRgba(0.5)).toContain('0.5)')
+    expect(result.current.textColor).toBe('var(--foreground)')
+    expect(result.current.subtextColor).toBe('var(--muted-foreground)')
+    expect(result.current.iconColor).toBe('var(--muted-foreground)')
   })
 
   it('handles blob URLs properly', () => {

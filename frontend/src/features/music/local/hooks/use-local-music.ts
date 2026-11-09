@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import {
   getAllTracksFromDb,
   getAllFoldersFromDb,
+  getTracksByFolderFromDb,
   saveTracksToDb,
   saveFolderToDb,
   deleteFolderFromDb,
@@ -16,11 +17,13 @@ import {
   buildLocalTrackInfo,
   isAudioFile,
 } from '../utils/local-scanner'
+import {
+  setSessionFile,
+  getSessionFile,
+  clearSessionFiles,
+} from '../utils/session-file-map'
 import { usePlayer } from '@/lib/player/use-player'
 import type { LocalTrackInfo } from '@/lib/player/types'
-
-// Module-level file map to preserve active File references for playback during a session
-const sessionFileMap = new Map<string, File>()
 
 export const useLocalMusic = () => {
   const { playLocalTrack, playLocalTracks } = usePlayer()
@@ -50,9 +53,20 @@ export const useLocalMusic = () => {
   useEffect(() => {
     isMountedRef.current = true
     void reloadData()
+
+    const handleLocalUpdate = () => {
+      void reloadData()
+    }
+    if (typeof window !== 'undefined') {
+      window.addEventListener('otix:local-music-updated', handleLocalUpdate)
+    }
+
     return () => {
       isMountedRef.current = false
       activeScanAbortRef.current?.abort()
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('otix:local-music-updated', handleLocalUpdate)
+      }
     }
   }, [reloadData])
 
@@ -71,6 +85,19 @@ export const useLocalMusic = () => {
 
       setIsScanning(true)
       setScanProgress({ current: 0, total: items.length })
+
+      // Pre-load existing tracks for VLC-style delta scanning before clearing database records
+      let existingTracksCache: Map<string, StoredLocalTrack> | undefined
+      try {
+        if (typeof getTracksByFolderFromDb === 'function') {
+          const existing = await getTracksByFolderFromDb(folderName)
+          if (existing && existing.length > 0) {
+            existingTracksCache = new Map(existing.map((t) => [t.id, t]))
+          }
+        }
+      } catch (err) {
+        console.warn('[useLocalMusic] Error preparing delta scan cache:', err)
+      }
 
       // Clear previous tracks from IndexedDB for this folder to eliminate orphaned deleted files
       try {
@@ -122,7 +149,7 @@ export const useLocalMusic = () => {
 
       const onTrackParsed = (track: StoredLocalTrack, file: File) => {
         // Register in session map immediately so the user can play it right away
-        sessionFileMap.set(track.id, file)
+        setSessionFile(track.id, file)
 
         pendingTracks.push(track)
         dbBatch.push(track)
@@ -152,6 +179,7 @@ export const useLocalMusic = () => {
         const { stored } = await processAudioFiles(items, folderName, {
           concurrency: 3,
           signal: controller.signal,
+          existingTracksCache,
           onProgress: (curr, tot) => {
             if (isMountedRef.current) {
               setScanProgress({ current: curr, total: tot })
@@ -286,7 +314,7 @@ export const useLocalMusic = () => {
     activeScanAbortRef.current = null
     try {
       await clearAllTracksFromDb()
-      sessionFileMap.clear()
+      clearSessionFiles()
       await reloadData()
     } catch (err) {
       console.error('[useLocalMusic] Clear all failed:', err)
@@ -294,7 +322,7 @@ export const useLocalMusic = () => {
   }, [reloadData])
 
   const resolveFileForTrack = useCallback(async (track: StoredLocalTrack): Promise<File | null> => {
-    let file = sessionFileMap.get(track.id)
+    let file = getSessionFile(track.id)
     if (file) return file
 
     const folder = folders.find((f) => f.name === track.folderName)
@@ -324,7 +352,7 @@ export const useLocalMusic = () => {
             file = await fileHandle.getFile()
           }
           if (file) {
-            sessionFileMap.set(track.id, file)
+            setSessionFile(track.id, file)
             return file
           }
         }
@@ -336,7 +364,7 @@ export const useLocalMusic = () => {
   }, [folders])
 
   const getPlayableTrack = useCallback((track: StoredLocalTrack): LocalTrackInfo => {
-    const file = sessionFileMap.get(track.id)
+    const file = getSessionFile(track.id)
     return buildLocalTrackInfo(track, file)
   }, [])
 
@@ -345,7 +373,7 @@ export const useLocalMusic = () => {
       if (tracksList.length === 0) return
       const playables = await Promise.all(
         tracksList.map(async (t) => {
-          let file = sessionFileMap.get(t.id)
+          let file = getSessionFile(t.id)
           if (!file) {
             file = (await resolveFileForTrack(t)) ?? undefined
           }
@@ -358,7 +386,7 @@ export const useLocalMusic = () => {
   )
 
   const playTrack = useCallback(async (track: StoredLocalTrack) => {
-    let file = sessionFileMap.get(track.id)
+    let file = getSessionFile(track.id)
     if (!file) {
       file = (await resolveFileForTrack(track)) ?? undefined
     }

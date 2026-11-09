@@ -226,7 +226,7 @@ export const MusicLocalView = () => {
           <p className="mt-1 max-w-sm text-xs text-muted-foreground">
             {isScanning
               ? 'Reading audio tags and album art. Songs will appear below as they are scanned.'
-              : 'Click "Add Music Folder" above to select and scan your music folder. ID3 tags and embedded album art will be saved automatically.'}
+              : 'Click "Add Music Folder" above or drag & drop audio files anywhere into Otix to add to your library and start playing.'}
           </p>
         </div>
       ) : (

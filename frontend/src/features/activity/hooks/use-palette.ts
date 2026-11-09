@@ -5,9 +5,10 @@ export interface ExtractedPalette {
   surface: { r: number; g: number; b: number }
   accent: { r: number; g: number; b: number }
   accentText: string
+  edge?: { r: number; g: number; b: number }
 }
 
-type Rgb = { r: number; g: number; b: number }
+export type Rgb = { r: number; g: number; b: number }
 
 const paletteCache = new Map<string, ExtractedPalette>()
 
@@ -36,12 +37,47 @@ function hslToRgb(h: number, s: number, l: number): Rgb {
   return { r: Math.round(255 * f(0)), g: Math.round(255 * f(8)), b: Math.round(255 * f(4)) }
 }
 
-function relativeLuminance({ r, g, b }: Rgb): number {
+export function relativeLuminance({ r, g, b }: Rgb): number {
   const toLinear = (value: number) => {
     const channel = value / 255
     return channel <= 0.03928 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4
   }
   return 0.2126 * toLinear(r) + 0.7152 * toLinear(g) + 0.0722 * toLinear(b)
+}
+
+export function getContrastRatio(a: Rgb, b: Rgb): number {
+  const l1 = relativeLuminance(a)
+  const l2 = relativeLuminance(b)
+  const lighter = Math.max(l1, l2)
+  const darker = Math.min(l1, l2)
+  return (lighter + 0.05) / (darker + 0.05)
+}
+
+export function adjustForContrast(foreground: Rgb, background: Rgb, minRatio = 4.5): Rgb {
+  if (getContrastRatio(foreground, background) >= minRatio) {
+    return foreground
+  }
+  const bgL = relativeLuminance(background)
+  const target: Rgb = bgL > 0.4 ? { r: 12, g: 12, b: 16 } : { r: 248, g: 248, b: 252 }
+
+  let low = 0
+  let high = 1
+  let best = target
+  for (let i = 0; i < 10; i++) {
+    const mid = (low + high) / 2
+    const candidate: Rgb = {
+      r: Math.round(foreground.r * (1 - mid) + target.r * mid),
+      g: Math.round(foreground.g * (1 - mid) + target.g * mid),
+      b: Math.round(foreground.b * (1 - mid) + target.b * mid),
+    }
+    if (getContrastRatio(candidate, background) >= minRatio) {
+      best = candidate
+      high = mid
+    } else {
+      low = mid
+    }
+  }
+  return best
 }
 
 function colorDistance(a: Rgb, b: Rgb): number {
@@ -106,11 +142,35 @@ function extractPalette(imageData: ImageData): ExtractedPalette {
     Math.min(68, Math.max(42, accentLight)),
   )
 
+  // Sample perimeter pixels to extract the exact border/outer edge color of the album cover
+  const edgeBuckets: Array<Rgb & { count: number }> = []
+  for (let y = 0; y < 64; y++) {
+    for (let x = 0; x < 64; x++) {
+      if (x === 0 || x === 63 || y === 0 || y === 63) {
+        const idx = (y * 64 + x) * 4
+        const a = pixels[idx + 3]
+        if (a < 128) continue
+        const er = pixels[idx]
+        const eg = pixels[idx + 1]
+        const eb = pixels[idx + 2]
+        const qr = Math.min(255, Math.round(er / 16) * 16)
+        const qg = Math.min(255, Math.round(eg / 16) * 16)
+        const qb = Math.min(255, Math.round(eb / 16) * 16)
+        const found = edgeBuckets.find((e) => e.r === qr && e.g === qg && e.b === qb)
+        if (found) found.count++
+        else edgeBuckets.push({ r: qr, g: qg, b: qb, count: 1 })
+      }
+    }
+  }
+  edgeBuckets.sort((a, b) => b.count - a.count)
+  const edge = edgeBuckets[0] ? { r: edgeBuckets[0].r, g: edgeBuckets[0].g, b: edgeBuckets[0].b } : background
+
   return {
     background,
     surface,
     accent,
     accentText: relativeLuminance(accent) > 0.48 ? '#111111' : '#ffffff',
+    edge,
   }
 }
 

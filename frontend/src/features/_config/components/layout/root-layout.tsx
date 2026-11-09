@@ -20,6 +20,7 @@ import { CookieBanner } from "@/components/cookie-banner"
 import { AppMicroFooter } from "@/components/app-micro-footer"
 import { UpdateNotificationToast, UpdateModal, ReleaseNotesModal } from "@/features/updater"
 import { GlobalMusicBar } from "@/features/music/components/molecules/global-music-bar"
+import { GlobalDropOverlay } from "@/features/drop"
 import { safeLazy } from "@/lib/utils/chunk-reload"
 
 const PluginPermissionModal = safeLazy(() =>
@@ -128,6 +129,7 @@ export const RootLayout = () => {
       <GamingXpHost />
       <IndexerSearchHost />
       <GlobalMusicBar />
+      <GlobalDropOverlay />
       <ModalRoot />
       <CookieBanner />
       <UpdateNotificationToast />

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { LocalTrackInfo, RepeatMode } from './types'
 import { LocalPlayerContext, playerProgressStore } from './player-context'
-import { LOCAL_PLAYER_VOLUME_KEY } from './utils'
+import { LOCAL_PLAYER_VOLUME_KEY, setActiveAudioElement } from './utils'
 import { localTrackCache, resolveLocalAudioTrack } from '@/features/media/utils/local-media'
 
 export const LocalAudioProvider = ({ children }: { children: React.ReactNode }) => {

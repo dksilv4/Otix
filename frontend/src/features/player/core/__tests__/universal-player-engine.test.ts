@@ -100,4 +100,45 @@ describe('UniversalPlayerEngine', () => {
     // Listener should not have been called again after unsubscribe
     expect(listener).toHaveBeenCalledTimes(1)
   })
+
+  it('discards stale playback resolutions when rapid skip occurs (generational cancellation)', async () => {
+    let resolveFirst: (val: any) => void = () => {}
+    const slowFirstPromise = new Promise((resolve) => {
+      resolveFirst = resolve
+    })
+
+    const fastSecondPromise = Promise.resolve({
+      engine: 'html5-audio' as const,
+      streamUrl: 'https://example.com/track2.mp3',
+      playbackMethod: 'direct-play' as const,
+    })
+
+    const item1: PlayableMediaItem = { id: 'slow-1', source: 'mock', mediaType: 'audio', title: 'Slow Track 1' }
+    const item2: PlayableMediaItem = { id: 'fast-2', source: 'mock', mediaType: 'audio', title: 'Fast Track 2' }
+
+    mockAdapter.resolvePlayback = vi.fn().mockImplementation((item: PlayableMediaItem) => {
+      if (item.id === 'slow-1') return slowFirstPromise
+      return fastSecondPromise
+    })
+
+    // Start playing item1 (which hangs pending resolution)
+    const playPromise1 = engine.play(item1)
+    expect(engine.getState().currentItem?.id).toBe('slow-1')
+
+    // Immediately trigger play on item2
+    await engine.play(item2)
+    expect(engine.getState().currentItem?.id).toBe('fast-2')
+    expect(engine.getState().status).toBe('playing')
+
+    // Now resolve the slow first item belatedly
+    resolveFirst({
+      engine: 'html5-audio',
+      streamUrl: 'https://example.com/track1.mp3',
+      playbackMethod: 'direct-play',
+    })
+    await playPromise1
+
+    // Engine must still be on fast-2, NOT overwritten by stale slow-1
+    expect(engine.getState().currentItem?.id).toBe('fast-2')
+  })
 })

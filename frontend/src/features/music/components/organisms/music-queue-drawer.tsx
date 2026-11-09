@@ -98,11 +98,10 @@ export const MusicQueueDrawer = ({ isOpen, onClose }: MusicQueueDrawerProps) => 
               {/* Now Playing Pod */}
               {currentTrack ? (
                 <div
-                  className="rounded-2xl p-4 flex flex-col gap-3.5 transition-[background,box-shadow,border-color] duration-500"
+                  className="rounded-2xl p-4 flex flex-col gap-3.5 transition-[background,border-color] duration-500"
                   style={{
                     background: theme.podBackground,
                     border: `1px solid ${theme.borderColor}`,
-                    boxShadow: theme.hasArtwork ? `0 8px 24px -4px ${theme.accentRgba(0.18)}` : undefined,
                   }}
                 >
                   <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -115,7 +114,6 @@ export const MusicQueueDrawer = ({ isOpen, onClose }: MusicQueueDrawerProps) => 
                         src={currentTrack.albumArt}
                         alt={currentTrack.title}
                         className="h-14 w-14 rounded-xl object-cover bg-[var(--dk-surface-glass)] transition-all"
-                        style={theme.hasArtwork ? { boxShadow: `0 4px 14px ${theme.accentRgba(0.35)}` } : undefined}
                       />
                     ) : (
                       <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-[var(--dk-surface-glass)] text-muted-foreground">
@@ -148,7 +146,6 @@ export const MusicQueueDrawer = ({ isOpen, onClose }: MusicQueueDrawerProps) => 
                           ...(theme.hasArtwork
                             ? {
                                 backgroundColor: theme.accentRgb,
-                                boxShadow: `0 0 8px ${theme.accentRgba(0.5)}`,
                               }
                             : {}),
                         }}
@@ -195,18 +192,18 @@ export const MusicQueueDrawer = ({ isOpen, onClose }: MusicQueueDrawerProps) => 
                         type="button"
                         onClick={() => void togglePlay()}
                         className={cn(
-                          'flex h-9 w-9 items-center justify-center rounded-full shadow-md transition-transform hover:scale-105 active:scale-95',
+                          'flex h-9 w-9 items-center justify-center rounded-full shadow-none transition-transform hover:scale-105 active:scale-95',
                           !theme.hasArtwork && 'bg-primary text-primary-foreground',
                         )}
-                        style={
-                          theme.hasArtwork
+                        style={{
+                          ...(theme.hasArtwork
                             ? {
                                 backgroundColor: theme.accentRgb,
                                 color: theme.accentText,
-                                boxShadow: `0 2px 12px ${theme.accentRgba(0.35)}`,
                               }
-                            : undefined
-                        }
+                            : {}),
+                          boxShadow: 'none',
+                        }}
                         aria-label={isPlaying ? 'Pause' : 'Play'}
                       >
                         {isPlaying ? <Pause className="h-4 w-4 fill-current" /> : <Play className="h-4 w-4 fill-current ml-0.5" />}

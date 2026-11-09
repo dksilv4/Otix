@@ -12,6 +12,16 @@ import type {
 } from '../types'
 import { adapterRegistry } from '../adapters'
 import { DEFAULT_QUALITY_ID } from '@/features/media/utils/quality'
+import { setActiveAudioElement } from '@/lib/player/utils'
+import {
+  savePlaybackSessionThrottled,
+  savePlaybackSessionImmediate,
+  clearPlaybackSession,
+  getSavedPlaybackSession,
+  registerAutoResumeUserGesture,
+} from '@/features/music/visualizers/utils/playback-persistence'
+import type { PersistentPlaybackSession } from '@/features/music/visualizers/types'
+import { trackToPlayableItem } from '../utils/converters'
 
 export interface UniversalEngineState {
   currentItem: PlayableMediaItem | null
@@ -60,6 +70,8 @@ export class UniversalPlayerEngine {
   private activeAdapter: MediaSourceAdapter | null = null
   private resolvedPlayback: ResolvedPlayback | null = null
   private playSessionId = ''
+  private playSessionToken = 0
+  private preloadedNext: { itemId: string; resolved: ResolvedPlayback } | null = null
   private heartbeatTimer: ReturnType<typeof setInterval> | null = null
   private unShuffledQueue: PlayableMediaItem[] = []
 
@@ -123,6 +135,7 @@ export class UniversalPlayerEngine {
     try {
       this.audioElement = new Audio()
       this.audioElement.volume = this.state.isMuted ? 0 : this.state.volume
+      setActiveAudioElement(this.audioElement)
 
       this.audioElement.addEventListener('timeupdate', () => {
         if (!this.audioElement || this.state.currentItem?.mediaType !== 'audio') return
@@ -130,6 +143,7 @@ export class UniversalPlayerEngine {
           position: this.audioElement.currentTime,
           duration: this.audioElement.duration || this.state.duration,
         })
+        this.saveCurrentSession(false)
       })
 
       this.audioElement.addEventListener('progress', () => {
@@ -140,13 +154,16 @@ export class UniversalPlayerEngine {
 
       this.audioElement.addEventListener('playing', () => {
         if (this.state.currentItem?.mediaType === 'audio') {
+          setActiveAudioElement(this.audioElement)
           this.updateState({ status: 'playing' })
+          this.saveCurrentSession(true)
         }
       })
 
       this.audioElement.addEventListener('pause', () => {
         if (this.state.currentItem?.mediaType === 'audio' && this.state.status === 'playing') {
           this.updateState({ status: 'paused' })
+          this.saveCurrentSession(true)
         }
       })
 
@@ -232,6 +249,9 @@ export class UniversalPlayerEngine {
     const upcomingHistory =
       options?.customHistory !== undefined ? options.customHistory : this.state.history
 
+    // Increment session generation token for VLC-style race-condition immunity
+    const sessionToken = ++this.playSessionToken
+
     // Stop and clear previous playback (AUDIO FOCUS ENFORCEMENT)
     this.stopInternal(false)
 
@@ -254,12 +274,31 @@ export class UniversalPlayerEngine {
       activeSubtitle: null,
     })
 
-    this.unShuffledQueue = [...upcomingQueue]
+    if (options?.customQueue !== undefined && this.state.isShuffled) {
+      this.unShuffledQueue = this.unShuffledQueue.filter(
+        (t) => t !== targetItem && t.id !== targetItem.id,
+      )
+    } else {
+      this.unShuffledQueue = [...upcomingQueue]
+    }
 
     try {
-      const resolved = await this.activeAdapter.resolvePlayback(targetItem, {
-        startPosition: options?.startPosition ?? targetItem.startPosition,
-      })
+      // Fast path: use preloaded lookahead resolution if available
+      let resolved: ResolvedPlayback
+      if (this.preloadedNext && this.preloadedNext.itemId === targetItem.id) {
+        resolved = this.preloadedNext.resolved
+        this.preloadedNext = null
+      } else {
+        resolved = await this.activeAdapter.resolvePlayback(targetItem, {
+          startPosition: options?.startPosition ?? targetItem.startPosition,
+        })
+      }
+
+      // If user skipped or triggered another play while resolution was in-flight, discard stale result
+      if (this.playSessionToken !== sessionToken) {
+        return
+      }
+
       this.resolvedPlayback = resolved
 
       const activeAudio =
@@ -290,7 +329,13 @@ export class UniversalPlayerEngine {
       }
 
       this.startHeartbeat()
+
+      // VLC-style Lookahead: Pre-resolve the next audio track in queue in the background
+      void this.preloadNextQueueItem()
     } catch (err: any) {
+      if (this.playSessionToken !== sessionToken) {
+        return
+      }
       this.updateState({
         status: 'error',
         error: err?.message || 'Failed to resolve media playback',
@@ -334,6 +379,7 @@ export class UniversalPlayerEngine {
 
   private stopInternal(resetViewMode = true): void {
     this.stopHeartbeat()
+    this.preloadedNext = null
 
     if (this.audioElement) {
       this.audioElement.pause()
@@ -362,7 +408,29 @@ export class UniversalPlayerEngine {
     })
   }
 
+  private async preloadNextQueueItem(): Promise<void> {
+    const nextItem = this.state.queue[0]
+    if (!nextItem || nextItem.mediaType !== 'audio') {
+      this.preloadedNext = null
+      return
+    }
+
+    try {
+      const adapter = adapterRegistry.resolve(nextItem)
+      const resolved = await adapter.resolvePlayback(nextItem)
+      if (this.state.queue[0]?.id === nextItem.id) {
+        this.preloadedNext = {
+          itemId: nextItem.id,
+          resolved,
+        }
+      }
+    } catch {
+      this.preloadedNext = null
+    }
+  }
+
   stop(): void {
+    clearPlaybackSession()
     this.stopInternal(true)
     this.updateState({ currentItem: null })
   }
@@ -398,13 +466,15 @@ export class UniversalPlayerEngine {
         }
       }
 
-      if (this.state.repeatMode === 'all' && this.state.history.length > 0) {
+      if (this.state.repeatMode === 'all') {
         const all = [...this.state.history, ...(this.state.currentItem ? [this.state.currentItem] : [])]
-        this.updateState({ history: [] })
-        await this.play(all)
-      } else {
-        this.stop()
+        if (all.length > 0) {
+          this.updateState({ history: [] })
+          await this.play(all)
+          return
+        }
       }
+      this.stop()
       return
     }
 
@@ -464,13 +534,22 @@ export class UniversalPlayerEngine {
     this.updateState({
       queue: [...this.state.queue, ...items],
     })
+    this.unShuffledQueue = [...this.unShuffledQueue, ...items]
   }
 
   removeFromQueue(index: number): void {
     if (index < 0 || index >= this.state.queue.length) return
+    const removedItem = this.state.queue[index]
     const newQueue = [...this.state.queue]
     newQueue.splice(index, 1)
     this.updateState({ queue: newQueue })
+    if (this.state.isShuffled) {
+      this.unShuffledQueue = this.unShuffledQueue.filter(
+        (item) => item !== removedItem && item.id !== removedItem.id,
+      )
+    } else {
+      this.unShuffledQueue = newQueue
+    }
   }
 
   moveQueueItem(fromIndex: number, toIndex: number): void {
@@ -490,6 +569,7 @@ export class UniversalPlayerEngine {
 
   clearQueue(): void {
     this.updateState({ queue: [] })
+    this.unShuffledQueue = []
   }
 
   toggleShuffle(): void {
@@ -745,6 +825,100 @@ export class UniversalPlayerEngine {
       })
     } catch {
       // Some browsers don't support all mediaSession actions
+    }
+  }
+
+  // --------------------------------------------------------------------------
+  // SESSION PERSISTENCE & AUTO-RESUME
+  // --------------------------------------------------------------------------
+  private saveCurrentSession(immediate = false) {
+    if (typeof localStorage === 'undefined') return
+    const item = this.state.currentItem
+    if (!item || item.mediaType !== 'audio' || this.state.status === 'idle') return
+
+    const session: PersistentPlaybackSession = {
+      source: (item.source as any) || 'local',
+      track: {
+        id: item.id,
+        title: item.title,
+        artist: item.subtitle || '',
+        albumName: item.albumOrShowTitle || '',
+        albumArt: item.artworkUrl || null,
+        durationMs: Math.round((item.duration || this.state.duration || 0) * 1000),
+        ratingKey: item.providerData?.ratingKey,
+        serverId: item.providerData?.serverId,
+        partKey: item.providerData?.partKey,
+        path: item.providerData?.path,
+        url: item.providerData?.url,
+      },
+      queue: this.state.queue.map((q) => ({
+        id: q.id,
+        title: q.title,
+        artist: q.subtitle || '',
+        albumName: q.albumOrShowTitle || '',
+        albumArt: q.artworkUrl || null,
+        durationMs: Math.round((q.duration || 0) * 1000),
+        ratingKey: q.providerData?.ratingKey,
+        serverId: q.providerData?.serverId,
+        partKey: q.providerData?.partKey,
+        path: q.providerData?.path,
+        url: q.providerData?.url,
+      })),
+      positionMs: Math.round(this.state.position * 1000),
+      durationMs: Math.round(this.state.duration * 1000),
+      status: this.state.status === 'playing' ? 'playing' : 'paused',
+      repeatMode: this.state.repeatMode,
+      isShuffled: this.state.isShuffled,
+      volume: this.state.volume,
+      savedAt: Date.now(),
+    }
+
+    if (immediate) {
+      savePlaybackSessionImmediate(session)
+    } else {
+      savePlaybackSessionThrottled(session)
+    }
+  }
+
+  public async restoreSession(): Promise<boolean> {
+    const saved = getSavedPlaybackSession()
+    if (!saved || !saved.track || !saved.track.id) return false
+
+    // Ignore sessions older than 7 days
+    if (Date.now() - saved.savedAt > 7 * 24 * 60 * 60 * 1000) {
+      clearPlaybackSession()
+      return false
+    }
+
+    const mainItem = trackToPlayableItem(saved.track, saved.source)
+    const upcomingQueue = saved.queue.map((t) => trackToPlayableItem(t, saved.source))
+
+    if (saved.status === 'playing') {
+      try {
+        await this.play(mainItem, {
+          startPosition: saved.positionMs / 1000,
+          customQueue: upcomingQueue,
+          autoplay: true,
+        })
+      } catch {
+        // Fall back to gesture registration if browser blocks autoplay
+        registerAutoResumeUserGesture(() => {
+          this.resume()
+        })
+      }
+      return true
+    } else {
+      this.updateState({
+        currentItem: mainItem,
+        queue: upcomingQueue,
+        status: 'paused',
+        viewMode: 'minibar',
+        position: saved.positionMs / 1000,
+        duration: saved.durationMs / 1000,
+        repeatMode: saved.repeatMode,
+        isShuffled: saved.isShuffled,
+      })
+      return true
     }
   }
 }

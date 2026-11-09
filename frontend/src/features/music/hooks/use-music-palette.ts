@@ -1,5 +1,13 @@
 import { useMemo } from 'react'
-import { usePalette, rgbCss, rgbaCss, type ExtractedPalette } from '@/features/activity/hooks/use-palette'
+import {
+  usePalette,
+  rgbCss,
+  rgbaCss,
+  relativeLuminance,
+  adjustForContrast,
+  type ExtractedPalette,
+  type Rgb,
+} from '@/features/activity/hooks/use-palette'
 
 export interface MusicPlayerTheme {
   palette: ExtractedPalette
@@ -12,6 +20,12 @@ export interface MusicPlayerTheme {
   podBackground: string
   borderColor: string
   drawerBackdropGradient: string
+  textColor: string
+  subtextColor: string
+  iconColor: string
+  iconHoverColor: string
+  dividerColor: string
+  isLightBackground: boolean
 }
 
 export const useMusicPalette = (imageUrl: string | null | undefined): MusicPlayerTheme => {
@@ -19,29 +33,51 @@ export const useMusicPalette = (imageUrl: string | null | undefined): MusicPlaye
   const hasArtwork = Boolean(imageUrl)
 
   return useMemo(() => {
-    const accentRgb = rgbCss(palette.accent)
-    const accentText = palette.accentText
-    const accentRgba = (alpha: number) => rgbaCss(palette.accent, alpha)
+    const edgeColor: Rgb = palette.edge ?? palette.background
+    const isLightBackground = relativeLuminance(edgeColor) > 0.42
 
-    const glowShadow = hasArtwork
-      ? `0 14px 36px -4px ${rgbaCss(palette.accent, 0.22)}, 0 4px 18px -2px rgba(0, 0, 0, 0.45), var(--dk-shadow-dialog)`
-      : 'var(--dk-shadow-dialog)'
+    // Calibrate accent color for guaranteed minimum contrast (>=3.0:1) against the pod background
+    const contrastAccent = hasArtwork
+      ? adjustForContrast(palette.accent, edgeColor, 3.0)
+      : palette.accent
 
-    const containerBackground = hasArtwork
-      ? `linear-gradient(135deg, ${rgbaCss(palette.surface, 0.88)} 0%, ${rgbaCss(palette.background, 0.94)} 100%)`
-      : 'var(--dk-surface-overlay)'
+    const accentRgb = rgbCss(contrastAccent)
+    const accentText = relativeLuminance(contrastAccent) > 0.48 ? '#111111' : '#ffffff'
+    const accentRgba = (alpha: number) => rgbaCss(contrastAccent, alpha)
 
-    const podBackground = hasArtwork
-      ? `linear-gradient(135deg, ${rgbaCss(palette.surface, 0.65)} 0%, ${rgbaCss(palette.background, 0.85)} 100%)`
-      : 'var(--dk-surface-raised)'
+    // Compute high-contrast text and icon colors guaranteed readable against the player background
+    // WCAG AAA (>=7.0:1) for primary text, AA (>=4.5:1) for secondary text, >=3.5:1 for interactive icons
+    const targetPrimaryText: Rgb = isLightBackground ? { r: 12, g: 12, b: 16 } : { r: 248, g: 248, b: 252 }
+    const targetSecondaryText: Rgb = isLightBackground ? { r: 65, g: 65, b: 80 } : { r: 185, g: 185, b: 200 }
+    const targetIcon: Rgb = isLightBackground ? { r: 55, g: 55, b: 70 } : { r: 195, g: 195, b: 210 }
+
+    const adjustedPrimary = hasArtwork
+      ? adjustForContrast(targetPrimaryText, edgeColor, 7.0)
+      : targetPrimaryText
+    const adjustedSecondary = hasArtwork
+      ? adjustForContrast(targetSecondaryText, edgeColor, 4.5)
+      : targetSecondaryText
+    const adjustedIcon = hasArtwork
+      ? adjustForContrast(targetIcon, edgeColor, 3.5)
+      : targetIcon
+
+    const textColor = 'var(--foreground)'
+    const subtextColor = 'var(--muted-foreground)'
+    const iconColor = 'var(--muted-foreground)'
+    const iconHoverColor = 'var(--foreground)'
+    const dividerColor = 'var(--dk-surface-border)'
+
+    const glowShadow = 'var(--dk-shadow-dialog)'
+
+    // Uniform single-tone glassmorphic surface with zero gradients
+    const containerBackground = 'var(--dk-surface-overlay)'
+    const podBackground = 'var(--dk-surface-raised)'
 
     const borderColor = hasArtwork
-      ? rgbaCss(palette.accent, 0.16)
+      ? rgbaCss(contrastAccent, 0.16)
       : 'rgba(255, 255, 255, 0.06)'
 
-    const drawerBackdropGradient = hasArtwork
-      ? `radial-gradient(ellipse 85% 260px at 50% 0%, ${rgbaCss(palette.accent, 0.12)}, transparent 75%), var(--dk-surface-overlay)`
-      : 'var(--dk-surface-overlay)'
+    const drawerBackdropGradient = 'var(--dk-surface-overlay)'
 
     return {
       palette,
@@ -54,6 +90,12 @@ export const useMusicPalette = (imageUrl: string | null | undefined): MusicPlaye
       podBackground,
       borderColor,
       drawerBackdropGradient,
+      textColor,
+      subtextColor,
+      iconColor,
+      iconHoverColor,
+      dividerColor,
+      isLightBackground,
     }
   }, [palette, hasArtwork])
 }

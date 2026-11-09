@@ -10,6 +10,9 @@ export const UniversalPlayerProvider = ({ children }: { children: React.ReactNod
   )
 
   useEffect(() => {
+    // Attempt session restoration on app launch / crash reopen
+    void universalPlayerEngine.restoreSession()
+
     return universalPlayerEngine.subscribe((next) => {
       setEngineState({ ...next })
     })

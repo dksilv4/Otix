@@ -147,4 +147,48 @@ describe('local-scanner', () => {
     expect(results[1].file.name).toBe('nested.mp3')
     expect(onProgress).toHaveBeenCalledWith(2)
   })
+
+  it('bypasses parsing for unchanged files when existingTracksCache is provided (VLC delta scan)', async () => {
+    const fakeFile = new File([new Uint8Array(200)], 'cached-song.mp3', {
+      type: 'audio/mpeg',
+      lastModified: 1700000000000,
+    })
+    Object.defineProperty(fakeFile, 'size', { value: 200 })
+
+    const itemPath = 'Music/cached-song.mp3'
+    const trackId = `loc-${encodeURIComponent(itemPath)}-200-1700000000000`
+
+    const cachedTrack: StoredLocalTrack = {
+      id: trackId,
+      title: 'Fast Cached Title',
+      artist: 'Fast Cached Artist',
+      albumName: 'Fast Cached Album',
+      trackNumber: 1,
+      year: '2026',
+      durationMs: 180000,
+      albumArtBlob: null,
+      path: itemPath,
+      fileName: 'cached-song.mp3',
+      size: 200,
+      lastModified: 1700000000000,
+      folderName: 'Music',
+    }
+
+    const existingMap = new Map<string, StoredLocalTrack>([[trackId, cachedTrack]])
+    const onTrackParsed = vi.fn()
+
+    const result = await processAudioFiles(
+      [{ file: fakeFile, path: itemPath }],
+      'Music',
+      {
+        existingTracksCache: existingMap,
+        onTrackParsed,
+      },
+    )
+
+    expect(result.stored).toHaveLength(1)
+    expect(result.stored[0].title).toBe('Fast Cached Title')
+    expect(onTrackParsed).toHaveBeenCalledWith(cachedTrack, fakeFile)
+    expect(result.liveMap.get(trackId)).toBe(fakeFile)
+  })
 })
