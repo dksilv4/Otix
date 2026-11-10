@@ -421,6 +421,8 @@ export class GameDetector extends EventEmitter {
   private processCheckTimer: ReturnType<typeof setInterval> | null = null;
   private discoveryTimers: ReturnType<typeof setTimeout>[] = [];
   private isScanning = false;
+  private launchGracePeriodUntil = new Map<string, number>();
+  private readonly GRACE_PERIOD_MS = 20000;
 
   constructor(sessionsDir: string) {
     super();
@@ -491,6 +493,7 @@ export class GameDetector extends EventEmitter {
     updateLastPlayedAt(game.id, new Date().toISOString());
 
     if (pid) {
+      this.launchGracePeriodUntil.set(game.id, Date.now() + this.GRACE_PERIOD_MS);
       this.trackedPids.add(pid);
       this.startProcessCheck();
       // FPS capture is handled by the fps-capture plugin via eventBus
@@ -502,6 +505,7 @@ export class GameDetector extends EventEmitter {
   }
 
   stopTracking(gameId: string) {
+    this.launchGracePeriodUntil.delete(gameId);
     this.clearDiscoveryScans();
     const entry = this.runningGames.get(gameId);
     const targetPid = entry?.pid;
@@ -659,7 +663,7 @@ export class GameDetector extends EventEmitter {
       this.checkMappings(snapshot, currentlyRunning, claimedPids);
 
       const librarySnapshot = this.library;
-      const CHUNK_SIZE = 500;
+      const CHUNK_SIZE = 2500;
 
       for (let i = 0; i < librarySnapshot.length; i++) {
         if (!this.isScanning) break;
@@ -784,6 +788,7 @@ export class GameDetector extends EventEmitter {
             existing.pid = detectedPid;
             if (oldPid) { this.trackedPids.delete(oldPid); }
             this.trackedPids.add(detectedPid);
+            this.launchGracePeriodUntil.delete(game.id);
             this.startProcessCheck();
             this.emit('game:updated', existing);
           }
@@ -855,11 +860,16 @@ export class GameDetector extends EventEmitter {
       }
 
       // End sessions for game no longer detected
+      const now = Date.now();
       for (const [id, entry] of this.runningGames) {
         if (currentlyRunning.has(id)) continue;
 
         let shouldKeep = false;
-        if (entry.pid) {
+        const graceUntil = this.launchGracePeriodUntil.get(id);
+        if (entry.launchedByOtix && graceUntil && now < graceUntil) {
+          // Keep session alive during active launch grace period while waiting for game process
+          shouldKeep = true;
+        } else if (entry.pid) {
           try {
             process.kill(entry.pid, 0);
             if (entry.launchedByOtix) {
@@ -889,6 +899,7 @@ export class GameDetector extends EventEmitter {
           continue;
         }
 
+        this.launchGracePeriodUntil.delete(id);
         this.endSession(entry);
         this.runningGames.delete(id);
       }
@@ -947,6 +958,7 @@ export class GameDetector extends EventEmitter {
     this.stopProcessCheck();
     this.stopDeadCheck();
     this.clearDiscoveryScans();
+    this.launchGracePeriodUntil.clear();
     clearWindowTitlesCache();
     for (const [id, entry] of Array.from(this.runningGames.entries())) {
       try {
@@ -1460,21 +1472,47 @@ export class GameDetector extends EventEmitter {
     this.stopProcessCheck();
     this.processCheckTimer = setInterval(() => {
       let hasTrackedPid = false;
+      const now = Date.now();
       for (const [id, entry] of this.runningGames) {
         if (entry.pid) {
           try {
             process.kill(entry.pid, 0);
             hasTrackedPid = true;
           } catch {
-            // PID is dead — end session and clean up tracking
+            // PID is dead — check grace period for Otix-launched processes
             this.trackedPids.delete(entry.pid);
+            const graceUntil = this.launchGracePeriodUntil.get(id);
+            if (entry.launchedByOtix && graceUntil && now < graceUntil) {
+              // Intermediate launcher process terminated — grant grace period and scan for game process
+              entry.pid = undefined;
+              void this.scanRunningProcesses();
+            } else {
+              this.launchGracePeriodUntil.delete(id);
+              try {
+                this.endSession(entry);
+              } catch (err) {
+                console.warn('[GameDetector] Error ending session for dead PID:', err);
+              } finally {
+                this.runningGames.delete(id);
+              }
+            }
+          }
+        } else if (entry.launchedByOtix) {
+          // Process PID is undefined, waiting in grace period
+          const graceUntil = this.launchGracePeriodUntil.get(id);
+          if (graceUntil && now >= graceUntil) {
+            // Grace period expired without detecting game process
+            this.launchGracePeriodUntil.delete(id);
             try {
               this.endSession(entry);
             } catch (err) {
-              console.warn('[GameDetector] Error ending session for dead PID:', err);
+              console.warn('[GameDetector] Error ending session after grace period expired:', err);
             } finally {
               this.runningGames.delete(id);
             }
+          } else if (graceUntil) {
+            // Still within grace period — re-scan running processes
+            void this.scanRunningProcesses();
           }
         }
       }

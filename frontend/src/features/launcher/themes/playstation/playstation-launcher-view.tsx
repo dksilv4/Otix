@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useNavigate } from "@tanstack/react-router"
 import { motion, AnimatePresence } from "framer-motion"
 import {
@@ -15,6 +15,7 @@ import {
 import { MediaLogo } from "@/lib/media/media-logo"
 import { useLauncherGames } from "@/features/launcher/hooks/use-launcher-games"
 import { useLaunchGame } from "@/features/launcher/hooks/use-launch-game"
+import { useVirtualRow } from "@/features/launcher/hooks/use-virtual-grid"
 import { ConsoleDisambiguationModal } from "@/features/launcher/components/molecules/console-disambiguation-modal"
 import { useRunningGame } from "@/features/launcher/hooks/use-running-game"
 import { useAuth } from "@/lib/providers/auth"
@@ -38,6 +39,28 @@ export const PlayStationLauncherView = () => {
     setSearchQuery,
   } = useLauncherGames()
 
+  const {
+    virtualItems,
+    paddingStart,
+    paddingEnd,
+    containerRef,
+    scrollToIndex,
+  } = useVirtualRow(filteredGames, {
+    itemWidth: 160,
+    gap: 16,
+    threshold: 24,
+  })
+
+  // Scroll active game into view when changed via keyboard or selection
+  useEffect(() => {
+    if (activeGame) {
+      const idx = filteredGames.findIndex((g) => g.id === activeGame.id)
+      if (idx !== -1) {
+        scrollToIndex(idx)
+      }
+    }
+  }, [activeGame?.id, scrollToIndex, filteredGames])
+
   const activeBackdrop =
     activeGame?.otixBackdropUrl ||
     activeGame?.backdropUrl ||
@@ -49,7 +72,7 @@ export const PlayStationLauncherView = () => {
   }
 
   return (
-    <div className="relative w-full h-full bg-[#05070e] text-white flex flex-col justify-between select-none overflow-hidden font-sans">
+    <div className="relative w-full h-full bg-background text-foreground flex flex-col justify-between select-none overflow-hidden font-sans">
       <AnimatePresence mode="wait">
         {activeBackdrop && (
           <motion.div
@@ -64,9 +87,9 @@ export const PlayStationLauncherView = () => {
         )}
       </AnimatePresence>
 
-      <div className="absolute inset-0 bg-gradient-to-t from-[#05070e] via-[#05070e]/60 to-transparent pointer-events-none" />
-      <div className="absolute inset-0 bg-gradient-to-r from-[#05070e] via-[#05070e]/40 to-transparent pointer-events-none" />
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-blue-900/15 via-transparent to-transparent pointer-events-none" />
+      <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent pointer-events-none" />
+      <div className="absolute inset-0 bg-gradient-to-r from-background via-background/40 to-transparent pointer-events-none" />
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/10 via-transparent to-transparent pointer-events-none" />
 
       {/* Top Status & User Navigation Bar */}
       <header className="relative z-20 px-10 pt-8 flex items-center justify-between">
@@ -85,8 +108,8 @@ export const PlayStationLauncherView = () => {
           </button>
 
           <div className="flex items-center gap-2 pl-4 border-l border-white/10">
-            <span className="text-lg font-black tracking-widest text-white">OTIX</span>
-            <span className="text-[10px] uppercase font-extrabold tracking-wider px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30">
+            <span className="text-lg font-black tracking-widest text-foreground">OTIX</span>
+            <span className="text-[10px] uppercase font-extrabold tracking-wider px-2 py-0.5 rounded-full bg-primary/20 text-primary border border-primary/30">
               CrossBar V4
             </span>
           </div>
@@ -95,14 +118,13 @@ export const PlayStationLauncherView = () => {
         <div className="flex items-center gap-5">
           {runningGame && (
             <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-primary/20 text-primary text-xs font-bold border border-primary/30">
-              <span className="w-1.5 h-1.5 rounded-full bg-primary" />
               <span>Playing {runningGame.game.title}</span>
               {runningGames.length > 1 && (
                 <button
                   type="button"
                   onClick={() => void cycleActiveGame()}
                   title={`Running ${runningGames.length} games. Click or press Ctrl+Tab to cycle active game focus.`}
-                  className="inline-flex items-center gap-1 pl-2 border-l border-primary/30 text-[10px] font-semibold text-primary hover:text-white transition-colors cursor-pointer"
+                  className="inline-flex items-center gap-1 pl-2 border-l border-primary/30 text-[10px] font-semibold text-primary hover:text-foreground transition-colors cursor-pointer"
                 >
                   <RotateCw className="h-2.5 w-2.5" />
                   <span>+${runningGames.length - 1}</span>
@@ -222,61 +244,75 @@ export const PlayStationLauncherView = () => {
       {/* Bottom CrossBar Horizontal Ribbon */}
       <div className="relative z-20 pb-20 pt-4">
         <div className="px-12 pb-3 flex items-center justify-between">
-          <div className="flex items-center gap-2 text-xs font-black tracking-widest uppercase text-white/50">
+          <div className="flex items-center gap-2 text-xs font-black tracking-widest uppercase text-muted-foreground">
             <span>Games Ribbon</span>
-            <span className="text-white/20">·</span>
-            <span className="text-blue-400">{filteredGames.length} Available</span>
+            <span className="text-muted-foreground/30">·</span>
+            <span className="text-primary">{filteredGames.length} Available</span>
           </div>
 
           <div className="relative w-56">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-white/30" size={13} />
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" size={13} />
             <input
               type="text"
               placeholder="Quick search..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-white/5 hover:bg-white/10 focus:bg-white/10 rounded-full pl-8 pr-3 py-1 text-xs text-white placeholder-white/30 border border-white/10 outline-none focus:border-blue-500/50 transition-colors"
+              className="w-full bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-field)] focus:bg-[var(--dk-surface-field)] rounded-full pl-8 pr-3 py-1 text-xs text-foreground placeholder:text-muted-foreground border border-white/[0.04] outline-none focus:border-primary/50 transition-colors"
             />
           </div>
         </div>
 
-        <div className="flex items-center gap-4 px-12 overflow-x-auto no-scrollbar py-3 scroll-smooth">
-          {filteredGames.map((game) => {
+        <div
+          ref={containerRef}
+          className="flex items-center gap-4 px-12 overflow-x-auto no-scrollbar py-3 scroll-smooth"
+        >
+          {paddingStart > 0 && (
+            <div style={{ width: paddingStart, flexShrink: 0 }} aria-hidden="true" />
+          )}
+          {virtualItems.map(({ item: game, index }) => {
             const isSelected = activeGame?.id === game.id
             const poster = game.otixPosterUrl || game.posterUrl
+            const isAboveFold = isSelected || index < 5
 
             return (
-              <motion.div
+              <div
                 key={game.id}
-                layout
                 onClick={() => selectGame(game.id)}
-                whileHover={{ y: -6, scale: 1.03 }}
-                whileTap={{ scale: 0.97 }}
-                className={`relative shrink-0 rounded-2xl overflow-hidden cursor-pointer transition-all duration-300 ${
+                className={`relative shrink-0 rounded-2xl overflow-hidden cursor-pointer transition-all duration-300 transform-gpu hover:-translate-y-1.5 hover:scale-[1.03] active:scale-[0.97] ${
                   isSelected
-                    ? "w-40 sm:w-48 aspect-[2/3] ring-4 ring-white shadow-[0_16px_40px_rgba(37,99,235,0.6)]"
-                    : "w-32 sm:w-36 aspect-[2/3] opacity-60 hover:opacity-95 ring-1 ring-white/10"
+                    ? "w-40 sm:w-48 aspect-[2/3] ring-2 ring-primary shadow-lg shadow-primary/25"
+                    : "w-32 sm:w-36 aspect-[2/3] opacity-60 hover:opacity-95 ring-1 ring-white/[0.06]"
                 }`}
               >
                 {poster ? (
-                  <img src={poster} alt={game.title} className="w-full h-full object-cover" />
+                  <img
+                    src={poster}
+                    alt={game.title}
+                    loading={isAboveFold ? "eager" : "lazy"}
+                    fetchPriority={isAboveFold ? "high" : "auto"}
+                    decoding="async"
+                    className="w-full h-full object-cover"
+                  />
                 ) : (
-                  <div className="w-full h-full bg-gradient-to-br from-neutral-800 to-neutral-900 flex items-center justify-center p-3 text-center">
-                    <span className="text-xs font-bold text-white/70">{game.title}</span>
+                  <div className="w-full h-full bg-[var(--dk-surface-ghost)] flex items-center justify-center p-3 text-center">
+                    <span className="text-xs font-bold text-muted-foreground">{game.title}</span>
                   </div>
                 )}
 
                 {isSelected && (
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex flex-col justify-end p-3">
-                    <span className="text-xs font-extrabold text-white truncate">{game.title}</span>
-                    <span className="text-[10px] text-blue-400 font-bold uppercase tracking-wider">
+                  <div className="absolute inset-0 bg-gradient-to-t from-background/90 via-transparent to-transparent flex flex-col justify-end p-3">
+                    <span className="text-xs font-extrabold text-foreground truncate">{game.title}</span>
+                    <span className="text-[10px] text-primary font-bold uppercase tracking-wider">
                       Press Play
                     </span>
                   </div>
                 )}
-              </motion.div>
+              </div>
             )
           })}
+          {paddingEnd > 0 && (
+            <div style={{ width: paddingEnd, flexShrink: 0 }} aria-hidden="true" />
+          )}
         </div>
       </div>
 

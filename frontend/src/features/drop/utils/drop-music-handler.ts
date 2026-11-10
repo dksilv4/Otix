@@ -6,6 +6,7 @@ import {
 import {
   saveTracksToDb,
   saveFolderToDb,
+  saveAudioBlobToDb,
   type StoredLocalTrack,
   type StoredFolder,
 } from '@/features/music/local/utils/local-music-db'
@@ -74,6 +75,7 @@ export const handleDroppedMusic = async (
       onProgress: options?.onProgress,
       onTrackParsed: (storedTrack, file) => {
         setSessionFile(storedTrack.id, file)
+        void saveAudioBlobToDb(storedTrack.id, file).catch(() => {})
       },
     },
   )
@@ -116,7 +118,11 @@ export const handleDroppedMusic = async (
 
   // Start playback immediately if autoPlay is true (default true)
   if (options?.autoPlay !== false && playableTracks.length > 0) {
-    await playLocalTracks(playableTracks, 0)
+    try {
+      await playLocalTracks(playableTracks, 0)
+    } catch {
+      // Autoplay blocked by browser policy; engine transitions to paused so user click starts playback
+    }
   }
 
   // Success toast notification

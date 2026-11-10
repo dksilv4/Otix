@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { Helmet } from 'react-helmet-async'
 import {
   ListMusic,
@@ -21,10 +21,14 @@ import {
   type UnifiedArtist,
   type UnifiedTrack,
 } from '../hooks/use-unified-music'
-import { useProgressiveRender } from '../hooks/use-progressive-render'
+import { useVirtualGrid } from '@/lib/hooks/use-virtual-grid'
+import {
+  getMusicGridColumns,
+  mapLocalAlbumTracksToItems,
+} from '../utils/music-helpers'
 import { MusicCard } from '../components/molecules/music-card'
 import { MusicTrackRow } from '../components/molecules/music-track-row'
-import { MusicAlbumModal, type AlbumTrackItem } from '../components/organisms/music-album-modal'
+import { MusicAlbumModal } from '../components/organisms/music-album-modal'
 import { MusicArtistModal } from '../components/organisms/music-artist-modal'
 import { MusicQueueDrawer } from '../components/organisms/music-queue-drawer'
 import { MusicFoldersModal } from '../components/organisms/music-folders-modal'
@@ -74,50 +78,52 @@ export const MusicPage = () => {
   const [selectedAlbum, setSelectedAlbum] = useState<UnifiedAlbum | null>(null)
   const [selectedArtist, setSelectedArtist] = useState<UnifiedArtist | null>(null)
 
-  // Progressive rendering for albums, artists, and tracks to maintain 60fps scrolling
+  // Virtualized Albums grid: bounds mounted DOM elements to visible viewport
   const {
-    visibleItems: visibleAlbums,
-    hasMore: hasMoreAlbums,
-    sentinelRef: albumsSentinelRef,
-  } = useProgressiveRender({
-    items: albums,
-    initialCount: 48,
-    step: 36,
-    resetDeps: [viewMode, sourceFilter, searchQuery],
+    virtualItems: virtualAlbums,
+    paddingTop: albumsPaddingTop,
+    paddingBottom: albumsPaddingBottom,
+    containerRef: albumsContainerRef,
+  } = useVirtualGrid(albums, {
+    itemHeight: 270,
+    gap: 16,
+    columns: getMusicGridColumns,
+    threshold: 18,
+    windowScroll: true,
   })
 
+  // Virtualized Artists grid
   const {
-    visibleItems: visibleArtists,
-    hasMore: hasMoreArtists,
-    sentinelRef: artistsSentinelRef,
-  } = useProgressiveRender({
-    items: artists,
-    initialCount: 48,
-    step: 36,
-    resetDeps: [viewMode, sourceFilter, searchQuery],
+    virtualItems: virtualArtists,
+    paddingTop: artistsPaddingTop,
+    paddingBottom: artistsPaddingBottom,
+    containerRef: artistsContainerRef,
+  } = useVirtualGrid(artists, {
+    itemHeight: 250,
+    gap: 16,
+    columns: getMusicGridColumns,
+    threshold: 18,
+    windowScroll: true,
   })
 
+  // Virtualized Tracks list: seamlessly handles 30,000+ tracks at 60fps
   const {
-    visibleItems: visibleTracks,
-    hasMore: hasMoreTracks,
-    sentinelRef: tracksSentinelRef,
-  } = useProgressiveRender({
-    items: tracks,
-    initialCount: 80,
-    step: 60,
-    resetDeps: [viewMode, sourceFilter, searchQuery],
+    virtualItems: virtualTracks,
+    paddingTop: tracksPaddingTop,
+    paddingBottom: tracksPaddingBottom,
+    containerRef: tracksContainerRef,
+  } = useVirtualGrid(tracks, {
+    itemHeight: 52,
+    gap: 2,
+    columns: 1,
+    threshold: 24,
+    windowScroll: true,
   })
 
-  // Map local album tracks to AlbumTrackItem format for MusicAlbumModal
-  const selectedAlbumLocalTracks: AlbumTrackItem[] | undefined = selectedAlbum?.tracks
-    ? selectedAlbum.tracks.map((t) => ({
-        id: t.id,
-        title: t.title,
-        artist: t.artist,
-        trackNumber: t.trackNumber,
-        durationMs: t.durationMs,
-      }))
-    : undefined
+  const selectedAlbumLocalTracks = useMemo(
+    () => mapLocalAlbumTracksToItems(selectedAlbum?.tracks),
+    [selectedAlbum?.tracks],
+  )
 
   const handlePlayTrack = useCallback(
     (track: UnifiedTrack) => {
@@ -135,9 +141,9 @@ export const MusicPage = () => {
       </Helmet>
 
       <div className="flex flex-col gap-6 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-32">
-        {/* Sticky Header Options & Toolbar */}
+        {/* Sticky Header Options & Toolbar with Otix Borderless Glassmorphic Surface */}
         <div
-          className={`sticky ${stickyTopOffset} z-20 flex flex-col gap-3 rounded-2xl sm:rounded-3xl bg-[var(--dk-surface-overlay)]/90 backdrop-blur-2xl border border-white/[0.06] p-3 sm:p-4 shadow-[var(--dk-shadow-dialog)] transition-all`}
+          className={`sticky ${stickyTopOffset} z-20 flex flex-col gap-3 rounded-3xl bg-[var(--dk-surface-overlay)]/90 backdrop-blur-2xl border border-white/[0.04] p-3 sm:p-4 shadow-[var(--dk-shadow-glass)] transition-all`}
         >
           {/* Top Row: Title, Stats, Search, Actions */}
           <div className="flex flex-wrap items-center justify-between gap-3 sm:gap-4">
@@ -146,12 +152,12 @@ export const MusicPage = () => {
               <div className="flex items-center gap-3">
                 <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">Music</h1>
                 {hasAnyMusic && (
-                  <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[var(--dk-surface-raised)] text-xs text-muted-foreground border border-white/[0.04]">
+                  <div className="hidden sm:flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--dk-surface-ghost)] text-xs text-muted-foreground border border-white/[0.04]">
                     <span>{stats.totalTracks.toLocaleString()} tracks</span>
-                    <span>•</span>
-                    <span>{stats.totalAlbums} albums</span>
-                    <span>•</span>
-                    <span>{stats.totalArtists} artists</span>
+                    <span className="text-muted-foreground/30">/</span>
+                    <span>{stats.totalAlbums.toLocaleString()} albums</span>
+                    <span className="text-muted-foreground/30">/</span>
+                    <span>{stats.totalArtists.toLocaleString()} artists</span>
                   </div>
                 )}
               </div>
@@ -165,7 +171,7 @@ export const MusicPage = () => {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search songs, albums, artists..."
-                className="w-full rounded-2xl bg-[var(--dk-surface-raised)] pl-10 pr-9 py-2 text-xs font-medium text-foreground placeholder:text-muted-foreground border border-white/[0.04] focus:outline-none focus:border-primary/40 focus:bg-[var(--dk-surface-overlay)] transition-all"
+                className="w-full rounded-2xl bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)] focus:bg-[var(--dk-surface-ghost-active)] pl-10 pr-9 py-2 text-xs font-medium text-foreground placeholder:text-muted-foreground border border-white/[0.04] focus:outline-none focus:border-primary/40 transition-colors"
               />
               {searchQuery && (
                 <button
@@ -186,7 +192,7 @@ export const MusicPage = () => {
                 type="button"
                 onClick={() => void scanDirectory()}
                 disabled={isScanning}
-                className="flex items-center gap-1.5 rounded-2xl bg-[var(--dk-surface-raised)] hover:bg-[var(--dk-surface-glass-hover)] px-3 py-2 text-xs font-medium text-foreground border border-white/[0.04] shadow-sm transition-transform hover:scale-[1.02] active:scale-95 disabled:opacity-50 cursor-pointer"
+                className="flex items-center gap-1.5 rounded-2xl bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)] px-3 py-2 text-xs font-medium text-foreground border border-white/[0.04] shadow-sm transition-transform hover:scale-[1.02] active:scale-95 disabled:opacity-50 cursor-pointer"
                 title="Add a local music folder to scan and index"
               >
                 {isScanning ? (
@@ -207,12 +213,12 @@ export const MusicPage = () => {
                 <button
                   type="button"
                   onClick={() => setIsFoldersModalOpen(true)}
-                  className="flex items-center gap-1.5 rounded-2xl bg-[var(--dk-surface-raised)] hover:bg-[var(--dk-surface-glass-hover)] px-3 py-2 text-xs font-medium text-foreground border border-white/[0.04] transition-all cursor-pointer"
+                  className="flex items-center gap-1.5 rounded-2xl bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)] px-3 py-2 text-xs font-medium text-foreground border border-white/[0.04] transition-all cursor-pointer"
                   title="Manage indexed folders"
                 >
                   <Folder className="h-3.5 w-3.5 text-muted-foreground" />
                   <span className="hidden lg:inline">Folders</span>
-                  <span className="flex h-4 w-4 items-center justify-center rounded-full bg-[var(--dk-surface-raised)] text-[10px]">
+                  <span className="flex h-4 w-4 items-center justify-center rounded-full bg-[var(--dk-surface-field)] text-[10px]">
                     {folders.length}
                   </span>
                 </button>
@@ -223,7 +229,7 @@ export const MusicPage = () => {
                 type="button"
                 onClick={() => void discoverSections()}
                 disabled={isDiscovering}
-                className="flex items-center gap-1.5 rounded-2xl bg-[var(--dk-surface-raised)] hover:bg-[var(--dk-surface-glass-hover)] px-3 py-2 text-xs font-medium text-foreground border border-white/[0.04] shadow-sm transition-transform hover:scale-[1.02] active:scale-95 disabled:opacity-50 cursor-pointer"
+                className="flex items-center gap-1.5 rounded-2xl bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)] px-3 py-2 text-xs font-medium text-foreground border border-white/[0.04] shadow-sm transition-transform hover:scale-[1.02] active:scale-95 disabled:opacity-50 cursor-pointer"
                 title="Sync and scan Plex music libraries"
               >
                 <RotateCw
@@ -237,7 +243,7 @@ export const MusicPage = () => {
                 <select
                   value={activeSectionId ?? ''}
                   onChange={(e) => setSelectedSectionId(Number(e.target.value))}
-                  className="hidden xl:block rounded-2xl bg-[var(--dk-surface-raised)] px-3 py-2 text-xs font-medium text-foreground border border-white/[0.04] focus:outline-none focus:border-primary/40 cursor-pointer"
+                  className="hidden xl:block rounded-2xl bg-[var(--dk-surface-ghost)] px-3 py-2 text-xs font-medium text-foreground border border-white/[0.04] focus:outline-none focus:border-primary/40 cursor-pointer"
                 >
                   {sections.map((sec) => (
                     <option
@@ -255,7 +261,7 @@ export const MusicPage = () => {
               <button
                 type="button"
                 onClick={() => setIsQueueOpen(true)}
-                className="flex items-center gap-2 rounded-2xl bg-[var(--dk-surface-raised)] hover:bg-[var(--dk-surface-glass-hover)] px-3.5 py-2 text-xs font-semibold text-foreground border border-white/[0.04] shadow-sm transition-transform hover:scale-[1.02] active:scale-95 cursor-pointer"
+                className="flex items-center gap-2 rounded-2xl bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)] px-3.5 py-2 text-xs font-semibold text-foreground border border-white/[0.04] shadow-sm transition-transform hover:scale-[1.02] active:scale-95 cursor-pointer"
               >
                 <ListMusic className="h-4 w-4 text-primary" />
                 <span className="hidden sm:inline">Play Queue</span>
@@ -270,17 +276,17 @@ export const MusicPage = () => {
 
           {/* Live Scanning Progress Banner */}
           {isScanning && scanProgress && (
-            <div className="flex flex-col gap-1.5 rounded-xl sm:rounded-2xl bg-[var(--dk-surface-raised)] p-3 text-xs text-muted-foreground border border-white/[0.04]">
+            <div className="flex flex-col gap-1.5 rounded-2xl bg-[var(--dk-surface-ghost)] p-3 text-xs text-muted-foreground border border-white/[0.04]">
               <div className="flex justify-between font-mono">
                 <span className="flex items-center gap-2">
                   <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
                   <span>Indexing local music files in real time...</span>
                 </span>
                 <span>
-                  {scanProgress.current} / {scanProgress.total}
+                  {scanProgress.current.toLocaleString()} / {scanProgress.total.toLocaleString()}
                 </span>
               </div>
-              <div className="h-1.5 w-full overflow-hidden rounded-full bg-[var(--dk-surface-raised)]">
+              <div className="h-1.5 w-full overflow-hidden rounded-full bg-[var(--dk-surface-field)]">
                 <div
                   className="h-full bg-primary transition-all duration-150"
                   style={{
@@ -298,7 +304,7 @@ export const MusicPage = () => {
           {/* Bottom Row: Sub-Navigation & Filter Toolbar */}
           <div className="flex flex-wrap items-center justify-between gap-3 border-t border-white/[0.04] pt-3">
             {/* View Category Pills */}
-            <div className="flex items-center rounded-2xl bg-[var(--dk-surface-raised)] p-1 border border-white/[0.04]">
+            <div className="flex items-center rounded-2xl bg-[var(--dk-surface-ghost)]/80 p-1 border border-white/[0.04]">
               <button
                 type="button"
                 onClick={() => setViewMode('albums')}
@@ -309,7 +315,7 @@ export const MusicPage = () => {
                 }`}
               >
                 <Disc3 className="h-3.5 w-3.5" />
-                <span>Albums ({albums.length})</span>
+                <span>Albums ({albums.length.toLocaleString()})</span>
               </button>
 
               <button
@@ -322,7 +328,7 @@ export const MusicPage = () => {
                 }`}
               >
                 <Mic2 className="h-3.5 w-3.5" />
-                <span>Artists ({artists.length})</span>
+                <span>Artists ({artists.length.toLocaleString()})</span>
               </button>
 
               <button
@@ -335,7 +341,7 @@ export const MusicPage = () => {
                 }`}
               >
                 <Music className="h-3.5 w-3.5" />
-                <span>Tracks ({tracks.length})</span>
+                <span>Tracks ({tracks.length.toLocaleString()})</span>
               </button>
             </div>
 
@@ -344,13 +350,13 @@ export const MusicPage = () => {
               <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mr-1 hidden sm:inline">
                 Source:
               </span>
-              <div className="flex items-center rounded-2xl bg-[var(--dk-surface-raised)] p-1 border border-white/[0.04]">
+              <div className="flex items-center rounded-2xl bg-[var(--dk-surface-ghost)]/80 p-1 border border-white/[0.04]">
                 <button
                   type="button"
                   onClick={() => setSourceFilter('all')}
                   className={`rounded-xl px-3 py-1 text-xs font-medium transition-all cursor-pointer ${
                     sourceFilter === 'all'
-                      ? 'bg-[var(--dk-surface-glass-hover)] text-foreground font-semibold shadow-sm'
+                      ? 'bg-[var(--dk-surface-field)] text-foreground font-semibold shadow-sm'
                       : 'text-muted-foreground hover:text-foreground'
                   }`}
                 >
@@ -362,7 +368,7 @@ export const MusicPage = () => {
                   onClick={() => setSourceFilter('plex')}
                   className={`flex items-center gap-1.5 rounded-xl px-3 py-1 text-xs font-medium transition-all cursor-pointer ${
                     sourceFilter === 'plex'
-                      ? 'bg-[var(--dk-surface-glass-hover)] text-foreground font-semibold shadow-sm'
+                      ? 'bg-[var(--dk-surface-field)] text-foreground font-semibold shadow-sm'
                       : 'text-muted-foreground hover:text-foreground'
                   }`}
                 >
@@ -375,7 +381,7 @@ export const MusicPage = () => {
                   onClick={() => setSourceFilter('local')}
                   className={`flex items-center gap-1.5 rounded-xl px-3 py-1 text-xs font-medium transition-all cursor-pointer ${
                     sourceFilter === 'local'
-                      ? 'bg-[var(--dk-surface-glass-hover)] text-foreground font-semibold shadow-sm'
+                      ? 'bg-[var(--dk-surface-field)] text-foreground font-semibold shadow-sm'
                       : 'text-muted-foreground hover:text-foreground'
                   }`}
                 >
@@ -394,7 +400,7 @@ export const MusicPage = () => {
           </div>
         ) : !hasAnyMusic ? (
           /* Empty State */
-          <div className="flex flex-col items-center justify-center rounded-3xl p-16 text-center text-muted-foreground bg-[var(--dk-surface-raised)] border border-white/[0.04] gap-4">
+          <div className="flex flex-col items-center justify-center rounded-3xl p-16 text-center text-muted-foreground bg-[var(--dk-surface-glass)]/80 backdrop-blur-xl border border-white/[0.04] shadow-[var(--dk-shadow-glass)] gap-4">
             <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-primary/10 text-primary">
               <Sparkles className="h-8 w-8 stroke-[1.75]" />
             </div>
@@ -418,7 +424,7 @@ export const MusicPage = () => {
               <button
                 type="button"
                 onClick={() => void discoverSections()}
-                className="flex items-center gap-2 rounded-2xl bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-ghost-hover)] px-4 py-2 text-xs font-semibold text-foreground border border-white/[0.04] transition-all cursor-pointer"
+                className="flex items-center gap-2 rounded-2xl bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)] px-4 py-2 text-xs font-semibold text-foreground border border-white/[0.04] transition-all cursor-pointer"
               >
                 <RotateCw className="h-4 w-4 text-primary" />
                 <span>Scan Plex Music</span>
@@ -434,9 +440,15 @@ export const MusicPage = () => {
                   No albums found matching your filter or search.
                 </div>
               ) : (
-                <>
+                <div ref={albumsContainerRef}>
                   <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-                    {visibleAlbums.map((album) => (
+                    {albumsPaddingTop > 0 && (
+                      <div
+                        style={{ height: albumsPaddingTop, gridColumn: '1 / -1' }}
+                        aria-hidden="true"
+                      />
+                    )}
+                    {virtualAlbums.map(({ item: album }) => (
                       <MusicCard
                         key={album.id}
                         title={album.title}
@@ -449,11 +461,14 @@ export const MusicPage = () => {
                         onPlay={() => void playAlbumInContext(album)}
                       />
                     ))}
+                    {albumsPaddingBottom > 0 && (
+                      <div
+                        style={{ height: albumsPaddingBottom, gridColumn: '1 / -1' }}
+                        aria-hidden="true"
+                      />
+                    )}
                   </div>
-                  {hasMoreAlbums && (
-                    <div ref={albumsSentinelRef} className="h-8 w-full" aria-hidden="true" />
-                  )}
-                </>
+                </div>
               )
             )}
 
@@ -464,9 +479,15 @@ export const MusicPage = () => {
                   No artists found matching your filter or search.
                 </div>
               ) : (
-                <>
+                <div ref={artistsContainerRef}>
                   <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-                    {visibleArtists.map((artist) => (
+                    {artistsPaddingTop > 0 && (
+                      <div
+                        style={{ height: artistsPaddingTop, gridColumn: '1 / -1' }}
+                        aria-hidden="true"
+                      />
+                    )}
+                    {virtualArtists.map(({ item: artist }) => (
                       <MusicCard
                         key={artist.id}
                         title={artist.name}
@@ -477,28 +498,37 @@ export const MusicPage = () => {
                         onPlay={() => void playArtistInContext(artist)}
                       />
                     ))}
+                    {artistsPaddingBottom > 0 && (
+                      <div
+                        style={{ height: artistsPaddingBottom, gridColumn: '1 / -1' }}
+                        aria-hidden="true"
+                      />
+                    )}
                   </div>
-                  {hasMoreArtists && (
-                    <div ref={artistsSentinelRef} className="h-8 w-full" aria-hidden="true" />
-                  )}
-                </>
+                </div>
               )
             )}
 
-            {/* Tracks View (Progressively rendered with automatic playlist queue on click) */}
+            {/* Tracks View (Virtualized for fast 60fps scrolling with 30k+ tracks) */}
             {viewMode === 'tracks' && (
               tracks.length === 0 ? (
                 <div className="p-12 text-center text-xs text-muted-foreground">
                   No tracks found matching your filter or search.
                 </div>
               ) : (
-                <div className="flex flex-col rounded-2xl p-2 bg-[var(--dk-surface-raised)] border border-white/[0.04]">
-                  {visibleTracks.map((track, idx) => {
+                <div
+                  ref={tracksContainerRef}
+                  className="flex flex-col rounded-3xl p-2 bg-[var(--dk-surface-glass)]/60 backdrop-blur-xl border border-white/[0.04] shadow-[var(--dk-shadow-sm)]"
+                >
+                  {tracksPaddingTop > 0 && (
+                    <div style={{ height: tracksPaddingTop }} aria-hidden="true" />
+                  )}
+                  {virtualTracks.map(({ item: track, index }) => {
                     const isThisActive = currentTrack?.id === track.id
                     return (
                       <MusicTrackRow
-                        key={`${track.id}-${idx}`}
-                        index={idx}
+                        key={`${track.id}-${index}`}
+                        index={index}
                         trackNumber={track.trackNumber}
                         title={track.title}
                         artist={track.artist}
@@ -512,8 +542,8 @@ export const MusicPage = () => {
                       />
                     )
                   })}
-                  {hasMoreTracks && (
-                    <div ref={tracksSentinelRef} className="h-8 w-full" aria-hidden="true" />
+                  {tracksPaddingBottom > 0 && (
+                    <div style={{ height: tracksPaddingBottom }} aria-hidden="true" />
                   )}
                 </div>
               )

@@ -47,11 +47,8 @@ function createElectronPersister(): Persister {
     if (api?.cacheSave) {
       api.cacheSave(toSave).catch(() => undefined)
     }
-    try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave))
-    } catch {
-      // Quota or private-mode storage can throw.
-    }
+    // In desktop mode, persistence is handled asynchronously via disk API (api.cacheSave).
+    // Avoid writing multi-megabyte payloads to synchronous window.localStorage.
   }
 
   if (typeof window !== 'undefined') {
@@ -223,10 +220,13 @@ export function shouldPersistQuery(query: {
     if (query.state.status !== 'success' || query.state.data == null) return false
     const key = query.queryKey
     if (key.includes('queue') || key.includes('pending') || key.includes('fps')) return false
-    if (key[0] === 'game-servers') return false
+    if (key[0] === 'game-servers' || key[0] === 'games-detail') return false
+    if (key[0] === 'local-games' && key[1] === 'detail') return false
+    if (key[0] === 'media' && key[1] === 'detail') return false
+    if (key[0] === 'library' && key[1] === 'detail') return false
     if (isEmptyQueryData(query.state.data)) return false
-    const size = JSON.stringify(query.state.data).length
-    if (size > getMaxQuerySize()) return false
+    // Structural key exclusion prevents huge blobs from being persisted.
+    // Avoid JSON.stringify(query.state.data).length which froze the main thread for 6.5s.
     return true
   } catch {
     return false
@@ -247,8 +247,24 @@ export const persistOptions = {
 
 let hasHydratedSync = false
 
+// Purge any historical multi-megabyte localStorage caches left by previous versions
+if (typeof window !== 'undefined') {
+  try {
+    const isDesktopEnv = Boolean(getDesktopAPI())
+    if (isDesktopEnv) {
+      window.localStorage.removeItem(STORAGE_KEY)
+      window.localStorage.removeItem('otix_query_cache_v4')
+      window.localStorage.removeItem('otix_query_cache_v3')
+      window.localStorage.removeItem('otix_query_cache')
+    }
+  } catch {
+    // Ignore storage errors during cleanup
+  }
+}
+
 export function restoreSyncFromLocalStorage(): boolean {
   if (typeof window === 'undefined') return false
+  if (getDesktopAPI()) return false // Desktop loads asynchronously via disk cacheLoad
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY)
     if (!raw) return false
@@ -269,8 +285,7 @@ export function restoreSyncFromLocalStorage(): boolean {
   return false
 }
 
-// Immediately attempt synchronous restore on module evaluation
-restoreSyncFromLocalStorage()
+// Deferred initialization: do not execute heavy JSON.parse on module evaluation
 
 export async function restorePersistedCache(): Promise<void> {
   const api = getDesktopAPI()

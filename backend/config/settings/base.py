@@ -65,6 +65,7 @@ def parse_database_url(url: str) -> dict:
     raw_scheme = parsed.scheme.split("+")[0]
     if raw_scheme not in {"postgres", "postgresql"}:
         raise ValueError(f"Unsupported DATABASE_URL scheme: {parsed.scheme!r}")
+    conn_max_age = int(os.environ.get("CONN_MAX_AGE", "600"))
     return {
         "ENGINE": "django.db.backends.postgresql",
         "NAME": parsed.path.lstrip("/") or "otix",
@@ -72,6 +73,8 @@ def parse_database_url(url: str) -> dict:
         "PASSWORD": parsed.password or "",
         "HOST": parsed.hostname or "",
         "PORT": parsed.port or "",
+        "CONN_MAX_AGE": conn_max_age,
+        "CONN_HEALTH_CHECKS": True,
     }
 
 

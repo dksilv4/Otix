@@ -31,12 +31,17 @@ const DkImage = ({
       </div>
     )
   }
-  // key=cleanSrc remounts the loader per URL: while a new image loads, the previous
+  // key remounts the loader per URL: while a new image loads, the previous
   // frame is never shown — a placeholder renders first, then the new one fades in.
+  // Use a compact stable key to avoid comparing multi-megabyte strings if a data URL is present.
+  const imageKey = cleanSrc.startsWith('data:')
+    ? `data_${cleanSrc.slice(12, 40)}_${cleanSrc.length}`
+    : cleanSrc
+
   return (
     <div className={cn('relative overflow-hidden', className)}>
       <DkImageInner
-        key={cleanSrc}
+        key={imageKey}
         src={cleanSrc}
         alt={alt}
         fallback={fallback}

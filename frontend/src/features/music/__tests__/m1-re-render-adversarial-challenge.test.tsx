@@ -215,8 +215,8 @@ describe('Milestone 1 Adversarial Verification Suite', () => {
       const harshMatches = content.match(harshBorderRegex) || []
       expect(harshMatches).toEqual([])
 
-      // Verify token compliance at preset badge line
-      expect(content).toContain('bg-primary-foreground/20 text-primary-foreground')
+      // Verify token compliance
+      expect(content).toContain('bg-primary text-primary-foreground')
     })
   })
 

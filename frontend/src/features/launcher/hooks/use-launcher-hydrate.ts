@@ -23,6 +23,7 @@ const _inflight = new Set<string>()
 let _serverPersistSig = ''
 let _prehydrateSig = ''
 let _autoMatchSig = ''
+let _isRunningHydration = false
 
 const AUTO_MATCH_MIN_CONFIDENCE = 0.85
 
@@ -40,18 +41,64 @@ interface AutoMatchResult {
   autoMatch: AutoMatchCandidate | null
 }
 
-function patchLocalGame(
+let _pendingPatches = new Map<string, LocalGame>()
+let _patchFlushTimer: ReturnType<typeof setTimeout> | null = null
+
+export function patchLocalGames(
+  queryClient: ReturnType<typeof useQueryClient>,
+  games: LocalGame[],
+): void {
+  if (!games.length) return
+  for (const game of games) {
+    queryClient.setQueryData(localGameKeys.detail(game.id), game)
+  }
+  const gamesById = new Map(games.map((g) => [g.id, g]))
+  queryClient.setQueriesData({ queryKey: localGameKeys.list() }, (old: LocalGame[] | undefined) => {
+    if (!old) return games
+    const oldIds = new Set(old.map((item) => item.id))
+    const updated = old.map((item) => gamesById.get(item.id) ?? item)
+    for (const [id, game] of gamesById) {
+      if (!oldIds.has(id)) {
+        updated.push(game)
+      }
+    }
+    return updated
+  })
+}
+
+export function queuePatchLocalGame(
   queryClient: ReturnType<typeof useQueryClient>,
   game: LocalGame,
 ): void {
   queryClient.setQueryData(localGameKeys.detail(game.id), game)
-  queryClient.setQueriesData({ queryKey: ['local-games', 'list'] }, (old: LocalGame[] | undefined) => {
-    if (!old) return [game]
-    if (old.some((item) => item.id === game.id)) {
-      return old.map((item) => (item.id === game.id ? game : item))
-    }
-    return [...old, game]
-  })
+  _pendingPatches.set(game.id, game)
+
+  if (!_patchFlushTimer) {
+    _patchFlushTimer = setTimeout(() => {
+      _patchFlushTimer = null
+      flushPendingPatches(queryClient)
+    }, 100)
+  }
+}
+
+export function flushPendingPatches(
+  queryClient: ReturnType<typeof useQueryClient>,
+): void {
+  if (_patchFlushTimer) {
+    clearTimeout(_patchFlushTimer)
+    _patchFlushTimer = null
+  }
+  if (_pendingPatches.size === 0) return
+  const gamesToPatch = Array.from(_pendingPatches.values())
+  _pendingPatches.clear()
+  patchLocalGames(queryClient, gamesToPatch)
+}
+
+export function patchLocalGame(
+  queryClient: ReturnType<typeof useQueryClient>,
+  game: LocalGame,
+): void {
+  queuePatchLocalGame(queryClient, game)
 }
 
 async function autoMatchUnmatchedGames(
@@ -81,7 +128,6 @@ async function autoMatchUnmatchedGames(
       posterUrl: match.posterUrl,
       backdropUrl: match.backdropUrl,
     })
-    patchLocalGame(queryClient, next)
     if (api?.acceptSuggestion) {
       await api.acceptSuggestion(next.id, {
         id: cleanMediaItemId,
@@ -93,6 +139,12 @@ async function autoMatchUnmatchedGames(
     }
     accepted.push(next)
   }
+
+  // Batch update cache once for all matched targets
+  if (accepted.length > 0) {
+    patchLocalGames(queryClient, accepted)
+  }
+
   return accepted
 }
 
@@ -110,13 +162,11 @@ export function getCatalogMediaId(g: LocalGame): string | null {
 /** Check if a local game is missing rich catalog data or artwork. */
 function needsHydration(g: LocalGame): boolean {
   if (!getCatalogMediaId(g)) return false
-  const hasPoster = !!(g.data?.posterUrl || g.otixPosterUrl)
-  const hasLogo = !!(g.data?.logoUrl || g.otixLogoUrl)
-  const hasBackdrop = !!(g.data?.backdropUrl || g.otixBackdropUrl)
-  const hasTextless = !!(g.data?.textlessPosterUrl || g.otixTextlessPosterUrl)
-  const hasRichData = !!(g.data?.genres?.length || g.data?.involvedCompanies?.length)
-  const hasOverview = !!g.data?.overview
-  if (hasPoster && hasLogo && hasBackdrop && hasTextless && hasRichData && hasOverview) return false
+  if ((g.data as any)?.hydrated) return false
+  const hasPoster = !!(g.data?.posterUrl || g.otixPosterUrl || g.posterUrl)
+  const hasOverview = !!(g.data?.overview || g.description)
+  // If the game already has poster and overview or genre metadata from SQLite, it does NOT need blocking network hydration
+  if (hasPoster && (hasOverview || g.data?.genres?.length)) return false
   return true
 }
 
@@ -125,7 +175,7 @@ function applyHydratedGame(old: LocalGame, data: Record<string, unknown>): Local
     ...old,
     title: (data.title as string) || old.title,
     posterUrl: (data.posterUrl as string) ?? old.posterUrl,
-    data: { ...old.data, ...data } as Game,
+    data: { ...old.data, ...data, hydrated: true } as Game,
     otixMediaTitle: (data.title as string) || old.otixMediaTitle,
     otixMediaSlug: (data.slug as string) || old.otixMediaSlug,
     otixPosterUrl: (data.posterUrl as string) ?? old.otixPosterUrl,
@@ -145,6 +195,7 @@ async function hydrateGame(
   if (!mediaId) return
   if (_hydrated.has(g.id) || _inflight.has(g.id)) return
   _inflight.add(g.id)
+  _hydrated.add(g.id)
   try {
     const { data } = await apiClient.get<Record<string, unknown>>(`/media/game/${mediaId}`)
     patchLocalGame(queryClient, applyHydratedGame(g, data))
@@ -155,7 +206,7 @@ async function hydrateGame(
       await api.acceptSuggestion(g.id, {
         // hydrated carries the full catalog payload so the desktop persists
         // otix_data (overview, genres, logoColorGuess, …) instead of re-fetching every session
-        hydrated: data,
+        hydrated: { ...data, hydrated: true },
         id: mediaId,
         title: data.title || g.title,
         slug: data.slug || '',
@@ -166,7 +217,6 @@ async function hydrateGame(
         iconUrl: data.iconUrl ?? null,
       } as Record<string, unknown>)
     }
-    _hydrated.add(g.id)
   } catch {
     // Network error or 404 — skip silently so a later session can retry
   } finally {
@@ -187,73 +237,93 @@ export function useHydrateLocalGames(): void {
   useEffect(() => {
     const serverGames = persistableServerGames(games, serverGamesData?.files)
     if (!merged.length && !serverGames?.length) return
+    if (_isRunningHydration) return
+
+    let cancelled = false
 
     const run = async () => {
-      const api = getDesktopAPI()
-      if (serverGames) {
-        const sig = serverGames
-          .map((game) => `${game.id}:${game.otixMediaId || ''}:${(game.updateFiles || []).map((file) => file.path).join(',')}`)
-          .sort()
-          .join('|')
+      if (_isRunningHydration || cancelled) return
+      _isRunningHydration = true
+      try {
+        const api = getDesktopAPI()
+        if (serverGames) {
+          const sig = serverGames
+            .map((game) => `${game.id}:${game.otixMediaId || ''}:${(game.updateFiles || []).map((file) => file.path).join(',')}`)
+            .sort()
+            .join('|')
 
-        if (api?.saveScannedGames && sig !== _serverPersistSig) {
-          _serverPersistSig = sig
-          if (serverGames.length) {
-            await api.saveScannedGames(serverGames)
-          }
-        }
-      }
-
-      const foundTitles = foundServerGameTitles(games, serverGamesData?.files)
-      const prehydrateSig = foundTitles.slice().sort().join('|')
-      if (prehydrateSig && prehydrateSig !== _prehydrateSig) {
-        _prehydrateSig = prehydrateSig
-        try {
-          await apiClient.post('/search/prehydrate', { titles: foundTitles })
-        } catch {
-          _prehydrateSig = ''
-        }
-      }
-
-      const unmatched = listUnmatchedServerGames(games, serverGamesData?.files)
-      const autoMatchSig = unmatched.map((game) => `${game.id}:${game.title}`).sort().join('|')
-      let newlyMatched: LocalGame[] = []
-      if (autoMatchSig && autoMatchSig !== _autoMatchSig) {
-        _autoMatchSig = autoMatchSig
-        try {
-          newlyMatched = await autoMatchUnmatchedGames(unmatched, queryClient)
-          if (newlyMatched.length) {
-            queryClient.invalidateQueries({ queryKey: serverKeys.games() })
-            if (api?.saveScannedGames) {
-              await api.saveScannedGames(newlyMatched)
+          if (api?.saveScannedGames && sig !== _serverPersistSig) {
+            _serverPersistSig = sig
+            if (serverGames.length) {
+              await api.saveScannedGames(serverGames)
             }
           }
-        } catch {
-          _autoMatchSig = ''
         }
-      }
 
-      const seen = new Set<string>()
-      const toHydrate: LocalGame[] = []
-      for (const g of [...newlyMatched, ...merged]) {
-        if (seen.has(g.id)) continue
-        if (!getCatalogMediaId(g) || !needsHydration(g) || _hydrated.has(g.id) || _inflight.has(g.id)) continue
-        seen.add(g.id)
-        toHydrate.push(g)
-      }
-      if (!toHydrate.length) return
-
-      const concurrency = 4
-      const queue = [...toHydrate]
-      const workers = Array.from({ length: Math.min(concurrency, queue.length) }, async () => {
-        while (queue.length > 0) {
-          const g = queue.shift()!
-          await hydrateGame(g, queryClient)
+        const foundTitles = foundServerGameTitles(games, serverGamesData?.files)
+        const prehydrateSig = foundTitles.slice().sort().join('|')
+        if (prehydrateSig && prehydrateSig !== _prehydrateSig) {
+          _prehydrateSig = prehydrateSig
+          // Non-blocking background prehydrate — do not block the thread or stall image rendering
+          void apiClient
+            .post('/search/prehydrate', { titles: foundTitles.slice(0, 10) })
+            .catch(() => {
+              _prehydrateSig = ''
+            })
         }
-      })
-      await Promise.all(workers)
+
+        const unmatched = listUnmatchedServerGames(games, serverGamesData?.files)
+        const autoMatchSig = unmatched.map((game) => `${game.id}:${game.title}`).sort().join('|')
+        let newlyMatched: LocalGame[] = []
+        if (autoMatchSig && autoMatchSig !== _autoMatchSig) {
+          _autoMatchSig = autoMatchSig
+          try {
+            newlyMatched = await autoMatchUnmatchedGames(unmatched, queryClient)
+            if (newlyMatched.length) {
+              queryClient.invalidateQueries({ queryKey: serverKeys.games() })
+              if (api?.saveScannedGames) {
+                await api.saveScannedGames(newlyMatched)
+              }
+            }
+          } catch {
+            _autoMatchSig = ''
+          }
+        }
+
+        const seen = new Set<string>()
+        const toHydrate: LocalGame[] = []
+        for (const g of [...newlyMatched, ...merged]) {
+          if (seen.has(g.id)) continue
+          if (!getCatalogMediaId(g) || !needsHydration(g) || _hydrated.has(g.id) || _inflight.has(g.id)) continue
+          seen.add(g.id)
+          toHydrate.push(g)
+        }
+        if (!toHydrate.length || cancelled) return
+
+        // Throttle hydration so it never saturates network connections or blocks image loading
+        const concurrency = 2
+        const queue = toHydrate.slice(0, 10)
+        const workers = Array.from({ length: Math.min(concurrency, queue.length) }, async () => {
+          while (queue.length > 0 && !cancelled) {
+            const g = queue.shift()!
+            await hydrateGame(g, queryClient)
+            await new Promise((resolve) => setTimeout(resolve, 60))
+          }
+        })
+        await Promise.all(workers)
+        flushPendingPatches(queryClient)
+      } finally {
+        _isRunningHydration = false
+      }
     }
 
-    void run()
+    const timer = setTimeout(() => {
+      void run()
+    }, 1000)
+
+    return () => {
+      cancelled = true
+      clearTimeout(timer)
+    }
   }, [games, merged, queryClient, serverGamesData?.files])
 }

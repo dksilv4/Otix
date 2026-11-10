@@ -9,12 +9,21 @@ class AudioVisualizerEngine {
   private analyser: AnalyserNode | null = null
   private bassFilter: BiquadFilterNode | null = null
   private bassAnalyser: AnalyserNode | null = null
+  private onsetAnalyser: AnalyserNode | null = null
   private sourceNodeMap = new Map<HTMLAudioElement, MediaElementAudioSourceNode>()
   private currentAudioEl: HTMLAudioElement | null = null
   private rawFreqData = new Uint8Array(BIN_COUNT)
   private rawWaveData = new Uint8Array(BIN_COUNT)
   private rawBassWaveData = new Uint8Array(BIN_COUNT)
+  private rawOnsetFreqData = new Uint8Array(1024)
+  private highResFreqData: Uint8Array | null = null
   private unsubscribeElListener: (() => void) | null = null
+
+  // Tunable audio analyzer parameters
+  private currentFftSize = FFT_SIZE
+  private currentSmoothing = 0.72
+  private currentSensitivity = 1.0
+  private currentGain = 1.0
 
   // Smoothed energy envelopes
   private smoothedBass = 0
@@ -32,8 +41,20 @@ class AudioVisualizerEngine {
     this.initAudioTracking()
   }
 
+  private resumeAudioContext = () => {
+    if (this.audioContext && this.audioContext.state === 'suspended') {
+      this.audioContext.resume().catch(() => {})
+    }
+  }
+
   private initAudioTracking() {
     if (typeof window === 'undefined') return
+
+    // Active capture-phase listeners on window: any click, keypress, or touch resumes the AudioContext
+    window.addEventListener('click', this.resumeAudioContext, true)
+    window.addEventListener('pointerdown', this.resumeAudioContext, true)
+    window.addEventListener('keydown', this.resumeAudioContext, true)
+    window.addEventListener('touchstart', this.resumeAudioContext, true)
 
     this.unsubscribeElListener = subscribeActiveAudioElement((el) => {
       this.attachToAudioElement(el)
@@ -43,6 +64,10 @@ class AudioVisualizerEngine {
   private attachToAudioElement(el: HTMLAudioElement | null) {
     if (!el || this.currentAudioEl === el) return
     this.currentAudioEl = el
+
+    // Attach play & playing listeners directly on the audio element to ensure AudioContext stays running
+    el.addEventListener('play', this.resumeAudioContext)
+    el.addEventListener('playing', this.resumeAudioContext)
 
     // Connecting an audio element to AudioContext might fail if cross-origin isn't allowed.
     // We attempt safely and fall back to synthesis without disrupting playback.
@@ -54,18 +79,21 @@ class AudioVisualizerEngine {
         this.audioContext = new AudioCtx()
       }
 
-      if (this.audioContext.state === 'suspended') {
-        const resumeAudio = () => {
-          this.audioContext?.resume().catch(() => {})
-        }
-        window.addEventListener('pointerdown', resumeAudio, { once: true })
-      }
+      this.resumeAudioContext()
 
       if (!this.analyser) {
         this.analyser = this.audioContext.createAnalyser()
-        this.analyser.fftSize = FFT_SIZE
-        this.analyser.smoothingTimeConstant = 0.72
+        this.analyser.fftSize = this.currentFftSize
+        this.analyser.smoothingTimeConstant = this.currentSmoothing
         this.analyser.connect(this.audioContext.destination)
+      }
+
+      if (!this.onsetAnalyser) {
+        this.onsetAnalyser = this.audioContext.createAnalyser()
+        this.onsetAnalyser.fftSize = 2048
+        this.onsetAnalyser.smoothingTimeConstant = 0
+        this.onsetAnalyser.minDecibels = -100
+        this.onsetAnalyser.maxDecibels = -30
       }
 
       if (!this.bassFilter) {
@@ -87,6 +115,11 @@ class AudioVisualizerEngine {
         // Connect to analyser (analyser is already connected to audioContext.destination)
         sourceNode.connect(this.analyser)
 
+        // Connect dedicated onset analyzer for zero-lag transient detection
+        if (this.onsetAnalyser) {
+          sourceNode.connect(this.onsetAnalyser)
+        }
+
         // Connect dedicated lowpass bass analyzer (pure analysis, not connected to destination)
         if (this.bassFilter && this.bassAnalyser) {
           sourceNode.connect(this.bassFilter)
@@ -95,11 +128,14 @@ class AudioVisualizerEngine {
       }
     } catch {
       // CORS taint or browser restrictions prevent Web Audio connection.
-      // Synthesis fallback takes over seamlessly.
+      // Synthesis fallback takes over seamlessly without silencing playback.
     }
   }
 
   public getAudioFrame(positionMs: number, durationMs: number, isPlaying: boolean): AudioFrameData {
+    if (isPlaying && this.audioContext?.state === 'suspended') {
+      this.resumeAudioContext()
+    }
     if (!isPlaying) {
       this.smoothedBass = 0
       this.smoothedMid = 0
@@ -134,8 +170,34 @@ class AudioVisualizerEngine {
 
     if (this.analyser && isPlaying) {
       try {
-        this.analyser.getByteFrequencyData(this.rawFreqData)
+        if (this.highResFreqData) {
+          this.analyser.getByteFrequencyData(this.highResFreqData)
+          // Downsample high-res to standard 128 bins for rawFreqData
+          const hrLen = this.highResFreqData.length
+          const ratio = hrLen / BIN_COUNT
+          for (let i = 0; i < BIN_COUNT; i++) {
+            const start = Math.floor(i * ratio)
+            const end = Math.floor((i + 1) * ratio)
+            let maxVal = 0
+            for (let j = start; j < end; j++) {
+              if (this.highResFreqData[j] > maxVal) maxVal = this.highResFreqData[j]
+            }
+            this.rawFreqData[i] = Math.min(255, Math.round(maxVal * this.currentGain))
+          }
+        } else {
+          this.analyser.getByteFrequencyData(this.rawFreqData)
+          if (this.currentGain !== 1.0) {
+            for (let i = 0; i < BIN_COUNT; i++) {
+              this.rawFreqData[i] = Math.min(255, Math.round(this.rawFreqData[i] * this.currentGain))
+            }
+          }
+        }
         this.analyser.getByteTimeDomainData(this.rawWaveData)
+
+        // Capture pure zero-lag onset data for razor-sharp transient beat detection
+        if (this.onsetAnalyser) {
+          this.onsetAnalyser.getByteFrequencyData(this.rawOnsetFreqData)
+        }
 
         // If dedicated bass analyzer is active, capture pure low-pass bass time-domain waveform
         if (this.bassAnalyser) {
@@ -188,11 +250,20 @@ class AudioVisualizerEngine {
     this.smoothedTreble += (currentTreble - this.smoothedTreble) * smoothRate
     this.smoothedEnergy += (currentEnergy - this.smoothedEnergy) * smoothRate
 
-    // Real-time dynamic beat detection and tempo tracker
+    // Real-time dynamic beat detection using onset analyzer if available
+    let onsetBass = currentBass
+    if (this.onsetAnalyser && hasLiveAudio) {
+      const o0 = this.rawOnsetFreqData[0] || 0
+      const o1 = this.rawOnsetFreqData[1] || 0
+      const o2 = this.rawOnsetFreqData[2] || 0
+      const onsetVal = ((o0 * 0.5 + o1 * 0.35 + o2 * 0.15) / 255) * this.currentSensitivity
+      onsetBass = Math.max(currentBass, onsetVal)
+    }
+
     const now = typeof performance !== 'undefined' ? performance.now() : Date.now()
     const beatThreshold = Math.max(0.48, this.smoothedBass * 1.25)
 
-    if (currentBass > beatThreshold && now - this.lastBeatTime > 260) {
+    if (onsetBass > beatThreshold && now - this.lastBeatTime > 260) {
       if (this.lastBeatTime > 0) {
         const interval = now - this.lastBeatTime
         if (interval >= 260 && interval <= 1600) {
@@ -231,6 +302,7 @@ class AudioVisualizerEngine {
       frequencyData: this.rawFreqData,
       waveformData: this.rawWaveData,
       bassWaveformData: this.rawBassWaveData,
+      highResFrequencyData: this.highResFreqData ?? undefined,
       bass: Math.min(1, Math.max(0, this.smoothedBass)),
       mid: Math.min(1, Math.max(0, this.smoothedMid)),
       treble: Math.min(1, Math.max(0, this.smoothedTreble)),
@@ -304,11 +376,12 @@ class AudioVisualizerEngine {
     this.rawFreqData[48] = Math.min(255, Math.round(melody1 * 0.6 + melody2 * 0.6 + 8))
 
     // 5. Treble / Hi-hat & Percussion harmonics (Bin 68: ~5kHz, Bin 82: ~8kHz, Bin 98: ~12kHz, Bin 116: ~18kHz)
-    const hatSpike = hiHatTick * 195
-    this.rawFreqData[68] = Math.min(255, Math.round(snareEnvelope * 130 + hatSpike * 0.3 + 8))
-    this.rawFreqData[82] = Math.min(255, Math.round(hatSpike + 12))
-    this.rawFreqData[98] = Math.min(255, Math.round(hatSpike * 0.85 + Math.sin(t * 22) * 40 + 10))
-    this.rawFreqData[116] = Math.min(255, Math.round(hatSpike * 0.65 + 8))
+    // Realistic acoustic rolloff so treble provides subtle texture without overpowering the outer mesh
+    const hatSpike = hiHatTick * 32
+    this.rawFreqData[68] = Math.min(255, Math.round(snareEnvelope * 35 + hatSpike * 0.4 + 8))
+    this.rawFreqData[82] = Math.min(255, Math.round(hatSpike + 10))
+    this.rawFreqData[98] = Math.min(255, Math.round(hatSpike * 0.75 + 8))
+    this.rawFreqData[116] = Math.min(255, Math.round(hatSpike * 0.5 + 6))
 
     // Synthesize oscillating time-domain waveform around 128
     for (let i = 0; i < BIN_COUNT; i++) {
@@ -324,9 +397,48 @@ class AudioVisualizerEngine {
     }
   }
 
+  public setConfig(config: {
+    fftSize?: number
+    smoothingTimeConstant?: number
+    sensitivity?: number
+    gain?: number
+  }) {
+    if (config.fftSize !== undefined && config.fftSize !== this.currentFftSize) {
+      const val = config.fftSize
+      if (val >= 32 && val <= 32768 && (val & (val - 1)) === 0) {
+        this.currentFftSize = val
+        if (this.analyser) {
+          this.analyser.fftSize = val
+        }
+        if (val > FFT_SIZE) {
+          this.highResFreqData = new Uint8Array(val / 2)
+        } else {
+          this.highResFreqData = null
+        }
+      }
+    }
+    if (config.smoothingTimeConstant !== undefined) {
+      this.currentSmoothing = Math.max(0, Math.min(1, config.smoothingTimeConstant))
+      if (this.analyser) {
+        this.analyser.smoothingTimeConstant = this.currentSmoothing
+      }
+    }
+    if (config.sensitivity !== undefined) {
+      this.currentSensitivity = Math.max(0.1, config.sensitivity)
+    }
+    if (config.gain !== undefined) {
+      this.currentGain = Math.max(0.1, config.gain)
+    }
+  }
+
   public destroy() {
     this.unsubscribeElListener?.()
     this.unsubscribeElListener = null
+
+    try {
+      this.onsetAnalyser?.disconnect()
+    } catch {}
+    this.onsetAnalyser = null
 
     try {
       this.bassFilter?.disconnect()

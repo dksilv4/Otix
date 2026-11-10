@@ -1,3 +1,4 @@
+import { memo, useMemo, useCallback } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { MediaCard } from '@ui/molecules/media-card'
 import { cn } from '@/lib/utils'
@@ -10,27 +11,29 @@ interface LauncherMediaCardProps {
   onMouseLeave?: () => void
   className?: string
   showTypeBadge?: boolean
+  priority?: boolean
 }
 
-export const LauncherMediaCard = ({
+export const LauncherMediaCard = memo(({
   game,
   onClick,
   onMouseEnter,
   onMouseLeave,
   className,
   showTypeBadge = true,
+  priority = false,
 }: LauncherMediaCardProps) => {
   const navigate = useNavigate()
-  const art = launcherMediaCardProps(game)
-  const raw = asLocal(game)
+  const art = useMemo(() => launcherMediaCardProps(game), [game])
+  const raw = useMemo(() => asLocal(game), [game])
 
-  const open = () => {
+  const open = useCallback(() => {
     if (onClick) {
       onClick()
       return
     }
     void navigate({ to: '/launcher/$gameId', params: { gameId: game.id } })
-  }
+  }, [onClick, navigate, game.id])
 
   return (
     <div
@@ -69,8 +72,10 @@ export const LauncherMediaCard = ({
         interactive={false}
         hideStreamBadge={true}
         showTypeBadge={showTypeBadge}
+        priority={priority}
         className="w-full pointer-events-none"
       />
     </div>
   )
-};
+})
+LauncherMediaCard.displayName = 'LauncherMediaCard'

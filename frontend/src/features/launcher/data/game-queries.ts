@@ -12,6 +12,26 @@ type Listener = () => void;
 
 const listeners = new Set<Listener>();
 let unsub: (() => void) | null = null;
+let dbChangeDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+const DB_CHANGE_DEBOUNCE_MS = 200;
+
+function notifyDbChangeListeners(): void {
+  if (dbChangeDebounceTimer) {
+    clearTimeout(dbChangeDebounceTimer);
+  }
+  dbChangeDebounceTimer = setTimeout(() => {
+    dbChangeDebounceTimer = null;
+    listeners.forEach((fn) => fn());
+  }, DB_CHANGE_DEBOUNCE_MS);
+}
+
+export function flushGameDbChangeNotifications(): void {
+  if (dbChangeDebounceTimer) {
+    clearTimeout(dbChangeDebounceTimer);
+    dbChangeDebounceTimer = null;
+    listeners.forEach((fn) => fn());
+  }
+}
 
 function subscribeToGameDbChanges(listener: Listener): () => void {
   listeners.add(listener);
@@ -19,15 +39,21 @@ function subscribeToGameDbChanges(listener: Listener): () => void {
     const api = getDesktopAPI();
     if (api?.onGamesDbChanged) {
       unsub = api.onGamesDbChanged(() => {
-        listeners.forEach((fn) => fn());
+        notifyDbChangeListeners();
       });
     }
   }
   return () => {
     listeners.delete(listener);
-    if (listeners.size === 0 && unsub) {
-      unsub();
-      unsub = null;
+    if (listeners.size === 0) {
+      if (dbChangeDebounceTimer) {
+        clearTimeout(dbChangeDebounceTimer);
+        dbChangeDebounceTimer = null;
+      }
+      if (unsub) {
+        unsub();
+        unsub = null;
+      }
     }
   };
 }
@@ -36,16 +62,94 @@ function subscribeToGameDbChanges(listener: Listener): () => void {
 
 export const localGameKeys = {
   all: ['local-games'] as const,
-  list: (filter?: GamesFilter) => ['local-games', 'list', filter] as const,
+  list: (_filter?: GamesFilter) => ['local-games', 'list'] as const,
   detail: (id: string) => ['local-games', 'detail', id] as const,
   count: (filter?: GamesFilter) => ['local-games', 'count', filter] as const,
 };
+
+// ── In-memory client projection ───────────────────────────────────
+
+export function applyClientGameFilter(games: LocalGame[], filter?: GamesFilter): LocalGame[] {
+  if (!filter || Object.keys(filter).length === 0) return games;
+  let result = [...games];
+
+  if (filter.platform && filter.platform.length > 0) {
+    const set = new Set(filter.platform.map((p) => p.toLowerCase()));
+    result = result.filter((g) => g.platform && set.has(g.platform.toLowerCase()));
+  }
+
+  if (filter.matched === true) {
+    result = result.filter((g) => Boolean(g.otixMediaId || (g.data?.id && g.data.id !== g.id)));
+  } else if (filter.matched === false) {
+    result = result.filter((g) => !g.otixMediaId && !g.matchSuggestion && !g.otixMatchSuggestion);
+  }
+
+  if (filter.hasSuggestion === true) {
+    result = result.filter((g) => Boolean(g.matchSuggestion || g.otixMatchSuggestion));
+  } else if (filter.hasSuggestion === false) {
+    result = result.filter((g) => !g.matchSuggestion && !g.otixMatchSuggestion);
+  }
+
+  if (filter.search) {
+    const q = filter.search.toLowerCase();
+    result = result.filter((g) =>
+      g.title?.toLowerCase().includes(q) ||
+      g.installDir?.toLowerCase().includes(q) ||
+      g.exePath?.toLowerCase().includes(q)
+    );
+  }
+
+  if (filter.installed === true) {
+    result = result.filter((g) => g.platform !== 'iso' && Boolean(g.exePath));
+  }
+
+  if (filter.sortBy) {
+    const sortBy = filter.sortBy;
+    const sortDir = filter.sortDir || 'asc';
+    const multiplier = sortDir === 'desc' ? -1 : 1;
+
+    result.sort((a, b) => {
+      if (sortBy === 'last_played_at') {
+        const aTime = (a.lastPlayedAt || (a as any).last_played_at) ? new Date(a.lastPlayedAt || (a as any).last_played_at).getTime() : 0;
+        const bTime = (b.lastPlayedAt || (b as any).last_played_at) ? new Date(b.lastPlayedAt || (b as any).last_played_at).getTime() : 0;
+        if (aTime !== bTime) {
+          return (aTime - bTime) * multiplier;
+        }
+        return a.title.localeCompare(b.title);
+      }
+      if (sortBy === 'platform') {
+        const cmp = (a.platform || '').localeCompare(b.platform || '');
+        if (cmp !== 0) return cmp * multiplier;
+        return a.title.localeCompare(b.title);
+      }
+      if (sortBy === 'updated_at') {
+        const aTime = (a as any).updatedAt ? new Date((a as any).updatedAt).getTime() : 0;
+        const bTime = (b as any).updatedAt ? new Date((b as any).updatedAt).getTime() : 0;
+        if (aTime !== bTime) return (aTime - bTime) * multiplier;
+        return a.title.localeCompare(b.title);
+      }
+      return a.title.localeCompare(b.title) * multiplier;
+    });
+  }
+
+  if (filter.offset != null && filter.offset > 0) {
+    result = result.slice(filter.offset);
+  }
+
+  if (filter.limit != null && filter.limit > 0) {
+    result = result.slice(0, filter.limit);
+  }
+
+  return result;
+}
 
 // ── Hooks ─────────────────────────────────────────────────────────
 
 /**
  * Fetch local games from the desktop SQLite DB via IPC.
- * Auto-invalidates when the DB changes (scan complete, suggestion accepted, etc.).
+ * Canonical query key ['local-games', 'list'] shares cached dataset across components.
+ * Client-side sorting/filtering is applied in memory via select projection.
+ * Auto-invalidates when the DB changes with a 200ms debounce to prevent notification storms.
  */
 export function useLocalGames(filter?: GamesFilter) {
   const queryClient = useQueryClient();
@@ -56,10 +160,17 @@ export function useLocalGames(filter?: GamesFilter) {
     });
   }, [queryClient]);
 
+  const filterKey = filter ? JSON.stringify(filter) : undefined;
+  const select = useMemo(() => {
+    if (!filter || Object.keys(filter).length === 0) return undefined;
+    return (games: LocalGame[]) => applyClientGameFilter(games, filter);
+  }, [filterKey]);
+
   return useQuery({
-    queryKey: localGameKeys.list(filter),
-    queryFn: () => fetchGames(filter),
+    queryKey: localGameKeys.list(),
+    queryFn: () => fetchGames(),
     staleTime: 30_000,
+    select,
   });
 }
 

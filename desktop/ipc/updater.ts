@@ -29,6 +29,7 @@ export interface UpdateStatePayload {
 }
 
 let mainWindowRef: BrowserWindow | null = null;
+let splashWindowRef: BrowserWindow | null = null;
 let isInitialized = false;
 let startupCheckTimeout: NodeJS.Timeout | null = null;
 let periodicCheckTimer: NodeJS.Timeout | null = null;
@@ -42,6 +43,17 @@ let currentPayload: UpdateStatePayload = {
   error: undefined,
 };
 
+export function setSplashWindow(win: BrowserWindow | null): void {
+  splashWindowRef = win;
+  if (win && !win.isDestroyed()) {
+    win.webContents.send('splash:status', currentPayload);
+  }
+}
+
+export function isUpdateDownloading(): boolean {
+  return currentPayload.status === 'downloading' || currentPayload.status === 'available';
+}
+
 function notifyRenderer(payload: Partial<UpdateStatePayload> & { status: UpdateStatus }): void {
   currentPayload = {
     ...currentPayload,
@@ -49,6 +61,9 @@ function notifyRenderer(payload: Partial<UpdateStatePayload> & { status: UpdateS
   };
   if (mainWindowRef && !mainWindowRef.isDestroyed()) {
     mainWindowRef.webContents.send('updater:status-changed', currentPayload);
+  }
+  if (splashWindowRef && !splashWindowRef.isDestroyed()) {
+    splashWindowRef.webContents.send('splash:status', currentPayload);
   }
   try {
     setTrayUpdaterState(currentPayload);
@@ -583,7 +598,7 @@ export function checkForUpdatesOnStartup(): void {
       autoUpdater.checkForUpdates().catch((err) => {
         console.warn('[updater] Background update check error:', sanitizeUpdaterError(err));
       });
-    }, 1200);
+    }, 100);
   }
 }
 

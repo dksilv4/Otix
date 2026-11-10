@@ -22,6 +22,7 @@ import {
 } from '@/features/music/visualizers/utils/playback-persistence'
 import type { PersistentPlaybackSession } from '@/features/music/visualizers/types'
 import { trackToPlayableItem } from '../utils/converters'
+import { setActivePlaybackUrl } from '@/features/music/utils/blob-url-cache'
 
 export interface UniversalEngineState {
   currentItem: PlayableMediaItem | null
@@ -310,21 +311,65 @@ export class UniversalPlayerEngine {
         resolved.subtitleTracks?.find((s) => s.index === resolved.activeSubtitleIndex) ||
         null
 
-      this.updateState({
-        status: 'playing',
-        availableQualities: resolved.availableQualities || [],
-        playbackMethod: resolved.playbackMethod || 'direct-play',
-        activeAudio,
-        activeSubtitle,
-      })
+      if (resolved.streamUrl) {
+        setActivePlaybackUrl(resolved.streamUrl)
+      }
 
       // If audio, start HTMLAudioElement
       if (resolved.engine === 'html5-audio' && this.audioElement && resolved.streamUrl) {
         this.audioElement.src = resolved.streamUrl
         this.audioElement.currentTime = options?.startPosition ?? targetItem.startPosition ?? 0
         this.audioElement.playbackRate = this.state.playbackSpeed
-        this.audioElement.play().catch(() => {
-          // Handled via user gesture or autoplay policy
+
+        try {
+          await this.audioElement.play()
+          this.updateState({
+            status: 'playing',
+            availableQualities: resolved.availableQualities || [],
+            playbackMethod: resolved.playbackMethod || 'direct-play',
+            activeAudio,
+            activeSubtitle,
+          })
+        } catch (err: any) {
+          if (err?.name === 'NotAllowedError') {
+            // Browser autoplay restrictions blocked immediate playback.
+            // Mark state as paused so the UI shows the Play button and subsequent user interaction will play.
+            this.updateState({
+              status: 'paused',
+              availableQualities: resolved.availableQualities || [],
+              playbackMethod: resolved.playbackMethod || 'direct-play',
+              activeAudio,
+              activeSubtitle,
+            })
+            // Register auto-resume on first user gesture
+            registerAutoResumeUserGesture(() => {
+              if (this.state.status === 'paused') {
+                this.resume()
+              }
+            })
+          } else {
+            this.updateState({
+              status: 'error',
+              error: err?.message || 'Playback error encountered on audio track',
+              availableQualities: resolved.availableQualities || [],
+              playbackMethod: resolved.playbackMethod || 'direct-play',
+              activeAudio,
+              activeSubtitle,
+            })
+          }
+        }
+      } else if (resolved.engine === 'html5-audio' && (!resolved.streamUrl || !this.audioElement)) {
+        this.updateState({
+          status: 'error',
+          error: `Audio file "${targetItem.title || 'Track'}" is not accessible. Please re-import or select folder.`,
+        })
+      } else {
+        this.updateState({
+          status: 'playing',
+          availableQualities: resolved.availableQualities || [],
+          playbackMethod: resolved.playbackMethod || 'direct-play',
+          activeAudio,
+          activeSubtitle,
         })
       }
 
@@ -357,12 +402,30 @@ export class UniversalPlayerEngine {
   }
 
   resume(): void {
-    if (this.state.status !== 'paused') return
+    if (this.state.status !== 'paused' && !this.audioElement?.paused && !this.videoElement?.paused) return
 
     if (this.state.currentItem?.mediaType === 'audio' && this.audioElement) {
-      this.audioElement.play().catch(() => {})
+      this.audioElement
+        .play()
+        .then(() => {
+          this.updateState({ status: 'playing' })
+          void this.reportProgress('playing')
+        })
+        .catch((err) => {
+          console.warn('[universalPlayerEngine] resume failed:', err)
+        })
+      return
     } else if (this.videoElement) {
-      this.videoElement.play().catch(() => {})
+      this.videoElement
+        .play()
+        .then(() => {
+          this.updateState({ status: 'playing' })
+          void this.reportProgress('playing')
+        })
+        .catch((err) => {
+          console.warn('[universalPlayerEngine] resume video failed:', err)
+        })
+      return
     }
 
     this.updateState({ status: 'playing' })
@@ -370,14 +433,22 @@ export class UniversalPlayerEngine {
   }
 
   async togglePlay(): Promise<void> {
-    if (this.state.status === 'playing') {
+    const isAudioActuallyPaused =
+      this.state.currentItem?.mediaType === 'audio' && this.audioElement
+        ? this.audioElement.paused
+        : false
+
+    if (this.state.status === 'playing' && !isAudioActuallyPaused) {
       this.pause()
-    } else if (this.state.status === 'paused') {
+    } else if (this.state.status === 'paused' || isAudioActuallyPaused) {
       this.resume()
+    } else if (this.state.status === 'idle' && this.state.currentItem) {
+      await this.play(this.state.currentItem)
     }
   }
 
   private stopInternal(resetViewMode = true): void {
+    setActivePlaybackUrl(null)
     this.stopHeartbeat()
     this.preloadedNext = null
 

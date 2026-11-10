@@ -1,72 +1,46 @@
 import { Helmet } from "react-helmet-async"
-import { Suspense, type ComponentType, type LazyExoticComponent } from "react"
-import { safeLazy } from "@/lib/utils/chunk-reload"
+import { Suspense, useState, useEffect } from "react"
 import { QueryErrorBoundary } from "@/components/query-error-boundary"
 import { FpsPermissionDialog } from "@/features/launcher/components/molecules/launcher-fps-permission-dialog"
 import { LauncherAchievementToast } from "@/features/launcher/components/molecules/launcher-achievement-toast"
+import { LauncherPerformanceDiagnosticsModal } from "@/features/launcher/components/organisms/launcher-performance-diagnostics-modal"
 import { useHydrateLocalGames } from "@/features/launcher/hooks/use-launcher-hydrate"
+import { THEME_VIEWS } from "@/features/launcher/utils/theme-views"
 import {
   LauncherThemeProvider,
   useLauncherTheme,
-  type LauncherThemeId,
 } from "@/features/launcher/themes/theme-context"
-
-const themeViews: Record<LauncherThemeId, LazyExoticComponent<ComponentType>> = {
-  classic: safeLazy(() =>
-    import("@/features/launcher/themes/classic/classic-launcher-view").then((m) => ({
-      default: m.ClassicLauncherView,
-    })),
-  ),
-  modern: safeLazy(() =>
-    import("@/features/launcher/themes/modern/modern-launcher-view").then((m) => ({
-      default: m.ModernLauncherView,
-    })),
-  ),
-  steam: safeLazy(() =>
-    import("@/features/launcher/themes/steam/steam-launcher-view").then((m) => ({
-      default: m.SteamLauncherView,
-    })),
-  ),
-  playstation: safeLazy(() =>
-    import("@/features/launcher/themes/playstation/playstation-launcher-view").then((m) => ({
-      default: m.PlayStationLauncherView,
-    })),
-  ),
-  xbox: safeLazy(() =>
-    import("@/features/launcher/themes/xbox/xbox-launcher-view").then((m) => ({
-      default: m.XboxLauncherView,
-    })),
-  ),
-  switch: safeLazy(() =>
-    import("@/features/launcher/themes/switch/switch-launcher-view").then((m) => ({
-      default: m.SwitchLauncherView,
-    })),
-  ),
-  retro: safeLazy(() =>
-    import("@/features/launcher/themes/retro/retro-launcher-view").then((m) => ({
-      default: m.RetroLauncherView,
-    })),
-  ),
-  minimal: safeLazy(() =>
-    import("@/features/launcher/themes/minimal/minimal-launcher-view").then((m) => ({
-      default: m.MinimalLauncherView,
-    })),
-  ),
-  forge: safeLazy(() =>
-    import("@/features/launcher/themes/forge/forge-launcher-view").then((m) => ({
-      default: m.ForgeLauncherView,
-    })),
-  ),
-  glass: safeLazy(() =>
-    import("@/features/launcher/themes/glass/glass-launcher-view").then((m) => ({
-      default: m.GlassLauncherView,
-    })),
-  ),
-}
 
 const LauncherContent = () => {
   const { currentTheme } = useLauncherTheme()
-  const ThemeView = themeViews[currentTheme] ?? themeViews.classic
+  const ThemeView = THEME_VIEWS[currentTheme] ?? THEME_VIEWS.classic
+  const [diagnosticsOpen, setDiagnosticsOpen] = useState(false)
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const isCtrlShiftD =
+        (event.ctrlKey || event.metaKey) && event.shiftKey && (event.key === "D" || event.key === "d")
+      const isF3 = event.key === "F3"
+
+      if (isCtrlShiftD || isF3) {
+        event.preventDefault()
+        setDiagnosticsOpen((prev) => !prev)
+      }
+    }
+
+    const handleOpen = () => setDiagnosticsOpen(true)
+    const handleToggle = () => setDiagnosticsOpen((prev) => !prev)
+
+    window.addEventListener("keydown", handleKeyDown)
+    window.addEventListener("otix:open-launcher-diagnostics", handleOpen)
+    window.addEventListener("otix:toggle-launcher-diagnostics", handleToggle)
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown)
+      window.removeEventListener("otix:open-launcher-diagnostics", handleOpen)
+      window.removeEventListener("otix:toggle-launcher-diagnostics", handleToggle)
+    }
+  }, [])
 
   return (
     <div
@@ -78,6 +52,10 @@ const LauncherContent = () => {
       </Helmet>
       <FpsPermissionDialog />
       <LauncherAchievementToast />
+      <LauncherPerformanceDiagnosticsModal
+        open={diagnosticsOpen}
+        onOpenChange={setDiagnosticsOpen}
+      />
       <Suspense fallback={<div className="w-full h-full bg-background" aria-hidden />}>
         <ThemeView />
       </Suspense>

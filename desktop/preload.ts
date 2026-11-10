@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer } from 'electron';
+import { contextBridge, ipcRenderer, webUtils } from 'electron';
 import type { LocalGame, NodeDaemonStatus } from './preload-api';
 
 // Resolves once the main process has registered all IPC handlers.
@@ -43,6 +43,13 @@ contextBridge.exposeInMainWorld('desktopAPI', {
 
   // ── Platform info ──
   platform: process.platform,
+  getPathForFile: (file: File) => {
+    try {
+      return webUtils.getPathForFile(file) || '';
+    } catch {
+      return '';
+    }
+  },
 
   // ── Query cache persistence ──
   cacheLoad: () => ipcRenderer.invoke('cache:load'),

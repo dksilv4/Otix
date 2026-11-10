@@ -419,6 +419,221 @@ export function getPeVersion(filePath: string): string | null {
   return null;
 }
 
+/**
+ * Asynchronously extracts product or file version from a Windows PE executable's resource table.
+ * Caches by file mtimeMs for instantaneous lookups.
+ */
+export async function getPeVersionAsync(filePath: string): Promise<string | null> {
+  if (!filePath || typeof filePath !== 'string') return null;
+  let fileHandle: fs.promises.FileHandle | null = null;
+  try {
+    const stat = await fs.promises.stat(filePath);
+    if (!stat.isFile() || stat.size < 1024) return null;
+
+    const cached = _peVersionCache.get(filePath);
+    if (cached && cached.mtimeMs === stat.mtimeMs) {
+      return cached.version;
+    }
+
+    fileHandle = await fs.promises.open(filePath, 'r');
+    const header = Buffer.alloc(1024);
+    await fileHandle.read(header, 0, 1024, 0);
+
+    // Verify DOS MZ header
+    if (header.readUInt16LE(0) !== 0x5a4d) {
+      await fileHandle.close();
+      return null;
+    }
+
+    const peOffset = header.readUInt32LE(0x3c);
+    if (peOffset > stat.size - 256) {
+      await fileHandle.close();
+      return null;
+    }
+
+    const peHeader = Buffer.alloc(24);
+    await fileHandle.read(peHeader, 0, 24, peOffset);
+    if (peHeader.toString('utf8', 0, 4) !== 'PE\0\0') {
+      await fileHandle.close();
+      return null;
+    }
+
+    const numSections = peHeader.readUInt16LE(6);
+    const optHeaderSize = peHeader.readUInt16LE(20);
+    const sectionHeadersOffset = peOffset + 24 + optHeaderSize;
+
+    const sectionsBuf = Buffer.alloc(numSections * 40);
+    await fileHandle.read(sectionsBuf, 0, numSections * 40, sectionHeadersOffset);
+
+    let rsrcOffset = 0;
+    let rsrcSize = 0;
+    for (let i = 0; i < numSections; i++) {
+      const secName = sectionsBuf.toString('utf8', i * 40, i * 40 + 8).replace(/\0/g, '');
+      if (secName.startsWith('.rsrc')) {
+        rsrcOffset = sectionsBuf.readUInt32LE(i * 40 + 20);
+        rsrcSize = sectionsBuf.readUInt32LE(i * 40 + 16);
+        break;
+      }
+    }
+
+    let searchBuf: Buffer;
+    if (rsrcOffset > 0 && rsrcSize > 0) {
+      const readLen = Math.min(rsrcSize, 4 * 1024 * 1024);
+      searchBuf = Buffer.alloc(readLen);
+      await fileHandle.read(searchBuf, 0, readLen, rsrcOffset);
+    } else {
+      const scanLen = Math.min(stat.size, 4 * 1024 * 1024);
+      searchBuf = Buffer.alloc(scanLen);
+      await fileHandle.read(searchBuf, 0, scanLen, 0);
+    }
+    await fileHandle.close();
+    fileHandle = null;
+
+    const pvNeedle = Buffer.from('ProductVersion\0', 'utf16le');
+    const fvNeedle = Buffer.from('FileVersion\0', 'utf16le');
+
+    for (const needle of [pvNeedle, fvNeedle]) {
+      let idx = searchBuf.indexOf(needle);
+      if (idx !== -1) {
+        idx += needle.length;
+        while (idx < searchBuf.length && searchBuf.readUInt16LE(idx) === 0) idx += 2;
+        const strStart = idx;
+        while (idx < searchBuf.length && searchBuf.readUInt16LE(idx) !== 0) idx += 2;
+        const ver = searchBuf.toString('utf16le', strStart, idx).trim();
+        if (ver && /^\d+/.test(ver)) {
+          const cleaned = ver.replace(/,\s*/g, '.').replace(/(\.0+)+$/, '');
+          const finalVer = cleaned || ver;
+          if (_peVersionCache.size > 2000) _peVersionCache.clear();
+          _peVersionCache.set(filePath, { version: finalVer, mtimeMs: stat.mtimeMs });
+          return finalVer;
+        }
+      }
+    }
+
+    // Binary VS_FIXEDFILEINFO fallback (signature 0xfeef04bd)
+    const sigNeedle = Buffer.from([0xbd, 0x04, 0xef, 0xfe]);
+    const sigIdx = searchBuf.indexOf(sigNeedle);
+    if (sigIdx !== -1 && sigIdx + 24 <= searchBuf.length) {
+      const fileMajor = searchBuf.readUInt16LE(sigIdx + 10);
+      const fileMinor = searchBuf.readUInt16LE(sigIdx + 8);
+      const fileBuild = searchBuf.readUInt16LE(sigIdx + 14);
+      const fileRev = searchBuf.readUInt16LE(sigIdx + 12);
+
+      const prodMajor = searchBuf.readUInt16LE(sigIdx + 18);
+      const prodMinor = searchBuf.readUInt16LE(sigIdx + 16);
+      const prodBuild = searchBuf.readUInt16LE(sigIdx + 22);
+      const prodRev = searchBuf.readUInt16LE(sigIdx + 20);
+
+      const vMajor = prodMajor || fileMajor;
+      const vMinor = prodMinor || fileMinor;
+      const vBuild = prodBuild || fileBuild;
+      const vRev = prodRev || fileRev;
+
+      if (vMajor > 0 || vMinor > 0) {
+        let binVer = `${vMajor}.${vMinor}`;
+        if (vBuild > 0 || vRev > 0) binVer += `.${vBuild}`;
+        if (vRev > 0) binVer += `.${vRev}`;
+        if (_peVersionCache.size > 2000) _peVersionCache.clear();
+        _peVersionCache.set(filePath, { version: binVer, mtimeMs: stat.mtimeMs });
+        return binVer;
+      }
+    }
+  } catch {
+    if (fileHandle !== null) {
+      try { await fileHandle.close(); } catch {}
+    }
+    return null;
+  }
+  return null;
+}
+
+const _targetStatCache = new Map<string, { sizeBytes?: number; modifiedAt?: string; isFile: boolean; isExe: boolean; ts: number }>();
+const _pendingMetadataHydrations = new Set<string>();
+
+/**
+ * Asynchronously inspects executable / directory metadata in the background
+ * without blocking the Electron main thread event loop during library queries.
+ */
+export async function resolveGameMetadataAsync(
+  rowId: string,
+  exePath?: string,
+  localExePath?: string,
+  installDir?: string,
+): Promise<{ sizeBytes?: number; version?: string; modifiedAt?: string; localExePath?: string } | null> {
+  try {
+    const rawTarget = localExePath || (!String(exePath).startsWith('steam://') ? exePath : null);
+    if (!rawTarget) return null;
+
+    let sizeBytes: number | undefined;
+    let modifiedAt: string | undefined;
+    let version: string | undefined;
+
+    const now = Date.now();
+    const cachedStat = _targetStatCache.get(rawTarget);
+    let isFile = false;
+    let isExe = false;
+    if (cachedStat && now - cachedStat.ts < 10000) {
+      sizeBytes = cachedStat.sizeBytes;
+      modifiedAt = cachedStat.modifiedAt;
+      isFile = cachedStat.isFile;
+      isExe = cachedStat.isExe;
+    } else {
+      try {
+        const st = await fs.promises.stat(rawTarget);
+        isFile = st.isFile();
+        isExe = rawTarget.toLowerCase().endsWith('.exe');
+        if (isFile) {
+          if (st.mtime) modifiedAt = st.mtime.toISOString();
+          if (st.size > 0) sizeBytes = st.size;
+        } else if (st.isDirectory()) {
+          if (st.mtime) modifiedAt = st.mtime.toISOString();
+        }
+        if (_targetStatCache.size > 2000) _targetStatCache.clear();
+        _targetStatCache.set(rawTarget, { sizeBytes, modifiedAt, isFile, isExe, ts: now });
+      } catch {
+        return null;
+      }
+    }
+    if (isFile && isExe) {
+      const peVer = await getPeVersionAsync(rawTarget);
+      if (peVer) version = peVer;
+    }
+
+    const resolved = { sizeBytes, version, modifiedAt, localExePath: rawTarget };
+    if (_rowMetaCache.size > 5000) _rowMetaCache.clear();
+    const existing = _rowMetaCache.get(rowId) || {};
+    _rowMetaCache.set(rowId, {
+      sizeBytes: sizeBytes ?? existing.sizeBytes,
+      version: version ?? existing.version,
+      modifiedAt: modifiedAt ?? existing.modifiedAt,
+      localExePath: rawTarget ?? existing.localExePath,
+    });
+
+    return resolved;
+  } catch {
+    return null;
+  }
+}
+
+export function queueAsyncMetadataHydration(
+  rowId: string,
+  exePath?: string,
+  localExePath?: string,
+  installDir?: string,
+): void {
+  if (!rowId || _pendingMetadataHydrations.has(rowId)) return;
+  _pendingMetadataHydrations.add(rowId);
+  setImmediate(async () => {
+    try {
+      await resolveGameMetadataAsync(rowId, exePath, localExePath, installDir);
+    } catch {
+      // background error ignored
+    } finally {
+      _pendingMetadataHydrations.delete(rowId);
+    }
+  });
+}
+
 /** In-memory cache for resolved row metadata (size, version, mtime, localExePath) */
 const _rowMetaCache = new Map<string, { sizeBytes?: number; version?: string; modifiedAt?: string; localExePath?: string }>();
 /** Negative cache for paths that do not exist to avoid repeated OS stats */
@@ -463,8 +678,15 @@ export function clearRowCache(): void {
   _rowMetaCache.clear();
   _missingPathCache.clear();
   _jsonParseCache.clear();
+  _pendingMetadataHydrations.clear();
   clearStatementCache();
   clearTitleKeyCache();
+}
+
+function stripBase64ArtworkUrl(url: unknown): string | undefined {
+  if (typeof url !== 'string' || !url) return undefined;
+  if (url.startsWith('data:image/')) return undefined;
+  return url;
 }
 
 function rowToGame(row: DbRow): GameRow {
@@ -538,37 +760,19 @@ function rowToGame(row: DbRow): GameRow {
     if (!version) version = cachedMeta.version;
     if (!modifiedAt) modifiedAt = cachedMeta.modifiedAt;
     if (!localExePath) localExePath = cachedMeta.localExePath;
-  } else if ((sizeBytes == null || sizeBytes <= 0 || !modifiedAt || !version || !localExePath) && (row.exe_path || row.install_dir || row.local_exe_path)) {
-    try {
-      let fileTarget =
-        (row.local_exe_path as string) && pathExistsFast(row.local_exe_path as string)
-          ? (row.local_exe_path as string)
-          : (row.exe_path as string) && !String(row.exe_path).startsWith('steam://') && pathExistsFast(row.exe_path as string)
-            ? (row.exe_path as string)
-            : null;
+  } else {
+    // Populate in-memory cache without performing synchronous disk I/O on the main thread
+    if (_rowMetaCache.size > 5000) _rowMetaCache.clear();
+    _rowMetaCache.set(rowId, { sizeBytes, version, modifiedAt, localExePath });
 
-      if (fileTarget) {
-        try {
-          const st = fs.statSync(fileTarget);
-          if (st.isFile()) {
-            if (!modifiedAt && st.mtime) {
-              modifiedAt = st.mtime.toISOString();
-            }
-            if ((sizeBytes == null || sizeBytes <= 0) && st.size > 0) {
-              sizeBytes = st.size;
-            }
-            if (!version && fileTarget.toLowerCase().endsWith('.exe')) {
-              const peVer = getPeVersion(fileTarget);
-              if (peVer) version = peVer;
-            }
-          }
-        } catch {}
-      }
-
-      if (_rowMetaCache.size > 5000) _rowMetaCache.clear();
-      _rowMetaCache.set(rowId, { sizeBytes, version, modifiedAt, localExePath });
-    } catch {
-      // non-fatal
+    // Queue non-blocking asynchronous metadata hydration in the background if incomplete
+    if ((sizeBytes == null || sizeBytes <= 0 || !modifiedAt || !version) && (row.exe_path || row.install_dir || row.local_exe_path)) {
+      queueAsyncMetadataHydration(
+        rowId,
+        row.exe_path as string | undefined,
+        row.local_exe_path as string | undefined,
+        row.install_dir as string | undefined,
+      );
     }
   }
 
@@ -589,11 +793,11 @@ function rowToGame(row: DbRow): GameRow {
     modifiedAt,
     createdAt: (row.created_at as string) || undefined,
     updatedAt: (row.updated_at as string) || undefined,
-    localIconUrl: (row.local_icon_url as string) || undefined,
-    iconUrl: (row.icon_url as string) || undefined,
-    posterUrl: (row.otix_poster_url as string) || (row.poster_url as string) || undefined,
-    backdropUrl: (row.otix_backdrop_url as string) || (row.backdrop_url as string) || undefined,
-    logoUrl: (row.otix_logo_url as string) || undefined,
+    localIconUrl: stripBase64ArtworkUrl(row.local_icon_url),
+    iconUrl: stripBase64ArtworkUrl(row.icon_url),
+    posterUrl: stripBase64ArtworkUrl(row.otix_poster_url) || stripBase64ArtworkUrl(row.poster_url),
+    backdropUrl: stripBase64ArtworkUrl(row.otix_backdrop_url) || stripBase64ArtworkUrl(row.backdrop_url),
+    logoUrl: stripBase64ArtworkUrl(row.otix_logo_url),
     overview: otixDataParsed?.overview,
     sources,
     isDlc: isDlc || Boolean(row.is_dlc) || isUpdateFile((row.title as string) || '', (row.exe_path as string) || (row.install_dir as string)) || isDlcFile((row.title as string) || '', (row.exe_path as string) || (row.install_dir as string)),
@@ -614,11 +818,11 @@ function rowToGame(row: DbRow): GameRow {
         titleId,
         platform: row.platform as GamePlatform,
         version,
-        iconUrl: (row.otix_icon_url as string) || (row.icon_url as string) || undefined,
-        posterUrl: (row.otix_poster_url as string) || (row.poster_url as string) || undefined,
-        backdropUrl: (row.otix_backdrop_url as string) || (row.backdrop_url as string) || undefined,
-        logoUrl: (row.otix_logo_url as string) || undefined,
-        textlessPosterUrl: (row.otix_textless_poster_url as string) || undefined,
+        iconUrl: stripBase64ArtworkUrl(row.otix_icon_url) || stripBase64ArtworkUrl(row.icon_url),
+        posterUrl: stripBase64ArtworkUrl(row.otix_poster_url) || stripBase64ArtworkUrl(row.poster_url),
+        backdropUrl: stripBase64ArtworkUrl(row.otix_backdrop_url) || stripBase64ArtworkUrl(row.backdrop_url),
+        logoUrl: stripBase64ArtworkUrl(row.otix_logo_url),
+        textlessPosterUrl: stripBase64ArtworkUrl(row.otix_textless_poster_url),
         sizeBytes,
         modifiedAt,
       };
@@ -628,8 +832,10 @@ function rowToGame(row: DbRow): GameRow {
           ...otixDataParsed,
           titleId: titleId ?? otixDataParsed.titleId,
           platform: row.platform as GamePlatform,
-          posterUrl: base.posterUrl || otixDataParsed.posterUrl || otixDataParsed.poster_url,
-          backdropUrl: base.backdropUrl || otixDataParsed.backdropUrl || otixDataParsed.backdrop_url,
+          posterUrl: base.posterUrl || stripBase64ArtworkUrl(otixDataParsed.posterUrl) || stripBase64ArtworkUrl(otixDataParsed.poster_url),
+          backdropUrl: base.backdropUrl || stripBase64ArtworkUrl(otixDataParsed.backdropUrl) || stripBase64ArtworkUrl(otixDataParsed.backdrop_url),
+          iconUrl: base.iconUrl || stripBase64ArtworkUrl(otixDataParsed.iconUrl) || stripBase64ArtworkUrl(otixDataParsed.icon_url),
+          logoUrl: base.logoUrl || stripBase64ArtworkUrl(otixDataParsed.logoUrl) || stripBase64ArtworkUrl(otixDataParsed.logo_url),
           releaseDate: otixDataParsed.releaseDate || otixDataParsed.release_date || otixDataParsed.year,
           version: version ?? otixDataParsed.version ?? otixDataParsed.gameVersion,
           sizeBytes: sizeBytes ?? otixDataParsed.sizeBytes,
@@ -648,11 +854,11 @@ function rowToGame(row: DbRow): GameRow {
     otixMediaTitle: (row.otix_media_title as string) || undefined,
     otixMediaSlug: (row.otix_media_slug as string) || undefined,
     otixConfidence: row.otix_confidence != null ? Number(row.otix_confidence) : undefined,
-    otixPosterUrl: (row.otix_poster_url as string) || undefined,
-    otixBackdropUrl: (row.otix_backdrop_url as string) || undefined,
-    otixTextlessPosterUrl: (row.otix_textless_poster_url as string) || undefined,
-    otixLogoUrl: (row.otix_logo_url as string) || undefined,
-    otixIconUrl: (row.otix_icon_url as string) || undefined,
+    otixPosterUrl: stripBase64ArtworkUrl(row.otix_poster_url),
+    otixBackdropUrl: stripBase64ArtworkUrl(row.otix_backdrop_url),
+    otixTextlessPosterUrl: stripBase64ArtworkUrl(row.otix_textless_poster_url),
+    otixLogoUrl: stripBase64ArtworkUrl(row.otix_logo_url),
+    otixIconUrl: stripBase64ArtworkUrl(row.otix_icon_url),
   };
 }
 

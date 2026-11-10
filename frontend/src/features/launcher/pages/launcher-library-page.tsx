@@ -11,6 +11,7 @@ import { toDisplayGame, heroImage, isCatalogId } from '@/features/launcher/utils
 import { useHydrateLocalGames } from '@/features/launcher/hooks/use-launcher-hydrate'
 import { LauncherMediaCard } from '@/features/launcher/components/molecules/launcher-media-card'
 import { LauncherFoundGames } from '@/features/launcher/components/organisms/launcher-found-games'
+import { useVirtualGrid } from '@/features/launcher/hooks/use-virtual-grid'
 import { MediaGrid } from '@ui/molecules/media-grid'
 import { useOffline } from '@/lib/offline'
 import { OfflineNotice } from '@/lib/offline-notice'
@@ -154,6 +155,18 @@ export const LauncherLibraryPage = () => {
   }, [hoveredGame, settings.backgroundTransitions])
 
   const gridGames = filteredGames
+
+  const {
+    virtualItems: virtualGridGames,
+    paddingTop,
+    paddingBottom,
+    containerRef: gridContainerRef,
+  } = useVirtualGrid(gridGames, {
+    itemHeight: 320,
+    gap: 20,
+    columns: (width) => (width < 640 ? 2 : width < 1024 ? 3 : width < 1280 ? 4 : 5),
+    threshold: 24,
+  })
 
   const openGame = useCallback((id: string) => {
     navigate({ to: '/launcher/$gameId', params: { gameId: id } })
@@ -378,23 +391,32 @@ export const LauncherLibraryPage = () => {
 
           {/* ────────── Game Grid ────────── */}
           {gridGames.length > 0 ? (
-            <MediaGrid className="grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-              {gridGames.map((game) => (
-                <LauncherMediaCard
-                  key={game.id}
-                  game={game}
-                  onClick={() => {
-                    handlePrefetch(game)
-                    openGame(game.id)
-                  }}
-                  onMouseEnter={() => {
-                    setHoveredId(game.id)
-                    handlePrefetch(game)
-                  }}
-                  onMouseLeave={() => setHoveredId(null)}
-                />
-              ))}
-            </MediaGrid>
+            <div ref={gridContainerRef}>
+              <MediaGrid className="grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+                {paddingTop > 0 && (
+                  <div style={{ height: paddingTop, gridColumn: '1 / -1' }} aria-hidden="true" />
+                )}
+                {virtualGridGames.map(({ item: game, index }) => (
+                  <LauncherMediaCard
+                    key={game.id}
+                    game={game}
+                    priority={index < 5}
+                    onClick={() => {
+                      handlePrefetch(game)
+                      openGame(game.id)
+                    }}
+                    onMouseEnter={() => {
+                      setHoveredId(game.id)
+                      handlePrefetch(game)
+                    }}
+                    onMouseLeave={() => setHoveredId(null)}
+                  />
+                ))}
+                {paddingBottom > 0 && (
+                  <div style={{ height: paddingBottom, gridColumn: '1 / -1' }} aria-hidden="true" />
+                )}
+              </MediaGrid>
+            </div>
           ) : foundGames.length === 0 ? (
             <div className="glass-card flex flex-col items-center justify-center py-24 text-muted-foreground gap-4">
               <Gamepad2 size={44} className="animate-pulse" style={{ animationDuration: '3s' }} />

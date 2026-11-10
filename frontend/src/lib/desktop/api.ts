@@ -319,6 +319,7 @@ export interface DesktopAPI {
   getApiBaseUrl?: () => string
   hydrateMatchedGames?: () => Promise<{ updated: number; failed: number; total: number }>;
   readonly platform: string | undefined
+  getPathForFile?: (file: File) => string
   openExternal?: (url: string) => Promise<void>
   smartOrganizePreview?: (dir: string, template?: string) => Promise<unknown[]>
   executeOrganization?: (items: { sourcePath: string; targetPath: string }[]) => Promise<unknown>

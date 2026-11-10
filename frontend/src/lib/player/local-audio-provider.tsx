@@ -3,6 +3,8 @@ import type { LocalTrackInfo, RepeatMode } from './types'
 import { LocalPlayerContext, playerProgressStore } from './player-context'
 import { LOCAL_PLAYER_VOLUME_KEY, setActiveAudioElement } from './utils'
 import { localTrackCache, resolveLocalAudioTrack } from '@/features/media/utils/local-media'
+import { getSessionFile } from '@/features/music/local/utils/session-file-map'
+import { getOrCreateBlobUrl } from '@/features/music/utils/blob-url-cache'
 
 export const LocalAudioProvider = ({ children }: { children: React.ReactNode }) => {
   const audioRef = useRef<HTMLAudioElement | null>(null)
@@ -84,29 +86,50 @@ export const LocalAudioProvider = ({ children }: { children: React.ReactNode }) 
 
     // If this is a local track, check cache or enrich dynamically
     if (track.path) {
-      const cached = localTrackCache.get(track.path)
-      if (cached && (cached.albumArt || cached.durationMs > 0)) {
-        track = cached
-        list[index] = cached
-      } else {
-        const targetPath = track.path
-        void resolveLocalAudioTrack(targetPath)
-          .then((enriched) => {
-            if (currentIndexRef.current === index) {
-              setCurrentTrack(enriched)
-              if (enriched.durationMs && enriched.durationMs > 0) {
-                playerProgressStore.setProgress(
-                  audioRef.current ? Math.round(audioRef.current.currentTime * 1000) : 0,
-                  enriched.durationMs,
-                )
+      const isDesktop = typeof window !== 'undefined' && Boolean((window as any).desktopAPI)
+      const isAbsolutePath = (/^([a-zA-Z]:[\\/]|\\\\|\/)/.test(track.path))
+      const hasWorkingUrl = Boolean(track.url && (track.url.startsWith('blob:') || track.url.startsWith('http')))
+
+      if (isDesktop && isAbsolutePath) {
+        const cached = localTrackCache.get(track.path)
+        if (cached && (cached.albumArt || cached.durationMs > 0)) {
+          track = hasWorkingUrl ? { ...cached, url: track.url } : cached
+          list[index] = track
+        } else {
+          const targetPath = track.path
+          const existingUrl = track.url
+          void resolveLocalAudioTrack(targetPath)
+            .then((enriched) => {
+              const finalEnriched = existingUrl && (existingUrl.startsWith('blob:') || existingUrl.startsWith('http'))
+                ? { ...enriched, url: existingUrl }
+                : enriched
+              if (currentIndexRef.current === index) {
+                setCurrentTrack(finalEnriched)
+                if (finalEnriched.durationMs && finalEnriched.durationMs > 0) {
+                  playerProgressStore.setProgress(
+                    audioRef.current ? Math.round(audioRef.current.currentTime * 1000) : 0,
+                    finalEnriched.durationMs,
+                  )
+                }
               }
-            }
-            if (queueRef.current[index]) {
-              queueRef.current[index] = enriched
-              setQueue([...queueRef.current])
-            }
-          })
-          .catch(() => {})
+              if (queueRef.current[index]) {
+                queueRef.current[index] = finalEnriched
+                setQueue([...queueRef.current])
+              }
+            })
+            .catch(() => {})
+        }
+      }
+    }
+
+    if (!track.url && track.id) {
+      const sessionFile = getSessionFile(track.id)
+      if (sessionFile) {
+        const blobUrl = getOrCreateBlobUrl(sessionFile)
+        if (blobUrl) {
+          track = { ...track, url: blobUrl }
+          list[index] = track
+        }
       }
     }
 
@@ -166,6 +189,7 @@ export const LocalAudioProvider = ({ children }: { children: React.ReactNode }) 
     audio.preload = 'auto'
     audio.volume = volume
     audioRef.current = audio
+    setActiveAudioElement(audio)
 
     const onTimeUpdate = () => {
       const pos = Math.round(audio.currentTime * 1000)
@@ -184,6 +208,7 @@ export const LocalAudioProvider = ({ children }: { children: React.ReactNode }) 
     }
 
     const onPlay = () => {
+      setActiveAudioElement(audio)
       isPlayingRef.current = true
       setIsPlaying(true)
       consecutiveErrorCountRef.current = 0
@@ -265,6 +290,7 @@ export const LocalAudioProvider = ({ children }: { children: React.ReactNode }) 
       audio.removeEventListener('error', onError)
       audio.pause()
       audio.src = ''
+      setActiveAudioElement(null)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])

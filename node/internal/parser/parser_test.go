@@ -95,3 +95,23 @@ func TestParserParity_AllFixtures(t *testing.T) {
 		t.Fatalf("%d out of %d fixture cases failed parity verification", mismatches, len(ff.Cases))
 	}
 }
+
+func BenchmarkParseReleaseName(b *testing.B) {
+	fixturePath := filepath.Join("..", "..", "..", "fixtures", "parser_fixtures.json")
+	data, err := os.ReadFile(fixturePath)
+	if err != nil {
+		b.Fatalf("failed reading fixtures file: %v", err)
+	}
+	var ff fixtureFile
+	if err := json.Unmarshal(data, &ff); err != nil {
+		b.Fatalf("failed unmarshaling fixture json: %v", err)
+	}
+
+	b.ResetTimer()
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		for _, tc := range ff.Cases {
+			_ = parser.ParseReleaseName(tc.Input, tc.ExtHint, tc.ParentDir)
+		}
+	}
+}

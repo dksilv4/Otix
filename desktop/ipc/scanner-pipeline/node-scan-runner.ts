@@ -80,7 +80,6 @@ export async function runNodeScan(options: NodeScanRunnerOptions): Promise<void>
   } catch {}
 
   let scanDone = false;
-  let isPollingFiles = false;
   let progressTimer: NodeJS.Timeout | null = null;
 
   progressTimer = setInterval(async () => {
@@ -109,27 +108,6 @@ export async function runNodeScan(options: NodeScanRunnerOptions): Promise<void>
           `Scanning ${displayDir} (${scanned} files)...`,
           Math.min(85, 30 + Math.floor(scanned / 50)),
         );
-      }
-
-      if (!isPollingFiles) {
-        isPollingFiles = true;
-        fetchCurrentFiles()
-          .then((current) => {
-            if (Array.isArray(current) && current.length > 0) {
-              const pollBatch: LocalGame[] = [];
-              for (const f of current) {
-                const g = ingestFile(f);
-                if (g) pollBatch.push(g);
-              }
-              if (pollBatch.length > 0) {
-                handleDiscoveredBatch(pollBatch);
-              }
-            }
-          })
-          .catch(() => {})
-          .finally(() => {
-            isPollingFiles = false;
-          });
       }
     } catch {
       // ignore
@@ -168,5 +146,22 @@ export async function runNodeScan(options: NodeScanRunnerOptions): Promise<void>
     if (sseReq) {
       try { sseReq.destroy(); } catch {}
     }
+  }
+
+  // Single final fetch on scan completion to ensure any remaining files are ingested
+  try {
+    const finalFiles = await fetchCurrentFiles();
+    if (Array.isArray(finalFiles) && finalFiles.length > 0) {
+      const finalBatch: LocalGame[] = [];
+      for (const f of finalFiles) {
+        const g = ingestFile(f);
+        if (g) finalBatch.push(g);
+      }
+      if (finalBatch.length > 0) {
+        handleDiscoveredBatch(finalBatch);
+      }
+    }
+  } catch (err) {
+    console.warn('[node-scan-runner] Final files fetch error:', err);
   }
 }

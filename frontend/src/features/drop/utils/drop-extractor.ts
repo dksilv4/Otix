@@ -4,10 +4,30 @@ export interface ExtractedDroppedItem {
   folderName?: string
 }
 
+export const getFileNativePath = (file: File): string => {
+  if (typeof window !== 'undefined') {
+    const desktopApi = (window as any).desktopAPI
+    if (desktopApi?.getPathForFile && typeof desktopApi.getPathForFile === 'function') {
+      try {
+        const p = desktopApi.getPathForFile(file)
+        if (p) return p
+      } catch {
+        // Fall through
+      }
+    }
+  }
+  return (file as any).path || ''
+}
+
+const isAbsoluteDiskPath = (p: string): boolean => {
+  return /^([a-zA-Z]:[\\/]|\\\\|\/)/.test(p)
+}
+
 const traverseEntry = async (
   entry: any,
   currentPath: string,
   out: ExtractedDroppedItem[],
+  nativePaths?: Map<string, string>,
 ): Promise<void> => {
   if (!entry) return
 
@@ -15,8 +35,17 @@ const traverseEntry = async (
     await new Promise<void>((resolve) => {
       entry.file(
         (file: File) => {
-          const fullPath = currentPath ? `${currentPath}/${file.name}` : file.name
-          const folderName = currentPath ? currentPath.split('/')[0] : undefined
+          let electronPath = getFileNativePath(file)
+          if (!electronPath && nativePaths?.has(file.name)) {
+            electronPath = nativePaths.get(file.name)!
+          }
+          if (!electronPath && currentPath && isAbsoluteDiskPath(currentPath)) {
+            electronPath = `${currentPath}/${file.name}`
+          }
+          const fullPath = electronPath || (currentPath ? `${currentPath}/${file.name}` : file.name)
+          const folderName = currentPath
+            ? currentPath.replace(/\\/g, '/').split('/').filter(Boolean)[0]
+            : undefined
           out.push({ file, path: fullPath, folderName })
           resolve()
         },
@@ -27,7 +56,9 @@ const traverseEntry = async (
       )
     })
   } else if (entry.isDirectory) {
-    const nextPath = currentPath ? `${currentPath}/${entry.name}` : entry.name
+    const nextPath = currentPath
+      ? `${currentPath}/${entry.name}`
+      : (nativePaths?.get(entry.name) || entry.name)
     try {
       const dirReader = entry.createReader()
       const readAllEntries = async (): Promise<any[]> => {
@@ -50,7 +81,7 @@ const traverseEntry = async (
 
       const children = await readAllEntries()
       for (const child of children) {
-        await traverseEntry(child, nextPath, out)
+        await traverseEntry(child, nextPath, out, nativePaths)
       }
     } catch (err) {
       console.warn('[drop-extractor] Skipped directory entry:', entry.name, err)
@@ -66,6 +97,18 @@ export const extractFilesFromDataTransfer = async (
   dataTransfer: DataTransfer,
 ): Promise<ExtractedDroppedItem[]> => {
   const results: ExtractedDroppedItem[] = []
+
+  // Pre-index native paths from top-level DataTransfer files (vital for Electron 30+)
+  const nativePaths = new Map<string, string>()
+  if (dataTransfer.files && dataTransfer.files.length > 0) {
+    for (let i = 0; i < dataTransfer.files.length; i++) {
+      const file = dataTransfer.files[i]
+      const nativePath = getFileNativePath(file)
+      if (nativePath) {
+        nativePaths.set(file.name, nativePath)
+      }
+    }
+  }
 
   // Check if webkitGetAsEntry is available on items
   if (dataTransfer.items && dataTransfer.items.length > 0) {
@@ -83,7 +126,8 @@ export const extractFilesFromDataTransfer = async (
 
       if (entries.length > 0) {
         for (const entry of entries) {
-          await traverseEntry(entry, '', results)
+          const rootPath = nativePaths.get(entry.name) || ''
+          await traverseEntry(entry, rootPath, results, nativePaths)
         }
         return results
       }
@@ -94,7 +138,8 @@ export const extractFilesFromDataTransfer = async (
   if (dataTransfer.files && dataTransfer.files.length > 0) {
     for (let i = 0; i < dataTransfer.files.length; i++) {
       const file = dataTransfer.files[i]
-      const relativePath = file.webkitRelativePath || (file as any).path || file.name
+      const electronPath = getFileNativePath(file)
+      const relativePath = electronPath || file.webkitRelativePath || file.name
       const folderName = file.webkitRelativePath ? file.webkitRelativePath.split('/')[0] : undefined
       results.push({
         file,

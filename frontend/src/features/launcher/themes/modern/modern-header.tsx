@@ -9,6 +9,7 @@ import {
   Settings,
   Sparkles,
   ArrowLeft,
+  Activity,
 } from "lucide-react"
 import { useRunningGame } from "@/features/launcher/hooks/use-running-game"
 import { getDesktopAPI, hasDesktopAPI, type DiskInfo } from "@/lib/desktop/api"
@@ -22,6 +23,7 @@ interface ModernHeaderProps {
   searchQuery: string
   setSearchQuery: (query: string) => void
   onOpenScan?: () => void
+  onOpenDiagnostics?: () => void
 }
 
 export const ModernHeader = ({
@@ -30,6 +32,7 @@ export const ModernHeader = ({
   searchQuery,
   setSearchQuery,
   onOpenScan: _onOpenScan,
+  onOpenDiagnostics,
 }: ModernHeaderProps) => {
   const navigate = useNavigate()
   const isDesktop = hasDesktopAPI()
@@ -196,6 +199,23 @@ export const ModernHeader = ({
             <span>{freeGb} GB Free</span>
           </div>
         )}
+
+        {/* Performance Diagnostics */}
+        <button
+          type="button"
+          onClick={() => {
+            if (onOpenDiagnostics) {
+              onOpenDiagnostics()
+            } else {
+              window.dispatchEvent(new CustomEvent("otix:toggle-launcher-diagnostics"))
+            }
+          }}
+          title="Performance Diagnostics (Ctrl+Shift+D / F3)"
+          aria-label="Performance Diagnostics"
+          className="p-2 rounded-xl bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)] text-foreground/80 hover:text-foreground border border-[var(--dk-separator)] transition-colors cursor-pointer"
+        >
+          <Activity size={15} />
+        </button>
 
         {/* Settings button */}
         <button

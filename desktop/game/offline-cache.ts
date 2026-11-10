@@ -17,7 +17,7 @@ export function getArtworkCacheDir(): string {
     const basePath = app && typeof app.getPath === 'function'
       ? app.getPath('userData')
       : path.join(process.env.APPDATA || process.env.HOME || '', '.otix');
-    const dir = path.join(basePath, 'cache', 'artwork');
+    const dir = path.join(basePath, 'image-cache');
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true });
     }
@@ -94,13 +94,28 @@ export async function cacheArtworkOffline(
   url: string | null | undefined,
 ): Promise<string | null> {
   if (!url || typeof url !== 'string') return null;
-  // If already a base64 data URL, it is already completely offline-ready
-  if (url.startsWith('data:image/')) return url;
 
-  const downloaded = await downloadRemoteImage(url);
-  if (!downloaded) return url;
+  // Already a clean media-cache protocol URL
+  if (url.startsWith('media-cache://')) return url;
 
-  const { buffer, contentType } = downloaded;
+  let buffer: Buffer;
+  let contentType: string;
+
+  if (url.startsWith('data:image/')) {
+    const matches = url.match(/^data:([^;]+);base64,(.+)$/);
+    if (matches) {
+      contentType = matches[1];
+      buffer = Buffer.from(matches[2], 'base64');
+    } else {
+      return null;
+    }
+  } else {
+    const downloaded = await downloadRemoteImage(url);
+    if (!downloaded) return url;
+    buffer = downloaded.buffer;
+    contentType = downloaded.contentType;
+  }
+
   const ext = contentType.includes('png')
     ? 'png'
     : contentType.includes('webp')
@@ -113,14 +128,10 @@ export async function cacheArtworkOffline(
       const sanitizedId = String(mediaId).replace(/[^a-zA-Z0-9_-]/g, '_');
       const filename = `${sanitizedId}_${kind}.${ext}`;
       fs.writeFileSync(path.join(cacheDir, filename), buffer);
+      return `media-cache://local/${filename}`;
     } catch (err) {
       console.warn(`[offline-cache] Failed to write artwork file for ${mediaId}:`, err);
     }
-  }
-
-  // Under 3MB, embed as a base64 data URL so it displays anywhere offline
-  if (buffer.length <= 3 * 1024 * 1024) {
-    return `data:${contentType};base64,${buffer.toString('base64')}`;
   }
 
   return url;

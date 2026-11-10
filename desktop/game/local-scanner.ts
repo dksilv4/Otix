@@ -4,6 +4,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { cleanGameTitle } from './parser';
+import { getArtworkCacheDir } from './offline-cache';
 
 export interface ScannedLocalGame {
   id: string;
@@ -411,9 +412,16 @@ export function extractPs5DumpMetadata(targetPath: string): Ps5DumpMetadata {
         const iconPath = path.join(sceSys, 'icon0.png');
         try {
           const stat = fs.statSync(iconPath);
-          if (stat.size > 0 && stat.size <= 5 * 1024 * 1024) {
-            const buf = fs.readFileSync(iconPath);
-            result.localIconUrl = `data:image/png;base64,${buf.toString('base64')}`;
+          if (stat.size > 0 && stat.size <= 10 * 1024 * 1024) {
+            const cacheDir = getArtworkCacheDir();
+            const safeId = (result.titleId || path.basename(normalized)).replace(/[^a-zA-Z0-9_-]/g, '_');
+            if (cacheDir) {
+              const iconFilename = `${safeId}_icon0.png`;
+              fs.copyFileSync(iconPath, path.join(cacheDir, iconFilename));
+              result.localIconUrl = `media-cache://local/${iconFilename}`;
+            } else {
+              result.localIconUrl = `local-media://?path=${encodeURIComponent(iconPath)}`;
+            }
           }
         } catch {}
       }
@@ -423,13 +431,21 @@ export function extractPs5DumpMetadata(targetPath: string): Ps5DumpMetadata {
           const picPath = path.join(sceSys, picName);
           try {
             const stat = fs.statSync(picPath);
-            if (stat.size > 0 && stat.size <= 5 * 1024 * 1024) {
-              const buf = fs.readFileSync(picPath);
-              const mime = picName.endsWith('.jpg') ? 'image/jpeg' : 'image/png';
-              const dataUrl = `data:${mime};base64,${buf.toString('base64')}`;
-              result.backdropUrl = dataUrl;
+            if (stat.size > 0 && stat.size <= 10 * 1024 * 1024) {
+              const ext = picName.endsWith('.jpg') ? 'jpg' : 'png';
+              const cacheDir = getArtworkCacheDir();
+              const safeId = (result.titleId || path.basename(normalized)).replace(/[^a-zA-Z0-9_-]/g, '_');
+              let targetUrl: string;
+              if (cacheDir) {
+                const backdropFilename = `${safeId}_${picName.replace(/\.[^.]+$/, '')}.${ext}`;
+                fs.copyFileSync(picPath, path.join(cacheDir, backdropFilename));
+                targetUrl = `media-cache://local/${backdropFilename}`;
+              } else {
+                targetUrl = `local-media://?path=${encodeURIComponent(picPath)}`;
+              }
+              result.backdropUrl = targetUrl;
               if (!result.posterUrl) {
-                result.posterUrl = dataUrl;
+                result.posterUrl = targetUrl;
               }
               break;
             }

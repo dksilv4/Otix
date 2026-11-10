@@ -225,8 +225,42 @@ export function registerMediaCacheProtocol(targetSession: Electron.Session, user
     return 'image/jpeg';
   };
 
+  const artworkAltDir = path.join(userDataPath, 'cache', 'artwork');
+
   targetSession.protocol.handle('media-cache', async (request: Request) => {
-    const originalUrl = 'https://' + request.url.replace(/^media-cache:(?:\/\/)?/, '');
+    const rawPath = request.url.replace(/^media-cache:(?:\/\/)?/, '');
+
+    // 1. Direct local file support: media-cache://local/<filename> or media-cache://<filename>
+    const isLocalPrefix = rawPath.startsWith('local/');
+    const localFilename = isLocalPrefix ? rawPath.slice(6) : (!rawPath.includes('/') && !rawPath.includes('?') ? rawPath : null);
+
+    if (localFilename) {
+      const sanitized = path.basename(decodeURIComponent(localFilename));
+      const candidatePaths = [
+        path.join(cacheDir, sanitized),
+        path.join(artworkAltDir, sanitized),
+      ];
+
+      for (const diskPath of candidatePaths) {
+        if (fs.existsSync(diskPath)) {
+          try {
+            const fileUrl = pathToFileURL(diskPath).toString();
+            const diskResp = await net.fetch(fileUrl);
+            const contentType = getMimeType(sanitized);
+            const buffer = Buffer.from(await diskResp.arrayBuffer());
+            return new Response(buffer as any, {
+              headers: {
+                'content-type': contentType,
+                'cache-control': 'public, max-age=31536000, immutable',
+              },
+            });
+          } catch {}
+        }
+      }
+    }
+
+    // 2. Remote image caching logic
+    const originalUrl = 'https://' + rawPath;
 
     const inMemory = mediaMemoryCache.get(originalUrl);
     if (inMemory) {
@@ -298,7 +332,7 @@ export function registerLocalMediaProtocol(targetSession: Electron.Session): voi
       const url = new URL(request.url);
       const filePathParam = url.searchParams.get('path');
       let targetPath = filePathParam
-        ? decodeURIComponent(filePathParam)
+        ? filePathParam
         : decodeURIComponent(url.pathname.replace(/^\/+/, ''));
 
       // Normalise Windows drive letters
@@ -307,8 +341,8 @@ export function registerLocalMediaProtocol(targetSession: Electron.Session): voi
       }
 
       targetPath = path.normalize(targetPath);
-      if (!targetPath || !fs.existsSync(targetPath)) {
-        console.warn('[protocols] local-media file not found:', targetPath);
+      if (!targetPath || !path.isAbsolute(targetPath) || !fs.existsSync(targetPath)) {
+        console.warn('[protocols] local-media file not found or not absolute:', targetPath);
         return new Response('Not found', { status: 404 });
       }
 

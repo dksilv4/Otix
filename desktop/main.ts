@@ -254,8 +254,12 @@ if (!isInstallerMode && !isUninstallerMode) {
     const mediaFile = findMediaFileArg(argv);
     const targetLink = dl || (mediaFile ? `otix://media/play?path=${encodeURIComponent(mediaFile)}` : null);
     if (targetLink && bootManager) bootManager.handleDeepLink(targetLink);
-    const win = bootManager?.getContext().mainWindow;
-    if (!win || win.isDestroyed()) {
+    const ctx = bootManager?.getContext();
+    const win = ctx?.mainWindow;
+    const splash = ctx?.splashWindow;
+    if (splash && !splash.isDestroyed() && splash.isVisible()) {
+      splash.focus();
+    } else if (!win || win.isDestroyed()) {
       bootManager?.boot();
     } else {
       if (win.isMinimized()) win.restore();

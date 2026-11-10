@@ -43,6 +43,15 @@
   </head>
   <body>
     <div id="root"></div>
+    <div id="app-loading-screen" aria-hidden="true">
+      <div class="app-loading-pod">
+        <svg class="app-loading-logo" viewBox="0 0 2048 2048" fill="currentColor">
+          <circle cx="1024" cy="1024" r="484" fill="none" stroke="currentColor" stroke-width="140"/>
+          <path fill="none" stroke="currentColor" stroke-width="120" stroke-linecap="round" stroke-linejoin="round" d="M1024 1024 C800 652 460 652 420 1024 C460 1396 800 1396 1024 1024 C1248 652 1588 652 1628 1024 C1588 1396 1248 1396 1024 1024"/>
+        </svg>
+        <div class="app-loading-text">Starting Otix…</div>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

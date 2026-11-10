@@ -29,9 +29,21 @@ export function isStorageReady(): boolean {
 // ── Shared guard: never downgrade installed game back to ISO ──
 
 function preserveInstallStatus(games: LocalGame[]): LocalGame[] {
+  const hasIso = games.some((g) => g.platform === 'iso');
+  if (!hasIso || cache.games.length === 0) return games;
+
+  const existingById = new Map<string, LocalGame>();
+  const existingByExe = new Map<string, LocalGame>();
+  for (const c of cache.games) {
+    if (c.platform !== 'iso') {
+      existingById.set(c.id, c);
+      if (c.exePath) existingByExe.set(c.exePath, c);
+    }
+  }
+
   return games.map((g) => {
     if (g.platform !== 'iso') return g;
-    const existing = cache.games.find((c) => c.id === g.id || c.exePath === g.exePath);
+    const existing = existingById.get(g.id) || (g.exePath ? existingByExe.get(g.exePath) : undefined);
     if (existing && existing.platform !== 'iso') {
       return { ...g, platform: existing.platform, exePath: existing.exePath, installDir: existing.installDir };
     }
@@ -47,8 +59,10 @@ export async function fetchGames(filter?: GamesFilter): Promise<LocalGame[]> {
       const api = getDesktopAPI()!;
       const games = await api.getLocalGames(filter);
       const deduped = mergeDuplicateGames(games);
-      cache.games = deduped;
-      cache.loaded = true;
+      if (!filter || Object.keys(filter).length === 0) {
+        cache.games = deduped;
+        cache.loaded = true;
+      }
       return deduped;
     } catch {
       return [];

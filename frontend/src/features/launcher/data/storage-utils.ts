@@ -3,8 +3,14 @@ import { loadUnlinkedSourcePairs, getUnlinkedPairKey } from "@/features/settings
 
 // ── Title normalization ───────────────────────────────────────────
 
+const normalizedTitleCache = new Map<string, string>();
+
 export function normalizeTitle(title: string): string {
-  return title
+  if (!title) return "";
+  const cached = normalizedTitleCache.get(title);
+  if (cached !== undefined) return cached;
+
+  const result = title
     .toLowerCase()
     .replace(/[™®©]/g, "")
     // Strip disc image and archive extensions
@@ -23,9 +29,46 @@ export function normalizeTitle(title: string): string {
     .replace(/\bx\b/g, '10')
     .replace(/[^a-z0-9]/g, "")
     .trim();
+
+  if (normalizedTitleCache.size > 10000) {
+    normalizedTitleCache.clear();
+  }
+  normalizedTitleCache.set(title, result);
+  return result;
 }
 
 // ── Dedup ─────────────────────────────────────────────────────────
+
+let _lastRawUnlinked: string | null = null;
+let _cachedUnlinkedPairs: Set<string> = new Set();
+
+function getCachedUnlinkedPairs(): Set<string> {
+  if (typeof window === 'undefined') return _cachedUnlinkedPairs;
+  try {
+    const raw = localStorage.getItem('otix:unlinked-sources');
+    if (raw === _lastRawUnlinked) {
+      return _cachedUnlinkedPairs;
+    }
+    _lastRawUnlinked = raw;
+    if (raw) {
+      const arr = JSON.parse(raw);
+      if (Array.isArray(arr)) {
+        _cachedUnlinkedPairs = new Set(arr);
+        return _cachedUnlinkedPairs;
+      }
+    }
+    _cachedUnlinkedPairs = new Set();
+    return _cachedUnlinkedPairs;
+  } catch {
+    return new Set();
+  }
+}
+
+/** Invalidate unlinked pairs cache when storage changes */
+export function invalidateUnlinkedPairsCache(): void {
+  _lastRawUnlinked = null;
+  _cachedUnlinkedPairs = new Set();
+}
 
 /** Titles that mark a row as a DLC/beta/trial/edition sideline of a parent game. */
 const SIDELINE_RE = /\b(dlc|betas?|test|testing|trial|prelude|demo|playtest)\b/i;
@@ -45,7 +88,7 @@ const isInstalledPlayable = (g: LocalGame): boolean =>
  */
 export function mergeDuplicateGames(games: LocalGame[]): LocalGame[] {
   const groups = new Map<string, LocalGame[]>();
-  const unlinkedPairs = loadUnlinkedSourcePairs();
+  const unlinkedPairs = getCachedUnlinkedPairs();
   const isUnlinked = (idA: string, idB: string) =>
     unlinkedPairs.has(getUnlinkedPairKey(idA, idB));
 
@@ -94,6 +137,7 @@ export function mergeDuplicateGames(games: LocalGame[]): LocalGame[] {
     }
 
     const catalogTitle = group[0].otixMediaTitle || group[0].data?.title;
+    const normCatalogTitle = catalogTitle ? normalizeTitle(catalogTitle) : '';
 
     const best = [...group].sort((a, b) => {
       // 1. Playable installed executable wins over ISO installer/disc
@@ -102,9 +146,9 @@ export function mergeDuplicateGames(games: LocalGame[]): LocalGame[] {
       if (aPlayable !== bPlayable) return bPlayable - aPlayable;
 
       // 2. Prefer the row whose title matches the catalog title exactly (the parent).
-      if (catalogTitle) {
-        const aExact = normalizeTitle(a.title) === normalizeTitle(catalogTitle) ? 1 : 0;
-        const bExact = normalizeTitle(b.title) === normalizeTitle(catalogTitle) ? 1 : 0;
+      if (normCatalogTitle) {
+        const aExact = normalizeTitle(a.title) === normCatalogTitle ? 1 : 0;
+        const bExact = normalizeTitle(b.title) === normCatalogTitle ? 1 : 0;
         if (aExact !== bExact) return bExact - aExact;
       }
       // 3. Prefer non-DLC / non-beta / non-trial rows.

@@ -27,3 +27,10 @@ repos:
         language: system
         pass_filenames: false
         always_run: true
+
+      - id: perf-check
+        name: Performance Regression Check
+        entry: node scripts/check-performance.mjs --pre-commit
+        language: system
+        pass_filenames: false
+        always_run: true

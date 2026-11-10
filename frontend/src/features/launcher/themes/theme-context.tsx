@@ -10,125 +10,19 @@ export type {
   LauncherThemeContextType,
 } from "./types"
 
-export const ACTIVE_LAUNCHER_THEME_ID: LauncherThemeId = "classic"
+import {
+  ACTIVE_LAUNCHER_THEME_ID,
+  LAUNCHER_THEMES,
+  AVAILABLE_LAUNCHER_THEMES,
+  LAUNCHER_THEME_STORAGE_KEY as STORAGE_KEY,
+  DEFAULT_LAUNCHER_THEME as DEFAULT_THEME,
+} from "@/features/launcher/utils/theme-constants"
 
-export const LAUNCHER_THEMES: LauncherThemeMeta[] = [
-  {
-    id: "classic",
-    version: "V1",
-    name: "Classic",
-    subtitle: "Original Otix Rail",
-    description: "Floating left rail with 3D tilted game hero, shelf tabs, and system footer.",
-    badgeColor: "bg-[var(--dk-surface-ghost)] text-foreground border-[var(--dk-separator)]",
-    accentColor: "var(--primary)",
-    icon: "layout-grid",
-    isEnabled: true,
-  },
-  {
-    id: "modern",
-    version: "V2",
-    name: "Modern",
-    subtitle: "Cinematic Deck",
-    description: "Next-gen action deck with Quick Resume hero, Jump Back In reel, versatile library, and running game session bar.",
-    badgeColor: "bg-primary/20 text-primary border-primary/30",
-    accentColor: "var(--primary)",
-    icon: "sparkles",
-    isEnabled: false,
-  },
-  {
-    id: "steam",
-    version: "V3",
-    name: "Deck",
-    subtitle: "Console Layout",
-    description: "Slate-navy console deck layout with categorized sidebar and high-impact action controls.",
-    badgeColor: "bg-[#66c0f4]/20 text-[#66c0f4] border-[#66c0f4]/40",
-    accentColor: "#66c0f4",
-    icon: "gamepad",
-    isEnabled: false,
-  },
-  {
-    id: "playstation",
-    version: "V4",
-    name: "CrossBar",
-    subtitle: "Console Ribbon",
-    description: "Horizontal cinematic ribbon with full-bleed dynamic backgrounds, trophy progress, and audio ambiance.",
-    badgeColor: "bg-blue-600/20 text-blue-400 border-blue-500/40",
-    accentColor: "#2563eb",
-    icon: "tv",
-    isEnabled: false,
-  },
-  {
-    id: "xbox",
-    version: "V5",
-    name: "Blade",
-    subtitle: "Metro Matrix",
-    description: "Live responsive bento tiles, high-energy green accents, gamertag ribbon, and quick jump-in spotlight.",
-    badgeColor: "bg-emerald-600/20 text-emerald-400 border-emerald-500/40",
-    accentColor: "#107c10",
-    icon: "box",
-    isEnabled: false,
-  },
-  {
-    id: "switch",
-    version: "V6",
-    name: "Arcade",
-    subtitle: "Handheld Carousel",
-    description: "Vibrant big-tile horizontal carousel with playful card physics, quick system dock, and instant launch.",
-    badgeColor: "bg-rose-600/20 text-rose-400 border-rose-500/40",
-    accentColor: "#e60012",
-    icon: "disc",
-    isEnabled: false,
-  },
-  {
-    id: "retro",
-    version: "V7",
-    name: "Cyberpunk",
-    subtitle: "Terminal Netrunner",
-    description: "Monochrome & neon CRT monitor with scanlines, live hardware telemetry, hacker terminal aesthetic.",
-    badgeColor: "bg-amber-500/20 text-amber-400 border-amber-500/40",
-    accentColor: "#f59e0b",
-    icon: "terminal",
-    isEnabled: false,
-  },
-  {
-    id: "minimal",
-    version: "V8",
-    name: "Minimal",
-    subtitle: "Gallery Zen",
-    description: "Editorial museum gallery with generous whitespace, clean typography, and full-height art posters.",
-    badgeColor: "bg-neutral-800 text-neutral-300 border-neutral-700",
-    accentColor: "#ffffff",
-    icon: "feather",
-    isEnabled: false,
-  },
-  {
-    id: "forge",
-    version: "V9",
-    name: "Forge",
-    subtitle: "Storefront Client",
-    description: "Modern battle/storefront launcher with wide hero banners, patch notes feed, and quick friend list.",
-    badgeColor: "bg-cyan-500/20 text-cyan-400 border-cyan-500/40",
-    accentColor: "#06b6d4",
-    icon: "flame",
-    isEnabled: false,
-  },
-  {
-    id: "glass",
-    version: "V10",
-    name: "Spatial Glass",
-    subtitle: "Aero Prism",
-    description: "Ultra-modern translucent glassmorphism with dynamic mesh gradient orbs and luminous blur effects.",
-    badgeColor: "bg-purple-500/20 text-purple-300 border-purple-400/40",
-    accentColor: "#a855f7",
-    icon: "layers",
-    isEnabled: false,
-  },
-]
-
-export const AVAILABLE_LAUNCHER_THEMES = LAUNCHER_THEMES
-
-const STORAGE_KEY = "otix:launcher-theme"
-const DEFAULT_THEME: LauncherThemeId = "classic"
+export {
+  ACTIVE_LAUNCHER_THEME_ID,
+  LAUNCHER_THEMES,
+  AVAILABLE_LAUNCHER_THEMES,
+}
 
 export const LauncherThemeContext = createContext<LauncherThemeContextType | null>(null)
 

@@ -279,7 +279,7 @@ export function useNodeGames(options?: { refetchInterval?: number | false }) {
       const { data } = await apiClient.get<ServerGamesResponse>('/library/server-games')
       return data || { servers: [], files: [] }
     },
-    staleTime: 15_000,
+    staleTime: 5 * 60 * 1000,
     refetchInterval: options?.refetchInterval,
   })
 }
@@ -499,16 +499,40 @@ export const useUnclaimGameServer = useUnclaimLocalNode
 let activeTransfersSnapshot: RemoteDownloadProgress[] = []
 const transferListeners = new Set<() => void>()
 let ipcInitialized = false
+let notifyTimeout: ReturnType<typeof setTimeout> | null = null
 
-function setTransfers(updater: (prev: RemoteDownloadProgress[]) => RemoteDownloadProgress[]) {
-  activeTransfersSnapshot = updater(activeTransfersSnapshot)
-  transferListeners.forEach((listener) => {
-    try {
-      listener()
-    } catch {
-      // ignore
+function notifyTransferListeners(immediate = false) {
+  if (immediate) {
+    if (notifyTimeout !== null) {
+      clearTimeout(notifyTimeout)
+      notifyTimeout = null
     }
-  })
+    transferListeners.forEach((listener) => {
+      try {
+        listener()
+      } catch {
+        // ignore
+      }
+    })
+    return
+  }
+
+  if (notifyTimeout !== null) return
+  notifyTimeout = setTimeout(() => {
+    notifyTimeout = null
+    transferListeners.forEach((listener) => {
+      try {
+        listener()
+      } catch {
+        // ignore
+      }
+    })
+  }, 250)
+}
+
+function setTransfers(updater: (prev: RemoteDownloadProgress[]) => RemoteDownloadProgress[], immediate = false) {
+  activeTransfersSnapshot = updater(activeTransfersSnapshot)
+  notifyTransferListeners(immediate)
 }
 
 function subscribeTransfers(onStoreChange: () => void) {
@@ -528,7 +552,7 @@ function initRemoteDownloadIPC() {
 
   window.desktopAPI?.downloadsRemoteGetActive?.().then((list) => {
     if (Array.isArray(list)) {
-      setTransfers(() => list)
+      setTransfers(() => list, true)
     }
   }).catch(() => {})
 
@@ -545,7 +569,7 @@ function initRemoteDownloadIPC() {
   })
 
   window.desktopAPI?.onRemoteDownloadCompleted?.((data) => {
-    setTransfers((prev) => prev.filter((p) => p.id !== data.downloadId))
+    setTransfers((prev) => prev.filter((p) => p.id !== data.downloadId), true)
   })
 }
 

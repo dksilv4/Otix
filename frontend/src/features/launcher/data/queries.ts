@@ -36,7 +36,7 @@ export const popularGamesOptions = () =>
         return []
       }
     },
-    staleTime: 1000 * 60 * 2,
+    staleTime: 1000 * 60 * 30,
   })
 
 export const gameDetailOptions = (id: string) => {
@@ -58,7 +58,7 @@ export const gameDetailOptions = (id: string) => {
       }
     },
     enabled: Boolean(cleanId && !isInvalid),
-    staleTime: 1000 * 60 * 5,
+    staleTime: 1000 * 60 * 30,
   })
 }
 
@@ -112,7 +112,7 @@ export const gameGenresOptions = () =>
       })
       return data as { id: string; name: string; slug: string }[]
     },
-    staleTime: 1000 * 60 * 10,
+    staleTime: 1000 * 60 * 60,
   })
 
 // ── React Query hooks ──────────────────────────────────────────────

@@ -1,3 +1,7 @@
+!macro customInit
+  nsExec::Exec 'sc.exe stop OtixCapture'
+!macroend
+
 !macro customInstall
   DetailPrint "Configuring Otix Capture Service for zero-reboot FPS monitoring..."
   nsExec::Exec 'sc.exe create OtixCapture binPath= "$\"$INSTDIR\resources\bin\otix-node.exe$\" -capture-service" start= auto DisplayName= "Otix Capture Service"'

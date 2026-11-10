@@ -76,13 +76,13 @@ export const MusicCard = ({
           {subtitle && <span className="truncate">{subtitle}</span>}
           {year && (
             <>
-              <span>•</span>
+              <span className="text-muted-foreground/30">/</span>
               <span>{year}</span>
             </>
           )}
           {trackCount !== undefined && trackCount !== null && (
             <>
-              <span>•</span>
+              <span className="text-muted-foreground/30">/</span>
               <span>{trackCount} {trackCount === 1 ? 'track' : 'tracks'}</span>
             </>
           )}

@@ -17,6 +17,7 @@ export type TrayHandle = ReturnType<typeof createTray> | null;
 
 export interface BootContext {
   mainWindow: BrowserWindow | null;
+  splashWindow: BrowserWindow | null;
   dbReady: boolean;
   settings: DesktopSettings;
   tray: TrayHandle;

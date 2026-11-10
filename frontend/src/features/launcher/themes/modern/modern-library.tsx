@@ -14,6 +14,8 @@ import { LauncherMediaCard } from "@/features/launcher/components/molecules/laun
 import { LauncherFoundGames } from "@/features/launcher/components/organisms/launcher-found-games"
 import { PLATFORM_LABELS } from "@/constants/games"
 import { isApplicationGame } from "@/features/launcher/utils"
+import { useVirtualGrid } from "@/features/launcher/hooks/use-virtual-grid"
+import { getModernGridColumns } from "@/features/launcher/utils/launcher-constants"
 import type {
   LocalGame,
   DisplayGame,
@@ -84,10 +86,22 @@ export const ModernLibrary = ({
     return result
   }, [allGames, searchQuery, selectedPlatform, installedOnly, sortField])
 
+  const {
+    virtualItems: virtualGridGames,
+    paddingTop: gridPaddingTop,
+    paddingBottom: gridPaddingBottom,
+    containerRef: gridContainerRef,
+  } = useVirtualGrid(filteredGames, {
+    itemHeight: 280,
+    columns: getModernGridColumns,
+    gap: 20,
+    windowScroll: true,
+  })
+
   return (
     <div className="w-full max-w-7xl mx-auto px-6 py-6 space-y-6 pb-28 select-none">
       {/* ── Toolbar & Filters ── */}
-      <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 p-3 rounded-2xl bg-[var(--dk-surface-base)] backdrop-blur-xl border border-[var(--dk-separator)] shadow-lg">
+      <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 p-3 rounded-2xl bg-[var(--dk-surface-base)] border border-white/[0.04] shadow-lg">
         {/* Left: Platform Pills */}
         <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none">
           <button
@@ -123,7 +137,7 @@ export const ModernLibrary = ({
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
               installedOnly
                 ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
-                : "text-muted-foreground hover:text-foreground bg-[var(--dk-surface-ghost)] border border-[var(--dk-separator)]"
+                : "text-muted-foreground hover:text-foreground bg-[var(--dk-surface-ghost)] border border-white/[0.04]"
             }`}
           >
             <CheckCircle2 size={13} className={installedOnly ? "text-emerald-400" : "text-muted-foreground"} />
@@ -131,7 +145,7 @@ export const ModernLibrary = ({
           </button>
 
           {/* Sort Selector */}
-          <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-[var(--dk-surface-ghost)] border border-[var(--dk-separator)]">
+          <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-[var(--dk-surface-ghost)] border border-white/[0.04]">
             <ArrowUpDown size={12} className="text-muted-foreground" />
             <select
               value={sortField}
@@ -145,7 +159,7 @@ export const ModernLibrary = ({
           </div>
 
           {/* View Mode Switcher */}
-          <div className="flex items-center p-1 rounded-xl bg-[var(--dk-surface-ghost)] border border-[var(--dk-separator)]">
+          <div className="flex items-center p-1 rounded-xl bg-[var(--dk-surface-ghost)] border border-white/[0.04]">
             <button
               onClick={() => setViewMode("grid")}
               title="Poster Grid"
@@ -183,7 +197,7 @@ export const ModernLibrary = ({
 
       {/* ── Games Container ── */}
       {filteredGames.length === 0 ? (
-        <div className="flex flex-col items-center justify-center p-16 rounded-3xl bg-[var(--dk-surface-ghost)] border border-[var(--dk-separator)] text-center space-y-3">
+        <div className="flex flex-col items-center justify-center p-16 rounded-3xl bg-[var(--dk-surface-ghost)] border border-white/[0.04] text-center space-y-3">
           <Gamepad2 size={48} className="text-muted-foreground" />
           <h3 className="text-base font-bold text-foreground">No games found</h3>
           <p className="text-xs text-muted-foreground max-w-sm">
@@ -195,19 +209,27 @@ export const ModernLibrary = ({
       ) : viewMode === "grid" ? (
         /* ── Grid View (2:3 Posters) ── */
         <motion.div
+          ref={gridContainerRef}
           key="grid"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.2 }}
           className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5"
         >
-          {filteredGames.map((game) => (
-              <LauncherMediaCard
-                key={game.id}
-                game={game}
-                onClick={() => onOpenDetails(game)}
-              />
-            ))}
+          {gridPaddingTop > 0 && (
+            <div style={{ height: gridPaddingTop, gridColumn: '1 / -1' }} />
+          )}
+          {virtualGridGames.map(({ item: game, index }) => (
+            <LauncherMediaCard
+              key={game.id}
+              game={game}
+              priority={index < 6}
+              onClick={() => onOpenDetails(game)}
+            />
+          ))}
+          {gridPaddingBottom > 0 && (
+            <div style={{ height: gridPaddingBottom, gridColumn: '1 / -1' }} />
+          )}
         </motion.div>
       ) : viewMode === "banner" ? (
         /* ── Banner View (16:9 widescreen cards) ── */
@@ -227,7 +249,7 @@ export const ModernLibrary = ({
               <div
                 key={game.id}
                 onClick={() => onOpenDetails(game)}
-                className="group relative h-48 rounded-2xl overflow-hidden bg-[var(--dk-surface-base)] border border-[var(--dk-separator)] transition-all duration-300 cursor-pointer shadow-lg hover:-translate-y-1"
+                className="group relative h-48 rounded-2xl overflow-hidden bg-[var(--dk-surface-base)] border border-white/[0.04] transition-all duration-300 cursor-pointer shadow-lg hover:-translate-y-1"
               >
                 {backdrop ? (
                   <img
@@ -235,6 +257,7 @@ export const ModernLibrary = ({
                     alt={game.title}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 brightness-75"
                     loading="lazy"
+                    decoding="async"
                   />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-muted-foreground">
@@ -289,11 +312,11 @@ export const ModernLibrary = ({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.2 }}
-          className="rounded-2xl bg-[var(--dk-surface-base)] border border-[var(--dk-separator)] overflow-hidden shadow-xl"
+          className="rounded-2xl bg-[var(--dk-surface-base)] border border-white/[0.04] overflow-hidden shadow-xl"
         >
           <table className="w-full text-left border-collapse text-xs">
             <thead>
-              <tr className="border-b border-[var(--dk-separator)] bg-[var(--dk-surface-ghost)] text-[10px] uppercase font-bold text-muted-foreground tracking-wider">
+              <tr className="border-b border-white/[0.04] bg-[var(--dk-surface-ghost)] text-[10px] uppercase font-bold text-muted-foreground tracking-wider">
                 <th className="p-4 pl-6">Title</th>
                 <th className="p-4">Platform</th>
                 <th className="p-4">Status</th>
@@ -301,7 +324,7 @@ export const ModernLibrary = ({
                 <th className="p-4 pr-6 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[var(--dk-separator)]">
+            <tbody className="divide-y divide-white/[0.04]">
               {filteredGames.map((game) => {
                 const isInstalled = !!game.exePath && game.platform !== "iso"
 
@@ -313,12 +336,14 @@ export const ModernLibrary = ({
                   >
                     <td className="p-4 pl-6">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-lg overflow-hidden bg-[var(--dk-surface-field)] shrink-0 border border-[var(--dk-separator)]">
+                        <div className="w-10 h-10 rounded-lg overflow-hidden bg-[var(--dk-surface-field)] shrink-0 border border-white/[0.04]">
                           {(game.otixIconUrl || game.data?.iconUrl || game.posterUrl) ? (
                             <img
                               src={game.otixIconUrl || game.data?.iconUrl || game.posterUrl || ""}
                               alt={game.title}
                               className="w-full h-full object-cover"
+                              loading="lazy"
+                              decoding="async"
                             />
                           ) : (
                             <div className="w-full h-full flex items-center justify-center text-muted-foreground">
@@ -345,8 +370,7 @@ export const ModernLibrary = ({
 
                     <td className="p-4">
                       {isInstalled ? (
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-emerald-500/15 text-emerald-400 text-[10px] font-bold border border-emerald-500/25">
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-emerald-500/15 text-emerald-400 text-[10px] font-bold border border-emerald-500/25">
                           Ready
                         </span>
                       ) : game.platform === "iso" ? (

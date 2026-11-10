@@ -73,24 +73,14 @@ export const LauncherGameHero = () => {
             }}
           >
             {currentBackdrop && (
-              <>
-                <div
-                  className={`absolute inset-0 bg-cover bg-center bg-no-repeat transition-all duration-500 ease-out-back ${
-                    isHoveringScreenshot
-                      ? 'opacity-90 brightness-95 saturate-100 contrast-100'
-                      : 'opacity-45 brightness-[0.45] saturate-[0.75] contrast-[1.05]'
-                  }`}
-                  style={{ backgroundImage: `url(${currentBackdrop})` }}
-                />
-                <div
-                  className="absolute -inset-[20%] bg-cover bg-center bg-no-repeat"
-                  style={{
-                    backgroundImage: `url(${currentBackdrop})`,
-                    filter: 'blur(60px)',
-                    opacity: 0.25,
-                  }}
-                />
-              </>
+              <div
+                className={`absolute inset-0 bg-cover bg-center bg-no-repeat transition-all duration-500 ease-out-back ${
+                  isHoveringScreenshot
+                    ? 'opacity-90 brightness-95 saturate-100 contrast-100'
+                    : 'opacity-45 brightness-[0.45] saturate-[0.75] contrast-[1.05]'
+                }`}
+                style={{ backgroundImage: `url(${currentBackdrop})` }}
+              />
             )}
           </motion.div>
         </AnimatePresence>

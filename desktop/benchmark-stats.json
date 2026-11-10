@@ -1,0 +1,72 @@
+{
+  "timestamp": "2026-11-10T21:00:07.138Z",
+  "suite": "Otix Launcher Performance Benchmark Suite",
+  "nodeVersion": "v24.22.1",
+  "electronModuleVersion": "137",
+  "platform": "win32 x64",
+  "slaPassed": true,
+  "hydration500": {
+    "itemCount": 500,
+    "runs": 10,
+    "meanLatencyMs": 4.35,
+    "medianLatencyMs": 4.64,
+    "minLatencyMs": 3.5,
+    "maxLatencyMs": 5.1,
+    "p95LatencyMs": 5.1,
+    "throughputItemsPerSec": 114943,
+    "slaMs": 300,
+    "passed": true
+  },
+  "hydration1500": {
+    "itemCount": 1500,
+    "runs": 5,
+    "meanLatencyMs": 16.84,
+    "medianLatencyMs": 17.03,
+    "minLatencyMs": 14.02,
+    "maxLatencyMs": 19.21,
+    "p95LatencyMs": 19.21,
+    "throughputItemsPerSec": 89074,
+    "slaMs": 300,
+    "passed": true
+  },
+  "renderScroll": {
+    "totalMockItems": 1500,
+    "totalFrames": 120,
+    "meanFrameTimeMs": 0.006,
+    "medianFrameTimeMs": 0.005,
+    "p95FrameTimeMs": 0.009,
+    "p99FrameTimeMs": 0.016,
+    "maxFrameTimeMs": 0.103,
+    "effectiveFps": 166667,
+    "slaFrameTimeMs": 16.6,
+    "passed": true
+  },
+  "scanThroughput": {
+    "itemsScanned": 2000,
+    "durationMs": 26.79,
+    "itemsPerSecond": 74666,
+    "dlcCount": 0,
+    "updateCount": 667,
+    "sceneCount": 667
+  },
+  "memory": {
+    "baseline": {
+      "rssMb": 58.14,
+      "heapUsedMb": 8.84,
+      "heapTotalMb": 12.55,
+      "externalMb": 4.85
+    },
+    "peak": {
+      "rssMb": 105.8,
+      "heapUsedMb": 21.76,
+      "heapTotalMb": 84.55,
+      "externalMb": 5.07
+    },
+    "final": {
+      "rssMb": 117.05,
+      "heapUsedMb": 46.09,
+      "heapTotalMb": 84.8,
+      "externalMb": 5.07
+    }
+  }
+}

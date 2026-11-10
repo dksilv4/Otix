@@ -8,6 +8,8 @@ import {
   deleteFolderFromDb,
   deleteTracksByFolderFromDb,
   clearAllTracksFromDb,
+  saveAudioBlobToDb,
+  getAudioBlobFromDb,
   type StoredLocalTrack,
   type StoredFolder,
 } from '../utils/local-music-db'
@@ -24,6 +26,8 @@ import {
 } from '../utils/session-file-map'
 import { usePlayer } from '@/lib/player/use-player'
 import type { LocalTrackInfo } from '@/lib/player/types'
+import { getFileNativePath } from '@/features/drop/utils/drop-extractor'
+import { showToast } from '@ui/molecules/toast'
 
 export const useLocalMusic = () => {
   const { playLocalTrack, playLocalTracks } = usePlayer()
@@ -151,6 +155,10 @@ export const useLocalMusic = () => {
         // Register in session map immediately so the user can play it right away
         setSessionFile(track.id, file)
 
+        if (!handle) {
+          void saveAudioBlobToDb(track.id, file).catch(() => {})
+        }
+
         pendingTracks.push(track)
         dbBatch.push(track)
 
@@ -227,7 +235,7 @@ export const useLocalMusic = () => {
       const folderName = audioFiles[0]?.webkitRelativePath?.split('/')[0] || 'Imported Music'
       const items = audioFiles.map((f) => ({
         file: f,
-        path: f.webkitRelativePath || f.name,
+        path: getFileNativePath(f) || f.webkitRelativePath || f.name,
       }))
 
       await streamProcessFiles(items, folderName)
@@ -360,6 +368,22 @@ export const useLocalMusic = () => {
         console.warn('[useLocalMusic] Unable to resolve file from folder handle:', err)
       }
     }
+
+    // Fallback: check IndexedDB audio blob store (for dropped or imported standalone files)
+    try {
+      const audioBlob = await getAudioBlobFromDb(track.id)
+      if (audioBlob) {
+        const restoredFile = new File([audioBlob], track.fileName, {
+          type: audioBlob.type || 'audio/mpeg',
+          lastModified: track.lastModified || Date.now(),
+        })
+        setSessionFile(track.id, restoredFile)
+        return restoredFile
+      }
+    } catch (err) {
+      console.warn('[useLocalMusic] Unable to resolve audio blob from DB:', err)
+    }
+
     return null
   }, [folders])
 
@@ -375,11 +399,32 @@ export const useLocalMusic = () => {
         tracksList.map(async (t) => {
           let file = getSessionFile(t.id)
           if (!file) {
-            file = (await resolveFileForTrack(t)) ?? undefined
+            try {
+              file = (await resolveFileForTrack(t)) ?? undefined
+            } catch {
+              file = undefined
+            }
           }
           return buildLocalTrackInfo(t, file)
         }),
       )
+
+      const targetTrack = playables[startIndex] || playables[0]
+      const isTargetPlayable = Boolean(
+        targetTrack?.url ||
+        targetTrack?.file ||
+        (targetTrack?.path && /^([a-zA-Z]:[\\/]|\\\\|\/)/.test(targetTrack.path))
+      )
+
+      if (!isTargetPlayable) {
+        showToast({
+          title: 'Audio file not accessible',
+          description: `Cannot access "${targetTrack?.title || 'this track'}". Please re-import or drag this file into Otix.`,
+          variant: 'warning',
+        })
+        return
+      }
+
       await playLocalTracks(playables, startIndex)
     },
     [resolveFileForTrack, playLocalTracks],
@@ -390,6 +435,17 @@ export const useLocalMusic = () => {
     if (!file) {
       file = (await resolveFileForTrack(track)) ?? undefined
     }
+
+    const isAbs = Boolean(track.path && /^([a-zA-Z]:[\\/]|\\\\|\/)/.test(track.path))
+    if (!file && !isAbs) {
+      showToast({
+        title: 'Audio file not accessible',
+        description: `Cannot access "${track.title}". Please re-import or drag this file into Otix.`,
+        variant: 'warning',
+      })
+      return
+    }
+
     const playable = buildLocalTrackInfo(track, file)
     await playLocalTrack(playable)
   }, [resolveFileForTrack, playLocalTrack])
@@ -408,15 +464,7 @@ export const useLocalMusic = () => {
     await playTracksInContext(artistTracks, startIndex)
   }, [tracks, playTracksInContext])
 
-  const artists = useMemo(() => {
-    const set = new Set<string>()
-    for (const t of tracks) {
-      if (t.artist) set.add(t.artist)
-    }
-    return Array.from(set).sort((a, b) => a.localeCompare(b))
-  }, [tracks])
-
-  const albums = useMemo(() => {
+  const { artists, albums } = useMemo(() => {
     type AlbumEntry = {
       albumName: string
       artist: string
@@ -424,15 +472,22 @@ export const useLocalMusic = () => {
       trackCount: number
       albumArtBlob: Blob | null
     }
-    const map = new Map<string, AlbumEntry>()
-    for (const t of tracks) {
+    const artistSet = new Set<string>()
+    const albumMap = new Map<string, AlbumEntry>()
+
+    for (let i = 0; i < tracks.length; i++) {
+      const t = tracks[i]
+      if (t.artist) artistSet.add(t.artist)
+
       const key = `${t.artist}-${t.albumName}`
-      const existing = map.get(key)
+      const existing = albumMap.get(key)
       if (existing) {
         existing.trackCount++
-        if (!existing.albumArtBlob && t.albumArtBlob) existing.albumArtBlob = t.albumArtBlob
+        if (!existing.albumArtBlob && t.albumArtBlob) {
+          existing.albumArtBlob = t.albumArtBlob
+        }
       } else {
-        map.set(key, {
+        albumMap.set(key, {
           albumName: t.albumName,
           artist: t.artist,
           year: t.year,
@@ -441,7 +496,11 @@ export const useLocalMusic = () => {
         })
       }
     }
-    return Array.from(map.values()).sort((a, b) => a.albumName.localeCompare(b.albumName))
+
+    return {
+      artists: Array.from(artistSet).sort((a, b) => a.localeCompare(b)),
+      albums: Array.from(albumMap.values()).sort((a, b) => a.albumName.localeCompare(b.albumName)),
+    }
   }, [tracks])
 
   return {

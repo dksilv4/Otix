@@ -63,9 +63,6 @@ export const LauncherFpsStats = () => {
       {/* Content overlay */}
       <div className="relative" style={{ zIndex: 1 }}>
         <div className="flex items-center gap-2">
-          {displayValue?.live && (
-            <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse shrink-0" />
-          )}
           {displayValue ? (
             <>
               <span

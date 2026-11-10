@@ -171,7 +171,9 @@ export const LauncherGameSheet = ({ game, onClose }: LauncherGameSheetProps) => 
             >
               <Sparkles size={13} /> Updates & Changelog
               {raw.updateFiles && raw.updateFiles.length > 0 && (
-                <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+                <span className="px-1.5 py-0.5 rounded-md bg-amber-500/20 text-amber-400 text-[10px] font-semibold">
+                  {raw.updateFiles.length}
+                </span>
               )}
             </button>
 

@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useNavigate } from "@tanstack/react-router"
 import { motion, AnimatePresence } from "framer-motion"
 import {
@@ -12,6 +12,7 @@ import {
 import { MediaLogo } from "@/lib/media/media-logo"
 import { useLauncherGames } from "@/features/launcher/hooks/use-launcher-games"
 import { useLaunchGame } from "@/features/launcher/hooks/use-launch-game"
+import { useVirtualRow } from "@/features/launcher/hooks/use-virtual-grid"
 import { ConsoleDisambiguationModal } from "@/features/launcher/components/molecules/console-disambiguation-modal"
 import { useRunningGame } from "@/features/launcher/hooks/use-running-game"
 import { useAuth } from "@/lib/providers/auth"
@@ -34,6 +35,28 @@ export const GlassLauncherView = () => {
     setSearchQuery,
   } = useLauncherGames()
 
+  const {
+    virtualItems,
+    paddingStart,
+    paddingEnd,
+    containerRef,
+    scrollToIndex,
+  } = useVirtualRow(filteredGames, {
+    itemWidth: 160,
+    gap: 16,
+    threshold: 24,
+  })
+
+  // Scroll active game into view when changed via keyboard or selection
+  useEffect(() => {
+    if (activeGame) {
+      const idx = filteredGames.findIndex((g) => g.id === activeGame.id)
+      if (idx !== -1) {
+        scrollToIndex(idx)
+      }
+    }
+  }, [activeGame?.id, scrollToIndex, filteredGames])
+
   const handlePlayGame = async (game: LocalGame) => {
     await launchGame(game)
   }
@@ -45,11 +68,11 @@ export const GlassLauncherView = () => {
     activeGame?.posterUrl
 
   return (
-    <div className="relative w-full h-full bg-[#07050d] text-white flex flex-col justify-between select-none overflow-hidden font-sans">
+    <div className="relative w-full h-full bg-background text-foreground flex flex-col justify-between select-none overflow-hidden font-sans">
       {/* Background Animated Gradient Orbs */}
-      <div className="absolute -top-40 -left-40 w-96 h-96 bg-purple-600/30 rounded-full blur-[140px] pointer-events-none" />
-      <div className="absolute top-1/3 -right-40 w-96 h-96 bg-pink-600/25 rounded-full blur-[140px] pointer-events-none" />
-      <div className="absolute -bottom-40 left-1/3 w-96 h-96 bg-blue-600/20 rounded-full blur-[140px] pointer-events-none" />
+      <div className="absolute -top-40 -left-40 w-96 h-96 bg-primary/20 rounded-full blur-[140px] pointer-events-none" />
+      <div className="absolute top-1/3 -right-40 w-96 h-96 bg-primary/15 rounded-full blur-[140px] pointer-events-none" />
+      <div className="absolute -bottom-40 left-1/3 w-96 h-96 bg-primary/10 rounded-full blur-[140px] pointer-events-none" />
 
       {/* Dynamic blurred game backdrop */}
       <AnimatePresence mode="wait">
@@ -65,28 +88,28 @@ export const GlassLauncherView = () => {
           />
         )}
       </AnimatePresence>
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-3xl pointer-events-none" />
+      <div className="absolute inset-0 bg-background/50 backdrop-blur-3xl pointer-events-none" />
 
       {/* Top Glass Floating Header */}
       <header className="relative z-20 px-8 pt-6">
-        <div className="px-6 py-3.5 rounded-2xl bg-white/[0.06] backdrop-blur-2xl border border-white/[0.12] shadow-[0_8px_32px_rgba(0,0,0,0.4)] flex items-center justify-between">
+        <div className="px-6 py-3.5 rounded-2xl bg-[var(--dk-surface-glass)] backdrop-blur-2xl border border-white/[0.04] shadow-lg flex items-center justify-between">
           <div className="flex items-center gap-4">
             <button
               onClick={() => navigate({ to: "/" })}
               title="Return to Otix"
-              className="flex items-center gap-2 text-white/70 hover:text-white transition-colors cursor-pointer"
+              className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
             >
-              <div className="w-8 h-8 rounded-xl bg-white/10 flex items-center justify-center border border-white/10">
+              <div className="w-8 h-8 rounded-xl bg-[var(--dk-surface-ghost)] flex items-center justify-center border border-white/[0.04]">
                 <ArrowLeft size={16} />
               </div>
               <span className="text-xs font-black tracking-wider uppercase">Otix</span>
             </button>
 
-            <div className="h-5 w-px bg-white/15" />
+            <div className="h-5 w-px bg-[var(--dk-separator)]" />
 
             <div className="flex items-center gap-2">
-              <span className="text-sm font-extrabold text-white">SPATIAL GLASS</span>
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 font-bold border border-purple-400/30">
+              <span className="text-sm font-extrabold text-foreground">SPATIAL GLASS</span>
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-primary/20 text-primary font-bold border border-primary/30">
                 V10
               </span>
             </div>
@@ -94,15 +117,14 @@ export const GlassLauncherView = () => {
 
           <div className="flex items-center gap-4">
             {runningGame && (
-                <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-primary/20 text-primary text-xs font-bold border border-primary/30 backdrop-blur-md">
-                  <span className="w-1.5 h-1.5 rounded-full bg-primary" />
+                <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-primary/20 text-primary text-xs font-bold border border-primary/30">
                   <span>Playing {runningGame.game.title}</span>
                   {runningGames.length > 1 && (
                     <button
                       type="button"
                       onClick={() => void cycleActiveGame()}
                       title={`Running ${runningGames.length} games. Click or press Ctrl+Tab to cycle active game focus.`}
-                      className="inline-flex items-center gap-1 pl-2 border-l border-primary/30 text-[10px] font-semibold text-primary hover:text-white transition-colors cursor-pointer"
+                      className="inline-flex items-center gap-1 pl-2 border-l border-primary/30 text-[10px] font-semibold text-primary hover:text-foreground transition-colors cursor-pointer"
                     >
                       <RotateCw className="h-2.5 w-2.5" />
                       <span>+${runningGames.length - 1}</span>
@@ -112,13 +134,13 @@ export const GlassLauncherView = () => {
               )}
 
             <div className="relative w-56">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40" size={13} />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={13} />
               <input
                 type="text"
                 placeholder="Search aero library..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-white/5 hover:bg-white/10 rounded-xl pl-9 pr-3 py-1.5 text-xs text-white placeholder-white/40 border border-white/10 outline-none focus:border-purple-400/50 transition-colors"
+                className="w-full bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-field)] rounded-xl pl-9 pr-3 py-1.5 text-xs text-foreground placeholder:text-muted-foreground border border-white/[0.04] outline-none focus:border-primary/50 transition-colors"
               />
             </div>
 
@@ -157,11 +179,11 @@ export const GlassLauncherView = () => {
               className="p-8 rounded-3xl bg-white/[0.05] backdrop-blur-2xl border border-white/[0.12] shadow-[0_16px_50px_rgba(0,0,0,0.5)] space-y-4"
             >
               <div className="flex items-center gap-3">
-                <span className="px-3 py-1 rounded-full bg-purple-500/20 text-purple-300 font-extrabold text-[10px] tracking-wider uppercase border border-purple-400/30">
+                <span className="px-3 py-1 rounded-full bg-primary/20 text-primary font-extrabold text-[10px] tracking-wider uppercase border border-primary/30">
                   {activeGame.platform}
                 </span>
                 {activeGame.data?.avgRating && (
-                  <span className="text-xs font-bold text-amber-300">★ {activeGame.data.avgRating}%</span>
+                  <span className="text-xs font-bold text-primary">★ {activeGame.data.avgRating}%</span>
                 )}
               </div>
 
@@ -174,27 +196,27 @@ export const GlassLauncherView = () => {
                   />
                 </div>
               ) : (
-                <h1 className="text-4xl lg:text-5xl font-black text-white tracking-tight">
+                <h1 className="text-4xl lg:text-5xl font-black text-foreground tracking-tight">
                   {activeGame.title}
                 </h1>
               )}
 
-              <p className="text-xs text-white/70 leading-relaxed max-w-2xl">
+              <p className="text-xs text-muted-foreground leading-relaxed max-w-2xl">
                 {activeGame.description || activeGame.data?.overview}
               </p>
 
               <div className="flex items-center gap-3 pt-2">
                 <button
                   onClick={() => handlePlayGame(activeGame)}
-                  className="flex items-center gap-2 px-8 py-3 rounded-2xl bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-400 hover:to-pink-400 text-white font-extrabold text-xs uppercase tracking-wider shadow-[0_0_30px_rgba(168,85,247,0.5)] active:scale-95 transition-all cursor-pointer"
+                  className="flex items-center gap-2 px-8 py-3 rounded-2xl bg-primary hover:bg-primary/90 text-primary-foreground font-extrabold text-xs uppercase tracking-wider shadow-lg shadow-primary/25 active:scale-95 transition-all cursor-pointer"
                 >
-                  <Play size={14} fill="white" />
+                  <Play size={14} className="fill-current" />
                   <span>Launch Title</span>
                 </button>
 
                 <button
                   onClick={() => setDetailGame(activeGame)}
-                  className="flex items-center gap-2 px-5 py-3 rounded-2xl bg-white/10 hover:bg-white/15 text-white font-bold text-xs uppercase tracking-wider border border-white/15 backdrop-blur-xl transition-all cursor-pointer"
+                  className="flex items-center gap-2 px-5 py-3 rounded-2xl bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-field)] text-foreground font-bold text-xs uppercase tracking-wider border border-white/[0.04] transition-all cursor-pointer"
                 >
                   <Sliders size={13} />
                   <span>Settings</span>
@@ -206,34 +228,50 @@ export const GlassLauncherView = () => {
 
         {/* Bottom Floating Glass Card Shelf */}
         <div className="pb-16 pt-2">
-          <div className="flex items-center gap-4 overflow-x-auto no-scrollbar py-3 scroll-smooth">
-            {filteredGames.map((game) => {
+          <div
+            ref={containerRef}
+            className="flex items-center gap-4 overflow-x-auto no-scrollbar py-3 scroll-smooth"
+          >
+            {paddingStart > 0 && (
+              <div style={{ width: paddingStart, flexShrink: 0 }} aria-hidden="true" />
+            )}
+            {virtualItems.map(({ item: game, index }) => {
               const isSelected = activeGame?.id === game.id
               const poster = game.otixPosterUrl || game.posterUrl
+              const isAboveFold = isSelected || index < 5
               return (
-                <motion.div
+                <div
                   key={game.id}
                   onClick={() => selectGame(game.id)}
-                  whileHover={{ y: -6, scale: 1.03 }}
-                  className={`relative shrink-0 rounded-2xl overflow-hidden cursor-pointer backdrop-blur-xl transition-all duration-300 ${
+                  className={`relative shrink-0 rounded-2xl overflow-hidden cursor-pointer bg-[var(--dk-surface-glass)] border border-white/[0.04] transition-all duration-300 transform-gpu hover:-translate-y-1.5 hover:scale-[1.03] active:scale-[0.97] ${
                     isSelected
-                      ? "w-36 sm:w-44 aspect-[3/4] ring-2 ring-purple-400 shadow-[0_0_30px_rgba(168,85,247,0.4)]"
-                      : "w-28 sm:w-36 aspect-[3/4] opacity-70 hover:opacity-100 ring-1 ring-white/10"
+                      ? "w-36 sm:w-44 aspect-[3/4] ring-2 ring-primary shadow-lg shadow-primary/25"
+                      : "w-28 sm:w-36 aspect-[3/4] opacity-70 hover:opacity-100 ring-1 ring-white/[0.06]"
                   }`}
                 >
                   {poster ? (
-                    <img src={poster} alt={game.title} className="w-full h-full object-cover" />
+                    <img
+                      src={poster}
+                      alt={game.title}
+                      loading={isAboveFold ? "eager" : "lazy"}
+                      fetchPriority={isAboveFold ? "high" : "auto"}
+                      decoding="async"
+                      className="w-full h-full object-cover"
+                    />
                   ) : (
-                    <div className="w-full h-full bg-white/5 flex items-center justify-center p-2 text-center text-xs text-white/60">
+                    <div className="w-full h-full bg-[var(--dk-surface-ghost)] flex items-center justify-center p-2 text-center text-xs text-muted-foreground">
                       {game.title}
                     </div>
                   )}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex flex-col justify-end p-2.5">
-                    <span className="text-[11px] font-bold text-white truncate">{game.title}</span>
+                  <div className="absolute inset-0 bg-gradient-to-t from-background/90 via-transparent to-transparent flex flex-col justify-end p-2.5">
+                    <span className="text-[11px] font-bold text-foreground truncate">{game.title}</span>
                   </div>
-                </motion.div>
+                </div>
               )
             })}
+            {paddingEnd > 0 && (
+              <div style={{ width: paddingEnd, flexShrink: 0 }} aria-hidden="true" />
+            )}
           </div>
         </div>
       </div>

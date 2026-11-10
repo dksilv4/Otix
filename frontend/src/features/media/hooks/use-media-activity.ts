@@ -13,9 +13,9 @@ export const mediaActivityKeys = {
   catalog: () => [...mediaActivityKeys.all, 'catalog'] as const,
 }
 
-export const useMediaActivityCatalog = () => {
+export const useMediaActivityCatalog = (options?: { enabled?: boolean }) => {
   const auth = useOptionalAuth()
-  const isEnabled = Boolean(auth?.isAuthenticated)
+  const isEnabled = Boolean(auth?.isAuthenticated) && (options?.enabled ?? true)
 
   return useQuery<MediaActivityCatalog>({
     queryKey: mediaActivityKeys.catalog(),
@@ -43,12 +43,14 @@ export const useMediaActivity = (
   mediaId?: string | number | null,
   tvdbId?: string | number | null,
   title?: string | null,
+  options?: { enabled?: boolean },
 ): MediaActivityItem | undefined => {
-  const { data } = useMediaActivityCatalog()
+  const isEnabled = options?.enabled ?? true
+  const { data } = useMediaActivityCatalog({ enabled: isEnabled })
   const items = data?.items
 
   return useMemo(() => {
-    if (!items) return undefined
+    if (!isEnabled || !items) return undefined
     const keys = resolveActivityLookupKeys(mediaType, tmdbId, mediaId, tvdbId, title)
     for (const key of keys) {
       if (items[key]) {
@@ -56,5 +58,5 @@ export const useMediaActivity = (
       }
     }
     return undefined
-  }, [items, mediaType, tmdbId, mediaId, tvdbId, title])
+  }, [isEnabled, items, mediaType, tmdbId, mediaId, tvdbId, title])
 }

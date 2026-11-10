@@ -1,5 +1,10 @@
 const MAX_BLOB_URLS = 300
 const blobUrlCache = new Map<Blob, string>()
+let activePlaybackUrl: string | null = null
+
+export const setActivePlaybackUrl = (url: string | null): void => {
+  activePlaybackUrl = url
+}
 
 /**
  * Retrieves a cached object URL for a Blob or creates and caches one.
@@ -20,17 +25,19 @@ export const getOrCreateBlobUrl = (blob: Blob | null | undefined): string | null
   try {
     const url = URL.createObjectURL(blob)
 
-    // Evict oldest item if cache limit reached
+    // Evict oldest item if cache limit reached (preserving active playback stream URL)
     if (blobUrlCache.size >= MAX_BLOB_URLS) {
-      const oldestEntry = blobUrlCache.entries().next()
-      if (!oldestEntry.done) {
-        const [oldestBlob, oldestUrl] = oldestEntry.value
+      for (const [oldestBlob, oldestUrl] of blobUrlCache.entries()) {
+        if (activePlaybackUrl && oldestUrl === activePlaybackUrl) {
+          continue
+        }
         blobUrlCache.delete(oldestBlob)
         try {
           URL.revokeObjectURL(oldestUrl)
         } catch {
           // Ignore revocation failure
         }
+        break
       }
     }
 

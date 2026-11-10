@@ -13,6 +13,8 @@ import { registerInstallerIPC } from '../ipc/installer';
 import { registerSystemIPC, openStandaloneWindow } from '../ipc/system';
 import { setupSessionHeaders, registerAppProtocol, registerMediaCacheProtocol, registerLocalMediaProtocol } from './protocols';
 import { closeDb } from '../db';
+import { createSplashWindow, closeSplashWindow } from './splash';
+import { setSplashWindow, isUpdateDownloading } from '../ipc/updater';
 import type { BootContext } from './types';
 
 // Directory containing compiled desktop distribution files (desktop/dist) and repo paths
@@ -129,6 +131,7 @@ export class StagedBootManager {
     this.isDev = isDev;
     this.ctx = {
       mainWindow: null,
+      splashWindow: null,
       dbReady: false,
       settings: getSettings(),
       tray: null,
@@ -190,6 +193,11 @@ export class StagedBootManager {
 
   public markQuitting(): void {
     this.ctx.isQuitting = true;
+    if (this.ctx.splashWindow) {
+      closeSplashWindow(this.ctx.splashWindow);
+      this.ctx.splashWindow = null;
+      setSplashWindow(null);
+    }
   }
 
   /**
@@ -201,12 +209,30 @@ export class StagedBootManager {
     // STAGE 1: Protocols & Security Headers (Synchronous Shell Preparation)
     this.stage1_protocolsAndSession();
 
+    // Check if app is launching hidden/minimized
+    const settings = getSettings();
+    const startHidden = Boolean(
+      settings.startMinimized ||
+      process.argv.includes('--hidden') ||
+      process.argv.includes('--start-minimized')
+    );
+
+    // Show tiny separate splash window immediately if not launching hidden
+    if (!startHidden) {
+      try {
+        this.ctx.splashWindow = createSplashWindow();
+        setSplashWindow(this.ctx.splashWindow);
+      } catch (err) {
+        console.warn('[boot] Failed to create splash window:', err);
+      }
+    }
+
     // STAGE 2: Launch Database Initialization asynchronously in background
     const dbInitPromise = this.stage2_initDatabase();
 
     // STAGE 3: Window Creation & UI Shell Display (Immediate Window Visibility)
     // Runs in parallel with DB initialization to minimize Time-To-First-Window
-    this.stage3_createWindow();
+    this.stage3_createWindow(startHidden);
 
     // STAGE 4: Essential IPC & Controller Registration
     await this.stage4_registerEssentialIPC();
@@ -214,6 +240,9 @@ export class StagedBootManager {
     // Await DB initialization and then notify renderer that IPC & database are ready
     await dbInitPromise;
     this.notifyIpcReady();
+
+    // Transition from tiny splash window to main window
+    this.coordinateWindowPresentation(startHidden);
 
     // STAGE 5: Interactive Services Tier (Staggered: 350ms after window creation)
     const t5 = setTimeout(() => {
@@ -309,16 +338,10 @@ export class StagedBootManager {
   /**
    * STAGE 3: Main Window Creation & Shell Presentation
    */
-  private stage3_createWindow(): void {
+  private stage3_createWindow(startHidden: boolean = false): void {
     console.log('[boot:stage3] Creating main application window...');
     const saved = loadWindowState();
     const bounds = saved ? ensureVisible(saved) : DEFAULT_SIZE;
-    const settings = getSettings();
-    const startHidden = Boolean(
-      settings.startMinimized ||
-      process.argv.includes('--hidden') ||
-      process.argv.includes('--start-minimized')
-    );
     const isMac = process.platform === 'darwin';
 
     const p1 = process.resourcesPath ? path.join(process.resourcesPath, 'assets', 'icon.png') : '';
@@ -331,7 +354,7 @@ export class StagedBootManager {
       height: bounds.height,
       minWidth: 800,
       minHeight: 600,
-      show: !startHidden,
+      show: false,
       paintWhenInitiallyHidden: true,
       icon: iconPath,
       title: 'Otix',
@@ -425,11 +448,6 @@ export class StagedBootManager {
       void win.loadURL('app://otix/');
     }
 
-    if (!startHidden) {
-      win.show();
-      win.focus();
-    }
-
     win.on('closed', () => {
       console.log('[main] Window closed');
       this.ctx.libraryWatcher?.setMainWindow(null);
@@ -438,6 +456,66 @@ export class StagedBootManager {
     });
 
     registerWindowIPC(win);
+  }
+
+  /**
+   * Coordinates transition from the tiny splash window to the main application window.
+   */
+  private coordinateWindowPresentation(startHidden: boolean): void {
+    if (startHidden) {
+      if (this.ctx.splashWindow) {
+        closeSplashWindow(this.ctx.splashWindow);
+        this.ctx.splashWindow = null;
+        setSplashWindow(null);
+      }
+      return;
+    }
+
+    const win = this.ctx.mainWindow;
+    if (!win || win.isDestroyed()) return;
+
+    let isPresented = false;
+    const minSplashTimeMs = 800;
+    const startTime = Date.now();
+
+    const presentMainWindow = () => {
+      if (isPresented) return;
+      isPresented = true;
+
+      if (this.ctx.splashWindow && !this.ctx.splashWindow.isDestroyed()) {
+        closeSplashWindow(this.ctx.splashWindow);
+        this.ctx.splashWindow = null;
+        setSplashWindow(null);
+      }
+
+      if (win && !win.isDestroyed()) {
+        win.show();
+        win.focus();
+      }
+    };
+
+    const attemptPresentation = () => {
+      // If an update is actively downloading, wait until it finishes
+      if (isUpdateDownloading()) {
+        console.log('[boot] Splash window waiting for background update download...');
+        const checkInterval = setInterval(() => {
+          if (!isUpdateDownloading()) {
+            clearInterval(checkInterval);
+            presentMainWindow();
+          }
+        }, 500);
+        return;
+      }
+
+      const elapsed = Date.now() - startTime;
+      const delay = Math.max(0, minSplashTimeMs - elapsed);
+      setTimeout(presentMainWindow, delay);
+    };
+
+    win.once('ready-to-show', attemptPresentation);
+
+    // Safeguard: Present main window after maximum 5s if ready-to-show is delayed
+    setTimeout(presentMainWindow, 5000);
   }
 
   /**
@@ -470,6 +548,12 @@ export class StagedBootManager {
     try { registerNodeDaemonIPC(this.ctx.nodeDaemon); } catch (err) { console.error('[main] registerNodeDaemonIPC error:', err); }
     try { registerInstallerIPC(); } catch (err) { console.error('[main] registerInstallerIPC error:', err); }
     try { registerUpdaterIPC(win); } catch (err) { console.error('[main] registerUpdaterIPC error:', err); }
+    try {
+      const { registerGameDetectorIPC } = await import('../ipc/game-detector');
+      registerGameDetectorIPC(null);
+    } catch (err) {
+      console.error('[main] registerGameDetectorIPC error:', err);
+    }
 
     // Register system, shell, file dialog, disk space, and machine mapping IPC handlers
     try {
@@ -544,6 +628,9 @@ export class StagedBootManager {
 
     const detector = new GameDetector(app.getPath('userData'));
     this.ctx.gameDetector = detector;
+
+    const { registerGameDetectorIPC } = await import('../ipc/game-detector');
+    registerGameDetectorIPC(detector, fpsService);
 
     // 2. Achievements
     if (this.ctx.dbReady) {
@@ -772,11 +859,13 @@ export class StagedBootManager {
       watcher.setMainWindow(win);
       watcher.start();
 
+      // Defer initial automatic library scan by 15s to ensure zero disk/CPU contention
+      // while the frontend mounts, evaluates initial routes, and completes cold startup transitions.
       setTimeout(() => {
         if (this.ctx.libraryWatcher) {
           void this.ctx.libraryWatcher.triggerScan();
         }
-      }, 1000);
+      }, 15000);
     }
 
     // 3. Pre-download innounp for ISO installs

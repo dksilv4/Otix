@@ -1,7 +1,6 @@
-import type { PersistentPlaybackSession, SavedCameraPresetState } from '../types'
+import type { PersistentPlaybackSession } from '../types'
 
 const PLAYBACK_SESSION_KEY = 'otix_music_playback_session'
-const CAMERA_PRESETS_KEY = 'otix_visualizer_camera_presets'
 const SAVE_THROTTLE_MS = 1000
 
 let lastSaveTimestamp = 0
@@ -47,39 +46,6 @@ export const savePlaybackSessionThrottled = (session: PersistentPlaybackSession)
 
 export const clearPlaybackSession = (): void => {
   savePlaybackSessionImmediate(null)
-}
-
-export const getSavedCameraPresetState = (presetId: string): SavedCameraPresetState | null => {
-  if (typeof localStorage === 'undefined') return null
-  try {
-    const raw = localStorage.getItem(CAMERA_PRESETS_KEY)
-    if (!raw) return null
-    const map = JSON.parse(raw) as Record<string, SavedCameraPresetState>
-    return map[presetId] || null
-  } catch {
-    return null
-  }
-}
-
-export const saveCameraPresetState = (presetId: string, state: SavedCameraPresetState): void => {
-  if (typeof localStorage === 'undefined') return
-  try {
-    const raw = localStorage.getItem(CAMERA_PRESETS_KEY)
-    const map = raw ? (JSON.parse(raw) as Record<string, SavedCameraPresetState>) : {}
-    map[presetId] = state
-    localStorage.setItem(CAMERA_PRESETS_KEY, JSON.stringify(map))
-  } catch {
-    // Ignore storage quota errors
-  }
-}
-
-export const clearCameraPresetStates = (): void => {
-  if (typeof localStorage === 'undefined') return
-  try {
-    localStorage.removeItem(CAMERA_PRESETS_KEY)
-  } catch {
-    // Ignore
-  }
 }
 
 // Window unload listeners to ensure latest playback position is captured before refresh/crash

@@ -83,8 +83,16 @@ export const DkMediaCard = memo(({
     queryClient.prefetchQuery(mediaQueries.detail(mediaType, id))
   }, [queryClient, mediaType, id])
 
-  const nodeActivity = useMediaActivity(mediaType, tmdbId, id)
-  const hasActivityTag = Boolean(nodeActivity && !hideStreamBadge)
+  const rawActivity = useMediaActivity(
+    mediaType,
+    tmdbId,
+    id,
+    undefined,
+    undefined,
+    { enabled: !hideStreamBadge },
+  )
+  const nodeActivity = hideStreamBadge ? undefined : rawActivity
+  const hasActivityTag = Boolean(nodeActivity)
   const ratingPositionClass = useMemo(
     () => resolveMediaCardRatingPosition({ hasActivityTag, isAdult, newSeasonReleased }),
     [hasActivityTag, isAdult, newSeasonReleased],

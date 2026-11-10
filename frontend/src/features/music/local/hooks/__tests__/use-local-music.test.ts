@@ -28,6 +28,8 @@ vi.mock('../../utils/local-music-db', () => ({
     mockDbTracks = []
     mockDbFolders = []
   }),
+  saveAudioBlobToDb: vi.fn(async () => {}),
+  getAudioBlobFromDb: vi.fn(async () => null),
 }))
 
 describe('useLocalMusic — Session File Handle Resolution (resolveFileForTrack)', () => {

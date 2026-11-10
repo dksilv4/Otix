@@ -11,9 +11,12 @@ vi.mock('@ui/molecules/toast', () => ({
 
 const mockSaveTracksToDb = vi.fn().mockResolvedValue(undefined)
 const mockSaveFolderToDb = vi.fn().mockResolvedValue(undefined)
+const mockSaveAudioBlobToDb = vi.fn().mockResolvedValue(undefined)
 vi.mock('@/features/music/local/utils/local-music-db', () => ({
   saveTracksToDb: (t: any) => mockSaveTracksToDb(t),
   saveFolderToDb: (f: any) => mockSaveFolderToDb(f),
+  saveAudioBlobToDb: (id: string, b: any) => mockSaveAudioBlobToDb(id, b),
+  getAudioBlobFromDb: vi.fn().mockResolvedValue(null),
 }))
 
 const mockProcessAudioFiles = vi.fn()

@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Otix</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      html, body {
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background-color: #07080a;
+        color: #f8fafc;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", sans-serif;
+        user-select: none;
+        -webkit-user-select: none;
+        cursor: default;
+        pointer-events: none;
+      }
+
+      .splash-card {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+        position: relative;
+        background: radial-gradient(circle at 50% 30%, rgba(56, 189, 248, 0.08), transparent 70%), #07080a;
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        border-radius: 16px;
+      }
+
+      .logo-container {
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 76px;
+        height: 76px;
+        margin-bottom: 20px;
+      }
+
+      .logo-glow {
+        position: absolute;
+        width: 100px;
+        height: 100px;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgba(56, 189, 248, 0.25) 0%, transparent 70%);
+        filter: blur(12px);
+        animation: pulseGlow 2.4s ease-in-out infinite;
+      }
+
+      .otix-svg {
+        width: 72px;
+        height: 72px;
+        position: relative;
+        z-index: 1;
+        color: #f8fafc;
+        filter: drop-shadow(0 0 16px rgba(56, 189, 248, 0.35));
+      }
+
+      .brand-title {
+        font-size: 1.125rem;
+        font-weight: 700;
+        letter-spacing: -0.01em;
+        color: #f8fafc;
+        margin-bottom: 6px;
+      }
+
+      .status-text {
+        font-size: 0.8125rem;
+        font-weight: 500;
+        color: #94a3b8;
+        letter-spacing: 0.015em;
+        text-align: center;
+        min-height: 1.25rem;
+        transition: color 0.2s ease;
+      }
+
+      .progress-container {
+        display: none;
+        flex-direction: column;
+        align-items: center;
+        width: 220px;
+        margin-top: 14px;
+        gap: 6px;
+      }
+
+      .progress-track {
+        width: 100%;
+        height: 4px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 9999px;
+        overflow: hidden;
+        position: relative;
+      }
+
+      .progress-fill {
+        height: 100%;
+        width: 0%;
+        background: linear-gradient(90deg, #38bdf8, #818cf8);
+        border-radius: 9999px;
+        box-shadow: 0 0 10px rgba(56, 189, 248, 0.5);
+        transition: width 0.2s ease-out;
+      }
+
+      .progress-metrics-row {
+        display: flex;
+        justify-content: space-between;
+        width: 100%;
+        font-size: 0.6875rem;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        color: #64748b;
+      }
+
+      .progress-speed {
+        font-size: 0.625rem;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        color: #475569;
+      }
+
+      @keyframes pulseGlow {
+        0%, 100% {
+          opacity: 0.5;
+          transform: scale(0.95);
+        }
+        50% {
+          opacity: 1;
+          transform: scale(1.1);
+        }
+      }
+
+      .infinity-snake {
+        stroke-dasharray: 600 600;
+        animation: snakeCrawl 2.2s linear infinite;
+      }
+
+      @keyframes snakeCrawl {
+        0% {
+          stroke-dashoffset: 0;
+        }
+        100% {
+          stroke-dashoffset: -1200;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="splash-card">
+      <div class="logo-container">
+        <div class="logo-glow"></div>
+        <svg class="otix-svg" viewBox="0 0 2048 2048" fill="none" stroke="currentColor">
+          <circle cx="1024" cy="1024" r="484" stroke="currentColor" stroke-width="140" fill="none" />
+          <path
+            class="infinity-snake"
+            stroke="currentColor"
+            stroke-width="120"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            d="M1024 1024 C800 652 460 652 420 1024 C460 1396 800 1396 1024 1024 C1248 652 1588 652 1628 1024 C1588 1396 1248 1396 1024 1024"
+          />
+        </svg>
+      </div>
+
+      <div class="brand-title">Otix</div>
+      <div id="status-text" class="status-text">Starting Otix…</div>
+
+      <div id="progress-container" class="progress-container">
+        <div class="progress-track">
+          <div id="progress-fill" class="progress-fill"></div>
+        </div>
+        <div class="progress-metrics-row">
+          <span id="progress-percent">0%</span>
+          <span id="progress-bytes"></span>
+        </div>
+        <div id="progress-speed" class="progress-speed"></div>
+      </div>
+    </div>
+
+    <script>
+      function formatBytes(bytes) {
+        if (!bytes || bytes <= 0) return '0 B';
+        const k = 1024;
+        const sizes = ['B', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+      }
+
+      function formatSpeed(bps) {
+        if (!bps || bps <= 0) return '';
+        return formatBytes(bps) + '/s';
+      }
+
+      window.addEventListener('contextmenu', function(e) { e.preventDefault(); });
+      window.addEventListener('keydown', function(e) { e.preventDefault(); });
+
+      if (window.splashAPI && typeof window.splashAPI.onStatus === 'function') {
+        window.splashAPI.onStatus(function(payload) {
+          if (!payload) return;
+          var statusEl = document.getElementById('status-text');
+          var progressContainer = document.getElementById('progress-container');
+          var progressFill = document.getElementById('progress-fill');
+          var progressPercent = document.getElementById('progress-percent');
+          var progressBytes = document.getElementById('progress-bytes');
+          var progressSpeed = document.getElementById('progress-speed');
+
+          if (payload.status === 'checking') {
+            statusEl.textContent = 'Checking for updates…';
+            progressContainer.style.display = 'none';
+          } else if (payload.status === 'available') {
+            statusEl.textContent = payload.version ? 'Found update v' + payload.version + '…' : 'Update found…';
+            progressContainer.style.display = 'flex';
+            progressFill.style.width = '0%';
+            progressPercent.textContent = '0%';
+          } else if (payload.status === 'downloading') {
+            statusEl.textContent = payload.version ? 'Downloading v' + payload.version + '…' : 'Downloading update…';
+            progressContainer.style.display = 'flex';
+            if (payload.progress) {
+              var pct = Math.min(100, Math.max(0, Math.round(payload.progress.percent || 0)));
+              progressFill.style.width = pct + '%';
+              progressPercent.textContent = pct + '%';
+              if (payload.progress.transferred && payload.progress.total) {
+                progressBytes.textContent = formatBytes(payload.progress.transferred) + ' / ' + formatBytes(payload.progress.total);
+              }
+              if (payload.progress.bytesPerSecond) {
+                progressSpeed.textContent = formatSpeed(payload.progress.bytesPerSecond);
+              }
+            }
+          } else if (payload.status === 'downloaded') {
+            statusEl.textContent = 'Update ready. Restarting…';
+            progressContainer.style.display = 'none';
+          } else if (payload.status === 'not-available' || payload.status === 'error') {
+            statusEl.textContent = 'Starting Otix…';
+            progressContainer.style.display = 'none';
+          }
+        });
+      }
+    </script>
+  </body>
+</html>

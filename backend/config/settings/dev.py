@@ -20,3 +20,21 @@ ALLOWED_HOSTS = env_list("ALLOWED_HOSTS", default=["*"])
 CORS_ALLOW_ALL_ORIGINS = env_bool("CORS_ALLOW_ALL_ORIGINS", default=True)
 
 SECRET_KEY = os.environ.get("SECRET_KEY", "dev-insecure-secret-change-before-deploy")
+
+
+class QueryResetMiddleware:
+    """Resets django.db.connection.queries on every request in development to prevent memory leak."""
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        response = self.get_response(request)
+        try:
+            from django.db import reset_queries
+            reset_queries()
+        except Exception:
+            pass
+        return response
+
+
+MIDDLEWARE = [*MIDDLEWARE, "config.settings.dev.QueryResetMiddleware"]

@@ -1,7 +1,7 @@
 import { ipcMain, shell } from 'electron';
-import { spawn } from 'child_process';
 import path from 'path';
 import { GameDetector, type RunningGame } from '../game/detector';
+import { defaultLauncher } from '../game/launcher';
 import type { Cs2GsiManager } from '../game/cs2-gsi';
 import type { PluginManager } from '../plugin-runtime/manager';
 import type { FpsCaptureService } from '../game/fps-capture';
@@ -100,14 +100,66 @@ async function getRunningGamesMerged(gameDetector: GameDetector | null): Promise
   return local;
 }
 
+let _activeGameDetector: GameDetector | null = null;
+let _activePluginManager: PluginManager | FpsCaptureService | null = null;
+let _activeCs2GsiManager: Cs2GsiManager | undefined = undefined;
+let _activeFpsCaptureService: FpsCaptureService | null = null;
+let _isGameDetectorIpcRegistered = false;
+
+export function _resetGameDetectorIpcForTest(): void {
+  _isGameDetectorIpcRegistered = false;
+  _activeGameDetector = null;
+  _activePluginManager = null;
+  _activeCs2GsiManager = undefined;
+  _activeFpsCaptureService = null;
+}
+
 export function registerGameDetectorIPC(
   gameDetector: GameDetector | null,
   pluginManager?: PluginManager | FpsCaptureService | null,
   cs2GsiManager?: Cs2GsiManager,
   fpsCaptureService?: FpsCaptureService | null,
 ): void {
+  if (gameDetector !== undefined) _activeGameDetector = gameDetector;
+  if (pluginManager !== undefined) _activePluginManager = pluginManager;
+  if (cs2GsiManager !== undefined) _activeCs2GsiManager = cs2GsiManager;
+  if (fpsCaptureService !== undefined) _activeFpsCaptureService = fpsCaptureService;
+
+  if (_isGameDetectorIpcRegistered) {
+    return;
+  }
+  _isGameDetectorIpcRegistered = true;
+
+  const channels = [
+    'launcher:launch-game',
+    'emulators:get-all',
+    'emulators:get-ambiguous-candidates',
+    'emulators:set-game-platform',
+    'game:get-running',
+    'game:get-running-single',
+    'game:cycle-active',
+    'game:set-active',
+    'game:get-recent-sessions',
+    'game:get-playtime',
+    'game:set-library',
+    'game:stop-tracking',
+    'game:get-running-processes',
+    'game:add-mapping',
+    'game:remove-mapping',
+    'game:get-mappings',
+    'game:get-library',
+    'game:get-cs2-state',
+    'game:setup-cs2-gsi',
+  ];
+
+  for (const ch of channels) {
+    try {
+      ipcMain.removeHandler(ch);
+    } catch {}
+  }
+
   const getServiceRegistry = () => {
-    return (pluginManager && 'serviceRegistry' in pluginManager) ? (pluginManager as PluginManager).serviceRegistry : undefined;
+    return (_activePluginManager && 'serviceRegistry' in _activePluginManager) ? (_activePluginManager as PluginManager).serviceRegistry : undefined;
   };
 
   // Launch game — accepts full LocalGame for tracking
@@ -116,31 +168,46 @@ export function registerGameDetectorIPC(
       if (isRomGame(game)) {
         const settings = getSettings();
         const launch = resolveEmulatorLaunch(game, getServiceRegistry(), settings);
-        const child = spawn(launch.executablePath, launch.args, {
-          cwd: launch.workingDir,
-          detached: true,
-          stdio: 'ignore',
+        await defaultLauncher.launchGameProcess({
+          id: game.id,
+          title: game.title,
+          exePath: launch.executablePath,
+          launchArguments: launch.args,
+          workingDirectory: launch.workingDir,
+        }, {
+          sessionTracker: _activeGameDetector ? {
+            startTracking: (targetGame, pid) => _activeGameDetector!.startTracking(targetGame, pid),
+          } : undefined,
+          unref: true,
+          onExit: (exitInfo) => {
+            if (exitInfo.error) {
+              console.warn('[launcher] ROM emulator child error:', exitInfo.error);
+              _activeGameDetector?.stopTracking(game.id);
+            } else {
+              console.log(`[launcher] ROM emulator process exited for "${game.title}" (PID: ${exitInfo.pid}, Code: ${exitInfo.exitCode})`);
+            }
+          },
         });
-        child.on('error', (err) => console.warn('[launcher] Child error:', err));
-        gameDetector?.startTracking(game, child.pid);
-        child.unref();
         return true;
       } else if (game.exePath.includes('://')) {
         await shell.openExternal(game.exePath);
-        gameDetector?.startTracking(game); // no PID for protocol launches, scan will confirm
+        _activeGameDetector?.startTracking(game); // no PID for protocol launches, scan will confirm
         return true;
       } else {
-        const gameDir = (game as any).workingDirectory || path.dirname(game.exePath);
-        const rawArgs = (game as any).launchArguments;
-        const args = typeof rawArgs === 'string' && rawArgs.trim().length > 0 ? rawArgs.trim().split(/\s+/) : [];
-        const child = spawn(game.exePath, args, {
-          cwd: gameDir,
-          detached: true,
-          stdio: 'ignore',
+        await defaultLauncher.launchGameProcess(game, {
+          sessionTracker: _activeGameDetector ? {
+            startTracking: (targetGame, pid) => _activeGameDetector!.startTracking(targetGame, pid),
+          } : undefined,
+          unref: true,
+          onExit: (exitInfo) => {
+            if (exitInfo.error) {
+              console.warn('[launcher] Child error:', exitInfo.error);
+              _activeGameDetector?.stopTracking(game.id);
+            } else {
+              console.log(`[launcher] Process exited for "${game.title}" (PID: ${exitInfo.pid}, Code: ${exitInfo.exitCode}, Duration: ${exitInfo.durationMs}ms)`);
+            }
+          },
         });
-        child.on('error', (err) => console.warn('[launcher] Child error:', err));
-        gameDetector?.startTracking(game, child.pid);
-        child.unref();
         return true;
       }
     } catch (err) {
@@ -165,11 +232,11 @@ export function registerGameDetectorIPC(
   });
 
   ipcMain.handle('game:get-running', async () => {
-    return getRunningGamesMerged(gameDetector);
+    return getRunningGamesMerged(_activeGameDetector);
   });
 
   ipcMain.handle('game:get-running-single', async () => {
-    const games = await getRunningGamesMerged(gameDetector);
+    const games = await getRunningGamesMerged(_activeGameDetector);
     return games.length > 0 ? games[0] : null;
   });
 
@@ -180,7 +247,7 @@ export function registerGameDetectorIPC(
     } catch {
       // fallback if node daemon is unlinked
     }
-    return gameDetector?.cycleActiveGame() ?? null;
+    return _activeGameDetector?.cycleActiveGame() ?? null;
   });
 
   ipcMain.handle('game:set-active', async (_, gameId: string) => {
@@ -190,12 +257,12 @@ export function registerGameDetectorIPC(
     } catch {
       // fallback if node daemon is unlinked
     }
-    return gameDetector?.setActiveGame(gameId) ?? null;
+    return _activeGameDetector?.setActiveGame(gameId) ?? null;
   });
 
   ipcMain.handle('game:get-recent-sessions', async () => {
-    const detectorSessions = gameDetector?.getRecentSessions() ?? [];
-    const fpsService = (fpsCaptureService || (pluginManager && 'getRecentSessions' in pluginManager ? pluginManager : null)) as FpsCaptureService | null;
+    const detectorSessions = _activeGameDetector?.getRecentSessions() ?? [];
+    const fpsService = (_activeFpsCaptureService || (_activePluginManager && 'getRecentSessions' in _activePluginManager ? _activePluginManager : null)) as FpsCaptureService | null;
     if (fpsService) {
       try {
         const fpsSessions = fpsService.getRecentSessions(20);
@@ -219,7 +286,7 @@ export function registerGameDetectorIPC(
   });
 
   ipcMain.handle('game:get-playtime', async (_event, gameId: string) => {
-    const fpsService = (fpsCaptureService || (pluginManager && 'getPlaytimeForGame' in pluginManager ? pluginManager : null)) as FpsCaptureService | null;
+    const fpsService = (_activeFpsCaptureService || (_activePluginManager && 'getPlaytimeForGame' in _activePluginManager ? _activePluginManager : null)) as FpsCaptureService | null;
     if (fpsService) {
       try {
         return fpsService.getPlaytimeForGame(gameId);
@@ -227,47 +294,67 @@ export function registerGameDetectorIPC(
         /* fall back to detector */
       }
     }
-    return gameDetector?.getPlaytimeForGame(gameId) ?? { totalMinutes: 0, sessionCount: 0, lastPlayed: null, lastFpsStats: null };
+    return _activeGameDetector?.getPlaytimeForGame(gameId) ?? { totalMinutes: 0, sessionCount: 0, lastPlayed: null, lastFpsStats: null };
   });
 
   ipcMain.handle('game:set-library', (_, games: LocalGame[]) => {
-    gameDetector?.setLibrary(games);
-    gameDetector?.startPeriodicScan();
+    _activeGameDetector?.setLibrary(games);
+    _activeGameDetector?.startPeriodicScan();
     return true;
   });
 
   ipcMain.handle('game:stop-tracking', (_, gameId: string) => {
-    gameDetector?.stopTracking(gameId);
+    _activeGameDetector?.stopTracking(gameId);
     return true;
   });
 
   ipcMain.handle('game:get-running-processes', async () => {
-    return gameDetector?.getRunningProcesses() ?? [];
+    return _activeGameDetector?.getRunningProcesses() ?? [];
   });
 
   ipcMain.handle('game:add-mapping', (_, processName: string, gameId: string, gameTitle: string) => {
-    gameDetector?.addMapping(processName, gameId, gameTitle);
+    _activeGameDetector?.addMapping(processName, gameId, gameTitle);
     return true;
   });
 
   ipcMain.handle('game:remove-mapping', (_, processName: string) => {
-    gameDetector?.removeMapping(processName);
+    _activeGameDetector?.removeMapping(processName);
     return true;
   });
 
   ipcMain.handle('game:get-mappings', () => {
-    return gameDetector?.getMappings() ?? [];
+    return _activeGameDetector?.getMappings() ?? [];
   });
 
   ipcMain.handle('game:get-library', () => {
-    return gameDetector?.getLibrary() ?? [];
+    const lib = _activeGameDetector?.getLibrary() ?? [];
+    return lib.map((g) => {
+      let modified = false;
+      const clean = { ...g } as any;
+      for (const k of ['posterUrl', 'backdropUrl', 'iconUrl', 'localIconUrl', 'otixPosterUrl', 'otixBackdropUrl', 'logoUrl']) {
+        if (typeof clean[k] === 'string' && clean[k].startsWith('data:image/')) {
+          clean[k] = undefined;
+          modified = true;
+        }
+      }
+      if (clean.data) {
+        clean.data = { ...clean.data };
+        for (const k of ['posterUrl', 'backdropUrl', 'iconUrl', 'logoUrl']) {
+          if (typeof clean.data[k] === 'string' && clean.data[k].startsWith('data:image/')) {
+            clean.data[k] = undefined;
+            modified = true;
+          }
+        }
+      }
+      return modified ? clean : g;
+    });
   });
 
   ipcMain.handle('game:get-cs2-state', () => {
-    return cs2GsiManager?.getState() ?? null;
+    return _activeCs2GsiManager?.getState() ?? null;
   });
 
   ipcMain.handle('game:setup-cs2-gsi', () => {
-    return cs2GsiManager?.setupCs2GsiConfig() ?? { success: false, message: 'CS2 GSI manager not initialized' };
+    return _activeCs2GsiManager?.setupCs2GsiConfig() ?? { success: false, message: 'CS2 GSI manager not initialized' };
   });
 }

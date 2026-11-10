@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Play,
@@ -16,9 +16,8 @@ import {
   Minimize2,
   X,
   Disc3,
-  ChevronLeft,
-  ChevronRight,
-  ChevronDown,
+  Box,
+  SlidersHorizontal,
 } from 'lucide-react'
 import { usePlayer } from '@/lib/player/use-player'
 import { usePlayerProgress } from '@/lib/player/use-player-progress'
@@ -26,18 +25,20 @@ import { useMusicPalette } from '../../hooks/use-music-palette'
 import { useFullScreenPlayer } from '../hooks/use-full-screen-player'
 import { useAudioVisualizer } from '../hooks/use-audio-visualizer'
 import { Simple2DVisualizerCanvas } from './simple-2d-visualizer-canvas'
-import { ThreeVisualizerCanvas } from './three-visualizer-canvas'
+import { MeshGridVisualizerCanvas } from './mesh-grid-visualizer-canvas'
 import { WaveformScrubber } from './waveform-scrubber'
 import { FullScreenQueuePanel } from './full-screen-queue-panel'
-import { PresetSelectorPopover } from './preset-selector-popover'
-import {
-  formatVisualizerTime,
-  VISUALIZER_MODES,
-  getVisualizerModeOption,
-  getAdjacentVisualizerMode,
-  getVisualizerModeIcon,
-} from '../utils/visualizer-helpers'
+import { MeshGridControlsPanel } from './mesh-grid-controls-panel'
 import type { VisualizerMode } from '../types'
+import { getNextVisualizerMode, getVisualizerModeOption } from '../utils/visualizer-helpers'
+import {
+  type MeshGridParams,
+  type MeshGridVariantPreset,
+  type MeshGridSceneHandle,
+  type CameraSnapPresetId,
+  CAMERA_SNAP_PRESETS,
+  MESH_GRID_VARIANT_14_CONFIG,
+} from '../utils/mesh-grid-helpers'
 import { cn } from '@/lib/utils'
 
 export interface FullScreenMusicPlayerProps {
@@ -74,7 +75,7 @@ export const FullScreenMusicPlayer = ({ isOpen, onClose }: FullScreenMusicPlayer
   const frame = useAudioVisualizer(position, duration, isPlaying, isOpen)
 
   const activeQueue =
-    source === 'local' ? localQueue : source === 'jellyfin' ? jellyfinQueue : plexQueue
+    (source === 'local' ? localQueue : source === 'jellyfin' ? jellyfinQueue : plexQueue) ?? []
 
   const {
     isQueueOpen,
@@ -94,34 +95,91 @@ export const FullScreenMusicPlayer = ({ isOpen, onClose }: FullScreenMusicPlayer
   )
 
   const [prevVolume, setPrevVolume] = useState(0.7)
-  const [isPresetsOpen, setIsPresetsOpen] = useState(false)
-  const [visualizerMode, setVisualizerMode] = useState<VisualizerMode>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('otix_preferred_visualizer_mode')
-      if (saved && VISUALIZER_MODES.some((m) => m.id === saved)) {
-        return saved as VisualizerMode
+  const [visualizerMode, setVisualizerMode] = useState<VisualizerMode>('mesh-grid')
+  const [isMeshControlsOpen, setIsMeshControlsOpen] = useState(false)
+  const [meshParams, setMeshParams] = useState<MeshGridParams>(MESH_GRID_VARIANT_14_CONFIG)
+  const sceneHandleRef = useRef<MeshGridSceneHandle | null>(null)
+
+  const handleSceneReady = useCallback((handle: MeshGridSceneHandle) => {
+    sceneHandleRef.current = handle
+  }, [])
+
+  const handleMeshParamChange = useCallback(
+    <K extends keyof MeshGridParams>(key: K, value: MeshGridParams[K]) => {
+      setMeshParams((prev) => ({
+        ...prev,
+        [key]: value,
+      }))
+    },
+    [],
+  )
+
+  const handleApplyMeshPreset = useCallback((preset: MeshGridVariantPreset) => {
+    setMeshParams((prev) => {
+      if (prev.lockCameraOnPresetChange) {
+        return {
+          ...preset.params,
+          cameraPosition: prev.cameraPosition,
+          cameraTarget: prev.cameraTarget,
+          cameraFov: prev.cameraFov,
+          lockCameraOnPresetChange: true,
+        }
       }
-    }
-    return 'wavy-19'
-  })
+      sceneHandleRef.current?.setCamera(preset.params.cameraPosition, preset.params.cameraTarget)
+      if (preset.params.cameraFov) {
+        sceneHandleRef.current?.setCameraFov(preset.params.cameraFov)
+      }
+      return {
+        ...preset.params,
+        lockCameraOnPresetChange: false,
+      }
+    })
+  }, [])
 
-  const currentModeOption = getVisualizerModeOption(visualizerMode)
-  const CurrentModeIcon = getVisualizerModeIcon(currentModeOption.iconName)
+  const handleResetMeshParams = useCallback(() => {
+    setMeshParams((prev) => {
+      if (prev.lockCameraOnPresetChange) {
+        return {
+          ...MESH_GRID_VARIANT_14_CONFIG,
+          cameraPosition: prev.cameraPosition,
+          cameraTarget: prev.cameraTarget,
+          cameraFov: prev.cameraFov,
+          lockCameraOnPresetChange: true,
+        }
+      }
+      sceneHandleRef.current?.resetCamera()
+      return { ...MESH_GRID_VARIANT_14_CONFIG }
+    })
+  }, [])
 
-  const handleSelectMode = useCallback((mode: VisualizerMode) => {
-    setVisualizerMode(mode)
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('otix_preferred_visualizer_mode', mode)
+  const handleResetMeshCamera = useCallback(() => {
+    sceneHandleRef.current?.resetCamera()
+    setMeshParams((prev) => ({
+      ...prev,
+      cameraPosition: { ...MESH_GRID_VARIANT_14_CONFIG.cameraPosition },
+      cameraTarget: { ...MESH_GRID_VARIANT_14_CONFIG.cameraTarget },
+      cameraFov: MESH_GRID_VARIANT_14_CONFIG.cameraFov,
+    }))
+  }, [])
+
+  const handleSnapCamera = useCallback((snapId: CameraSnapPresetId) => {
+    sceneHandleRef.current?.snapCameraTo(snapId)
+    const snap = CAMERA_SNAP_PRESETS.find((s) => s.id === snapId)
+    if (snap) {
+      setMeshParams((prev) => ({
+        ...prev,
+        cameraPosition: { ...snap.position },
+        cameraTarget: { ...snap.target },
+        cameraFov: snap.fov,
+      }))
     }
   }, [])
 
-  const handleStepMode = useCallback(
-    (direction: 'prev' | 'next') => {
-      const nextMode = getAdjacentVisualizerMode(visualizerMode, direction)
-      handleSelectMode(nextMode)
-    },
-    [visualizerMode, handleSelectMode],
-  )
+  const currentModeOption = getVisualizerModeOption(visualizerMode)
+
+  const cycleVisualizerMode = useCallback(() => {
+    setVisualizerMode((prev) => getNextVisualizerMode(prev))
+  }, [])
 
   const toggleMute = useCallback(() => {
     if (volume > 0) {
@@ -163,8 +221,20 @@ export const FullScreenMusicPlayer = ({ isOpen, onClose }: FullScreenMusicPlayer
         onMouseMove={resetHideTimer}
         className="fixed inset-0 z-[10000] flex flex-col justify-between overflow-hidden select-none bg-background"
       >
-        {/* Layer 1: Hardware-Accelerated Audio Visualizer Canvas */}
-        {visualizerMode === 'spectrum-2d' ? (
+        {/* Layer 1: Dynamic Audio Visualizer Canvas */}
+        {visualizerMode === 'mesh-grid' ? (
+          <MeshGridVisualizerCanvas
+            isPlaying={isPlaying}
+            positionMs={position}
+            durationMs={duration}
+            trackId={currentTrack?.id}
+            albumArt={currentTrack?.albumArt}
+            palette={theme.palette}
+            params={meshParams}
+            onSceneReady={handleSceneReady}
+            className="absolute inset-0 h-full w-full pointer-events-auto"
+          />
+        ) : (
           <Simple2DVisualizerCanvas
             isPlaying={isPlaying}
             positionMs={position}
@@ -172,28 +242,18 @@ export const FullScreenMusicPlayer = ({ isOpen, onClose }: FullScreenMusicPlayer
             theme={theme}
             className="absolute inset-0 h-full w-full pointer-events-none"
           />
-        ) : (
-          <ThreeVisualizerCanvas
-            mode={visualizerMode}
-            palette={theme.palette}
-            hasArtwork={theme.hasArtwork}
-            musicTheme={theme}
-            positionMs={position}
-            durationMs={duration}
-            isPlaying={isPlaying}
-            intensity={1.0}
-            className="absolute inset-0 h-full w-full pointer-events-auto touch-none cursor-grab active:cursor-grabbing"
-          />
         )}
 
-        {/* Layer 3: Top Navigation Chrome */}
+        {/* Layer 2: Top Navigation Chrome */}
         <header
           className={cn(
             'relative z-20 flex items-center justify-between px-6 py-5 transition-opacity duration-500 ease-out',
-            isControlsVisible ? 'opacity-100' : 'opacity-0 pointer-events-none',
+            isControlsVisible || isMeshControlsOpen || isQueueOpen
+              ? 'opacity-100'
+              : 'opacity-0 pointer-events-none',
           )}
         >
-          {/* Left: Now Playing Status Badge & Preset Switcher */}
+          {/* Left: Now Playing Status Badge */}
           <div className="flex items-center gap-3">
             <span className="text-xs uppercase tracking-widest font-semibold text-primary px-3 py-1 rounded-full bg-[var(--dk-surface-ghost-hover)] backdrop-blur-md">
               {currentTrack ? 'Now Playing' : 'Visualizer Ready'}
@@ -208,75 +268,6 @@ export const FullScreenMusicPlayer = ({ isOpen, onClose }: FullScreenMusicPlayer
                 {Math.round(frame.bpm!)} BPM
               </span>
             )}
-
-            {/* Visualizer Preset Selector Pod */}
-            <div className="relative flex items-center">
-              <div className="flex items-center gap-0.5 p-0.5 rounded-full bg-[var(--dk-surface-raised)]/70 backdrop-blur-md">
-                <button
-                  type="button"
-                  onClick={() => handleStepMode('prev')}
-                  className="h-6 w-6 flex items-center justify-center rounded-full text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-ghost)] transition-colors"
-                  title="Previous Preset"
-                  aria-label="Previous Preset"
-                >
-                  <ChevronLeft className="h-3.5 w-3.5" />
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setIsPresetsOpen((prev) => !prev)}
-                  className={cn(
-                    'flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded-full transition-all',
-                    isPresetsOpen
-                      ? 'bg-primary text-primary-foreground shadow-sm'
-                      : 'text-foreground hover:bg-[var(--dk-surface-ghost-hover)]',
-                  )}
-                  title="Select visualizer preset"
-                  aria-label="Select visualizer preset"
-                  aria-expanded={isPresetsOpen}
-                >
-                  <CurrentModeIcon
-                    className={cn(
-                      'h-3.5 w-3.5',
-                      isPresetsOpen ? 'text-primary-foreground' : 'text-primary',
-                    )}
-                  />
-                  <span>{currentModeOption.name}</span>
-                  <span
-                    className={cn(
-                      'text-[10px] font-mono font-semibold uppercase px-1.5 py-0.5 rounded',
-                      isPresetsOpen
-                        ? 'bg-primary-foreground/20 text-primary-foreground'
-                        : 'bg-primary/10 text-primary',
-                    )}
-                  >
-                    {currentModeOption.dimension}
-                  </span>
-                  <ChevronDown
-                    className={cn('h-3 w-3 opacity-70 transition-transform', isPresetsOpen && 'rotate-180')}
-                  />
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => handleStepMode('next')}
-                  className="h-6 w-6 flex items-center justify-center rounded-full text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-ghost)] transition-colors"
-                  title="Next Preset"
-                  aria-label="Next Preset"
-                >
-                  <ChevronRight className="h-3.5 w-3.5" />
-                </button>
-              </div>
-
-              {/* Preset Selector Popover Dropdown */}
-              <PresetSelectorPopover
-                isOpen={isPresetsOpen}
-                onClose={() => setIsPresetsOpen(false)}
-                currentMode={visualizerMode}
-                onSelectMode={handleSelectMode}
-                theme={theme}
-              />
-            </div>
           </div>
 
           {/* Center: Subtle Track Info in Header (Only when controls visible, never blocking visualizer) */}
@@ -297,11 +288,52 @@ export const FullScreenMusicPlayer = ({ isOpen, onClose }: FullScreenMusicPlayer
 
           {/* Right: Actions */}
           <div className="flex items-center gap-2">
+            {/* Visualizer Mode Switcher */}
+            <button
+              type="button"
+              onClick={cycleVisualizerMode}
+              className="h-9 px-3 flex items-center gap-2 rounded-xl backdrop-blur-md bg-[var(--dk-surface-raised)] hover:bg-[var(--dk-surface-ghost-hover)] text-foreground transition-all duration-200"
+              title={`Active visualizer: ${currentModeOption.name}. Click to switch mode.`}
+              aria-label={`Visualizer mode: ${currentModeOption.name}`}
+            >
+              <Box className="h-4 w-4 text-primary" />
+              <span className="text-xs font-medium">{currentModeOption.name}</span>
+            </button>
+
+            {/* Mesh Grid Parameters Controls Toggle (when in mesh-grid mode) */}
+            {visualizerMode === 'mesh-grid' && (
+              <button
+                type="button"
+                onClick={() => {
+                  setIsMeshControlsOpen((prev) => {
+                    const next = !prev
+                    if (next && isQueueOpen) toggleQueue()
+                    return next
+                  })
+                }}
+                className={cn(
+                  'h-9 px-3 flex items-center gap-2 rounded-xl backdrop-blur-md transition-colors',
+                  isMeshControlsOpen
+                    ? 'text-primary bg-[var(--dk-surface-ghost-hover)]'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-ghost)]',
+                )}
+                title="Mesh Grid Parameters Controls"
+                aria-label="Mesh Grid Parameters Controls"
+              >
+                <SlidersHorizontal className="h-4 w-4" />
+                <span className="text-xs font-medium hidden md:inline">Controls</span>
+              </button>
+            )}
 
             {/* Queue Toggle Button */}
             <button
               type="button"
-              onClick={toggleQueue}
+              onClick={() => {
+                if (!isQueueOpen && isMeshControlsOpen) {
+                  setIsMeshControlsOpen(false)
+                }
+                toggleQueue()
+              }}
               className={cn(
                 'h-9 px-3 flex items-center gap-2 rounded-xl backdrop-blur-md transition-colors',
                 isQueueOpen
@@ -312,7 +344,7 @@ export const FullScreenMusicPlayer = ({ isOpen, onClose }: FullScreenMusicPlayer
               aria-label="Toggle Queue"
             >
               <ListMusic className="h-4 w-4" />
-              {activeQueue.length > 0 && (
+              {(activeQueue?.length ?? 0) > 0 && (
                 <span className="text-[11px] font-mono px-1.5 py-0.2 rounded-full bg-[var(--dk-surface-raised)]">
                   {activeQueue.length}
                 </span>
@@ -350,7 +382,7 @@ export const FullScreenMusicPlayer = ({ isOpen, onClose }: FullScreenMusicPlayer
         {/* Center: Unobstructed Canvas Visualizer Area */}
         <div className="flex-1 min-h-0 pointer-events-none" />
 
-        {/* Layer 5: Floating Bottom Dock (Unified 2-Pod Design Matching Main Player) */}
+        {/* Layer 3: Floating Bottom Dock (Unified 2-Pod Design Matching Main Player) */}
         <footer
           className={cn(
             'relative z-20 flex items-center justify-center pb-8 px-6 transition-opacity duration-500 ease-out select-none',
@@ -481,7 +513,7 @@ export const FullScreenMusicPlayer = ({ isOpen, onClose }: FullScreenMusicPlayer
               </div>
             </div>
 
-            {/* Pod 2 (Right): Dominant Expansive Waveform Scrubber & Studio Controls */}
+            {/* Pod 2 (Right): Dominant Expansive Waveform Scrubber & Controls */}
             <div
               className="relative h-13 px-3 sm:px-4 rounded-2xl backdrop-blur-2xl flex items-center gap-2.5 sm:gap-3 shadow-xl flex-1 min-w-0 transition-[background,box-shadow] duration-500"
               style={{
@@ -575,7 +607,7 @@ export const FullScreenMusicPlayer = ({ isOpen, onClose }: FullScreenMusicPlayer
                 aria-label="Queue & Up Next"
               >
                 <ListMusic className="h-3.5 w-3.5" />
-                {activeQueue.length > 0 && (
+                {(activeQueue?.length ?? 0) > 0 && (
                   <span className="absolute -top-0.5 -right-0.5 h-3 min-w-[12px] px-0.5 rounded-full bg-primary text-primary-foreground text-[8px] font-mono flex items-center justify-center font-bold">
                     {activeQueue.length}
                   </span>
@@ -601,7 +633,7 @@ export const FullScreenMusicPlayer = ({ isOpen, onClose }: FullScreenMusicPlayer
         <FullScreenQueuePanel
           isOpen={isQueueOpen}
           onClose={() => toggleQueue()}
-          queue={activeQueue}
+          queue={activeQueue || []}
           currentTrack={currentTrack}
           theme={theme}
           repeatMode={repeatMode}
@@ -611,6 +643,21 @@ export const FullScreenMusicPlayer = ({ isOpen, onClose }: FullScreenMusicPlayer
           onSelectTrack={handleSelectTrack}
           onRemoveTrack={(idx) => removeFromQueue(idx)}
         />
+
+        {/* Slide-out Mesh Grid Controls Panel */}
+        {visualizerMode === 'mesh-grid' && (
+          <MeshGridControlsPanel
+            isOpen={isMeshControlsOpen}
+            onClose={() => setIsMeshControlsOpen(false)}
+            params={meshParams}
+            onParamChange={handleMeshParamChange}
+            onApplyPreset={handleApplyMeshPreset}
+            onResetParams={handleResetMeshParams}
+            onResetCamera={handleResetMeshCamera}
+            onSnapCamera={handleSnapCamera}
+            theme={theme}
+          />
+        )}
       </motion.div>
     </AnimatePresence>
   )

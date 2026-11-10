@@ -152,7 +152,7 @@ export function groupServerFilesByGame(files: ServerGameFile[] | undefined): Gro
   return mergeGroupsByCatalog(mergeAddonGroups(grouped))
 }
 
-function catalogIdOf(group: GroupedServerGame): string | undefined {
+export function catalogIdOf(group: GroupedServerGame): string | undefined {
   return group.primary.file.catalogItem?.id
     || group.games.find((item) => item.file.catalogItem?.id)?.file.catalogItem?.id
     || group.updates.find((item) => item.file.catalogItem?.id)?.file.catalogItem?.id
@@ -213,22 +213,119 @@ function mergeAddonGroups(groups: GroupedServerGame[]): GroupedServerGame[] {
   return groups.filter((group) => group.games.length > 0 || !used.has(group.gameKey))
 }
 
+const releaseKeyCache = new Map<string, string>()
+
+export function getReleaseGameKey(title: string | undefined): string {
+  if (!title) return ''
+  const cached = releaseKeyCache.get(title)
+  if (cached !== undefined) return cached
+  const key = parseReleaseTitle(title).gameKey || ''
+  if (releaseKeyCache.size > 10000) releaseKeyCache.clear()
+  releaseKeyCache.set(title, key)
+  return key
+}
+
+export interface ServerGroupIndex {
+  catalogIdMap: Map<string, GroupedServerGame>
+  gameKeyMap: Map<string, GroupedServerGame>
+  serverGameIdMap: Map<string, GroupedServerGame>
+  prefixGroups: GroupedServerGame[]
+}
+
+export function buildServerGroupIndex(groups: GroupedServerGame[]): ServerGroupIndex {
+  const catalogIdMap = new Map<string, GroupedServerGame>()
+  const gameKeyMap = new Map<string, GroupedServerGame>()
+  const serverGameIdMap = new Map<string, GroupedServerGame>()
+  const prefixGroups: GroupedServerGame[] = []
+
+  for (const group of groups) {
+    const id = catalogIdOf(group)
+    if (id && !catalogIdMap.has(id)) {
+      catalogIdMap.set(id, group)
+    }
+    if (group.gameKey) {
+      if (!gameKeyMap.has(group.gameKey)) gameKeyMap.set(group.gameKey, group)
+      const sId = serverGameId(group.gameKey)
+      if (!serverGameIdMap.has(sId)) serverGameIdMap.set(sId, group)
+    }
+    if (group.games.length === 0 && group.gameKey) {
+      prefixGroups.push(group)
+    }
+  }
+
+  return { catalogIdMap, gameKeyMap, serverGameIdMap, prefixGroups }
+}
+
+export class LocalGameMatcher {
+  private byCatalogId = new Map<string, LocalGame>()
+  private byServerId = new Map<string, LocalGame>()
+  private byGameKey = new Map<string, LocalGame>()
+  private items: { game: LocalGame; localKey: string }[] = []
+
+  constructor(initialGames: LocalGame[] = []) {
+    for (const game of initialGames) {
+      this.add(game)
+    }
+  }
+
+  add(game: LocalGame): void {
+    if (game.otixMediaId) {
+      if (!this.byCatalogId.has(game.otixMediaId)) this.byCatalogId.set(game.otixMediaId, game)
+    }
+    if (game.data?.id) {
+      if (!this.byCatalogId.has(game.data.id)) this.byCatalogId.set(game.data.id, game)
+    }
+    if (game.id) {
+      this.byServerId.set(game.id, game)
+    }
+    const localKey = getReleaseGameKey(game.title)
+    if (localKey) {
+      if (!this.byGameKey.has(localKey)) this.byGameKey.set(localKey, game)
+    }
+    this.items.push({ game, localKey })
+  }
+
+  findMatch(group: GroupedServerGame): LocalGame | undefined {
+    const catalogId = catalogIdOf(group)
+    if (catalogId) {
+      const match = this.byCatalogId.get(catalogId)
+      if (match) return match
+    }
+    const sId = serverGameId(group.gameKey)
+    const byIdMatch = this.byServerId.get(sId)
+    if (byIdMatch) return byIdMatch
+
+    if (group.gameKey) {
+      const byKeyMatch = this.byGameKey.get(group.gameKey)
+      if (byKeyMatch) return byKeyMatch
+    }
+
+    if (group.games.length === 0 && group.gameKey) {
+      for (const item of this.items) {
+        if (item.localKey && group.gameKey.startsWith(`${item.localKey} `)) {
+          return item.game
+        }
+      }
+    }
+    return undefined
+  }
+}
+
 export function isSameLauncherGame(local: LocalGame, file: ServerGameFile): boolean {
   const catalogId = file.catalogItem?.id
   if (catalogId && (local.otixMediaId === catalogId || local.data?.id === catalogId)) return true
   if (local.title && isTitleMatch(local.title, file.gameTitle)) return true
   if (file.catalogItem?.title && isTitleMatch(local.title, file.catalogItem.title)) return true
-  const localKey = parseReleaseTitle(local.title).gameKey
+  const localKey = getReleaseGameKey(local.title)
   const fileKey = parseServerFile(file).parsed.gameKey
   return Boolean(localKey && fileKey && localKey === fileKey)
 }
 
 export function matchesGroup(local: LocalGame, group: GroupedServerGame): boolean {
-  const catalogId = group.primary.file.catalogItem?.id
-    || group.games.find((item) => item.file.catalogItem?.id)?.file.catalogItem?.id
+  const catalogId = catalogIdOf(group)
   if (catalogId && (local.otixMediaId === catalogId || local.data?.id === catalogId)) return true
   if (local.id === serverGameId(group.gameKey)) return true
-  const localKey = parseReleaseTitle(local.title).gameKey
+  const localKey = getReleaseGameKey(local.title)
   if (localKey && localKey === group.gameKey) return true
   // Named DLC/update leftovers (e.g. "cyberpunk 2077 phantom liberty") attach to the parent title.
   return Boolean(group.games.length === 0 && localKey && group.gameKey.startsWith(`${localKey} `))
@@ -425,11 +522,15 @@ export function mergeLocalAndServerGames(
   const claimedServer = new Set<string>()
   const groups = groupServerFilesByGame(files)
 
+  const installedIndex = new LocalGameMatcher(installed)
+  const extrasIndex = new LocalGameMatcher()
+  const persistedIndex = new LocalGameMatcher(persistedServer)
+
   for (const group of groups) {
     const updates = groupedUpdateFiles(group)
-    const existing = installed.find((game) => matchesGroup(game, group))
-      || extras.find((game) => matchesGroup(game, group))
-      || persistedServer.find((game) => matchesGroup(game, group))
+    const existing = installedIndex.findMatch(group)
+      || extrasIndex.findMatch(group)
+      || persistedIndex.findMatch(group)
     if (existing) {
       existing.updateFiles = mergeUpdateFiles(existing.updateFiles, updates)
       applyCatalogToLocal(existing, group)
@@ -447,6 +548,7 @@ export function mergeLocalAndServerGames(
     const next = groupedServerGameToLocalGame(group)
     if (!hasCatalogMatch(next)) continue
     extras.push(next)
+    extrasIndex.add(next)
   }
 
   const keptServer = persistedServer.filter((game) => {
@@ -497,12 +599,13 @@ export function listFoundServerGames(
   const locals = (localGames || []).filter((game) => !isApplicationGame(game))
   const visibleIds = new Set(mergeLocalAndServerGames(localGames, files).map((game) => game.id))
   const found: FoundServerGame[] = []
+  const localsIndex = new LocalGameMatcher(locals)
 
   for (const group of groupServerFilesByGame(files)) {
     if (group.games.length === 0) continue
     if (isBinFile(group.primary.file)) continue
     const game = groupedServerGameToLocalGame(group)
-    const existing = existingForGroup(locals, group)
+    const existing = localsIndex.findMatch(group)
     if (existing && hasCatalogMatch(existing)) {
       applyCatalogToLocal(game, group)
       if (!game.otixMediaId) game.otixMediaId = existing.otixMediaId

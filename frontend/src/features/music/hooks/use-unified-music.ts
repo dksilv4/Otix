@@ -236,25 +236,42 @@ export const useUnifiedMusic = () => {
     return list.sort((a, b) => a.name.localeCompare(b.name))
   }, [localArtists, plexArtists, sourceFilter, debouncedSearch])
 
-  const { tracks: rawLocalTracks, getPlayableTrack } = localMusic
+  // Pre-index album art URLs to avoid eager blob creation for 30k+ tracks
+  const albumArtUrlMap = useMemo(() => {
+    const map = new Map<string, string | null>()
+    for (let i = 0; i < localAlbums.length; i++) {
+      const alb = localAlbums[i]
+      if (alb.thumbUrl) {
+        map.set(alb.title, alb.thumbUrl)
+        map.set(`${alb.artist}-${alb.title}`, alb.thumbUrl)
+      }
+    }
+    return map
+  }, [localAlbums])
 
-  // Map local tracks with stable dependencies
+  const { tracks: rawLocalTracks } = localMusic
+
+  // Map local tracks with O(1) album art lookup and zero object URL churn
   const localTracks = useMemo<UnifiedTrack[]>(() => {
     return rawLocalTracks.map((t) => {
-      const playable = getPlayableTrack(t)
+      const art =
+        albumArtUrlMap.get(`${t.artist}-${t.albumName}`) ??
+        albumArtUrlMap.get(t.albumName) ??
+        null
+
       return {
         id: t.id,
         title: t.title,
         artist: t.artist,
         albumName: t.albumName,
-        thumbUrl: playable.albumArt ?? null,
+        thumbUrl: art,
         durationMs: t.durationMs,
         trackNumber: t.trackNumber,
         source: 'local',
         rawLocalTrack: t,
       }
     })
-  }, [rawLocalTracks, getPlayableTrack])
+  }, [rawLocalTracks, albumArtUrlMap])
 
   // Map Plex tracks
   const plexTracks = useMemo<UnifiedTrack[]>(() => {
@@ -351,7 +368,11 @@ export const useUnifiedMusic = () => {
   const playAlbumInContext = useCallback(
     async (album: UnifiedAlbum, startIndex = 0) => {
       if (album.source === 'local') {
-        await playLocalAlbum(album.title, startIndex)
+        if (album.tracks && album.tracks.length > 0) {
+          await playLocalTracksInContext(album.tracks, startIndex)
+        } else {
+          await playLocalAlbum(album.title, startIndex)
+        }
       } else if (album.ratingKey) {
         await playPlexAlbumByRatingKey(
           album.ratingKey,
@@ -361,7 +382,7 @@ export const useUnifiedMusic = () => {
         )
       }
     },
-    [playLocalAlbum, playPlexAlbumByRatingKey],
+    [playLocalAlbum, playLocalTracksInContext, playPlexAlbumByRatingKey],
   )
 
   // Play artist in context: automatically queues all artist tracks

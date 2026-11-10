@@ -33,42 +33,42 @@ export const MinimalLauncherView = () => {
   }
 
   return (
-    <div className="relative w-full h-full bg-[#0d0d0f] text-neutral-200 flex select-none overflow-hidden font-sans">
+    <div className="relative w-full h-full bg-[var(--dk-surface-base)] text-foreground flex select-none overflow-hidden font-sans">
       {/* Left Clean Editorial Index */}
-      <aside className="w-80 lg:w-96 border-r border-white/[0.08] flex flex-col justify-between p-8 shrink-0 bg-[#0a0a0c]">
+      <aside className="w-80 lg:w-96 border-r border-white/[0.04] flex flex-col justify-between p-8 shrink-0 bg-[var(--dk-surface-subtle)]">
         <div className="space-y-8">
           {/* Brand header */}
           <div className="flex items-center justify-between">
             <button
               onClick={() => navigate({ to: "/" })}
               title="Return to Otix"
-              className="flex items-center gap-2 text-neutral-400 hover:text-white transition-colors cursor-pointer text-xs uppercase tracking-widest font-semibold"
+              className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors cursor-pointer text-xs uppercase tracking-widest font-semibold"
             >
               <ArrowLeft size={14} />
               <span>Otix</span>
             </button>
-            <span className="text-[10px] tracking-widest uppercase font-mono text-neutral-500">
+            <span className="text-[10px] tracking-widest uppercase font-mono text-muted-foreground/60">
               V8 · Minimal
             </span>
           </div>
 
           {/* User info */}
           <div className="pt-2 border-t border-white/5 flex items-center justify-between">
-            <span className="text-xs text-neutral-400">Library</span>
-            <span className="text-xs font-mono text-neutral-300">
+            <span className="text-xs text-muted-foreground">Library</span>
+            <span className="text-xs font-mono text-foreground">
               {filteredGames.length} titles
             </span>
           </div>
 
           {/* Clean search */}
           <div className="relative">
-            <Search className="absolute left-0 top-1/2 -translate-y-1/2 text-neutral-500" size={13} />
+            <Search className="absolute left-0 top-1/2 -translate-y-1/2 text-muted-foreground" size={13} />
             <input
               type="text"
               placeholder="Search library..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-transparent pl-6 pr-2 py-1 text-xs text-neutral-200 placeholder-neutral-600 border-b border-neutral-800 focus:border-neutral-400 outline-none transition-colors"
+              className="w-full bg-transparent pl-6 pr-2 py-1 text-xs text-foreground placeholder:text-muted-foreground/50 border-b border-white/[0.06] focus:border-primary outline-none transition-colors"
             />
           </div>
 
@@ -82,12 +82,12 @@ export const MinimalLauncherView = () => {
                   onClick={() => selectGame(game.id)}
                   className={`group flex items-center justify-between py-2 px-2.5 rounded cursor-pointer transition-all ${
                     isSelected
-                      ? "text-white font-bold bg-white/10"
-                      : "text-neutral-500 hover:text-neutral-200"
+                      ? "text-primary font-bold bg-primary/10"
+                      : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
                   <span className="text-xs truncate">{game.title}</span>
-                  <span className="text-[10px] font-mono text-neutral-600 group-hover:text-neutral-400">
+                  <span className="text-[10px] font-mono text-muted-foreground/60 group-hover:text-muted-foreground">
                     {String(i + 1).padStart(2, "0")}
                   </span>
                 </div>
@@ -97,11 +97,11 @@ export const MinimalLauncherView = () => {
         </div>
 
         {/* User Pill Footer */}
-        <div className="pt-4 border-t border-white/5 flex items-center justify-between text-xs text-neutral-500">
+        <div className="pt-4 border-t border-white/5 flex items-center justify-between text-xs text-muted-foreground">
           <span>{user?.username || (isAuthenticated ? "Player" : "Guest")}</span>
           <button
             onClick={() => navigate({ to: '/settings/launcher' })}
-            className="hover:text-white transition-colors cursor-pointer"
+            className="hover:text-foreground transition-colors cursor-pointer"
           >
             Settings
           </button>
@@ -114,34 +114,36 @@ export const MinimalLauncherView = () => {
           <div className="max-w-4xl space-y-10">
             {/* Top metadata */}
             <div className="space-y-3">
-              <div className="flex items-center gap-3 text-xs tracking-widest uppercase text-neutral-500 font-mono">
+              <div className="flex items-center gap-3 text-xs tracking-widest uppercase text-muted-foreground font-mono">
                 <span>{activeGame.platform}</span>
                 <span>/</span>
                 <span>{activeGame.data?.releaseDate ? new Date(activeGame.data.releaseDate).getFullYear() : "Archived"}</span>
                 {activeGame.data?.avgRating && (
                   <>
                     <span>/</span>
-                    <span className="text-neutral-300">Rating {activeGame.data.avgRating}%</span>
+                    <span className="text-foreground">Rating {activeGame.data.avgRating}%</span>
                   </>
                 )}
               </div>
 
-              <h1 className="text-5xl lg:text-6xl font-light tracking-tight text-white">
+              <h1 className="text-5xl lg:text-6xl font-light tracking-tight text-foreground">
                 {activeGame.title}
               </h1>
 
-              <p className="text-sm text-neutral-400 leading-relaxed font-light max-w-2xl pt-2">
+              <p className="text-sm text-muted-foreground leading-relaxed font-light max-w-2xl pt-2">
                 {activeGame.description || activeGame.data?.overview}
               </p>
             </div>
 
             {/* Clean Full-Width Hero Art View */}
-            <div className="relative aspect-[21/9] rounded-xl overflow-hidden bg-neutral-900 border border-white/5 shadow-2xl">
+            <div className="relative aspect-[21/9] rounded-xl overflow-hidden bg-[var(--dk-surface-field)] border border-white/[0.04] shadow-2xl">
               {activeGame.otixBackdropUrl || activeGame.data?.backdropUrl || activeGame.posterUrl ? (
                 <img
                   src={activeGame.otixBackdropUrl || activeGame.data?.backdropUrl || activeGame.posterUrl || ""}
                   alt={activeGame.title}
                   className="w-full h-full object-cover filter brightness-95 contrast-105"
+                  loading="lazy"
+                  decoding="async"
                 />
               ) : null}
             </div>
@@ -150,15 +152,15 @@ export const MinimalLauncherView = () => {
             <div className="flex items-center gap-4 pt-4">
               <button
                 onClick={() => handlePlayGame(activeGame)}
-                className="flex items-center gap-2.5 px-8 py-3 rounded-full bg-white text-black font-semibold text-xs uppercase tracking-wider hover:bg-neutral-200 transition-colors cursor-pointer"
+                className="flex items-center gap-2.5 px-8 py-3 rounded-full bg-primary text-primary-foreground font-semibold text-xs uppercase tracking-wider hover:bg-primary/90 transition-colors cursor-pointer shadow-lg shadow-primary/25"
               >
-                <Play size={14} fill="black" />
+                <Play size={14} fill="currentColor" />
                 <span>Launch Title</span>
               </button>
 
               <button
                 onClick={() => setDetailGame(activeGame)}
-                className="flex items-center gap-2 px-6 py-3 rounded-full border border-white/20 text-white hover:bg-white/5 text-xs font-semibold uppercase tracking-wider transition-colors cursor-pointer"
+                className="flex items-center gap-2 px-6 py-3 rounded-full border border-white/20 text-foreground hover:bg-white/5 text-xs font-semibold uppercase tracking-wider transition-colors cursor-pointer"
               >
                 <Sliders size={13} />
                 <span>Details & Art</span>
@@ -166,10 +168,10 @@ export const MinimalLauncherView = () => {
             </div>
           </div>
         ) : (
-          <div className="text-neutral-500 text-sm">No title selected.</div>
+          <div className="text-muted-foreground text-sm">No title selected.</div>
         )}
 
-        <div className="pt-12 text-xs text-neutral-600 font-mono flex items-center justify-between">
+        <div className="pt-12 text-xs text-muted-foreground/60 font-mono flex items-center justify-between">
           <span>OTIX ZEN GALLERY</span>
           <span>PRESS ALT+T FOR THEMES</span>
         </div>

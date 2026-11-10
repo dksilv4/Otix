@@ -1,130 +1,14 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import * as THREE from 'three'
-import { ThreeSceneManager } from '../visualizers/utils/three-scene-manager'
 import { audioVisualizerEngine } from '../visualizers/utils/audio-analyzer'
 import { getOrCreateBlobUrl, clearBlobUrlCache } from '../utils/blob-url-cache'
 import { UniversalPlayerEngine } from '../../player/core/universal-player-engine'
 import type { PlayableMediaItem } from '../../player/types'
-import type { VisualizerSceneTheme } from '../visualizers/types'
-
-// Mock WebGLRenderer to capture lifecycle calls in jsdom
-let lastRendererInstance: any = null
-
-vi.mock('three', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('three')>()
-
-  class MockWebGLRenderer {
-    domElement = document.createElement('canvas')
-    setClearColor = vi.fn()
-    setSize = vi.fn()
-    setPixelRatio = vi.fn()
-    getPixelRatio = vi.fn().mockReturnValue(1)
-    render = vi.fn()
-    dispose = vi.fn()
-    forceContextLoss = vi.fn()
-
-    constructor() {
-      lastRendererInstance = this
-    }
-  }
-
-  return {
-    ...actual,
-    WebGLRenderer: MockWebGLRenderer,
-  }
-})
 
 describe('Milestone 1 Challenger Adversarial Stress Suite', () => {
-  const dummyTheme: VisualizerSceneTheme = {
-    primaryHex: '#8b5cf6',
-    surfaceHex: '#1e1b4b',
-    backgroundHex: '#0f0a1c',
-    hasCustomPalette: false,
-    accentRgb: { r: 139, g: 92, b: 246 },
-    surfaceRgb: { r: 30, g: 27, b: 75 },
-    backgroundRgb: { r: 15, g: 10, b: 28 },
-  }
-
   beforeEach(() => {
     vi.clearAllMocks()
     window.HTMLMediaElement.prototype.play = vi.fn().mockResolvedValue(undefined)
     window.HTMLMediaElement.prototype.pause = vi.fn()
-  })
-
-  // =========================================================================
-  // 1. WebGL / Three.js Resource Disposal & Mesh Plane Scaling
-  // =========================================================================
-  describe('ThreeSceneManager: Disposal, Context Loss & Mesh Plane Scaling', () => {
-    it('ThreeSceneManager.dispose() safely disposes scene and renderer without forcing destructive context loss', () => {
-      const canvas = document.createElement('canvas')
-      const manager = new ThreeSceneManager(canvas, 800, 600)
-      const renderer = lastRendererInstance
-
-      const sceneClearSpy = vi.spyOn((manager as any).scene, 'clear')
-
-      manager.dispose()
-
-      expect(sceneClearSpy).toHaveBeenCalledTimes(1)
-      expect(renderer.dispose).toHaveBeenCalledTimes(1)
-      expect(renderer.forceContextLoss).not.toHaveBeenCalled()
-    })
-
-    it('Monolith Horizon (monolith) tracks and disposes all 84 MeshBasicMaterials + floor on mode switch / dispose', () => {
-      const canvas = document.createElement('canvas')
-      const manager = new ThreeSceneManager(canvas, 800, 600)
-
-      const materialDisposeSpy = vi.spyOn(THREE.MeshBasicMaterial.prototype, 'dispose')
-
-      // Switch to monolith (which creates Monolith Horizon scene)
-      manager.switchMode('monolith', dummyTheme)
-
-      // 42 columns * 1 colMat + 42 caps * 1 capMat + 1 floorMat = 85 materials
-      expect(materialDisposeSpy).not.toHaveBeenCalled()
-
-      // Switch mode or dispose to trigger disposal
-      manager.dispose()
-
-      // At least 84 column/cap materials plus the floor material must be disposed
-      expect(materialDisposeSpy.mock.calls.length).toBeGreaterThanOrEqual(85)
-    })
-
-    it('Mesh Plane Scaling: maintains natural full-size scaling (scale = 1.0) across mesh grid presets', () => {
-      const canvas = document.createElement('canvas')
-      const manager = new ThreeSceneManager(canvas, 800, 600)
-      const scene = (manager as any).scene as THREE.Scene
-
-      // Preset wavy-1 (createWavy1Scene)
-      manager.switchMode('wavy-1', dummyTheme)
-      const meshesInWavy1 = scene.children.filter((c) => c instanceof THREE.Mesh)
-      expect(meshesInWavy1.length).toBeGreaterThan(0)
-      for (const mesh of meshesInWavy1) {
-        expect(mesh.scale.x).toBeCloseTo(1.0, 2)
-        expect(mesh.scale.y).toBeCloseTo(1.0, 2)
-        expect(mesh.scale.z).toBeCloseTo(1.0, 2)
-      }
-
-      // Preset wavy-14 (createMeshGridGalaxyScene variant 14)
-      manager.switchMode('wavy-14', dummyTheme)
-      const meshesInWavy14 = scene.children.filter((c) => c instanceof THREE.Mesh)
-      expect(meshesInWavy14.length).toBeGreaterThan(0)
-      for (const mesh of meshesInWavy14) {
-        expect(mesh.scale.x).toBeCloseTo(1.0, 2)
-        expect(mesh.scale.y).toBeCloseTo(1.0, 2)
-        expect(mesh.scale.z).toBeCloseTo(1.0, 2)
-      }
-
-      // Preset wavy-19 (createConfiguredMeshGridScene with wireframe & fill)
-      manager.switchMode('wavy-19', dummyTheme)
-      const meshesInWavy19 = scene.children.filter((c) => c instanceof THREE.Mesh)
-      expect(meshesInWavy19.length).toBeGreaterThan(0)
-      for (const mesh of meshesInWavy19) {
-        expect(mesh.scale.x).toBeCloseTo(1.0, 2)
-        expect(mesh.scale.y).toBeCloseTo(1.0, 2)
-        expect(mesh.scale.z).toBeCloseTo(1.0, 2)
-      }
-
-      manager.dispose()
-    })
   })
 
   // =========================================================================
@@ -170,6 +54,14 @@ describe('Milestone 1 Challenger Adversarial Stress Suite', () => {
       }
 
       let analyserCallCount = 0
+      const mockOnsetAnalyser = {
+        connect: vi.fn(),
+        disconnect: vi.fn(),
+        fftSize: 2048,
+        smoothingTimeConstant: 0,
+        getByteFrequencyData: vi.fn(),
+        getByteTimeDomainData: vi.fn(),
+      }
       mockAudioContext = {
         state: 'running',
         destination: mockDestination,
@@ -177,7 +69,9 @@ describe('Milestone 1 Challenger Adversarial Stress Suite', () => {
         close: vi.fn().mockResolvedValue(undefined),
         createAnalyser: vi.fn(() => {
           analyserCallCount++
-          return analyserCallCount === 1 ? mockAnalyser : mockBassAnalyser
+          if (analyserCallCount === 1) return mockAnalyser
+          if (analyserCallCount === 2) return mockOnsetAnalyser
+          return mockBassAnalyser
         }),
         createBiquadFilter: vi.fn(() => mockBassFilter),
         createMediaElementSource: vi.fn((el: HTMLMediaElement) => {

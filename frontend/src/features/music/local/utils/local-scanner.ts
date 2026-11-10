@@ -213,6 +213,11 @@ export const buildLocalTrackInfo = (
   let playUrl = fallbackUrl || ''
   if (file) {
     playUrl = getOrCreateBlobUrl(file) || fallbackUrl || ''
+  } else if (!playUrl && stored.path && (/^([a-zA-Z]:[\\/]|\\\\|\/)/.test(stored.path))) {
+    const isDesktop = typeof window !== 'undefined' && Boolean((window as any).desktopAPI)
+    if (isDesktop) {
+      playUrl = `local-media://localhost?path=${encodeURIComponent(stored.path)}`
+    }
   }
 
   let albumArtUrl: string | null = null
