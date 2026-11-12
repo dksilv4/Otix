@@ -9,9 +9,9 @@ import {
   PictureInPicture2,
   Volume2,
   VolumeX,
-  Loader2,
   GripHorizontal,
 } from 'lucide-react'
+import { Logo } from '@ui/atoms/logo'
 import { cn } from '@/lib/utils'
 import { formatSeconds, calculateProgressFromEvent } from '../../utils/player'
 
@@ -122,12 +122,16 @@ export const MediaPlayerInAppPipOverlay = ({
         />
       </div>
 
-      {/* Buffering Indicator */}
+      {/* Buffering Indicator - pure Otix loading logo */}
       {isBuffering && (
-        <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/40 backdrop-blur-[2px] pointer-events-none">
-          <div className="p-2.5 rounded-2xl bg-[var(--dk-surface-base)]/80 border border-white/[0.06] shadow-xl flex items-center gap-2">
-            <Loader2 className="h-4 w-4 text-primary animate-spin" />
-            <span className="text-[11px] font-semibold text-foreground uppercase tracking-wider">Buffering</span>
+        <div
+          role="status"
+          aria-live="polite"
+          className="absolute inset-0 z-20 flex items-center justify-center bg-black/40 backdrop-blur-[2px] pointer-events-none"
+        >
+          <div className="p-2.5 rounded-full bg-black/50 border border-white/[0.04] shadow-xl flex items-center justify-center">
+            <Logo animateInfinity className="h-5 w-5 text-primary" />
+            <span className="sr-only">Buffering...</span>
           </div>
         </div>
       )}
