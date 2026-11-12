@@ -191,7 +191,7 @@ export const MediaStickyHeader = ({ detail, mediaType }: MediaStickyHeaderProps)
             {detail.title}
           </h2>
           {year && (
-            <span className="text-[11px] sm:text-xs text-muted-foreground shrink-0 font-medium hidden sm:inline">
+            <span className="text-[11px] sm:text-xs text-muted-foreground shrink-0 font-medium hidden sm:inline tabular-nums">
               ({year})
             </span>
           )}
@@ -204,7 +204,7 @@ export const MediaStickyHeader = ({ detail, mediaType }: MediaStickyHeaderProps)
         {detail.overallRating != null && (
           <div className="hidden sm:flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/15 text-primary text-[11px] font-bold shrink-0">
             <Star className="h-3 w-3 fill-current" />
-            <span>{Math.round(detail.overallRating)}%</span>
+            <span className="tabular-nums">{Math.round(detail.overallRating)}%</span>
           </div>
         )}
 
@@ -254,6 +254,7 @@ export const MediaStickyHeader = ({ detail, mediaType }: MediaStickyHeaderProps)
                 : 'bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-glass-hover)] text-foreground',
             )}
             title={isWatchlisted ? `In ${watchlistLabel}` : `Add to ${watchlistLabel}`}
+            aria-label={isWatchlisted ? `In ${watchlistLabel}` : `Add to ${watchlistLabel}`}
           >
             <Bookmark className={cn('h-3.5 w-3.5', isWatchlisted && 'fill-current text-primary')} />
             <span className={placement === 'between' ? 'hidden xl:inline' : 'hidden md:inline'}>
@@ -274,6 +275,7 @@ export const MediaStickyHeader = ({ detail, mediaType }: MediaStickyHeaderProps)
                 : 'bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-glass-hover)] text-foreground',
             )}
             title={isWatched ? `Marked as ${watchedLabel}` : `Mark ${watchedLabel}`}
+            aria-label={isWatched ? `Marked as ${watchedLabel}` : `Mark ${watchedLabel}`}
           >
             <CheckCircle2 className={cn('h-3.5 w-3.5', isWatched && 'text-primary')} />
             <span className={placement === 'between' ? 'hidden xl:inline' : 'hidden md:inline'}>
@@ -290,12 +292,13 @@ export const MediaStickyHeader = ({ detail, mediaType }: MediaStickyHeaderProps)
             className={cn(
               'inline-flex items-center justify-center rounded-full p-1.5 text-xs transition-all shrink-0 active:scale-95',
               isLiked
-                ? 'bg-rose-500/20 text-rose-600 dark:text-rose-400'
+                ? 'bg-destructive/20 text-destructive'
                 : 'bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-glass-hover)] text-muted-foreground hover:text-foreground',
             )}
             title={isLiked ? 'Liked' : 'Like'}
+            aria-label={isLiked ? 'Liked' : 'Like'}
           >
-            <Heart className={cn('h-3.5 w-3.5', isLiked && 'fill-current text-rose-600 dark:text-rose-400')} />
+            <Heart className={cn('h-3.5 w-3.5', isLiked && 'fill-current text-destructive')} />
           </button>
         )}
 

@@ -97,8 +97,8 @@ export const MediaGallery = ({
       {/* ── Header with Category Tabs & Nav Chevrons ── */}
       <div className="px-6 sm:px-7 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <h2 className="text-base font-semibold tracking-tight">Media Gallery</h2>
-          <span className="text-xs text-muted-foreground font-medium">
+          <h2 className="text-base font-semibold tracking-tight text-balance">Media Gallery</h2>
+          <span className="text-xs text-muted-foreground font-medium tabular-nums">
             ({parsedVideos.length + validScreenshots.length})
           </span>
         </div>
@@ -106,9 +106,11 @@ export const MediaGallery = ({
         {/* Tab Pills & Scroll Arrows */}
         <div className="flex items-center gap-3">
           {showTabs && (
-            <div className="flex items-center gap-1 rounded-xl bg-[var(--dk-surface-glass)] p-0.5 overflow-x-auto scrollbar-none">
+            <div className="flex items-center gap-1 rounded-xl bg-[var(--dk-surface-glass)] p-0.5 overflow-x-auto scrollbar-none" role="tablist" aria-label="Media gallery filters">
               <button
                 type="button"
+                role="tab"
+                aria-selected={activeTab === 'all'}
                 onClick={() => {
                   setActiveTab('all')
                   if (scrollRef.current) scrollRef.current.scrollLeft = 0
@@ -124,6 +126,8 @@ export const MediaGallery = ({
               </button>
               <button
                 type="button"
+                role="tab"
+                aria-selected={activeTab === 'videos'}
                 onClick={() => {
                   setActiveTab('videos')
                   if (scrollRef.current) scrollRef.current.scrollLeft = 0
@@ -139,6 +143,8 @@ export const MediaGallery = ({
               </button>
               <button
                 type="button"
+                role="tab"
+                aria-selected={activeTab === 'screenshots'}
                 onClick={() => {
                   setActiveTab('screenshots')
                   if (scrollRef.current) scrollRef.current.scrollLeft = 0

@@ -62,10 +62,10 @@ export const MediaDetailLoading = ({
             loading="eager"
             fetchPriority="high"
             decoding="async"
-            className="h-full w-full object-cover blur-2xl scale-110 brightness-[0.25] saturate-125"
+            className="h-full w-full object-cover blur-2xl scale-110 brightness-[0.25] saturate-125 motion-safe:[animation:kenBurns_32s_ease-out_forwards]"
             style={{
               objectPosition: 'center 25%',
-              animation: 'kenBurns 32s ease-out forwards',
+
             }}
           />
           {/* Ambient radial blur + multi-stop veil */}

@@ -1,3 +1,5 @@
+import { Link } from '@tanstack/react-router'
+
 export const ErrorState = ({ mediaType }: { mediaType: string }) => {
   const typeLabel =
     mediaType === 'movie'
@@ -13,6 +15,7 @@ export const ErrorState = ({ mediaType }: { mediaType: string }) => {
       <div className="max-w-sm space-y-3 text-center">
         <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10">
           <svg
+            aria-hidden="true"
             xmlns="http://www.w3.org/2000/svg"
             className="h-6 w-6 text-destructive"
             fill="none"
@@ -27,13 +30,13 @@ export const ErrorState = ({ mediaType }: { mediaType: string }) => {
             />
           </svg>
         </div>
-        <h3 className="text-lg font-semibold">{typeLabel} Not Found</h3>
+        <h3 className="text-lg font-semibold text-balance">{typeLabel} Not Found</h3>
         <p className="text-sm text-muted-foreground">
           Could not load details for this {typeLabel.toLowerCase()}. It may have been removed or the ID is incorrect.
         </p>
-        <a href="/" className="inline-block text-sm text-primary hover:underline">
-          Go back home
-        </a>
+        <Link to="/" className="inline-block text-sm font-medium text-primary hover:underline">
+          Back to Home
+        </Link>
       </div>
     </div>
   )

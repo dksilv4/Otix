@@ -324,13 +324,17 @@ export function useMediaDetailPluginActions(
   }
 
   const handlePlay = async (pluginId: string, instance: PlayInstance) => {
-    if (pluginId === 'backend-plex') {
-      try {
-        if (instance.streamSession) {
-          streamPlayer.openStream(instance.streamSession)
-          return
-        }
+    if (instance.streamSession) {
+      streamPlayer.openStream(instance.streamSession)
+      return
+    }
 
+    if (
+      pluginId === 'backend-plex' ||
+      instance.provider === 'plex' ||
+      Boolean(instance.baseUrl && instance.token && instance.ratingKey)
+    ) {
+      try {
         const baseUrl = instance.baseUrl || ''
         const token = instance.token || ''
         const ratingKey = instance.ratingKey || ''
@@ -362,6 +366,11 @@ export function useMediaDetailPluginActions(
           return
         }
 
+        if ((instance as any).streamSession) {
+          streamPlayer.openStream((instance as any).streamSession)
+          return
+        }
+
         const session = buildPlexPlaybackSession(
           {
             baseUrl,
@@ -379,6 +388,9 @@ export function useMediaDetailPluginActions(
             hlsUrl: instance.hlsUrl,
             audioTracks: instance.audioTracks,
             subtitles: instance.subtitles,
+            container: (instance as any).container,
+            videoCodec: (instance as any).videoCodec,
+            audioCodec: (instance as any).audioCodec,
           },
           {
             title: instance.title || mediaTitle || 'Movie',

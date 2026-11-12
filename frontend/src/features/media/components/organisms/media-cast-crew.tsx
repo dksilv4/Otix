@@ -73,19 +73,21 @@ export const CastCrew = ({ credits = [], className = '' }: CastCrewProps) => {
       {/* ── Header with Category Tabs & Nav Chevrons ── */}
       <div className="px-6 sm:px-7 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h2 className="text-base font-semibold tracking-tight">Cast &amp; Crew</h2>
+          <h2 className="text-base font-semibold tracking-tight text-balance">Cast &amp; Crew</h2>
         </div>
 
         <div className="flex items-center gap-2 sm:gap-3 flex-wrap sm:flex-nowrap">
           {/* Segmented Category Filter */}
           {categories.length > 1 && (
-            <div className="flex items-center gap-1 rounded-xl bg-[var(--dk-surface-glass)] p-0.5 overflow-x-auto scrollbar-none">
+            <div className="flex items-center gap-1 rounded-xl bg-[var(--dk-surface-glass)] p-0.5 overflow-x-auto scrollbar-none" role="tablist" aria-label="Credits categories">
               {categories.map((cat) => {
                 const isActive = activeTab === cat.key
                 return (
                   <button
                     key={cat.key}
                     type="button"
+                    role="tab"
+                    aria-selected={isActive}
                     onClick={() => {
                       setActiveTab(cat.key)
                       if (scrollRef.current) scrollRef.current.scrollLeft = 0
@@ -98,7 +100,7 @@ export const CastCrew = ({ credits = [], className = '' }: CastCrewProps) => {
                     )}
                   >
                     {cat.label}
-                    <span className="ml-1 text-[10px] opacity-60">({cat.count})</span>
+                    <span className="ml-1 text-[10px] opacity-60 tabular-nums">({cat.count})</span>
                   </button>
                 )
               })}
@@ -113,7 +115,7 @@ export const CastCrew = ({ credits = [], className = '' }: CastCrewProps) => {
               className="text-xs font-medium text-muted-foreground hover:text-foreground transition-all inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-base)] shadow-xs active:scale-95 cursor-pointer"
             >
               <span>View all</span>
-              <span className="text-[10px] opacity-70 font-semibold">({activeCategory.items.length})</span>
+              <span className="text-[10px] opacity-70 font-semibold tabular-nums">({activeCategory.items.length})</span>
             </button>
           )}
 

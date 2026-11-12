@@ -134,7 +134,7 @@ export const RatingsHub = ({
                 colors.glow,
               )}
             >
-              <span className="text-2xl leading-none tracking-tight">
+              <span className="text-2xl leading-none tracking-tight tabular-nums">
                 {hasOverall ? Math.round(score) : '—'}
               </span>
               <span className="text-[9px] font-bold uppercase tracking-wider opacity-60 mt-0.5">
@@ -146,7 +146,7 @@ export const RatingsHub = ({
               <div className="flex items-center gap-1.5">
                 <span className="text-xs font-semibold text-foreground">Otix Community</span>
                 {avgRating && (
-                  <span className="text-[11px] text-[var(--status-warning)] font-medium">({(avgRating / 2).toFixed(1)}/5 ★)</span>
+                  <span className="text-[11px] text-[var(--status-warning)] font-medium tabular-nums">({(avgRating / 2).toFixed(1)}/5 ★)</span>
                 )}
               </div>
               <p className="text-[11px] text-muted-foreground truncate">{subtitle}</p>
@@ -178,6 +178,7 @@ export const RatingsHub = ({
             <button
               type="button"
               onClick={() => handleRateQuick(0)}
+              aria-label="Clear your rating"
               className="text-[11px] text-muted-foreground/70 hover:text-destructive transition-colors"
             >
               Clear
@@ -250,7 +251,7 @@ export const RatingsHub = ({
             <div className="flex items-center justify-center min-h-[24px]">
               {activeDisplayScore != null && activeDisplayScore > 0 ? (
                 <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-[var(--status-warning)]/15 text-xs font-semibold text-[var(--status-warning)] animate-fade-in">
-                  <span>
+                  <span className="tabular-nums">
                     {(activeDisplayScore / 2).toFixed(activeDisplayScore % 2 === 0 ? 0 : 1)} / 5 ★
                   </span>
                   {activeLabel && (
@@ -262,7 +263,7 @@ export const RatingsHub = ({
                 </div>
               ) : (
                 <span className="text-xs text-muted-foreground/60">
-                  Tap or hover to rate (0.5 – 5 ★)
+                  Tap or hover to rate (0.5–5 ★)
                 </span>
               )}
             </div>
@@ -319,7 +320,7 @@ export const RatingsHub = ({
               {review.title && (
                 <p className="text-xs font-semibold text-foreground line-clamp-1">{review.title}</p>
               )}
-              <p className="text-xs text-muted-foreground line-clamp-3 leading-relaxed">
+              <p className="text-xs text-muted-foreground line-clamp-3 leading-relaxed text-pretty">
                 &ldquo;{review.content}&rdquo;
               </p>
             </div>
@@ -335,12 +336,12 @@ export const RatingsHub = ({
                     <Sparkles className="h-5 w-5" />
                   </div>
                   <div className="min-w-0">
-                    <h4 className="text-xs font-semibold text-foreground group-hover:text-primary transition-colors flex items-center gap-1.5">
+                    <h3 className="text-xs font-semibold text-foreground group-hover:text-primary transition-colors flex items-center gap-1.5">
                       Write a Review
                       <span className="inline-block transition-transform duration-200 group-hover:translate-x-0.5">
                         →
                       </span>
-                    </h4>
+                    </h3>
                     <p className="text-[11px] text-muted-foreground mt-0.5 truncate">
                       Share your thoughts and critique with the community
                     </p>

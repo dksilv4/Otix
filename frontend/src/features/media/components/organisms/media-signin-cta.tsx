@@ -6,25 +6,25 @@ export const SignInCTA = () => {
 
   return (
     <div>
-      <div className="glass-card relative overflow-hidden isolate p-8 transition-all duration-300 group">
+      <div className="glass-card relative overflow-hidden isolate p-8 transition-colors duration-300 group">
         {/* Soft structural glow strictly contained inside */}
         <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-[inherit]">
-          <div className="pointer-events-none absolute top-0 right-0 h-48 w-48 rounded-full bg-primary/5 blur-2xl group-hover:bg-primary/10 transition-all duration-500" />
+          <div className="pointer-events-none absolute top-0 right-0 h-48 w-48 rounded-full bg-primary/5 blur-2xl group-hover:bg-primary/10 transition-colors duration-500" />
         </div>
         
         <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-8">
           <div className="flex flex-col sm:flex-row items-center gap-6 text-center sm:text-left">
             {/* Minimalist Logo container */}
-            <div className="relative shrink-0 p-3.5 rounded-2xl bg-[var(--dk-surface-glass)] border border-[var(--dk-separator)] transition-colors duration-300 group-hover:bg-[var(--dk-surface-glass-hover)]">
+            <div className="relative shrink-0 p-3.5 rounded-2xl bg-[var(--dk-surface-glass)] border border-white/[0.04] transition-colors duration-300 group-hover:bg-[var(--dk-surface-glass-hover)]">
               <Logo className="h-9 w-auto text-foreground transition-opacity duration-300 opacity-90 group-hover:opacity-100" />
             </div>
 
             <div className="space-y-1">
-              <h3 className="text-xl md:text-2xl font-semibold text-foreground tracking-tight">
+              <h3 className="text-xl md:text-2xl font-semibold text-foreground tracking-tight text-balance">
                 Unlock Your Personal Library
               </h3>
               <p className="text-muted-foreground text-sm md:text-base max-w-lg leading-relaxed font-normal">
-                Sign in to track what you've watched, customize your lists, and rate titles with the community.
+                Sign in to track what you’ve watched, customize your lists, and rate titles with the community.
               </p>
             </div>
           </div>
@@ -32,7 +32,7 @@ export const SignInCTA = () => {
           <Link
             to="/auth/login"
             search={{ redirect: location.href }}
-            className="shrink-0 inline-flex items-center justify-center rounded-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold px-6 py-2.5 text-sm transition-all duration-300 shadow-sm hover:scale-[1.02] active:scale-[0.98]"
+            className="shrink-0 inline-flex items-center justify-center rounded-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold px-6 py-2.5 text-sm transition-transform transition-colors duration-200 shadow-sm hover:scale-[1.02] active:scale-[0.98]"
           >
             Sign In to Otix
           </Link>

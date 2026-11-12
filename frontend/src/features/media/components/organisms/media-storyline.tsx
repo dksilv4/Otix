@@ -31,14 +31,14 @@ export const MediaStoryline = ({ detail, mediaType, className = '' }: MediaStory
     <div className={`glass-card p-6 sm:p-7 space-y-4 ${className}`}>
       {/* Heading */}
       <div>
-        <h2 className="text-base font-semibold tracking-tight">Storyline</h2>
+        <h2 className="text-base font-semibold tracking-tight text-balance">Storyline</h2>
       </div>
 
       {/* Overview Text with Line Clamp & Read More */}
       {overview ? (
         <div className="space-y-2">
           <p
-            className={`text-sm sm:text-base leading-relaxed text-muted-foreground transition-all duration-200 ${
+            className={`text-sm sm:text-base leading-relaxed text-muted-foreground transition-all duration-200 text-pretty max-w-prose ${
               !expanded && isLong ? 'line-clamp-3' : ''
             }`}
           >

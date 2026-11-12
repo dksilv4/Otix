@@ -20,20 +20,20 @@ const COMMERCIAL_MAP: Record<CommercialCategory, { label: string; types: string[
   stream: {
     label: 'Stream',
     types: ['flatrate', 'free', 'ads'],
-    color: 'text-emerald-600 dark:text-emerald-400',
-    badge: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400',
+    color: 'text-[var(--status-success)]',
+    badge: 'bg-[var(--status-success)]/15 text-[var(--status-success)]',
   },
   rent: {
     label: 'Rent',
     types: ['rent'],
-    color: 'text-amber-600 dark:text-amber-400',
-    badge: 'bg-amber-500/15 text-amber-600 dark:text-amber-400',
+    color: 'text-[var(--status-warning)]',
+    badge: 'bg-[var(--status-warning)]/15 text-[var(--status-warning)]',
   },
   buy: {
     label: 'Buy',
     types: ['buy'],
-    color: 'text-sky-600 dark:text-sky-400',
-    badge: 'bg-sky-500/15 text-sky-600 dark:text-sky-400',
+    color: 'text-primary',
+    badge: 'bg-primary/15 text-primary',
   },
 }
 
@@ -87,12 +87,12 @@ export const WhereToWatch = ({ watchProviders = [], className = '', mediaType }:
           <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--dk-surface-glass)] text-primary">
             <Tv className="h-3.5 w-3.5" />
           </div>
-          <h3 className="text-sm font-semibold tracking-tight">Where to Watch</h3>
+          <h2 className="text-sm font-semibold tracking-tight text-balance">Where to Watch</h2>
         </div>
 
         {/* Commercial Tabs */}
         {availableCategories.length > 1 && (
-          <div className="flex items-center gap-1 rounded-xl bg-[var(--dk-surface-glass)] p-0.5">
+          <div className="flex items-center gap-1 rounded-xl bg-[var(--dk-surface-glass)] p-0.5" role="tablist" aria-label="Commercial options">
             {availableCategories.map((cat) => {
               const count = categorized[cat]?.length ?? 0
               const isActive = currentTab === cat
@@ -100,6 +100,8 @@ export const WhereToWatch = ({ watchProviders = [], className = '', mediaType }:
                 <button
                   key={cat}
                   type="button"
+                  role="tab"
+                  aria-selected={isActive}
                   onClick={() => setActiveTab(cat)}
                   className={cn(
                     'rounded-lg px-2.5 py-1 text-xs font-medium transition-all',
@@ -109,7 +111,7 @@ export const WhereToWatch = ({ watchProviders = [], className = '', mediaType }:
                   )}
                 >
                   {COMMERCIAL_MAP[cat].label}
-                  <span className="ml-1 text-[10px] opacity-60">({count})</span>
+                  <span className="ml-1 text-[10px] opacity-60 tabular-nums">({count})</span>
                 </button>
               )
             })}
@@ -127,9 +129,9 @@ export const WhereToWatch = ({ watchProviders = [], className = '', mediaType }:
               </div>
               <div className="min-w-0">
                 <div className="flex items-center gap-1.5">
-                  <span className="text-xs font-bold text-amber-700 dark:text-amber-300">In Your Library</span>
+                  <span className="text-xs font-bold text-[var(--status-warning)]">In Your Library</span>
                 </div>
-                <p className="text-[11px] text-muted-foreground truncate">Ready to stream on your private server</p>
+                <p className="text-[11px] text-muted-foreground truncate text-pretty">Ready to stream on your private server</p>
               </div>
             </div>
 

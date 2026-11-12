@@ -189,12 +189,12 @@ export const MediaHero = ({ className = '' }: MediaHeroProps) => {
             fetchPriority="high"
             decoding="async"
             className={cn(
-              'h-full w-full object-cover brightness-[0.40] contrast-[1.08] saturate-[1.1]',
+              'h-full w-full object-cover brightness-[0.40] contrast-[1.08] saturate-[1.1] motion-safe:[animation:kenBurns_32s_ease-out_forwards]',
               !backdropUrl && 'blur-3xl scale-125 brightness-[0.25]',
             )}
             style={{
               objectPosition: 'center 22%',
-              animation: 'kenBurns 32s ease-out forwards',
+
             }}
           />
         ) : (
@@ -231,7 +231,7 @@ export const MediaHero = ({ className = '' }: MediaHeroProps) => {
                   <MediaIcon className="h-10 w-10 text-muted-foreground/60 mb-2" />
                   <span className="text-xs font-semibold text-foreground line-clamp-3">{title}</span>
                 </div>
-              ) : (
+            ) : (
                 <img
                   src={posterUrl}
                   alt={`${title} poster`}
@@ -249,6 +249,8 @@ export const MediaHero = ({ className = '' }: MediaHeroProps) => {
           <div className="flex min-w-0 flex-1 flex-col items-center sm:items-start text-center sm:text-left gap-3.5">
             {/* Logo or Title */}
             {hasLogo ? (
+              <div className="flex flex-col items-center sm:items-start">
+                <h1 className="sr-only">{title}</h1>
               <MediaLogo
                 src={logo!}
                 alt={title}
@@ -256,9 +258,10 @@ export const MediaHero = ({ className = '' }: MediaHeroProps) => {
                 colorGuess={logoUrl ? (logoColorGuess ?? null) : null}
                 background={logoUrl ? 'theme' : 'none'}
               />
+              </div>
             ) : (
               <h1
-                className="text-2xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-foreground"
+                className="text-2xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-foreground text-balance"
               >
                 {title}
               </h1>
@@ -267,7 +270,7 @@ export const MediaHero = ({ className = '' }: MediaHeroProps) => {
             {/* Tagline */}
             {tagline && (
               <p
-                className="max-w-[64ch] text-sm sm:text-base italic text-muted-foreground line-clamp-2"
+                className="max-w-prose text-sm sm:text-base italic text-muted-foreground line-clamp-2 text-pretty leading-relaxed"
               >
                 &ldquo;{tagline}&rdquo;
               </p>
@@ -278,18 +281,18 @@ export const MediaHero = ({ className = '' }: MediaHeroProps) => {
               {isAnime ? (
                 <Badge
                   variant="secondary"
-                  className="bg-pink-500/15 text-pink-700 dark:text-pink-300 border border-pink-500/20 gap-1 px-2.5 py-1 text-xs font-medium"
+                  className={cn(GLASS_PILL, 'gap-1.5')}
                 >
-                  <Sparkles className="h-3 w-3" /> Anime
+                  <Sparkles className="h-3 w-3 text-primary" aria-hidden="true" /> Anime
                 </Badge>
               ) : isKdrama ? (
                 <Badge
                   variant="secondary"
-                  className="bg-rose-500/15 text-rose-700 dark:text-rose-300 border border-rose-500/20 gap-1 px-2.5 py-1 text-xs font-medium"
+                  className={cn(GLASS_PILL, 'gap-1.5')}
                 >
-                  <Heart className="h-3 w-3" /> K-Drama
+                  <Heart className="h-3 w-3 text-primary" aria-hidden="true" /> K-Drama
                 </Badge>
-              ) : (
+            ) : (
                 <Badge variant="secondary" className={`${GLASS_PILL} gap-1.5`}>
                   {mediaType === 'movie' && <Film className="h-3 w-3 text-primary" />}
                   {mediaType === 'show' && <Tv className="h-3 w-3 text-primary" />}
@@ -312,19 +315,19 @@ export const MediaHero = ({ className = '' }: MediaHeroProps) => {
               {year && (
                 <Badge variant="secondary" className={`${GLASS_PILL} gap-1`}>
                   <Calendar className="h-3 w-3 text-muted-foreground" />
-                  {year}
+                  <span className="tabular-nums">{year}</span>
                 </Badge>
               )}
 
               {(formattedRuntime || formattedAlbumLength) && (
                 <Badge variant="secondary" className={`${GLASS_PILL} gap-1`}>
                   <Clock className="h-3 w-3 text-muted-foreground" />
-                  {formattedRuntime || formattedAlbumLength}
+                  <span className="tabular-nums">{formattedRuntime || formattedAlbumLength}</span>
                 </Badge>
               )}
 
               {mediaType === 'show' && seasonsCount > 0 && (
-                <Badge variant="secondary" className={`${GLASS_PILL}`}>
+                <Badge variant="secondary" className={`${GLASS_PILL} tabular-nums`}>
                   {seasonsCount} {seasonsCount === 1 ? 'Season' : 'Seasons'}
                   {episodesCount > 0 && ` · ${episodesCount} Ep`}
                 </Badge>
@@ -344,7 +347,7 @@ export const MediaHero = ({ className = '' }: MediaHeroProps) => {
               )}
 
               {certification && (
-                <Badge variant="secondary" className={`${GLASS_PILL}`}>
+                <Badge variant="secondary" className={`${GLASS_PILL} tabular-nums`}>
                   {certification}
                 </Badge>
               )}
@@ -379,7 +382,7 @@ export const MediaHero = ({ className = '' }: MediaHeroProps) => {
                 >
                   {activity.status === 'processing' && <Loader2 className="h-3 w-3 animate-spin" />}
                   {activity.status === 'requested' && <Clock className="h-3 w-3" />}
-                  <span>
+                  <span className="tabular-nums">
                     {activity.status === 'processing'
                       ? `Downloading (${downloadActivity.isDownloading ? downloadActivity.overallProgress.toFixed(0) : activity.progress?.toFixed(0)}%) · ${activity.nodeName}`
                       : `Requested · ${activity.nodeName}`}
@@ -393,7 +396,7 @@ export const MediaHero = ({ className = '' }: MediaHeroProps) => {
                   )}
                 >
                   <Loader2 className="h-3 w-3 animate-spin" />
-                  <span>
+                  <span className="tabular-nums">
                     {`Downloading (${downloadActivity.overallProgress.toFixed(0)}%)${downloadActivity.speed ? ` · ${downloadActivity.speed}` : ''}`}
                   </span>
                 </div>
@@ -420,7 +423,7 @@ export const MediaHero = ({ className = '' }: MediaHeroProps) => {
                   title="Watch Trailer"
                   aria-label="Watch Trailer"
                 >
-                  <Film className="h-4 w-4 text-white group-hover:scale-110 transition-transform shrink-0" />
+                  <Film className="h-4 w-4 group-hover:scale-110 transition-transform shrink-0" />
                   <span>Trailer</span>
                 </button>
               )}
@@ -435,14 +438,14 @@ export const MediaHero = ({ className = '' }: MediaHeroProps) => {
                     className={cn(
                       'inline-flex h-8 w-8 items-center justify-center rounded-full transition-all hover:scale-110 active:scale-95',
                       isWatchlisted
-                        ? 'bg-sky-500/25 text-sky-700 dark:text-sky-200 ring-1 ring-sky-500/50 shadow-sm'
+                        ? 'bg-primary/20 text-primary shadow-xs'
                         : 'text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-base)]',
                     )}
                     title={isWatchlisted ? `In ${watchlistLabel}` : `Add to ${watchlistLabel}`}
                     aria-label={isWatchlisted ? `In ${watchlistLabel}` : `Add to ${watchlistLabel}`}
                   >
                     <Bookmark
-                      className={cn('h-4 w-4', isWatchlisted && 'fill-current text-sky-600 dark:text-sky-400')}
+                      className={cn('h-4 w-4', isWatchlisted && 'fill-current text-primary')}
                     />
                   </button>
 
@@ -471,14 +474,14 @@ export const MediaHero = ({ className = '' }: MediaHeroProps) => {
                     className={cn(
                       'inline-flex h-8 w-8 items-center justify-center rounded-full transition-all hover:scale-110 active:scale-95',
                       isLiked
-                        ? 'bg-rose-500/25 text-rose-700 dark:text-rose-200 ring-1 ring-rose-500/50 shadow-sm'
+                        ? 'bg-destructive/20 text-destructive shadow-xs'
                         : 'text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-base)]',
                     )}
                     title={isLiked ? 'Liked' : 'Like'}
                     aria-label="Like"
                   >
                     <Heart
-                      className={cn('h-4 w-4', isLiked && 'fill-current text-rose-600 dark:text-rose-400')}
+                      className={cn('h-4 w-4', isLiked && 'fill-current text-destructive')}
                     />
                   </button>
 

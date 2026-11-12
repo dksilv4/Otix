@@ -2,6 +2,7 @@ import { Building2, ChevronRight } from 'lucide-react'
 import { Link } from '@tanstack/react-router'
 import type { MediaItemDetail } from '@media'
 import { formatCurrency, formatDate, languageName } from '@media'
+import { cn } from '@/lib/utils'
 
 interface MediaSpecsCardProps {
   detail: MediaItemDetail
@@ -86,7 +87,7 @@ export const MediaSpecsCard = ({ detail, className = '' }: MediaSpecsCardProps) 
             <dt className="text-muted-foreground uppercase tracking-wider text-[10px] font-semibold">
               Budget
             </dt>
-            <dd className="mt-0.5 font-semibold text-foreground">
+            <dd className="mt-0.5 font-semibold text-foreground tabular-nums">
               {formatCurrency(budget)}
             </dd>
           </div>
@@ -98,10 +99,10 @@ export const MediaSpecsCard = ({ detail, className = '' }: MediaSpecsCardProps) 
             <dt className="text-muted-foreground uppercase tracking-wider text-[10px] font-semibold">
               Revenue
             </dt>
-            <dd className="mt-0.5 font-semibold text-foreground flex items-center gap-1.5">
+            <dd className="mt-0.5 font-semibold text-foreground flex items-center gap-1.5 tabular-nums">
               <span>{formatCurrency(revenue)}</span>
               {movie?.revenueRank && (
-                <span className="text-[10px] px-1 rounded bg-primary/10 text-primary font-bold">
+                <span className="text-[10px] px-1 rounded bg-primary/10 text-primary font-bold tabular-nums">
                   #{movie.revenueRank}
                 </span>
               )}
@@ -116,9 +117,12 @@ export const MediaSpecsCard = ({ detail, className = '' }: MediaSpecsCardProps) 
               Box Office Result
             </dt>
             <dd
-              className={`mt-0.5 font-semibold ${isProfitable ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}
+              className={cn(
+                'mt-0.5 font-semibold tabular-nums',
+                isProfitable ? 'text-[var(--status-success)]' : 'text-destructive',
+              )}
             >
-              {isProfitable ? '+' : '-'}{formatCurrency(Math.abs(profitAbs))} ({isProfitable ? 'Profit' : 'Loss'})
+              {isProfitable ? '+' : '−'}{formatCurrency(Math.abs(profitAbs))} ({isProfitable ? 'Profit' : 'Loss'})
             </dd>
           </div>
         )}
@@ -165,7 +169,7 @@ export const MediaSpecsCard = ({ detail, className = '' }: MediaSpecsCardProps) 
                         <Building2 className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors" />
                       )}
                     </div>
-                    <span className="text-xs font-medium text-foreground/90 group-hover:text-primary transition-colors truncate">
+                    <span className="text-xs font-medium text-foreground/90 group-hover:text-primary transition-colors truncate break-words">
                       {ic.company.name}
                     </span>
                   </div>

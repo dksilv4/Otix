@@ -245,7 +245,7 @@ export const MediaDetailPage = () => {
           ADAPTIVE MAIN CONTENT CONTAINER
           Uniform max-w-7xl to avoid awkward width jumps
          ══════════════════════════════════════════════════════════════════════ */}
-      <main className="relative z-10 w-full px-4 sm:px-6 lg:px-8 mt-4 space-y-8">
+      <section aria-label="Media details" className="relative z-10 w-full px-4 sm:px-6 lg:px-8 mt-4 space-y-8 scroll-mt-24">
         {/* ── GAMES: ELEVATE FREE PROMOTION BANNER WHEN GAME IS FREE ── */}
         {isGame(detail) && (
           <Suspense fallback={null}>
@@ -312,8 +312,11 @@ export const MediaDetailPage = () => {
                   {activeGameTab === 'info' && <GameSection />}
                   {activeGameTab !== 'info' && (
                     <>
-                      <div className="flex items-center gap-1 pb-1">
+                      <div className="flex items-center gap-1 pb-1" role="tablist" aria-label="Blueprint categories">
                         <button
+                          type="button"
+                          role="tab"
+                          aria-selected={blueprintSubTab === 'vault'}
                           onClick={() => setBlueprintSubTab('vault')}
                           className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${blueprintSubTab === 'vault'
                             ? 'bg-primary/10 text-primary'
@@ -323,6 +326,9 @@ export const MediaDetailPage = () => {
                           Vault
                         </button>
                         <button
+                          type="button"
+                          role="tab"
+                          aria-selected={blueprintSubTab === 'community'}
                           onClick={() => setBlueprintSubTab('community')}
                           className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${blueprintSubTab === 'community'
                             ? 'bg-primary/10 text-primary'
@@ -445,7 +451,7 @@ export const MediaDetailPage = () => {
             </Suspense>
           </div>
         </DeferredSection>
-      </main>
+      </section>
 
       {/* ── True Viewport-to-Viewport More Like This Section (Edge-to-Edge, No Masking) ── */}
       <DeferredSection fallback={<SectionSkeleton height={220} />} rootMargin="480px 0px">
