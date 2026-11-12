@@ -245,7 +245,7 @@ export const MediaDetailPage = () => {
           ADAPTIVE MAIN CONTENT CONTAINER
           Uniform max-w-7xl to avoid awkward width jumps
          ══════════════════════════════════════════════════════════════════════ */}
-      <section aria-label="Media details" className="relative z-10 w-full px-4 sm:px-6 lg:px-8 mt-4 space-y-8 scroll-mt-24">
+      <section aria-label="Media details" className="relative z-10 w-full px-4 sm:px-6 lg:px-8 xl:px-10 min-[2200px]:px-12 mt-4 space-y-8 scroll-mt-24 max-w-7xl 2xl:max-w-[1600px] min-[2200px]:max-w-[2400px] min-[3400px]:max-w-[4600px] mx-auto">
         {/* ── GAMES: ELEVATE FREE PROMOTION BANNER WHEN GAME IS FREE ── */}
         {isGame(detail) && (
           <Suspense fallback={null}>
@@ -274,34 +274,38 @@ export const MediaDetailPage = () => {
         {/* ── 2-COLUMN BALANCED METADATA & EXPLORATION GRID ── */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start">
           {/* ════════ LEFT COLUMN (Main Narrative & Personnel, 8 cols) ════════ */}
-          <div className="lg:col-span-8 space-y-6">
+          <div className="contents lg:flex lg:flex-col lg:gap-6 lg:col-span-8">
             {/* Storyline without redundant starring list */}
-            <MediaStoryline detail={detail} mediaType={mediaType} />
+            <div className="order-1 lg:order-none"><MediaStoryline detail={detail} mediaType={mediaType} /></div>
 
             {/* Unauthenticated Sign-in CTA */}
             {!isAuthenticated && (
-              <div className="animate-fade-in">
+              <div className="order-4 lg:order-none animate-fade-in">
                 <SignInCTA />
               </div>
             )}
 
             {/* Media Gallery (Trailers, Videos & Screenshots) */}
-            <MediaGallery
-              videos={detail.videos}
-              screenshots={detail.screenshots}
-              title={detail.title}
-            />
+            <div className="order-5 lg:order-none">
+              <MediaGallery
+                videos={detail.videos}
+                screenshots={detail.screenshots}
+                title={detail.title}
+              />
+            </div>
 
             {/* Game Editions (GOTY, Deluxe, Definitive, etc.) */}
             {isGame(detail) && (
-              <Suspense fallback={null}>
-                <GameEditionsSection className="glass-card p-6 sm:p-7" />
-              </Suspense>
+              <div className="order-6 lg:order-none">
+                <Suspense fallback={null}>
+                  <GameEditionsSection className="glass-card p-6 sm:p-7" />
+                </Suspense>
+              </div>
             )}
 
             {/* Games: Blueprints, Vault & Community */}
             {isGame(detail) && (pluginTabs.length > 0 || hasGameOverviewContent(detail)) && (
-              <div className="glass-card p-6 sm:p-7 space-y-6">
+              <div className="order-7 lg:order-none glass-card p-6 sm:p-7 space-y-6">
                 <Suspense fallback={<SectionSkeleton height={220} />}>
                   <GameTabBar
                     gameExternalId={gameExternalId || ''}
@@ -367,21 +371,31 @@ export const MediaDetailPage = () => {
             )}
 
             {/* Game Characters */}
-            {hasCharacters && <GameCharacters characters={detail.characters} />}
+            {hasCharacters && (
+              <div className="order-8 lg:order-none">
+                <GameCharacters characters={detail.characters} />
+              </div>
+            )}
 
             {/* Cast & Crew V4 with horizontal scroll buttons & full credits modal */}
-            {hasCredits && <CastCrew credits={detail.credits} />}
+            {hasCredits && (
+              <div className="order-9 lg:order-none">
+                <CastCrew credits={detail.credits} />
+              </div>
+            )}
 
             {/* Franchise / Movie Collections */}
             {detail.collection && (
-              <Suspense fallback={<SectionSkeleton height={180} />}>
-                <CollectionSection />
-              </Suspense>
+              <div className="order-10 lg:order-none">
+                <Suspense fallback={<SectionSkeleton height={180} />}>
+                  <CollectionSection />
+                </Suspense>
+              </div>
             )}
 
             {/* Music Artist Discography */}
             {isMusic(detail) && (
-              <div>
+              <div className="order-11 lg:order-none">
                 <Suspense fallback={<SectionSkeleton height={180} />}>
                   <ArtistAlbumsSection />
                 </Suspense>
@@ -390,8 +404,9 @@ export const MediaDetailPage = () => {
           </div>
 
           {/* ════════ RIGHT COLUMN (Sidebar Hub & Utilities, 4 cols) ════════ */}
-          <div className="lg:col-span-4 space-y-6">
+          <div className="contents lg:flex lg:flex-col lg:gap-6 lg:col-span-4 min-[2200px]:grid min-[2200px]:grid-cols-2 min-[2200px]:gap-6">
             {/* Unified 10-point Ratings Hub V4 */}
+            <div className="order-3 lg:order-none">
             <RatingsHub
               mediaId={String(detail.id)}
               mediaType={displayType}
@@ -402,43 +417,56 @@ export const MediaDetailPage = () => {
               tmdbId={detail.tmdbId}
               imdbId={detail.movie?.imdbId}
             />
+            </div>
 
             {/* Where to Watch V4 with Personal Library Spotlight (movies/shows) */}
-            {displayType !== 'game' && <WhereToWatch watchProviders={detail.watchProviders} mediaType={displayType} />}
+            {displayType !== 'game' && (
+              <div className="order-2 lg:order-none">
+                <WhereToWatch watchProviders={detail.watchProviders} mediaType={displayType} />
+              </div>
+            )}
 
             {/* Platforms (Games only) */}
             {isGame(detail) && (
-              <Suspense fallback={null}>
-                <MediaGamePlatformsSection detail={detail} />
-              </Suspense>
+              <div className="order-12 lg:order-none">
+                <Suspense fallback={null}>
+                  <MediaGamePlatformsSection detail={detail} />
+                </Suspense>
+              </div>
             )}
 
             {/* Game Modes (Games only) */}
             {isGame(detail) && (
-              <Suspense fallback={null}>
-                <MediaGameModesSection detail={detail} />
-              </Suspense>
+              <div className="order-13 lg:order-none">
+                <Suspense fallback={null}>
+                  <MediaGameModesSection detail={detail} />
+                </Suspense>
+              </div>
             )}
 
             {/* Technical Information & Specs */}
-            <MediaSpecsCard detail={detail} />
+            <div className="order-14 lg:order-none"><MediaSpecsCard detail={detail} /></div>
 
             {/* Library / Server Status (Plex / Radarr / Sonarr) - Movies & TV Shows only */}
             {isAuthenticated && displayType !== 'game' && (
-              <Suspense fallback={null}>
-                <MediaDetailLibraryPanel
-                  mediaType={mediaType}
-                  mediaId={detail.id ? String(detail.id) : (detail.slug || mediaId)}
-                  tmdbId={detail.tmdbId}
-                />
-              </Suspense>
+              <div className="order-15 lg:order-none">
+                <Suspense fallback={null}>
+                  <MediaDetailLibraryPanel
+                    mediaType={mediaType}
+                    mediaId={detail.id ? String(detail.id) : (detail.slug || mediaId)}
+                    tmdbId={detail.tmdbId}
+                  />
+                </Suspense>
+              </div>
             )}
 
             {/* Otix Node Game Telemetry, Benchmarks & Battlestation Stats - Games only */}
             {isAuthenticated && isGame(detail) && (
-              <Suspense fallback={null}>
-                <MediaGameUserStats detail={detail} />
-              </Suspense>
+              <div className="order-16 lg:order-none">
+                <Suspense fallback={null}>
+                  <MediaGameUserStats detail={detail} />
+                </Suspense>
+              </div>
             )}
           </div>
         </div>

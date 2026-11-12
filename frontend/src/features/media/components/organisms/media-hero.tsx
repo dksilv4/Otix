@@ -217,10 +217,10 @@ export const MediaHero = ({ className = '' }: MediaHeroProps) => {
       </div>
 
       {/* ── Hero Foreground Content ── */}
-      <div className="relative z-10 w-full px-4 sm:px-6 lg:px-8 pt-16 sm:pt-22 pb-2">
-        <div className="flex flex-col items-center sm:flex-row sm:items-center lg:items-end gap-6 sm:gap-8 lg:gap-10">
+      <div className="relative z-10 w-full px-4 sm:px-6 lg:px-8 xl:px-10 min-[2200px]:px-12 pt-16 sm:pt-22 pb-2">
+        <div className="max-w-7xl 2xl:max-w-[1600px] min-[2200px]:max-w-[2400px] min-[3400px]:max-w-[4600px] mx-auto flex flex-col items-center sm:flex-row sm:items-center lg:items-end gap-6 sm:gap-8 lg:gap-10">
           {/* Poster with subtle ambient glow */}
-          <div className="w-36 shrink-0 sm:w-44 lg:w-56 xl:w-60 group">
+          <div className="w-32 shrink-0 sm:w-44 lg:w-56 xl:w-60 min-[2200px]:w-64 min-[3400px]:w-72 group">
             <div className="overflow-hidden rounded-2xl shadow-2xl bg-[var(--dk-surface-glass)] transition-all duration-300 group-hover:scale-[1.02]">
               {!posterUrl || posterFailed ? (
                 <div
