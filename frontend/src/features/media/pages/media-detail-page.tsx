@@ -273,54 +273,100 @@ export const MediaDetailPage = () => {
 
         {/* ── BALANCED ADAPTIVE RESPONSIVE GRID (Mobile 1-col | Standard Desktop 2-col | Ultrawide 3:6:3 Symmetrical Cockpit) ── */}
         <div className="grid grid-cols-1 lg:grid-cols-12 3xl:grid-cols-12 gap-6 lg:gap-8 items-start">
-          {/* ════════ LEFT WING: IDENTITY, SCORES & STREAMING ════════
-              Mobile (<1024px): Interleaved via order-*
-              Desktop (1024-1799px): Top of right sidebar (4 cols, row 1)
-              Ultrawide/SUW (1800px+): Left cockpit companion wing (3 cols, row 1, sticky)
+          {/* ════════ COMPANION SIDEBAR WRAPPER (DESKTOP 1024-1799px) / SPLIT WINGS (ULTRAWIDE 1800px+) ════════
+              Mobile (<1024px): 'contents' dissolves wrapper so child cards participate directly in single-column grid.
+              Desktop (1024-1799px): 'lg:flex lg:flex-col lg:col-span-4 lg:col-start-9 lg:row-start-1' packs Aside 1 and Aside 2
+                                     continuously into a single unified right sidebar with zero vertical voids.
+              Ultrawide/SUW (1800px+): '3xl:contents' dissolves wrapper into the 12-col grid, placing Aside 1 in cols 1-3
+                                       and Aside 2 in cols 10-12 flanking Center Stage (cols 4-9) in a symmetrical 3:6:3 cockpit.
           */}
-          <aside
-            aria-label="Media identity and streaming"
-            className="contents lg:flex lg:flex-col lg:gap-6 lg:col-span-4 lg:col-start-9 lg:row-start-1 3xl:col-span-3 3xl:col-start-1 3xl:row-start-1 3xl:sticky 3xl:top-24"
-          >
-            {/* Unified 10-point Ratings Hub V4 */}
-            <div className="order-3 lg:order-none">
-              <RatingsHub
-                mediaId={String(detail.id)}
-                mediaType={displayType}
-                overallRating={detail.overallRating}
-                overallRatingSource={detail.overallRatingSource}
-                avgRating={detail.avgRating}
-                ratingCount={detail.ratingCount}
-                tmdbId={detail.tmdbId}
-                imdbId={detail.movie?.imdbId}
-              />
-            </div>
-
-            {/* Where to Watch V4 with Personal Library Spotlight (movies/shows) */}
-            {displayType !== 'game' && (
-              <div className="order-2 lg:order-none">
-                <WhereToWatch watchProviders={detail.watchProviders} mediaType={displayType} />
+          <div className="contents lg:flex lg:flex-col lg:gap-6 lg:col-span-4 lg:col-start-9 lg:row-start-1 3xl:contents">
+            {/* ════════ LEFT WING: IDENTITY, SCORES & STREAMING ════════
+                Mobile (<1024px): Interleaved via order-*
+                Desktop (1024-1799px): Top of right sidebar (flows within flex wrapper)
+                Ultrawide/SUW (1800px+): Left cockpit companion wing (3 cols, row 1, sticky)
+            */}
+            <aside
+              aria-label="Media identity and streaming"
+              className="contents lg:flex lg:flex-col lg:gap-6 3xl:col-span-3 3xl:col-start-1 3xl:row-start-1 3xl:sticky 3xl:top-24"
+            >
+              {/* Unified 10-point Ratings Hub V4 */}
+              <div className="order-3 lg:order-none">
+                <RatingsHub
+                  mediaId={String(detail.id)}
+                  mediaType={displayType}
+                  overallRating={detail.overallRating}
+                  overallRatingSource={detail.overallRatingSource}
+                  avgRating={detail.avgRating}
+                  ratingCount={detail.ratingCount}
+                  tmdbId={detail.tmdbId}
+                  imdbId={detail.movie?.imdbId}
+                />
               </div>
-            )}
 
-            {/* Platforms (Games only) */}
-            {isGame(detail) && (
-              <div className="order-12 lg:order-none">
-                <Suspense fallback={null}>
-                  <MediaGamePlatformsSection detail={detail} />
-                </Suspense>
-              </div>
-            )}
+              {/* Where to Watch V4 with Personal Library Spotlight (movies/shows) */}
+              {displayType !== 'game' && (
+                <div className="order-2 lg:order-none">
+                  <WhereToWatch watchProviders={detail.watchProviders} mediaType={displayType} />
+                </div>
+              )}
 
-            {/* Game Modes (Games only) */}
-            {isGame(detail) && (
-              <div className="order-13 lg:order-none">
-                <Suspense fallback={null}>
-                  <MediaGameModesSection detail={detail} />
-                </Suspense>
+              {/* Platforms (Games only) */}
+              {isGame(detail) && (
+                <div className="order-12 lg:order-none">
+                  <Suspense fallback={null}>
+                    <MediaGamePlatformsSection detail={detail} />
+                  </Suspense>
+                </div>
+              )}
+
+              {/* Game Modes (Games only) */}
+              {isGame(detail) && (
+                <div className="order-13 lg:order-none">
+                  <Suspense fallback={null}>
+                    <MediaGameModesSection detail={detail} />
+                  </Suspense>
+                </div>
+              )}
+            </aside>
+
+            {/* ════════ RIGHT WING: HARDWARE SPECS & LIBRARY SERVERS ════════
+                Mobile (<1024px): Interleaved via order-*
+                Desktop (1024-1799px): Bottom of right sidebar (flows directly beneath aside 1 within flex wrapper)
+                Ultrawide/SUW (1800px+): Right cockpit companion wing (3 cols, row 1, sticky)
+            */}
+            <aside
+              aria-label="Technical specifications and server status"
+              className="contents lg:flex lg:flex-col lg:gap-6 3xl:col-span-3 3xl:col-start-10 3xl:row-start-1 3xl:sticky 3xl:top-24"
+            >
+              {/* Technical Information & Specs */}
+              <div className="order-14 lg:order-none">
+                <MediaSpecsCard detail={detail} />
               </div>
-            )}
-          </aside>
+
+              {/* Library / Server Status (Plex / Radarr / Sonarr) - Movies & TV Shows only */}
+              {isAuthenticated && displayType !== 'game' && (
+                <div className="order-15 lg:order-none">
+                  <Suspense fallback={null}>
+                    <MediaDetailLibraryPanel
+                      mediaType={mediaType}
+                      mediaId={detail.id ? String(detail.id) : (detail.slug || mediaId)}
+                      tmdbId={detail.tmdbId}
+                    />
+                  </Suspense>
+                </div>
+              )}
+
+              {/* Otix Node Game Telemetry, Benchmarks & Battlestation Stats - Games only */}
+              {isAuthenticated && isGame(detail) && (
+                <div className="order-16 lg:order-none">
+                  <Suspense fallback={null}>
+                    <MediaGameUserStats detail={detail} />
+                  </Suspense>
+                </div>
+              )}
+            </aside>
+          </div>
 
           {/* ════════ CENTER STAGE: CINEMATIC NARRATIVE & MEDIA CANVAS ════════
               Mobile (<1024px): Interleaved via order-*
@@ -459,43 +505,6 @@ export const MediaDetailPage = () => {
               </div>
             )}
           </div>
-
-          {/* ════════ RIGHT WING: HARDWARE SPECS & LIBRARY SERVERS ════════
-              Mobile (<1024px): Interleaved via order-*
-              Desktop (1024-1799px): Bottom of right sidebar (4 cols, row 2)
-              Ultrawide/SUW (1800px+): Right cockpit companion wing (3 cols, row 1, sticky)
-          */}
-          <aside
-            aria-label="Technical specifications and server status"
-            className="contents lg:flex lg:flex-col lg:gap-6 lg:col-span-4 lg:col-start-9 lg:row-start-2 3xl:col-span-3 3xl:col-start-10 3xl:row-start-1 3xl:sticky 3xl:top-24"
-          >
-            {/* Technical Information & Specs */}
-            <div className="order-14 lg:order-none">
-              <MediaSpecsCard detail={detail} />
-            </div>
-
-            {/* Library / Server Status (Plex / Radarr / Sonarr) - Movies & TV Shows only */}
-            {isAuthenticated && displayType !== 'game' && (
-              <div className="order-15 lg:order-none">
-                <Suspense fallback={null}>
-                  <MediaDetailLibraryPanel
-                    mediaType={mediaType}
-                    mediaId={detail.id ? String(detail.id) : (detail.slug || mediaId)}
-                    tmdbId={detail.tmdbId}
-                  />
-                </Suspense>
-              </div>
-            )}
-
-            {/* Otix Node Game Telemetry, Benchmarks & Battlestation Stats - Games only */}
-            {isAuthenticated && isGame(detail) && (
-              <div className="order-16 lg:order-none">
-                <Suspense fallback={null}>
-                  <MediaGameUserStats detail={detail} />
-                </Suspense>
-              </div>
-            )}
-          </aside>
         </div>
 
         {/* ── Community Reviews Section (Spanning full width under balanced cockpit) ── */}
