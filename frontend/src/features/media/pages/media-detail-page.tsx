@@ -245,7 +245,7 @@ export const MediaDetailPage = () => {
           ADAPTIVE MAIN CONTENT CONTAINER
           Smooth responsive ramp across screen sizes up to Super Ultrawide
          ══════════════════════════════════════════════════════════════════════ */}
-      <section aria-label="Media details" className="relative z-10 w-full px-4 sm:px-6 lg:px-8 xl:px-10 min-[2200px]:px-12 mt-4 space-y-8 scroll-mt-24 max-w-7xl 2xl:max-w-[1600px] min-[1800px]:max-w-[1880px] min-[2200px]:max-w-[2300px] min-[2560px]:max-w-[2520px] min-[3400px]:max-w-[3400px] min-[4200px]:max-w-[4600px] mx-auto">
+      <section aria-label="Media details" className="relative z-10 w-full px-4 sm:px-6 lg:px-8 xl:px-10 4xl:px-12 mt-4 space-y-8 scroll-mt-24 max-w-7xl 2xl:max-w-[1600px] 3xl:max-w-[1880px] 4xl:max-w-[2300px] uw:max-w-[2520px] suw:max-w-[3400px] min-[4200px]:max-w-[4600px] mx-auto">
         {/* ── GAMES: ELEVATE FREE PROMOTION BANNER WHEN GAME IS FREE ── */}
         {isGame(detail) && (
           <Suspense fallback={null}>
@@ -272,7 +272,7 @@ export const MediaDetailPage = () => {
         )}
 
         {/* ── ADAPTIVE RESPONSIVE GRID (Mobile 1-col | Standard Desktop 2-col | Ultrawide & SUW 3-col Panoramic Cockpit) ── */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 min-[1800px]:grid-cols-12 gap-6 lg:gap-8 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-12 3xl:grid-cols-12 gap-6 lg:gap-8 items-start">
           {/* ════════ ZONE 1: IDENTITY & COMPANION HUB ════════
               Mobile (<1024px): Interleaved via order-*
               Desktop (1024-1799px): Sticky right sidebar (4 cols, row 1-2)
@@ -280,7 +280,7 @@ export const MediaDetailPage = () => {
           */}
           <aside
             aria-label="Media companion hub"
-            className="contents lg:flex lg:flex-col lg:gap-6 lg:col-span-4 lg:col-start-9 lg:row-start-1 lg:row-span-2 min-[1800px]:col-span-3 min-[1800px]:col-start-1 min-[1800px]:row-start-1 min-[1800px]:row-span-1 min-[1800px]:sticky min-[1800px]:top-24"
+            className="contents lg:flex lg:flex-col lg:gap-6 lg:col-span-4 lg:col-start-9 lg:row-start-1 lg:row-span-2 3xl:col-span-3 3xl:col-start-1 3xl:row-start-1 3xl:row-span-1 3xl:sticky 3xl:top-24"
           >
             {/* Unified 10-point Ratings Hub V4 */}
             <div className="order-3 lg:order-none">
@@ -355,7 +355,7 @@ export const MediaDetailPage = () => {
               Ultrawide/SUW (1800px+): Center panoramic stage (5 cols, row 1)
           */}
           <div
-            className="contents lg:flex lg:flex-col lg:gap-6 lg:col-span-8 lg:col-start-1 lg:row-start-1 min-[1800px]:col-span-5 min-[1800px]:col-start-4 min-[1800px]:row-start-1"
+            className="contents lg:flex lg:flex-col lg:gap-6 lg:col-span-8 lg:col-start-1 lg:row-start-1 3xl:col-span-5 3xl:col-start-4 3xl:row-start-1"
           >
             {/* Storyline without redundant starring list */}
             <div className="order-1 lg:order-none">
@@ -406,7 +406,7 @@ export const MediaDetailPage = () => {
                           role="tab"
                           aria-selected={blueprintSubTab === 'vault'}
                           onClick={() => setBlueprintSubTab('vault')}
-                          className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${blueprintSubTab === 'vault'
+                          className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${blueprintSubTab === 'vault'
                             ? 'bg-primary/10 text-primary'
                             : 'text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-glass)]'
                             }`}
@@ -418,7 +418,7 @@ export const MediaDetailPage = () => {
                           role="tab"
                           aria-selected={blueprintSubTab === 'community'}
                           onClick={() => setBlueprintSubTab('community')}
-                          className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${blueprintSubTab === 'community'
+                          className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${blueprintSubTab === 'community'
                             ? 'bg-primary/10 text-primary'
                             : 'text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-glass)]'
                             }`}
@@ -461,7 +461,7 @@ export const MediaDetailPage = () => {
               Ultrawide/SUW (1800px+): Right wing panoramic stage (4 cols, row 1)
           */}
           <div
-            className="contents lg:flex lg:flex-col lg:gap-6 lg:col-span-8 lg:col-start-1 lg:row-start-2 min-[1800px]:col-span-4 min-[1800px]:col-start-9 min-[1800px]:row-start-1"
+            className="contents lg:flex lg:flex-col lg:gap-6 lg:col-span-8 lg:col-start-1 lg:row-start-2 3xl:col-span-4 3xl:col-start-9 3xl:row-start-1"
           >
             {/* Game Characters */}
             {hasCharacters && (

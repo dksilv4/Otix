@@ -5,6 +5,12 @@
 
 /* ── shadcn/ui CSS variables (new-york, zinc) ── */
 @theme inline {
+    --breakpoint-3xl: 112.5rem; /* 1800px */
+    --breakpoint-4xl: 137.5rem; /* 2200px */
+    --breakpoint-uw: 160rem;    /* 2560px */
+    --breakpoint-suw: 212.5rem; /* 3400px */
+
+    --font-sans: var(--font-sans);
     --radius: 0.5rem;
     --radius-sm: calc(var(--radius) - 4px);
     --radius-md: calc(var(--radius) - 2px);
@@ -61,6 +67,10 @@
 }
 
 :root {
+    --shimmer-base: rgba(255, 255, 255, 0.02);
+    --shimmer-highlight: rgba(255, 255, 255, 0.08);
+    --glass-overlay-gray: rgba(128, 128, 128, 0.08);
+    --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
     --sat: env(safe-area-inset-top, 0px);
     --sar: env(safe-area-inset-right, 0px);
     --sab: env(safe-area-inset-bottom, 0px);
@@ -76,7 +86,7 @@
     --popover: var(--dk-surface-overlay);
     --popover-foreground: oklch(0.141 0.005 285.823);
     --primary: oklch(0.705 0.213 47.604);
-    --primary-foreground: oklch(0.98 0.016 73.684);
+    --primary-foreground: oklch(0.141 0.005 285.823);
     --secondary: var(--dk-surface-raised);
     --secondary-foreground: oklch(0.21 0.006 285.885);
     --muted: var(--dk-surface-field);
@@ -115,7 +125,7 @@
     --sidebar: var(--dk-surface-raised);
     --sidebar-foreground: oklch(0.141 0.005 285.823);
     --sidebar-primary: oklch(0.705 0.213 47.604);
-    --sidebar-primary-foreground: oklch(0.98 0.016 73.684);
+    --sidebar-primary-foreground: oklch(0.141 0.005 285.823);
     --sidebar-accent: oklch(0.95 0.003 285.823);
     --sidebar-accent-foreground: oklch(0.21 0.006 285.885);
     --sidebar-border: var(--dk-border);
@@ -130,8 +140,8 @@
     --popover: var(--dk-surface-overlay);
     --popover-foreground: oklch(0.985 0 0);
     --primary: oklch(0.705 0.213 47.604);
-    /* On-accent label — keep light on the brand fill (same as light theme) */
-    --primary-foreground: oklch(0.98 0.016 73.684);
+    /* On-accent label — dark on vivid orange brand fill for high contrast (WCAG AAA) */
+    --primary-foreground: oklch(0.141 0.005 285.823);
     --secondary: var(--dk-surface-raised);
     --secondary-foreground: oklch(0.985 0 0);
     --muted: oklch(0.274 0.006 286.033);
@@ -170,7 +180,7 @@
     --sidebar: var(--dk-surface-raised);
     --sidebar-foreground: oklch(0.985 0 0);
     --sidebar-primary: oklch(0.705 0.213 47.604);
-    --sidebar-primary-foreground: oklch(0.98 0.016 73.684);
+    --sidebar-primary-foreground: oklch(0.141 0.005 285.823);
     --sidebar-accent: oklch(0.274 0.006 286.033);
     --sidebar-accent-foreground: oklch(0.985 0 0);
     --sidebar-border: oklch(0.274 0.006 286.033);
@@ -284,7 +294,7 @@
     body {
         background-color: var(--background);
         color: var(--foreground);
-        font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        font-family: var(--font-sans);
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
     }
@@ -302,20 +312,21 @@
 /* ── Equalizer animation ── */
 @keyframes equalizer {
     0%, 100% {
-        height: 4px;
+        transform: scaleY(0.25);
     }
     25% {
-        height: 12px;
+        transform: scaleY(0.75);
     }
     50% {
-        height: 6px;
+        transform: scaleY(0.375);
     }
     75% {
-        height: 16px;
+        transform: scaleY(1);
     }
 }
 
 .animate-equalizer {
+    transform-origin: bottom;
     animation: equalizer 0.9s ease-in-out infinite;
 }
 
@@ -483,9 +494,9 @@
 .shimmer {
     background: linear-gradient(
             90deg,
-            var(--shimmer-base, rgba(255, 255, 255, 0.02)) 25%,
-            var(--shimmer-highlight, rgba(255, 255, 255, 0.08)) 50%,
-            var(--shimmer-base, rgba(255, 255, 255, 0.02)) 75%
+            var(--shimmer-base) 25%,
+            var(--shimmer-highlight) 50%,
+            var(--shimmer-base) 75%
     );
     background-size: 200% 100%;
     animation: shimmer 1.6s infinite linear;
@@ -603,7 +614,7 @@
 
 /* ── Nested glass-card uses a gray overlay instead of black ── */
 .glass-card .glass-card {
-    background-image: linear-gradient(rgba(128, 128, 128, 0.08), rgba(128, 128, 128, 0.08));
+    background-image: linear-gradient(var(--glass-overlay-gray), var(--glass-overlay-gray));
     background-blend-mode: soft-light;
 }
 
@@ -618,7 +629,7 @@
 }
 
 .glass-inset:hover {
-    background-image: linear-gradient(rgba(128, 128, 128, 0.08), rgba(128, 128, 128, 0.08));
+    background-image: linear-gradient(var(--glass-overlay-gray), var(--glass-overlay-gray));
     background-color: var(--dk-surface-ghost-hover);
     background-blend-mode: soft-light;
 }
@@ -711,6 +722,15 @@
         animation-iteration-count: 1 !important;
         transition-duration: 0.01ms !important;
     }
+}
+
+:root[data-motion-reduced],
+:root[data-motion-reduced] *,
+:root[data-motion-reduced] *::before,
+:root[data-motion-reduced] *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
 }
 
 /* ── Mobile Safe Area insets and touch utilities ── */
