@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef, useLayoutEffect, useEffect } from 'react'
 import { Link } from '@tanstack/react-router'
 import { ChevronDown, ChevronUp } from 'lucide-react'
 import type { MediaItemDetail } from '@media'
@@ -14,8 +14,42 @@ export type MediaStorylineV4Props = MediaStorylineProps
 
 export const MediaStoryline = ({ detail, mediaType, className = '' }: MediaStorylineProps) => {
   const [expanded, setExpanded] = useState(false)
+  const [hasOverflow, setHasOverflow] = useState(false)
+  const textRef = useRef<HTMLParagraphElement>(null)
   const overview = detail.overview || ''
-  const isLong = overview.length > 280
+
+  // Reset expansion state when switching media items
+  useEffect(() => {
+    setExpanded(false)
+  }, [detail.id, overview])
+
+  // Measure true layout overflow to show "Read more" only when actually clamped
+  useLayoutEffect(() => {
+    const el = textRef.current
+    if (!el || !overview) {
+      setHasOverflow(false)
+      return
+    }
+
+    const checkOverflow = () => {
+      if (!expanded) {
+        if (el.clientHeight > 0 && el.scrollHeight > 0) {
+          setHasOverflow(el.scrollHeight > el.clientHeight + 1)
+        } else {
+          // Fallback for headless/JSDOM environments without layout engine
+          setHasOverflow(overview.length > 360)
+        }
+      }
+    }
+
+    checkOverflow()
+
+    if (typeof ResizeObserver !== 'undefined') {
+      const ro = new ResizeObserver(checkOverflow)
+      ro.observe(el)
+      return () => ro.disconnect()
+    }
+  }, [overview, expanded])
 
   const credits = Array.isArray(detail?.credits) ? detail.credits : []
   const { directors, writers } = groupByRole(credits)
@@ -34,22 +68,24 @@ export const MediaStoryline = ({ detail, mediaType, className = '' }: MediaStory
         <h2 className="text-base font-semibold tracking-tight text-balance">Storyline</h2>
       </div>
 
-      {/* Overview Text with Line Clamp & Read More */}
+      {/* Overview Text with Line Clamp & Smart Read More */}
       {overview ? (
         <div className="space-y-2">
           <p
-            className={`text-sm sm:text-base leading-relaxed text-muted-foreground transition-all duration-200 text-pretty max-w-prose ${
-              !expanded && isLong ? 'line-clamp-3' : ''
+            ref={textRef}
+            className={`text-sm sm:text-base leading-relaxed text-muted-foreground transition-colors duration-200 text-pretty max-w-prose ${
+              !expanded ? 'line-clamp-3' : ''
             }`}
           >
             {overview}
           </p>
 
-          {isLong && (
+          {hasOverflow && (
             <button
               type="button"
               onClick={() => setExpanded(!expanded)}
-              className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline pt-0.5"
+              aria-expanded={expanded}
+              className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline pt-0.5 cursor-pointer"
             >
               {expanded ? (
                 <>
@@ -129,7 +165,7 @@ export const MediaStoryline = ({ detail, mediaType, className = '' }: MediaStory
               to="/genre/$genreId"
               params={{ genreId: g.slug }}
               search={{ type: mediaType }}
-              className="glass-inset px-3 py-1.5 text-xs font-medium text-foreground hover:text-primary hover:bg-[var(--dk-surface-glass-hover)] transition-all rounded-full"
+              className="glass-inset px-3 py-1.5 text-xs font-medium text-foreground hover:text-primary hover:bg-[var(--dk-surface-glass-hover)] transition-colors rounded-full"
             >
               {g.name}
             </Link>

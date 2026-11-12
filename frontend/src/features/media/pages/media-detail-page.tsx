@@ -271,16 +271,16 @@ export const MediaDetailPage = () => {
           </section>
         )}
 
-        {/* ── ADAPTIVE RESPONSIVE GRID (Mobile 1-col | Standard Desktop 2-col | Ultrawide & SUW 3-col Panoramic Cockpit) ── */}
+        {/* ── BALANCED ADAPTIVE RESPONSIVE GRID (Mobile 1-col | Standard Desktop 2-col | Ultrawide 3:6:3 Symmetrical Cockpit) ── */}
         <div className="grid grid-cols-1 lg:grid-cols-12 3xl:grid-cols-12 gap-6 lg:gap-8 items-start">
-          {/* ════════ ZONE 1: IDENTITY & COMPANION HUB ════════
+          {/* ════════ LEFT WING: IDENTITY, SCORES & STREAMING ════════
               Mobile (<1024px): Interleaved via order-*
-              Desktop (1024-1799px): Sticky right sidebar (4 cols, row 1-2)
-              Ultrawide/SUW (1800px+): Sticky left cockpit companion wing (3 cols, row 1)
+              Desktop (1024-1799px): Top of right sidebar (4 cols, row 1)
+              Ultrawide/SUW (1800px+): Left cockpit companion wing (3 cols, row 1, sticky)
           */}
           <aside
-            aria-label="Media companion hub"
-            className="contents lg:flex lg:flex-col lg:gap-6 lg:col-span-4 lg:col-start-9 lg:row-start-1 lg:row-span-2 3xl:col-span-3 3xl:col-start-1 3xl:row-start-1 3xl:row-span-1 3xl:sticky 3xl:top-24"
+            aria-label="Media identity and streaming"
+            className="contents lg:flex lg:flex-col lg:gap-6 lg:col-span-4 lg:col-start-9 lg:row-start-1 3xl:col-span-3 3xl:col-start-1 3xl:row-start-1 3xl:sticky 3xl:top-24"
           >
             {/* Unified 10-point Ratings Hub V4 */}
             <div className="order-3 lg:order-none">
@@ -320,42 +320,15 @@ export const MediaDetailPage = () => {
                 </Suspense>
               </div>
             )}
-
-            {/* Technical Information & Specs */}
-            <div className="order-14 lg:order-none">
-              <MediaSpecsCard detail={detail} />
-            </div>
-
-            {/* Library / Server Status (Plex / Radarr / Sonarr) - Movies & TV Shows only */}
-            {isAuthenticated && displayType !== 'game' && (
-              <div className="order-15 lg:order-none">
-                <Suspense fallback={null}>
-                  <MediaDetailLibraryPanel
-                    mediaType={mediaType}
-                    mediaId={detail.id ? String(detail.id) : (detail.slug || mediaId)}
-                    tmdbId={detail.tmdbId}
-                  />
-                </Suspense>
-              </div>
-            )}
-
-            {/* Otix Node Game Telemetry, Benchmarks & Battlestation Stats - Games only */}
-            {isAuthenticated && isGame(detail) && (
-              <div className="order-16 lg:order-none">
-                <Suspense fallback={null}>
-                  <MediaGameUserStats detail={detail} />
-                </Suspense>
-              </div>
-            )}
           </aside>
 
-          {/* ════════ ZONE 2: CINEMATIC NARRATIVE & MEDIA CANVAS ════════
+          {/* ════════ CENTER STAGE: CINEMATIC NARRATIVE & MEDIA CANVAS ════════
               Mobile (<1024px): Interleaved via order-*
               Desktop (1024-1799px): Primary narrative stage (8 cols, row 1)
-              Ultrawide/SUW (1800px+): Center panoramic stage (5 cols, row 1)
+              Ultrawide/SUW (1800px+): Expanded center cinematic stage (6 cols, row 1)
           */}
           <div
-            className="contents lg:flex lg:flex-col lg:gap-6 lg:col-span-8 lg:col-start-1 lg:row-start-1 3xl:col-span-5 3xl:col-start-4 3xl:row-start-1"
+            className="contents lg:flex lg:flex-col lg:gap-6 lg:col-span-8 lg:col-start-1 lg:row-start-1 3xl:col-span-6 3xl:col-start-4 3xl:row-start-1"
           >
             {/* Storyline without redundant starring list */}
             <div className="order-1 lg:order-none">
@@ -377,6 +350,38 @@ export const MediaDetailPage = () => {
                 title={detail.title}
               />
             </div>
+
+            {/* Cast & Crew V4 with horizontal scroll buttons & full credits modal */}
+            {hasCredits && (
+              <div className="order-9 lg:order-none">
+                <CastCrew credits={detail.credits} />
+              </div>
+            )}
+
+            {/* Franchise / Movie Collections */}
+            {detail.collection && (
+              <div className="order-10 lg:order-none">
+                <Suspense fallback={<SectionSkeleton height={180} />}>
+                  <CollectionSection />
+                </Suspense>
+              </div>
+            )}
+
+            {/* Music Artist Discography */}
+            {isMusic(detail) && (
+              <div className="order-11 lg:order-none">
+                <Suspense fallback={<SectionSkeleton height={180} />}>
+                  <ArtistAlbumsSection />
+                </Suspense>
+              </div>
+            )}
+
+            {/* Game Characters */}
+            {hasCharacters && (
+              <div className="order-8 lg:order-none">
+                <GameCharacters characters={detail.characters} />
+              </div>
+            )}
 
             {/* Game Editions (GOTY, Deluxe, Definitive, etc.) */}
             {isGame(detail) && (
@@ -455,58 +460,52 @@ export const MediaDetailPage = () => {
             )}
           </div>
 
-          {/* ════════ ZONE 3: PERSONNEL, FRANCHISE & COMMUNITY HUB ════════
+          {/* ════════ RIGHT WING: HARDWARE SPECS & LIBRARY SERVERS ════════
               Mobile (<1024px): Interleaved via order-*
-              Desktop (1024-1799px): Stacked left section (8 cols, row 2)
-              Ultrawide/SUW (1800px+): Right wing panoramic stage (4 cols, row 1)
+              Desktop (1024-1799px): Bottom of right sidebar (4 cols, row 2)
+              Ultrawide/SUW (1800px+): Right cockpit companion wing (3 cols, row 1, sticky)
           */}
-          <div
-            className="contents lg:flex lg:flex-col lg:gap-6 lg:col-span-8 lg:col-start-1 lg:row-start-2 3xl:col-span-4 3xl:col-start-9 3xl:row-start-1"
+          <aside
+            aria-label="Technical specifications and server status"
+            className="contents lg:flex lg:flex-col lg:gap-6 lg:col-span-4 lg:col-start-9 lg:row-start-2 3xl:col-span-3 3xl:col-start-10 3xl:row-start-1 3xl:sticky 3xl:top-24"
           >
-            {/* Game Characters */}
-            {hasCharacters && (
-              <div className="order-8 lg:order-none">
-                <GameCharacters characters={detail.characters} />
-              </div>
-            )}
-
-            {/* Cast & Crew V4 with horizontal scroll buttons & full credits modal */}
-            {hasCredits && (
-              <div className="order-9 lg:order-none">
-                <CastCrew credits={detail.credits} />
-              </div>
-            )}
-
-            {/* Franchise / Movie Collections */}
-            {detail.collection && (
-              <div className="order-10 lg:order-none">
-                <Suspense fallback={<SectionSkeleton height={180} />}>
-                  <CollectionSection />
-                </Suspense>
-              </div>
-            )}
-
-            {/* Music Artist Discography */}
-            {isMusic(detail) && (
-              <div className="order-11 lg:order-none">
-                <Suspense fallback={<SectionSkeleton height={180} />}>
-                  <ArtistAlbumsSection />
-                </Suspense>
-              </div>
-            )}
-
-            {/* ── Community Reviews Section (On Ultrawide/SUW sits in right wing; on mobile/desktop flows cleanly) ── */}
-            <div className="order-17 lg:order-none">
-              <DeferredSection fallback={<SectionSkeleton height={260} />} rootMargin="400px 0px">
-                <div className="glass-card p-6 sm:p-8">
-                  <Suspense fallback={<SectionSkeleton height={260} />}>
-                    <ReviewsListSection mediaType={displayType} mediaId={String(detail.id)} />
-                  </Suspense>
-                </div>
-              </DeferredSection>
+            {/* Technical Information & Specs */}
+            <div className="order-14 lg:order-none">
+              <MediaSpecsCard detail={detail} />
             </div>
-          </div>
+
+            {/* Library / Server Status (Plex / Radarr / Sonarr) - Movies & TV Shows only */}
+            {isAuthenticated && displayType !== 'game' && (
+              <div className="order-15 lg:order-none">
+                <Suspense fallback={null}>
+                  <MediaDetailLibraryPanel
+                    mediaType={mediaType}
+                    mediaId={detail.id ? String(detail.id) : (detail.slug || mediaId)}
+                    tmdbId={detail.tmdbId}
+                  />
+                </Suspense>
+              </div>
+            )}
+
+            {/* Otix Node Game Telemetry, Benchmarks & Battlestation Stats - Games only */}
+            {isAuthenticated && isGame(detail) && (
+              <div className="order-16 lg:order-none">
+                <Suspense fallback={null}>
+                  <MediaGameUserStats detail={detail} />
+                </Suspense>
+              </div>
+            )}
+          </aside>
         </div>
+
+        {/* ── Community Reviews Section (Spanning full width under balanced cockpit) ── */}
+        <DeferredSection fallback={<SectionSkeleton height={260} />} rootMargin="400px 0px">
+          <div className="glass-card p-6 sm:p-8">
+            <Suspense fallback={<SectionSkeleton height={260} />}>
+              <ReviewsListSection mediaType={displayType} mediaId={String(detail.id)} />
+            </Suspense>
+          </div>
+        </DeferredSection>
       </section>
 
       {/* ── True Viewport-to-Viewport More Like This Section (Edge-to-Edge, No Masking) ── */}
