@@ -87,6 +87,8 @@ export const CastCrew = ({ credits = [], className = '' }: CastCrewProps) => {
                     key={cat.key}
                     type="button"
                     role="tab"
+                    id={`cast-tab-${cat.key}`}
+                    aria-controls="media-cast-crew-tabpanel"
                     aria-selected={isActive}
                     onClick={() => {
                       setActiveTab(cat.key)
@@ -146,6 +148,9 @@ export const CastCrew = ({ credits = [], className = '' }: CastCrewProps) => {
       {/* ── Horizontal Carousel Track (Full-Bleed Across Card, No Padding Clipping, No Masking) ── */}
       <div
         ref={scrollRef}
+        id="media-cast-crew-tabpanel"
+        role={categories.length > 1 ? 'tabpanel' : undefined}
+        aria-labelledby={categories.length > 1 ? `cast-tab-${activeTab}` : undefined}
         className="flex gap-3 overflow-x-auto overscroll-x-contain scroll-smooth scrollbar-none px-6 sm:px-7 py-3.5 -my-2.5 [mask-image:none] [-webkit-mask-image:none]"
         style={{ scrollPaddingInline: '1.5rem' }}
         aria-label={`${activeCategory.label} credits`}

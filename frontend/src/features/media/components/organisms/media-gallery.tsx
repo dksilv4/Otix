@@ -110,6 +110,8 @@ export const MediaGallery = ({
               <button
                 type="button"
                 role="tab"
+                id="gallery-tab-all"
+                aria-controls="media-gallery-tabpanel"
                 aria-selected={activeTab === 'all'}
                 onClick={() => {
                   setActiveTab('all')
@@ -127,6 +129,8 @@ export const MediaGallery = ({
               <button
                 type="button"
                 role="tab"
+                id="gallery-tab-videos"
+                aria-controls="media-gallery-tabpanel"
                 aria-selected={activeTab === 'videos'}
                 onClick={() => {
                   setActiveTab('videos')
@@ -144,6 +148,8 @@ export const MediaGallery = ({
               <button
                 type="button"
                 role="tab"
+                id="gallery-tab-screenshots"
+                aria-controls="media-gallery-tabpanel"
                 aria-selected={activeTab === 'screenshots'}
                 onClick={() => {
                   setActiveTab('screenshots')
@@ -188,6 +194,9 @@ export const MediaGallery = ({
       {/* ── Horizontal Carousel Track (Full-Bleed Across Card, No Padding Clipping, No Masking) ── */}
       <div
         ref={scrollRef}
+        id="media-gallery-tabpanel"
+        role={showTabs ? 'tabpanel' : undefined}
+        aria-labelledby={showTabs ? `gallery-tab-${activeTab}` : undefined}
         className="flex gap-3.5 overflow-x-auto overscroll-x-contain scroll-smooth scrollbar-none px-6 sm:px-7 py-3.5 -my-2.5 [mask-image:none] [-webkit-mask-image:none]"
         style={{ scrollPaddingInline: '1.5rem' }}
         aria-label="Media items"

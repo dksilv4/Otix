@@ -101,6 +101,8 @@ export const WhereToWatch = ({ watchProviders = [], className = '', mediaType }:
                   key={cat}
                   type="button"
                   role="tab"
+                  id={`watch-tab-${cat}`}
+                  aria-controls="where-to-watch-tabpanel"
                   aria-selected={isActive}
                   onClick={() => setActiveTab(cat)}
                   className={cn(
@@ -160,7 +162,12 @@ export const WhereToWatch = ({ watchProviders = [], className = '', mediaType }:
 
       {/* ── Commercial Stream / Rent / Buy Grid ── */}
       {currentProviders.length > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-0.5">
+        <div
+          id="where-to-watch-tabpanel"
+          role={availableCategories.length > 1 ? 'tabpanel' : undefined}
+          aria-labelledby={availableCategories.length > 1 ? `watch-tab-${currentTab}` : undefined}
+          className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-0.5"
+        >
           {currentProviders.map((provider) => {
             const wp = provider.watchProvider
             if (!wp) return null
