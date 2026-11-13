@@ -80,7 +80,7 @@ export const TwoFactorChallenge = ({ onSuccess, onCancel }: TwoFactorChallengePr
           id="totp-submit"
           disabled={code.length !== 6 || isSubmitting || showSuccess}
           className={
-            'cursor-pointer flex h-14 w-14 items-center justify-center rounded-full transition-all ' +
+            'cursor-pointer flex h-14 w-14 items-center justify-center rounded-full transition-colors ' +
             (showSuccess ? 'bg-emerald-500 text-primary-foreground' : 'bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-glass-hover)] border border-[var(--dk-separator)] text-foreground') +
             ' disabled:opacity-50'
           }

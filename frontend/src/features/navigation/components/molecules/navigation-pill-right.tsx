@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from "react"
 import { X, ChevronUp } from "lucide-react"
-import { motion, AnimatePresence, LayoutGroup } from "framer-motion"
+import { motion, AnimatePresence } from "framer-motion"
 import { DkButton } from "@ui/atoms/button"
 import { useModal } from "@/lib/modals"
 import { useDesktopPlatform } from "@/lib/desktop/platform"
@@ -95,168 +95,158 @@ export const NavPillRight = ({
   }, [isExpanded, handleClickOutside, handleKeyDown])
 
   return (
-    <LayoutGroup id="nav-pill-right-island">
-      <motion.div
-        ref={containerRef}
-        layout
-        transition={{
-          layout: { duration: 0.22, ease: "linear" },
-        }}
-        data-nav-pill="right"
-        className={`fixed z-[9999] right-4 ${titleBarOffset} shadow-[var(--dk-shadow-glass)] backdrop-blur-[16px] flex flex-col ${
-          isExpanded
-            ? "w-[380px] p-3 rounded-3xl gap-2 overflow-hidden"
-            : "w-auto px-2 py-1.5 rounded-[2rem] gap-0 overflow-visible"
-        }`}
-        style={{
-          background: "color-mix(in oklch, var(--dk-surface-raised) 25%, transparent)",
-          backgroundImage:
-            "linear-gradient(to bottom right, var(--dk-surface-glass), var(--dk-surface-glass-hover))",
-        }}
-      >
-        {/* Top Controls Bar Row */}
-        <div className="flex items-center justify-end w-full overflow-visible">
-          {/* Collapse button when open */}
-          <AnimatePresence mode="popLayout">
-            {isExpanded && (
-              <motion.button
-                key="collapse-button"
-                layout
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.8, transition: { duration: 0.12, ease: "linear" } }}
-                transition={{ duration: 0.2, ease: "linear" }}
-                type="button"
-                onClick={handleCollapse}
-                className="mr-auto flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:bg-[var(--dk-surface-ghost-hover)] hover:text-foreground transition-colors cursor-pointer shrink-0"
-                title="Collapse menu"
-                aria-label="Collapse menu"
-              >
-                <ChevronUp className="h-4 w-4" />
-              </motion.button>
-            )}
-          </AnimatePresence>
-
-          <div className="flex items-center gap-1.5 overflow-visible">
-            {showCloseButton && (
-              <DkButton
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={closeAll}
-                className="w-8 h-8 rounded-full p-0 flex items-center justify-center text-muted-foreground hover:text-foreground mr-1"
-                aria-label="Close"
-              >
-                <X className="h-4.5 w-4.5" />
-              </DkButton>
-            )}
-
-            {/* Search Button */}
-            <div className="flex items-center overflow-visible">
-              <NavSearch />
-            </div>
-
-            {/* Chat Messages Button */}
-            <motion.div
-              layout
-              transition={{ duration: 0.22, ease: "linear" }}
-              className="flex items-center overflow-visible"
+    <motion.div
+      ref={containerRef}
+      animate={{
+        width: isExpanded ? 380 : "auto",
+        borderRadius: isExpanded ? 24 : 32,
+      }}
+      transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1] }}
+      data-nav-pill="right"
+      className={`fixed z-[9999] right-4 ${titleBarOffset} shadow-[var(--dk-shadow-glass)] backdrop-blur-[16px] flex flex-col overflow-hidden ${
+        isExpanded ? "p-3 gap-2" : "px-2 py-1.5 gap-0"
+      }`}
+      style={{
+        background: "color-mix(in oklch, var(--dk-surface-raised) 25%, transparent)",
+        backgroundImage:
+          "linear-gradient(to bottom right, var(--dk-surface-glass), var(--dk-surface-glass-hover))",
+      }}
+    >
+      {/* Top Controls Bar Row */}
+      <div className="flex items-center justify-end w-full overflow-visible">
+        {/* Collapse button when open */}
+        <AnimatePresence>
+          {isExpanded && (
+            <motion.button
+              key="collapse-button"
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.8 }}
+              transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+              type="button"
+              onClick={handleCollapse}
+              className="mr-auto flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:bg-[var(--dk-surface-ghost-hover)] hover:text-foreground transition-colors cursor-pointer shrink-0"
+              title="Collapse menu"
+              aria-label="Collapse menu"
             >
-              <ChatNavButton
-                onToggleChat={() => {
-                  if (isUserMenuOpen) setUserMenuOpen(false)
+              <ChevronUp className="h-4 w-4" />
+            </motion.button>
+          )}
+        </AnimatePresence>
+
+        <div className="flex items-center gap-1.5 overflow-visible">
+          {showCloseButton && (
+            <DkButton
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={closeAll}
+              className="w-8 h-8 rounded-full p-0 flex items-center justify-center text-muted-foreground hover:text-foreground mr-1"
+              aria-label="Close"
+            >
+              <X className="h-4.5 w-4.5" />
+            </DkButton>
+          )}
+
+          {/* Search Button */}
+          <div className="flex items-center overflow-visible">
+            <NavSearch />
+          </div>
+
+          {/* Chat Messages Button */}
+          <div className="flex items-center overflow-visible">
+            <ChatNavButton
+              onToggleChat={() => {
+                if (isUserMenuOpen) setUserMenuOpen(false)
+                if (isSidebarOpen) {
+                  if (onCloseSidebar) onCloseSidebar()
+                  else onToggleSidebar()
+                }
+                setChatOpen(!isChatOpen)
+              }}
+            />
+          </div>
+
+          {/* User Profile / Menu Trigger */}
+          <div className="flex items-center overflow-visible">
+            <UserMenu
+              bare
+              triggerOnly
+              onToggle={(next) => {
+                if (next) {
+                  if (isChatOpen) setChatOpen(false)
                   if (isSidebarOpen) {
                     if (onCloseSidebar) onCloseSidebar()
                     else onToggleSidebar()
                   }
-                  setChatOpen(!isChatOpen)
-                }}
-              />
-            </motion.div>
+                }
+              }}
+            />
+          </div>
 
-            {/* User Profile / Menu Trigger */}
-            <motion.div
-              layout
-              transition={{ duration: 0.22, ease: "linear" }}
-              className="flex items-center overflow-visible"
-            >
-              <UserMenu
-                bare
-                triggerOnly
-                onToggle={(next) => {
-                  if (next) {
-                    if (isChatOpen) setChatOpen(false)
-                    if (isSidebarOpen) {
-                      if (onCloseSidebar) onCloseSidebar()
-                      else onToggleSidebar()
-                    }
-                  }
-                }}
-              />
-            </motion.div>
-
-            {/* Activity Module Toggle Button */}
-            <motion.div
-              layout
-              transition={{ duration: 0.22, ease: "linear" }}
-              className="flex items-center overflow-visible"
-            >
-              <ActivityModuleButton
-                bare
-                isPinned={isPinned}
-                isSidebarOpen={isSidebarOpen}
-                onToggleSidebar={() => {
-                  if (isUserMenuOpen) setUserMenuOpen(false)
-                  if (isChatOpen) setChatOpen(false)
-                  onToggleSidebar()
-                }}
-              />
-            </motion.div>
+          {/* Activity Module Toggle Button */}
+          <div className="flex items-center overflow-visible">
+            <ActivityModuleButton
+              bare
+              isPinned={isPinned}
+              isSidebarOpen={isSidebarOpen}
+              onToggleSidebar={() => {
+                if (isUserMenuOpen) setUserMenuOpen(false)
+                if (isChatOpen) setChatOpen(false)
+                onToggleSidebar()
+              }}
+            />
           </div>
         </div>
+      </div>
 
-        {/* Dropdown Content appears simultaneously in a clean transition */}
-        <AnimatePresence mode="popLayout">
-          {isChatOpen && (
-            <motion.div
-              key="chat-dropdown-content"
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, transition: { duration: 0.12, ease: "linear" } }}
-              transition={{ duration: 0.2, ease: "linear" }}
-              className="w-full flex flex-col pt-1.5"
-            >
+      {/* Dropdown Content appears smoothly without layout scale distortion */}
+      <AnimatePresence mode="wait">
+        {isChatOpen && (
+          <motion.div
+            key="chat-dropdown-content"
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1] }}
+            className="w-full overflow-hidden"
+          >
+            <div className="w-full flex flex-col pt-1.5 border-t border-[var(--dk-separator)]">
               <ChatNavPanelContent onClose={handleCollapse} />
-            </motion.div>
-          )}
+            </div>
+          </motion.div>
+        )}
 
-          {isUserMenuOpen && (
-            <motion.div
-              key="user-menu-dropdown-content"
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, transition: { duration: 0.12, ease: "linear" } }}
-              transition={{ duration: 0.2, ease: "linear" }}
-              className="w-full max-h-[calc(100vh-6rem)] overflow-y-auto scrollbar-none flex flex-col space-y-2 pt-1.5"
-            >
+        {isUserMenuOpen && (
+          <motion.div
+            key="user-menu-dropdown-content"
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1] }}
+            className="w-full overflow-hidden"
+          >
+            <div className="w-full max-h-[calc(100vh-6rem)] overflow-y-auto scrollbar-none flex flex-col space-y-2 pt-1.5 border-t border-[var(--dk-separator)]">
               <UserMenuContent onClose={handleCollapse} />
-            </motion.div>
-          )}
+            </div>
+          </motion.div>
+        )}
 
-          {isSidebarOpen && (
-            <motion.div
-              key="activity-dropdown-content"
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, transition: { duration: 0.12, ease: "linear" } }}
-              transition={{ duration: 0.2, ease: "linear" }}
-              className="w-full max-h-[calc(100vh-6rem)] overflow-y-auto scrollbar-none flex flex-col space-y-2 pt-1.5"
-            >
+        {isSidebarOpen && (
+          <motion.div
+            key="activity-dropdown-content"
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1] }}
+            className="w-full overflow-hidden"
+          >
+            <div className="w-full max-h-[calc(100vh-6rem)] overflow-y-auto scrollbar-none flex flex-col space-y-2 pt-1.5 border-t border-[var(--dk-separator)]">
               <ActivityPanelContent onClose={handleCollapse} />
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </motion.div>
-    </LayoutGroup>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
   )
 };

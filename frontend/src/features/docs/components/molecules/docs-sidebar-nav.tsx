@@ -49,7 +49,7 @@ export const DocsSidebarNav = ({
                   key={`search-res-${result.article.id}`}
                   type="button"
                   onClick={() => onSelectSection(result.article.id)}
-                  className={`w-full text-left p-2.5 rounded-xl transition-all duration-150 flex flex-col gap-1 ${
+                  className={`w-full text-left p-2.5 rounded-xl transition-colors duration-150 flex flex-col gap-1 ${
                     isActive
                       ? 'bg-primary/10 text-primary font-medium'
                       : 'text-foreground hover:bg-[var(--dk-surface-ghost-hover)]'
@@ -85,7 +85,7 @@ export const DocsSidebarNav = ({
                         key={article.id}
                         type="button"
                         onClick={() => onSelectSection(article.id)}
-                        className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs sm:text-sm transition-all duration-150 ${
+                        className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs sm:text-sm transition-colors duration-150 ${
                           isActive
                             ? 'bg-primary/10 text-primary font-semibold shadow-xs'
                             : 'text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-ghost-hover)]'

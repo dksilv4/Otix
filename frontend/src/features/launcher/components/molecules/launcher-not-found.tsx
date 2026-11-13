@@ -10,7 +10,7 @@ export const LauncherNotFound = () => {
         <p className="text-sm text-muted-foreground max-w-xs">This game page doesn't exist or has been removed.</p>
         <Link
           to="/launcher"
-          className="inline-block mt-4 px-4 py-2 bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-field)] border border-[var(--dk-separator)] rounded-xl text-sm text-foreground transition-all"
+          className="inline-block mt-4 px-4 py-2 bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-field)] border border-[var(--dk-separator)] rounded-xl text-sm text-foreground transition-colors"
         >
           Back to Launcher
         </Link>

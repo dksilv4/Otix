@@ -32,7 +32,7 @@ export const MatchingProgressCard = ({
       role="region"
       aria-label="Game catalog matching progress"
       className={cn(
-        'p-3.5 rounded-2xl bg-[var(--dk-surface-ghost)] border border-white/[0.04] backdrop-blur-xl space-y-3 transition-all duration-300 shadow-xs',
+        'p-3.5 rounded-2xl bg-[var(--dk-surface-ghost)] border border-white/[0.04] backdrop-blur-xl space-y-3 transition-colors duration-300 shadow-xs',
         className,
       )}
     >
@@ -125,7 +125,7 @@ export const MatchingProgressCard = ({
       >
         <div
           className={cn(
-            'h-full rounded-full transition-all duration-300 ease-out',
+            'h-full rounded-full transition-colors duration-300 ease-out',
             isError ? 'bg-destructive' : 'bg-primary',
           )}
           style={{ width: `${Math.min(100, Math.max(0, data.percent))}%` }}

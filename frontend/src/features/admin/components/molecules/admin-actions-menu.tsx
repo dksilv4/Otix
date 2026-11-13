@@ -94,7 +94,7 @@ export const AdminActionsMenu = ({ mediaId, media, variant = 'default' }: Props)
           <button
             type="button"
             onClick={() => setMenuOpen(!menuOpen)}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-full text-amber-600 dark:text-amber-400 hover:bg-amber-500/15 transition-all hover:scale-110 active:scale-95"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-full text-amber-600 dark:text-amber-400 hover:bg-amber-500/15 transition hover:scale-110 active:scale-95"
             title="Admin actions"
             aria-label="Admin actions"
           >
@@ -104,7 +104,7 @@ export const AdminActionsMenu = ({ mediaId, media, variant = 'default' }: Props)
           <button
             type="button"
             onClick={() => setMenuOpen(!menuOpen)}
-            className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs sm:text-sm font-medium bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-glass-hover)] text-foreground border border-[var(--dk-separator)] shadow-sm backdrop-blur-md transition-all hover:scale-[1.02] active:scale-[0.98]"
+            className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs sm:text-sm font-medium bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-glass-hover)] text-foreground border border-[var(--dk-separator)] shadow-sm backdrop-blur-md transition-colors hover:scale-[1.02] active:scale-[0.98]"
           >
             <Shield className="h-4 w-4 text-amber-600 dark:text-amber-400" />
             <span className="text-amber-600 dark:text-amber-400 font-semibold">Admin</span>

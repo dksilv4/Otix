@@ -14,9 +14,17 @@ import { openOAuthWindow } from './oauth-window'
 // secondary window (OAuth popup, standalone link window) once the main window
 // has been recreated, causing valid renderer IPC to be rejected.
 let mainWebContents: Electron.WebContents | null = null
+let cleanupForwarders: (() => void)[] = []
 
 export function setPluginMainWebContents(webContents: Electron.WebContents | null): void {
   mainWebContents = webContents
+}
+
+function safeHandle(channel: string, listener: (...args: any[]) => any): void {
+  try {
+    ipcMain.removeHandler(channel)
+  } catch {}
+  ipcMain.handle(channel, listener)
 }
 
 function validateSender(event: Electron.IpcMainInvokeEvent): void {
@@ -37,94 +45,97 @@ export function registerPluginIPC(
   permissionManager?: PermissionManager,
 ): void {
   mainWebContents = mainWindow.webContents
+
   // ── Forward main-process plugin change events to the renderer ──
+  cleanupForwarders.forEach((unsub) => unsub())
+  cleanupForwarders = []
+
   const forward = <T extends 'plugin:config-changed' | 'plugin:status-changed' | 'plugin:slots-changed'>(
     channel: T,
   ) => {
-    eventBus.on(channel, (payload) => {
+    const unsub = eventBus.on(channel, (payload) => {
       if (!mainWindow.isDestroyed()) {
         mainWindow.webContents.send(channel, payload)
       }
     }, 'ipc')
+    cleanupForwarders.push(unsub)
   }
   forward('plugin:config-changed')
   forward('plugin:status-changed')
   forward('plugin:slots-changed')
 
   // ── Query handlers (no sender validation needed) ──
-  ipcMain.handle('plugin:list', async () => {
+  safeHandle('plugin:list', async () => {
     return await pluginManager.getAllPluginsWithStatuses()
   })
 
-  ipcMain.handle('plugin:get', async (_event, id: string) => {
+  safeHandle('plugin:get', async (_event, id: string) => {
     return pluginManager.getPlugin(id)
   })
 
-  ipcMain.handle('plugin:discover', async () => {
+  safeHandle('plugin:discover', async () => {
     return await pluginManager.discoverPlugins()
   })
 
-  ipcMain.handle('plugin:get-config', async (_event, pluginId: string) => {
+  safeHandle('plugin:get-config', async (_event, pluginId: string) => {
     return await pluginManager.getConfig(pluginId)
   })
 
-  ipcMain.handle('plugin:get-status', async (_event, pluginId: string) => {
+  safeHandle('plugin:get-status', async (_event, pluginId: string) => {
     return await pluginManager.getPluginStatus(pluginId)
   })
 
-  ipcMain.handle('plugin:get-activity', async () => {
+  safeHandle('plugin:get-activity', async () => {
     return pluginManager.getActivity()
   })
 
   // ── Slot endpoints ──
-  ipcMain.handle('plugin:get-slot-data', async (_event, location: string, context?: Record<string, unknown>) => {
+  safeHandle('plugin:get-slot-data', async (_event, location: string, context?: Record<string, unknown>) => {
     return await pluginManager.getSlotData(location, context)
   })
 
-  ipcMain.handle('plugin:get-page-slot-data', async (_event, pageId: string) => {
+  safeHandle('plugin:get-page-slot-data', async (_event, pageId: string) => {
     return await pluginManager.getPageSlotData(pageId)
   })
 
-  ipcMain.handle('plugin:get-plugin-tabs', async () => {
+  safeHandle('plugin:get-plugin-tabs', async () => {
     return pluginManager.getPluginTabs()
   })
 
   // ── Mutating handlers (sender validation required) ──
-  ipcMain.handle('plugin:uninstall', async (event, id: string) => {
+  safeHandle('plugin:uninstall', async (event, id: string) => {
     validateSender(event)
     assertString(id, 'id')
     return await pluginManager.uninstall(id)
   })
 
-  ipcMain.handle('plugin:enable', async (_event, id: string) => {
+  safeHandle('plugin:enable', async (_event, id: string) => {
     assertString(id, 'id')
     return await pluginManager.enable(id)
   })
 
-  ipcMain.handle('plugin:disable', async (_event, id: string) => {
+  safeHandle('plugin:disable', async (_event, id: string) => {
     assertString(id, 'id')
     return await pluginManager.disable(id)
   })
 
-  ipcMain.handle('plugin:reload', async (event, id: string) => {
+  safeHandle('plugin:reload', async (event, id: string) => {
     validateSender(event)
     assertString(id, 'id')
     await pluginManager.reload(id)
     return await pluginManager.getAllPlugins()
   })
 
-  ipcMain.handle('plugin:set-config', async (_event, pluginId: string, key: string, value: unknown) => {
+  safeHandle('plugin:set-config', async (_event, pluginId: string, key: string, value: unknown) => {
     return await pluginManager.setConfig(pluginId, key, value)
   })
 
-  ipcMain.removeHandler('plugin:set-auth-token')
-  ipcMain.handle('plugin:set-auth-token', async (event, token: string) => {
+  safeHandle('plugin:set-auth-token', async (event, token: string) => {
     validateSender(event)
     pluginManager.setAuthToken(token)
   })
 
-  ipcMain.removeHandler('plugin:set-api-base-url')
-  ipcMain.handle('plugin:set-api-base-url', async (event, url: string) => {
+  safeHandle('plugin:set-api-base-url', async (event, url: string) => {
     validateSender(event)
     const parsed = new URL(url)
     if (!['https:', 'http:'].includes(parsed.protocol)) {
@@ -134,28 +145,28 @@ export function registerPluginIPC(
   })
 
   // ── Data calls ──
-  ipcMain.handle('plugin:call-data', async (event, pluginId: string, method: string, ...args: unknown[]) => {
+  safeHandle('plugin:call-data', async (event, pluginId: string, method: string, ...args: unknown[]) => {
     validateSender(event)
     assertString(pluginId, 'pluginId')
     assertString(method, 'method')
     return await pluginManager.callPluginData(pluginId, method, ...args)
   })
 
-  ipcMain.handle('plugin:test-instance', async (_event, url: string, apiKey: string) => {
+  safeHandle('plugin:test-instance', async (_event, url: string, apiKey: string) => {
     return await pluginManager.testInstance(url, apiKey)
   })
 
-  ipcMain.handle('plugin:test-config', async (_event, pluginId: string, configDraft: Record<string, unknown>) => {
+  safeHandle('plugin:test-config', async (_event, pluginId: string, configDraft: Record<string, unknown>) => {
     return await pluginManager.testPluginConfig(pluginId, configDraft)
   })
 
-  ipcMain.handle('plugin:emit-event', async (event, eventName: string, payload: unknown) => {
+  safeHandle('plugin:emit-event', async (event, eventName: string, payload: unknown) => {
     validateSender(event)
     eventBus.emit(eventName as any, payload)
   })
 
   // ── Permission responses ──
-  ipcMain.handle('plugin:respond-permission', async (_event, requestId: string, response: { granted: boolean; duration?: string }) => {
+  safeHandle('plugin:respond-permission', async (_event, requestId: string, response: { granted: boolean; duration?: string }) => {
     if (!permissionManager) throw new Error('PermissionManager not available')
     permissionManager.respondToRequest(requestId, {
       granted: response.granted,
@@ -164,21 +175,21 @@ export function registerPluginIPC(
   })
 
   // ── API base URL ──
-  ipcMain.handle('plugin:get-api-base-url', async () => {
+  safeHandle('plugin:get-api-base-url', async () => {
     return pluginManager.getApiBaseUrl()
   })
 
   // ── Free games ──
-  ipcMain.handle('free-games:get-all', async () => {
+  safeHandle('free-games:get-all', async () => {
     return await pluginManager.freeGames.getAll()
   })
 
-  ipcMain.handle('free-games:refresh', async () => {
+  safeHandle('free-games:refresh', async () => {
     return await pluginManager.freeGames.refresh()
   })
 
   // ── OAuth window ──
-  ipcMain.handle('plugin:open-oauth-window', async (event, url: string, redirectPattern: string, options?: {
+  safeHandle('plugin:open-oauth-window', async (event, url: string, redirectPattern: string, options?: {
     tokenExtraction?: { type: 'url-param' | 'web-request' | 'local-storage'; key?: string }
   }) => {
     validateSender(event)

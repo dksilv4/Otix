@@ -1035,10 +1035,13 @@ def prehydrate_title_list(titles: list[str], *, limit: int = PREHYDRATE_TITLE_LI
 
 def prehydrate_game_titles(titles: list[str]) -> dict:
     """Search IGDB for each title and enqueue missing catalog ingest jobs."""
+    import hashlib
+
     searched = 0
     enqueued = 0
     for title in prehydrate_title_list(titles):
-        cache_key = f"search:prehydrate:{title.lower()}"
+        title_hash = hashlib.sha256(title.strip().lower().encode("utf-8")).hexdigest()[:24]
+        cache_key = f"search:prehydrate:{title_hash}"
         if cache.get(cache_key):
             continue
         cache.set(cache_key, 1, PREHYDRATE_CACHE_TTL)

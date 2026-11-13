@@ -20,7 +20,7 @@ export const FeatureIntroCard = ({
   }
 
   return (
-    <div className="group relative flex flex-col justify-between rounded-3xl bg-[var(--dk-surface-glass)] backdrop-blur-xl p-6 shadow-[var(--dk-shadow-glass)] transition-all duration-200 hover:bg-[var(--dk-surface-ghost-hover)]">
+    <div className="group relative flex flex-col justify-between rounded-3xl bg-[var(--dk-surface-glass)] backdrop-blur-xl p-6 shadow-[var(--dk-shadow-glass)] transition-colors duration-200 hover:bg-[var(--dk-surface-ghost-hover)]">
       <div className="space-y-4">
         {/* Top Header: Tinted Icon Pod & Direct Jump Icon */}
         <div className="flex items-center justify-between">

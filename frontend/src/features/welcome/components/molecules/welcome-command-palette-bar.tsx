@@ -56,7 +56,7 @@ export const WelcomeCommandPaletteBar = () => {
             handleOpenSearch()
           }
         }}
-        className="group relative z-10 flex w-full cursor-pointer items-center justify-between rounded-2xl glass-inset px-5 py-4 transition-all duration-200 hover:bg-[var(--dk-surface-ghost-hover)] shadow-inner"
+        className="group relative z-10 flex w-full cursor-pointer items-center justify-between rounded-2xl glass-inset px-5 py-4 transition-colors duration-200 hover:bg-[var(--dk-surface-ghost-hover)] shadow-inner"
       >
         <div className="flex items-center gap-3.5 text-muted-foreground transition-colors group-hover:text-foreground">
           <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/15 text-primary">
@@ -86,7 +86,7 @@ export const WelcomeCommandPaletteBar = () => {
         <button
           type="button"
           onClick={handleDecide}
-          className="inline-flex items-center gap-2 rounded-xl glass-inset px-3 py-1.5 text-xs font-medium text-foreground/90 hover:text-foreground hover:bg-[var(--dk-surface-ghost-hover)] transition-all cursor-pointer active:scale-95"
+          className="inline-flex items-center gap-2 rounded-xl glass-inset px-3 py-1.5 text-xs font-medium text-foreground/90 hover:text-foreground hover:bg-[var(--dk-surface-ghost-hover)] transition-colors cursor-pointer active:scale-95"
         >
           <Sparkles className="h-3.5 w-3.5 text-primary" />
           <span>Decide for me</span>
@@ -95,7 +95,7 @@ export const WelcomeCommandPaletteBar = () => {
         <button
           type="button"
           onClick={(e) => handleNavigate(e, '/genres?type=movie')}
-          className="inline-flex items-center gap-2 rounded-xl glass-inset px-3 py-1.5 text-xs font-medium text-foreground/90 hover:text-foreground hover:bg-[var(--dk-surface-ghost-hover)] transition-all cursor-pointer active:scale-95"
+          className="inline-flex items-center gap-2 rounded-xl glass-inset px-3 py-1.5 text-xs font-medium text-foreground/90 hover:text-foreground hover:bg-[var(--dk-surface-ghost-hover)] transition-colors cursor-pointer active:scale-95"
         >
           <Film className="h-3.5 w-3.5 text-[var(--media-movie)]" />
           <span>Browse Movies</span>
@@ -104,7 +104,7 @@ export const WelcomeCommandPaletteBar = () => {
         <button
           type="button"
           onClick={(e) => handleNavigate(e, '/launcher')}
-          className="inline-flex items-center gap-2 rounded-xl glass-inset px-3 py-1.5 text-xs font-medium text-foreground/90 hover:text-foreground hover:bg-[var(--dk-surface-ghost-hover)] transition-all cursor-pointer active:scale-95"
+          className="inline-flex items-center gap-2 rounded-xl glass-inset px-3 py-1.5 text-xs font-medium text-foreground/90 hover:text-foreground hover:bg-[var(--dk-surface-ghost-hover)] transition-colors cursor-pointer active:scale-95"
         >
           <Gamepad2 className="h-3.5 w-3.5 text-[var(--media-game)]" />
           <span>Game Launcher</span>
@@ -113,7 +113,7 @@ export const WelcomeCommandPaletteBar = () => {
         <button
           type="button"
           onClick={(e) => handleNavigate(e, '/settings/downloads')}
-          className="inline-flex items-center gap-2 rounded-xl glass-inset px-3 py-1.5 text-xs font-medium text-foreground/90 hover:text-foreground hover:bg-[var(--dk-surface-ghost-hover)] transition-all cursor-pointer active:scale-95"
+          className="inline-flex items-center gap-2 rounded-xl glass-inset px-3 py-1.5 text-xs font-medium text-foreground/90 hover:text-foreground hover:bg-[var(--dk-surface-ghost-hover)] transition-colors cursor-pointer active:scale-95"
         >
           <Download className="h-3.5 w-3.5 text-primary" />
           <span>Download Queue</span>
@@ -122,7 +122,7 @@ export const WelcomeCommandPaletteBar = () => {
         <button
           type="button"
           onClick={(e) => handleNavigate(e, '/settings/profile')}
-          className="inline-flex items-center gap-2 rounded-xl glass-inset px-3 py-1.5 text-xs font-medium text-foreground/90 hover:text-foreground hover:bg-[var(--dk-surface-ghost-hover)] transition-all cursor-pointer active:scale-95"
+          className="inline-flex items-center gap-2 rounded-xl glass-inset px-3 py-1.5 text-xs font-medium text-foreground/90 hover:text-foreground hover:bg-[var(--dk-surface-ghost-hover)] transition-colors cursor-pointer active:scale-95"
         >
           <Trophy className="h-3.5 w-3.5 text-[var(--media-music)]" />
           <span>Check XP Level</span>

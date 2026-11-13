@@ -89,6 +89,7 @@ export interface MediaSourceAdapter {
     item: PlayableMediaItem,
     audioIndex?: number,
     subtitleIndex?: number,
+    currentPosition?: number,
   ): Promise<ResolvedPlayback>
   getNextItem?(item: PlayableMediaItem): Promise<PlayableMediaItem | null>
 }

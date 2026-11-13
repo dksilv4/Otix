@@ -35,7 +35,7 @@ export const useUnifiedPlayerState = ({
     availableQualities,
     activeLevelHeight,
     playbackMethod,
-    setQuality,
+    setQuality: streamSetQuality,
     setInAppPip,
     toggleOverallPip,
     onTimeUpdate,
@@ -90,11 +90,28 @@ export const useUnifiedPlayerState = ({
   const effectiveVolume = isTrailer ? trailerVolume : streamVolume
   const effectiveCurrentTime = isTrailer ? engine.trailerCurrentTime : streamCurrentTime
   const effectiveDuration = isTrailer ? engine.trailerDuration : streamDuration
+  const episodeName =
+    activeStreamSession?.episodeContext?.episodeTitle ||
+    (activeStreamSession?.episodeContext?.episodeNumber != null
+      ? `Episode ${activeStreamSession.episodeContext.episodeNumber}`
+      : null) ||
+    (() => {
+      if (!activeStreamSession?.subtitle) return null
+      const match = activeStreamSession.subtitle.match(/(?:S\d+[:E]\d+|\bE\d+\b)\s*[-·•:]\s*(.+)/i)
+      return match?.[1]?.trim() || null
+    })()
+
   const effectiveTitle = isTrailer
     ? propTitle
       ? `${propTitle} — Trailer`
       : 'Trailer'
-    : activeStreamSession?.title || 'Video Player'
+    : episodeName || activeStreamSession?.title || 'Video Player'
+
+  const effectiveSubtitle = isTrailer
+    ? 'Trailer'
+    : activeStreamSession?.episodeContext?.seriesTitle
+    ? `${activeStreamSession.episodeContext.seriesTitle} · S${activeStreamSession.episodeContext.seasonNumber}:E${activeStreamSession.episodeContext.episodeNumber}`
+    : activeStreamSession?.subtitle
 
   const isVisible = isTrailer ? !propIsExiting : streamIsOpen
 
@@ -104,22 +121,21 @@ export const useUnifiedPlayerState = ({
     streamPlayer,
     engine,
     effectiveIsPlaying,
-    effectiveIsMuted,
-    effectiveVolume,
     effectiveDuration,
     effectiveCurrentTime,
     trailerVolume,
     setTrailerVolumeState,
     trailerIsMuted,
     setTrailerIsMutedState,
-    isZoomedOut,
     setIsZoomedOutState,
-    trailerIsTheater,
     setTrailerIsTheaterState,
     onClose: propOnClose,
     isVisible,
     isDraggingProgress,
     setIsDraggingProgress,
+    subtitles: activeStreamSession?.subtitles || [],
+    activeSubtitle,
+    onSelectSubtitleTrack: streamPlayer.setActiveSubtitle,
   })
 
   // Metrics calculation
@@ -133,9 +149,28 @@ export const useUnifiedPlayerState = ({
   const currentAspectRatio = isTrailer ? 16 / 9 : engine.videoAspectRatio || 16 / 9
   const maxVideoHeight = controls.isFullscreen
     ? '100vh'
+    : effectiveIsTheater
+    ? '100vh'
     : hasExternalSpace
     ? 'calc(100vh - 160px)'
     : 'calc(100vh - 32px)'
+
+  const setQuality = useCallback(
+    (qualityId: string) => {
+      const hls = engine.hlsRef.current
+      const qual = availableQualities.find((q) => q.id === qualityId)
+      if (hls && qual?.hlsLevelIndex !== undefined) {
+        hls.currentLevel = qual.hlsLevelIndex
+      } else if (hls && qualityId === 'auto') {
+        hls.currentLevel = -1
+      }
+      streamSetQuality(qualityId)
+      if (qual) {
+        streamPlayer.updateSessionQuality(qual)
+      }
+    },
+    [availableQualities, engine.hlsRef, streamPlayer, streamSetQuality],
+  )
 
   return {
     isTrailer,
@@ -146,6 +181,7 @@ export const useUnifiedPlayerState = ({
     containerRef,
     hasExternalSpace,
     effectiveTitle,
+    effectiveSubtitle,
     effectiveIsTheater,
     effectiveIsPlaying,
     effectiveIsMuted,
@@ -158,9 +194,16 @@ export const useUnifiedPlayerState = ({
     bufferedPercent,
     isZoomedOut,
     activeSubtitle,
+    subtitles: activeStreamSession?.subtitles || [],
+    activeAudio: streamPlayer.activeAudio,
+    audioTracks: activeStreamSession?.audioTracks || [],
     currentQuality,
     availableQualities,
     activeLevelHeight,
+    queue: streamPlayer.queue || [],
+    skipToIndex: streamPlayer.skipToIndex,
+    removeFromQueue: streamPlayer.removeFromQueue,
+    clearQueue: streamPlayer.clearQueue,
     isBuffering,
     streamCurrentTime,
     streamDuration,
@@ -169,6 +212,8 @@ export const useUnifiedPlayerState = ({
     playbackMethod,
     streamPlayer,
     setQuality,
+    setActiveAudio: streamPlayer.setActiveAudio,
+    setActiveSubtitle: streamPlayer.setActiveSubtitle,
     setInAppPip,
     toggleInAppPip: streamPlayer.toggleInAppPip,
     toggleOverallPip,

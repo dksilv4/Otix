@@ -135,7 +135,7 @@ export const NodeScannedFilesTable = ({
   }
 
   return (
-    <div className={cn('space-y-3 transition-all', className)}>
+    <div className={cn('space-y-3 transition-colors', className)}>
       {/* ── Top Header Container: Search, Filters, Sorts, Stats & Table Column Headers ── */}
       <div className="rounded-2xl bg-[var(--dk-surface-glass)] backdrop-blur-2xl border border-white/[0.04] shadow-[var(--dk-shadow-glass)] sticky top-4 z-20">
         {/* Controls: Search, Filter Dropdown, Sort Dropdown */}
@@ -149,7 +149,7 @@ export const NodeScannedFilesTable = ({
                 value={searchQuery}
                 onChange={(e) => onSearchChange(e.target.value)}
                 placeholder="Filter by title, path, platform, or format..."
-                className="w-full pl-9 pr-3 py-2 rounded-xl bg-[var(--dk-surface-field)] border border-white/[0.04] text-xs sm:text-sm text-foreground placeholder:text-muted-foreground outline-none focus:ring-1 focus:ring-primary/40 transition-all"
+                className="w-full pl-9 pr-3 py-2 rounded-xl bg-[var(--dk-surface-field)] border border-white/[0.04] text-xs sm:text-sm text-foreground placeholder:text-muted-foreground outline-none focus:ring-1 focus:ring-primary/40 transition-colors"
               />
             </div>
 

@@ -137,7 +137,7 @@ export const CollectionSection = ({ className }: { className?: string } = {}) =>
               type="button"
               onClick={() => scrollBy(-360)}
               disabled={!canScrollLeft}
-              className="p-1.5 rounded-lg bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-base)] text-muted-foreground hover:text-foreground disabled:opacity-25 disabled:pointer-events-none transition-all shadow-sm active:scale-95 cursor-pointer"
+              className="p-1.5 rounded-lg bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-base)] text-muted-foreground hover:text-foreground disabled:opacity-25 disabled:pointer-events-none transition-colors shadow-sm active:scale-95 cursor-pointer"
               aria-label="Scroll left"
             >
               <ChevronLeft className="h-4 w-4" />
@@ -146,7 +146,7 @@ export const CollectionSection = ({ className }: { className?: string } = {}) =>
               type="button"
               onClick={() => scrollBy(360)}
               disabled={!canScrollRight}
-              className="p-1.5 rounded-lg bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-base)] text-muted-foreground hover:text-foreground disabled:opacity-25 disabled:pointer-events-none transition-all shadow-sm active:scale-95 cursor-pointer"
+              className="p-1.5 rounded-lg bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-base)] text-muted-foreground hover:text-foreground disabled:opacity-25 disabled:pointer-events-none transition-colors shadow-sm active:scale-95 cursor-pointer"
               aria-label="Scroll right"
             >
               <ChevronRight className="h-4 w-4" />
@@ -160,7 +160,7 @@ export const CollectionSection = ({ className }: { className?: string } = {}) =>
         <div className="relative z-10 px-6 sm:px-7">
           <p
             className={cn(
-              'text-sm leading-relaxed text-muted-foreground/80 transition-all duration-200',
+              'text-sm leading-relaxed text-muted-foreground/80 transition-colors duration-200',
               !isExpanded && 'line-clamp-2'
             )}
           >

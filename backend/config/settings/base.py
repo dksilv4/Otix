@@ -481,3 +481,11 @@ UPLOAD_DIR = os.environ.get("UPLOAD_DIR", str(BASE_DIR / "uploads"))
 # Locally mirrored artwork (admin "download images"): MediaAsset copies written
 # under MEDIA_DIR/assets and served from /api/v1/assets/<name>.
 MEDIA_DIR = os.environ.get("OTIX_MEDIA_DIR", str(BASE_DIR / "media"))
+
+# Upload and request memory limits
+DATA_UPLOAD_MAX_MEMORY_SIZE = int(
+    os.environ.get("DATA_UPLOAD_MAX_MEMORY_SIZE", str(50 * 1024 * 1024))
+)  # 50 MB
+FILE_UPLOAD_MAX_MEMORY_SIZE = int(
+    os.environ.get("FILE_UPLOAD_MAX_MEMORY_SIZE", str(50 * 1024 * 1024))
+)  # 50 MB

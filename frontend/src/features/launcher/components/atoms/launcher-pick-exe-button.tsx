@@ -31,7 +31,7 @@ export const PickExeButton = ({ gameId: propGameId, installDir: propInstallDir }
       onClick={handleClick}
       title="Choose a different executable (.exe)"
       aria-label="Choose a different executable (.exe)"
-      className="w-10 h-10 bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-field)] border border-[var(--dk-separator)] rounded-xl text-muted-foreground hover:text-foreground transition-all cursor-pointer backdrop-blur-md active:scale-95 flex items-center justify-center shrink-0"
+      className="w-10 h-10 bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-field)] border border-[var(--dk-separator)] rounded-xl text-muted-foreground hover:text-foreground transition-colors cursor-pointer backdrop-blur-md active:scale-95 flex items-center justify-center shrink-0"
     >
       <FileCode size={16} />
     </button>

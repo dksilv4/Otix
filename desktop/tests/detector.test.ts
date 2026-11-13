@@ -182,6 +182,33 @@ describe('GameDetector', () => {
       const results = await detector.scanRunningProcesses()
       expect(results).toHaveLength(1)
     })
+
+    it('matches steam game via titleToExeCandidates and known signature without localExePath', async () => {
+      const game = makeGame({
+        id: 'steam_730',
+        title: 'Counter-Strike 2',
+        platform: 'steam',
+        exePath: 'steam://rungameid/730',
+      })
+      detector.setLibrary([game])
+      mockProcesses(['cs2.exe'])
+
+      const results = await detector.scanRunningProcesses()
+      expect(results).toHaveLength(1)
+      expect(results[0].game.id).toBe('steam_730')
+      expect(results[0].game.title).toBe('Counter-Strike 2')
+    })
+
+    it('matches window title for games with steam platform', async () => {
+      const game = makeGame({ id: 'game-steam', title: 'Counter-Strike 2', platform: 'steam' })
+      detector.setLibrary([game])
+      mockProcesses(['cs2'])
+      mockWindowTitles([{ processName: 'cs2', pid: 42200, title: 'Counter-Strike 2' }])
+
+      const results = await detector.scanRunningProcesses()
+      expect(results).toHaveLength(1)
+      expect(results[0].game.id).toBe('game-steam')
+    })
   })
 
   // ── Window title matching ──

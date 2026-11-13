@@ -131,7 +131,10 @@ export function mergeDuplicateGames(games: LocalGame[]): LocalGame[] {
           ],
         });
       } else {
-        merged.push(single);
+        merged.push({
+          ...single,
+          installDir: single.installDir ?? (single.exePath && !single.exePath.startsWith('steam://') ? single.exePath.replace(/[/\\][^/\\]*$/, '') : ''),
+        });
       }
       continue;
     }
@@ -202,7 +205,7 @@ export function mergeDuplicateGames(games: LocalGame[]): LocalGame[] {
       ...best,
       sources: sources.length > 0 ? sources : undefined,
       exePath: resolvedExePath,
-      installDir: best.installDir || installedGame?.installDir,
+      installDir: best.installDir || installedGame?.installDir || (resolvedExePath && !resolvedExePath.startsWith('steam://') ? resolvedExePath.replace(/[/\\][^/\\]*$/, '') : ''),
       updateFiles: combinedUpdates.length > 0 ? combinedUpdates : undefined,
     });
   }

@@ -1,5 +1,5 @@
 import { Link } from '@tanstack/react-router'
-import { Zap, Gamepad2, Film, Tv, Music } from 'lucide-react'
+import { Zap, Gamepad2, Film, Tv, Music, Clock } from 'lucide-react'
 import { DkAvatar } from '@ui/atoms/avatar'
 import { formatDuration } from '@/lib/utils'
 import type { LiveActivityMediaType, LiveMediaActivityItem, PlayerActivityItem } from '../../types'
@@ -38,7 +38,7 @@ export const DiscoverPlayerActivityCard = ({ item }: DiscoverPlayerActivityCardP
   return (
     <div
       data-testid="discover-player-activity-card"
-      className="w-[260px] h-[370px] rounded-3xl overflow-hidden relative shadow-[0_24px_60px_rgba(0,0,0,0.85)] flex flex-col justify-between p-4 group shrink-0 transition-transform duration-300 hover:scale-[1.02] select-none bg-card"
+      className="w-[260px] h-[370px] rounded-3xl overflow-hidden relative shadow-2xl flex flex-col justify-between p-4 group shrink-0 transition-transform duration-300 hover:scale-[1.02] select-none bg-card"
     >
       {/* Edge-to-edge textless artwork background */}
       {displayArt ? (
@@ -60,7 +60,7 @@ export const DiscoverPlayerActivityCard = ({ item }: DiscoverPlayerActivityCardP
           to="/u/$username"
           params={{ username: item.user.username }}
           onClick={(e) => e.stopPropagation()}
-          className="flex items-center gap-2 px-2.5 py-1.5 rounded-full bg-black/45 hover:bg-black/65 backdrop-blur-xl transition-all shadow-md"
+          className="flex items-center gap-2 px-2.5 py-1.5 rounded-full bg-black/45 hover:bg-black/65 backdrop-blur-xl transition shadow-md"
         >
           <DkAvatar src={item.user.avatarUrl} name={item.user.username} size="sm" className="!h-5 !w-5" />
           <span className="text-xs font-bold text-white truncate max-w-[120px]">{item.user.username}</span>
@@ -88,9 +88,10 @@ export const DiscoverPlayerActivityCard = ({ item }: DiscoverPlayerActivityCardP
                 {item.subtitle}
               </span>
             )}
-            <h3 className="text-lg font-black text-white leading-tight drop-shadow-[0_2px_12px_rgba(0,0,0,0.95)] group-hover/title:text-primary transition-colors flex items-center gap-1.5">
+            <h3 className="text-lg font-black text-white leading-tight drop-shadow-lg group-hover/title:text-primary transition-colors flex items-center gap-1.5">
               <span className="truncate">{item.title}</span>
               <svg
+                aria-hidden="true"
                 className="w-4 h-4 text-primary opacity-80 group-hover/title:translate-x-1 transition-transform shrink-0"
                 fill="none"
                 viewBox="0 0 24 24"
@@ -107,7 +108,7 @@ export const DiscoverPlayerActivityCard = ({ item }: DiscoverPlayerActivityCardP
                 {item.subtitle}
               </span>
             )}
-            <h3 className="text-lg font-black text-white leading-tight drop-shadow-[0_2px_12px_rgba(0,0,0,0.95)]">
+            <h3 className="text-lg font-black text-white leading-tight drop-shadow-lg">
               <span className="truncate">{item.title}</span>
             </h3>
           </div>
@@ -123,7 +124,7 @@ export const DiscoverPlayerActivityCard = ({ item }: DiscoverPlayerActivityCardP
 
           {item.elapsedMs != null && item.elapsedMs > 0 && (
             <span className="inline-flex items-center gap-1 font-mono text-[10px] font-medium text-white/90 bg-white/15 px-2 py-0.5 rounded-lg backdrop-blur-xl shadow-md">
-              ⏱ {formatDuration(item.elapsedMs)}
+              <Clock className="w-3 h-3 inline-block" aria-hidden="true" /> {formatDuration(item.elapsedMs)}
             </span>
           )}
 

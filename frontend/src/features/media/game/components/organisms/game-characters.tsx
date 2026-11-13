@@ -71,7 +71,7 @@ export const GameCharacters = ({ characters = [], className = '' }: GameCharacte
             <button
               type="button"
               onClick={() => setIsAllModalOpen(true)}
-              className="text-xs font-medium text-muted-foreground hover:text-foreground transition-all inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-base)] shadow-xs active:scale-95 cursor-pointer"
+              className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-base)] shadow-xs active:scale-95 cursor-pointer"
             >
               <span>View all</span>
               <span className="text-[10px] opacity-70 font-semibold">({validCharacters.length})</span>
@@ -84,7 +84,7 @@ export const GameCharacters = ({ characters = [], className = '' }: GameCharacte
               type="button"
               disabled={!canScrollLeft}
               onClick={() => scrollBy(-260)}
-              className="flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-base)] text-foreground disabled:opacity-25 transition-all"
+              className="flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-base)] text-foreground disabled:opacity-25 transition-colors"
               aria-label="Scroll left"
             >
               <ChevronLeft className="h-4 w-4" />
@@ -93,7 +93,7 @@ export const GameCharacters = ({ characters = [], className = '' }: GameCharacte
               type="button"
               disabled={!canScrollRight}
               onClick={() => scrollBy(260)}
-              className="flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-base)] text-foreground disabled:opacity-25 transition-all"
+              className="flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-base)] text-foreground disabled:opacity-25 transition-colors"
               aria-label="Scroll right"
             >
               <ChevronRight className="h-4 w-4" />
@@ -120,9 +120,9 @@ export const GameCharacters = ({ characters = [], className = '' }: GameCharacte
               onClick={() => setSelectedCharacter(char)}
               className={cn(
                 'group relative h-48 w-28 shrink-0 overflow-hidden rounded-lg bg-muted text-left',
-                'shadow-[0_4px_16px_rgba(0,0,0,0.2)] transition-[transform,box-shadow] duration-300 ease-out',
+                'shadow-md transition-[transform,box-shadow] duration-300 ease-out',
                 'sm:h-52 sm:w-32',
-                'hover:scale-[1.02] hover:shadow-[0_20px_40px_rgba(0,0,0,0.35)]',
+                'hover:scale-[1.02] hover:shadow-xl',
                 'active:scale-[1.01]',
               )}
             >
@@ -154,7 +154,7 @@ export const GameCharacters = ({ characters = [], className = '' }: GameCharacte
                     {speciesOrGender}
                   </p>
                 )}
-                <h3 className="truncate text-sm font-semibold leading-tight text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.75)] sm:text-base">
+                <h3 className="truncate text-sm font-semibold leading-tight text-white drop-shadow-lg sm:text-base">
                   {char.name}
                 </h3>
               </div>

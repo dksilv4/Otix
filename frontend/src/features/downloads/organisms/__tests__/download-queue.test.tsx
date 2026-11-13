@@ -286,4 +286,40 @@ describe('DownloadQueuePage', () => {
     expect(screen.getByText('S19E01')).toBeInTheDocument()
     expect(screen.getByText('S02E02')).toBeInTheDocument()
   })
+
+  it('displays completed downloads during the 15-second grace window to prevent UI flicker before Plex indexing', () => {
+    // 1. Initial render with active Radarr movie
+    mockRadarrRecords = [
+      {
+        id: 777,
+        title: 'Gladiator II',
+        status: 'downloading',
+        size: 15_000_000_000,
+        sizeleft: 100_000,
+        timeleft: '00:00:10',
+      },
+    ]
+
+    const { rerender } = render(
+      <QueryClientProvider client={queryClient}>
+        <DownloadQueuePage />
+      </QueryClientProvider>,
+    )
+
+    expect(screen.getByText('Gladiator II')).toBeInTheDocument()
+
+    // 2. Download completes and disappears from Radarr active queue
+    mockRadarrRecords = []
+
+    rerender(
+      <QueryClientProvider client={queryClient}>
+        <DownloadQueuePage />
+      </QueryClientProvider>,
+    )
+
+    // Grace window keeps it visible as "Download complete · Indexing in Plex library..."
+    expect(screen.getByText('Gladiator II')).toBeInTheDocument()
+    expect(screen.getByText(/Indexing in Plex library/i)).toBeInTheDocument()
+    expect(screen.getByText('Syncing')).toBeInTheDocument()
+  })
 })

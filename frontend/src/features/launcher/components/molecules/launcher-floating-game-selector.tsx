@@ -247,7 +247,7 @@ export const FloatingGameSelector = () => {
             type="button"
             title={isLibraryView ? 'Open Game Spotlight' : 'Game Spotlight'}
             onClick={goToSpotlight}
-            className={`w-9 h-9 rounded-full flex items-center justify-center cursor-pointer transition-all active:scale-95 shrink-0 ${
+            className={`w-9 h-9 rounded-full flex items-center justify-center cursor-pointer transition active:scale-95 shrink-0 ${
               !isLibraryView
                 ? 'bg-primary text-primary-foreground shadow-md shadow-primary/25'
                 : 'text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-ghost)]'
@@ -260,7 +260,7 @@ export const FloatingGameSelector = () => {
             type="button"
             title="Browse All Games (Library)"
             onClick={goToLibrary}
-            className={`w-8 h-8 rounded-full flex items-center justify-center cursor-pointer transition-all active:scale-95 shrink-0 ${
+            className={`w-8 h-8 rounded-full flex items-center justify-center cursor-pointer transition active:scale-95 shrink-0 ${
               isLibraryView
                 ? 'bg-primary text-primary-foreground shadow-md shadow-primary/25'
                 : 'text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-ghost)]'
@@ -282,7 +282,7 @@ export const FloatingGameSelector = () => {
                 return next
               })
             }}
-            className={`w-8 h-8 rounded-full flex items-center justify-center transition-all cursor-pointer ${
+            className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors cursor-pointer ${
               searchQuery
                 ? 'bg-primary text-primary-foreground shadow-sm'
                 : searchOpen
@@ -299,7 +299,7 @@ export const FloatingGameSelector = () => {
             title="Scan Game Libraries"
             onClick={handleQuickScan}
             disabled={isScanning}
-            className="w-8 h-8 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-ghost)] active:scale-95 cursor-pointer transition-all shrink-0 disabled:opacity-50"
+            className="w-8 h-8 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-ghost)] active:scale-95 cursor-pointer transition-colors shrink-0 disabled:opacity-50"
           >
             <RefreshCw size={13} className={isScanning ? 'animate-spin text-primary' : ''} />
           </button>
@@ -319,7 +319,7 @@ export const FloatingGameSelector = () => {
             type="button"
             title="Launcher Settings"
             onClick={() => navigate({ to: '/settings/launcher' })}
-            className="w-8 h-8 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-ghost)] active:scale-95 cursor-pointer transition-all shrink-0"
+            className="w-8 h-8 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-ghost)] active:scale-95 cursor-pointer transition-colors shrink-0"
           >
             <Settings size={15} />
           </button>

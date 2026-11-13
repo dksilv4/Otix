@@ -57,7 +57,7 @@ export const LauncherGameAchievementsTab = ({ gameId, gameTitle }: LauncherGameA
           <button
             onClick={() => sync()}
             disabled={loading}
-            className="px-3.5 py-1.5 rounded-xl bg-[var(--dk-surface-raised)] hover:bg-[var(--dk-surface-field)] border border-white/[0.06] text-xs font-semibold text-foreground transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
+            className="px-3.5 py-1.5 rounded-xl bg-[var(--dk-surface-raised)] hover:bg-[var(--dk-surface-field)] border border-white/[0.06] text-xs font-semibold text-foreground transition-colors flex items-center gap-2 cursor-pointer disabled:opacity-50"
           >
             <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
             <span>Sync</span>
@@ -67,7 +67,7 @@ export const LauncherGameAchievementsTab = ({ gameId, gameTitle }: LauncherGameA
         {/* Horizontal Progress Track */}
         <div className="w-full h-2 rounded-full bg-[var(--dk-surface-field)] overflow-hidden mt-4 border border-white/[0.04]">
           <div
-            className="h-full rounded-full bg-primary transition-all duration-500 ease-out"
+            className="h-full rounded-full bg-primary transition-colors duration-500 ease-out"
             style={{ width: `${stats.completionPercentage}%` }}
           />
         </div>
@@ -95,7 +95,7 @@ export const LauncherGameAchievementsTab = ({ gameId, gameTitle }: LauncherGameA
           <div className="flex items-center rounded-xl bg-[var(--dk-surface-ghost)] border border-white/[0.06] p-1 gap-1">
             <button
               onClick={() => setFilter('all')}
-              className={`px-2.5 py-1 text-xs rounded-lg font-semibold transition-all cursor-pointer ${
+              className={`px-2.5 py-1 text-xs rounded-lg font-semibold transition-colors cursor-pointer ${
                 filter === 'all'
                   ? 'bg-primary text-primary-foreground shadow-sm'
                   : 'text-muted-foreground hover:text-foreground'
@@ -105,7 +105,7 @@ export const LauncherGameAchievementsTab = ({ gameId, gameTitle }: LauncherGameA
             </button>
             <button
               onClick={() => setFilter('unlocked')}
-              className={`px-2.5 py-1 text-xs rounded-lg font-semibold transition-all cursor-pointer ${
+              className={`px-2.5 py-1 text-xs rounded-lg font-semibold transition-colors cursor-pointer ${
                 filter === 'unlocked'
                   ? 'bg-primary text-primary-foreground shadow-sm'
                   : 'text-muted-foreground hover:text-foreground'
@@ -115,7 +115,7 @@ export const LauncherGameAchievementsTab = ({ gameId, gameTitle }: LauncherGameA
             </button>
             <button
               onClick={() => setFilter('locked')}
-              className={`px-2.5 py-1 text-xs rounded-lg font-semibold transition-all cursor-pointer ${
+              className={`px-2.5 py-1 text-xs rounded-lg font-semibold transition-colors cursor-pointer ${
                 filter === 'locked'
                   ? 'bg-primary text-primary-foreground shadow-sm'
                   : 'text-muted-foreground hover:text-foreground'
@@ -125,7 +125,7 @@ export const LauncherGameAchievementsTab = ({ gameId, gameTitle }: LauncherGameA
             </button>
             <button
               onClick={() => setFilter('rare')}
-              className={`px-2.5 py-1 text-xs rounded-lg font-semibold transition-all cursor-pointer ${
+              className={`px-2.5 py-1 text-xs rounded-lg font-semibold transition-colors cursor-pointer ${
                 filter === 'rare'
                   ? 'bg-primary text-primary-foreground shadow-sm'
                   : 'text-muted-foreground hover:text-foreground'
@@ -138,7 +138,7 @@ export const LauncherGameAchievementsTab = ({ gameId, gameTitle }: LauncherGameA
           {/* Reveal Secrets Toggle */}
           <button
             onClick={() => setRevealSecrets(!revealSecrets)}
-            className={`p-2 rounded-xl border border-white/[0.06] transition-all cursor-pointer flex items-center gap-1.5 text-xs font-semibold ${
+            className={`p-2 rounded-xl border border-white/[0.06] transition-colors cursor-pointer flex items-center gap-1.5 text-xs font-semibold ${
               revealSecrets
                 ? 'bg-primary/20 text-primary'
                 : 'bg-[var(--dk-surface-ghost)] text-muted-foreground hover:text-foreground'
@@ -171,7 +171,7 @@ export const LauncherGameAchievementsTab = ({ gameId, gameTitle }: LauncherGameA
             return (
               <div
                 key={ach.id}
-                className={`p-3.5 rounded-2xl border transition-all flex items-center gap-3.5 ${
+                className={`p-3.5 rounded-2xl border transition-colors flex items-center gap-3.5 ${
                   ach.unlocked
                     ? 'bg-[var(--dk-surface-ghost)] border-white/[0.06]'
                     : 'bg-[var(--dk-surface-ghost)]/40 border-white/[0.02]'

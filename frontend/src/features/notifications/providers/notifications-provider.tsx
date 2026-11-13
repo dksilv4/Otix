@@ -1,5 +1,6 @@
 import { useCallback, useRef, useEffect, useMemo } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
+import { useNavigate } from '@tanstack/react-router'
 import { useAuth } from '@/lib/providers/auth'
 import { useToast } from '@ui/molecules/toast'
 import { useSseStream } from '@/lib/hooks/use-sse-stream'
@@ -32,6 +33,7 @@ interface NotificationsProviderProps {
 export const NotificationsProvider = ({ children }: NotificationsProviderProps) => {
   const { isAuthenticated, user } = useAuth()
   const queryClient = useQueryClient()
+  const navigate = useNavigate()
   const { toast } = useToast()
   const routerRef = useRef<NotificationRouter | null>(null)
 
@@ -49,14 +51,33 @@ export const NotificationsProvider = ({ children }: NotificationsProviderProps) 
     // badge channel that invalidates/refetches the list.
     router.registerChannel(createSoundChannel(prefs))
     router.registerChannel(createWebChannel(prefs))
-    router.registerChannel(createToastChannel(prefs, (opts) => {
-      toast({ title: opts.title, description: opts.description, variant: 'default' })
-    }))
+    router.registerChannel(
+      createToastChannel(
+        prefs,
+        (opts) => {
+          toast({
+            title: opts.title,
+            description: opts.description,
+            variant: 'default',
+            onClick: opts.onClick,
+          })
+        },
+        (path) => {
+          try {
+            navigate({ to: path as any })
+          } catch {
+            if (typeof window !== 'undefined') {
+              window.location.href = path
+            }
+          }
+        },
+      ),
+    )
 
     const desktopChannel = createDesktopChannel(prefs)
     if (desktopChannel) router.registerChannel(desktopChannel)
     routerRef.current = router
-  }, [prefs, queryClient, toast])
+  }, [prefs, queryClient, toast, navigate])
 
   const handleMessage = useCallback(
     (event: SseEvent) => {
@@ -94,6 +115,14 @@ export const NotificationsProvider = ({ children }: NotificationsProviderProps) 
       const outcome = appendNotificationToFeed(queryClient, n)
       if (outcome !== 'duplicate' && !n.isRead) {
         bumpUnreadCount(queryClient)
+      }
+
+      // Automatically refresh media request and streaming queries when lifecycle updates arrive
+      if (n.type.startsWith('media.')) {
+        queryClient.invalidateQueries({ queryKey: ['media-detail-actions'] })
+        queryClient.invalidateQueries({ queryKey: ['request-media'] })
+        queryClient.invalidateQueries({ queryKey: ['media-activity'] })
+        queryClient.invalidateQueries({ queryKey: ['server-arr'] })
       }
 
       if (prefs[n.type] === false) return

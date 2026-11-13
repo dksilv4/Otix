@@ -45,7 +45,7 @@ export const UserXpProgressionBar = ({
       <div className="relative h-14 rounded-2xl overflow-hidden bg-[var(--dk-surface-ghost)] backdrop-blur-xl shadow-md">
         {/* Fluid gradient fill with tier highlight */}
         <div
-          className="absolute inset-y-0 left-0 rounded-2xl transition-all duration-1000 ease-out"
+          className="absolute inset-y-0 left-0 rounded-2xl transition-colors duration-1000 ease-out"
           style={{
             width: `${Math.max(barProgress * 100, 2)}%`,
             background: `linear-gradient(90deg, ${tier.barColor}, ${tier.color})`,
@@ -55,7 +55,7 @@ export const UserXpProgressionBar = ({
 
         {/* Dynamic glowing tip pulse at edge of progress */}
         <div
-          className="absolute inset-y-0 w-2 pointer-events-none transition-all duration-1000 ease-out blur-[2px]"
+          className="absolute inset-y-0 w-2 pointer-events-none transition-colors duration-1000 ease-out blur-[2px]"
           style={{
             left: `calc(${Math.min(Math.max(barProgress * 100, 2), 99)}% - 4px)`,
             background: tier.color,

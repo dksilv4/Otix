@@ -323,7 +323,7 @@ export const AssetEditor = ({
               value={urlDraft}
               onChange={(e) => setUrlDraft(e.target.value)}
               placeholder="https://example.com/image.jpg"
-              className="w-full rounded-xl px-3.5 h-10 text-sm outline-none transition-all bg-[var(--dk-surface-field)] text-foreground focus:ring-1 focus:ring-primary/40"
+              className="w-full rounded-xl px-3.5 h-10 text-sm outline-none transition-colors bg-[var(--dk-surface-field)] text-foreground focus:ring-1 focus:ring-primary/40"
               onKeyDown={(e) => {
                 if (e.key === 'Enter') handleApply()
               }}
@@ -343,7 +343,7 @@ export const AssetEditor = ({
 
         {/* Error */}
         {error && (
-          <div className="rounded-lg px-3 py-2 text-xs text-red-400/90 bg-red-400/5 shadow-[inset_0_0_0_1px_rgba(248,113,113,0.1)]">
+          <div className="rounded-lg px-3 py-2 text-xs text-red-400/90 bg-red-400/5 ring-1 ring-red-400/10">
             {error}
           </div>
         )}

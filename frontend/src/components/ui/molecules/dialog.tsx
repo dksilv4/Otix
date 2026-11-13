@@ -62,7 +62,7 @@ const DkDialog = ({
         aria-modal="true"
         aria-label={typeof title === 'string' ? title : undefined}
         className={cn(
-          'relative w-full max-w-lg rounded-3xl p-6 sm:p-7 backdrop-blur-3xl text-foreground transition-all overflow-hidden border border-[var(--dk-separator)]',
+          'relative w-full max-w-lg rounded-3xl p-6 sm:p-7 backdrop-blur-3xl text-foreground transition-colors overflow-hidden border border-[var(--dk-separator)]',
           className,
         )}
         style={{
@@ -81,7 +81,7 @@ const DkDialog = ({
             <button
               type="button"
               onClick={() => onOpenChange(false)}
-              className="shrink-0 z-50 rounded-xl p-2 transition-all text-muted-foreground hover:bg-[var(--dk-surface-ghost-hover)] hover:text-foreground cursor-pointer"
+              className="shrink-0 z-50 rounded-xl p-2 transition-colors text-muted-foreground hover:bg-[var(--dk-surface-ghost-hover)] hover:text-foreground cursor-pointer"
               aria-label={effectiveCloseLabel}
             >
               <X className="h-4 w-4" />
@@ -93,7 +93,7 @@ const DkDialog = ({
           <button
             type="button"
             onClick={() => onOpenChange(false)}
-            className="absolute top-4 right-4 z-50 rounded-xl p-2 transition-all text-muted-foreground hover:bg-[var(--dk-surface-ghost-hover)] hover:text-foreground cursor-pointer"
+            className="absolute top-4 right-4 z-50 rounded-xl p-2 transition-colors text-muted-foreground hover:bg-[var(--dk-surface-ghost-hover)] hover:text-foreground cursor-pointer"
             aria-label={effectiveCloseLabel}
           >
             <X className="h-4 w-4" />

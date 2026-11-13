@@ -204,7 +204,7 @@ export const IsoInstallerModal = ({
             <div className="space-y-4">
               <button
                 onClick={handleSelectIso}
-                className="flex w-full items-center gap-4 rounded-2xl bg-[var(--dk-surface-glass)] p-4 text-left transition-all hover:bg-[var(--dk-surface-glass-hover)] active:scale-[0.99] cursor-pointer"
+                className="flex w-full items-center gap-4 rounded-2xl bg-[var(--dk-surface-glass)] p-4 text-left transition-colors hover:bg-[var(--dk-surface-glass-hover)] active:scale-[0.99] cursor-pointer"
               >
                 <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
                   <Disc className="h-6 w-6 text-primary" />
@@ -229,7 +229,7 @@ export const IsoInstallerModal = ({
                 <button
                   onClick={handleSelectTargetDir}
                   disabled={!isoPath}
-                  className="flex w-full items-center gap-4 rounded-2xl bg-[var(--dk-surface-glass)] p-4 text-left transition-all hover:bg-[var(--dk-surface-glass-hover)] active:scale-[0.99] disabled:opacity-40 cursor-pointer"
+                  className="flex w-full items-center gap-4 rounded-2xl bg-[var(--dk-surface-glass)] p-4 text-left transition-colors hover:bg-[var(--dk-surface-glass-hover)] active:scale-[0.99] disabled:opacity-40 cursor-pointer"
                 >
                   <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-500/10">
                     <HardDrive className="h-6 w-6 text-emerald-500" />
@@ -286,7 +286,7 @@ export const IsoInstallerModal = ({
                     <div
                       key={phase}
                       className={cn(
-                        "flex items-center gap-3 rounded-xl px-4 py-2.5 transition-all",
+                        "flex items-center gap-3 rounded-xl px-4 py-2.5 transition-colors",
                         isActive && "bg-primary/10",
                         isPast && "opacity-60",
                         !isActive && !isPast && "opacity-30",

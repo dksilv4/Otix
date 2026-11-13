@@ -264,7 +264,7 @@ export const PlexStorageOptimizerModal = ({
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 border-b border-[var(--dk-separator)] bg-[var(--dk-surface-ghost)]">
         <div className="flex items-center gap-3.5">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#e5a00d]/15 text-[#e5a00d] ring-1 ring-inset ring-[#e5a00d]/30">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-amber-500/15 text-amber-500 ring-1 ring-inset ring-amber-500/30">
             <PlexIcon className="h-6 w-6" />
           </div>
           <div>
@@ -367,13 +367,13 @@ export const PlexStorageOptimizerModal = ({
                 {/* Visual Ratio Bar */}
                 <div className="h-2 w-full overflow-hidden rounded-full bg-[var(--dk-surface-ghost)] mt-2 flex">
                   <div
-                    className="h-full bg-primary transition-all duration-500"
+                    className="h-full bg-primary transition-colors duration-500"
                     style={{
                       width: `${totalBytes > 0 ? (watchedBytes / totalBytes) * 100 : 50}%`,
                     }}
                   />
                   <div
-                    className="h-full bg-rose-500/60 transition-all duration-500"
+                    className="h-full bg-rose-500/60 transition-colors duration-500"
                     style={{
                       width: `${totalBytes > 0 ? (unwatchedBytes / totalBytes) * 100 : 50}%`,
                     }}
@@ -472,7 +472,7 @@ export const PlexStorageOptimizerModal = ({
                     setActiveTab(tab.id)
                     setSearchFilter('')
                   }}
-                  className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
+                  className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer ${
                     isActive
                       ? 'bg-primary text-primary-foreground shadow-xs'
                       : 'text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-ghost-hover)]'
@@ -608,7 +608,7 @@ const StorageItemCard = ({
   const parts = item.parts || []
 
   return (
-    <div className="rounded-2xl bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-glass-hover)] border border-[var(--dk-separator)] p-4 transition-all space-y-3">
+    <div className="rounded-2xl bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-glass-hover)] border border-[var(--dk-separator)] p-4 transition-colors space-y-3">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         {/* Title & Metadata */}
         <div className="min-w-0 flex-1">

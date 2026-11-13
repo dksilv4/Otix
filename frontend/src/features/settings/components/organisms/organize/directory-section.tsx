@@ -30,7 +30,7 @@ export const DirectorySection = ({
   const isAllOrganized = group.items.every((i) => i.status === 'already_organized')
 
   return (
-    <div className="rounded-2xl bg-[var(--dk-surface-ghost)] border border-white/[0.04] overflow-hidden transition-all duration-200">
+    <div className="rounded-2xl bg-[var(--dk-surface-ghost)] border border-white/[0.04] overflow-hidden transition-colors duration-200">
       {/* Directory Section Header (Clean single bar) */}
       <button
         type="button"

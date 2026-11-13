@@ -2,17 +2,25 @@ import { useEffect, useId, useRef, useState } from 'react'
 import { DkDialog } from '@ui/molecules/dialog'
 import { IsoInstallerModal } from '@/features/launcher/components/organisms/iso-installer-modal'
 import { ServerGameSearchModal } from '@/features/downloads/molecules/server-game-search-modal'
-import { Play, Download, Loader2, CheckCircle2, XCircle, FolderOpen, Disc, Server, Pause, X, AlertTriangle, ChevronDown, ArrowDownToLine, Search } from 'lucide-react'
+import { Gamepad2, Play, Download, Loader2, CheckCircle2, XCircle, FolderOpen, Disc, Server, Pause, X, AlertTriangle, ChevronDown, ArrowDownToLine, Search } from 'lucide-react'
 import { cn, formatBytes } from '@/lib/utils'
 import { DOWNLOAD_STATUS_LABELS } from '../../../constants'
 import { useDownloadGame } from '../../hooks/use-download-game'
 import { useGameEditions } from '../../hooks/use-game-editions'
+import { useMediaRunningGame } from '../../hooks/use-media-running-game'
+import { formatElapsed } from '@/features/launcher/utils'
 import { useModal } from '@/lib/modals'
 
 export const DownloadGameButton = () => {
   const state = useDownloadGame()
   const gameEditions = useGameEditions()
   const effectiveTitle = gameEditions.selectedEdition ? gameEditions.selectedEdition.rawTitle : state.mediaTitle
+  const runningState = useMediaRunningGame({
+    mediaId: state.mediaId,
+    mediaTitle: state.mediaTitle,
+    effectiveTitle,
+    matchingScannedGame: state.matchingScannedGame,
+  })
   const { openModal } = useModal()
   const hvCloseRef = useRef<(() => void) | null>(null)
   const [menuOpen, setMenuOpen] = useState(false)
@@ -59,13 +67,13 @@ export const DownloadGameButton = () => {
                 onClick={async () => {
                   await state.handleHvConfirm()
                 }}
-                className="flex-1 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-all hover:bg-primary/90 active:scale-95"
+                className="flex-1 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 active:scale-95"
               >
                 Download HV version
               </button>
               <button
                 onClick={state.handleHvDismiss}
-                className="flex-1 rounded-xl bg-[var(--dk-surface-raised)] px-4 py-2 text-sm font-medium transition-all hover:bg-[var(--dk-surface-glass)]"
+                className="flex-1 rounded-xl bg-[var(--dk-surface-raised)] px-4 py-2 text-sm font-medium transition-colors hover:bg-[var(--dk-surface-glass)]"
               >
                 Skip
               </button>
@@ -82,6 +90,32 @@ export const DownloadGameButton = () => {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.hvDialogOpen, state.hvCountdown, state.hvPendingGameName])
+
+  // ── Currently Playing ──
+  if (runningState.isRunning) {
+    return (
+      <div className="flex flex-wrap items-center gap-3">
+        <button
+          type="button"
+          onClick={runningState.handleRunningClick}
+          className="inline-flex items-center gap-2 rounded-full bg-primary/20 hover:bg-primary/25 text-primary px-5 py-2.5 text-sm font-semibold backdrop-blur-xl border border-white/[0.05] shadow-sm transition duration-200 active:scale-95 cursor-pointer"
+          title={`${effectiveTitle} is currently running (${formatElapsed(runningState.elapsedMs)})`}
+        >
+          <Gamepad2 className="h-4 w-4 text-primary animate-pulse" />
+          <span>Playing</span>
+          <span className="font-mono text-xs font-bold text-primary/80 pl-1 border-l border-primary/20">
+            {formatElapsed(runningState.elapsedMs)}
+          </span>
+        </button>
+        <p className="text-xs text-muted-foreground truncate max-w-[200px] sm:max-w-none">
+          {runningState.statusText}
+          {state.serverFile && (
+            <span className="ml-1 text-primary">· Available on {state.serverFile.serverName}</span>
+          )}
+        </p>
+      </div>
+    )
+  }
 
   if (state.hidden) return null
 
@@ -105,7 +139,7 @@ export const DownloadGameButton = () => {
       <div className="flex flex-wrap items-center gap-3">
         <button
           onClick={state.handlePlay}
-          className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-lg transition-all duration-200 hover:bg-primary/90 active:scale-95 cursor-pointer"
+          className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-lg transition duration-200 hover:bg-primary/90 active:scale-95 cursor-pointer"
         >
           <Play className="h-4 w-4 fill-current" />
           Play
@@ -113,7 +147,7 @@ export const DownloadGameButton = () => {
         <p className="text-xs text-muted-foreground truncate max-w-[200px] sm:max-w-none">
           {state.matchingScannedGame.platform === 'steam' ? 'Launch via Steam' : 'Installed locally'}
           {state.serverFile && (
-            <span className="ml-1 text-cyan-600 dark:text-cyan-400">· Available on {state.serverFile.serverName}</span>
+            <span className="ml-1 text-primary">· Available on {state.serverFile.serverName}</span>
           )}
         </p>
       </div>
@@ -133,7 +167,7 @@ export const DownloadGameButton = () => {
         <button
           type="button"
           onClick={isDownloading ? state.handleRemotePause : isPaused ? state.handleRemoteResume : undefined}
-          className="relative inline-flex items-center gap-2 overflow-hidden rounded-full px-5 py-2.5 text-sm font-semibold text-foreground shadow-lg transition-all duration-200 active:scale-95 cursor-pointer"
+          className="relative inline-flex items-center gap-2 overflow-hidden rounded-full px-5 py-2.5 text-sm font-semibold text-foreground shadow-lg transition duration-200 active:scale-95 cursor-pointer"
           title={isDownloading ? 'Click to pause' : isPaused ? 'Click to resume' : undefined}
         >
           {/* Background track */}
@@ -141,10 +175,10 @@ export const DownloadGameButton = () => {
           {/* Progress fill */}
           <span
             className={cn(
-              'absolute inset-y-0 left-0 transition-[width] duration-500 ease-out',
+              'absolute inset-y-0 left-0 w-full origin-left transition-transform duration-500 ease-out',
               isPaused ? 'bg-amber-500/60' : 'bg-primary/50',
             )}
-            style={{ width: `${Math.min(100, Math.max(0, t.percentage))}%` }}
+            style={{ transform: `scaleX(${Math.min(100, Math.max(0, t.percentage)) / 100})` }}
           />
           {/* Content */}
           <span className="relative flex items-center gap-2">
@@ -167,7 +201,7 @@ export const DownloadGameButton = () => {
         {/* Cancel */}
         <button
           onClick={state.handleRemoteCancel}
-          className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-[var(--dk-surface-glass)] text-destructive hover:bg-destructive/15 transition-all cursor-pointer opacity-0 group-hover/dl:opacity-100"
+          className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-[var(--dk-surface-glass)] text-destructive hover:bg-destructive/15 transition-colors cursor-pointer opacity-0 group-hover/dl:opacity-100"
           title="Cancel download"
         >
           <X className="h-4 w-4" />
@@ -194,10 +228,10 @@ export const DownloadGameButton = () => {
           {/* Progress fill */}
           <span
             className={cn(
-              'absolute inset-y-0 left-0 transition-[width] duration-500 ease-out',
+              'absolute inset-y-0 left-0 w-full origin-left transition-transform duration-500 ease-out',
               isPaused ? 'bg-amber-500/60' : 'bg-primary/50',
             )}
-            style={{ width: `${pct}%` }}
+            style={{ transform: `scaleX(${pct / 100})` }}
           />
           {/* Content */}
           <span className="relative flex items-center gap-2">
@@ -212,7 +246,7 @@ export const DownloadGameButton = () => {
         {/* Cancel */}
         <button
           onClick={state.handleCancelServerQueue}
-          className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-[var(--dk-surface-glass)] text-destructive hover:bg-destructive/15 transition-all cursor-pointer opacity-0 group-hover/dl:opacity-100"
+          className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-[var(--dk-surface-glass)] text-destructive hover:bg-destructive/15 transition-colors cursor-pointer opacity-0 group-hover/dl:opacity-100"
           title="Cancel download"
         >
           <X className="h-4 w-4" />
@@ -233,15 +267,15 @@ export const DownloadGameButton = () => {
         <button
           type="button"
           onClick={state.handlePollQueue}
-          className="relative inline-flex items-center gap-2 overflow-hidden rounded-full px-5 py-2.5 text-sm font-semibold text-foreground shadow-lg transition-all duration-200 active:scale-95 cursor-pointer"
+          className="relative inline-flex items-center gap-2 overflow-hidden rounded-full px-5 py-2.5 text-sm font-semibold text-foreground shadow-lg transition duration-200 active:scale-95 cursor-pointer"
           title="Click to refresh status"
         >
           {/* Background track */}
           <span className="absolute inset-0 bg-[var(--dk-surface-glass)]" />
           {/* Progress fill */}
           <span
-            className="absolute inset-y-0 left-0 bg-primary/50 transition-[width] duration-700 ease-out"
-            style={{ width: `${pct}%` }}
+            className="absolute inset-y-0 left-0 w-full origin-left bg-primary/50 transition-transform duration-700 ease-out"
+            style={{ transform: `scaleX(${pct / 100})` }}
           />
           {/* Content */}
           <span className="relative flex items-center gap-2">
@@ -253,7 +287,7 @@ export const DownloadGameButton = () => {
         {/* Cancel */}
         <button
           onClick={state.handleCancelDownload}
-          className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-[var(--dk-surface-glass)] text-destructive hover:bg-destructive/15 transition-all cursor-pointer opacity-0 group-hover/dl:opacity-100"
+          className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-[var(--dk-surface-glass)] text-destructive hover:bg-destructive/15 transition-colors cursor-pointer opacity-0 group-hover/dl:opacity-100"
           title="Cancel download"
         >
           <X className="h-4 w-4" />
@@ -289,7 +323,7 @@ export const DownloadGameButton = () => {
         {state.installEntry!.result?.gameExe && (
           <button
             onClick={state.handlePlay}
-            className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-lg transition-all duration-200 hover:bg-primary/90 active:scale-95 cursor-pointer"
+            className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-lg transition duration-200 hover:bg-primary/90 active:scale-95 cursor-pointer"
           >
             <Play className="h-4 w-4 fill-current" />
             Play
@@ -317,7 +351,7 @@ export const DownloadGameButton = () => {
               />,
             )
           }}
-          className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-lg transition-all duration-200 hover:bg-primary/90 active:scale-95 cursor-pointer"
+          className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-lg transition duration-200 hover:bg-primary/90 active:scale-95 cursor-pointer"
         >
           <Disc className="h-4 w-4" />
           Install
@@ -351,7 +385,7 @@ export const DownloadGameButton = () => {
       <div className="flex flex-wrap items-center gap-2">
         <button
           onClick={state.handleDownload}
-          className="inline-flex items-center gap-2 rounded-full bg-destructive/15 px-5 py-2.5 text-sm font-semibold text-destructive transition-all duration-200 hover:bg-destructive/25 active:scale-95 cursor-pointer"
+          className="inline-flex items-center gap-2 rounded-full bg-destructive/15 px-5 py-2.5 text-sm font-semibold text-destructive transition duration-200 hover:bg-destructive/25 active:scale-95 cursor-pointer"
         >
           <XCircle className="h-4 w-4" />
           Retry Download
@@ -386,7 +420,7 @@ export const DownloadGameButton = () => {
                     : state.installCompatibility.title
                 }
                 className={cn(
-                  'inline-flex items-center gap-2 rounded-l-full px-5 py-2.5 text-sm font-semibold transition-all duration-200 active:brightness-90 disabled:pointer-events-none',
+                  'inline-flex items-center gap-2 rounded-l-full px-5 py-2.5 text-sm font-semibold transition-colors duration-200 active:brightness-90 disabled:pointer-events-none',
                   state.installCompatibility.compatible
                     ? 'bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer'
                     : 'bg-amber-500/15 text-amber-700 dark:text-amber-300 cursor-not-allowed',
@@ -422,7 +456,7 @@ export const DownloadGameButton = () => {
                 aria-expanded={menuOpen}
                 aria-controls={menuId}
                 className={cn(
-                  'inline-flex items-center justify-center rounded-r-full border-l px-2.5 py-2.5 transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+                  'inline-flex items-center justify-center rounded-r-full border-l px-2.5 py-2.5 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background',
                   state.installCompatibility.compatible
                     ? 'border-primary-foreground/20 bg-primary text-primary-foreground hover:bg-primary/90 active:brightness-90'
                     : 'border-amber-400/25 bg-amber-500/15 text-amber-700 dark:text-amber-200 hover:bg-amber-500/20',
@@ -492,8 +526,8 @@ export const DownloadGameButton = () => {
                       }}
                       className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm text-foreground/80 transition-colors hover:bg-[var(--dk-surface-glass)] hover:text-foreground cursor-pointer focus-visible:bg-[var(--dk-surface-glass)] focus-visible:outline-none"
                     >
-                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-cyan-500/15">
-                        <Download className="h-4 w-4 text-cyan-600 dark:text-cyan-400" />
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                        <Download className="h-4 w-4 text-primary" />
                       </span>
                       <span className="flex min-w-0 flex-col">
                         <span className="font-medium text-foreground">Find another release</span>
@@ -540,7 +574,7 @@ export const DownloadGameButton = () => {
               type="button"
               onClick={() => void state.handleRequestGame(openServerSearch)}
               disabled={state.requesting}
-              className="inline-flex items-center gap-2 rounded-l-full bg-primary hover:bg-primary/90 px-5 py-2.5 text-sm font-semibold text-primary-foreground transition-all duration-200 active:scale-95 cursor-pointer disabled:opacity-60 disabled:pointer-events-none"
+              className="inline-flex items-center gap-2 rounded-l-full bg-primary hover:bg-primary/90 px-5 py-2.5 text-sm font-semibold text-primary-foreground transition duration-200 active:scale-95 cursor-pointer disabled:opacity-60 disabled:pointer-events-none"
               title="Request and auto-download game"
             >
               {state.requesting ? (
@@ -563,7 +597,7 @@ export const DownloadGameButton = () => {
               aria-haspopup="menu"
               aria-expanded={menuOpen}
               aria-controls={menuId}
-              className="inline-flex items-center justify-center rounded-r-full border-l border-primary-foreground/20 bg-primary hover:bg-primary/90 px-2.5 py-2.5 text-primary-foreground transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70"
+              className="inline-flex items-center justify-center rounded-r-full border-l border-primary-foreground/20 bg-primary hover:bg-primary/90 px-2.5 py-2.5 text-primary-foreground transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70"
             >
               <ChevronDown className={cn('h-4 w-4 transition-transform', menuOpen && 'rotate-180')} />
             </button>
@@ -587,8 +621,8 @@ export const DownloadGameButton = () => {
                   }}
                   className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm text-foreground/80 transition-colors hover:bg-[var(--dk-surface-glass)] hover:text-foreground cursor-pointer focus-visible:bg-[var(--dk-surface-glass)] focus-visible:outline-none"
                 >
-                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-cyan-500/15">
-                    <Search className="h-4 w-4 text-cyan-600 dark:text-cyan-400" />
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                    <Search className="h-4 w-4 text-primary" />
                   </span>
                   <span className="flex min-w-0 flex-col">
                     <span className="font-medium text-foreground">Browse / Search releases manually</span>
@@ -630,7 +664,7 @@ export const DownloadGameButton = () => {
           <button
             onClick={state.handleDownload}
             disabled={state.searching}
-            className="inline-flex items-center gap-2 rounded-full bg-[var(--dk-surface-glass)] px-4 py-2.5 text-sm font-medium transition-all duration-200 hover:bg-[var(--dk-surface-base)] text-foreground active:scale-95 disabled:opacity-50 cursor-pointer"
+            className="inline-flex items-center gap-2 rounded-full bg-[var(--dk-surface-glass)] px-4 py-2.5 text-sm font-medium transition-colors duration-200 hover:bg-[var(--dk-surface-base)] text-foreground active:scale-95 disabled:opacity-50 cursor-pointer"
           >
             {state.searching ? (
               <Loader2 className="h-4 w-4 animate-spin" />

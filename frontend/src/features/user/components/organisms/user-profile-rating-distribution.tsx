@@ -81,7 +81,7 @@ export const UserProfileRatingDistribution = ({
                     </span>
                     <div
                       style={{ height: `${heightPct}%` }}
-                      className="w-full rounded-md bg-primary/20 group-hover:bg-primary transition-all duration-200"
+                      className="w-full rounded-md bg-primary/20 group-hover:bg-primary transition-colors duration-200"
                     />
                     <span className="text-[10px] font-semibold text-muted-foreground tabular-nums">
                       {score}

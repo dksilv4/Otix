@@ -27,7 +27,7 @@ export const PasswordStrengthBar = ({ password, className }: PasswordStrengthBar
           <div
             key={i}
             className={
-              'h-1.5 rounded-full transition-all duration-500' +
+              'h-1.5 rounded-full transition-colors duration-500' +
               (i < activeCount ? ' ' + TIER_STYLES[tier].bar : ' bg-white/10')
             }
           />

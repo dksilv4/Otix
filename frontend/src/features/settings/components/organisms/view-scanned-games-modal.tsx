@@ -109,7 +109,7 @@ const InlineMatchSearch = ({
               if (e.key === 'Enter') void handleSearch(query)
             }}
             placeholder="Search catalog for game title…"
-            className="w-full pl-9 pr-3 py-1.5 rounded-xl bg-[var(--dk-surface-ghost)] border border-white/[0.04] text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/40 transition-all"
+            className="w-full pl-9 pr-3 py-1.5 rounded-xl bg-[var(--dk-surface-ghost)] border border-white/[0.04] text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/40 transition-colors"
           />
         </div>
         <DkButton
@@ -135,7 +135,7 @@ const InlineMatchSearch = ({
             {results.map((candidate) => (
               <div
                 key={candidate.id}
-                className="flex items-center justify-between gap-3 p-2.5 rounded-xl bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)] border border-white/[0.04] transition-all"
+                className="flex items-center justify-between gap-3 p-2.5 rounded-xl bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)] border border-white/[0.04] transition-colors"
               >
                 <div className="flex items-center gap-2.5 min-w-0">
                   {candidate.posterUrl ? (
@@ -214,7 +214,7 @@ const ScannedGameCard = ({
   isMatchingPending,
 }: ScannedGameCardProps) => {
   return (
-    <div className="relative rounded-2xl bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)] border border-white/[0.04] p-3.5 transition-all overflow-hidden group">
+    <div className="relative rounded-2xl bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)] border border-white/[0.04] p-3.5 transition-colors overflow-hidden group">
       {/* Soft glassmorphic backdrop preview */}
       {game.backdropUrl && (
         <div
@@ -307,7 +307,7 @@ const ScannedGameCard = ({
               size="sm"
               onClick={onToggleMatching}
               className={cn(
-                'text-xs h-7 px-2.5 rounded-lg cursor-pointer transition-all',
+                'text-xs h-7 px-2.5 rounded-lg cursor-pointer transition-colors',
                 game.matched && 'text-muted-foreground hover:text-foreground',
               )}
             >
@@ -488,7 +488,7 @@ export const ViewScannedGamesModal = ({
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search scanned titles, formats, or paths…"
-              className="w-full pl-9 pr-3 py-1.5 rounded-xl bg-[var(--dk-surface-base)] border border-white/[0.04] text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/40 transition-all"
+              className="w-full pl-9 pr-3 py-1.5 rounded-xl bg-[var(--dk-surface-base)] border border-white/[0.04] text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/40 transition-colors"
             />
             {search && (
               <button
@@ -517,7 +517,7 @@ export const ViewScannedGamesModal = ({
                   type="button"
                   onClick={() => setFilter(tab)}
                   className={cn(
-                    'px-2.5 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer',
+                    'px-2.5 py-1 rounded-lg text-xs font-medium transition-colors cursor-pointer',
                     active
                       ? 'bg-primary text-primary-foreground shadow-xs'
                       : 'text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-ghost-hover)]',

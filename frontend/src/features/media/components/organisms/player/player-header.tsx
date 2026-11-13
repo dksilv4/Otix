@@ -4,6 +4,7 @@ export interface PlayerHeaderProps {
   title: string
   source?: string
   isTrailer: boolean
+  isTheater?: boolean
   onClose: () => void
 }
 
@@ -11,6 +12,7 @@ export const PlayerHeader = ({
   title,
   source,
   isTrailer,
+  isTheater = false,
   onClose,
 }: PlayerHeaderProps) => {
   return (
@@ -20,7 +22,7 @@ export const PlayerHeader = ({
         <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
           <Clapperboard className="h-3 w-3" />
         </span>
-        <span className="truncate text-xs sm:text-sm font-medium text-primary-foreground max-w-[200px] sm:max-w-md">
+        <span className="truncate text-xs sm:text-sm font-medium text-foreground max-w-[200px] sm:max-w-md">
           {title}
         </span>
         {!isTrailer && source && (
@@ -30,16 +32,18 @@ export const PlayerHeader = ({
         )}
       </div>
 
-      {/* Close button */}
-      <button
-        type="button"
-        onClick={onClose}
-        className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--dk-surface-glass)] hover:bg-white/15 text-muted-foreground hover:text-primary-foreground backdrop-blur-xl shadow-lg transition-all border-0 pointer-events-auto cursor-pointer"
-        aria-label={isTrailer ? 'Close trailer' : 'Close (Esc)'}
-        title={isTrailer ? 'Close trailer' : 'Close (Esc)'}
-      >
-        <X className="h-4 w-4" />
-      </button>
+      {/* Close button (rendered in modal mode; replaced in theater mode by titlebar window controls) */}
+      {!isTheater && (
+        <button
+          type="button"
+          onClick={onClose}
+          className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--dk-surface-glass)] hover:bg-white/15 text-muted-foreground hover:text-foreground backdrop-blur-xl shadow-lg transition-colors border-0 pointer-events-auto cursor-pointer"
+          aria-label={isTrailer ? 'Close trailer' : 'Close (Esc)'}
+          title={isTrailer ? 'Close trailer' : 'Close (Esc)'}
+        >
+          <X className="h-4 w-4" />
+        </button>
+      )}
     </div>
   )
 }

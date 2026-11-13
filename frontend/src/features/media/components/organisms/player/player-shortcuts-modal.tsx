@@ -23,14 +23,14 @@ export const PlayerShortcutsModal = ({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between">
-          <h3 className="text-base font-semibold text-primary-foreground flex items-center gap-2">
+          <h3 className="text-base font-semibold text-foreground flex items-center gap-2">
             <Keyboard className="h-4 w-4 text-primary" />
             Keyboard Shortcuts
           </h3>
           <button
             type="button"
             onClick={onClose}
-            className="h-7 w-7 rounded-full flex items-center justify-center text-muted-foreground hover:text-primary-foreground hover:bg-white/10 transition-all cursor-pointer"
+            className="h-7 w-7 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-white/10 transition-colors cursor-pointer"
           >
             <X className="h-4 w-4" />
           </button>
@@ -71,6 +71,14 @@ export const PlayerShortcutsModal = ({
               <div className="flex items-center justify-between p-2 rounded-xl bg-[var(--dk-surface-glass)]">
                 <span className="text-foreground">Picture-in-Picture (OS)</span>
                 <kbd className="px-2 py-0.5 rounded bg-white/10 font-mono font-bold text-[11px]">P</kbd>
+              </div>
+              <div className="flex items-center justify-between p-2 rounded-xl bg-[var(--dk-surface-glass)]">
+                <span className="text-foreground">Subtitles</span>
+                <kbd className="px-2 py-0.5 rounded bg-white/10 font-mono font-bold text-[11px]">C</kbd>
+              </div>
+              <div className="flex items-center justify-between p-2 rounded-xl bg-[var(--dk-surface-glass)]">
+                <span className="text-foreground">Audio Track</span>
+                <kbd className="px-2 py-0.5 rounded bg-white/10 font-mono font-bold text-[11px]">A</kbd>
               </div>
               <div className="flex items-center justify-between p-2 rounded-xl bg-[var(--dk-surface-glass)]">
                 <span className="text-foreground">Quality</span>

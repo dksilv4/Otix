@@ -64,7 +64,7 @@ const PluginTopologyGraph = ({ enabledPlugins }: { enabledPlugins: PluginInfo[] 
 
   const fallback = (
     <div className="relative w-[260px] h-[180px]">
-      <svg className="absolute inset-0 w-full h-full" viewBox="0 0 260 180">
+      <svg aria-hidden="true" className="absolute inset-0 w-full h-full" viewBox="0 0 260 180">
         {Array.from({ length: 6 }).map((_, i) => (
           <line
             key={i}
@@ -112,7 +112,7 @@ const PluginTopologyGraph = ({ enabledPlugins }: { enabledPlugins: PluginInfo[] 
       </div>
 
       <div className="relative w-[260px] h-[180px]">
-        <svg className="absolute inset-0 w-full h-full" viewBox="0 0 260 180">
+        <svg aria-hidden="true" className="absolute inset-0 w-full h-full" viewBox="0 0 260 180">
           {visiblePositions.map((n) => (
             <line
               key={`hub-${n.id}`}
@@ -325,7 +325,7 @@ const DependencyWarningModal = ({
       style={{ opacity: visible ? 1 : 0 }}
     >
       <div className="absolute inset-0 bg-background/80 backdrop-blur-sm" onClick={onCancel} />
-      <div className="relative w-full max-w-md mx-4 flex flex-col bg-[var(--dk-surface-raised)] border border-[var(--dk-separator)] backdrop-blur-xl rounded-3xl shadow-[var(--dk-shadow-glass)] p-6 transition-all duration-200">
+      <div className="relative w-full max-w-md mx-4 flex flex-col bg-[var(--dk-surface-raised)] border border-[var(--dk-separator)] backdrop-blur-xl rounded-3xl shadow-[var(--dk-shadow-glass)] p-6 transition-colors duration-200">
         <div className="flex items-start gap-3">
           <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-amber-500/15 shrink-0">
             <AlertTriangle className="h-5 w-5 text-amber-500 dark:text-amber-400" />
@@ -595,7 +595,7 @@ export const SettingsPluginsPage = () => {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search plugins..."
-            className="w-full h-10 rounded-xl bg-[var(--dk-surface-field)] border border-[var(--dk-separator)] pl-10 pr-4 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
+            className="w-full h-10 rounded-xl bg-[var(--dk-surface-field)] border border-[var(--dk-separator)] pl-10 pr-4 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
           />
         </div>
       </div>

@@ -171,12 +171,12 @@ export const AiQuickGlanceModal = ({
               />
             )}
             <div className="min-w-0 flex-1 pb-1">
-              <h3 className="text-lg sm:text-xl font-bold text-primary-foreground truncate drop-shadow-md">
+              <h3 className="text-lg sm:text-xl font-bold text-foreground truncate drop-shadow-md">
                 {effectiveTitle}
               </h3>
               {directorCredit && (
                 <p className="text-xs text-muted-foreground truncate">
-                  Directed by <span className="text-primary-foreground font-medium">{directorCredit.person.name}</span>
+                  Directed by <span className="text-foreground font-medium">{directorCredit.person.name}</span>
                 </p>
               )}
             </div>
@@ -194,7 +194,7 @@ export const AiQuickGlanceModal = ({
               </div>
             )}
             {certification && (
-              <span className="px-2 py-0.5 rounded-full bg-white/10 font-bold text-[10px] tracking-wide text-primary-foreground uppercase">
+              <span className="px-2 py-0.5 rounded-full bg-white/10 font-bold text-[10px] tracking-wide text-foreground uppercase">
                 {certification}
               </span>
             )}
@@ -243,7 +243,7 @@ export const AiQuickGlanceModal = ({
             <span className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground">
               Storyline
             </span>
-            <p className="text-xs sm:text-sm text-primary-foreground/90 leading-relaxed line-clamp-3">
+            <p className="text-xs sm:text-sm text-foreground/90 leading-relaxed line-clamp-3">
               {detail?.description || detail?.synopsis || (isLoading ? 'Hydrating synopsis...' : 'No synopsis available for this media item.')}
             </p>
           </div>
@@ -269,7 +269,7 @@ export const AiQuickGlanceModal = ({
                       </div>
                     )}
                     <div className="min-w-0">
-                      <p className="text-xs font-semibold text-primary-foreground truncate max-w-[100px]">
+                      <p className="text-xs font-semibold text-foreground truncate max-w-[100px]">
                         {c.person.name}
                       </p>
                       {c.characterName && (
@@ -290,7 +290,7 @@ export const AiQuickGlanceModal = ({
           <button
             type="button"
             onClick={handleNavigateDetail}
-            className="text-xs font-medium text-muted-foreground hover:text-primary-foreground transition-colors flex items-center gap-1.5 cursor-pointer"
+            className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5 cursor-pointer"
           >
             <span>View Full Details</span>
             <ExternalLink className="h-3 w-3" />
@@ -301,7 +301,7 @@ export const AiQuickGlanceModal = ({
               <button
                 type="button"
                 onClick={handleTrailerClick}
-                className="flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-white/10 hover:bg-white/15 text-primary-foreground font-semibold text-xs transition-all active:scale-95 border-0 shadow-sm cursor-pointer"
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-white/10 hover:bg-white/15 text-foreground font-semibold text-xs transition active:scale-95 border-0 shadow-sm cursor-pointer"
               >
                 <Clapperboard className="h-3.5 w-3.5" />
                 <span>Trailer</span>
@@ -313,7 +313,7 @@ export const AiQuickGlanceModal = ({
                 type="button"
                 onClick={handleStreamClick}
                 disabled={isStartingStream}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-xs transition-all active:scale-95 border-0 shadow-md shadow-primary/20 cursor-pointer"
+                className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-xs transition active:scale-95 border-0 shadow-md shadow-primary/20 cursor-pointer"
               >
                 {isStartingStream ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />

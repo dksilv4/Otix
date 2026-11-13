@@ -44,6 +44,7 @@ export const LauncherFpsStats = () => {
       {/* Full-bleed sparkline — only while capturing live data */}
       {displayValue?.live && sparkline && (
         <svg
+          aria-hidden="true"
           viewBox={`0 0 ${sparkline.w} ${sparkline.h}`}
           className="absolute inset-0 pointer-events-none w-full h-full"
           preserveAspectRatio="none"

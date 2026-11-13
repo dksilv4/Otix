@@ -225,4 +225,30 @@ describe('PlexSourceAdapter Advanced Optimizations', () => {
       expect(next?.episodeContext?.prevItemId).toBe('9001')
     })
   })
+
+  describe('Audio Track Switching and Offset Forwarding', () => {
+    it('varies playSessionId and appends offsetSeconds on changeTracks', async () => {
+      const item: PlayableMediaItem = {
+        id: 'plex:501',
+        source: 'plex',
+        mediaType: 'video',
+        title: 'Track Change Movie',
+        providerData: {
+          serverUrl: 'http://192.168.1.50:32400',
+          token: 'tok',
+          playSessionId: 'sess-base-123',
+          audioTracks: [
+            { id: '10', index: 0, label: 'English', isDefault: true },
+            { id: '11', index: 1, label: 'Spanish', isDefault: false },
+          ],
+        },
+      }
+
+      const res = await adapter.changeTracks(item, 1, undefined, 245)
+      expect(res.hlsUrl).toContain('&offset=245&copyts=1')
+      expect(res.hlsUrl).toContain('-a-11')
+      expect(item.providerData?.playSessionId).toContain('-a-11')
+      expect(item.providerData?.startPositionMs).toBe(245000)
+    })
+  })
 })

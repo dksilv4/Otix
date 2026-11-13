@@ -49,7 +49,7 @@ export const BlueprintDetail = ({ blueprint, onClose, onCopy, onEdit, onDelete }
               </p>
             </div>
           </div>
-          <button onClick={onClose} className="p-1 rounded-lg hover:bg-[var(--dk-surface-glass)] text-muted-foreground hover:text-foreground transition-all">
+          <button onClick={onClose} className="p-1 rounded-lg hover:bg-[var(--dk-surface-glass)] text-muted-foreground hover:text-foreground transition-colors">
             <X className="h-4 w-4" />
           </button>
         </div>
@@ -114,7 +114,7 @@ export const BlueprintDetail = ({ blueprint, onClose, onCopy, onEdit, onDelete }
         <div className="flex items-center gap-2 pt-3 border-t border-[var(--dk-separator)]">
           <button
             onClick={handleCopy}
-            className="flex items-center gap-1.5 px-4 py-2 text-xs font-medium rounded-lg bg-primary/15 text-primary hover:bg-primary/25 transition-all"
+            className="flex items-center gap-1.5 px-4 py-2 text-xs font-medium rounded-lg bg-primary/15 text-primary hover:bg-primary/25 transition-colors"
           >
             {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
             {copied ? 'Copied!' : 'Copy Blueprint String'}
@@ -122,7 +122,7 @@ export const BlueprintDetail = ({ blueprint, onClose, onCopy, onEdit, onDelete }
           {onEdit && blueprint.id && (
             <button
               onClick={() => onEdit(blueprint.id!)}
-              className="px-3 py-2 text-xs rounded-lg hover:bg-[var(--dk-surface-glass)] text-muted-foreground hover:text-foreground transition-all"
+              className="px-3 py-2 text-xs rounded-lg hover:bg-[var(--dk-surface-glass)] text-muted-foreground hover:text-foreground transition-colors"
             >
               Edit
             </button>
@@ -130,7 +130,7 @@ export const BlueprintDetail = ({ blueprint, onClose, onCopy, onEdit, onDelete }
           {onDelete && blueprint.id && (
             <button
               onClick={() => { onDelete(blueprint.id!); onClose() }}
-              className="px-3 py-2 text-xs rounded-lg hover:bg-destructive/10 text-destructive transition-all ml-auto"
+              className="px-3 py-2 text-xs rounded-lg hover:bg-destructive/10 text-destructive transition-colors ml-auto"
             >
               Delete
             </button>

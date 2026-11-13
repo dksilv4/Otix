@@ -24,7 +24,7 @@ const FreeClaimCard = ({ game }: { game: EpicFreeGame }) => {
     <button
       type="button"
       onClick={handleClaim}
-      className="group relative block w-full text-left aspect-[3/4] overflow-hidden rounded-2xl bg-[var(--dk-surface-field)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_12px_40px_-10px_rgba(16,185,129,0.45)]"
+      className="group relative block w-full text-left aspect-[3/4] overflow-hidden rounded-2xl bg-[var(--dk-surface-field)] transition-colors duration-300 hover:-translate-y-1 hover:shadow-xl"
     >
       {/* Poster art */}
       {game.posterUrl && !posterError ? (
@@ -46,7 +46,7 @@ const FreeClaimCard = ({ game }: { game: EpicFreeGame }) => {
 
       {/* Top row: FREE badge + Epic logo */}
       <div className="absolute top-2.5 left-2.5 right-2.5 z-10 flex items-center justify-between gap-1.5">
-        <span className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 dark:bg-emerald-500 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-white shadow-[0_2px_14px_rgba(16,185,129,0.55)]">
+        <span className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 dark:bg-emerald-500 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-white shadow-md">
           <Gift className="h-3 w-3" />
           Free
         </span>
@@ -57,7 +57,7 @@ const FreeClaimCard = ({ game }: { game: EpicFreeGame }) => {
 
       {/* Bottom info */}
       <div className="absolute bottom-0 left-0 right-0 z-10 p-3">
-        <h4 className="line-clamp-2 text-xs font-bold leading-snug text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]">
+        <h4 className="line-clamp-2 text-xs font-bold leading-snug text-white drop-shadow-sm">
           {game.title}
         </h4>
         <div className="mt-1.5 flex items-center gap-2">
@@ -156,7 +156,7 @@ export const SettingsFreeGamesSection = () => {
           <button
             type="button"
             onClick={() => openSessionWindow(EPIC_FREE_PAGE)}
-            className="inline-flex items-center gap-1.5 rounded-xl bg-[var(--dk-surface-ghost)] px-3 py-1.5 text-xs font-semibold text-foreground transition-all hover:bg-[var(--dk-surface-ghost-hover)]"
+            className="inline-flex items-center gap-1.5 rounded-xl bg-[var(--dk-surface-ghost)] px-3 py-1.5 text-xs font-semibold text-foreground transition-colors hover:bg-[var(--dk-surface-ghost-hover)]"
           >
             <Sparkles className="h-3.5 w-3.5 text-emerald-500 dark:text-emerald-400" />
             Open Epic Store

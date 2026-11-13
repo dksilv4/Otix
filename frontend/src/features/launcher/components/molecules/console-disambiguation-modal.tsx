@@ -64,7 +64,7 @@ export const ConsoleDisambiguationModal = ({
               type="button"
               disabled={isSubmitting}
               onClick={() => onSelectPlatform(opt.platform)}
-              className="flex items-center justify-between p-3.5 rounded-2xl bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-field)] border border-[var(--dk-separator)] transition-all text-left group disabled:opacity-50"
+              className="flex items-center justify-between p-3.5 rounded-2xl bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-field)] border border-[var(--dk-separator)] transition-colors text-left group disabled:opacity-50"
             >
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-lg bg-[var(--dk-surface-field)] flex items-center justify-center text-xs font-bold text-muted-foreground group-hover:text-foreground group-hover:bg-primary/20 transition-colors">

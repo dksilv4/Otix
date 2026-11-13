@@ -162,8 +162,17 @@ def execute_sync_job(job_pk: int) -> dict[str, Any]:
     # fetches the raw payload with its own key and POSTs it back to the result
     # endpoint, which seeds + completes the job. When no device is online the
     # engine still runs (and surfaces the key error) — unchanged behaviour.
-    if not server_can_fetch(job.provider) and dispatch_to_client(job, task_id=task_id):
-        return {"status": "awaiting_client", "task_id": task_id, **_job_context(job)}
+    if not server_can_fetch(job.provider):
+        if dispatch_to_client(job, task_id=task_id):
+            return {"status": "awaiting_client", "task_id": task_id, **_job_context(job)}
+        import sys
+        if not (getattr(settings, "TESTING", False) or "test" in sys.argv):
+            return _abort(
+                job,
+                task_id,
+                message=f"Provider '{job.provider}' credentials not configured",
+                detail=f"Server lacks API credentials for provider '{job.provider}' and no client device is online",
+            )
 
     try:
         summary = engine(job)

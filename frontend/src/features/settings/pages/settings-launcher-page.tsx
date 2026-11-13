@@ -167,7 +167,7 @@ export const SettingsLauncherPage = () => {
         <SettingsCard className="bg-[var(--dk-surface-raised)]">
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
             <div className="w-full md:w-72 lg:w-80 shrink-0">
-              <div className="rounded-xl overflow-hidden shadow-xl transition-all duration-300">
+              <div className="rounded-xl overflow-hidden shadow-xl transition duration-300">
                 <LauncherThemePreview themeId={selectedThemeMeta.id} isSelected={true} />
               </div>
             </div>
@@ -246,7 +246,7 @@ export const SettingsLauncherPage = () => {
                     type="button"
                     onClick={() => setActiveCategory(cat.id)}
                     className={cn(
-                      'px-2.5 py-1 rounded-lg text-xs font-medium transition-all whitespace-nowrap cursor-pointer',
+                      'px-2.5 py-1 rounded-lg text-xs font-medium transition-colors whitespace-nowrap cursor-pointer',
                       isActive
                         ? 'bg-[var(--dk-surface-overlay)] text-foreground font-semibold shadow-sm'
                         : 'text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-hover)]',
@@ -276,7 +276,7 @@ export const SettingsLauncherPage = () => {
                     }
                   }}
                   className={cn(
-                    'group relative flex flex-col rounded-2xl p-3.5 transition-all duration-200 text-left',
+                    'group relative flex flex-col rounded-2xl p-3.5 transition-colors duration-200 text-left',
                     isEnabled ? 'cursor-pointer' : 'cursor-not-allowed opacity-65',
                     isSelected
                       ? 'bg-[var(--dk-surface-raised)] shadow-lg ring-1 ring-primary/20'
@@ -291,7 +291,7 @@ export const SettingsLauncherPage = () => {
                   }
                 >
                   {/* Miniature Preview */}
-                  <div className="w-full aspect-[16/10] rounded-xl overflow-hidden mb-3 transition-all shadow-sm">
+                  <div className="w-full aspect-[16/10] rounded-xl overflow-hidden mb-3 transition shadow-sm">
                     <LauncherThemePreview themeId={theme.id} isSelected={isSelected} />
                   </div>
 
@@ -349,7 +349,7 @@ export const SettingsLauncherPage = () => {
                         : 'Click to activate'}
                     </span>
                     <div
-                      className="h-1.5 rounded-full transition-all"
+                      className="h-1.5 rounded-full transition-colors"
                       style={{
                         backgroundColor: isSelected ? theme.accentColor : 'var(--dk-surface-ghost)',
                         width: isSelected ? '24px' : '8px',

@@ -51,7 +51,7 @@ export const NavigationScrollPill = ({
         'group inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-medium',
         'bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-glass-hover)] backdrop-blur-xl',
         'text-muted-foreground hover:text-foreground shadow-[var(--dk-shadow-glass)]',
-        'border border-white/[0.04] transition-all active:scale-95 cursor-pointer',
+        'border border-white/[0.04] transition-colors active:scale-95 cursor-pointer',
         className,
       )}
     >

@@ -45,7 +45,7 @@ export const LauncherShelf = ({ id }: LauncherShelfProps) => {
               key={tab}
               onClick={() => setShelfTab(tab)}
               className={
-                'text-[11px] font-semibold transition-all cursor-pointer pb-0.5 ' +
+                'text-[11px] font-semibold transition-colors cursor-pointer pb-0.5 ' +
                 (shelfTab === tab
                   ? 'text-foreground border-b-2 border-primary'
                   : 'text-muted-foreground hover:text-foreground')

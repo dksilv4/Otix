@@ -80,7 +80,7 @@ export const MinimalLauncherView = () => {
                 <div
                   key={game.id}
                   onClick={() => selectGame(game.id)}
-                  className={`group flex items-center justify-between py-2 px-2.5 rounded cursor-pointer transition-all ${
+                  className={`group flex items-center justify-between py-2 px-2.5 rounded cursor-pointer transition-colors ${
                     isSelected
                       ? "text-primary font-bold bg-primary/10"
                       : "text-muted-foreground hover:text-foreground"

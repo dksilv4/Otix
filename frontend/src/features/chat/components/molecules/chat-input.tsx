@@ -146,7 +146,7 @@ export const ChatInput = ({
       )}
 
       {/* Apple-style Capsule Input Bar */}
-      <div className="flex items-center gap-1 rounded-full bg-[var(--dk-surface-ghost)] border border-white/[0.06] pl-2 pr-1.5 py-1 transition-all focus-within:ring-1 focus-within:ring-primary/40 shadow-xs">
+      <div className="flex items-center gap-1 rounded-full bg-[var(--dk-surface-ghost)] border border-white/[0.06] pl-2 pr-1.5 py-1 transition-colors focus-within:ring-1 focus-within:ring-primary/40 shadow-xs">
         <input
           ref={fileInputRef}
           type="file"
@@ -207,7 +207,7 @@ export const ChatInput = ({
           type="button"
           onClick={handleSubmit}
           disabled={!canSend}
-          className={`flex h-7 w-7 items-center justify-center rounded-full transition-all shrink-0 cursor-pointer ${
+          className={`flex h-7 w-7 items-center justify-center rounded-full transition-colors shrink-0 cursor-pointer ${
             canSend
               ? 'bg-primary text-primary-foreground hover:scale-105 active:scale-95 shadow-sm'
               : 'bg-muted/40 text-muted-foreground/40 cursor-default'

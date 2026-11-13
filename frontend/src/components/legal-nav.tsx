@@ -26,7 +26,7 @@ export const LegalNav = ({ activeTab }: LegalNavProps) => {
         <Link
           to="/terms"
           className={
-            'inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all ' +
+            'inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-colors ' +
             (activeTab === 'terms'
               ? 'bg-[var(--dk-surface-base)] text-foreground shadow-[var(--dk-shadow-xs)]'
               : 'text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-ghost-hover)]')
@@ -39,7 +39,7 @@ export const LegalNav = ({ activeTab }: LegalNavProps) => {
         <Link
           to="/privacy"
           className={
-            'inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all ' +
+            'inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-colors ' +
             (activeTab === 'privacy'
               ? 'bg-[var(--dk-surface-base)] text-foreground shadow-[var(--dk-shadow-xs)]'
               : 'text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-ghost-hover)]')

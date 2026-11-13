@@ -141,4 +141,73 @@ describe('UniversalPlayerEngine', () => {
     // Engine must still be on fast-2, NOT overwritten by stale slow-1
     expect(engine.getState().currentItem?.id).toBe('fast-2')
   })
+
+  it('automatically advances to next queue item when video finishes (ended event)', async () => {
+    const video1: PlayableMediaItem = {
+      id: 'ep1',
+      source: 'mock',
+      mediaType: 'video',
+      title: 'Episode 1',
+    }
+    const video2: PlayableMediaItem = {
+      id: 'ep2',
+      source: 'mock',
+      mediaType: 'video',
+      title: 'Episode 2',
+    }
+
+    mockAdapter.resolvePlayback = vi.fn().mockResolvedValue({
+      engine: 'html5-video' as const,
+      streamUrl: 'https://example.com/ep.mp4',
+      playbackMethod: 'direct-play' as const,
+    })
+
+    const mockVideoEl = document.createElement('video')
+    engine.registerVideoElement(mockVideoEl)
+
+    await engine.play([video1, video2])
+    expect(engine.getState().currentItem?.id).toBe('ep1')
+    expect(engine.getState().queue.map((i) => i.id)).toEqual(['ep2'])
+
+    // Dispatch native 'ended' event on video element
+    mockVideoEl.dispatchEvent(new Event('ended'))
+
+    // Allow async handleItemEnded -> skipNext to resolve
+    await Promise.resolve()
+    await Promise.resolve()
+
+    expect(engine.getState().currentItem?.id).toBe('ep2')
+    expect(engine.getState().queue).toEqual([])
+    expect(engine.getState().history.map((i) => i.id)).toEqual(['ep1'])
+  })
+
+  it('advances to next queue item via onVideoEnded callback', async () => {
+    const video1: PlayableMediaItem = {
+      id: 'ep1',
+      source: 'mock',
+      mediaType: 'video',
+      title: 'Episode 1',
+    }
+    const video2: PlayableMediaItem = {
+      id: 'ep2',
+      source: 'mock',
+      mediaType: 'video',
+      title: 'Episode 2',
+    }
+
+    mockAdapter.resolvePlayback = vi.fn().mockResolvedValue({
+      engine: 'html5-video' as const,
+      streamUrl: 'https://example.com/ep.mp4',
+      playbackMethod: 'direct-play' as const,
+    })
+
+    await engine.play([video1, video2])
+    expect(engine.getState().currentItem?.id).toBe('ep1')
+
+    engine.onVideoEnded()
+    await Promise.resolve()
+    await Promise.resolve()
+
+    expect(engine.getState().currentItem?.id).toBe('ep2')
+  })
 })

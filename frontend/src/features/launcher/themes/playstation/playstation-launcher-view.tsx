@@ -161,7 +161,7 @@ export const PlayStationLauncherView = () => {
                 className="w-7 h-7 rounded-full object-cover border border-white/20 shadow-md"
               />
             ) : (
-              <div className="w-7 h-7 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-xs font-bold text-white shadow-md">
+              <div className="w-7 h-7 rounded-full bg-primary flex items-center justify-center text-xs font-bold text-primary-foreground shadow-md">
                 {(user?.username?.[0] || "U").toUpperCase()}
               </div>
             )}
@@ -183,7 +183,7 @@ export const PlayStationLauncherView = () => {
             className="space-y-3"
           >
             {activeGame.otixLogoUrl || activeGame.data?.logoUrl ? (
-              <div className="max-h-24 max-w-sm drop-shadow-[0_12px_24px_rgba(0,0,0,0.8)]">
+              <div className="max-h-24 max-w-sm drop-shadow-2xl">
                 <MediaLogo
                   src={activeGame.otixLogoUrl || activeGame.data?.logoUrl || ""}
                   alt={activeGame.title}
@@ -223,7 +223,7 @@ export const PlayStationLauncherView = () => {
             <div className="flex items-center gap-3 pt-2">
               <button
                 onClick={() => handlePlayGame(activeGame)}
-                className="flex items-center gap-2.5 px-7 py-3 rounded-full bg-white text-black font-extrabold text-sm hover:scale-105 active:scale-95 transition-all shadow-[0_0_30px_rgba(255,255,255,0.4)] cursor-pointer"
+                className="flex items-center gap-2.5 px-7 py-3 rounded-full bg-white text-black font-extrabold text-sm hover:scale-105 active:scale-95 transition-transform shadow-2xl cursor-pointer"
               >
                 <Play size={16} fill="black" />
                 <span>Play Game</span>
@@ -231,7 +231,7 @@ export const PlayStationLauncherView = () => {
 
               <button
                 onClick={() => setDetailGame(activeGame)}
-                className="flex items-center gap-2 px-5 py-3 rounded-full bg-white/10 hover:bg-white/20 text-white font-bold text-xs backdrop-blur-md border border-white/10 transition-all cursor-pointer"
+                className="flex items-center gap-2 px-5 py-3 rounded-full bg-white/10 hover:bg-white/20 text-white font-bold text-xs backdrop-blur-md border border-white/10 transition-colors cursor-pointer"
               >
                 <Sliders size={14} />
                 <span>Overview & Stats</span>
@@ -278,7 +278,7 @@ export const PlayStationLauncherView = () => {
               <div
                 key={game.id}
                 onClick={() => selectGame(game.id)}
-                className={`relative shrink-0 rounded-2xl overflow-hidden cursor-pointer transition-all duration-300 transform-gpu hover:-translate-y-1.5 hover:scale-[1.03] active:scale-[0.97] ${
+                className={`relative shrink-0 rounded-2xl overflow-hidden cursor-pointer transition-transform duration-300 transform-gpu hover:-translate-y-1.5 hover:scale-[1.03] active:scale-[0.97] ${
                   isSelected
                     ? "w-40 sm:w-48 aspect-[2/3] ring-2 ring-primary shadow-lg shadow-primary/25"
                     : "w-32 sm:w-36 aspect-[2/3] opacity-60 hover:opacity-95 ring-1 ring-white/[0.06]"

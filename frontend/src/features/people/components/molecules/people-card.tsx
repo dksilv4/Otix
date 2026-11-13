@@ -25,9 +25,9 @@ export const PeopleCard = ({
       data-person-image={imageUrl || undefined}
       className={cn(
         'group relative h-48 w-28 shrink-0 overflow-hidden rounded-lg bg-muted',
-        'shadow-[0_4px_16px_rgba(0,0,0,0.2)] transition-[transform,box-shadow] duration-300 ease-out',
+        'shadow-md transition-[transform,box-shadow] duration-300 ease-out',
         'sm:h-52 sm:w-32',
-        'hover:scale-[1.02] hover:shadow-[0_20px_40px_rgba(0,0,0,0.35)]',
+        'hover:scale-[1.02] hover:shadow-xl',
         'active:scale-[1.01]',
         className,
       )}
@@ -70,13 +70,13 @@ export const PeopleCard = ({
               </p>
             )}
             {isVoice && (
-              <span className="shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-semibold uppercase text-white/90 shadow-[0_0_0_1px_rgba(255,255,255,0.15)] bg-white/15">
+              <span className="shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-semibold uppercase text-white/90 ring-1 ring-white/15 bg-white/15">
                 Voice
               </span>
             )}
           </div>
         )}
-        <h3 className="truncate text-sm font-semibold leading-tight text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.75)] sm:text-base">
+        <h3 className="truncate text-sm font-semibold leading-tight text-white drop-shadow-lg sm:text-base">
           {name}
         </h3>
       </div>
@@ -91,7 +91,7 @@ export const PeopleCard = ({
             event.stopPropagation()
             onFavoriteToggle()
           }}
-          className="absolute right-2.5 top-2.5 z-10 inline-flex h-7 w-7 items-center justify-center rounded-full text-rose-500 transition-transform duration-200 ease-out hover:scale-110 focus-visible:outline-none focus-visible:shadow-[0_0_0_2px_rgba(255,255,255,0.9)]"
+          className="absolute right-2.5 top-2.5 z-10 inline-flex h-7 w-7 items-center justify-center rounded-full text-rose-500 transition-transform duration-200 ease-out hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/90"
         >
           <Heart
             className={cn('h-5 w-5', isFavorite && 'fill-current')}

@@ -132,7 +132,7 @@ export const BlueprintVault = ({ pluginId, onViewDetail }: Props) => {
         </select>
         <button
           onClick={() => setShowImport(true)}
-          className="flex items-center gap-1.5 h-8 px-3 text-xs font-medium rounded-lg bg-primary/15 text-primary hover:bg-primary/25 transition-all"
+          className="flex items-center gap-1.5 h-8 px-3 text-xs font-medium rounded-lg bg-primary/15 text-primary hover:bg-primary/25 transition-colors"
         >
           <Plus className="h-3.5 w-3.5" /> Import
         </button>
@@ -163,7 +163,7 @@ export const BlueprintVault = ({ pluginId, onViewDetail }: Props) => {
           </p>
           <button
             onClick={() => setShowImport(true)}
-            className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 text-xs font-medium rounded-lg bg-primary/15 text-primary hover:bg-primary/25 transition-all"
+            className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 text-xs font-medium rounded-lg bg-primary/15 text-primary hover:bg-primary/25 transition-colors"
           >
             <Plus className="h-3.5 w-3.5" /> Import Blueprint
           </button>
@@ -208,14 +208,14 @@ export const BlueprintVault = ({ pluginId, onViewDetail }: Props) => {
             <div className="flex justify-end gap-2">
               <button
                 onClick={() => { setShowImport(false); setImportString(''); setImportError(null) }}
-                className="px-4 py-2 text-xs rounded-lg hover:bg-[var(--dk-surface-glass)] text-muted-foreground hover:text-foreground transition-all"
+                className="px-4 py-2 text-xs rounded-lg hover:bg-[var(--dk-surface-glass)] text-muted-foreground hover:text-foreground transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={handleImport}
                 disabled={importing || !importString.trim()}
-                className="px-4 py-2 text-xs font-medium rounded-lg bg-primary/15 text-primary hover:bg-primary/25 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                className="px-4 py-2 text-xs font-medium rounded-lg bg-primary/15 text-primary hover:bg-primary/25 transition disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 {importing ? <Loader2 className="h-3.5 w-3.5 animate-spin inline" /> : null}
                 Import

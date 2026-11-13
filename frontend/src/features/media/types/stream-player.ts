@@ -1,3 +1,5 @@
+import type { PlayableMediaItem } from '@/features/player/types/item'
+
 /**
  * Types for the in-app media server streaming pipeline (Jellyfin & Plex).
  */
@@ -57,8 +59,11 @@ export interface StreamPlaybackSession {
   serverUrl: string
   token: string
   itemId: string
+  partKey?: string
   title: string
   subtitle?: string
+  posterUrl?: string | null
+  backdropUrl?: string | null
   playSessionId: string
   clientId?: string
   directUrl?: string
@@ -78,6 +83,7 @@ export interface StreamPlaybackSession {
   selectedQuality?: string
   maxVideoBitrate?: number
   videoResolution?: string
+  playbackMethod?: PlaybackMethod
 }
 
 export type PlaybackMethod = 'direct-play' | 'direct-stream' | 'transcode'
@@ -102,6 +108,10 @@ export interface StreamPlayerState {
   availableQualities: StreamQualityOption[]
   playbackMethod: PlaybackMethod
   error: string | null
+  queue: PlayableMediaItem[]
+  skipToIndex: (index: number) => void
+  removeFromQueue: (index: number) => void
+  clearQueue: () => void
 }
 
 export interface MediaStreamPlayerContextValue {
@@ -127,9 +137,13 @@ export interface MediaStreamPlayerContextValue {
   activeLevelHeight: number | null
   playbackMethod: PlaybackMethod
   error: string | null
+  queue: PlayableMediaItem[]
+  skipToIndex: (index: number) => void
+  removeFromQueue: (index: number) => void
+  clearQueue: () => void
 
   // Session lifecycle
-  openStream: (session: StreamPlaybackSession) => void
+  openStream: (session: StreamPlaybackSession, queueItems?: PlayableMediaItem[]) => void
   closeStream: () => void
   failoverToBaseUrl: (newBaseUrl: string) => void
 
@@ -164,5 +178,8 @@ export interface MediaStreamPlayerContextValue {
   onBufferedUpdate: (buffered: number) => void
   onBuffering: (buffering: boolean) => void
   onError: (err: string | null) => void
+  onVideoEnded?: () => void
+  onPlay?: () => void
+  onPause?: () => void
   fallbackToHls: () => void
 }

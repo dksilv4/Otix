@@ -435,7 +435,7 @@ export const NodeMachineSettings = ({ server }: { server: GameServer }) => {
                     <div
                       key={d.deviceName || `${d.index}-${d.name}`}
                       className={cn(
-                        'absolute rounded-xl p-2.5 flex flex-col justify-between transition-all select-none',
+                        'absolute rounded-xl p-2.5 flex flex-col justify-between transition-colors select-none',
                         d.isPrimary
                           ? 'bg-primary/15 border border-primary/40'
                           : 'bg-[var(--dk-surface-field)] border border-white/[0.06] hover:bg-[var(--dk-surface-hover)]',
@@ -734,7 +734,7 @@ export const NodeMachineSettings = ({ server }: { server: GameServer }) => {
                     <div className="w-full h-1.5 rounded-full bg-[var(--dk-surface-overlay)] overflow-hidden">
                       <div
                         className={cn(
-                          'h-full rounded-full transition-all duration-500',
+                          'h-full rounded-full transition-colors duration-500',
                           disk.usagePercent > 90
                             ? 'bg-destructive'
                             : disk.usagePercent > 75

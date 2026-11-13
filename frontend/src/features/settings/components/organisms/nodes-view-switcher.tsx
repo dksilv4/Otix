@@ -42,7 +42,7 @@ export const NodesViewSwitcher = ({
   return (
     <div
       className={cn(
-        'w-full flex flex-col gap-3 transition-all duration-200',
+        'w-full flex flex-col gap-3 transition-colors duration-200',
         isMap
           ? cn(
               'absolute left-0 right-0 px-4 sm:px-6 lg:px-8 z-20 pointer-events-none',
@@ -96,7 +96,7 @@ export const NodesViewSwitcher = ({
               onClick={() => onViewModeChange('map')}
               title="Topology Map View"
               className={cn(
-                'flex items-center gap-1.5 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg sm:rounded-xl text-xs font-medium transition-all duration-150',
+                'flex items-center gap-1.5 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg sm:rounded-xl text-xs font-medium transition-colors duration-150',
                 viewMode === 'map'
                   ? 'bg-primary text-primary-foreground shadow-xs font-semibold'
                   : 'text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-ghost-hover)]',
@@ -113,7 +113,7 @@ export const NodesViewSwitcher = ({
               onClick={() => onViewModeChange('grid')}
               title="Card Grid View"
               className={cn(
-                'flex items-center gap-1.5 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg sm:rounded-xl text-xs font-medium transition-all duration-150',
+                'flex items-center gap-1.5 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg sm:rounded-xl text-xs font-medium transition-colors duration-150',
                 viewMode === 'grid'
                   ? 'bg-primary text-primary-foreground shadow-xs font-semibold'
                   : 'text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-ghost-hover)]',
@@ -130,7 +130,7 @@ export const NodesViewSwitcher = ({
               onClick={() => onViewModeChange('list')}
               title="Table List View"
               className={cn(
-                'flex items-center gap-1.5 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg sm:rounded-xl text-xs font-medium transition-all duration-150',
+                'flex items-center gap-1.5 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg sm:rounded-xl text-xs font-medium transition-colors duration-150',
                 viewMode === 'list'
                   ? 'bg-primary text-primary-foreground shadow-xs font-semibold'
                   : 'text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-ghost-hover)]',

@@ -14,6 +14,7 @@ export const useDeviceSync = (userOverride?: User | null, isAuthenticatedOverrid
   const isAuthenticated =
     isAuthenticatedOverride !== undefined ? isAuthenticatedOverride : (optionalAuth?.isAuthenticated ?? !!user)
   const registeredNodeIdRef = useRef<number | null>(null)
+  const lastSyncTimeRef = useRef<number>(0)
 
   useEffect(() => {
     // Browser sessions should not be nodes. Only desktop client sessions should sync.
@@ -21,7 +22,11 @@ export const useDeviceSync = (userOverride?: User | null, isAuthenticatedOverrid
 
     let cancelled = false
 
-    const handleSync = async () => {
+    const handleSync = async (force = false) => {
+      const now = Date.now()
+      if (!force && now - lastSyncTimeRef.current < 60_000) return
+      lastSyncTimeRef.current = now
+
       const response = await registerDeviceSession(true)
       if (cancelled || !response) return
 
@@ -52,7 +57,7 @@ export const useDeviceSync = (userOverride?: User | null, isAuthenticatedOverrid
     void handleSync()
 
     const onOnline = () => {
-      void handleSync()
+      void handleSync(true)
     }
 
     const onOffline = () => {
@@ -69,5 +74,5 @@ export const useDeviceSync = (userOverride?: User | null, isAuthenticatedOverrid
       window.removeEventListener('online', onOnline)
       window.removeEventListener('offline', onOffline)
     }
-  }, [isAuthenticated, user])
+  }, [isAuthenticated, user?.id])
 }

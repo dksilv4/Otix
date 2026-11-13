@@ -153,7 +153,7 @@ export const NodesGridView = ({
       <div
         key={item.id}
         className={cn(
-          'group relative flex flex-col justify-between p-4 sm:p-5 rounded-2xl sm:rounded-3xl transition-all duration-200',
+          'group relative flex flex-col justify-between p-4 sm:p-5 rounded-2xl sm:rounded-3xl transition-colors duration-200',
           'bg-[var(--dk-surface-card)] backdrop-blur-xl border border-white/[0.04] shadow-[var(--dk-shadow-glass)]',
           'hover:bg-[var(--dk-surface-card-hover)]',
           isUnclaimed && 'border-primary/30 bg-primary/[0.04]',
@@ -247,7 +247,7 @@ export const NodesGridView = ({
               </div>
               <div className="h-1.5 w-full rounded-full bg-[var(--dk-surface-field)] overflow-hidden">
                 <div
-                  className="h-full bg-primary rounded-full transition-all duration-300"
+                  className="h-full bg-primary rounded-full transition-colors duration-300"
                   style={{ width: `${Math.max(4, item.storagePercent)}%` }}
                 />
               </div>

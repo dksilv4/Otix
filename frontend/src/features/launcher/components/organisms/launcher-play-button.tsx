@@ -2,6 +2,7 @@ import { useParams, useNavigate } from '@tanstack/react-router'
 import { FolderOpen, Server, Pause, Play, X } from 'lucide-react'
 import { formatBytes } from '@/lib/utils'
 import { isTitleMatch } from '@media/utils'
+import { isCs2Game } from '@/features/launcher/utils'
 import { useLauncherGame } from '@/features/launcher/hooks/use-launcher-game'
 import { useInstallProgress } from '@/features/launcher/data/install-store'
 import { useRunningGame } from '@/features/launcher/hooks/use-running-game'
@@ -47,20 +48,23 @@ export const LauncherPlayButton = ({ onOpenInstaller, game: propGame }: Launcher
     return (
       <button
         onClick={() => navigate({ to: '/settings/library' })}
-        className="h-10 px-6 bg-primary hover:bg-primary/90 text-primary-foreground font-black rounded-xl text-xs uppercase tracking-wider flex items-center gap-2 transition-all cursor-pointer shadow-lg active:scale-95 shrink-0"
+        className="h-10 px-6 bg-primary hover:bg-primary/90 text-primary-foreground font-black rounded-xl text-xs uppercase tracking-wider flex items-center gap-2 transition cursor-pointer shadow-lg active:scale-95 shrink-0"
       >
         <FolderOpen size={16} className="stroke-[2.5]" /> Scan Library
       </button>
     )
   }
 
+  const isCs2 = isCs2Game(g.title || g.exePath)
   const isRunning = runningGames.some(
     (rg) =>
       rg.game.id === g.id ||
       (Boolean(rg.game.exePath && g.exePath) &&
         (rg.game.exePath ?? "").toLowerCase() === (g.exePath ?? "").toLowerCase()) ||
       (Boolean(rg.game.title && g.title) &&
-        rg.game.title.toLowerCase() === g.title.toLowerCase()),
+        (rg.game.title.toLowerCase() === g.title.toLowerCase() ||
+          isTitleMatch(rg.game.title, g.title))) ||
+      (isCs2 && isCs2Game(rg.game.title || rg.game.exePath || rg.game.processName)),
   )
 
   if (isRunning) {
@@ -106,7 +110,7 @@ export const LauncherPlayButton = ({ onOpenInstaller, game: propGame }: Launcher
             </div>
             <div className="w-36 h-1.5 bg-[var(--dk-surface-field)] rounded-full overflow-hidden mt-1">
               <div
-                className="h-full bg-primary rounded-full transition-all duration-300"
+                className="h-full bg-primary rounded-full transition-colors duration-300"
                 style={{ width: `${Math.min(100, Math.max(0, activeTransfer.percentage))}%` }}
               />
             </div>
@@ -191,7 +195,7 @@ export const LauncherPlayButton = ({ onOpenInstaller, game: propGame }: Launcher
         onClick={async () => {
           await startDownload(matchingNodeFile, mediaId)
         }}
-        className="h-10 px-5 bg-primary hover:bg-primary/90 text-primary-foreground font-black rounded-xl text-xs uppercase tracking-wider flex items-center gap-2 transition-all cursor-pointer shadow-lg active:scale-95 shrink-0"
+        className="h-10 px-5 bg-primary hover:bg-primary/90 text-primary-foreground font-black rounded-xl text-xs uppercase tracking-wider flex items-center gap-2 transition cursor-pointer shadow-lg active:scale-95 shrink-0"
         title={`On ${matchingNodeFile.nodeName || matchingNodeFile.serverName}, not installed on this device (${formatBytes(matchingNodeFile.filesize)})`}
       >
         <Server size={15} className="stroke-[2.5]" />

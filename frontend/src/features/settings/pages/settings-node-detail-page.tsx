@@ -104,7 +104,7 @@ export const SettingsNodeDetailPage = () => {
         <div className="flex items-center gap-3">
           <Link
             to="/settings/nodes"
-            className="p-2 rounded-xl bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)] text-muted-foreground hover:text-foreground transition-all shrink-0"
+            className="p-2 rounded-xl bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)] text-muted-foreground hover:text-foreground transition-colors shrink-0"
             title="Back to Nodes"
           >
             <ArrowLeft className="h-4 w-4" />
@@ -211,7 +211,7 @@ export const SettingsNodeDetailPage = () => {
           to="/settings/nodes"
           hash="paths"
           onClick={() => setSelectedNodeId(node.id)}
-          className="flex items-center justify-between p-4 rounded-2xl bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)] border border-white/[0.04] transition-all cursor-pointer group"
+          className="flex items-center justify-between p-4 rounded-2xl bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)] border border-white/[0.04] transition-colors cursor-pointer group"
         >
           <div className="flex items-center gap-3">
             <div className="p-2.5 rounded-xl bg-primary/10 text-primary group-hover:scale-105 transition-transform shadow-xs">
@@ -233,7 +233,7 @@ export const SettingsNodeDetailPage = () => {
           to="/settings/nodes"
           hash="organize"
           onClick={() => setSelectedNodeId(node.id)}
-          className="flex items-center justify-between p-4 rounded-2xl bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)] border border-white/[0.04] transition-all cursor-pointer group"
+          className="flex items-center justify-between p-4 rounded-2xl bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)] border border-white/[0.04] transition-colors cursor-pointer group"
         >
           <div className="flex items-center gap-3">
             <div className="p-2.5 rounded-xl bg-primary/10 text-primary group-hover:scale-105 transition-transform shadow-xs">
@@ -254,7 +254,7 @@ export const SettingsNodeDetailPage = () => {
         <Link
           to="/settings/node-connections"
           onClick={() => setSelectedNodeId(node.id)}
-          className="flex items-center justify-between p-4 rounded-2xl bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)] border border-white/[0.04] transition-all cursor-pointer group"
+          className="flex items-center justify-between p-4 rounded-2xl bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)] border border-white/[0.04] transition-colors cursor-pointer group"
         >
           <div className="flex items-center gap-3">
             <div className="p-2.5 rounded-xl bg-primary/10 text-primary group-hover:scale-105 transition-transform shadow-xs">
@@ -276,7 +276,7 @@ export const SettingsNodeDetailPage = () => {
           to="/settings/nodes"
           hash="machine"
           onClick={() => setSelectedNodeId(node.id)}
-          className="flex items-center justify-between p-4 rounded-2xl bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)] border border-white/[0.04] transition-all cursor-pointer group"
+          className="flex items-center justify-between p-4 rounded-2xl bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)] border border-white/[0.04] transition-colors cursor-pointer group"
         >
           <div className="flex items-center gap-3">
             <div className="p-2.5 rounded-xl bg-primary/10 text-primary group-hover:scale-105 transition-transform shadow-xs">
@@ -298,7 +298,7 @@ export const SettingsNodeDetailPage = () => {
           to="/settings/nodes"
           hash="software"
           onClick={() => setSelectedNodeId(node.id)}
-          className="flex items-center justify-between p-4 rounded-2xl bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)] border border-white/[0.04] transition-all cursor-pointer group"
+          className="flex items-center justify-between p-4 rounded-2xl bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)] border border-white/[0.04] transition-colors cursor-pointer group"
         >
           <div className="flex items-center gap-3">
             <div className="p-2.5 rounded-xl bg-primary/10 text-primary group-hover:scale-105 transition-transform shadow-xs">
@@ -320,7 +320,7 @@ export const SettingsNodeDetailPage = () => {
           to="/settings/nodes"
           hash="overlay"
           onClick={() => setSelectedNodeId(node.id)}
-          className="flex items-center justify-between p-4 rounded-2xl bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)] border border-white/[0.04] transition-all cursor-pointer group"
+          className="flex items-center justify-between p-4 rounded-2xl bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)] border border-white/[0.04] transition-colors cursor-pointer group"
         >
           <div className="flex items-center gap-3">
             <div className="p-2.5 rounded-xl bg-primary/10 text-primary group-hover:scale-105 transition-transform shadow-xs">

@@ -381,7 +381,7 @@ export const UserGameActivityPage = () => {
                 key={session.id}
                 type="button"
                 onClick={() => setSelectedSession(session)}
-                className="group p-3.5 rounded-2xl border border-border/60 hover:border-primary/50 bg-card hover:bg-card/90 shadow-sm transition-all duration-200 text-left cursor-pointer flex items-start gap-3.5"
+                className="group p-3.5 rounded-2xl border border-border/60 hover:border-primary/50 bg-card hover:bg-card/90 shadow-sm transition duration-200 text-left cursor-pointer flex items-start gap-3.5"
               >
                 {/* Poster / Thumbnail */}
                 <div className="w-14 h-20 rounded-xl overflow-hidden bg-muted/40 border border-border/50 shrink-0 relative flex items-center justify-center">

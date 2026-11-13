@@ -261,3 +261,49 @@ class MediaRequestsTests(APITestCase):
         req = UserMediaRequest.objects.filter(user=self.user, tmdb_id="19995").first()
         self.assertIsNone(req)
         self.assertFalse(mock_add_movie.called)
+
+    def test_lifecycle_notifications_and_deduplication(self):
+        from apps.library.services.media_requests import (
+            dispatch_media_lifecycle_notification,
+            record_media_request,
+        )
+        from apps.social.models import Notification
+
+        # 1. Record media request dispatches "received" and "matched"
+        req = record_media_request(
+            user=self.user,
+            server=self.server,
+            service="radarr",
+            media_type="movie",
+            payload={"title": "Dune", "tmdb_id": "438631", "year": 2021},
+            result={"id": "999", "title": "Dune"},
+        )
+        self.assertIsNotNone(req)
+
+        # Check notifications
+        notifs = list(Notification.objects.filter(user=self.user).order_by("created_at"))
+        types = [n.type for n in notifs]
+        self.assertIn("media_request.received", types)
+        self.assertIn("media_request.matched", types)
+
+        received_notif = next(n for n in notifs if n.type == "media_request.received")
+        self.assertIn("Dune", received_notif.title)
+        self.assertEqual(received_notif.metadata_json.get("link"), "/media/movie/438631")
+        self.assertTrue(received_notif.dedupe_key.startswith("media_lifecycle:"))
+
+        # 2. Duplicate dispatch does not create duplicate notification due to dedupe_key
+        initial_count = Notification.objects.count()
+        dispatch_media_lifecycle_notification(self.user, req, "received")
+        self.assertEqual(Notification.objects.count(), initial_count)
+
+        # 3. Downloading stage notification
+        dispatch_media_lifecycle_notification(self.user, req, "downloading", progress=45.5)
+        self.assertEqual(Notification.objects.filter(user=self.user, type="media_request.downloading").count(), 1)
+        down_notif = Notification.objects.get(user=self.user, type="media_request.downloading")
+        self.assertIn("45%", down_notif.body)
+
+        # 4. Ready stage notification
+        dispatch_media_lifecycle_notification(self.user, req, "ready")
+        self.assertEqual(Notification.objects.filter(user=self.user, type="media_request.ready").count(), 1)
+        ready_notif = Notification.objects.get(user=self.user, type="media_request.ready")
+        self.assertIn("Ready to Stream", ready_notif.title)

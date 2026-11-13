@@ -49,7 +49,7 @@ export const DiscoverCustomizeModal = ({
                   key={key}
                   type="button"
                   onClick={() => onApplyPreset(key)}
-                  className="flex flex-col items-start p-2.5 rounded-xl bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-glass-hover)] border border-[var(--dk-separator)] transition-all text-left cursor-pointer"
+                  className="flex flex-col items-start p-2.5 rounded-xl bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-glass-hover)] border border-[var(--dk-separator)] transition-colors text-left cursor-pointer"
                 >
                   <span className="text-xs font-bold text-foreground">{preset.label}</span>
                   <span className="text-[10px] text-muted-foreground line-clamp-1 mt-0.5">
@@ -86,7 +86,7 @@ export const DiscoverCustomizeModal = ({
                         disabled={isFirst}
                         onClick={() => onMoveSection(section.id, 'up')}
                         aria-label={`Move ${meta.label} up`}
-                        className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-ghost)] disabled:opacity-20 disabled:pointer-events-none transition-all cursor-pointer"
+                        className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-ghost)] disabled:opacity-20 disabled:pointer-events-none transition-colors cursor-pointer"
                       >
                         <ArrowUp className="h-3.5 w-3.5" />
                       </button>
@@ -95,7 +95,7 @@ export const DiscoverCustomizeModal = ({
                         disabled={isLast}
                         onClick={() => onMoveSection(section.id, 'down')}
                         aria-label={`Move ${meta.label} down`}
-                        className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-ghost)] disabled:opacity-20 disabled:pointer-events-none transition-all cursor-pointer"
+                        className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-ghost)] disabled:opacity-20 disabled:pointer-events-none transition-colors cursor-pointer"
                       >
                         <ArrowDown className="h-3.5 w-3.5" />
                       </button>

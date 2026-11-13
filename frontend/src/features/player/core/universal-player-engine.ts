@@ -75,12 +75,14 @@ export class UniversalPlayerEngine {
   private preloadedNext: { itemId: string; resolved: ResolvedPlayback } | null = null
   private heartbeatTimer: ReturnType<typeof setInterval> | null = null
   private unShuffledQueue: PlayableMediaItem[] = []
+  private isAdvancingItem = false
 
   // Underlying audio element (for audio playback)
   private audioElement: HTMLAudioElement | null = null
 
   // Underlying video element ref (registered by UI when cinema/pip mounts)
   private videoElement: HTMLVideoElement | null = null
+  private videoCleanup: (() => void) | null = null
 
   constructor() {
     let savedVol = 0.7
@@ -207,7 +209,145 @@ export class UniversalPlayerEngine {
   }
 
   registerVideoElement(el: HTMLVideoElement | null) {
+    if (this.videoCleanup) {
+      this.videoCleanup()
+      this.videoCleanup = null
+    }
+
     this.videoElement = el
+    if (!el) return
+
+    // Immediately synchronize volume and muted state onto the newly registered video element
+    el.volume = this.state.isMuted ? 0 : this.state.volume
+    el.muted = this.state.isMuted
+
+    const handleTimeUpdate = () => {
+      if (this.state.currentItem?.mediaType !== 'video') return
+      const curTime = el.currentTime
+      const curDur = el.duration && !isNaN(el.duration) && el.duration > 0 ? el.duration : this.state.duration
+      if (!el.paused && this.state.status === 'buffering') {
+        this.updateState({
+          status: 'playing',
+          position: curTime,
+          duration: curDur,
+        })
+      } else {
+        this.updateState({
+          position: curTime,
+          duration: curDur,
+        })
+      }
+    }
+
+    const handleDurationChange = () => {
+      if (el.duration && !isNaN(el.duration) && el.duration > 0) {
+        this.updateState({ duration: el.duration })
+      }
+    }
+
+    const handleProgress = () => {
+      if (el.buffered.length > 0) {
+        this.updateState({ buffered: el.buffered.end(el.buffered.length - 1) })
+      }
+    }
+
+    const handlePlay = () => {
+      if (this.state.status !== 'playing') {
+        this.updateState({ status: 'playing' })
+        void this.reportProgress('playing')
+      }
+    }
+
+    const handlePause = () => {
+      if (this.state.status !== 'paused' && !el.seeking) {
+        this.updateState({ status: 'paused' })
+        void this.reportProgress('paused')
+      }
+    }
+
+    const handleWaiting = () => {
+      if (this.state.status === 'playing') {
+        this.updateState({ status: 'buffering' })
+      }
+    }
+
+    const handlePlaying = () => {
+      if (this.state.status !== 'playing') {
+        this.updateState({ status: 'playing' })
+      }
+    }
+
+    const handleEnded = () => {
+      if (this.state.currentItem?.mediaType === 'video') {
+        void this.handleItemEnded()
+      }
+    }
+
+    el.addEventListener('timeupdate', handleTimeUpdate)
+    el.addEventListener('durationchange', handleDurationChange)
+    el.addEventListener('progress', handleProgress)
+    el.addEventListener('play', handlePlay)
+    el.addEventListener('pause', handlePause)
+    el.addEventListener('waiting', handleWaiting)
+    el.addEventListener('playing', handlePlaying)
+    el.addEventListener('ended', handleEnded)
+
+    this.videoCleanup = () => {
+      el.removeEventListener('timeupdate', handleTimeUpdate)
+      el.removeEventListener('durationchange', handleDurationChange)
+      el.removeEventListener('progress', handleProgress)
+      el.removeEventListener('play', handlePlay)
+      el.removeEventListener('pause', handlePause)
+      el.removeEventListener('waiting', handleWaiting)
+      el.removeEventListener('playing', handlePlaying)
+      el.removeEventListener('ended', handleEnded)
+    }
+  }
+
+  onVideoEnded(): void {
+    if (this.state.currentItem?.mediaType === 'video') {
+      void this.handleItemEnded()
+    }
+  }
+
+  onVideoTimeUpdate(currentTime: number, duration?: number): void {
+    if (typeof currentTime === 'number' && !isNaN(currentTime)) {
+      const isBuffering = this.state.status === 'buffering'
+      const isPaused = this.videoElement ? this.videoElement.paused : false
+      this.updateState({
+        status: isBuffering && !isPaused ? 'playing' : this.state.status,
+        position: currentTime,
+        duration: duration && !isNaN(duration) && duration > 0 ? duration : this.state.duration,
+      })
+    }
+  }
+
+  onVideoBufferedUpdate(buffered: number): void {
+    if (typeof buffered === 'number' && !isNaN(buffered)) {
+      this.updateState({ buffered })
+    }
+  }
+
+  onVideoBuffering(buffering: boolean): void {
+    if (buffering && this.state.status === 'playing') {
+      this.updateState({ status: 'buffering' })
+    } else if (!buffering && this.state.status === 'buffering') {
+      this.updateState({ status: 'playing' })
+    }
+  }
+
+  onVideoPlay(): void {
+    if (this.state.status !== 'playing') {
+      this.updateState({ status: 'playing' })
+      void this.reportProgress('playing')
+    }
+  }
+
+  onVideoPause(): void {
+    if (this.state.status !== 'paused' && this.state.status !== 'idle') {
+      this.updateState({ status: 'paused' })
+      void this.reportProgress('paused')
+    }
   }
 
   getVideoElement(): HTMLVideoElement | null {
@@ -256,7 +396,11 @@ export class UniversalPlayerEngine {
     // Stop and clear previous playback (AUDIO FOCUS ENFORCEMENT)
     this.stopInternal(false)
 
-    this.playSessionId = `otix-session-${Date.now().toString(36)}`
+    this.playSessionId =
+      targetItem.providerData?.playSessionId || `otix-session-${Date.now().toString(36)}`
+    if (targetItem.providerData && !targetItem.providerData.playSessionId) {
+      targetItem.providerData.playSessionId = this.playSessionId
+    }
     this.activeAdapter = adapterRegistry.resolve(targetItem)
 
     const viewMode: PlayerViewMode =
@@ -364,7 +508,21 @@ export class UniversalPlayerEngine {
           error: `Audio file "${targetItem.title || 'Track'}" is not accessible. Please re-import or select folder.`,
         })
       } else {
+        const updatedItem: PlayableMediaItem = {
+          ...targetItem,
+          providerData: {
+            ...(targetItem.providerData || {}),
+            hlsUrl: resolved.hlsUrl || targetItem.providerData?.hlsUrl,
+            directUrl: resolved.directUrl || targetItem.providerData?.directUrl,
+            playbackMethod: resolved.playbackMethod || targetItem.providerData?.playbackMethod,
+            audioTracks: resolved.audioTracks || targetItem.providerData?.audioTracks,
+            subtitles: resolved.subtitleTracks || targetItem.providerData?.subtitles,
+            baseUrls: resolved.baseUrls || targetItem.providerData?.baseUrls,
+          },
+        }
+
         this.updateState({
+          currentItem: updatedItem,
           status: 'playing',
           availableQualities: resolved.availableQualities || [],
           playbackMethod: resolved.playbackMethod || 'direct-play',
@@ -389,58 +547,57 @@ export class UniversalPlayerEngine {
   }
 
   pause(): void {
-    if (this.state.status !== 'playing') return
-
-    if (this.state.currentItem?.mediaType === 'audio' && this.audioElement) {
-      this.audioElement.pause()
-    } else if (this.videoElement) {
-      this.videoElement.pause()
-    }
+    if (this.state.status === 'paused' || this.state.status === 'idle') return
 
     this.updateState({ status: 'paused' })
     void this.reportProgress('paused')
+
+    if (this.state.currentItem?.mediaType === 'audio' && this.audioElement) {
+      if (!this.audioElement.paused) {
+        this.audioElement.pause()
+      }
+    } else if (this.videoElement) {
+      if (!this.videoElement.paused) {
+        this.videoElement.pause()
+      }
+    }
   }
 
   resume(): void {
-    if (this.state.status !== 'paused' && !this.audioElement?.paused && !this.videoElement?.paused) return
-
-    if (this.state.currentItem?.mediaType === 'audio' && this.audioElement) {
-      this.audioElement
-        .play()
-        .then(() => {
-          this.updateState({ status: 'playing' })
-          void this.reportProgress('playing')
-        })
-        .catch((err) => {
-          console.warn('[universalPlayerEngine] resume failed:', err)
-        })
-      return
-    } else if (this.videoElement) {
-      this.videoElement
-        .play()
-        .then(() => {
-          this.updateState({ status: 'playing' })
-          void this.reportProgress('playing')
-        })
-        .catch((err) => {
-          console.warn('[universalPlayerEngine] resume video failed:', err)
-        })
-      return
-    }
+    if (this.state.status === 'playing' && !this.audioElement?.paused && !this.videoElement?.paused) return
 
     this.updateState({ status: 'playing' })
     void this.reportProgress('playing')
+
+    if (this.state.currentItem?.mediaType === 'audio' && this.audioElement) {
+      if (this.audioElement.paused) {
+        this.audioElement
+          .play()
+          ?.catch((err) => {
+            console.warn('[universalPlayerEngine] resume audio failed:', err)
+          })
+      }
+    } else if (this.videoElement) {
+      if (this.videoElement.paused) {
+        this.videoElement
+          .play()
+          ?.catch((err) => {
+            console.warn('[universalPlayerEngine] resume video failed:', err)
+          })
+      }
+    }
   }
 
   async togglePlay(): Promise<void> {
-    const isAudioActuallyPaused =
-      this.state.currentItem?.mediaType === 'audio' && this.audioElement
-        ? this.audioElement.paused
-        : false
+    const isBufferingOrPlaying = this.state.status === 'playing' || this.state.status === 'buffering'
 
-    if (this.state.status === 'playing' && !isAudioActuallyPaused) {
+    if (isBufferingOrPlaying && this.state.status !== 'paused') {
       this.pause()
-    } else if (this.state.status === 'paused' || isAudioActuallyPaused) {
+    } else if (
+      this.state.status === 'paused' ||
+      (this.videoElement ? this.videoElement.paused : false) ||
+      (this.audioElement ? this.audioElement.paused : false)
+    ) {
       this.resume()
     } else if (this.state.status === 'idle' && this.state.currentItem) {
       await this.play(this.state.currentItem)
@@ -659,12 +816,20 @@ export class UniversalPlayerEngine {
   }
 
   private async handleItemEnded(): Promise<void> {
-    if (this.state.repeatMode === 'one') {
-      this.seek(0)
-      this.resume()
-      return
+    if (this.isAdvancingItem) return
+    this.isAdvancingItem = true
+    try {
+      if (this.state.repeatMode === 'one') {
+        this.seek(0)
+        this.resume()
+        return
+      }
+      await this.skipNext()
+    } finally {
+      setTimeout(() => {
+        this.isAdvancingItem = false
+      }, 500)
     }
-    await this.skipNext()
   }
 
   // --------------------------------------------------------------------------
@@ -672,16 +837,20 @@ export class UniversalPlayerEngine {
   // --------------------------------------------------------------------------
   setVolume(volume: number): void {
     const clamped = Math.max(0, Math.min(1, volume))
+    const nextMuted = clamped === 0 ? true : clamped > 0 && this.state.isMuted ? false : this.state.isMuted
     if (this.audioElement) {
-      this.audioElement.volume = this.state.isMuted ? 0 : clamped
+      this.audioElement.volume = nextMuted ? 0 : clamped
+      this.audioElement.muted = nextMuted
     }
     if (this.videoElement) {
-      this.videoElement.volume = this.state.isMuted ? 0 : clamped
+      this.videoElement.volume = nextMuted ? 0 : clamped
+      this.videoElement.muted = nextMuted
     }
-    this.updateState({ volume: clamped })
+    this.updateState({ volume: clamped, isMuted: nextMuted })
 
     try {
       localStorage.setItem(UNIFIED_VOLUME_KEY, String(clamped))
+      localStorage.setItem(UNIFIED_MUTED_KEY, String(nextMuted))
     } catch {
       // ignore
     }
@@ -691,9 +860,11 @@ export class UniversalPlayerEngine {
     const newMuted = !this.state.isMuted
     if (this.audioElement) {
       this.audioElement.volume = newMuted ? 0 : this.state.volume
+      this.audioElement.muted = newMuted
     }
     if (this.videoElement) {
       this.videoElement.volume = newMuted ? 0 : this.state.volume
+      this.videoElement.muted = newMuted
     }
     this.updateState({ isMuted: newMuted })
 
@@ -761,8 +932,9 @@ export class UniversalPlayerEngine {
   // TRACKS & QUALITY
   // --------------------------------------------------------------------------
   async setActiveSubtitle(subtitleId: string | null): Promise<void> {
+    const tracks = this.resolvedPlaybackSubtitleTracks()
     const sub = subtitleId
-      ? this.resolvedPlaybackSubtitleTracks()?.find((s) => s.id === subtitleId) || null
+      ? tracks?.find((s) => s.id === subtitleId || String(s.index) === subtitleId) || null
       : null
 
     this.updateState({ activeSubtitle: sub })
@@ -772,16 +944,35 @@ export class UniversalPlayerEngine {
         this.state.currentItem,
         this.state.activeAudio?.index,
         sub?.index,
+        this.state.position,
       )
       this.resolvedPlayback = resolved
+
+      const updatedItem: PlayableMediaItem = {
+        ...this.state.currentItem,
+        providerData: {
+          ...(this.state.currentItem.providerData || {}),
+          selectedSubtitleIndex: sub?.index,
+          hlsUrl: resolved.hlsUrl || this.state.currentItem.providerData?.hlsUrl,
+          directUrl: resolved.directUrl || this.state.currentItem.providerData?.directUrl,
+          playbackMethod: resolved.playbackMethod || this.state.currentItem.providerData?.playbackMethod,
+          audioTracks: resolved.audioTracks || this.state.currentItem.providerData?.audioTracks,
+          subtitles: resolved.subtitleTracks || this.state.currentItem.providerData?.subtitles,
+        },
+      }
+
       this.updateState({
+        currentItem: updatedItem,
         playbackMethod: resolved.playbackMethod || this.state.playbackMethod,
       })
     }
   }
 
   private resolvedPlaybackSubtitleTracks(): SubtitleTrack[] | undefined {
-    return this.resolvedPlayback?.subtitleTracks
+    return (
+      this.resolvedPlayback?.subtitleTracks ||
+      (this.state.currentItem?.providerData?.subtitles as SubtitleTrack[] | undefined)
+    )
   }
 
   async setActiveAudio(audioIndex: number | null): Promise<void> {
@@ -796,8 +987,27 @@ export class UniversalPlayerEngine {
         this.state.currentItem,
         audioIndex,
         this.state.activeSubtitle?.index,
+        this.state.position,
       )
       this.resolvedPlayback = resolved
+
+      const updatedItem: PlayableMediaItem = {
+        ...this.state.currentItem,
+        providerData: {
+          ...(this.state.currentItem.providerData || {}),
+          selectedAudioIndex: audioIndex,
+          hlsUrl: resolved.hlsUrl || this.state.currentItem.providerData?.hlsUrl,
+          directUrl: resolved.directUrl || this.state.currentItem.providerData?.directUrl,
+          playbackMethod: resolved.playbackMethod || this.state.currentItem.providerData?.playbackMethod,
+          audioTracks: resolved.audioTracks || this.state.currentItem.providerData?.audioTracks,
+          subtitles: resolved.subtitleTracks || this.state.currentItem.providerData?.subtitles,
+        },
+      }
+
+      this.updateState({
+        currentItem: updatedItem,
+        playbackMethod: resolved.playbackMethod || this.state.playbackMethod,
+      })
     }
   }
 
@@ -815,6 +1025,25 @@ export class UniversalPlayerEngine {
       this.state.position,
     )
     this.resolvedPlayback = resolved
+
+    const updatedItem: PlayableMediaItem = {
+      ...this.state.currentItem,
+      providerData: {
+        ...(this.state.currentItem.providerData || {}),
+        selectedQuality: qualityId,
+        maxVideoBitrate: qual.maxVideoBitrate,
+        videoResolution: qual.videoResolution,
+        hlsUrl: resolved.hlsUrl || this.state.currentItem.providerData?.hlsUrl,
+        directUrl: resolved.directUrl || this.state.currentItem.providerData?.directUrl,
+        playbackMethod: resolved.playbackMethod || this.state.currentItem.providerData?.playbackMethod,
+      },
+    }
+
+    this.updateState({
+      currentItem: updatedItem,
+      playbackMethod: resolved.playbackMethod || this.state.playbackMethod,
+      availableQualities: resolved.availableQualities || this.state.availableQualities,
+    })
   }
 
   async failoverServer(newBaseUrl: string): Promise<void> {
@@ -826,6 +1055,21 @@ export class UniversalPlayerEngine {
       })
       this.resolvedPlayback = resolved
     }
+  }
+
+  fallbackToHls(): void {
+    if (!this.state.currentItem) return
+    const updatedItem: PlayableMediaItem = {
+      ...this.state.currentItem,
+      providerData: {
+        ...(this.state.currentItem.providerData || {}),
+        playbackMethod: 'transcode',
+      },
+    }
+    this.updateState({
+      currentItem: updatedItem,
+      playbackMethod: 'transcode',
+    })
   }
 
   // --------------------------------------------------------------------------
@@ -884,7 +1128,11 @@ export class UniversalPlayerEngine {
     })
 
     navigator.mediaSession.playbackState =
-      this.state.status === 'playing' ? 'playing' : this.state.status === 'paused' ? 'paused' : 'none'
+      this.state.status === 'playing' || this.state.status === 'buffering'
+        ? 'playing'
+        : this.state.status === 'paused'
+        ? 'paused'
+        : 'none'
 
     try {
       navigator.mediaSession.setActionHandler('play', () => this.resume())

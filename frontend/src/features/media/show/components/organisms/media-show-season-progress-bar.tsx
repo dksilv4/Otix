@@ -4,8 +4,8 @@ export const SeasonProgressBar = ({ watched, total }: { watched: number; total: 
     <div className="flex items-center gap-2">
       <div className="h-1 flex-1 rounded-full overflow-hidden bg-[var(--dk-surface-glass)]">
         <div
-          className="h-full rounded-full bg-primary transition-[width] duration-500 ease-out"
-          style={{ width: `${pct}%` }}
+          className="h-full w-full rounded-full bg-primary origin-left transition-transform duration-500 ease-out"
+          style={{ transform: `scaleX(${pct / 100})` }}
         />
       </div>
       <span className="text-xs shrink-0 text-muted-foreground tabular-nums">

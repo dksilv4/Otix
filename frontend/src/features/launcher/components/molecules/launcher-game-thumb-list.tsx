@@ -46,7 +46,7 @@ export const GameThumbList = ({ games, activeGameId, onSelect, onHover }: GameTh
               onClick={() => onSelect(game.id)}
               onMouseEnter={() => onHover?.(game)}
               className={
-                "w-[46px] h-[46px] rounded-xl overflow-hidden cursor-pointer border transition-all duration-300 relative shrink-0 " +
+                "w-[46px] h-[46px] rounded-xl overflow-hidden cursor-pointer border transition-colors duration-300 relative shrink-0 " +
                 (isActive
                   ? "border-primary shadow-[var(--dk-shadow-glass)] scale-105"
                   : isRunning

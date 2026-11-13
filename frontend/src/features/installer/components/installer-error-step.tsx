@@ -43,8 +43,8 @@ export const InstallerErrorStep = ({
           <div
             className={
               isPerm
-                ? 'relative p-4 rounded-3xl bg-amber-500/[0.12] text-amber-400 shadow-[0_12px_36px_rgba(0,0,0,0.4)] backdrop-blur-2xl'
-                : 'relative p-4 rounded-3xl bg-destructive/[0.12] text-destructive shadow-[0_12px_36px_rgba(0,0,0,0.4)] backdrop-blur-2xl'
+                ? 'relative p-4 rounded-3xl bg-amber-500/[0.12] text-amber-400 shadow-2xl backdrop-blur-2xl'
+                : 'relative p-4 rounded-3xl bg-destructive/[0.12] text-destructive shadow-2xl backdrop-blur-2xl'
             }
           >
             {isPerm ? <ShieldAlert className="h-10 w-10" /> : <ShieldAlert className="h-10 w-10" />}

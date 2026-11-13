@@ -20,7 +20,7 @@ export const ChatEmbedCard = ({ embed }: ChatEmbedCardProps) => {
   return (
     <Link
       to={targetUrl}
-      className="mt-2 block rounded-2xl overflow-hidden bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)] border border-white/[0.06] transition-all group max-w-[280px] text-left shadow-xs cursor-pointer select-none"
+      className="mt-2 block rounded-2xl overflow-hidden bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)] border border-white/[0.06] transition-colors group max-w-[280px] text-left shadow-xs cursor-pointer select-none"
     >
       {imageSrc && (
         <div className="w-full h-32 overflow-hidden bg-muted relative">

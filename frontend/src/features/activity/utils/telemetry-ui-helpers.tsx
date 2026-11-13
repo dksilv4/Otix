@@ -193,11 +193,12 @@ export const Cs2OfficialWeaponIcon = ({
   const flipClass = faceLeft && !isC4 && !className.includes('scale-x-') ? 'scale-x-[-1]' : ''
   return (
     <svg
+      aria-hidden="true"
       viewBox={svgDef.viewBox}
       fill="currentColor"
-      className={`${className} ${flipClass} transition-all duration-200 select-none ${
+      className={`${className} ${flipClass} transition-colors duration-200 select-none ${
         active
-          ? 'text-[#70b5e8] drop-shadow-[0_0_8px_rgba(112,181,232,0.65)] filter brightness-110'
+          ? 'text-cs2-ct drop-shadow-md filter brightness-110'
           : slot === 2
             ? 'text-white/70'
             : 'text-white/60'
@@ -243,6 +244,7 @@ export const Cs2PistolSilhouette = ({ className = 'h-4 w-auto' }: { className?: 
 
 export const Cs2DefuseKitIcon = ({ className = 'h-4 w-4' }: { className?: string }) => (
   <svg
+    aria-hidden="true"
     viewBox="0 0 24 24"
     fill="currentColor"
     className={className}
@@ -255,6 +257,7 @@ export const Cs2DefuseKitIcon = ({ className = 'h-4 w-4' }: { className?: string
 
 export const Cs2C4Icon = ({ className = 'h-4 w-4' }: { className?: string }) => (
   <svg
+    aria-hidden="true"
     viewBox="0 0 24 24"
     fill="currentColor"
     className={className}
@@ -271,6 +274,7 @@ export const Cs2C4Icon = ({ className = 'h-4 w-4' }: { className?: string }) => 
 
 export const Cs2HealthCrossIcon = ({ className = 'h-4 w-4' }: { className?: string }) => (
   <svg
+    aria-hidden="true"
     viewBox="0 0 24 24"
     fill="currentColor"
     className={className}
@@ -284,6 +288,7 @@ export const Cs2HealthCrossIcon = ({ className = 'h-4 w-4' }: { className?: stri
 
 export const Cs2HelmetIcon = ({ className = 'h-4 w-4' }: { className?: string }) => (
   <svg
+    aria-hidden="true"
     viewBox="0 0 24 24"
     fill="currentColor"
     className={className}
@@ -306,7 +311,7 @@ export const Cs2RealC4Icon = ({ className = 'h-3.5 w-3.5' }: { className?: strin
   <Cs2OfficialWeaponIcon
     weapon="c4"
     faceLeft={false}
-    className={`${className} text-rose-500 drop-shadow-[0_0_6px_rgba(244,63,94,0.6)]`}
+    className={`${className} text-rose-500 drop-shadow-md`}
   />
 )
 
@@ -315,6 +320,7 @@ export const Cs2RealC4Icon = ({ className = 'h-3.5 w-3.5' }: { className?: strin
  */
 export const Cs2CtLogo = ({ className = 'h-3.5 w-3.5' }: { className?: string }) => (
   <svg
+    aria-hidden="true"
     viewBox="0 0 256 256"
     className={className}
     fill="none"
@@ -341,6 +347,7 @@ export const Cs2CtLogo = ({ className = 'h-3.5 w-3.5' }: { className?: string })
  */
 export const Cs2TLogo = ({ className = 'h-3.5 w-3.5' }: { className?: string }) => (
   <svg
+    aria-hidden="true"
     viewBox="0 0 128 128"
     className={className}
     fill="none"

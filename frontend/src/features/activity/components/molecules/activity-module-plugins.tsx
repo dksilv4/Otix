@@ -151,8 +151,8 @@ export const ActivityModulePlugins = () => {
                         <div className="mt-1.5 flex items-center gap-2">
                           <div className="flex-1 h-1 rounded-full bg-muted overflow-hidden">
                             <div
-                              className="h-full rounded-full transition-all duration-500 bg-gradient-to-r from-blue-500 to-indigo-500"
-                              style={{ width: `${Math.min(item.progress, 100)}%` }}
+                              className="h-full w-full rounded-full transition-transform duration-500 origin-left bg-primary"
+                              style={{ transform: `scaleX(${Math.min(item.progress, 100) / 100})` }}
                             />
                           </div>
                           <span className="text-[9px] text-muted-foreground tabular-nums font-medium">{item.progress}%</span>

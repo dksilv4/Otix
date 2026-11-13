@@ -9,11 +9,11 @@ import {
 } from './toast-dispatcher'
 
 const variantConfig: Record<string, { icon: typeof CheckCircle; ring: string }> = {
-  success: { icon: CheckCircle, ring: 'ring-green-500/30' },
+  success: { icon: CheckCircle, ring: 'ring-primary/30' },
   error: { icon: AlertCircle, ring: 'ring-destructive/30' },
   destructive: { icon: AlertCircle, ring: 'ring-destructive/30' },
-  warning: { icon: AlertTriangle, ring: 'ring-orange-500/30' },
-  info: { icon: Info, ring: 'ring-blue-500/30' },
+  warning: { icon: AlertTriangle, ring: 'ring-[var(--dk-ring-color)]' },
+  info: { icon: Info, ring: 'ring-primary/20' },
   default: { icon: Info, ring: 'ring-[var(--dk-ring-color)]' },
 }
 
@@ -90,8 +90,15 @@ const ToastItem = ({ toast: t, onRemove }: { toast: Toast; onRemove: (id: string
       transition={{ type: 'spring', damping: 24, stiffness: 320 }}
       layout
       role="alert"
+      onClick={() => {
+        if (t.onClick) {
+          t.onClick()
+          onRemove(t.id)
+        }
+      }}
       className={cn(
         'pointer-events-auto flex items-start gap-3 rounded-2xl p-4 max-w-sm bg-[var(--dk-surface-base)] shadow-[var(--dk-shadow-lg)] ring-1 ring-inset',
+        t.onClick && 'cursor-pointer hover:bg-[var(--dk-surface-ghost-hover)] transition-colors',
         config.ring,
       )}
     >
@@ -104,8 +111,11 @@ const ToastItem = ({ toast: t, onRemove }: { toast: Toast; onRemove: (id: string
       </div>
       <button
         type="button"
-        onClick={() => onRemove(t.id)}
-        className="shrink-0 rounded-lg p-1 transition-all text-[var(--muted-foreground)] hover:bg-[var(--dk-surface-ghost-hover)] hover:text-[var(--foreground)]"
+        onClick={(e) => {
+          e.stopPropagation()
+          onRemove(t.id)
+        }}
+        className="shrink-0 rounded-lg p-1 transition-colors text-[var(--muted-foreground)] hover:bg-[var(--dk-surface-ghost-hover)] hover:text-[var(--foreground)]"
         aria-label="Dismiss"
       >
         <X className="h-3.5 w-3.5" />

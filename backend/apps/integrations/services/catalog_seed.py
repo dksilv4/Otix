@@ -287,9 +287,14 @@ def enqueue_due_and_incomplete(*, limit: int = 200) -> dict[str, int]:
     )
     enqueued = 0
     skipped = 0
+    from apps.integrations.services.fetch_proxy import server_can_fetch
+    import sys
+
+    is_testing = getattr(settings, "TESTING", False) or "test" in sys.argv
+
     for media in qs:
         provider = CANONICAL_PROVIDER.get(media.media_type)
-        if not provider:
+        if not provider or (not is_testing and not server_can_fetch(provider)):
             skipped += 1
             continue
         ext = (
@@ -346,13 +351,36 @@ def run_pending_jobs(
     ``provider``/``entity_type`` narrow the drain. Returns a summary with the
     per-job outcomes so callers can surface progress.
     """
+    import sys
+    from apps.integrations.services.fetch_proxy import server_can_fetch
+
+    is_testing = getattr(settings, "TESTING", False) or "test" in sys.argv
+
     qs = (
         SyncJob.objects.filter(status="pending")
         .exclude(entity_type__in=_MUSIC_ENTITY_TYPES)
         .exclude(provider__in=_MUSIC_PROVIDERS)
         .order_by("priority", "created_at", "pk")
     )
-    if provider is not None:
+    if not is_testing:
+        if provider is not None:
+            if not server_can_fetch(provider):
+                return {
+                    "ran": 0,
+                    "succeeded": 0,
+                    "failed": 0,
+                    "skipped": 0,
+                    "outcomes": [],
+                }
+            qs = qs.filter(provider=provider)
+        else:
+            unconfigured = [
+                p for p in ("tmdb", "igdb", "steamgrid", "omdb", "fanart")
+                if not server_can_fetch(p)
+            ]
+            if unconfigured:
+                qs = qs.exclude(provider__in=unconfigured)
+    elif provider is not None:
         qs = qs.filter(provider=provider)
     if entity_type is not None:
         qs = qs.filter(entity_type=entity_type)

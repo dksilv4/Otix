@@ -27,7 +27,7 @@ const AnimatedRoleLabel = () => {
   return (
     <span className="relative inline-block overflow-hidden h-[1em] leading-[1em] align-middle">
       <span
-        className={`uppercase tracking-wider font-semibold inline-block transition-all duration-[400ms] ease-in-out ${
+        className={`uppercase tracking-wider font-semibold inline-block transition-colors duration-[400ms] ease-in-out ${
           leaving ? '-translate-y-full opacity-0' : 'translate-y-0 opacity-100'
         }`}
       >

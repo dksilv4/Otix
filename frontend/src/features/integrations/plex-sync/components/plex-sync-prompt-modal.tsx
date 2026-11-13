@@ -41,7 +41,7 @@ export const PlexSyncPromptModal = () => {
               toggleOption('syncWatchlist')
             }
           }}
-          className="flex cursor-pointer items-start justify-between gap-3.5 rounded-2xl p-4 transition-all duration-150 border border-white/[0.04] hover:bg-[var(--dk-surface-ghost-hover)]"
+          className="flex cursor-pointer items-start justify-between gap-3.5 rounded-2xl p-4 transition-colors duration-150 border border-white/[0.04] hover:bg-[var(--dk-surface-ghost-hover)]"
           style={{ backgroundColor: 'var(--dk-surface-ghost)' }}
         >
           <div className="flex items-start gap-3 min-w-0">
@@ -79,7 +79,7 @@ export const PlexSyncPromptModal = () => {
               toggleOption('syncWatched')
             }
           }}
-          className="flex cursor-pointer items-start justify-between gap-3.5 rounded-2xl p-4 transition-all duration-150 border border-white/[0.04] hover:bg-[var(--dk-surface-ghost-hover)]"
+          className="flex cursor-pointer items-start justify-between gap-3.5 rounded-2xl p-4 transition-colors duration-150 border border-white/[0.04] hover:bg-[var(--dk-surface-ghost-hover)]"
           style={{ backgroundColor: 'var(--dk-surface-ghost)' }}
         >
           <div className="flex items-start gap-3 min-w-0">

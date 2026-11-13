@@ -27,7 +27,7 @@ export const GameSessionIconTile = ({
         data-testid="user-profile-game-icon-tile"
         onClick={onClick}
         aria-label={`View stats for ${session.gameTitle}`}
-        className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl overflow-hidden border border-border/60 hover:border-primary/60 bg-card shadow-sm hover:shadow-md transition-all duration-200 group-hover:scale-105 cursor-pointer relative flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+        className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl overflow-hidden border border-border/60 hover:border-primary/60 bg-card shadow-sm hover:shadow-md transition duration-200 group-hover:scale-105 cursor-pointer relative flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
       >
         {hasArt ? (
           <img
@@ -45,7 +45,7 @@ export const GameSessionIconTile = ({
       </button>
 
       {/* Rich Hover Floating Tooltip */}
-      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-56 p-3 rounded-xl bg-popover/95 border border-border/80 text-popover-foreground shadow-xl backdrop-blur-md opacity-0 translate-y-1 group-hover:opacity-100 group-hover:translate-y-0 pointer-events-none transition-all duration-200 z-30 flex flex-col gap-1.5">
+      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-56 p-3 rounded-xl bg-popover/95 border border-border/80 text-popover-foreground shadow-xl backdrop-blur-md opacity-0 translate-y-1 group-hover:opacity-100 group-hover:translate-y-0 pointer-events-none transition duration-200 z-30 flex flex-col gap-1.5">
         <h5 className="font-bold text-xs text-foreground truncate">
           {session.gameTitle}
         </h5>

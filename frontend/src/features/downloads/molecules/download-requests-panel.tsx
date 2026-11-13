@@ -89,7 +89,7 @@ export const DownloadRequestsPanel = ({
             type="button"
             onClick={() => setTypeFilter('all')}
             className={cn(
-              'px-3 py-1.5 rounded-xl text-xs font-semibold transition-all border border-white/[0.04]',
+              'px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors border border-white/[0.04]',
               typeFilter === 'all'
                 ? 'bg-primary text-primary-foreground shadow-sm'
                 : 'text-muted-foreground hover:text-foreground hover:bg-muted/50',
@@ -101,7 +101,7 @@ export const DownloadRequestsPanel = ({
             type="button"
             onClick={() => setTypeFilter('movie')}
             className={cn(
-              'flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all border border-white/[0.04]',
+              'flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors border border-white/[0.04]',
               typeFilter === 'movie'
                 ? 'bg-primary text-primary-foreground shadow-sm'
                 : 'text-muted-foreground hover:text-foreground hover:bg-muted/50',
@@ -114,7 +114,7 @@ export const DownloadRequestsPanel = ({
             type="button"
             onClick={() => setTypeFilter('show')}
             className={cn(
-              'flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all border border-white/[0.04]',
+              'flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors border border-white/[0.04]',
               typeFilter === 'show'
                 ? 'bg-primary text-primary-foreground shadow-sm'
                 : 'text-muted-foreground hover:text-foreground hover:bg-muted/50',
@@ -128,7 +128,7 @@ export const DownloadRequestsPanel = ({
               type="button"
               onClick={() => setTypeFilter('game')}
               className={cn(
-                'flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all border border-white/[0.04]',
+                'flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors border border-white/[0.04]',
                 typeFilter === 'game'
                   ? 'bg-primary text-primary-foreground shadow-sm'
                   : 'text-muted-foreground hover:text-foreground hover:bg-muted/50',
@@ -210,7 +210,7 @@ export const DownloadRequestsPanel = ({
             return (
               <div
                 key={item.id}
-                className="group relative flex flex-col justify-between p-4 rounded-2xl bg-[var(--dk-surface-glass)] backdrop-blur-xl shadow-[var(--dk-shadow-glass)] border border-white/[0.04] hover:border-white/[0.08] transition-all"
+                className="group relative flex flex-col justify-between p-4 rounded-2xl bg-[var(--dk-surface-glass)] backdrop-blur-xl shadow-[var(--dk-shadow-glass)] border border-white/[0.04] hover:border-white/[0.08] transition-colors"
               >
                 {/* Top Section */}
                 <div className="flex items-start gap-3.5">

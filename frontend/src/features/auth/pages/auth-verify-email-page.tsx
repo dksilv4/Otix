@@ -104,7 +104,7 @@ export const VerifyEmailPage = () => {
               <button
                 type="button"
                 onClick={() => navigate({ to: isAuthenticated ? '/' : '/auth/login' })}
-                className="cursor-pointer rounded-full bg-primary text-primary-foreground hover:bg-primary/90 px-5 py-2 text-sm font-semibold transition-all shadow-md"
+                className="cursor-pointer rounded-full bg-primary text-primary-foreground hover:bg-primary/90 px-5 py-2 text-sm font-semibold transition shadow-md"
               >
                 {isAuthenticated ? 'Continue to Home' : 'Go to Sign In'}
               </button>

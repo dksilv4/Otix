@@ -273,7 +273,7 @@ export const DiscoverHero = ({ className }: DiscoverHeroProps) => {
                       <MediaLogo
                         src={activeMediaItem.logoUrl}
                         alt={activeMediaItem.title}
-                        className="h-20 sm:h-28 md:h-36 lg:h-40 xl:h-44 w-auto max-w-full object-contain object-left drop-shadow-[0_12px_28px_rgba(0,0,0,0.75)]"
+                        className="h-20 sm:h-28 md:h-36 lg:h-40 xl:h-44 w-auto max-w-full object-contain object-left drop-shadow-2xl"
                         colorGuess={activeMediaItem.logoColorGuess ?? null}
                         background="theme"
                       />
@@ -308,7 +308,7 @@ export const DiscoverHero = ({ className }: DiscoverHeroProps) => {
                           })
                         }}
                         disabled={isStartingStream}
-                        className="flex items-center gap-2 px-7 sm:px-8 py-3.5 rounded-full font-bold text-xs sm:text-sm md:text-base bg-primary text-primary-foreground shadow-lg hover:opacity-95 active:scale-[0.98] transition-all cursor-pointer disabled:opacity-75"
+                        className="flex items-center gap-2 px-7 sm:px-8 py-3.5 rounded-full font-bold text-xs sm:text-sm md:text-base bg-primary text-primary-foreground shadow-lg hover:opacity-95 active:scale-[0.98] transition cursor-pointer disabled:opacity-75"
                       >
                         {isStartingStream ? (
                           <Loader2 className="h-4 w-4 animate-spin" />
@@ -322,7 +322,7 @@ export const DiscoverHero = ({ className }: DiscoverHeroProps) => {
                       <Link
                         to="/media/$mediaType/$mediaId"
                         params={{ mediaType: activeMediaItem.mediaType, mediaId: activeMediaItem.id }}
-                        className="flex items-center gap-2 px-7 sm:px-8 py-3.5 rounded-full font-semibold text-xs sm:text-sm md:text-base bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)] text-foreground transition-all active:scale-[0.98] cursor-pointer"
+                        className="flex items-center gap-2 px-7 sm:px-8 py-3.5 rounded-full font-semibold text-xs sm:text-sm md:text-base bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)] text-foreground transition-colors active:scale-[0.98] cursor-pointer"
                         title="View full media details and cast"
                         aria-label="View Details"
                       >
@@ -335,7 +335,7 @@ export const DiscoverHero = ({ className }: DiscoverHeroProps) => {
                       <Link
                         to="/media/$mediaType/$mediaId"
                         params={{ mediaType: activeMediaItem.mediaType, mediaId: activeMediaItem.id }}
-                        className="flex items-center gap-2 px-7 sm:px-8 py-3.5 rounded-full font-bold text-xs sm:text-sm md:text-base bg-primary text-primary-foreground shadow-lg hover:opacity-95 active:scale-[0.98] transition-all cursor-pointer"
+                        className="flex items-center gap-2 px-7 sm:px-8 py-3.5 rounded-full font-bold text-xs sm:text-sm md:text-base bg-primary text-primary-foreground shadow-lg hover:opacity-95 active:scale-[0.98] transition cursor-pointer"
                         title="View full media details and cast"
                         aria-label="View Details"
                       >
@@ -347,7 +347,7 @@ export const DiscoverHero = ({ className }: DiscoverHeroProps) => {
                         <button
                           type="button"
                           onClick={() => setIsTrailerOpen(true)}
-                          className="flex items-center gap-2 px-6 sm:px-7 py-3.5 rounded-full font-semibold text-xs sm:text-sm md:text-base bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)] text-foreground transition-all active:scale-[0.98] cursor-pointer"
+                          className="flex items-center gap-2 px-6 sm:px-7 py-3.5 rounded-full font-semibold text-xs sm:text-sm md:text-base bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)] text-foreground transition-colors active:scale-[0.98] cursor-pointer"
                         >
                           <Play className="h-4 w-4" />
                           <span>Watch Trailer</span>
@@ -464,7 +464,7 @@ export const DiscoverHero = ({ className }: DiscoverHeroProps) => {
                       key={'id' in item ? item.id : `slide-${idx}`}
                       type="button"
                       onClick={() => setActiveSlideIndex(idx)}
-                      className={`h-1.5 rounded-full transition-all cursor-pointer ${
+                      className={`h-1.5 rounded-full transition-colors cursor-pointer ${
                         idx === safeSlideIndex
                           ? 'w-5 bg-primary'
                           : 'w-1.5 bg-muted-foreground/30 hover:bg-muted-foreground/60'

@@ -46,7 +46,7 @@ export const GameRow = ({ game, selected, onClick }: GameRowProps) => {
       {confidence !== null && (
         <div className="w-16 h-1.5 rounded-full bg-[var(--dk-surface-field)] overflow-hidden shrink-0">
           <div
-            className="h-full rounded-full bg-primary transition-all"
+            className="h-full rounded-full bg-primary transition-colors"
             style={{ width: `${Math.min(confidence, 100)}%` }}
           />
         </div>

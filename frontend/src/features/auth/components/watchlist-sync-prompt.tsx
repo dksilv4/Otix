@@ -110,7 +110,7 @@ export const WatchlistSyncPrompt = () => {
           type="button"
           onClick={handleSync}
           disabled={syncing}
-          className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2 text-xs font-semibold rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 transition-all shadow-md disabled:opacity-60"
+          className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2 text-xs font-semibold rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 transition shadow-md disabled:opacity-60"
         >
           {syncing && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
           Sync now

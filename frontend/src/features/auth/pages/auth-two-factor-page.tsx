@@ -50,7 +50,7 @@ export const TwoFactorPage = () => {
 
             <AuthCard>
                 <div className="mb-6 flex justify-center">
-                    <Logo className="h-20 drop-shadow-[0_0_24px_rgba(255,255,255,0.15)]" />
+                    <Logo className="h-20 drop-shadow-2xl" />
                 </div>
 
                 <AuthHeader

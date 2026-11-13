@@ -57,7 +57,7 @@ export const NodeScanColumnSettings = ({
           setIsOpen((prev) => !prev)
         }}
         className={cn(
-          'h-6 w-6 p-0 rounded-lg text-muted-foreground hover:text-foreground hover:bg-white/[0.06] transition-all cursor-pointer flex items-center justify-center mx-auto',
+          'h-6 w-6 p-0 rounded-lg text-muted-foreground hover:text-foreground hover:bg-white/[0.06] transition-colors cursor-pointer flex items-center justify-center mx-auto',
           isOpen && 'bg-[var(--dk-surface-ghost-hover)] text-foreground',
         )}
         title="Customize visible columns"
@@ -103,7 +103,7 @@ export const NodeScanColumnSettings = ({
                   </span>
                   <div
                     className={cn(
-                      'h-4 w-4 rounded-md flex items-center justify-center transition-all',
+                      'h-4 w-4 rounded-md flex items-center justify-center transition-colors',
                       isChecked
                         ? 'bg-primary text-primary-foreground'
                         : 'border border-white/[0.15] bg-[var(--dk-surface-base)]',

@@ -124,7 +124,31 @@ describe('Adversarial Stress Test: Stream Availability & In-Memory Deduplication
       expect(second?.ratingKey).toBe('rk-cached')
     })
 
-    it('expires cache after TTL and issues a new network request (tested at 35s and 60s)', async () => {
+    it('serves cached result via secondary item key index even with different query parameters', async () => {
+      vi.mocked(apiClient.get).mockResolvedValueOnce({
+        data: { ratingKey: 'rk-secondary', title: 'Secondary Indexed Item' },
+      })
+
+      // Prefetch call with minimal params (e.g. from useStreamAvailability)
+      const first = await fetchPlexConnectInfoCached('media-secondary-1', {
+        tmdbId: '550',
+        mediaType: 'movie',
+      })
+      expect(apiClient.get).toHaveBeenCalledTimes(1)
+      expect(first?.ratingKey).toBe('rk-secondary')
+
+      // Subsequent Play click with extra query params (e.g. title, year, tvdbId)
+      const second = await fetchPlexConnectInfoCached('media-secondary-1', {
+        tmdbId: '550',
+        title: 'Fight Club',
+        year: 1999,
+        mediaType: 'movie',
+      })
+      expect(apiClient.get).toHaveBeenCalledTimes(1) // Served via secondary itemKey index!
+      expect(second?.ratingKey).toBe('rk-secondary')
+    })
+
+    it('expires cache after 5-minute TTL and issues a new network request', async () => {
       const nowSpy = vi.spyOn(Date, 'now')
       let currentTime = 1_000_000
 
@@ -143,14 +167,14 @@ describe('Adversarial Stress Test: Stream Availability & In-Memory Deduplication
       expect(initial?.ratingKey).toBe('rk-v1')
       expect(apiClient.get).toHaveBeenCalledTimes(1)
 
-      // Lookup at T = +10s (within 30s TTL): cache hit
+      // Lookup at T = +10s (within 5-minute TTL): cache hit
       currentTime += 10_000
       const cached = await fetchPlexConnectInfoCached('media-expire-1', { mediaType: 'movie' })
       expect(cached?.ratingKey).toBe('rk-v1')
       expect(apiClient.get).toHaveBeenCalledTimes(1)
 
-      // Advance time by 60s (currentTime += 60_000, well past TTL): cache expired!
-      currentTime += 60_000
+      // Advance time by 360s (currentTime += 360_000, well past 300,000ms TTL): cache expired!
+      currentTime += 360_000
       const refreshed = await fetchPlexConnectInfoCached('media-expire-1', { mediaType: 'movie' })
       expect(refreshed?.ratingKey).toBe('rk-v2')
       expect(apiClient.get).toHaveBeenCalledTimes(2) // Fresh network call!

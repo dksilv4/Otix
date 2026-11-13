@@ -106,14 +106,14 @@ export const WhereToWatch = ({ watchProviders = [], className = '', mediaType }:
                   aria-selected={isActive}
                   onClick={() => setActiveTab(cat)}
                   className={cn(
-                    'rounded-lg px-2.5 py-1 text-xs font-medium transition-all',
+                    'rounded-lg px-2.5 py-1 text-xs font-medium transition-colors',
                     isActive
                       ? 'bg-primary text-primary-foreground shadow-sm'
                       : 'text-muted-foreground hover:text-foreground',
                   )}
                 >
                   {COMMERCIAL_MAP[cat].label}
-                  <span className="ml-1 text-[10px] opacity-60 tabular-nums">({count})</span>
+                  <span className="ml-1 text-[10px] tabular-nums">({count})</span>
                 </button>
               )
             })}
@@ -147,7 +147,7 @@ export const WhereToWatch = ({ watchProviders = [], className = '', mediaType }:
                   title: 'Stream',
                 })
               }}
-              className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-3.5 py-1.5 text-xs font-bold text-primary-foreground shadow hover:bg-primary/90 hover:scale-[1.02] active:scale-[0.98] transition-all shrink-0 cursor-pointer disabled:opacity-75"
+              className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-3.5 py-1.5 text-xs font-bold text-primary-foreground shadow hover:bg-primary/90 hover:scale-[1.02] active:scale-[0.98] transition shrink-0 cursor-pointer disabled:opacity-75"
             >
               {isStartingStream ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -175,7 +175,7 @@ export const WhereToWatch = ({ watchProviders = [], className = '', mediaType }:
             const url = resolveProviderUrl(provider.url)
 
             const chipContent = (
-              <div className="glass-inset group flex items-center justify-between gap-2.5 p-2.5 rounded-xl hover:bg-[var(--dk-surface-glass-hover)] transition-all">
+              <div className="glass-inset group flex items-center justify-between gap-2.5 p-2.5 rounded-xl hover:bg-[var(--dk-surface-glass-hover)] transition-colors">
                 <div className="flex items-center gap-2.5 min-w-0">
                   {wp.logoUrl ? (
                     <img

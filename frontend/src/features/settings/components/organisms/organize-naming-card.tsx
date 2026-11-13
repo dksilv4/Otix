@@ -8,6 +8,7 @@ import {
   ChevronDown,
   Check,
   Folder,
+  FileText,
   Disc,
   Wrench,
   RefreshCw,
@@ -282,7 +283,7 @@ export const OrganizeNamingCard = ({
                   type="button"
                   onClick={() => onUpdateTemplate(preset.template, preset.id)}
                   className={cn(
-                    'w-full p-2.5 rounded-xl text-left transition-all cursor-pointer flex flex-col gap-1.5 border',
+                    'w-full p-2.5 rounded-xl text-left transition-colors cursor-pointer flex flex-col gap-1.5 border',
                     isSelected
                       ? 'bg-primary/10 border-primary/30 ring-1 ring-primary/20 text-foreground shadow-xs'
                       : 'bg-white/[0.02] hover:bg-white/[0.04] border-white/[0.04] text-muted-foreground',
@@ -309,9 +310,9 @@ export const OrganizeNamingCard = ({
 
                   <div className="flex items-center gap-1.5 text-[10px] font-mono text-muted-foreground/90 overflow-hidden">
                     {breakdown.folderPattern && (
-                      <span className="truncate">📁 {breakdown.folderPattern} /</span>
+                      <span className="truncate inline-flex items-center gap-1"><Folder className="h-3 w-3 shrink-0" aria-hidden="true" /> {breakdown.folderPattern} /</span>
                     )}
-                    <span className="truncate">📄 {breakdown.filePattern}</span>
+                    <span className="truncate inline-flex items-center gap-1"><FileText className="h-3 w-3 shrink-0" aria-hidden="true" /> {breakdown.filePattern}</span>
                   </div>
 
                   <p className="text-[11px] text-muted-foreground line-clamp-1">
@@ -326,7 +327,7 @@ export const OrganizeNamingCard = ({
               type="button"
               onClick={() => onUpdateTemplate(activeTemplate, 'custom')}
               className={cn(
-                'w-full p-2.5 rounded-xl text-left transition-all cursor-pointer flex flex-col gap-1 border',
+                'w-full p-2.5 rounded-xl text-left transition-colors cursor-pointer flex flex-col gap-1 border',
                 activePresetId === 'custom'
                   ? 'bg-primary/10 border-primary/30 ring-1 ring-primary/20 text-foreground shadow-xs'
                   : 'bg-white/[0.02] hover:bg-white/[0.04] border-white/[0.04] text-muted-foreground',
@@ -372,7 +373,7 @@ export const OrganizeNamingCard = ({
                   type="button"
                   onClick={() => setCategoryFilter(tab.id)}
                   className={cn(
-                    'px-2 py-0.5 rounded-lg text-[10px] font-medium transition-all cursor-pointer border',
+                    'px-2 py-0.5 rounded-lg text-[10px] font-medium transition-colors cursor-pointer border',
                     isActive
                       ? 'bg-primary/15 border-primary/30 text-primary font-semibold'
                       : 'bg-white/[0.02] hover:bg-white/[0.04] border-white/[0.04] text-muted-foreground',
@@ -433,7 +434,7 @@ export const OrganizeNamingCard = ({
 
       {/* Collapsible Custom Template & Token Editor */}
       <details
-        className="group rounded-xl bg-white/[0.02] border border-white/[0.04] overflow-hidden transition-all"
+        className="group rounded-xl bg-white/[0.02] border border-white/[0.04] overflow-hidden transition-colors"
         open={activePresetId === 'custom' ? true : undefined}
       >
         <summary className="p-3 cursor-pointer list-none flex items-center justify-between hover:bg-white/[0.02] transition-colors">
@@ -481,7 +482,7 @@ export const OrganizeNamingCard = ({
                   type="button"
                   onClick={() => onInsertToken(def.token)}
                   title={`${def.description} (e.g. "${def.example}")`}
-                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-mono font-medium transition-all cursor-pointer bg-white/[0.04] hover:bg-primary/15 hover:text-primary text-muted-foreground border border-white/[0.04]"
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-mono font-medium transition-colors cursor-pointer bg-white/[0.04] hover:bg-primary/15 hover:text-primary text-muted-foreground border border-white/[0.04]"
                 >
                   <span>{def.token}</span>
                 </button>

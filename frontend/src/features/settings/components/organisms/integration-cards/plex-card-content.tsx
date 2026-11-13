@@ -128,7 +128,7 @@ export const PlexCardContent = ({ state }: { state: ReturnType<typeof useIntegra
                           <>
                             <div className="overflow-hidden rounded-full h-1.5 w-full bg-[var(--dk-surface-field)]">
                               <div
-                                className="rounded-full h-full bg-primary transition-all duration-150"
+                                className="rounded-full h-full bg-primary transition-colors duration-150"
                                 style={{ width: `${Math.min(100, Math.round((libProgress.itemsProcessed / libProgress.itemsTotal) * 100))}%` }}
                               />
                             </div>

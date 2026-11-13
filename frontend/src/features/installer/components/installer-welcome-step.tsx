@@ -53,7 +53,7 @@ export const InstallerWelcomeStep = ({
             size="lg"
             onClick={onQuickInstall}
             disabled={isSubmitting}
-            className="w-full py-3.5 px-8 rounded-2xl text-sm font-semibold flex items-center justify-center gap-2 shadow-[0_0_36px_rgba(var(--primary-rgb),0.42)] active:scale-[0.98] transition-all cursor-pointer border-none"
+            className="w-full py-3.5 px-8 rounded-2xl text-sm font-semibold flex items-center justify-center gap-2 shadow-[0_0_36px_rgba(var(--primary-rgb),0.42)] active:scale-[0.98] transition-colors cursor-pointer border-none"
             style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
           >
             <span>Install Now</span>

@@ -55,7 +55,7 @@ export const GameTabBar = ({ gameExternalId, activeTab, onTabChange, onTabsLoade
     <div className="flex items-center gap-1 pb-1 mb-6">
       <button
         onClick={() => onTabChange('info')}
-        className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${
+        className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
           activeTab === 'info'
             ? 'bg-primary/10 text-primary'
             : 'text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-glass)]'
@@ -67,7 +67,7 @@ export const GameTabBar = ({ gameExternalId, activeTab, onTabChange, onTabsLoade
         <button
           key={tab.tabId}
           onClick={() => onTabChange(tab.tabId)}
-          className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${
+          className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
             activeTab === tab.tabId
               ? 'bg-primary/10 text-primary'
               : 'text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-glass)]'

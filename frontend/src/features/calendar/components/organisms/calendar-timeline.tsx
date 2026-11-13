@@ -457,8 +457,12 @@ export const CalendarTimeline = ({ events }: CalendarTimelineProps) => {
         onPointerMove={onPointerMove}
         onPointerUp={endDrag}
         onPointerCancel={endDrag}
-        className="relative min-h-0 w-full flex-1 cursor-grab overflow-x-auto overflow-y-hidden bg-[radial-gradient(ellipse_at_center,_rgba(99,102,241,0.08)_0%,_transparent_55%),radial-gradient(ellipse_at_20%_50%,_rgba(56,189,248,0.06)_0%,_transparent_40%),radial-gradient(ellipse_at_80%_50%,_rgba(232,121,249,0.06)_0%,_transparent_40%)] select-none"
-        style={{ touchAction: 'pan-x' }}
+        style={{
+          backgroundImage:
+            'radial-gradient(ellipse at center, rgba(99,102,241,0.08) 0%, transparent 55%), radial-gradient(ellipse at 20% 50%, rgba(56,189,248,0.06) 0%, transparent 40%), radial-gradient(ellipse at 80% 50%, rgba(232,121,249,0.06) 0%, transparent 40%)',
+          touchAction: 'pan-x',
+        }}
+        className="relative min-h-0 w-full flex-1 cursor-grab overflow-x-auto overflow-y-hidden select-none"
       >
         <div className="relative h-full" style={{ width: canvasWidth, minWidth: '100%' }}>
           <TimelineAxis width={axisWidth} offsetX={axisOffset} />

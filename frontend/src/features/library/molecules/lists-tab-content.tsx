@@ -161,7 +161,7 @@ export const ListsTabContent = () => {
                   type="button"
                   onClick={handleConfirmDelete}
                   disabled={deleteLists.isPending}
-                  className="inline-flex items-center gap-1.5 rounded-xl bg-destructive hover:bg-destructive/90 text-destructive-foreground px-3 py-1.5 text-xs font-bold transition-all shadow-sm"
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-destructive hover:bg-destructive/90 text-destructive-foreground px-3 py-1.5 text-xs font-bold transition shadow-sm"
                 >
                   {deleteLists.isPending ? "Deleting..." : "Yes, Delete"}
                 </button>
@@ -169,7 +169,7 @@ export const ListsTabContent = () => {
                   type="button"
                   onClick={() => setIsConfirmingDelete(false)}
                   disabled={deleteLists.isPending}
-                  className="rounded-xl px-3 py-1.5 text-xs font-semibold bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-glass-hover)] text-foreground transition-all"
+                  className="rounded-xl px-3 py-1.5 text-xs font-semibold bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-glass-hover)] text-foreground transition-colors"
                 >
                   Cancel
                 </button>
@@ -180,7 +180,7 @@ export const ListsTabContent = () => {
                   type="button"
                   onClick={() => setIsConfirmingDelete(true)}
                   disabled={selectedIds.size === 0}
-                  className="inline-flex items-center gap-1.5 rounded-xl bg-destructive/10 hover:bg-destructive/20 text-destructive border border-destructive/20 px-3 py-1.5 text-sm font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-destructive/10 hover:bg-destructive/20 text-destructive border border-destructive/20 px-3 py-1.5 text-sm font-medium transition disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   <Trash2 className="h-4 w-4" />
                   Delete ({selectedIds.size})
@@ -188,7 +188,7 @@ export const ListsTabContent = () => {
                 <button
                   type="button"
                   onClick={cancelSelection}
-                  className="rounded-xl px-3 py-1.5 text-sm font-medium bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-glass-hover)] text-foreground transition-all"
+                  className="rounded-xl px-3 py-1.5 text-sm font-medium bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-glass-hover)] text-foreground transition-colors"
                 >
                   Done
                 </button>
@@ -205,7 +205,7 @@ export const ListsTabContent = () => {
             <button
               type="button"
               onClick={() => setIsSelecting(true)}
-              className="inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-sm font-medium bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-glass-hover)] text-foreground border border-white/[0.04] transition-all"
+              className="inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-sm font-medium bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-glass-hover)] text-foreground border border-white/[0.04] transition-colors"
             >
               <CheckSquare className="h-4 w-4 text-muted-foreground" />
               Select

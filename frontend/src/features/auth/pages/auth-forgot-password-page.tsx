@@ -83,7 +83,7 @@ export const ForgotPasswordPage = () => {
                 autoComplete="email"
                 required
                 autoFocus
-                className="flex min-h-[52px] w-full rounded-xl px-5 text-base text-foreground outline-none border border-[var(--dk-separator)] focus:border-primary/50 focus:ring-1 focus:ring-primary/50 transition-all placeholder:text-muted-foreground/50"
+                className="flex min-h-[52px] w-full rounded-xl px-5 text-base text-foreground outline-none border border-[var(--dk-separator)] focus:border-primary/50 focus:ring-1 focus:ring-primary/50 transition-colors placeholder:text-muted-foreground/50"
                 style={{
                   backgroundColor: 'var(--dk-surface-glass)',
                   backdropFilter: 'blur(12px)',
@@ -105,7 +105,7 @@ export const ForgotPasswordPage = () => {
             <button
               type="submit"
               disabled={state === 'sending' || !email.trim()}
-              className="cursor-pointer flex w-full items-center justify-center gap-2 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 px-5 py-3 text-sm font-semibold transition-all shadow-md disabled:opacity-50"
+              className="cursor-pointer flex w-full items-center justify-center gap-2 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 px-5 py-3 text-sm font-semibold transition shadow-md disabled:opacity-50"
             >
               {state === 'sending' ? (
                 <Loader2 className="h-5 w-5 animate-spin" />

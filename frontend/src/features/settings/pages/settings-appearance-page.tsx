@@ -103,7 +103,7 @@ export const SettingsAppearancePage = () => {
                   type="button"
                   onClick={() => setTheme(t)}
                   className={cn(
-                    'rounded-lg px-3 py-2 text-xs font-medium transition-all duration-150 text-center cursor-pointer',
+                    'rounded-lg px-3 py-2 text-xs font-medium transition-colors duration-150 text-center cursor-pointer',
                     theme === t
                       ? 'bg-primary text-primary-foreground shadow-sm font-semibold'
                       : 'text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-ghost-hover)]',
@@ -206,9 +206,9 @@ export const SettingsAppearancePage = () => {
                   type="button"
                   onClick={() => setMotionPreference(option.value)}
                   className={cn(
-                    'rounded-xl px-3 py-3 text-left transition-all duration-150 cursor-pointer',
+                    'rounded-xl px-3 py-3 text-left transition-colors duration-150 cursor-pointer',
                     isActiveOpt
-                      ? 'bg-primary text-primary-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.15)]'
+                      ? 'bg-primary text-primary-foreground shadow-inner'
                       : 'hover:bg-[var(--dk-surface-ghost-hover)]',
                   )}
                   style={!isActiveOpt ? { backgroundColor: 'var(--dk-surface-overlay)' } : undefined}
@@ -246,9 +246,9 @@ export const SettingsAppearancePage = () => {
                   type="button"
                   onClick={() => setShaderQuality(option.value)}
                   className={cn(
-                    'rounded-xl px-3 py-3 text-left transition-all duration-150 cursor-pointer',
+                    'rounded-xl px-3 py-3 text-left transition-colors duration-150 cursor-pointer',
                     isActiveOpt
-                      ? 'bg-primary text-primary-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.15)]'
+                      ? 'bg-primary text-primary-foreground shadow-inner'
                       : 'hover:bg-[var(--dk-surface-ghost-hover)]',
                   )}
                   style={!isActiveOpt ? { backgroundColor: 'var(--dk-surface-overlay)' } : undefined}

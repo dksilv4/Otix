@@ -55,7 +55,7 @@ export const AddFriendModal = ({ open, onOpenChange }: AddFriendModalProps) => {
             value={query}
             onChange={(e) => handleSearchChange(e.target.value)}
             placeholder="Type a username..."
-            className="w-full rounded-xl bg-[var(--dk-surface-field)] py-2.5 pl-10 pr-4 text-sm text-foreground placeholder:text-muted-foreground outline-none transition-all focus:ring-1 focus:ring-primary border-none"
+            className="w-full rounded-xl bg-[var(--dk-surface-field)] py-2.5 pl-10 pr-4 text-sm text-foreground placeholder:text-muted-foreground outline-none transition-colors focus:ring-1 focus:ring-primary border-none"
             autoFocus
           />
         </div>

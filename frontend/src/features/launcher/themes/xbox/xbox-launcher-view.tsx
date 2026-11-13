@@ -63,8 +63,14 @@ export const XboxLauncherView = () => {
   return (
     <div className="relative w-full h-full bg-[var(--dk-surface-base)] text-foreground flex flex-col select-none overflow-y-auto no-scrollbar font-sans">
       {/* Primary Accent Subtle Grid & Glow */}
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(var(--primary-rgb,16,124,16),0.15),transparent_50%)] pointer-events-none" />
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_left,_rgba(var(--primary-rgb,16,124,16),0.1),transparent_50%)] pointer-events-none" />
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{ backgroundImage: 'radial-gradient(circle at top right, rgba(var(--primary-rgb, 16, 124, 16), 0.15), transparent 50%)' }}
+      />
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{ backgroundImage: 'radial-gradient(circle at bottom left, rgba(var(--primary-rgb, 16, 124, 16), 0.1), transparent 50%)' }}
+      />
 
       {/* Top Gamertag & System Navigation */}
       <header className="relative z-20 px-8 py-5 flex items-center justify-between border-b border-white/[0.04] backdrop-blur-md bg-black/40">
@@ -163,7 +169,7 @@ export const XboxLauncherView = () => {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
             {/* Main Spotlight Tile */}
             <div
-              className="lg:col-span-8 h-80 rounded-2xl relative overflow-hidden group cursor-pointer border border-white/[0.04] shadow-2xl transition-all duration-300 hover:-translate-y-1"
+              className="lg:col-span-8 h-80 rounded-2xl relative overflow-hidden group cursor-pointer border border-white/[0.04] shadow-2xl transition duration-300 hover:-translate-y-1"
               onClick={() => handlePlayGame(activeGame)}
             >
               {spotlightBackdrop && (
@@ -255,7 +261,7 @@ export const XboxLauncherView = () => {
               {/* Game Pass / Catalog Tile */}
               <div
                 onClick={() => navigate({ to: "/" })}
-                className="p-5 rounded-2xl bg-gradient-to-br from-primary/20 to-[var(--dk-surface-ghost)] border border-primary/30 flex flex-col justify-between cursor-pointer hover:border-primary/60 transition-all group"
+                className="p-5 rounded-2xl bg-gradient-to-br from-primary/20 to-[var(--dk-surface-ghost)] border border-primary/30 flex flex-col justify-between cursor-pointer hover:border-primary/60 transition-colors group"
               >
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-black text-white uppercase tracking-wider">
@@ -302,7 +308,7 @@ export const XboxLauncherView = () => {
                 <div
                   key={game.id}
                   onClick={() => selectGame(game.id)}
-                  className={`aspect-[3/4] rounded-xl overflow-hidden cursor-pointer relative border transition-all duration-200 group hover:-translate-y-1 ${
+                  className={`aspect-[3/4] rounded-xl overflow-hidden cursor-pointer relative border transition duration-200 group hover:-translate-y-1 ${
                     isSelected
                       ? "border-primary ring-4 ring-primary/40 shadow-lg shadow-primary/25"
                       : "border-white/[0.04] hover:border-white/20"

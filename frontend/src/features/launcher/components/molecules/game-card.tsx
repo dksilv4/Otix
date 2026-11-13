@@ -99,7 +99,7 @@ export const GameCard = ({
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3, delay: index * 0.05, ease: [0.16, 1, 0.3, 1] }}
-        className="group relative aspect-[2/1] overflow-hidden rounded-xl bg-[var(--dk-surface-base)] shadow-[var(--dk-shadow-sm)] transition-all duration-300 hover:scale-[1.02] hover:shadow-[var(--dk-shadow-lg)] cursor-pointer focus-within:ring-2 focus-within:ring-primary"
+        className="group relative aspect-[2/1] overflow-hidden rounded-xl bg-[var(--dk-surface-base)] shadow-[var(--dk-shadow-sm)] transition-colors duration-300 hover:scale-[1.02] hover:shadow-[var(--dk-shadow-lg)] cursor-pointer focus-within:ring-2 focus-within:ring-primary"
         data-context-type="game"
         data-game-id={game.id}
         data-media-title={game.title}
@@ -128,10 +128,10 @@ export const GameCard = ({
                 <img
                   src={game.iconUrl}
                   alt=""
-                  className="h-24 w-24 object-contain opacity-20 transition-all duration-300 group-hover:opacity-35 group-hover:scale-105"
+                  className="h-24 w-24 object-contain opacity-20 transition duration-300 group-hover:opacity-35 group-hover:scale-105"
                 />
               ) : (
-                <Gamepad2 className="h-20 w-20 text-foreground/10 transition-all duration-300 group-hover:text-foreground/20 group-hover:scale-105" />
+                <Gamepad2 className="h-20 w-20 text-foreground/10 transition duration-300 group-hover:text-foreground/20 group-hover:scale-105" />
               )}
             </div>
             <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-3 pt-10 pointer-events-none">
@@ -195,7 +195,7 @@ export const GameCard = ({
 
         {/* Title bar — always visible at bottom */}
         <div className="absolute bottom-0 left-0 right-0 z-10 bg-gradient-to-t from-black/85 via-black/45 to-transparent p-3 pt-10 pointer-events-none">
-          <h3 className="text-sm font-bold text-foreground leading-tight truncate drop-shadow-[0_1px_4px_rgba(0,0,0,0.9)]">
+          <h3 className="text-sm font-bold text-foreground leading-tight truncate drop-shadow-md">
             {game.title}
           </h3>
           <p className="mt-0.5 text-[11px] text-muted-foreground truncate">
@@ -222,7 +222,7 @@ export const GameCard = ({
                     e.stopPropagation()
                     onAcceptSuggestion?.(game)
                   }}
-                  className="inline-flex items-center gap-1.5 rounded-lg bg-primary text-primary-foreground px-3 py-1.5 text-xs font-bold transition-all hover:bg-primary/90 hover:scale-105 active:scale-95 shadow-sm cursor-pointer"
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-primary text-primary-foreground px-3 py-1.5 text-xs font-bold transition hover:bg-primary/90 hover:scale-105 active:scale-95 shadow-sm cursor-pointer"
                 >
                   <CheckCircle2 className="h-3.5 w-3.5" />
                   Yes, match
@@ -234,7 +234,7 @@ export const GameCard = ({
                     e.stopPropagation()
                     onRejectSuggestion?.(game)
                   }}
-                  className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--dk-surface-ghost)] px-3 py-1.5 text-xs font-semibold text-foreground transition-all hover:bg-[var(--dk-surface-field)] hover:scale-105 active:scale-95 shadow-sm cursor-pointer"
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--dk-surface-ghost)] px-3 py-1.5 text-xs font-semibold text-foreground transition-colors hover:bg-[var(--dk-surface-field)] hover:scale-105 active:scale-95 shadow-sm cursor-pointer"
                 >
                   No
                 </button>
@@ -246,7 +246,7 @@ export const GameCard = ({
             <button
               type="button"
               onClick={handleInstall}
-              className="pointer-events-auto inline-flex items-center gap-2 rounded-xl bg-primary text-primary-foreground px-4 py-2.5 text-sm font-bold shadow-lg transition-all duration-200 hover:bg-primary/90 hover:scale-105 active:scale-95 cursor-pointer"
+              className="pointer-events-auto inline-flex items-center gap-2 rounded-xl bg-primary text-primary-foreground px-4 py-2.5 text-sm font-bold shadow-lg transition duration-200 hover:bg-primary/90 hover:scale-105 active:scale-95 cursor-pointer"
             >
               <Download className="h-4 w-4" />
               Install to PC
@@ -257,7 +257,7 @@ export const GameCard = ({
             <button
               type="button"
               onClick={handlePlay}
-              className="pointer-events-auto inline-flex items-center gap-2 rounded-xl bg-primary text-primary-foreground px-4 py-2.5 text-sm font-bold shadow-lg transition-all duration-200 hover:bg-primary/90 hover:scale-105 active:scale-95 cursor-pointer"
+              className="pointer-events-auto inline-flex items-center gap-2 rounded-xl bg-primary text-primary-foreground px-4 py-2.5 text-sm font-bold shadow-lg transition duration-200 hover:bg-primary/90 hover:scale-105 active:scale-95 cursor-pointer"
             >
               <Play className="h-4 w-4 fill-current" />
               Play

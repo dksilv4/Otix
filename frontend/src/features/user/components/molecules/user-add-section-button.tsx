@@ -51,7 +51,7 @@ export const AddSectionButton = ({
       <button
         type="button"
         onClick={() => setOpen(!open)}
-        className="w-full flex flex-col items-center py-6 rounded-2xl border border-dashed border-white/[0.08] hover:border-primary/40 hover:bg-[var(--dk-surface-ghost)] transition-all duration-200 cursor-pointer"
+        className="w-full flex flex-col items-center py-6 rounded-2xl border border-dashed border-white/[0.08] hover:border-primary/40 hover:bg-[var(--dk-surface-ghost)] transition-colors duration-200 cursor-pointer"
       >
         {missing.length > 0 ? (
           <>

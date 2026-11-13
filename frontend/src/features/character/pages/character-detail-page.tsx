@@ -161,7 +161,7 @@ export const CharacterDetailPage = () => {
                 key={g.id}
                 to="/media/$mediaType/$mediaId"
                 params={{ mediaType: g.mediaType || 'game', mediaId: g.slug || g.id }}
-                className="group relative rounded-xl overflow-hidden glass-card hover:ring-2 hover:ring-primary/50 transition-all duration-300 flex flex-col"
+                className="group relative rounded-xl overflow-hidden glass-card hover:ring-2 hover:ring-primary/50 transition-colors duration-300 flex flex-col"
               >
                 <div className="aspect-[2/3] w-full relative overflow-hidden bg-[var(--dk-surface-field)]">
                   {g.posterUrl ? (

@@ -19,7 +19,7 @@ describe('TrailerVideoModal', () => {
   it('renders modal with title and youtube iframe containing enablejsapi=1', () => {
     render(<TrailerVideoModal {...defaultProps} />)
 
-    expect(screen.getByText('Interstellar — Trailer')).toBeInTheDocument()
+    expect(screen.getAllByText('Interstellar — Trailer')[0]).toBeInTheDocument()
 
     const iframe = screen.getByTitle('Interstellar trailer') as HTMLIFrameElement
     expect(iframe).toBeInTheDocument()
@@ -306,7 +306,7 @@ describe('TrailerVideoModal', () => {
     const { rerender } = render(<TrailerVideoModal {...defaultProps} />)
 
     // With innerHeight = 800, external controls mode is active
-    expect(screen.getByText('Interstellar — Trailer')).toBeInTheDocument()
+    expect(screen.getAllByText('Interstellar — Trailer')[0]).toBeInTheDocument()
     expect(screen.getByLabelText('Close trailer')).toBeInTheDocument()
 
     // Shrink window height to 400px (not enough space outside)

@@ -20,7 +20,7 @@ export const SettingsCard = ({ id, children, className, compact, tone = 'default
     <div
       id={id}
       className={cn(
-        'rounded-2xl sm:rounded-3xl backdrop-blur-xl transition-all duration-200',
+        'rounded-2xl sm:rounded-3xl backdrop-blur-xl transition-colors duration-200',
         compact ? 'p-4 sm:p-5' : 'p-5 sm:p-6',
         className,
       )}

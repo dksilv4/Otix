@@ -54,7 +54,7 @@ export const LauncherGameHero = () => {
   return (
     <section
       id="launcher-game-hero"
-      className="w-full min-h-[100vh] bg-background bg-grid-pattern relative shrink-0 overflow-hidden"
+      className="w-full min-h-dvh bg-background bg-grid-pattern relative shrink-0 overflow-hidden"
       style={{ perspective: '1200px' }}
     >
       {/* Background layers */}
@@ -74,7 +74,7 @@ export const LauncherGameHero = () => {
           >
             {currentBackdrop && (
               <div
-                className={`absolute inset-0 bg-cover bg-center bg-no-repeat transition-all duration-500 ease-out-back ${
+                className={`absolute inset-0 bg-cover bg-center bg-no-repeat transition-colors duration-500 ease-out-back ${
                   isHoveringScreenshot
                     ? 'opacity-90 brightness-95 saturate-100 contrast-100'
                     : 'opacity-45 brightness-[0.45] saturate-[0.75] contrast-[1.05]'

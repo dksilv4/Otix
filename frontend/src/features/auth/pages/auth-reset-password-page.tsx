@@ -141,7 +141,7 @@ export const ResetPasswordPage = () => {
             <button
               type="submit"
               disabled={state === 'submitting'}
-              className="cursor-pointer flex w-full items-center justify-center gap-2 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 px-5 py-3 text-sm font-semibold transition-all shadow-md disabled:opacity-50"
+              className="cursor-pointer flex w-full items-center justify-center gap-2 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 px-5 py-3 text-sm font-semibold transition shadow-md disabled:opacity-50"
             >
               {state === 'submitting' ? (
                 <Loader2 className="h-5 w-5 animate-spin" />

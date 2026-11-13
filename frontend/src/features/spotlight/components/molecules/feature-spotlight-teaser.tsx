@@ -74,7 +74,7 @@ export const FeatureSpotlightTeaser = ({
             <button
               type="button"
               onClick={onDismiss}
-              className="rounded-lg p-1.5 text-muted-foreground transition-all hover:bg-[var(--dk-surface-ghost-hover)] hover:text-foreground cursor-pointer"
+              className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-[var(--dk-surface-ghost-hover)] hover:text-foreground cursor-pointer"
               aria-label="Dismiss feature tip"
             >
               <X className="h-4 w-4" />

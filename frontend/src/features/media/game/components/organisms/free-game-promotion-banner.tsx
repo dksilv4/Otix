@@ -157,7 +157,7 @@ const FreePromoCard = ({
                     type="button"
                     onClick={() => setSelectedIndex(idx)}
                     className={cn(
-                      'px-2.5 py-1 rounded-lg text-xs font-medium transition-all flex items-center gap-1',
+                      'px-2.5 py-1 rounded-lg text-xs font-medium transition-colors flex items-center gap-1',
                       selectedIndex === idx
                         ? 'bg-[var(--dk-surface-base)] text-foreground font-semibold shadow-sm'
                         : 'text-muted-foreground hover:text-foreground',
@@ -238,7 +238,7 @@ const FreePromoCard = ({
             <button
               type="button"
               onClick={() => handleClaim(currentPromo)}
-              className="inline-flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-xs sm:text-sm font-semibold transition-all active:scale-[0.98] hover:scale-[1.02] bg-primary hover:bg-primary/90 text-primary-foreground shadow-md"
+              className="inline-flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-xs sm:text-sm font-semibold transition active:scale-[0.98] hover:scale-[1.02] bg-primary hover:bg-primary/90 text-primary-foreground shadow-md"
             >
               <Gift className="h-4 w-4 shrink-0" />
               <span>

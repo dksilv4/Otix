@@ -43,7 +43,7 @@ export const ActivityModuleInstalls = () => {
                     <button
                       type="button"
                       onClick={() => cancelInstall(inst.isoPath)}
-                      className="h-7 w-7 flex items-center justify-center rounded-full transition-all cursor-pointer text-muted-foreground hover:text-red-500 hover:bg-red-500/10"
+                      className="h-7 w-7 flex items-center justify-center rounded-full transition-colors cursor-pointer text-muted-foreground hover:text-red-500 hover:bg-red-500/10"
                       title="Cancel Install"
                     >
                       <X className="h-4 w-4" />
@@ -52,7 +52,7 @@ export const ActivityModuleInstalls = () => {
                     <button
                       type="button"
                       onClick={() => dismissInstall(inst.isoPath)}
-                      className="h-7 w-7 flex items-center justify-center rounded-full transition-all cursor-pointer text-muted-foreground hover:text-red-500 hover:bg-red-500/10"
+                      className="h-7 w-7 flex items-center justify-center rounded-full transition-colors cursor-pointer text-muted-foreground hover:text-red-500 hover:bg-red-500/10"
                       title="Dismiss"
                     >
                       <X className="h-4 w-4" />
@@ -65,8 +65,8 @@ export const ActivityModuleInstalls = () => {
                 <div className="flex items-center gap-3">
                   <div className="h-1.5 rounded-full overflow-hidden flex-1 bg-muted">
                     <div
-                      className="h-full rounded-full transition-all duration-700 bg-gradient-to-r from-blue-500 to-indigo-500"
-                      style={{ width: `${inst.progress.progress}%` }}
+                      className="h-full w-full rounded-full transition-transform duration-700 origin-left bg-primary"
+                      style={{ transform: `scaleX(${inst.progress.progress / 100})` }}
                     />
                   </div>
                   <span className="text-[10px] font-mono tabular-nums font-medium text-muted-foreground">

@@ -103,7 +103,7 @@ export const LauncherActionButtons = ({
         <button
           onClick={handlePlay}
           disabled={isLaunching}
-          className={`flex items-center justify-center gap-2 rounded-xl uppercase transition-all duration-200 cursor-pointer active:scale-95 shadow-lg bg-primary hover:bg-primary/90 text-primary-foreground shadow-[0_0_24px_color-mix(in_oklch,var(--primary)_40%,transparent)] ${paddingClass}`}
+          className={`flex items-center justify-center gap-2 rounded-xl uppercase transition duration-200 cursor-pointer active:scale-95 shadow-lg bg-primary hover:bg-primary/90 text-primary-foreground shadow-[0_0_24px_color-mix(in_oklch,var(--primary)_40%,transparent)] ${paddingClass}`}
         >
           {isLaunching ? (
             <Loader2 size={size === "lg" ? 16 : 14} className="animate-spin" />
@@ -124,7 +124,7 @@ export const LauncherActionButtons = ({
               e.stopPropagation()
               if (activeInstall.installId) cancelInstall(activeInstall.installId)
             }}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[var(--dk-surface-field)] text-foreground text-xs font-bold hover:bg-[var(--dk-surface-field)]/80 transition-all cursor-pointer"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[var(--dk-surface-field)] text-foreground text-xs font-bold hover:bg-[var(--dk-surface-field)]/80 transition-colors cursor-pointer"
           >
             <Loader2 size={14} className="animate-spin" />
             <span>Installing ({activeInstall.progress?.progress ?? 0}%)</span>
@@ -137,7 +137,7 @@ export const LauncherActionButtons = ({
                 startInstall(raw.exePath, raw.installDir || "", raw.title)
               }
             }}
-            className={`flex items-center justify-center gap-2 rounded-xl uppercase transition-all duration-200 cursor-pointer active:scale-95 bg-primary hover:bg-primary/90 text-primary-foreground shadow-[0_0_20px_color-mix(in_oklch,var(--primary)_30%,transparent)] ${paddingClass}`}
+            className={`flex items-center justify-center gap-2 rounded-xl uppercase transition duration-200 cursor-pointer active:scale-95 bg-primary hover:bg-primary/90 text-primary-foreground shadow-[0_0_20px_color-mix(in_oklch,var(--primary)_30%,transparent)] ${paddingClass}`}
           >
             <CheckCircle2 size={size === "lg" ? 16 : 14} />
             <span>Install Game</span>
@@ -162,7 +162,7 @@ export const LauncherActionButtons = ({
               })
             }
           }}
-          className={`flex items-center justify-center gap-2 rounded-xl uppercase transition-all duration-200 cursor-pointer active:scale-95 bg-primary hover:bg-primary/90 text-primary-foreground shadow-[0_0_20px_color-mix(in_oklch,var(--primary)_30%,transparent)] ${paddingClass}`}
+          className={`flex items-center justify-center gap-2 rounded-xl uppercase transition duration-200 cursor-pointer active:scale-95 bg-primary hover:bg-primary/90 text-primary-foreground shadow-[0_0_20px_color-mix(in_oklch,var(--primary)_30%,transparent)] ${paddingClass}`}
           title={
             matchingServerFile.isShared && matchingServerFile.sharedBy
               ? `Shared by @${matchingServerFile.sharedBy.username} on ${matchingServerFile.serverName} (${formatBytes(matchingServerFile.filesize)})`
@@ -175,7 +175,7 @@ export const LauncherActionButtons = ({
       ) : (
         <button
           onClick={onOpenDetails || handlePlay}
-          className={`flex items-center justify-center gap-2 rounded-xl uppercase transition-all duration-200 cursor-pointer active:scale-95 bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-field)] text-foreground border border-[var(--dk-separator)] ${paddingClass}`}
+          className={`flex items-center justify-center gap-2 rounded-xl uppercase transition duration-200 cursor-pointer active:scale-95 bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-field)] text-foreground border border-[var(--dk-separator)] ${paddingClass}`}
         >
           <Info size={size === "lg" ? 16 : 14} />
           <span>View Details</span>

@@ -211,7 +211,7 @@ export const DkMediaCard = memo(({
       {avgRating != null && avgRating > 0 && (
         <div
           className={cn(
-            'absolute z-10 pointer-events-none transition-all duration-300',
+            'absolute z-10 pointer-events-none transition-colors duration-300',
             ratingPositionClass,
           )}
         >

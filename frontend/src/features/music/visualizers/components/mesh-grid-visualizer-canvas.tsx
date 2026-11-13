@@ -18,6 +18,10 @@ export interface MeshGridVisualizerCanvasProps {
   palette?: ExtractedPalette | null
   params?: Partial<MeshGridParams>
   onSceneReady?: (handle: MeshGridSceneHandle) => void
+  onCameraChange?: (
+    pos: { x: number; y: number; z: number },
+    target: { x: number; y: number; z: number },
+  ) => void
   className?: string
 }
 
@@ -30,6 +34,7 @@ export const MeshGridVisualizerCanvas = ({
   palette,
   params,
   onSceneReady,
+  onCameraChange,
   className,
 }: MeshGridVisualizerCanvasProps) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
@@ -39,6 +44,11 @@ export const MeshGridVisualizerCanvas = ({
   const posRef = useRef(positionMs)
   const durRef = useRef(durationMs)
   const playingRef = useRef(isPlaying)
+  const onCameraChangeRef = useRef(onCameraChange)
+
+  useEffect(() => {
+    onCameraChangeRef.current = onCameraChange
+  }, [onCameraChange])
 
   // Track keys to detect song changes and async palette extraction
   const prevTrackKeyRef = useRef<string | null>(null)
@@ -163,9 +173,42 @@ export const MeshGridVisualizerCanvas = ({
     })
     resizeObserver.observe(canvas)
 
+    const handleControlsEnd = () => {
+      if (handle && onCameraChangeRef.current) {
+        onCameraChangeRef.current(
+          {
+            x: handle.camera.position.x,
+            y: handle.camera.position.y,
+            z: handle.camera.position.z,
+          },
+          {
+            x: handle.controls.target.x,
+            y: handle.controls.target.y,
+            z: handle.controls.target.z,
+          },
+        )
+      }
+    }
+
+    handle.controls.addEventListener('end', handleControlsEnd)
+
     const handleDblClick = () => {
       if (handle) {
         handle.resetCamera()
+        if (onCameraChangeRef.current) {
+          onCameraChangeRef.current(
+            {
+              x: handle.camera.position.x,
+              y: handle.camera.position.y,
+              z: handle.camera.position.z,
+            },
+            {
+              x: handle.controls.target.x,
+              y: handle.controls.target.y,
+              z: handle.controls.target.z,
+            },
+          )
+        }
       }
     }
 
@@ -175,6 +218,9 @@ export const MeshGridVisualizerCanvas = ({
       cancelAnimationFrame(animId)
       window.removeEventListener('resize', handleResize)
       canvas.removeEventListener('dblclick', handleDblClick)
+      if (handle) {
+        handle.controls.removeEventListener('end', handleControlsEnd)
+      }
       resizeObserver.disconnect()
       if (handle) {
         handle.dispose()
@@ -185,6 +231,7 @@ export const MeshGridVisualizerCanvas = ({
 
   return (
     <canvas
+      aria-hidden="true"
       ref={canvasRef}
       className={cn('w-full h-full block bg-background cursor-grab active:cursor-grabbing', className)}
     />

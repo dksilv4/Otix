@@ -338,7 +338,7 @@ export const SteamLauncherView = () => {
                   {!!activeGame.exePath && activeGame.platform !== "iso" ? (
                     <button
                       onClick={() => handleLaunch(activeGame)}
-                      className="flex items-center gap-3 px-10 py-4 rounded-md text-base font-black uppercase tracking-wider text-primary-foreground bg-primary hover:bg-primary/90 shadow-xl shadow-primary/25 cursor-pointer transition-all hover:brightness-110 active:scale-95"
+                      className="flex items-center gap-3 px-10 py-4 rounded-md text-base font-black uppercase tracking-wider text-primary-foreground bg-primary hover:bg-primary/90 shadow-xl shadow-primary/25 cursor-pointer transition hover:brightness-110 active:scale-95"
                     >
                       <Play size={18} fill="currentColor" />
                       <span>{isSelectedRunning ? "Running" : "Play"}</span>
@@ -442,7 +442,7 @@ export const SteamLauncherView = () => {
                 {/* Progress bar */}
                 <div className="w-full h-3 rounded-full bg-[var(--dk-surface-field)] overflow-hidden p-0.5 border border-white/[0.04]">
                   <div
-                    className="h-full rounded-full bg-primary transition-all duration-300"
+                    className="h-full rounded-full bg-primary transition-colors duration-300"
                     style={{ width: `${activeGameStats.completionPercentage}%` }}
                   />
                 </div>

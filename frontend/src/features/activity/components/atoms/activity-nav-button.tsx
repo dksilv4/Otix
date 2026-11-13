@@ -87,7 +87,7 @@ export const ActivityModuleButton = ({
         data-now-playing-trigger
         onClick={handleClick}
         className={
-          'relative gap-1 transition-all flex items-center justify-center rounded-full outline-none focus:outline-none focus-visible:outline-none' +
+          'relative gap-1 transition-colors flex items-center justify-center rounded-full outline-none focus:outline-none focus-visible:outline-none' +
           (!bare ? ' flex items-center p-1.5' : '') +
           (!isPinned ? ' cursor-pointer' : '') +
           (isSidebarOpen ? ' bg-[var(--dk-surface-ghost-active)] text-foreground' : '') +

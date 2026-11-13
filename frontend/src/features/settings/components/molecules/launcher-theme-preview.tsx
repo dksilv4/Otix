@@ -18,9 +18,9 @@ interface LauncherThemePreviewProps {
 export const LauncherThemePreview = ({ themeId, isSelected }: LauncherThemePreviewProps) => {
   return (
     <div
-      className={`w-full aspect-[16/10] rounded-lg overflow-hidden relative border transition-all duration-300 select-none pointer-events-none shadow-md ${
+      className={`w-full aspect-[16/10] rounded-lg overflow-hidden relative border transition duration-300 select-none pointer-events-none shadow-md ${
         isSelected
-          ? 'border-white/30 shadow-[0_0_16px_rgba(255,255,255,0.15)]'
+          ? 'border-white/30 shadow-lg ring-1 ring-white/30'
           : 'border-white/10 group-hover:border-white/20'
       }`}
     >
@@ -59,14 +59,14 @@ const MiniTheme = ({ themeId }: { themeId: LauncherThemeId }) => {
 // ── V1: Classic (Original Otix Rail) ───────────────────────────
 const ClassicMiniPreview = () => {
   return (
-    <div className="w-full h-full bg-[#0a0c14] relative overflow-hidden flex">
+    <div className="w-full h-full bg-slate-950 relative overflow-hidden flex">
       {/* Subtle blue backdrop glow */}
       <div className="absolute -top-6 -right-6 w-24 h-24 bg-blue-600/20 rounded-full blur-xl pointer-events-none" />
       <div className="absolute -bottom-6 -left-6 w-20 h-20 bg-indigo-600/15 rounded-full blur-lg pointer-events-none" />
 
       {/* Floating Left Pill Rail */}
       <div className="w-3.5 my-1.5 ml-1.5 rounded-full bg-white/10 backdrop-blur-sm border border-white/15 flex flex-col items-center py-1 gap-1 shrink-0 z-10 shadow-sm">
-        <div className="w-2 h-2 rounded-full bg-blue-500 shadow-[0_0_6px_#3b82f6]" />
+        <div className="w-2 h-2 rounded-full bg-blue-500 shadow-sm" />
         <div className="w-1.5 h-1.5 rounded-full bg-white/30" />
         <div className="w-1.5 h-1.5 rounded-full bg-white/20" />
         <div className="w-1.5 h-1.5 rounded-full bg-white/15" />
@@ -81,7 +81,7 @@ const ClassicMiniPreview = () => {
 
         {/* 3D Tilted Game Cover Hero */}
         <div className="flex flex-col items-center">
-          <div className="w-12 h-14 rounded bg-gradient-to-tr from-blue-700 via-indigo-600 to-sky-500 border border-blue-400/40 shadow-[0_6px_14px_rgba(0,0,0,0.6)] transform -rotate-6 skew-y-1 overflow-hidden p-1 flex flex-col justify-between">
+          <div className="w-12 h-14 rounded bg-gradient-to-tr from-blue-700 to-sky-500 border border-blue-400/40 shadow-md transform -rotate-6 skew-y-1 overflow-hidden p-1 flex flex-col justify-between">
             <span className="text-[5px] font-black text-white/90 tracking-tight leading-none">CYBER</span>
             <div className="w-3 h-3 rounded-full bg-white/20 flex items-center justify-center self-end">
               <Play size={6} className="text-white fill-white ml-0.5" />
@@ -111,7 +111,7 @@ const ModernMiniPreview = () => {
         <div className="flex items-center gap-1.5">
           <span className="text-[6px] font-black text-white tracking-wider">OTIX</span>
           <div className="flex items-center gap-1">
-            <span className="text-[5px] font-bold text-[oklch(0.705_0.213_47.604)]">Deck</span>
+            <span className="text-[5px] font-bold text-amber-500">Deck</span>
             <span className="text-[5px] text-white/30">Library</span>
           </div>
         </div>
@@ -135,7 +135,7 @@ const ModernMiniPreview = () => {
             <div className="text-[6.5px] font-black leading-tight text-white drop-shadow">Elden Ring</div>
             <div className="text-[4.5px] text-white/60">Ready to play · 142 hrs</div>
           </div>
-          <div className="px-1.5 py-0.5 rounded bg-[oklch(0.705_0.213_47.604)] text-black text-[5px] font-black flex items-center gap-0.5 shadow">
+          <div className="px-1.5 py-0.5 rounded bg-amber-500 text-black text-[5px] font-black flex items-center gap-0.5 shadow">
             <Play size={5} fill="black" />
             <span>PLAY</span>
           </div>
@@ -161,13 +161,13 @@ const ModernMiniPreview = () => {
 // ── V3: Steam (Console Layout / Steam Deck) ───────────────────
 const SteamMiniPreview = () => {
   return (
-    <div className="w-full h-full bg-[#171a21] text-white relative overflow-hidden flex flex-col">
+    <div className="w-full h-full bg-slate-900 text-white relative overflow-hidden flex flex-col">
       {/* Top Steam Header */}
-      <div className="h-3 bg-[#171a21] border-b border-[#0e141b] px-1.5 flex items-center justify-between">
+      <div className="h-3 bg-slate-900 border-b border-slate-950 px-1.5 flex items-center justify-between">
         <div className="flex items-center gap-2 text-[5px] font-bold uppercase tracking-wider">
-          <span className="text-[#8f98a0]">Store</span>
-          <span className="text-[#66c0f4] border-b border-[#66c0f4]">Library</span>
-          <span className="text-[#8f98a0]">Community</span>
+          <span className="text-slate-400">Store</span>
+          <span className="text-sky-400 border-b border-sky-400">Library</span>
+          <span className="text-slate-400">Community</span>
         </div>
         <div className="flex items-center gap-0.5">
           <div className="w-1 h-1 rounded-sm bg-white/20" />
@@ -178,36 +178,36 @@ const SteamMiniPreview = () => {
       {/* Main 2-Pane Steam Client */}
       <div className="flex-1 flex overflow-hidden">
         {/* Left Sidebar */}
-        <div className="w-2/5 bg-[#121a24] border-r border-[#0e141b] p-1 flex flex-col gap-0.5">
-          <div className="h-2 bg-[#1b2838] rounded px-1 flex items-center justify-between text-[4.5px] text-[#536577]">
+        <div className="w-2/5 bg-slate-950 border-r border-slate-950 p-1 flex flex-col gap-0.5">
+          <div className="h-2 bg-slate-900 rounded px-1 flex items-center justify-between text-[4.5px] text-slate-500">
             <span>Filter...</span>
-            <Search size={4} className="text-[#66c0f4]" />
+            <Search size={4} className="text-sky-400" />
           </div>
-          <span className="text-[4px] font-black uppercase text-[#8f98a0] tracking-wider mt-0.5">
+          <span className="text-[4px] font-black uppercase text-slate-400 tracking-wider mt-0.5">
             READY TO PLAY (8)
           </span>
           <div className="space-y-0.5">
-            <div className="bg-[#212f42] text-[#66c0f4] font-bold rounded px-1 py-0.5 flex items-center gap-1 text-[5px] border-l-2 border-[#66c0f4]">
+            <div className="bg-slate-800 text-sky-400 font-bold rounded px-1 py-0.5 flex items-center gap-1 text-[5px] border-l-2 border-sky-400">
               <span className="truncate">Half-Life: Alyx</span>
             </div>
-            <div className="text-[#8f98a0] px-1 py-0.2 flex items-center gap-1 text-[4.5px] truncate">
+            <div className="text-slate-400 px-1 py-0.2 flex items-center gap-1 text-[4.5px] truncate">
               Portal 2
             </div>
-            <div className="text-[#8f98a0] px-1 py-0.2 flex items-center gap-1 text-[4.5px] truncate">
+            <div className="text-slate-400 px-1 py-0.2 flex items-center gap-1 text-[4.5px] truncate">
               Left 4 Dead 2
             </div>
           </div>
         </div>
 
         {/* Right Stage */}
-        <div className="flex-1 bg-gradient-to-b from-[#1e2e42] via-[#1b2838] to-[#121a24] p-1.5 flex flex-col justify-between">
+        <div className="flex-1 bg-gradient-to-b from-slate-800 via-slate-900 to-slate-950 p-1.5 flex flex-col justify-between">
           <div>
             <div className="text-[7px] font-black text-white leading-tight">Half-Life: Alyx</div>
-            <div className="text-[4px] text-[#8f98a0] mt-0.5">Cloud in sync · 45 hrs</div>
+            <div className="text-[4px] text-slate-400 mt-0.5">Cloud in sync · 45 hrs</div>
           </div>
 
           <div className="flex items-center justify-between pt-1">
-            <div className="px-2 py-0.5 rounded bg-[#5c7e10] hover:bg-[#6c9413] text-white text-[5.5px] font-black tracking-wider uppercase flex items-center gap-0.5 shadow">
+            <div className="px-2 py-0.5 rounded bg-lime-700 hover:bg-lime-600 text-white text-[5.5px] font-black tracking-wider uppercase flex items-center gap-0.5 shadow">
               <Play size={5} fill="white" />
               <span>PLAY</span>
             </div>
@@ -222,7 +222,7 @@ const SteamMiniPreview = () => {
 // ── V4: PlayStation (CrossBar / Console Ribbon) ────────────────
 const PlayStationMiniPreview = () => {
   return (
-    <div className="w-full h-full bg-[#05070e] text-white relative overflow-hidden flex flex-col justify-between p-1.5">
+    <div className="w-full h-full bg-slate-950 text-white relative overflow-hidden flex flex-col justify-between p-1.5">
       {/* Ambient Blue Backlight */}
       <div className="absolute top-0 right-1/4 w-28 h-28 bg-blue-600/25 rounded-full blur-2xl pointer-events-none" />
 
@@ -240,7 +240,7 @@ const PlayStationMiniPreview = () => {
         <div className="text-[7.5px] font-black tracking-tight text-white leading-tight mt-0.5">
           Horizon Forbidden West
         </div>
-        <div className="mt-1 px-2 py-0.5 rounded-full bg-white text-black text-[5px] font-black uppercase flex items-center gap-0.5 w-fit shadow-[0_0_8px_rgba(255,255,255,0.4)]">
+        <div className="mt-1 px-2 py-0.5 rounded-full bg-white text-black text-[5px] font-black uppercase flex items-center gap-0.5 w-fit shadow-sm">
           <Play size={5} fill="black" />
           <span>Play</span>
         </div>
@@ -249,7 +249,7 @@ const PlayStationMiniPreview = () => {
       {/* Bottom CrossBar Horizontal Ribbon */}
       <div className="flex items-end gap-1 px-0.5 relative z-10">
         {/* Enlarged active card */}
-        <div className="w-7 h-10 rounded bg-gradient-to-t from-blue-900 to-indigo-700 ring-2 ring-white shadow-[0_0_10px_rgba(37,99,235,0.8)] -translate-y-1 relative overflow-hidden p-0.5 flex flex-col justify-end">
+        <div className="w-7 h-10 rounded bg-gradient-to-t from-blue-950 to-blue-700 ring-2 ring-white shadow-md -translate-y-1 relative overflow-hidden p-0.5 flex flex-col justify-end">
           <span className="text-[4px] font-black text-white">ACTIVE</span>
         </div>
         <div className="w-5 h-8 rounded bg-neutral-800/80 border border-white/10 opacity-50" />
@@ -263,36 +263,36 @@ const PlayStationMiniPreview = () => {
 // ── V5: Xbox (Blade / Metro Matrix) ───────────────────────────
 const XboxMiniPreview = () => {
   return (
-    <div className="w-full h-full bg-[#0b120c] text-white relative overflow-hidden flex flex-col p-1.5 justify-between">
+    <div className="w-full h-full bg-zinc-950 text-white relative overflow-hidden flex flex-col p-1.5 justify-between">
       {/* Subtle green ambient bloom */}
-      <div className="absolute -bottom-6 -left-6 w-24 h-24 bg-[#107c10]/20 rounded-full blur-xl pointer-events-none" />
+      <div className="absolute -bottom-6 -left-6 w-24 h-24 bg-emerald-600/20 rounded-full blur-xl pointer-events-none" />
 
       {/* Top Header */}
       <div className="flex items-center justify-between px-0.5">
         <div className="flex items-center gap-1">
           <span className="text-[6px] font-black text-white">OTIX</span>
-          <span className="text-[4.5px] font-black px-1 py-0.2 rounded bg-[#107c10]/30 text-[#107c10] border border-[#107c10]/40">
+          <span className="text-[4.5px] font-black px-1 py-0.2 rounded bg-emerald-600/30 text-emerald-400 border border-emerald-600/40">
             BLADE
           </span>
         </div>
         <div className="flex items-center gap-1">
-          <span className="text-[5px] font-bold text-[#107c10]">12,450 G</span>
-          <div className="w-2 h-2 rounded-md bg-[#107c10] ring-1 ring-[#107c10]/50" />
+          <span className="text-[5px] font-bold text-emerald-400">12,450 G</span>
+          <div className="w-2 h-2 rounded-md bg-emerald-600 ring-1 ring-emerald-600/50" />
         </div>
       </div>
 
       {/* Bento Grid */}
       <div className="grid grid-cols-5 gap-1 my-0.5 flex-1 items-stretch">
         {/* Large Left Featured Tile */}
-        <div className="col-span-3 rounded bg-gradient-to-br from-[#111714] to-emerald-950/70 border border-[#107c10]/50 p-1 flex flex-col justify-between relative overflow-hidden shadow-inner">
+        <div className="col-span-3 rounded bg-gradient-to-br from-zinc-900 to-emerald-950/70 border border-emerald-600/50 p-1 flex flex-col justify-between relative overflow-hidden shadow-inner">
           <div className="flex items-center gap-1">
-            <span className="text-[4px] font-black uppercase px-1 py-0.2 rounded bg-[#107c10] text-black">
+            <span className="text-[4px] font-black uppercase px-1 py-0.2 rounded bg-emerald-600 text-black">
               Resume
             </span>
           </div>
           <div>
             <div className="text-[6.5px] font-black text-white leading-tight">Halo Infinite</div>
-            <div className="mt-0.5 px-1.5 py-0.2 rounded bg-[#107c10] text-white text-[4.5px] font-black uppercase flex items-center gap-0.5 w-fit">
+            <div className="mt-0.5 px-1.5 py-0.2 rounded bg-emerald-600 text-white text-[4.5px] font-black uppercase flex items-center gap-0.5 w-fit">
               <Play size={4} fill="white" />
               <span>A Play</span>
             </div>
@@ -301,14 +301,14 @@ const XboxMiniPreview = () => {
 
         {/* Right Stacked Tiles */}
         <div className="col-span-2 flex flex-col gap-1">
-          <div className="flex-1 rounded bg-[#111714] border border-white/10 p-1 flex flex-col justify-between">
-            <span className="text-[4px] font-bold text-[#107c10] uppercase">Quick Resume</span>
-            <Flame size={8} className="text-[#107c10] self-end" />
+          <div className="flex-1 rounded bg-zinc-900 border border-white/10 p-1 flex flex-col justify-between">
+            <span className="text-[4px] font-bold text-emerald-400 uppercase">Quick Resume</span>
+            <Flame size={8} className="text-emerald-400 self-end" />
           </div>
-          <div className="flex-1 rounded bg-[#111714] border border-white/10 p-1 flex flex-col justify-between">
+          <div className="flex-1 rounded bg-zinc-900 border border-white/10 p-1 flex flex-col justify-between">
             <span className="text-[4px] text-white/50">Activity</span>
             <div className="w-full h-1 rounded-full bg-white/10 overflow-hidden">
-              <div className="w-2/3 h-full bg-[#107c10]" />
+              <div className="w-2/3 h-full bg-emerald-600" />
             </div>
           </div>
         </div>
@@ -316,16 +316,16 @@ const XboxMiniPreview = () => {
 
       {/* Bottom Mini Bento Row */}
       <div className="grid grid-cols-4 gap-1">
-        <div className="h-3 rounded bg-[#111714] border border-[#107c10]/40 flex items-center justify-center text-[4px] font-bold text-white/70">
+        <div className="h-3 rounded bg-zinc-900 border border-emerald-600/40 flex items-center justify-center text-[4px] font-bold text-white/70">
           Gears 5
         </div>
-        <div className="h-3 rounded bg-[#111714] border border-white/10 flex items-center justify-center text-[4px] text-white/50">
+        <div className="h-3 rounded bg-zinc-900 border border-white/10 flex items-center justify-center text-[4px] text-white/50">
           Forza
         </div>
-        <div className="h-3 rounded bg-[#111714] border border-white/10 flex items-center justify-center text-[4px] text-white/50">
+        <div className="h-3 rounded bg-zinc-900 border border-white/10 flex items-center justify-center text-[4px] text-white/50">
           Sea
         </div>
-        <div className="h-3 rounded bg-[#111714] border border-white/10 flex items-center justify-center text-[4px] text-white/50">
+        <div className="h-3 rounded bg-zinc-900 border border-white/10 flex items-center justify-center text-[4px] text-white/50">
           Pass
         </div>
       </div>
@@ -336,7 +336,7 @@ const XboxMiniPreview = () => {
 // ── V6: Switch (Arcade / Handheld Carousel) ───────────────────
 const SwitchMiniPreview = () => {
   return (
-    <div className="w-full h-full bg-[#1b1b1e] text-white relative overflow-hidden flex flex-col justify-between p-1.5">
+    <div className="w-full h-full bg-zinc-900 text-white relative overflow-hidden flex flex-col justify-between p-1.5">
       {/* Joy-Con Color Edges */}
       <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-rose-600" />
       <div className="absolute right-0 top-0 bottom-0 w-0.5 bg-cyan-500" />
@@ -354,7 +354,7 @@ const SwitchMiniPreview = () => {
       <div className="flex items-center justify-center gap-1.5 py-0.5">
         <div className="w-7 h-7 rounded bg-neutral-800 border border-white/10 opacity-60" />
         {/* Active game card with vivid red ring */}
-        <div className="w-10 h-10 rounded-lg bg-gradient-to-tr from-rose-600 to-amber-600 ring-2 ring-[#e60012] shadow-[0_4px_12px_rgba(230,0,18,0.5)] -translate-y-0.5 p-1 flex flex-col justify-between relative overflow-hidden">
+        <div className="w-10 h-10 rounded-lg bg-gradient-to-tr from-rose-600 to-amber-600 ring-2 ring-red-600 shadow-md -translate-y-0.5 p-1 flex flex-col justify-between relative overflow-hidden">
           <span className="text-[4px] font-black uppercase text-white bg-rose-700/80 px-1 py-0.2 rounded w-fit">
             Mario
           </span>
@@ -384,7 +384,7 @@ const SwitchMiniPreview = () => {
 // ── V7: Retro (Cyberpunk / Terminal Netrunner) ─────────────────
 const RetroMiniPreview = () => {
   return (
-    <div className="w-full h-full bg-[#080a08] text-[#33ff33] font-mono relative overflow-hidden flex flex-col p-1.5 justify-between">
+    <div className="w-full h-full bg-zinc-950 text-green-400 font-mono relative overflow-hidden flex flex-col p-1.5 justify-between">
       {/* CRT Scanline Effect */}
       <div
         className="absolute inset-0 pointer-events-none z-20 opacity-25"
@@ -396,10 +396,10 @@ const RetroMiniPreview = () => {
       />
 
       {/* CRT Header */}
-      <div className="flex items-center justify-between border-b border-[#1f3f1f] pb-0.5 text-[4.5px] text-[#228822] relative z-10">
+      <div className="flex items-center justify-between border-b border-green-950 pb-0.5 text-[4.5px] text-green-600 relative z-10">
         <div className="flex items-center gap-1">
-          <Terminal size={5} className="text-[#33ff33]" />
-          <span className="font-bold text-[#33ff33]">NETRUNNER_V7</span>
+          <Terminal size={5} className="text-green-400" />
+          <span className="font-bold text-green-400">NETRUNNER_V7</span>
         </div>
         <span>CPU: 24% · 144FPS</span>
       </div>
@@ -407,29 +407,29 @@ const RetroMiniPreview = () => {
       {/* Dual Column Matrix */}
       <div className="flex-1 flex gap-1 py-1 relative z-10">
         {/* Left Grep Target Index */}
-        <div className="w-2/5 border-r border-[#1f3f1f] pr-1 space-y-0.5 text-[4.5px]">
-          <div className="bg-[#33ff33]/20 text-[#33ff33] px-0.5 rounded border-l border-[#33ff33] truncate font-bold">
+        <div className="w-2/5 border-r border-green-950 pr-1 space-y-0.5 text-[4.5px]">
+          <div className="bg-green-500/20 text-green-400 px-0.5 rounded border-l border-green-400 truncate font-bold">
             [01] DEUS_EX
           </div>
-          <div className="text-[#227722] px-0.5 truncate">[02] SYSTEM_SHOCK</div>
-          <div className="text-[#227722] px-0.5 truncate">[03] NET_HACK</div>
+          <div className="text-green-600 px-0.5 truncate">[02] SYSTEM_SHOCK</div>
+          <div className="text-green-600 px-0.5 truncate">[03] NET_HACK</div>
         </div>
 
         {/* Right Wireframe / Visualizer */}
         <div className="flex-1 flex flex-col justify-between pl-0.5">
-          <div className="border border-[#1f3f1f] bg-black/60 rounded p-1 flex-1 flex flex-col justify-between">
-            <span className="text-[4px] text-[#33ff33]">RAW FEED // CAM 01</span>
-            <div className="w-full h-3 border border-[#1f3f1f] border-dashed rounded flex items-center justify-center text-[4px] text-[#227722]">
+          <div className="border border-green-950 bg-black/60 rounded p-1 flex-1 flex flex-col justify-between">
+            <span className="text-[4px] text-green-400">RAW FEED // CAM 01</span>
+            <div className="w-full h-3 border border-green-950 border-dashed rounded flex items-center justify-center text-[4px] text-green-600">
               + WIREFRAME +
             </div>
           </div>
-          <div className="mt-0.5 px-1 py-0.2 rounded bg-[#33ff33]/20 border border-[#33ff33] text-[#33ff33] text-[4.5px] font-bold w-fit">
+          <div className="mt-0.5 px-1 py-0.2 rounded bg-green-500/20 border border-green-400 text-green-400 text-[4.5px] font-bold w-fit">
             EXEC [&gt;]
           </div>
         </div>
       </div>
 
-      <div className="border-t border-[#1f3f1f] pt-0.5 text-[4px] text-[#228822] flex justify-between relative z-10">
+      <div className="border-t border-green-950 pt-0.5 text-[4px] text-green-600 flex justify-between relative z-10">
         <span>STATUS: READY</span>
         <span>NODE::ROOT</span>
       </div>
@@ -440,7 +440,7 @@ const RetroMiniPreview = () => {
 // ── V8: Minimal (Gallery Zen) ─────────────────────────────────
 const MinimalMiniPreview = () => {
   return (
-    <div className="w-full h-full bg-[#09090b] text-neutral-300 font-sans relative overflow-hidden flex p-1.5 gap-2">
+    <div className="w-full h-full bg-zinc-950 text-neutral-300 font-sans relative overflow-hidden flex p-1.5 gap-2">
       {/* Left Clean Index */}
       <div className="w-2/5 flex flex-col justify-between">
         <div>
@@ -474,9 +474,9 @@ const MinimalMiniPreview = () => {
 // ── V9: Forge (Storefront Client) ─────────────────────────────
 const ForgeMiniPreview = () => {
   return (
-    <div className="w-full h-full bg-[#121212] text-white font-sans relative overflow-hidden flex">
+    <div className="w-full h-full bg-neutral-900 text-white font-sans relative overflow-hidden flex">
       {/* Left Navigation Rail */}
-      <div className="w-1/4 bg-[#181818] border-r border-[#242424] p-1 flex flex-col justify-between">
+      <div className="w-1/4 bg-neutral-900 border-r border-neutral-800 p-1 flex flex-col justify-between">
         <div className="space-y-1">
           <div className="flex items-center gap-0.5">
             <span className="text-[6px] font-black text-white">OTIX</span>
@@ -493,7 +493,7 @@ const ForgeMiniPreview = () => {
       <div className="flex-1 p-1 flex flex-col justify-between">
         <div className="flex items-center justify-between">
           <span className="text-[5.5px] font-bold text-white">Storefront</span>
-          <div className="w-6 h-1.5 rounded bg-[#202020]" />
+          <div className="w-6 h-1.5 rounded bg-neutral-800" />
         </div>
 
         {/* Marquee Promo Banner */}
@@ -509,9 +509,9 @@ const ForgeMiniPreview = () => {
 
         {/* Bottom Shelf Cards */}
         <div className="flex items-center gap-1">
-          <div className="w-1/3 h-4 rounded bg-[#202020] border border-white/5" />
-          <div className="w-1/3 h-4 rounded bg-[#202020] border border-white/5" />
-          <div className="w-1/3 h-4 rounded bg-[#202020] border border-white/5" />
+          <div className="w-1/3 h-4 rounded bg-neutral-800 border border-white/5" />
+          <div className="w-1/3 h-4 rounded bg-neutral-800 border border-white/5" />
+          <div className="w-1/3 h-4 rounded bg-neutral-800 border border-white/5" />
         </div>
       </div>
     </div>
@@ -521,7 +521,7 @@ const ForgeMiniPreview = () => {
 // ── V10: Spatial Glass (Aero Prism) ───────────────────────────
 const GlassMiniPreview = () => {
   return (
-    <div className="w-full h-full bg-[#07050d] text-white font-sans relative overflow-hidden flex flex-col p-1.5 justify-between">
+    <div className="w-full h-full bg-purple-950 text-white font-sans relative overflow-hidden flex flex-col p-1.5 justify-between">
       {/* Ambient Gradient Mesh Orbs */}
       <div className="absolute -top-4 -left-4 w-16 h-16 bg-purple-600/40 rounded-full blur-lg pointer-events-none" />
       <div className="absolute -bottom-4 -right-4 w-16 h-16 bg-pink-600/35 rounded-full blur-lg pointer-events-none" />
@@ -539,16 +539,16 @@ const GlassMiniPreview = () => {
       </div>
 
       {/* Floating Translucent Glass Card */}
-      <div className="rounded-lg bg-white/[0.07] backdrop-blur-md border border-white/25 p-1.5 flex flex-col justify-between shadow-[0_4px_16px_rgba(0,0,0,0.5)] relative z-10 overflow-hidden h-11">
+      <div className="rounded-lg bg-white/[0.07] backdrop-blur-md border border-white/25 p-1.5 flex flex-col justify-between shadow-md relative z-10 overflow-hidden h-11">
         <div className="flex items-center justify-between">
-          <span className="text-[6.5px] font-black bg-gradient-to-r from-purple-200 to-pink-200 bg-clip-text text-transparent">
+          <span className="text-[6.5px] font-black text-white">
             Starfield
           </span>
           <span className="text-[4.5px] text-purple-300">★ 9.2</span>
         </div>
         <div className="flex items-center justify-between">
           <span className="text-[4px] text-white/60">Frosted Glass Deck</span>
-          <div className="px-1.5 py-0.2 rounded-full bg-purple-600/70 border border-purple-400/50 text-white text-[4.5px] font-bold shadow-[0_0_8px_rgba(168,85,247,0.5)]">
+          <div className="px-1.5 py-0.2 rounded-full bg-purple-600/70 border border-purple-400/50 text-white text-[4.5px] font-bold shadow-sm">
             Launch
           </div>
         </div>

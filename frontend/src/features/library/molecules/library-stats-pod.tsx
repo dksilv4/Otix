@@ -66,7 +66,7 @@ export const LibraryStatsPod = () => {
           onKeyDown={(e) => {
             if (e.key === "Enter" || e.key === " ") navigate({ to: "/library/watchlist" })
           }}
-          className="group flex flex-col justify-between rounded-xl p-4 bg-[var(--dk-surface-glass)]/40 hover:bg-[var(--dk-surface-elevated)]/60 border border-white/[0.04] transition-all cursor-pointer text-left"
+          className="group flex flex-col justify-between rounded-xl p-4 bg-[var(--dk-surface-glass)]/40 hover:bg-[var(--dk-surface-elevated)]/60 border border-white/[0.04] transition-colors cursor-pointer text-left"
         >
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground group-hover:text-foreground transition-colors">
@@ -92,7 +92,7 @@ export const LibraryStatsPod = () => {
           onKeyDown={(e) => {
             if (e.key === "Enter" || e.key === " ") navigate({ to: "/library/watched" })
           }}
-          className="group flex flex-col justify-between rounded-xl p-4 bg-[var(--dk-surface-glass)]/40 hover:bg-[var(--dk-surface-elevated)]/60 border border-white/[0.04] transition-all cursor-pointer text-left"
+          className="group flex flex-col justify-between rounded-xl p-4 bg-[var(--dk-surface-glass)]/40 hover:bg-[var(--dk-surface-elevated)]/60 border border-white/[0.04] transition-colors cursor-pointer text-left"
         >
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground group-hover:text-foreground transition-colors">
@@ -118,7 +118,7 @@ export const LibraryStatsPod = () => {
           onKeyDown={(e) => {
             if (e.key === "Enter" || e.key === " ") navigate({ to: "/library/like" })
           }}
-          className="group flex flex-col justify-between rounded-xl p-4 bg-[var(--dk-surface-glass)]/40 hover:bg-[var(--dk-surface-elevated)]/60 border border-white/[0.04] transition-all cursor-pointer text-left"
+          className="group flex flex-col justify-between rounded-xl p-4 bg-[var(--dk-surface-glass)]/40 hover:bg-[var(--dk-surface-elevated)]/60 border border-white/[0.04] transition-colors cursor-pointer text-left"
         >
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground group-hover:text-foreground transition-colors">
@@ -144,7 +144,7 @@ export const LibraryStatsPod = () => {
           onKeyDown={(e) => {
             if (e.key === "Enter" || e.key === " ") navigate({ to: "/library/games" })
           }}
-          className="group flex flex-col justify-between rounded-xl p-4 bg-[var(--dk-surface-glass)]/40 hover:bg-[var(--dk-surface-elevated)]/60 border border-white/[0.04] transition-all cursor-pointer text-left"
+          className="group flex flex-col justify-between rounded-xl p-4 bg-[var(--dk-surface-glass)]/40 hover:bg-[var(--dk-surface-elevated)]/60 border border-white/[0.04] transition-colors cursor-pointer text-left"
         >
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground group-hover:text-foreground transition-colors">

@@ -34,7 +34,7 @@ export const DownloadOptionsGrid = ({
             type="button"
             onClick={() => onSelectTab('windows')}
             className={
-              'inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all ' +
+              'inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-colors ' +
               (activeTab === 'windows'
                 ? 'bg-[var(--dk-surface-raised)] text-foreground shadow-[var(--dk-shadow-sm)]'
                 : 'text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-ghost-hover)]')
@@ -48,7 +48,7 @@ export const DownloadOptionsGrid = ({
             type="button"
             onClick={() => onSelectTab('macos')}
             className={
-              'inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all ' +
+              'inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-colors ' +
               (activeTab === 'macos'
                 ? 'bg-[var(--dk-surface-raised)] text-foreground shadow-[var(--dk-shadow-sm)]'
                 : 'text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-ghost-hover)]')
@@ -62,7 +62,7 @@ export const DownloadOptionsGrid = ({
             type="button"
             onClick={() => onSelectTab('linux')}
             className={
-              'inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all ' +
+              'inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-colors ' +
               (activeTab === 'linux'
                 ? 'bg-[var(--dk-surface-raised)] text-foreground shadow-[var(--dk-shadow-sm)]'
                 : 'text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-ghost-hover)]')
@@ -76,7 +76,7 @@ export const DownloadOptionsGrid = ({
             type="button"
             onClick={() => onSelectTab('node')}
             className={
-              'inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all ' +
+              'inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-colors ' +
               (activeTab === 'node'
                 ? 'bg-[var(--dk-surface-raised)] text-foreground shadow-[var(--dk-shadow-sm)]'
                 : 'text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-ghost-hover)]')

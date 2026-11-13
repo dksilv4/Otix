@@ -85,7 +85,7 @@ export const ModernDashboard = ({
                     setSelectedHeroGame(game)
                     onSelectGame(game)
                   }}
-                  className={`group relative flex-none w-48 sm:w-56 aspect-[16/10] rounded-2xl overflow-hidden cursor-pointer border transition-all duration-300 snap-start bg-[var(--dk-surface-base)] ${
+                  className={`group relative flex-none w-48 sm:w-56 aspect-[16/10] rounded-2xl overflow-hidden cursor-pointer border transition-colors duration-300 snap-start bg-[var(--dk-surface-base)] ${
                     isHero
                       ? "border-primary ring-2 ring-primary/30 scale-[1.02]"
                       : "border-white/[0.04] hover:border-foreground/20 hover:-translate-y-1"
@@ -161,7 +161,7 @@ export const ModernDashboard = ({
                 <div
                   key={game.id}
                   onClick={() => onOpenDetails(game)}
-                  className="group relative rounded-2xl overflow-hidden aspect-[2/3] bg-[var(--dk-surface-base)] border border-white/[0.04] hover:border-foreground/20 transition-all duration-300 cursor-pointer shadow-lg hover:-translate-y-1.5"
+                  className="group relative rounded-2xl overflow-hidden aspect-[2/3] bg-[var(--dk-surface-base)] border border-white/[0.04] hover:border-foreground/20 transition-colors duration-300 cursor-pointer shadow-lg hover:-translate-y-1.5"
                 >
                   {poster ? (
                     <img
@@ -223,7 +223,7 @@ export const ModernDashboard = ({
               <div
                 key={game.id}
                 onClick={() => onOpenDetails(game)}
-                className="group relative flex-none w-36 sm:w-44 aspect-[2/3] rounded-2xl overflow-hidden cursor-pointer border border-white/[0.04] hover:border-foreground/20 transition-all duration-300 snap-start bg-[var(--dk-surface-base)]"
+                className="group relative flex-none w-36 sm:w-44 aspect-[2/3] rounded-2xl overflow-hidden cursor-pointer border border-white/[0.04] hover:border-foreground/20 transition-colors duration-300 snap-start bg-[var(--dk-surface-base)]"
               >
                 {game.posterUrl ? (
                   <img

@@ -14,10 +14,11 @@ export interface StreamAvailabilityResult {
   isLoading: boolean
 }
 
-interface UseStreamAvailabilityParams {
+export interface UseStreamAvailabilityParams {
   mediaId: string
   tmdbId?: string | number | null
   mediaType: string
+  prefetch?: boolean
 }
 
 export const useStreamableCatalog = () => {
@@ -73,6 +74,7 @@ export const useStreamAvailability = ({
   mediaId,
   tmdbId,
   mediaType,
+  prefetch,
 }: UseStreamAvailabilityParams): StreamAvailabilityResult => {
   const { streamableIds, isPlexConnected, isLoading: catalogLoading } = useStreamableCatalog()
   const [pluginStreamable, setPluginStreamable] = useState<boolean | null>(null)
@@ -145,6 +147,20 @@ export const useStreamAvailability = ({
     if (tmdbId && streamableIds.has(String(tmdbId))) return true
     return false
   }, [isPlexConnected, streamableIds, mediaId, tmdbId, mediaType])
+
+  // Prefetch connect-info in background when catalog match is confirmed on detail view
+  useEffect(() => {
+    if (!prefetch || !isPlexConnected || mediaType === 'game' || !mediaId || !isCatalogMatch) {
+      return
+    }
+
+    fetchPlexConnectInfoCached(mediaId, {
+      tmdbId: tmdbId ? String(tmdbId) : undefined,
+      mediaType,
+    }).catch(() => {
+      // Non-blocking background prefetch
+    })
+  }, [prefetch, isPlexConnected, mediaId, tmdbId, mediaType, isCatalogMatch])
 
   // Targeted single-item lookup for Plex if not present in initial shelf
   useEffect(() => {

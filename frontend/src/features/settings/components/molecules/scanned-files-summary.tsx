@@ -42,7 +42,7 @@ export const ScannedFilesSummary = ({
   return (
     <div
       className={cn(
-        'p-4 rounded-2xl bg-[var(--dk-surface-ghost)] border border-white/[0.04] space-y-3.5 transition-all',
+        'p-4 rounded-2xl bg-[var(--dk-surface-ghost)] border border-white/[0.04] space-y-3.5 transition-colors',
         className,
       )}
     >
@@ -212,7 +212,7 @@ export const ScannedFilesSummary = ({
           </div>
           <div className="h-1.5 w-full rounded-full bg-[var(--dk-surface-base)] overflow-hidden">
             <div
-              className="h-full bg-primary transition-all duration-300 ease-out rounded-full"
+              className="h-full bg-primary transition-colors duration-300 ease-out rounded-full"
               style={{ width: `${Math.min(100, Math.max(0, scanProgress))}%` }}
             />
           </div>
@@ -227,7 +227,7 @@ export const ScannedFilesSummary = ({
           </div>
           <div className="h-1.5 w-full rounded-full bg-[var(--dk-surface-base)] overflow-hidden flex">
             <div
-              className="h-full bg-primary transition-all duration-500 rounded-full"
+              className="h-full bg-primary transition-colors duration-500 rounded-full"
               style={{ width: `${Math.min(100, Math.max(0, summary.organizedPercentage))}%` }}
             />
           </div>

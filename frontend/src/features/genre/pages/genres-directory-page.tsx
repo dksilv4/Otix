@@ -92,7 +92,7 @@ export const GenresDirectoryPage = () => {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Filter genres..."
-            className="w-full bg-[var(--dk-surface-field)] border border-[var(--dk-separator)] focus:border-primary/50 focus:bg-[var(--dk-surface-ghost-hover)] rounded-full pl-9 pr-4 py-1.5 text-xs text-foreground placeholder-muted-foreground/60 outline-none transition-all"
+            className="w-full bg-[var(--dk-surface-field)] border border-[var(--dk-separator)] focus:border-primary/50 focus:bg-[var(--dk-surface-ghost-hover)] rounded-full pl-9 pr-4 py-1.5 text-xs text-foreground placeholder-muted-foreground/60 outline-none transition-colors"
           />
         </div>
       </div>

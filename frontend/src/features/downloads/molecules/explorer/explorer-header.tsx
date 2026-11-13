@@ -166,7 +166,7 @@ export const ExplorerHeader = ({
                 type="button"
                 onClick={() => onNavigate(drive.path)}
                 className={cn(
-                  'flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium transition-all shrink-0 cursor-pointer',
+                  'flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium transition-colors shrink-0 cursor-pointer',
                   isActiveDrive
                     ? 'bg-primary text-primary-foreground font-bold shadow-xs'
                     : 'bg-[var(--dk-surface-ghost)] text-muted-foreground hover:bg-[var(--dk-surface-ghost-hover)] hover:text-foreground border border-white/[0.04]',

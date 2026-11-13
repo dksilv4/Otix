@@ -74,14 +74,14 @@ export const CookieBanner = () => {
             <button
               type="button"
               onClick={() => handleChoice('necessary')}
-              className="rounded-xl px-3.5 py-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)] transition-all active:scale-95"
+              className="rounded-xl px-3.5 py-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)] transition-colors active:scale-95"
             >
               Necessary Only
             </button>
             <button
               type="button"
               onClick={() => handleChoice('all')}
-              className="rounded-xl px-3.5 py-1.5 text-xs font-semibold text-primary-foreground bg-primary hover:bg-primary/90 shadow-sm transition-all active:scale-95"
+              className="rounded-xl px-3.5 py-1.5 text-xs font-semibold text-primary-foreground bg-primary hover:bg-primary/90 shadow-sm transition active:scale-95"
             >
               Accept All
             </button>

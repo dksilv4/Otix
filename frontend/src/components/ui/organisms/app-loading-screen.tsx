@@ -74,7 +74,7 @@ export const AppLoadingScreen = ({
               {/* Progress track */}
               <div className="w-full h-1.5 rounded-full overflow-hidden bg-muted/40 relative">
                 <div
-                  className="h-full bg-primary rounded-full transition-all duration-200"
+                  className="h-full bg-primary rounded-full transition-colors duration-200"
                   style={{ width: `${progress.percent}%` }}
                 />
               </div>

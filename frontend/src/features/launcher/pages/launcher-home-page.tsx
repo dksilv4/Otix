@@ -45,7 +45,7 @@ const LauncherContent = () => {
   return (
     <div
       id="launcher-root"
-      className="w-full h-screen bg-background text-foreground relative shadow-[0_24px_50px_rgba(0,0,0,0.85)] font-sans select-none overflow-hidden"
+      className="w-full h-screen bg-background text-foreground relative shadow-2xl font-sans select-none overflow-hidden"
     >
       <Helmet>
         <title>Launcher · Otix</title>

@@ -97,7 +97,7 @@ export const MediaScreenshotLightboxModal = ({
         <button
           type="button"
           onClick={onClose}
-          className="flex h-10 w-10 items-center justify-center rounded-full border border-white/[0.06] bg-[var(--dk-surface-glass)] text-muted-foreground transition-all hover:bg-[var(--dk-surface-ghost-hover)] hover:text-foreground"
+          className="flex h-10 w-10 items-center justify-center rounded-full border border-white/[0.06] bg-[var(--dk-surface-glass)] text-muted-foreground transition-colors hover:bg-[var(--dk-surface-ghost-hover)] hover:text-foreground"
           aria-label="Close fullscreen preview"
         >
           <X className="h-4.5 w-4.5" />
@@ -113,7 +113,7 @@ export const MediaScreenshotLightboxModal = ({
           <button
             type="button"
             onClick={handlePrev}
-            className="absolute left-2 sm:left-4 z-10 flex h-12 w-12 items-center justify-center rounded-full border border-white/[0.06] bg-black/60 text-muted-foreground transition-all hover:scale-105 hover:bg-black/80 hover:text-foreground active:scale-95 shadow-lg backdrop-blur-md"
+            className="absolute left-2 sm:left-4 z-10 flex h-12 w-12 items-center justify-center rounded-full border border-white/[0.06] bg-black/60 text-muted-foreground transition hover:scale-105 hover:bg-black/80 hover:text-foreground active:scale-95 shadow-lg backdrop-blur-md"
             aria-label="Previous screenshot"
           >
             <ChevronLeft className="h-6 w-6" />
@@ -139,7 +139,7 @@ export const MediaScreenshotLightboxModal = ({
           <button
             type="button"
             onClick={handleNext}
-            className="absolute right-2 sm:right-4 z-10 flex h-12 w-12 items-center justify-center rounded-full border border-white/[0.06] bg-black/60 text-muted-foreground transition-all hover:scale-105 hover:bg-black/80 hover:text-foreground active:scale-95 shadow-lg backdrop-blur-md"
+            className="absolute right-2 sm:right-4 z-10 flex h-12 w-12 items-center justify-center rounded-full border border-white/[0.06] bg-black/60 text-muted-foreground transition hover:scale-105 hover:bg-black/80 hover:text-foreground active:scale-95 shadow-lg backdrop-blur-md"
             aria-label="Next screenshot"
           >
             <ChevronRight className="h-6 w-6" />
@@ -162,7 +162,7 @@ export const MediaScreenshotLightboxModal = ({
               type="button"
               onClick={() => setIndex(i)}
               className={cn(
-                'relative aspect-video h-12 sm:h-14 shrink-0 rounded-lg overflow-hidden border transition-all duration-200 cursor-pointer',
+                'relative aspect-video h-12 sm:h-14 shrink-0 rounded-lg overflow-hidden border transition-colors duration-200 cursor-pointer',
                 i === index
                   ? 'border-primary ring-2 ring-primary/40 scale-105 shadow-md shadow-primary/20 opacity-100'
                   : 'border-white/[0.06] opacity-50 hover:opacity-90 hover:border-white/[0.12]',

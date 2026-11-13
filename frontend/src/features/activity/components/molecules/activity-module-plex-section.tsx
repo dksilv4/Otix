@@ -18,13 +18,13 @@ export const ActivityModulePlexSection = ({ onClose }: ActivityModulePlexSection
     <ActivityModuleSection className="flex flex-col gap-2">
       <div className="flex items-center justify-between mb-1">
         <div className="flex items-center gap-2">
-          <div className="flex h-5 w-5 items-center justify-center rounded-full bg-[#e5a00d]/15">
-            <PlexIcon className="h-3 w-3 text-[#e5a00d]" />
+          <div className="flex h-5 w-5 items-center justify-center rounded-full bg-amber-500/15">
+            <PlexIcon className="h-3 w-3 text-amber-500" />
           </div>
           <span className="text-xs font-semibold uppercase tracking-wider text-white/70">
             Plex Streams
           </span>
-          <span className="rounded-full bg-[#e5a00d]/20 px-1.5 py-0.5 text-[10px] font-bold text-[#e5a00d] tabular-nums">
+          <span className="rounded-full bg-amber-500/20 px-1.5 py-0.5 text-[10px] font-bold text-amber-500 tabular-nums">
             {plexSessions.length} active
           </span>
         </div>

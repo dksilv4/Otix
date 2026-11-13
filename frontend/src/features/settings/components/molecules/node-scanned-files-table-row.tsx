@@ -78,14 +78,14 @@ export const NodeScannedFilesTableRow = ({
       {/* ── Main Game Row (Floating Card) ── */}
       <tr
         onClick={() => onOpenDetails(item)}
-        className="group relative transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg cursor-pointer"
+        className="group relative transition duration-200 hover:-translate-y-0.5 hover:shadow-lg cursor-pointer"
         style={theme && !hasImage ? theme.rowStyle : undefined}
       >
         {/* Icon Column (First cell: rounded-l-2xl, border-l) */}
         {visibleColumns.icon && (
           <td
             className={cn(
-              'py-4 px-3 text-center border-y border-white/[0.04] first:border-l first:border-white/[0.04] first:rounded-l-2xl last:border-r last:border-white/[0.04] last:rounded-r-2xl transition-all',
+              'py-4 px-3 text-center border-y border-white/[0.04] first:border-l first:border-white/[0.04] first:rounded-l-2xl last:border-r last:border-white/[0.04] last:rounded-r-2xl transition-colors',
               cellBg,
               item.matched && 'first:border-l-2',
             )}
@@ -102,7 +102,7 @@ export const NodeScannedFilesTableRow = ({
                 <img
                   src={effectiveBackdrop}
                   alt=""
-                  className="w-full h-full object-cover filter brightness-[0.35] group-hover:brightness-[0.45] transition-all duration-300"
+                  className="w-full h-full object-cover filter brightness-[0.35] group-hover:brightness-[0.45] transition-colors duration-300"
                   style={{ objectPosition: 'center 30%' }}
                   loading="lazy"
                 />
@@ -150,7 +150,7 @@ export const NodeScannedFilesTableRow = ({
         {/* Title & Info */}
         <td
           className={cn(
-            'py-4 px-3.5 min-w-[170px] max-w-xs sm:max-w-sm border-y border-white/[0.04] first:border-l first:border-white/[0.04] first:rounded-l-2xl last:border-r last:border-white/[0.04] last:rounded-r-2xl transition-all',
+            'py-4 px-3.5 min-w-[170px] max-w-xs sm:max-w-sm border-y border-white/[0.04] first:border-l first:border-white/[0.04] first:rounded-l-2xl last:border-r last:border-white/[0.04] last:rounded-r-2xl transition-colors',
             cellBg,
           )}
         >
@@ -163,7 +163,7 @@ export const NodeScannedFilesTableRow = ({
               <img
                 src={effectiveBackdrop}
                 alt=""
-                className="w-full h-full object-cover filter brightness-[0.35] group-hover:brightness-[0.45] transition-all duration-300"
+                className="w-full h-full object-cover filter brightness-[0.35] group-hover:brightness-[0.45] transition-colors duration-300"
                 style={{ objectPosition: 'center 30%' }}
                 loading="lazy"
               />
@@ -248,7 +248,7 @@ export const NodeScannedFilesTableRow = ({
         {visibleColumns.filename && (
           <td
             className={cn(
-              'py-4 px-3.5 hidden md:table-cell max-w-xs lg:max-w-sm border-y border-white/[0.04] last:border-r last:border-white/[0.04] last:rounded-r-2xl transition-all',
+              'py-4 px-3.5 hidden md:table-cell max-w-xs lg:max-w-sm border-y border-white/[0.04] last:border-r last:border-white/[0.04] last:rounded-r-2xl transition-colors',
               cellBg,
             )}
           >
@@ -293,7 +293,7 @@ export const NodeScannedFilesTableRow = ({
         {visibleColumns.platform && (
           <td
             className={cn(
-              'py-4 px-3 text-center border-y border-white/[0.04] last:border-r last:border-white/[0.04] last:rounded-r-2xl transition-all',
+              'py-4 px-3 text-center border-y border-white/[0.04] last:border-r last:border-white/[0.04] last:rounded-r-2xl transition-colors',
               cellBg,
             )}
           >
@@ -307,7 +307,7 @@ export const NodeScannedFilesTableRow = ({
         {visibleColumns.version && (
           <td
             className={cn(
-              'py-4 px-2 text-center border-y border-white/[0.04] last:border-r last:border-white/[0.04] last:rounded-r-2xl transition-all',
+              'py-4 px-2 text-center border-y border-white/[0.04] last:border-r last:border-white/[0.04] last:rounded-r-2xl transition-colors',
               cellBg,
             )}
           >
@@ -325,7 +325,7 @@ export const NodeScannedFilesTableRow = ({
         {visibleColumns.format && (
           <td
             className={cn(
-              'py-4 px-2 text-center border-y border-white/[0.04] last:border-r last:border-white/[0.04] last:rounded-r-2xl transition-all',
+              'py-4 px-2 text-center border-y border-white/[0.04] last:border-r last:border-white/[0.04] last:rounded-r-2xl transition-colors',
               cellBg,
             )}
           >
@@ -339,7 +339,7 @@ export const NodeScannedFilesTableRow = ({
         {visibleColumns.size && (
           <td
             className={cn(
-              'py-4 px-3 text-right font-mono text-xs text-muted-foreground whitespace-nowrap border-y border-white/[0.04] last:border-r last:border-white/[0.04] last:rounded-r-2xl transition-all',
+              'py-4 px-3 text-right font-mono text-xs text-muted-foreground whitespace-nowrap border-y border-white/[0.04] last:border-r last:border-white/[0.04] last:rounded-r-2xl transition-colors',
               cellBg,
             )}
           >
@@ -351,7 +351,7 @@ export const NodeScannedFilesTableRow = ({
         {visibleColumns.date && (
           <td
             className={cn(
-              'py-4 px-3 text-center font-mono text-xs text-muted-foreground whitespace-nowrap hidden lg:table-cell border-y border-white/[0.04] last:border-r last:border-white/[0.04] last:rounded-r-2xl transition-all',
+              'py-4 px-3 text-center font-mono text-xs text-muted-foreground whitespace-nowrap hidden lg:table-cell border-y border-white/[0.04] last:border-r last:border-white/[0.04] last:rounded-r-2xl transition-colors',
               cellBg,
             )}
           >
@@ -363,7 +363,7 @@ export const NodeScannedFilesTableRow = ({
         {visibleColumns.status && (
           <td
             className={cn(
-              'py-4 px-3 text-center whitespace-nowrap border-y border-white/[0.04] last:border-r last:border-white/[0.04] last:rounded-r-2xl transition-all',
+              'py-4 px-3 text-center whitespace-nowrap border-y border-white/[0.04] last:border-r last:border-white/[0.04] last:rounded-r-2xl transition-colors',
               cellBg,
             )}
           >
@@ -400,11 +400,11 @@ export const NodeScannedFilesTableRow = ({
             <tr
               key={`upd-${String(upd.id)}`}
               onClick={() => onOpenDetails(upd)}
-              className="group/upd transition-all duration-150 hover:-translate-y-0.5 cursor-pointer"
+              className="group/upd transition duration-150 hover:-translate-y-0.5 cursor-pointer"
             >
               {/* Branch indicator (rounded-l-xl) */}
               {visibleColumns.icon && (
-                <td className="py-3 px-3 text-center bg-[var(--dk-surface-ghost)]/30 group-hover/upd:bg-[var(--dk-surface-ghost)]/60 border-y border-white/[0.03] first:border-l first:border-white/[0.03] first:rounded-l-xl last:border-r last:border-white/[0.03] last:rounded-r-xl transition-all">
+                <td className="py-3 px-3 text-center bg-[var(--dk-surface-ghost)]/30 group-hover/upd:bg-[var(--dk-surface-ghost)]/60 border-y border-white/[0.03] first:border-l first:border-white/[0.03] first:rounded-l-xl last:border-r last:border-white/[0.03] last:rounded-r-xl transition-colors">
                   <div className="flex items-center justify-center text-primary/70">
                     <CornerDownRight className="h-4 w-4" />
                   </div>
@@ -414,7 +414,7 @@ export const NodeScannedFilesTableRow = ({
               {/* Update Title */}
               <td
                 className={cn(
-                  'py-3 px-3.5 bg-[var(--dk-surface-ghost)]/30 group-hover/upd:bg-[var(--dk-surface-ghost)]/60 border-y border-white/[0.03] first:border-l first:border-white/[0.03] first:rounded-l-xl last:border-r last:border-white/[0.03] last:rounded-r-xl transition-all',
+                  'py-3 px-3.5 bg-[var(--dk-surface-ghost)]/30 group-hover/upd:bg-[var(--dk-surface-ghost)]/60 border-y border-white/[0.03] first:border-l first:border-white/[0.03] first:rounded-l-xl last:border-r last:border-white/[0.03] last:rounded-r-xl transition-colors',
                 )}
               >
                 <div className="flex items-center gap-1.5">
@@ -430,7 +430,7 @@ export const NodeScannedFilesTableRow = ({
 
               {/* Update File Name */}
               {visibleColumns.filename && (
-                <td className="py-3 px-3.5 hidden md:table-cell max-w-xs lg:max-w-sm bg-[var(--dk-surface-ghost)]/30 group-hover/upd:bg-[var(--dk-surface-ghost)]/60 border-y border-white/[0.03] last:border-r last:border-white/[0.03] last:rounded-r-xl transition-all">
+                <td className="py-3 px-3.5 hidden md:table-cell max-w-xs lg:max-w-sm bg-[var(--dk-surface-ghost)]/30 group-hover/upd:bg-[var(--dk-surface-ghost)]/60 border-y border-white/[0.03] last:border-r last:border-white/[0.03] last:rounded-r-xl transition-colors">
                   <div className="flex items-center gap-1.5 min-w-0">
                     <span className="font-mono text-xs font-semibold text-foreground truncate select-all" title={upd.path}>
                       {updFilename}
@@ -456,7 +456,7 @@ export const NodeScannedFilesTableRow = ({
 
               {/* Platform */}
               {visibleColumns.platform && (
-                <td className="py-3 px-3 text-center bg-[var(--dk-surface-ghost)]/30 group-hover/upd:bg-[var(--dk-surface-ghost)]/60 border-y border-white/[0.03] last:border-r last:border-white/[0.03] last:rounded-r-xl transition-all">
+                <td className="py-3 px-3 text-center bg-[var(--dk-surface-ghost)]/30 group-hover/upd:bg-[var(--dk-surface-ghost)]/60 border-y border-white/[0.03] last:border-r last:border-white/[0.03] last:rounded-r-xl transition-colors">
                   <span className="text-[9px] uppercase font-semibold text-muted-foreground px-1.5 py-0.5 rounded bg-[var(--dk-surface-base)] border border-white/[0.04]">
                     Patch
                   </span>
@@ -465,7 +465,7 @@ export const NodeScannedFilesTableRow = ({
 
               {/* Version */}
               {visibleColumns.version && (
-                <td className="py-3 px-2 text-center bg-[var(--dk-surface-ghost)]/30 group-hover/upd:bg-[var(--dk-surface-ghost)]/60 border-y border-white/[0.03] last:border-r last:border-white/[0.03] last:rounded-r-xl transition-all">
+                <td className="py-3 px-2 text-center bg-[var(--dk-surface-ghost)]/30 group-hover/upd:bg-[var(--dk-surface-ghost)]/60 border-y border-white/[0.03] last:border-r last:border-white/[0.03] last:rounded-r-xl transition-colors">
                   {updVersion ? (
                     <span className="font-mono text-[9px] font-semibold text-primary px-1.5 py-0.5 rounded bg-primary/10 border border-primary/20">
                       {updVersion}
@@ -478,7 +478,7 @@ export const NodeScannedFilesTableRow = ({
 
               {/* Format */}
               {visibleColumns.format && (
-                <td className="py-3 px-2 text-center bg-[var(--dk-surface-ghost)]/30 group-hover/upd:bg-[var(--dk-surface-ghost)]/60 border-y border-white/[0.03] last:border-r last:border-white/[0.03] last:rounded-r-xl transition-all">
+                <td className="py-3 px-2 text-center bg-[var(--dk-surface-ghost)]/30 group-hover/upd:bg-[var(--dk-surface-ghost)]/60 border-y border-white/[0.03] last:border-r last:border-white/[0.03] last:rounded-r-xl transition-colors">
                   <span className="text-[9px] uppercase font-semibold text-primary px-1.5 py-0.5 rounded bg-primary/10 border border-primary/20">
                     {updBadge.label}
                   </span>
@@ -487,21 +487,21 @@ export const NodeScannedFilesTableRow = ({
 
               {/* Size */}
               {visibleColumns.size && (
-                <td className="py-3 px-3 text-right font-mono text-xs text-muted-foreground whitespace-nowrap bg-[var(--dk-surface-ghost)]/30 group-hover/upd:bg-[var(--dk-surface-ghost)]/60 border-y border-white/[0.03] last:border-r last:border-white/[0.03] last:rounded-r-xl transition-all">
+                <td className="py-3 px-3 text-right font-mono text-xs text-muted-foreground whitespace-nowrap bg-[var(--dk-surface-ghost)]/30 group-hover/upd:bg-[var(--dk-surface-ghost)]/60 border-y border-white/[0.03] last:border-r last:border-white/[0.03] last:rounded-r-xl transition-colors">
                   {formatScanSize(upd.sizeBytes)}
                 </td>
               )}
 
               {/* Date */}
               {visibleColumns.date && (
-                <td className="py-3 px-3 text-center font-mono text-xs text-muted-foreground whitespace-nowrap hidden lg:table-cell bg-[var(--dk-surface-ghost)]/30 group-hover/upd:bg-[var(--dk-surface-ghost)]/60 border-y border-white/[0.03] last:border-r last:border-white/[0.03] last:rounded-r-xl transition-all">
+                <td className="py-3 px-3 text-center font-mono text-xs text-muted-foreground whitespace-nowrap hidden lg:table-cell bg-[var(--dk-surface-ghost)]/30 group-hover/upd:bg-[var(--dk-surface-ghost)]/60 border-y border-white/[0.03] last:border-r last:border-white/[0.03] last:rounded-r-xl transition-colors">
                   {formatScanDate(upd.modifiedAt)}
                 </td>
               )}
 
               {/* Status */}
               {visibleColumns.status && (
-                <td className="py-3 px-3 text-center bg-[var(--dk-surface-ghost)]/30 group-hover/upd:bg-[var(--dk-surface-ghost)]/60 border-y border-white/[0.03] last:border-r last:border-white/[0.03] last:rounded-r-xl transition-all">
+                <td className="py-3 px-3 text-center bg-[var(--dk-surface-ghost)]/30 group-hover/upd:bg-[var(--dk-surface-ghost)]/60 border-y border-white/[0.03] last:border-r last:border-white/[0.03] last:rounded-r-xl transition-colors">
                   <span className="text-[10px] text-muted-foreground/50 select-none">•</span>
                 </td>
               )}
@@ -520,11 +520,11 @@ export const NodeScannedFilesTableRow = ({
             <tr
               key={`src-${source.id}`}
               onClick={() => onOpenDetails(source as unknown as ScannedGameItem)}
-              className="group/src relative transition-all duration-150 hover:bg-white/[0.02] cursor-pointer"
+              className="group/src relative transition-colors duration-150 hover:bg-white/[0.02] cursor-pointer"
             >
               {/* Indent Indicator */}
               {visibleColumns.icon && (
-                <td className="py-3 px-3 text-center bg-[var(--dk-surface-ghost)]/30 group-hover/src:bg-[var(--dk-surface-ghost)]/60 border-y border-white/[0.03] first:border-l first:border-white/[0.03] first:rounded-l-xl last:border-r last:border-white/[0.03] last:rounded-r-xl transition-all">
+                <td className="py-3 px-3 text-center bg-[var(--dk-surface-ghost)]/30 group-hover/src:bg-[var(--dk-surface-ghost)]/60 border-y border-white/[0.03] first:border-l first:border-white/[0.03] first:rounded-l-xl last:border-r last:border-white/[0.03] last:rounded-r-xl transition-colors">
                   <div className="flex items-center justify-center text-muted-foreground/50">
                     <CornerDownRight className="h-4 w-4" />
                   </div>
@@ -534,7 +534,7 @@ export const NodeScannedFilesTableRow = ({
               {/* Source Title & Type Label */}
               <td
                 className={cn(
-                  'py-3 px-3.5 bg-[var(--dk-surface-ghost)]/30 group-hover/src:bg-[var(--dk-surface-ghost)]/60 border-y border-white/[0.03] first:border-l first:border-white/[0.03] first:rounded-l-xl last:border-r last:border-white/[0.03] last:rounded-r-xl transition-all',
+                  'py-3 px-3.5 bg-[var(--dk-surface-ghost)]/30 group-hover/src:bg-[var(--dk-surface-ghost)]/60 border-y border-white/[0.03] first:border-l first:border-white/[0.03] first:rounded-l-xl last:border-r last:border-white/[0.03] last:rounded-r-xl transition-colors',
                 )}
               >
                 <div className="flex items-center gap-1.5 flex-wrap">
@@ -554,7 +554,7 @@ export const NodeScannedFilesTableRow = ({
 
               {/* Source File Name & Copy */}
               {visibleColumns.filename && (
-                <td className="py-3 px-3.5 hidden md:table-cell max-w-xs lg:max-w-sm bg-[var(--dk-surface-ghost)]/30 group-hover/src:bg-[var(--dk-surface-ghost)]/60 border-y border-white/[0.03] last:border-r last:border-white/[0.03] last:rounded-r-xl transition-all">
+                <td className="py-3 px-3.5 hidden md:table-cell max-w-xs lg:max-w-sm bg-[var(--dk-surface-ghost)]/30 group-hover/src:bg-[var(--dk-surface-ghost)]/60 border-y border-white/[0.03] last:border-r last:border-white/[0.03] last:rounded-r-xl transition-colors">
                   <div className="flex items-center gap-1.5 min-w-0">
                     <span className="font-mono text-xs font-semibold text-foreground truncate select-all" title={source.path}>
                       {srcFilename}
@@ -580,7 +580,7 @@ export const NodeScannedFilesTableRow = ({
 
               {/* Platform */}
               {visibleColumns.platform && (
-                <td className="py-3 px-3 text-center bg-[var(--dk-surface-ghost)]/30 group-hover/src:bg-[var(--dk-surface-ghost)]/60 border-y border-white/[0.03] last:border-r last:border-white/[0.03] last:rounded-r-xl transition-all">
+                <td className="py-3 px-3 text-center bg-[var(--dk-surface-ghost)]/30 group-hover/src:bg-[var(--dk-surface-ghost)]/60 border-y border-white/[0.03] last:border-r last:border-white/[0.03] last:rounded-r-xl transition-colors">
                   <span className="text-[9px] uppercase font-semibold text-muted-foreground px-1.5 py-0.5 rounded bg-[var(--dk-surface-base)] border border-white/[0.04]">
                     {source.platform ? String(source.platform).toUpperCase() : 'PC'}
                   </span>
@@ -589,7 +589,7 @@ export const NodeScannedFilesTableRow = ({
 
               {/* Version */}
               {visibleColumns.version && (
-                <td className="py-3 px-2 text-center bg-[var(--dk-surface-ghost)]/30 group-hover/src:bg-[var(--dk-surface-ghost)]/60 border-y border-white/[0.03] last:border-r last:border-white/[0.03] last:rounded-r-xl transition-all">
+                <td className="py-3 px-2 text-center bg-[var(--dk-surface-ghost)]/30 group-hover/src:bg-[var(--dk-surface-ghost)]/60 border-y border-white/[0.03] last:border-r last:border-white/[0.03] last:rounded-r-xl transition-colors">
                   {source.version ? (
                     <span className="font-mono text-[9px] font-semibold text-primary px-1.5 py-0.5 rounded bg-primary/10 border border-primary/20">
                       {source.version}
@@ -602,7 +602,7 @@ export const NodeScannedFilesTableRow = ({
 
               {/* Format */}
               {visibleColumns.format && (
-                <td className="py-3 px-2 text-center bg-[var(--dk-surface-ghost)]/30 group-hover/src:bg-[var(--dk-surface-ghost)]/60 border-y border-white/[0.03] last:border-r last:border-white/[0.03] last:rounded-r-xl transition-all">
+                <td className="py-3 px-2 text-center bg-[var(--dk-surface-ghost)]/30 group-hover/src:bg-[var(--dk-surface-ghost)]/60 border-y border-white/[0.03] last:border-r last:border-white/[0.03] last:rounded-r-xl transition-colors">
                   <span className="text-[9px] uppercase font-semibold text-primary px-1.5 py-0.5 rounded bg-primary/10 border border-primary/20">
                     {source.format || (isIsoSrc ? 'ISO' : 'PC')}
                   </span>
@@ -611,21 +611,21 @@ export const NodeScannedFilesTableRow = ({
 
               {/* Size */}
               {visibleColumns.size && (
-                <td className="py-3 px-3 text-right font-mono text-xs text-muted-foreground whitespace-nowrap bg-[var(--dk-surface-ghost)]/30 group-hover/src:bg-[var(--dk-surface-ghost)]/60 border-y border-white/[0.03] last:border-r last:border-white/[0.03] last:rounded-r-xl transition-all">
+                <td className="py-3 px-3 text-right font-mono text-xs text-muted-foreground whitespace-nowrap bg-[var(--dk-surface-ghost)]/30 group-hover/src:bg-[var(--dk-surface-ghost)]/60 border-y border-white/[0.03] last:border-r last:border-white/[0.03] last:rounded-r-xl transition-colors">
                   {formatScanSize(source.sizeBytes)}
                 </td>
               )}
 
               {/* Date */}
               {visibleColumns.date && (
-                <td className="py-3 px-3 text-center font-mono text-xs text-muted-foreground whitespace-nowrap hidden lg:table-cell bg-[var(--dk-surface-ghost)]/30 group-hover/src:bg-[var(--dk-surface-ghost)]/60 border-y border-white/[0.03] last:border-r last:border-white/[0.03] last:rounded-r-xl transition-all">
+                <td className="py-3 px-3 text-center font-mono text-xs text-muted-foreground whitespace-nowrap hidden lg:table-cell bg-[var(--dk-surface-ghost)]/30 group-hover/src:bg-[var(--dk-surface-ghost)]/60 border-y border-white/[0.03] last:border-r last:border-white/[0.03] last:rounded-r-xl transition-colors">
                   {formatScanDate(source.modifiedAt)}
                 </td>
               )}
 
               {/* Status */}
               {visibleColumns.status && (
-                <td className="py-3 px-3 text-center bg-[var(--dk-surface-ghost)]/30 group-hover/src:bg-[var(--dk-surface-ghost)]/60 border-y border-white/[0.03] last:border-r last:border-white/[0.03] last:rounded-r-xl transition-all">
+                <td className="py-3 px-3 text-center bg-[var(--dk-surface-ghost)]/30 group-hover/src:bg-[var(--dk-surface-ghost)]/60 border-y border-white/[0.03] last:border-r last:border-white/[0.03] last:rounded-r-xl transition-colors">
                   <span className="text-[10px] text-muted-foreground/50 select-none">•</span>
                 </td>
               )}

@@ -317,7 +317,7 @@ export const GenrePage = () => {
         <div className="flex items-center gap-2 overflow-x-auto py-1 scrollbar-none">
           <Link
             to="/genres"
-            className="px-3.5 py-1.5 rounded-full text-xs font-medium text-muted-foreground hover:text-foreground bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)] transition-all shrink-0 inline-flex items-center gap-1.5 border border-[var(--dk-separator)]"
+            className="px-3.5 py-1.5 rounded-full text-xs font-medium text-muted-foreground hover:text-foreground bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)] transition-colors shrink-0 inline-flex items-center gap-1.5 border border-[var(--dk-separator)]"
           >
             All
           </Link>

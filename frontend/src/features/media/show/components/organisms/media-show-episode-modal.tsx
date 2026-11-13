@@ -2,7 +2,7 @@ import { useState, useRef, useLayoutEffect } from "react"
 import { Play, X, Loader2 } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Image } from "@ui/atoms/image"
-import type { EpisodeOut } from "@media/queries/media-queries"
+import type { EpisodeOut, SeasonOut } from "@media/queries/media-queries"
 import { formatDate, formatRuntime } from '@media'
 import { FLIP_TRANSITION } from '@media'
 import { useStreamEpisode } from "@/features/media/hooks/use-stream-episode"
@@ -17,6 +17,7 @@ export interface EpisodeModalProps {
   showId?: string
   showTitle?: string
   seasonNumber?: number
+  seasons?: SeasonOut[]
 }
 
 export const EpisodeModal = ({
@@ -28,6 +29,7 @@ export const EpisodeModal = ({
   showId,
   showTitle,
   seasonNumber,
+  seasons,
 }: EpisodeModalProps) => {
   const { streamEpisode } = useStreamEpisode()
   const { getEpisodeDownload } = useMediaDownloadActivity('show', showId, { title: showTitle })
@@ -156,7 +158,7 @@ export const EpisodeModal = ({
                 {download && (
                   <div className="absolute inset-x-0 bottom-0 h-1.5 bg-black/60 z-20 overflow-hidden">
                     <div
-                      className="h-full bg-primary transition-all duration-300 ease-out"
+                      className="h-full bg-primary transition-colors duration-300 ease-out"
                       style={{ width: `${Math.min(100, Math.max(0, download.percentage))}%` }}
                     />
                   </div>
@@ -219,7 +221,7 @@ export const EpisodeModal = ({
                     {/* Progress Bar */}
                     <div className="relative h-2 w-full overflow-hidden rounded-full bg-black/25">
                       <div
-                        className="h-full rounded-full bg-primary transition-all duration-300 ease-out"
+                        className="h-full rounded-full bg-primary transition-colors duration-300 ease-out"
                         style={{ width: `${Math.min(100, Math.max(0, download.percentage))}%` }}
                       />
                     </div>
@@ -257,9 +259,10 @@ export const EpisodeModal = ({
                           seasonNumber,
                           episodeNumber: episode.episodeNumber,
                           episodeTitle: episode.name || undefined,
+                          seasons,
                         })
                       }}
-                      className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-amber-500/20 text-amber-200 ring-1 ring-amber-400/50 hover:bg-amber-500/30 hover:ring-amber-400/70 font-semibold text-xs sm:text-sm transition-all shadow-lg active:scale-98 cursor-pointer"
+                      className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-amber-500/20 text-amber-200 ring-1 ring-amber-400/50 hover:bg-amber-500/30 hover:ring-amber-400/70 font-semibold text-xs sm:text-sm transition shadow-lg active:scale-98 cursor-pointer"
                     >
                       <Play className="h-4 w-4 fill-current text-current" />
                       <span>

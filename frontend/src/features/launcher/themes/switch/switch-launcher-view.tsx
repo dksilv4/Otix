@@ -101,7 +101,7 @@ export const SwitchLauncherView = () => {
           <button
             onClick={() => navigate({ to: "/" })}
             title="Exit to Otix Hub"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-field)] text-muted-foreground hover:text-foreground text-xs font-bold transition-all cursor-pointer border border-white/[0.04]"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-field)] text-muted-foreground hover:text-foreground text-xs font-bold transition-colors cursor-pointer border border-white/[0.04]"
           >
             <ArrowLeft size={14} />
             <span>Otix App</span>
@@ -164,7 +164,7 @@ export const SwitchLauncherView = () => {
             <div className="flex items-center gap-3">
               <button
                 onClick={() => handlePlayGame(activeGame)}
-                className="flex items-center gap-2 px-6 py-2.5 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground font-black text-xs uppercase tracking-wider shadow-lg shadow-primary/25 active:scale-95 transition-all cursor-pointer"
+                className="flex items-center gap-2 px-6 py-2.5 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground font-black text-xs uppercase tracking-wider shadow-lg shadow-primary/25 active:scale-95 transition cursor-pointer"
               >
                 <Play size={14} className="fill-current" />
                 <span>Start</span>
@@ -199,7 +199,7 @@ export const SwitchLauncherView = () => {
                 onClick={() => selectGame(game.id)}
                 whileHover={{ y: -8, scale: 1.03 }}
                 whileTap={{ scale: 0.96 }}
-                className={`relative shrink-0 rounded-2xl overflow-hidden cursor-pointer transition-all duration-300 ${
+                className={`relative shrink-0 rounded-2xl overflow-hidden cursor-pointer transition-colors duration-300 ${
                   isSelected
                     ? "w-48 sm:w-56 aspect-[3/4] ring-2 ring-primary shadow-lg shadow-primary/20"
                     : "w-36 sm:w-44 aspect-[3/4] opacity-70 hover:opacity-100 ring-1 ring-white/[0.06]"

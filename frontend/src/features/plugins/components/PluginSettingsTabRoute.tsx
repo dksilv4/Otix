@@ -122,7 +122,7 @@ export const PluginSettingsTabRoute = () => {
                     ))
                   }}
                   className={cn(
-                    'inline-flex items-center gap-2 px-4 py-2 rounded-xl font-semibold text-sm transition-all cursor-pointer',
+                    'inline-flex items-center gap-2 px-4 py-2 rounded-xl font-semibold text-sm transition-colors cursor-pointer',
                     isSabnzbdConfigured
                       ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/25 hover:bg-amber-500/25'
                       : 'bg-primary text-primary-foreground hover:bg-primary/90'
@@ -150,7 +150,7 @@ export const PluginSettingsTabRoute = () => {
                     ))
                   }}
                   className={cn(
-                    'inline-flex items-center gap-2 px-4 py-2 rounded-xl font-semibold text-sm transition-all cursor-pointer',
+                    'inline-flex items-center gap-2 px-4 py-2 rounded-xl font-semibold text-sm transition-colors cursor-pointer',
                     isProwlarrConfigured
                       ? 'bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/25 hover:bg-rose-500/25'
                       : 'bg-primary text-primary-foreground hover:bg-primary/90'
@@ -178,7 +178,7 @@ export const PluginSettingsTabRoute = () => {
                     ))
                   }}
                   className={cn(
-                    'inline-flex items-center gap-2 px-4 py-2 rounded-xl font-semibold text-sm transition-all cursor-pointer',
+                    'inline-flex items-center gap-2 px-4 py-2 rounded-xl font-semibold text-sm transition-colors cursor-pointer',
                     isRadarrConfigured
                       ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/25 hover:bg-amber-500/25'
                       : 'bg-primary text-primary-foreground hover:bg-primary/90'
@@ -206,7 +206,7 @@ export const PluginSettingsTabRoute = () => {
                     ))
                   }}
                   className={cn(
-                    'inline-flex items-center gap-2 px-4 py-2 rounded-xl font-semibold text-sm transition-all cursor-pointer',
+                    'inline-flex items-center gap-2 px-4 py-2 rounded-xl font-semibold text-sm transition-colors cursor-pointer',
                     isSonarrConfigured
                       ? 'bg-cyan-500/15 text-cyan-600 dark:text-cyan-400 border border-cyan-500/25 hover:bg-cyan-500/25'
                       : 'bg-primary text-primary-foreground hover:bg-primary/90'

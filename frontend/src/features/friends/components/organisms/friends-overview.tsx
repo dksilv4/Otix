@@ -44,7 +44,7 @@ export const FriendsOverview = ({
           <button
             type="button"
             onClick={onOpenAddFriend}
-            className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground shadow-sm transition-all hover:opacity-90 active:scale-95 cursor-pointer"
+            className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground shadow-sm transition hover:opacity-90 active:scale-95 cursor-pointer"
           >
             <UserPlus className="h-4 w-4" />
             <span>Add Friend</span>
@@ -59,7 +59,7 @@ export const FriendsOverview = ({
           <button
             type="button"
             onClick={() => onSelectTab('all')}
-            className={`inline-flex items-center gap-2 rounded-xl px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer ${
+            className={`inline-flex items-center gap-2 rounded-xl px-3 py-1.5 text-xs font-semibold transition-colors cursor-pointer ${
               currentTab === 'all'
                 ? 'bg-primary text-primary-foreground shadow-sm'
                 : 'text-muted-foreground hover:bg-[var(--dk-surface-ghost)] hover:text-foreground'
@@ -73,7 +73,7 @@ export const FriendsOverview = ({
           <button
             type="button"
             onClick={() => onSelectTab('active')}
-            className={`inline-flex items-center gap-2 rounded-xl px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer ${
+            className={`inline-flex items-center gap-2 rounded-xl px-3 py-1.5 text-xs font-semibold transition-colors cursor-pointer ${
               currentTab === 'active'
                 ? 'bg-primary text-primary-foreground shadow-sm'
                 : 'text-muted-foreground hover:bg-[var(--dk-surface-ghost)] hover:text-foreground'
@@ -91,7 +91,7 @@ export const FriendsOverview = ({
           <button
             type="button"
             onClick={() => onSelectTab('activity')}
-            className={`inline-flex items-center gap-2 rounded-xl px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer ${
+            className={`inline-flex items-center gap-2 rounded-xl px-3 py-1.5 text-xs font-semibold transition-colors cursor-pointer ${
               currentTab === 'activity'
                 ? 'bg-primary text-primary-foreground shadow-sm'
                 : 'text-muted-foreground hover:bg-[var(--dk-surface-ghost)] hover:text-foreground'
@@ -104,7 +104,7 @@ export const FriendsOverview = ({
           <button
             type="button"
             onClick={() => onSelectTab('requests')}
-            className={`inline-flex items-center gap-2 rounded-xl px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer ${
+            className={`inline-flex items-center gap-2 rounded-xl px-3 py-1.5 text-xs font-semibold transition-colors cursor-pointer ${
               currentTab === 'requests'
                 ? 'bg-primary text-primary-foreground shadow-sm'
                 : 'text-muted-foreground hover:bg-[var(--dk-surface-ghost)] hover:text-foreground'
@@ -129,7 +129,7 @@ export const FriendsOverview = ({
               value={searchQuery}
               onChange={(e) => onSearchChange(e.target.value)}
               placeholder="Filter friends..."
-              className="w-full rounded-xl bg-[var(--dk-surface-field)] py-1.5 pl-9 pr-3 text-xs text-foreground placeholder:text-muted-foreground outline-none transition-all focus:ring-1 focus:ring-primary border-none"
+              className="w-full rounded-xl bg-[var(--dk-surface-field)] py-1.5 pl-9 pr-3 text-xs text-foreground placeholder:text-muted-foreground outline-none transition-colors focus:ring-1 focus:ring-primary border-none"
             />
           </div>
         )}

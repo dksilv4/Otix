@@ -62,7 +62,7 @@ export const MediaGamePlatformsSection = ({
               key={p.id}
               title={p.platform.name}
               aria-label={p.platform.name}
-              className="glass-inset flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-all hover:scale-105 hover:bg-[var(--dk-surface-glass)] hover:text-foreground"
+              className="glass-inset flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition hover:scale-105 hover:bg-[var(--dk-surface-glass)] hover:text-foreground"
             >
               <PlatformIcon slug={p.platform.slug} className="h-4 w-4" />
             </div>

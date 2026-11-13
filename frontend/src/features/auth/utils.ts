@@ -156,30 +156,54 @@ export const setCachedUser = (user: import('@auth/types').User | null): void => 
   }
 }
 
-export const fetchAuthenticatedUser = async (): Promise<import('@auth/types').User | null> => {
+let fetchUserInFlight: Promise<import('@auth/types').User | null> | null = null
+let lastFetchedUserTime = 0
+
+export const fetchAuthenticatedUser = async (
+  force = false,
+): Promise<import('@auth/types').User | null> => {
   const { apiClient } = await import('@/lib/api/client')
   const { ACCESS_TOKEN_KEY } = await import('@/lib/config')
   const token = typeof window !== 'undefined' ? localStorage.getItem(ACCESS_TOKEN_KEY) : null
   if (!token) {
     setCachedUser(null)
+    lastFetchedUserTime = 0
     return null
   }
-  try {
-    const [meRes, intRes] = await Promise.all([
-      apiClient.get('/auth/me'),
-      apiClient.get('/auth/me/integrations').catch(() => null),
-    ])
-    const user = meRes.data as import('@auth/types').User
-    if (intRes?.data) Object.assign(user, intRes.data)
-    setCachedUser(user)
-    return user
-  } catch (error: unknown) {
-    const status = (error as { response?: { status?: number } })?.response?.status
-    if (status === 401 || status === 403) {
-      setCachedUser(null)
-      localStorage.removeItem(ACCESS_TOKEN_KEY)
-      window.desktopAPI?.plugin?.setAuthToken(null)
+
+  const now = Date.now()
+  if (!force && now - lastFetchedUserTime < 10_000) {
+    const cached = getCachedUser()
+    if (cached) return cached
+  }
+
+  if (!force && fetchUserInFlight) {
+    return fetchUserInFlight
+  }
+
+  fetchUserInFlight = (async () => {
+    try {
+      const [meRes, intRes] = await Promise.all([
+        apiClient.get('/auth/me'),
+        apiClient.get('/auth/me/integrations').catch(() => null),
+      ])
+      const user = meRes.data as import('@auth/types').User
+      if (intRes?.data) Object.assign(user, intRes.data)
+      setCachedUser(user)
+      lastFetchedUserTime = Date.now()
+      return user
+    } catch (error: unknown) {
+      const status = (error as { response?: { status?: number } })?.response?.status
+      if (status === 401 || status === 403) {
+        setCachedUser(null)
+        localStorage.removeItem(ACCESS_TOKEN_KEY)
+        window.desktopAPI?.plugin?.setAuthToken(null)
+      }
+      return null
+    } finally {
+      fetchUserInFlight = null
     }
-    return null
-  }
+  })()
+
+  return fetchUserInFlight
 }

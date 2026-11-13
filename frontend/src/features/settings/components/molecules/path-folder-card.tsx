@@ -65,7 +65,7 @@ export const PathFolderCard = ({
   return (
     <div
       className={cn(
-        'group relative flex flex-col justify-between p-4 rounded-2xl transition-all duration-200',
+        'group relative flex flex-col justify-between p-4 rounded-2xl transition-colors duration-200',
         'bg-[var(--dk-surface-glass)] backdrop-blur-xl hover:bg-[var(--dk-surface-glass)]/90',
         'border border-white/[0.04] hover:border-white/[0.08]',
         className,
@@ -234,7 +234,7 @@ export const PathFolderCard = ({
               type="button"
               onClick={() => onToggleInstallation(item.path)}
               className={cn(
-                'flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-medium transition-all cursor-pointer border',
+                'flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-medium transition-colors cursor-pointer border',
                 item.isInstallation
                   ? 'bg-primary text-primary-foreground border-primary/20 shadow-xs'
                   : 'bg-[var(--dk-surface-base)] text-muted-foreground hover:text-foreground border-white/[0.04]',
@@ -253,7 +253,7 @@ export const PathFolderCard = ({
               type="button"
               onClick={() => onAssignDownload(item.path)}
               className={cn(
-                'flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-medium transition-all cursor-pointer border',
+                'flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-medium transition-colors cursor-pointer border',
                 item.isGamesDownload
                   ? 'bg-primary text-primary-foreground border-primary/20 shadow-xs'
                   : 'bg-[var(--dk-surface-base)] text-muted-foreground hover:text-foreground border-white/[0.04]',
@@ -286,7 +286,7 @@ export const PathFolderCard = ({
               type="button"
               onClick={() => onToggleIso(item.path)}
               className={cn(
-                'flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-medium transition-all cursor-pointer border',
+                'flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-medium transition-colors cursor-pointer border',
                 item.isIso
                   ? 'bg-primary text-primary-foreground border-primary/20 shadow-xs'
                   : 'bg-[var(--dk-surface-base)] text-muted-foreground hover:text-foreground border-white/[0.04]',

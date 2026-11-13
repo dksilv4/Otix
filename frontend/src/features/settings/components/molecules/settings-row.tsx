@@ -18,7 +18,7 @@ export const SettingsRow = ({ icon, label, description, action, disabled, classN
   return (
     <div
       className={cn(
-        'flex items-center justify-between rounded-xl px-4 py-3.5 transition-all duration-200 hover:bg-[var(--dk-surface-hover)]',
+        'flex items-center justify-between rounded-xl px-4 py-3.5 transition-colors duration-200 hover:bg-[var(--dk-surface-hover)]',
         disabled && 'opacity-50 pointer-events-none',
         className,
       )}

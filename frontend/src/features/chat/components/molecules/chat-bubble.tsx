@@ -130,11 +130,11 @@ export const ChatBubble = ({
               setShowTapbackBar((prev) => !prev)
             }}
             {...longPress.handlers}
-            className={`relative px-3.5 py-2 text-[13px] leading-[1.38] tracking-[-0.01em] transition-all select-text ${
+            className={`relative px-3.5 py-2 text-[13px] leading-[1.38] tracking-[-0.01em] transition-colors select-text ${
               isDeleted
                 ? 'rounded-[18px] bg-[var(--dk-surface-ghost)]/60 text-muted-foreground/60 italic border border-white/[0.04]'
                 : isOutgoing
-                  ? 'rounded-[18px] rounded-br-[4px] bg-primary text-primary-foreground font-normal shadow-[0_1px_3px_rgba(0,0,0,0.08)]'
+                  ? 'rounded-[18px] rounded-br-[4px] bg-primary text-primary-foreground font-normal shadow-xs'
                   : 'rounded-[18px] rounded-bl-[4px] bg-[var(--dk-surface-ghost)] text-foreground font-normal'
             }`}
           >
@@ -143,7 +143,7 @@ export const ChatBubble = ({
               <div
                 className={`absolute ${
                   spaceAbove < 20 ? '-bottom-2.5' : '-top-2.5'
-                } z-10 flex items-center gap-1 rounded-full bg-[var(--dk-surface-overlay)]/95 backdrop-blur-xl border border-white/[0.08] px-1.5 py-0.5 shadow-[0_2px_8px_rgba(0,0,0,0.18)] text-[11px] ${
+                } z-10 flex items-center gap-1 rounded-full bg-[var(--dk-surface-overlay)]/95 backdrop-blur-xl border border-white/[0.08] px-1.5 py-0.5 shadow-sm text-[11px] ${
                   isOutgoing ? 'right-2' : 'left-2'
                 }`}
                 onClick={(e) => e.stopPropagation()}
@@ -247,7 +247,7 @@ export const ChatBubble = ({
             {/* Apple-style Tapback Bar with Smart Placement */}
             {showTapbackBar && !isDeleted && (
               <div
-                className={`absolute z-30 flex items-center gap-1 rounded-full bg-[var(--dk-surface-overlay)]/95 backdrop-blur-2xl border border-white/[0.08] shadow-[0_8px_24px_rgba(0,0,0,0.28)] px-2 py-1 animate-in fade-in zoom-in-95 duration-150 select-none ${
+                className={`absolute z-30 flex items-center gap-1 rounded-full bg-[var(--dk-surface-overlay)]/95 backdrop-blur-2xl border border-white/[0.08] shadow-xl px-2 py-1 animate-in fade-in zoom-in-95 duration-150 select-none ${
                   placement === 'bottom'
                     ? reactions.length > 0 && spaceAbove < 20
                       ? 'top-full mt-3 right-0'
@@ -312,7 +312,7 @@ export const ChatBubble = ({
                 setShowTapbackBar((prev) => !prev)
                 setShowMoreActions(false)
               }}
-              className={`p-1.5 rounded-full text-muted-foreground/60 hover:text-foreground hover:bg-[var(--dk-surface-ghost-hover)] transition-all cursor-pointer ${
+              className={`p-1.5 rounded-full text-muted-foreground/60 hover:text-foreground hover:bg-[var(--dk-surface-ghost-hover)] transition-colors cursor-pointer ${
                 showTapbackBar ? 'text-primary bg-[var(--dk-surface-ghost-hover)]' : ''
               }`}
               title="React"
@@ -329,7 +329,7 @@ export const ChatBubble = ({
                     setShowMoreActions((prev) => !prev)
                     setShowTapbackBar(false)
                   }}
-                  className={`p-1.5 rounded-full text-muted-foreground/60 hover:text-foreground hover:bg-[var(--dk-surface-ghost-hover)] transition-all cursor-pointer ${
+                  className={`p-1.5 rounded-full text-muted-foreground/60 hover:text-foreground hover:bg-[var(--dk-surface-ghost-hover)] transition-colors cursor-pointer ${
                     showMoreActions ? 'text-primary bg-[var(--dk-surface-ghost-hover)]' : ''
                   }`}
                   title="More options"

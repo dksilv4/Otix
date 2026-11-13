@@ -23,7 +23,7 @@ export const DocsPagination = ({
         <button
           type="button"
           onClick={() => onSelectSection(prev.article.id)}
-          className="group flex flex-col items-start gap-1 p-4 rounded-2xl border border-white/[0.05] bg-[var(--dk-surface-base)] hover:bg-[var(--dk-surface-raised)] transition-all duration-200 text-left shadow-[var(--dk-shadow-xs)]"
+          className="group flex flex-col items-start gap-1 p-4 rounded-2xl border border-white/[0.05] bg-[var(--dk-surface-base)] hover:bg-[var(--dk-surface-raised)] transition-colors duration-200 text-left shadow-[var(--dk-shadow-xs)]"
         >
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground group-hover:text-primary transition-colors">
             <ArrowLeft className="h-3.5 w-3.5 transition-transform group-hover:-translate-x-1" />
@@ -44,7 +44,7 @@ export const DocsPagination = ({
         <button
           type="button"
           onClick={() => onSelectSection(next.article.id)}
-          className="group flex flex-col items-end gap-1 p-4 rounded-2xl border border-white/[0.05] bg-[var(--dk-surface-base)] hover:bg-[var(--dk-surface-raised)] transition-all duration-200 text-right shadow-[var(--dk-shadow-xs)]"
+          className="group flex flex-col items-end gap-1 p-4 rounded-2xl border border-white/[0.05] bg-[var(--dk-surface-base)] hover:bg-[var(--dk-surface-raised)] transition-colors duration-200 text-right shadow-[var(--dk-shadow-xs)]"
         >
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground group-hover:text-primary transition-colors">
             <span>Next</span>

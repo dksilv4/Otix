@@ -37,7 +37,7 @@ export const UserProfileNowPlayingItem = ({
   return (
     <div
       data-testid="user-profile-now-playing-item"
-      className={`inline-flex items-center gap-2 max-w-full rounded-xl bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)] transition-all border border-white/[0.05] px-2.5 py-1 text-xs backdrop-blur-md ${isFocused ? 'ring-1 ring-primary/25' : 'opacity-90 hover:opacity-100'}`}
+      className={`inline-flex items-center gap-2 max-w-full rounded-xl bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)] transition-colors border border-white/[0.05] px-2.5 py-1 text-xs backdrop-blur-md ${isFocused ? 'ring-1 ring-primary/25' : 'opacity-90 hover:opacity-100'}`}
     >
       {/* Game cover thumbnail */}
       <div className="relative w-5 h-7 rounded overflow-hidden shrink-0 bg-[var(--dk-surface-field)] border border-white/[0.05] flex items-center justify-center">

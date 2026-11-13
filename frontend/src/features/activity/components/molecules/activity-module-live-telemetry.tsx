@@ -25,7 +25,7 @@ const UniversalTelemetryView = ({ telemetry }: { telemetry: UniversalGameTelemet
   return (
     <div
       data-testid="universal-live-telemetry"
-      className="w-full rounded-2xl bg-[var(--dk-surface-ghost)] backdrop-blur-2xl p-3.5 flex flex-col gap-3 transition-all"
+      className="w-full rounded-2xl bg-[var(--dk-surface-ghost)] backdrop-blur-2xl p-3.5 flex flex-col gap-3 transition-colors"
     >
       {/* Header */}
       <div className="flex items-center justify-between gap-2">
@@ -109,7 +109,7 @@ const UniversalTelemetryView = ({ telemetry }: { telemetry: UniversalGameTelemet
               </div>
               <div className="w-full h-1.5 rounded-full bg-muted/60 overflow-hidden">
                 <div
-                  className="h-full bg-destructive transition-all duration-300 rounded-full"
+                  className="h-full bg-destructive transition-colors duration-300 rounded-full"
                   style={{ width: `${healthPercent}%` }}
                 />
               </div>
@@ -129,7 +129,7 @@ const UniversalTelemetryView = ({ telemetry }: { telemetry: UniversalGameTelemet
               </div>
               <div className="w-full h-1.5 rounded-full bg-muted/60 overflow-hidden">
                 <div
-                  className="h-full bg-primary transition-all duration-300 rounded-full"
+                  className="h-full bg-primary transition-colors duration-300 rounded-full"
                   style={{ width: `${armorPercent}%` }}
                 />
               </div>
@@ -194,7 +194,7 @@ export const ActivityModuleLiveTelemetry = ({
     return (
       <div
         data-testid={telemetry.id === 'cs2' ? 'cs2-lobby-telemetry' : 'universal-lobby-telemetry'}
-        className="w-full rounded-2xl bg-[var(--dk-surface-ghost)] backdrop-blur-xl p-3.5 flex items-center justify-between gap-3 text-xs transition-all shadow-sm"
+        className="w-full rounded-2xl bg-[var(--dk-surface-ghost)] backdrop-blur-xl p-3.5 flex items-center justify-between gap-3 text-xs transition-colors shadow-sm"
       >
         <div className="flex flex-col min-w-0">
           <span className="font-semibold text-foreground tracking-tight truncate">

@@ -514,7 +514,7 @@ export const SettingsLibraryPage = () => {
                         <button
                           type="button"
                           onClick={() => setSortDir((prev: SortDir) => (prev === 'asc' ? 'desc' : 'asc'))}
-                          className="flex items-center justify-center h-8 w-8 rounded-full bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)] text-muted-foreground hover:text-foreground transition-all cursor-pointer select-none"
+                          className="flex items-center justify-center h-8 w-8 rounded-full bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)] text-muted-foreground hover:text-foreground transition-colors cursor-pointer select-none"
                           title={sortDir === 'asc' ? 'Ascending (Click for Descending)' : 'Descending (Click for Ascending)'}
                         >
                           <ArrowUpDown
@@ -563,7 +563,7 @@ export const SettingsLibraryPage = () => {
                                 setSortKey('title')
                                 setSortDir('asc')
                               }}
-                              className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-[var(--dk-surface-ghost)] text-foreground hover:bg-[var(--dk-surface-ghost-hover)] transition-all cursor-pointer"
+                              className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-[var(--dk-surface-ghost)] text-foreground hover:bg-[var(--dk-surface-ghost-hover)] transition-colors cursor-pointer"
                             >
                               Reset Filters
                             </button>
@@ -582,7 +582,7 @@ export const SettingsLibraryPage = () => {
                             <button
                               key={game.id || game.title}
                               onClick={() => handleGameClick(game)}
-                              className="flex items-center gap-3 p-3 rounded-2xl bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)] text-left transition-all group cursor-pointer relative overflow-hidden"
+                              className="flex items-center gap-3 p-3 rounded-2xl bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)] text-left transition-colors group cursor-pointer relative overflow-hidden"
                             >
                               <div className="h-12 w-12 rounded-xl bg-[var(--dk-surface-field)] shrink-0 overflow-hidden flex items-center justify-center relative">
                                 {iconUrl ? (

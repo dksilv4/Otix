@@ -18,7 +18,7 @@ export const BlueprintCard = ({ blueprint, showActions, onCopy, onEdit, onDelete
   return (
     <div
       onClick={onClick}
-      className="glass-inset rounded-xl p-3.5 space-y-3 transition-all duration-200 hover:bg-[var(--dk-surface-glass)] cursor-pointer group"
+      className="glass-inset rounded-xl p-3.5 space-y-3 transition-colors duration-200 hover:bg-[var(--dk-surface-glass)] cursor-pointer group"
     >
       {/* Header */}
       <div className="flex items-start gap-3">
@@ -72,7 +72,7 @@ export const BlueprintCard = ({ blueprint, showActions, onCopy, onEdit, onDelete
           {onCopy && (
             <button
               onClick={(e) => { e.stopPropagation(); onCopy(blueprint.raw) }}
-              className="flex items-center gap-1 px-2 py-1 text-[10px] rounded-md hover:bg-[var(--dk-surface-glass)] text-muted-foreground hover:text-foreground transition-all"
+              className="flex items-center gap-1 px-2 py-1 text-[10px] rounded-md hover:bg-[var(--dk-surface-glass)] text-muted-foreground hover:text-foreground transition-colors"
               title="Copy blueprint string"
             >
               <Copy className="h-3 w-3" /> Copy
@@ -81,7 +81,7 @@ export const BlueprintCard = ({ blueprint, showActions, onCopy, onEdit, onDelete
           {onEdit && blueprint.id && (
             <button
               onClick={(e) => { e.stopPropagation(); onEdit(blueprint.id!) }}
-              className="flex items-center gap-1 px-2 py-1 text-[10px] rounded-md hover:bg-[var(--dk-surface-glass)] text-muted-foreground hover:text-foreground transition-all"
+              className="flex items-center gap-1 px-2 py-1 text-[10px] rounded-md hover:bg-[var(--dk-surface-glass)] text-muted-foreground hover:text-foreground transition-colors"
               title="Edit metadata"
             >
               <Edit3 className="h-3 w-3" /> Edit
@@ -90,7 +90,7 @@ export const BlueprintCard = ({ blueprint, showActions, onCopy, onEdit, onDelete
           {onDelete && blueprint.id && (
             <button
               onClick={(e) => { e.stopPropagation(); onDelete(blueprint.id!) }}
-              className="flex items-center gap-1 px-2 py-1 text-[10px] rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-all ml-auto"
+              className="flex items-center gap-1 px-2 py-1 text-[10px] rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors ml-auto"
               title="Delete blueprint"
             >
               <Trash2 className="h-3 w-3" /> Delete

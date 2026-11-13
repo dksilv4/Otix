@@ -4,6 +4,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import psList from 'ps-list';
 import type { LocalGame, FpsStats, SessionNodeInfo, SessionHardwareInfo } from '../preload-api';
+import { isRomGame } from './emulators';
 import { updateLastPlayedAt } from './storage';
 import {
   getHostNodeAndHardware,
@@ -249,6 +250,14 @@ function normalizeTitle(title: string): string {
   return normalized;
 }
 
+const TITLE_TO_KNOWN_EXES = new Map<string, string[]>();
+for (const [exe, title] of Object.entries(KNOWN_GAME_SIGNATURES)) {
+  const norm = normalizeTitle(title);
+  const list = TITLE_TO_KNOWN_EXES.get(norm) || [];
+  list.push(exe);
+  TITLE_TO_KNOWN_EXES.set(norm, list);
+}
+
 const exeCandidatesCache = new Map<string, string[]>();
 
 function titleToExeCandidates(title: string): string[] {
@@ -256,9 +265,16 @@ function titleToExeCandidates(title: string): string[] {
   if (cached) return cached;
 
   const normalized = normalizeTitle(title);
-  const words = normalized.split(/\s+/).filter((w) => w.length > 2);
+  const allTokens = normalized.split(/\s+/).filter(Boolean);
+  const words = allTokens.filter((w) => w.length > 2 || /^\d+$/.test(w));
   const distinctiveWords = words.filter((w) => !GENERIC_TITLE_WORDS.has(w));
   const candidates: string[] = [];
+
+  // Known executable signatures for this title (e.g. Counter-Strike 2 -> cs2.exe)
+  const knownExes = TITLE_TO_KNOWN_EXES.get(normalized);
+  if (knownExes) {
+    candidates.push(...knownExes);
+  }
 
   // If no distinctive non-generic words exist (e.g. "App 0", "Launcher", "Setup"), do not generate candidate binaries
   if (distinctiveWords.length === 0) {
@@ -271,6 +287,17 @@ function titleToExeCandidates(title: string): string[] {
 
   if (words.length >= 2) {
     candidates.push(words.map((w) => w[0]).join('') + '.exe');
+  }
+
+  // Handle titles ending in numbers (e.g. "Counter-Strike 2" -> "cs2.exe", "Portal 2" -> "portal2.exe")
+  if (words.length >= 2 && /^\d+$/.test(words[words.length - 1])) {
+    const num = words[words.length - 1];
+    const prefixWords = words.slice(0, -1);
+    candidates.push(prefixWords.map((w) => w[0]).join('') + num + '.exe');
+    candidates.push(prefixWords.join('') + num + '.exe');
+    if (prefixWords.length >= 1) {
+      candidates.push(prefixWords[0] + num + '.exe');
+    }
   }
 
   const mainWord = words[words.length - 1] || words[0];
@@ -806,56 +833,98 @@ export class GameDetector extends EventEmitter {
           if (claimedPids.has(proc.pid)) continue;
           const lower = proc.name.toLowerCase();
           if (HEURISTIC_EXCLUDED_PROCESSES.has(lower) || HEURISTIC_EXCLUDED_PROCESSES.has(lower + '.exe')) continue;
-          const knownTitle = KNOWN_GAME_SIGNATURES[lower] || KNOWN_GAME_SIGNATURES[lower + '.exe'];
-          if (knownTitle) {
-            const gameId = knownTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-            const normKnown = normalizeTitle(knownTitle);
-            if (
-              !currentlyRunning.has(gameId) &&
-              !this.libraryIds.has(gameId) &&
-              !this.libraryNormalizedTitles.has(normKnown)
-            ) {
-              currentlyRunning.add(gameId);
-              claimedPids.add(proc.pid);
-              const existing = this.runningGames.get(gameId);
-              if (!existing) {
-                const hostMatch = getCachedHostNodeAndHardware();
-                const synthGame: LocalGame = {
-                  id: gameId,
-                  title: knownTitle,
-                  platform: 'pc',
-                  exePath: '',
-                  installDir: '',
-                };
-                const entry: RunningGame = {
-                  game: synthGame,
-                  startTime: Date.now(),
-                  launchedByOtix: false,
-                  pid: proc.pid,
-                  node: hostMatch.node,
-                  hardware: hostMatch.hardware,
-                  shareEligible: hostMatch.shareEligible,
-                };
-                this.runningGames.set(gameId, entry);
-                void getHostNodeAndHardware().then((fresh) => {
-                  const current = this.runningGames.get(gameId);
-                  if (current) {
-                    current.node = fresh.node;
-                    current.hardware = fresh.hardware;
-                    current.shareEligible = fresh.shareEligible;
+            const knownTitle = KNOWN_GAME_SIGNATURES[lower] || KNOWN_GAME_SIGNATURES[lower + '.exe'];
+            if (knownTitle) {
+              const gameId = knownTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+              const normKnown = normalizeTitle(knownTitle);
+
+              // Check if a game in this.library matches this known title but wasn't claimed yet
+              const matchedLibGame = this.library.find((g) => {
+                if (currentlyRunning.has(g.id)) return false;
+                if (g.id === gameId) return true;
+                return normalizeTitle(g.title) === normKnown;
+              });
+
+              const targetGameId = matchedLibGame ? matchedLibGame.id : gameId;
+
+              if (!currentlyRunning.has(targetGameId)) {
+                if (matchedLibGame) {
+                  currentlyRunning.add(matchedLibGame.id);
+                  claimedPids.add(proc.pid);
+                  const existing = this.runningGames.get(matchedLibGame.id);
+                  if (!existing) {
+                    const hostMatch = getCachedHostNodeAndHardware();
+                    const entry: RunningGame = {
+                      game: matchedLibGame,
+                      startTime: Date.now(),
+                      launchedByOtix: false,
+                      pid: proc.pid,
+                      node: hostMatch.node,
+                      hardware: hostMatch.hardware,
+                      shareEligible: hostMatch.shareEligible,
+                    };
+                    this.runningGames.set(matchedLibGame.id, entry);
+                    void getHostNodeAndHardware().then((fresh) => {
+                      const current = this.runningGames.get(matchedLibGame.id);
+                      if (current) {
+                        current.node = fresh.node;
+                        current.hardware = fresh.hardware;
+                        current.shareEligible = fresh.shareEligible;
+                      }
+                    });
+                    this.trackedPids.add(proc.pid);
+                    this.startProcessCheck();
+                    this.emit('game:started', entry);
+                  } else if (existing.pid !== proc.pid) {
+                    const oldPid = existing.pid;
+                    existing.pid = proc.pid;
+                    if (oldPid) { this.trackedPids.delete(oldPid); }
+                    this.trackedPids.add(proc.pid);
                   }
-                });
-                this.trackedPids.add(proc.pid);
-                this.startProcessCheck();
-                this.emit('game:started', entry);
-              } else if (existing.pid !== proc.pid) {
-                const oldPid = existing.pid;
-                existing.pid = proc.pid;
-                if (oldPid) { this.trackedPids.delete(oldPid); }
-                this.trackedPids.add(proc.pid);
+                } else if (!this.libraryIds.has(gameId) && !this.libraryNormalizedTitles.has(normKnown)) {
+                  // Synthesize untracked game if not in library
+                  currentlyRunning.add(gameId);
+                  claimedPids.add(proc.pid);
+                  const existing = this.runningGames.get(gameId);
+                  if (!existing) {
+                    const hostMatch = getCachedHostNodeAndHardware();
+                    const synthGame: LocalGame = {
+                      id: gameId,
+                      title: knownTitle,
+                      platform: 'pc',
+                      exePath: '',
+                      installDir: '',
+                    };
+                    const entry: RunningGame = {
+                      game: synthGame,
+                      startTime: Date.now(),
+                      launchedByOtix: false,
+                      pid: proc.pid,
+                      node: hostMatch.node,
+                      hardware: hostMatch.hardware,
+                      shareEligible: hostMatch.shareEligible,
+                    };
+                    this.runningGames.set(gameId, entry);
+                    void getHostNodeAndHardware().then((fresh) => {
+                      const current = this.runningGames.get(gameId);
+                      if (current) {
+                        current.node = fresh.node;
+                        current.hardware = fresh.hardware;
+                        current.shareEligible = fresh.shareEligible;
+                      }
+                    });
+                    this.trackedPids.add(proc.pid);
+                    this.startProcessCheck();
+                    this.emit('game:started', entry);
+                  } else if (existing.pid !== proc.pid) {
+                    const oldPid = existing.pid;
+                    existing.pid = proc.pid;
+                    if (oldPid) { this.trackedPids.delete(oldPid); }
+                    this.trackedPids.add(proc.pid);
+                  }
+                }
               }
             }
-          }
         }
       }
 
@@ -1242,7 +1311,7 @@ export class GameDetector extends EventEmitter {
     processes?: { name: string; pid: number }[],
   ): number | undefined {
     // Non-PC games, ROMs, and archive files should not match PC desktop windows directly
-    if (game.platform && game.platform !== 'pc') {
+    if (game.platform === 'iso' || isRomGame(game)) {
       return undefined;
     }
     if (game.exePath && /\.(zip|rar|7z|tar|gz|bz2|iso|bin)$/i.test(game.exePath)) {
@@ -1333,7 +1402,7 @@ export class GameDetector extends EventEmitter {
     snapshotOrProcesses: ProcessSnapshot | { name: string; pid: number }[],
   ): number | undefined {
     // Non-PC games and archive/ROM files should never fuzzy-match PC executable processes
-    if (game.platform && game.platform !== 'pc') {
+    if (game.platform === 'iso' || isRomGame(game)) {
       return undefined;
     }
     if (game.exePath && /\.(zip|rar|7z|tar|gz|bz2|iso|bin)$/i.test(game.exePath)) {

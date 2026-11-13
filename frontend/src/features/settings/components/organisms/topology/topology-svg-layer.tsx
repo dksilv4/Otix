@@ -33,6 +33,7 @@ export const TopologySvgLayer = ({
 }: TopologySvgLayerProps) => {
   return (
     <svg
+      aria-hidden="true"
       className="absolute inset-0 w-full h-full pointer-events-none"
       style={{ overflow: 'visible' }}
     >
@@ -78,7 +79,7 @@ export const TopologySvgLayer = ({
           const isEdgeMatch = isSourceMatch && isTargetMatch
 
           return (
-            <g key={edge.id} className="transition-all duration-200">
+            <g key={edge.id} className="transition-colors duration-200">
               {/* Subtle wide hit-area path */}
               <path
                 d={pathData}
@@ -153,7 +154,7 @@ export const TopologySvgLayer = ({
               >
                 <div className="flex items-center justify-center h-full">
                   <div
-                    className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium backdrop-blur-md transition-all shadow-md ${
+                    className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium backdrop-blur-md transition shadow-md ${
                       isHovered
                         ? 'bg-destructive text-destructive-foreground cursor-pointer'
                         : 'bg-[var(--dk-surface-overlay)] text-foreground border border-[var(--dk-separator)]'

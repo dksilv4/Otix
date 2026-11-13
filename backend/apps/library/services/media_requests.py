@@ -35,6 +35,87 @@ def _extract_media_item(
     return None
 
 
+def dispatch_media_lifecycle_notification(
+    user,
+    req: UserMediaRequest,
+    stage: str,
+    progress: float | None = None,
+) -> None:
+    """Publish exact-once lifecycle notification with dedupe_key enforcement."""
+    if not user or not getattr(user, "is_authenticated", False):
+        return
+
+    try:
+        from apps.social.models import Notification
+
+        identifier = req.tmdb_id or req.tvdb_id or str(req.id)
+        m_type = (req.media_type or "movie").lower()
+        service_label = req.service.title() if req.service else "Arr"
+        stage_titles = {
+            "received": f"Request Received: {req.title}",
+            "matched": f"Media Matched: {req.title}",
+            "downloading": f"Downloading: {req.title}",
+            "ready": f"Ready to Stream: {req.title}",
+        }
+        stage_bodies = {
+            "received": f"Your request for {req.title} ({req.year or ''}) has been accepted.",
+            "matched": f"Found matching release on {service_label}. Queued for download.",
+            "downloading": f"Download is actively in progress ({int(progress or req.progress or 0)}%).",
+            "ready": f"Download complete and indexed in library. Click to stream.",
+        }
+
+        title_str = stage_titles.get(stage, f"Media Update: {req.title}")
+        body_str = stage_bodies.get(stage, f"Status updated to {stage}")
+        link = f"/media/{m_type}/{identifier}" if identifier else "/downloads"
+
+        dedupe = f"media_lifecycle:{user.id}:{m_type}:{identifier}:{stage}"
+        Notification.objects.get_or_create(
+            dedupe_key=dedupe,
+            defaults={
+                "user": user,
+                "type": f"media_request.{stage}",
+                "title": title_str,
+                "body": body_str,
+                "metadata_json": {
+                    "stage": stage,
+                    "service": req.service,
+                    "mediaType": m_type,
+                    "mediaId": identifier,
+                    "title": req.title,
+                    "year": req.year,
+                    "posterUrl": req.poster_url,
+                    "requestId": req.id,
+                    "link": link,
+                },
+            },
+        )
+    except Exception as exc:
+        logger.warning("Failed to dispatch media lifecycle notification: %s", exc)
+
+
+def trigger_pms_library_refresh(user, req: UserMediaRequest) -> None:
+    """Trigger background Plex section refresh to immediately index new download."""
+    if not user or not getattr(user, "is_authenticated", False):
+        return
+    try:
+        import requests
+        from apps.integrations.models import UserPlexServer
+
+        servers = UserPlexServer.objects.filter(user=user)
+        for srv in servers:
+            if srv.base_url and srv.token:
+                try:
+                    requests.get(
+                        f"{srv.base_url.rstrip('/')}/library/sections/all/refresh",
+                        params={"X-Plex-Token": srv.token},
+                        timeout=3,
+                    )
+                except Exception:
+                    pass
+    except Exception:
+        pass
+
+
 def record_media_request(
     user,
     server: UserNode | None = None,
@@ -174,13 +255,20 @@ def record_media_request(
         if server:
             existing.server = server
         existing.save()
+        dispatch_media_lifecycle_notification(user, existing, "received")
+        if existing.external_id:
+            dispatch_media_lifecycle_notification(user, existing, "matched")
         return existing
 
-    return UserMediaRequest.objects.create(
+    created = UserMediaRequest.objects.create(
         user=user,
         server=server,
         **defaults,
     )
+    dispatch_media_lifecycle_notification(user, created, "received")
+    if created.external_id:
+        dispatch_media_lifecycle_notification(user, created, "matched")
+    return created
 
 
 def serialize_media_request(req: UserMediaRequest) -> dict[str, Any]:
@@ -261,12 +349,15 @@ def reconcile_media_requests(user, requests: list[UserMediaRequest]) -> None:
                     if not req.completed_at:
                         req.completed_at = timezone.now()
                     to_update.append(req)
+                    dispatch_media_lifecycle_notification(user, req, "ready")
+                    trigger_pms_library_refresh(user, req)
                 elif act_status == "processing":
                     req.status = UserMediaRequest.STATUS_DOWNLOADING
                     prog = matched_activity.get("progress")
                     if prog is not None:
                         req.progress = float(prog)
                     to_update.append(req)
+                    dispatch_media_lifecycle_notification(user, req, "downloading", progress=req.progress)
 
         if to_update:
             for r in to_update:

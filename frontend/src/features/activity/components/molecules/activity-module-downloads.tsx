@@ -62,7 +62,7 @@ export const ActivityModuleDownloads = () => {
             handleOpenDownloads()
           }
         }}
-        className="group relative flex flex-col gap-2.5 p-3 rounded-2xl bg-[var(--dk-surface-overlay)]/70 hover:bg-[var(--dk-surface-overlay)] border border-white/[0.04] transition-all duration-200 cursor-pointer shadow-sm hover:shadow-md text-left outline-none focus-visible:ring-1 focus-visible:ring-primary/50"
+        className="group relative flex flex-col gap-2.5 p-3 rounded-2xl bg-[var(--dk-surface-overlay)]/70 hover:bg-[var(--dk-surface-overlay)] border border-white/[0.04] transition-colors duration-200 cursor-pointer shadow-sm hover:shadow-md text-left outline-none focus-visible:ring-1 focus-visible:ring-primary/50"
         title="Open Downloads Manager"
         aria-label="Open Downloads Manager"
       >
@@ -107,7 +107,7 @@ export const ActivityModuleDownloads = () => {
             <div className="flex items-center gap-2.5">
               <div className="h-1.5 rounded-full overflow-hidden flex-1 bg-muted">
                 <div
-                  className="h-full rounded-full transition-all duration-500 bg-primary"
+                  className="h-full rounded-full transition-colors duration-500 bg-primary"
                   style={{ width: `${Math.max(summary.primaryProgress, 2)}%` }}
                 />
               </div>

@@ -32,6 +32,13 @@ import { MeshGridControlsPanel } from './mesh-grid-controls-panel'
 import type { VisualizerMode } from '../types'
 import { getNextVisualizerMode, getVisualizerModeOption } from '../utils/visualizer-helpers'
 import {
+  getSavedVisualizerParams,
+  saveVisualizerParams,
+  getSavedVisualizerMode,
+  saveVisualizerMode,
+  applyPresetWithPersistentPreferences,
+} from '../utils/visualizer-persistence'
+import {
   type MeshGridParams,
   type MeshGridVariantPreset,
   type MeshGridSceneHandle,
@@ -95,9 +102,9 @@ export const FullScreenMusicPlayer = ({ isOpen, onClose }: FullScreenMusicPlayer
   )
 
   const [prevVolume, setPrevVolume] = useState(0.7)
-  const [visualizerMode, setVisualizerMode] = useState<VisualizerMode>('mesh-grid')
+  const [visualizerMode, setVisualizerMode] = useState<VisualizerMode>(() => getSavedVisualizerMode())
   const [isMeshControlsOpen, setIsMeshControlsOpen] = useState(false)
-  const [meshParams, setMeshParams] = useState<MeshGridParams>(MESH_GRID_VARIANT_14_CONFIG)
+  const [meshParams, setMeshParams] = useState<MeshGridParams>(() => getSavedVisualizerParams())
   const sceneHandleRef = useRef<MeshGridSceneHandle | null>(null)
 
   const handleSceneReady = useCallback((handle: MeshGridSceneHandle) => {
@@ -106,79 +113,109 @@ export const FullScreenMusicPlayer = ({ isOpen, onClose }: FullScreenMusicPlayer
 
   const handleMeshParamChange = useCallback(
     <K extends keyof MeshGridParams>(key: K, value: MeshGridParams[K]) => {
-      setMeshParams((prev) => ({
-        ...prev,
-        [key]: value,
-      }))
+      setMeshParams((prev) => {
+        const next = {
+          ...prev,
+          [key]: value,
+        }
+        saveVisualizerParams(next)
+        return next
+      })
     },
     [],
   )
 
   const handleApplyMeshPreset = useCallback((preset: MeshGridVariantPreset) => {
     setMeshParams((prev) => {
-      if (prev.lockCameraOnPresetChange) {
-        return {
-          ...preset.params,
-          cameraPosition: prev.cameraPosition,
-          cameraTarget: prev.cameraTarget,
-          cameraFov: prev.cameraFov,
-          lockCameraOnPresetChange: true,
+      const next = applyPresetWithPersistentPreferences(prev, preset.params)
+      if (!prev.lockCameraOnPresetChange) {
+        sceneHandleRef.current?.setCamera(preset.params.cameraPosition, preset.params.cameraTarget)
+        if (preset.params.cameraFov) {
+          sceneHandleRef.current?.setCameraFov(preset.params.cameraFov)
         }
       }
-      sceneHandleRef.current?.setCamera(preset.params.cameraPosition, preset.params.cameraTarget)
-      if (preset.params.cameraFov) {
-        sceneHandleRef.current?.setCameraFov(preset.params.cameraFov)
-      }
-      return {
-        ...preset.params,
-        lockCameraOnPresetChange: false,
-      }
+      saveVisualizerParams(next)
+      return next
     })
   }, [])
 
   const handleResetMeshParams = useCallback(() => {
     setMeshParams((prev) => {
-      if (prev.lockCameraOnPresetChange) {
-        return {
-          ...MESH_GRID_VARIANT_14_CONFIG,
-          cameraPosition: prev.cameraPosition,
-          cameraTarget: prev.cameraTarget,
-          cameraFov: prev.cameraFov,
-          lockCameraOnPresetChange: true,
-        }
+      const next = applyPresetWithPersistentPreferences(prev, MESH_GRID_VARIANT_14_CONFIG)
+      if (!prev.lockCameraOnPresetChange) {
+        sceneHandleRef.current?.resetCamera()
       }
-      sceneHandleRef.current?.resetCamera()
-      return { ...MESH_GRID_VARIANT_14_CONFIG }
+      saveVisualizerParams(next)
+      return next
     })
   }, [])
 
   const handleResetMeshCamera = useCallback(() => {
     sceneHandleRef.current?.resetCamera()
-    setMeshParams((prev) => ({
-      ...prev,
-      cameraPosition: { ...MESH_GRID_VARIANT_14_CONFIG.cameraPosition },
-      cameraTarget: { ...MESH_GRID_VARIANT_14_CONFIG.cameraTarget },
-      cameraFov: MESH_GRID_VARIANT_14_CONFIG.cameraFov,
-    }))
+    setMeshParams((prev) => {
+      const next = {
+        ...prev,
+        cameraPosition: { ...MESH_GRID_VARIANT_14_CONFIG.cameraPosition },
+        cameraTarget: { ...MESH_GRID_VARIANT_14_CONFIG.cameraTarget },
+        cameraFov: MESH_GRID_VARIANT_14_CONFIG.cameraFov,
+      }
+      saveVisualizerParams(next)
+      return next
+    })
   }, [])
 
   const handleSnapCamera = useCallback((snapId: CameraSnapPresetId) => {
     sceneHandleRef.current?.snapCameraTo(snapId)
     const snap = CAMERA_SNAP_PRESETS.find((s) => s.id === snapId)
     if (snap) {
-      setMeshParams((prev) => ({
-        ...prev,
-        cameraPosition: { ...snap.position },
-        cameraTarget: { ...snap.target },
-        cameraFov: snap.fov,
-      }))
+      setMeshParams((prev) => {
+        const next = {
+          ...prev,
+          cameraPosition: { ...snap.position },
+          cameraTarget: { ...snap.target },
+          cameraFov: snap.fov,
+        }
+        saveVisualizerParams(next)
+        return next
+      })
+    }
+  }, [])
+
+  const handleCameraChange = useCallback(
+    (pos: { x: number; y: number; z: number }, target: { x: number; y: number; z: number }) => {
+      setMeshParams((prev) => {
+        const next = {
+          ...prev,
+          cameraPosition: pos,
+          cameraTarget: target,
+        }
+        saveVisualizerParams(next)
+        return next
+      })
+    },
+    [],
+  )
+
+  const handleImportSeed = useCallback((importedParams: MeshGridParams) => {
+    setMeshParams(importedParams)
+    saveVisualizerParams(importedParams)
+    sceneHandleRef.current?.setParams(importedParams, { updateCamera: true })
+    if (importedParams.cameraPosition && importedParams.cameraTarget) {
+      sceneHandleRef.current?.setCamera(importedParams.cameraPosition, importedParams.cameraTarget)
+    }
+    if (importedParams.cameraFov) {
+      sceneHandleRef.current?.setCameraFov(importedParams.cameraFov)
     }
   }, [])
 
   const currentModeOption = getVisualizerModeOption(visualizerMode)
 
   const cycleVisualizerMode = useCallback(() => {
-    setVisualizerMode((prev) => getNextVisualizerMode(prev))
+    setVisualizerMode((prev) => {
+      const next = getNextVisualizerMode(prev)
+      saveVisualizerMode(next)
+      return next
+    })
   }, [])
 
   const toggleMute = useCallback(() => {
@@ -232,6 +269,7 @@ export const FullScreenMusicPlayer = ({ isOpen, onClose }: FullScreenMusicPlayer
             palette={theme.palette}
             params={meshParams}
             onSceneReady={handleSceneReady}
+            onCameraChange={handleCameraChange}
             className="absolute inset-0 h-full w-full pointer-events-auto"
           />
         ) : (
@@ -292,7 +330,7 @@ export const FullScreenMusicPlayer = ({ isOpen, onClose }: FullScreenMusicPlayer
             <button
               type="button"
               onClick={cycleVisualizerMode}
-              className="h-9 px-3 flex items-center gap-2 rounded-xl backdrop-blur-md bg-[var(--dk-surface-raised)] hover:bg-[var(--dk-surface-ghost-hover)] text-foreground transition-all duration-200"
+              className="h-9 px-3 flex items-center gap-2 rounded-xl backdrop-blur-md bg-[var(--dk-surface-raised)] hover:bg-[var(--dk-surface-ghost-hover)] text-foreground transition-colors duration-200"
               title={`Active visualizer: ${currentModeOption.name}. Click to switch mode.`}
               aria-label={`Visualizer mode: ${currentModeOption.name}`}
             >
@@ -479,7 +517,7 @@ export const FullScreenMusicPlayer = ({ isOpen, onClose }: FullScreenMusicPlayer
                     type="button"
                     onClick={() => void togglePlay()}
                     className={cn(
-                      'relative z-10 flex h-8 w-8 items-center justify-center rounded-full shadow-md hover:scale-105 active:scale-95 transition-all',
+                      'relative z-10 flex h-8 w-8 items-center justify-center rounded-full shadow-md hover:scale-105 active:scale-95 transition-colors',
                       !theme.hasArtwork && 'bg-primary text-primary-foreground',
                     )}
                     style={
@@ -655,6 +693,7 @@ export const FullScreenMusicPlayer = ({ isOpen, onClose }: FullScreenMusicPlayer
             onResetParams={handleResetMeshParams}
             onResetCamera={handleResetMeshCamera}
             onSnapCamera={handleSnapCamera}
+            onImportSeed={handleImportSeed}
             theme={theme}
           />
         )}

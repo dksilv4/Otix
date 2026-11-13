@@ -30,7 +30,7 @@ export const OAuthButton = ({
             type="button"
             onClick={handleClick}
             disabled={loading}
-            className="group relative flex h-12 w-12 items-center justify-center overflow-hidden rounded-full text-white/80 backdrop-blur-lg transition-all hover:scale-105 hover:text-white disabled:opacity-50"
+            className="group relative flex h-12 w-12 items-center justify-center overflow-hidden rounded-full text-white/80 backdrop-blur-lg transition hover:scale-105 hover:text-white disabled:opacity-50"
             aria-label={ariaLabel}
             style={{backgroundImage: `linear-gradient(135deg, ${gradient.from} 0%, ${gradient.to} 100%)`}}
         >

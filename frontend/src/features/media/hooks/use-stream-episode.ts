@@ -2,6 +2,8 @@ import { useState, useCallback } from 'react'
 import { apiClient } from '@/lib/api/client'
 import { useMediaStreamPlayer } from './use-media-stream-player'
 import { buildPlexPlaybackSession, type PlexConnectInfoData } from '../utils/plex-stream'
+import { buildUpcomingEpisodeQueue } from '../utils/player'
+import type { SeasonOut } from '../queries/media-queries'
 
 export interface StreamEpisodeParams {
   showId: string
@@ -9,9 +11,10 @@ export interface StreamEpisodeParams {
   seasonNumber: number
   episodeNumber: number
   episodeTitle?: string
+  seasons?: SeasonOut[]
 }
 
-export function useStreamEpisode() {
+export const useStreamEpisode = () => {
   const { openStream } = useMediaStreamPlayer()
   const [loadingKey, setLoadingKey] = useState<string | null>(null)
 
@@ -22,6 +25,7 @@ export function useStreamEpisode() {
       seasonNumber,
       episodeNumber,
       episodeTitle,
+      seasons,
     }: StreamEpisodeParams) => {
       const epKey = `${showId}-s${seasonNumber}-e${episodeNumber}`
       setLoadingKey(epKey)
@@ -59,7 +63,19 @@ export function useStreamEpisode() {
           },
         })
 
-        openStream(session)
+        const queuedItems =
+          seasons && seasons.length > 0
+            ? buildUpcomingEpisodeQueue({
+                showId,
+                showTitle,
+                currentSeasonNumber: seasonNumber,
+                currentEpisodeNumber: episodeNumber,
+                seasons,
+                sessionTemplate: session,
+              })
+            : []
+
+        openStream(session, queuedItems)
       } catch (err) {
         console.error('[StreamEpisode] Failed:', err)
         alert('Could not start playback for this episode from your media server.')

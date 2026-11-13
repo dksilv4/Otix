@@ -183,7 +183,7 @@ export const InstallerCarousel = () => {
             type="button"
             onClick={() => setActiveIndex(idx)}
             className={cn(
-              'h-1.5 rounded-full transition-all duration-300 cursor-pointer',
+              'h-1.5 rounded-full transition-colors duration-300 cursor-pointer',
               idx === activeIndex
                 ? 'w-6 bg-primary shadow-[0_0_8px_rgba(var(--primary-rgb),0.6)]'
                 : 'w-1.5 bg-white/20 hover:bg-white/40',

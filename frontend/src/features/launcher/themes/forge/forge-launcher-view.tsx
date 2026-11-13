@@ -259,7 +259,7 @@ export const ForgeLauncherView = () => {
                 <div
                   key={game.id}
                   onClick={() => selectGame(game.id)}
-                  className={`group rounded-xl overflow-hidden cursor-pointer relative border transition-all duration-200 ${
+                  className={`group rounded-xl overflow-hidden cursor-pointer relative border transition-colors duration-200 ${
                     isSelected
                       ? "border-primary ring-2 ring-primary/40 shadow-lg shadow-primary/20"
                       : "border-transparent hover:border-white/[0.06] bg-[var(--dk-surface-ghost)]"

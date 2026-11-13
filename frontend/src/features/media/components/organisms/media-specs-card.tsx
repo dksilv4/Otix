@@ -154,7 +154,7 @@ export const MediaSpecsCard = ({ detail, className = '' }: MediaSpecsCardProps) 
                   key={ic.id}
                   to="/company/$companyId"
                   params={{ companyId: ic.company.id }}
-                  className="w-full flex items-center justify-between p-2.5 rounded-xl bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-glass-hover)] transition-all duration-200 group shadow-xs cursor-pointer"
+                  className="w-full flex items-center justify-between p-2.5 rounded-xl bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-glass-hover)] transition-colors duration-200 group shadow-xs cursor-pointer"
                   title={ic.company.name}
                 >
                   <div className="flex items-center gap-3 min-w-0">
@@ -180,7 +180,7 @@ export const MediaSpecsCard = ({ detail, className = '' }: MediaSpecsCardProps) 
                         {role}
                       </span>
                     )}
-                    <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/40 group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
+                    <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/40 group-hover:text-primary group-hover:translate-x-0.5 transition" />
                   </div>
                 </Link>
               )

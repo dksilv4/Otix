@@ -567,8 +567,9 @@ export function registerScannerIPC(
   });
 
   // Database storage for scans (via game-storage-service)
-  ipcMain.handle('scanner:save-scanned-game', (_, games: gameService.GameRow[]) => {
-    gameService.upsertGames(games);
+  ipcMain.handle('scanner:save-scanned-game', (_, games: gameService.GameRow[] | gameService.GameRow) => {
+    const list = Array.isArray(games) ? games : (games ? [games] : []);
+    gameService.upsertGames(list);
     gameService.notifyGamesChanged();
   });
   ipcMain.handle('scanner:get-scanned-games-filtered', (_event, filter: gameService.GameFilter) => {

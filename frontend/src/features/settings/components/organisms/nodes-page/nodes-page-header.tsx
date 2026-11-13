@@ -38,7 +38,7 @@ export const NodesPageHeader = ({
         {!isAuthenticated && (
           <Link
             to="/auth/login"
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary text-primary-foreground font-semibold text-xs hover:bg-primary/90 transition-all cursor-pointer self-start sm:self-auto"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary text-primary-foreground font-semibold text-xs hover:bg-primary/90 transition-colors cursor-pointer self-start sm:self-auto"
           >
             Sign in to sync cloud nodes
           </Link>

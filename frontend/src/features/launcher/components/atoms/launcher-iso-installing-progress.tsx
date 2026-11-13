@@ -14,7 +14,7 @@ export const IsoInstallingProgress = ({ install, onOpenInstaller, onCancel }: Is
     <div className="flex gap-2 items-stretch h-10">
       <button
         onClick={onOpenInstaller}
-        className="relative overflow-hidden px-4 bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-field)] border border-[var(--dk-separator)] rounded-xl text-[11px] font-semibold flex items-center gap-2 transition-all cursor-pointer backdrop-blur-md active:scale-[0.99] text-foreground w-48 justify-start"
+        className="relative overflow-hidden px-4 bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-field)] border border-[var(--dk-separator)] rounded-xl text-[11px] font-semibold flex items-center gap-2 transition-colors cursor-pointer backdrop-blur-md active:scale-[0.99] text-foreground w-48 justify-start"
       >
         <div className="absolute inset-0 bg-primary/10 animate-pulse pointer-events-none" />
         <Loader2 className="h-3.5 w-3.5 animate-spin text-primary shrink-0 relative z-10" />
@@ -27,7 +27,7 @@ export const IsoInstallingProgress = ({ install, onOpenInstaller, onCancel }: Is
       </button>
       <button
         onClick={() => onCancel(install.isoPath)}
-        className="px-3 bg-destructive/10 hover:bg-destructive/20 border border-destructive/20 text-destructive rounded-xl text-[11px] font-semibold transition-all cursor-pointer active:scale-95 flex items-center justify-center"
+        className="px-3 bg-destructive/10 hover:bg-destructive/20 border border-destructive/20 text-destructive rounded-xl text-[11px] font-semibold transition cursor-pointer active:scale-95 flex items-center justify-center"
         title="Cancel Installation"
       >
         <X size={14} />

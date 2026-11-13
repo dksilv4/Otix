@@ -80,7 +80,7 @@ export const NodeConnectionsGroup = ({
 
   return (
     <div
-      className="rounded-2xl sm:rounded-3xl overflow-hidden backdrop-blur-xl transition-all duration-200 border border-white/[0.04]"
+      className="rounded-2xl sm:rounded-3xl overflow-hidden backdrop-blur-xl transition-colors duration-200 border border-white/[0.04]"
       style={{
         backgroundColor: 'var(--dk-surface-raised)',
         boxShadow: 'var(--dk-shadow-md)',

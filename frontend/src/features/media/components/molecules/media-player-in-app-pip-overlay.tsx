@@ -82,7 +82,7 @@ export const MediaPlayerInAppPipOverlay = ({
           <button
             type="button"
             onClick={onToggleOverallPip}
-            className="px-2.5 py-1 rounded-full bg-primary text-primary-foreground font-semibold text-[11px] hover:brightness-110 active:scale-95 transition-all shadow-sm"
+            className="px-2.5 py-1 rounded-full bg-primary text-primary-foreground font-semibold text-[11px] hover:brightness-110 active:scale-95 transition shadow-sm"
             title="Restore video to player"
           >
             Return Video
@@ -90,7 +90,7 @@ export const MediaPlayerInAppPipOverlay = ({
           <button
             type="button"
             onClick={onRestore}
-            className="p-1.5 rounded-full bg-[var(--dk-surface-glass)] text-foreground hover:bg-[var(--dk-surface-ghost-hover)] active:scale-95 transition-all"
+            className="p-1.5 rounded-full bg-[var(--dk-surface-glass)] text-foreground hover:bg-[var(--dk-surface-ghost-hover)] active:scale-95 transition-colors"
             title="Expand to full player (I)"
           >
             <Maximize2 className="h-3.5 w-3.5" />
@@ -98,7 +98,7 @@ export const MediaPlayerInAppPipOverlay = ({
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 rounded-full bg-[var(--dk-surface-glass)] text-foreground hover:bg-[var(--dk-surface-ghost-hover)] active:scale-95 transition-all"
+            className="p-1.5 rounded-full bg-[var(--dk-surface-glass)] text-foreground hover:bg-[var(--dk-surface-ghost-hover)] active:scale-95 transition-colors"
             title="Close stream"
           >
             <X className="h-3.5 w-3.5" />
@@ -111,10 +111,10 @@ export const MediaPlayerInAppPipOverlay = ({
   return (
     <>
       {/* Top Centered Drag Handle Grip */}
-      <div className="absolute top-1.5 left-1/2 -translate-x-1/2 pointer-events-none z-40 transition-all duration-200">
+      <div className="absolute top-1.5 left-1/2 -translate-x-1/2 pointer-events-none z-40 transition duration-200">
         <div
           className={cn(
-            'h-1 rounded-full transition-all duration-200',
+            'h-1 rounded-full transition-colors duration-200',
             isDragging
               ? 'w-12 bg-primary shadow-sm'
               : 'w-7 bg-foreground/30 group-hover/pip:bg-foreground/50 group-hover/pip:w-9',
@@ -160,7 +160,7 @@ export const MediaPlayerInAppPipOverlay = ({
             <button
               type="button"
               onClick={onRestore}
-              className="h-6 w-6 rounded-lg bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-ghost-hover)] text-foreground flex items-center justify-center transition-all active:scale-90 border border-white/[0.04]"
+              className="h-6 w-6 rounded-lg bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-ghost-hover)] text-foreground flex items-center justify-center transition-colors active:scale-90 border border-white/[0.04]"
               title="Expand to full player (I)"
             >
               <Maximize2 className="h-3 w-3" />
@@ -168,7 +168,7 @@ export const MediaPlayerInAppPipOverlay = ({
             <button
               type="button"
               onClick={onToggleOverallPip}
-              className="h-6 w-6 rounded-lg bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-ghost-hover)] text-foreground flex items-center justify-center transition-all active:scale-90 border border-white/[0.04]"
+              className="h-6 w-6 rounded-lg bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-ghost-hover)] text-foreground flex items-center justify-center transition-colors active:scale-90 border border-white/[0.04]"
               title="Picture-in-Picture (OS window) (P)"
             >
               <PictureInPicture2 className="h-3 w-3" />
@@ -176,7 +176,7 @@ export const MediaPlayerInAppPipOverlay = ({
             <button
               type="button"
               onClick={onClose}
-              className="h-6 w-6 rounded-lg bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-ghost-hover)] text-foreground flex items-center justify-center transition-all active:scale-90 border border-white/[0.04]"
+              className="h-6 w-6 rounded-lg bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-ghost-hover)] text-foreground flex items-center justify-center transition-colors active:scale-90 border border-white/[0.04]"
               title="Close player"
             >
               <X className="h-3 w-3" />
@@ -192,7 +192,7 @@ export const MediaPlayerInAppPipOverlay = ({
           <button
             type="button"
             onClick={onSkipBack}
-            className="p-1.5 rounded-full bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-ghost-hover)] text-foreground active:scale-90 transition-all border border-white/[0.04]"
+            className="p-1.5 rounded-full bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-ghost-hover)] text-foreground active:scale-90 transition-colors border border-white/[0.04]"
             title="Skip back 10s"
           >
             <RotateCcw className="h-3.5 w-3.5" />
@@ -214,7 +214,7 @@ export const MediaPlayerInAppPipOverlay = ({
           <button
             type="button"
             onClick={onSkipForward}
-            className="p-1.5 rounded-full bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-ghost-hover)] text-foreground active:scale-90 transition-all border border-white/[0.04]"
+            className="p-1.5 rounded-full bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-ghost-hover)] text-foreground active:scale-90 transition-colors border border-white/[0.04]"
             title="Skip forward 10s"
           >
             <RotateCw className="h-3.5 w-3.5" />
@@ -232,10 +232,10 @@ export const MediaPlayerInAppPipOverlay = ({
             onClick={handleScrubberClick}
             className="group/scrub relative h-2.5 flex items-center cursor-pointer select-none"
           >
-            <div className="relative w-full h-1 group-hover/scrub:h-1.5 bg-foreground/15 rounded-full overflow-hidden transition-all">
+            <div className="relative w-full h-1 group-hover/scrub:h-1.5 bg-foreground/15 rounded-full overflow-hidden transition-colors">
               <div
-                className="h-full bg-primary rounded-full transition-[width] duration-75"
-                style={{ width: `${progressPercent}%` }}
+                className="h-full w-full bg-primary rounded-full origin-left transition-transform duration-75"
+                style={{ transform: `scaleX(${progressPercent / 100})` }}
               />
             </div>
             <div
@@ -253,7 +253,7 @@ export const MediaPlayerInAppPipOverlay = ({
             <button
               type="button"
               onClick={onToggleMute}
-              className="p-1 rounded text-foreground/80 hover:text-foreground active:scale-90 transition-all"
+              className="p-1 rounded text-foreground/80 hover:text-foreground active:scale-90 transition"
               title={isMuted ? 'Unmute (M)' : 'Mute (M)'}
             >
               {isMuted ? <VolumeX className="h-3 w-3" /> : <Volume2 className="h-3 w-3" />}

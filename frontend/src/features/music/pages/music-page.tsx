@@ -143,7 +143,7 @@ export const MusicPage = () => {
       <div className="flex flex-col gap-6 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-32">
         {/* Sticky Header Options & Toolbar with Otix Borderless Glassmorphic Surface */}
         <div
-          className={`sticky ${stickyTopOffset} z-20 flex flex-col gap-3 rounded-3xl bg-[var(--dk-surface-overlay)]/90 backdrop-blur-2xl border border-white/[0.04] p-3 sm:p-4 shadow-[var(--dk-shadow-glass)] transition-all`}
+          className={`sticky ${stickyTopOffset} z-20 flex flex-col gap-3 rounded-3xl bg-[var(--dk-surface-overlay)]/90 backdrop-blur-2xl border border-white/[0.04] p-3 sm:p-4 shadow-[var(--dk-shadow-glass)] transition-colors`}
         >
           {/* Top Row: Title, Stats, Search, Actions */}
           <div className="flex flex-wrap items-center justify-between gap-3 sm:gap-4">
@@ -213,7 +213,7 @@ export const MusicPage = () => {
                 <button
                   type="button"
                   onClick={() => setIsFoldersModalOpen(true)}
-                  className="flex items-center gap-1.5 rounded-2xl bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)] px-3 py-2 text-xs font-medium text-foreground border border-white/[0.04] transition-all cursor-pointer"
+                  className="flex items-center gap-1.5 rounded-2xl bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)] px-3 py-2 text-xs font-medium text-foreground border border-white/[0.04] transition-colors cursor-pointer"
                   title="Manage indexed folders"
                 >
                   <Folder className="h-3.5 w-3.5 text-muted-foreground" />
@@ -288,7 +288,7 @@ export const MusicPage = () => {
               </div>
               <div className="h-1.5 w-full overflow-hidden rounded-full bg-[var(--dk-surface-field)]">
                 <div
-                  className="h-full bg-primary transition-all duration-150"
+                  className="h-full bg-primary transition-colors duration-150"
                   style={{
                     width: `${
                       scanProgress.total > 0
@@ -308,7 +308,7 @@ export const MusicPage = () => {
               <button
                 type="button"
                 onClick={() => setViewMode('albums')}
-                className={`flex items-center gap-1.5 rounded-xl px-3.5 py-1.5 text-xs font-semibold transition-all cursor-pointer ${
+                className={`flex items-center gap-1.5 rounded-xl px-3.5 py-1.5 text-xs font-semibold transition-colors cursor-pointer ${
                   viewMode === 'albums'
                     ? 'bg-primary text-primary-foreground shadow-sm'
                     : 'text-muted-foreground hover:text-foreground'
@@ -321,7 +321,7 @@ export const MusicPage = () => {
               <button
                 type="button"
                 onClick={() => setViewMode('artists')}
-                className={`flex items-center gap-1.5 rounded-xl px-3.5 py-1.5 text-xs font-semibold transition-all cursor-pointer ${
+                className={`flex items-center gap-1.5 rounded-xl px-3.5 py-1.5 text-xs font-semibold transition-colors cursor-pointer ${
                   viewMode === 'artists'
                     ? 'bg-primary text-primary-foreground shadow-sm'
                     : 'text-muted-foreground hover:text-foreground'
@@ -334,7 +334,7 @@ export const MusicPage = () => {
               <button
                 type="button"
                 onClick={() => setViewMode('tracks')}
-                className={`flex items-center gap-1.5 rounded-xl px-3.5 py-1.5 text-xs font-semibold transition-all cursor-pointer ${
+                className={`flex items-center gap-1.5 rounded-xl px-3.5 py-1.5 text-xs font-semibold transition-colors cursor-pointer ${
                   viewMode === 'tracks'
                     ? 'bg-primary text-primary-foreground shadow-sm'
                     : 'text-muted-foreground hover:text-foreground'
@@ -354,7 +354,7 @@ export const MusicPage = () => {
                 <button
                   type="button"
                   onClick={() => setSourceFilter('all')}
-                  className={`rounded-xl px-3 py-1 text-xs font-medium transition-all cursor-pointer ${
+                  className={`rounded-xl px-3 py-1 text-xs font-medium transition-colors cursor-pointer ${
                     sourceFilter === 'all'
                       ? 'bg-[var(--dk-surface-field)] text-foreground font-semibold shadow-sm'
                       : 'text-muted-foreground hover:text-foreground'
@@ -366,7 +366,7 @@ export const MusicPage = () => {
                 <button
                   type="button"
                   onClick={() => setSourceFilter('plex')}
-                  className={`flex items-center gap-1.5 rounded-xl px-3 py-1 text-xs font-medium transition-all cursor-pointer ${
+                  className={`flex items-center gap-1.5 rounded-xl px-3 py-1 text-xs font-medium transition-colors cursor-pointer ${
                     sourceFilter === 'plex'
                       ? 'bg-[var(--dk-surface-field)] text-foreground font-semibold shadow-sm'
                       : 'text-muted-foreground hover:text-foreground'
@@ -379,7 +379,7 @@ export const MusicPage = () => {
                 <button
                   type="button"
                   onClick={() => setSourceFilter('local')}
-                  className={`flex items-center gap-1.5 rounded-xl px-3 py-1 text-xs font-medium transition-all cursor-pointer ${
+                  className={`flex items-center gap-1.5 rounded-xl px-3 py-1 text-xs font-medium transition-colors cursor-pointer ${
                     sourceFilter === 'local'
                       ? 'bg-[var(--dk-surface-field)] text-foreground font-semibold shadow-sm'
                       : 'text-muted-foreground hover:text-foreground'
@@ -424,7 +424,7 @@ export const MusicPage = () => {
               <button
                 type="button"
                 onClick={() => void discoverSections()}
-                className="flex items-center gap-2 rounded-2xl bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)] px-4 py-2 text-xs font-semibold text-foreground border border-white/[0.04] transition-all cursor-pointer"
+                className="flex items-center gap-2 rounded-2xl bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)] px-4 py-2 text-xs font-semibold text-foreground border border-white/[0.04] transition-colors cursor-pointer"
               >
                 <RotateCw className="h-4 w-4 text-primary" />
                 <span>Scan Plex Music</span>

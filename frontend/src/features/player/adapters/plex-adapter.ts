@@ -12,6 +12,8 @@ import {
   buildPlexHlsUrl,
   buildPlexDirectUrl,
   fetchPlexConnectInfoCached,
+  triggerPlexDecision,
+  selectPlexAudioStream,
 } from '@/features/media/utils/plex-stream'
 import { getPlexClientId } from '@/features/media/utils/player'
 import { determinePlaybackMethod } from '@/features/media/utils/stream-compatibility'
@@ -33,17 +35,36 @@ export class PlexSourceAdapter implements MediaSourceAdapter {
     let ratingKey = String(item.id.replace(/^plex:/, '') || data.ratingKey || data.itemId || '')
     let directPartKey = data.partKey || data.directUrl
 
-    // If connect info is missing and ratingKey is present, query cached connect info
-    if ((!baseUrl || !token) && ratingKey) {
-      const connect = await fetchPlexConnectInfoCached(ratingKey, {
-        season: item.episodeContext?.seasonNumber,
-        episode: item.episodeContext?.episodeNumber,
+    // If connect info is missing or item is a queued episode placeholder, query cached connect info
+    const isEpisodePlaceholder = Boolean(
+      item.subtype === 'episode' &&
+        (data.isQueuedPlaceholder || !directPartKey || ratingKey.includes('-s')),
+    )
+
+    if (((!baseUrl || !token) && ratingKey) || isEpisodePlaceholder) {
+      const showId = data.showId || (ratingKey.includes('-s') ? ratingKey.split('-s')[0] : ratingKey)
+      const connect = await fetchPlexConnectInfoCached(showId, {
+        season: item.episodeContext?.seasonNumber ?? data.seasonNumber,
+        episode: item.episodeContext?.episodeNumber ?? data.episodeNumber,
+        title: item.episodeContext?.seriesTitle || data.showTitle,
       })
       if (connect) {
-        baseUrl = (connect.baseUrl || '').replace(/\/$/, '')
+        baseUrl = (connect.baseUrl || connect.base_url || baseUrl).replace(/\/$/, '')
         token = connect.token || token
-        ratingKey = String(connect.ratingKey || ratingKey)
-        directPartKey = connect.partKey || connect.directUrl || directPartKey
+        ratingKey = String(connect.ratingKey || connect.rating_key || ratingKey)
+        directPartKey = connect.partKey || connect.part_key || connect.directUrl || directPartKey
+        if (connect.audioTracks || connect.audio_tracks) {
+          data.audioTracks = connect.audioTracks || connect.audio_tracks
+        }
+        if (connect.subtitles) {
+          data.subtitles = connect.subtitles
+        }
+        if (connect.container) data.container = connect.container
+        if (connect.videoCodec || connect.video_codec) data.videoCodec = connect.videoCodec || connect.video_codec
+        if (connect.audioCodec || connect.audio_codec) data.audioCodec = connect.audioCodec || connect.audio_codec
+        if (connect.baseUrls || connect.base_urls) {
+          data.baseUrls = connect.baseUrls || connect.base_urls
+        }
       }
     }
 
@@ -109,6 +130,13 @@ export class PlexSourceAdapter implements MediaSourceAdapter {
     const selectedAudioIndex = options?.audioIndex ?? data.selectedAudioIndex ?? audioTracks[0]?.index
     const selectedSubtitleIndex = options?.subtitleIndex ?? data.selectedSubtitleIndex
 
+    const selectedAudioTrack =
+      audioTracks.find((a) => a.index === selectedAudioIndex) || audioTracks[0]
+
+    if (baseUrl && token && selectedAudioTrack?.id) {
+      void selectPlexAudioStream(baseUrl, directPartKey || ratingKey, selectedAudioTrack.id, token)
+    }
+
     const activeSub =
       selectedSubtitleIndex != null
         ? subtitleTracks.find((s) => s.index === selectedSubtitleIndex)
@@ -119,22 +147,48 @@ export class PlexSourceAdapter implements MediaSourceAdapter {
     const requiresBurnIn = activeSub?.requiresBurnIn ?? false
 
     // Direct Play only allowed if container/codecs are supported AND subtitles don't require burn-in
-    const canDirectPlay = directPlayMethod === 'direct-play' && !requiresBurnIn && Boolean(directPartKey)
+    const effectiveQualityId = options?.preferredQuality || data.selectedQuality || DEFAULT_QUALITY_ID
+    const isTranscodeQuality =
+      effectiveQualityId !== 'auto' &&
+      effectiveQualityId !== 'original' &&
+      !effectiveQualityId.startsWith('hls-')
+    const isFirstAudioTrack = !selectedAudioTrack || audioTracks[0]?.id === selectedAudioTrack.id
+    const canDirectPlay =
+      !isTranscodeQuality &&
+      isFirstAudioTrack &&
+      (directPlayMethod === 'direct-play' || directPlayMethod === 'direct-stream') &&
+      !requiresBurnIn &&
+      Boolean(directPartKey)
     const playbackMethod = canDirectPlay ? 'direct-play' : 'transcode'
 
     const directUrl = directPartKey
       ? buildPlexDirectUrl(baseUrl, directPartKey, token, playSessionId, clientId)
       : undefined
 
-    const hlsUrl = buildPlexHlsUrl(baseUrl, ratingKey, token, playSessionId, clientId, {
+    const offsetSeconds =
+      typeof options?.startPosition === 'number' && options.startPosition > 0
+        ? Math.floor(options.startPosition)
+        : typeof data.startPositionMs === 'number' && data.startPositionMs > 0
+          ? Math.floor(data.startPositionMs / 1000)
+          : undefined
+
+    const hlsQualityOpts = {
       maxVideoBitrate: data.maxVideoBitrate,
       videoResolution: data.videoResolution,
-    })
+      audioStreamID: selectedAudioTrack?.id,
+      offsetSeconds,
+    }
+
+    const hlsUrl = buildPlexHlsUrl(baseUrl, ratingKey, token, playSessionId, clientId, hlsQualityOpts)
 
     const availableQualities = buildQualityOptions({
       hasDirectPlay: Boolean(directUrl),
       source: 'plex',
     })
+
+    if (baseUrl && ratingKey && token && !canDirectPlay) {
+      void triggerPlexDecision(baseUrl, ratingKey, token, playSessionId, clientId, hlsQualityOpts)
+    }
 
     return {
       engine: canDirectPlay ? 'html5-video' : 'hls',
@@ -247,22 +301,65 @@ export class PlexSourceAdapter implements MediaSourceAdapter {
       item.providerData.selectedQuality = quality.id
       item.providerData.maxVideoBitrate = maxVideoBitrate
       item.providerData.videoResolution = videoResolution
+      if (typeof _currentPosition === 'number' && _currentPosition > 0) {
+        item.providerData.startPositionMs = Math.round(_currentPosition * 1000)
+      }
     }
 
-    return this.resolvePlayback(item, { preferredQuality: quality.id })
+    const resolved = await this.resolvePlayback(item, {
+      preferredQuality: quality.id,
+      startPosition: _currentPosition,
+      audioIndex: item.providerData?.selectedAudioIndex,
+      subtitleIndex: item.providerData?.selectedSubtitleIndex,
+    })
+
+    if (item.providerData) {
+      item.providerData.playbackMethod = resolved.playbackMethod
+      item.providerData.hlsUrl = resolved.hlsUrl
+      item.providerData.directUrl = resolved.directUrl
+    }
+
+    return resolved
   }
 
   async changeTracks(
     item: PlayableMediaItem,
     audioIndex?: number,
     subtitleIndex?: number,
+    currentPosition?: number,
   ): Promise<ResolvedPlayback> {
     if (item.providerData) {
       if (audioIndex !== undefined) item.providerData.selectedAudioIndex = audioIndex
       if (subtitleIndex !== undefined) item.providerData.selectedSubtitleIndex = subtitleIndex
+      if (typeof currentPosition === 'number' && currentPosition > 0) {
+        item.providerData.startPositionMs = Math.round(currentPosition * 1000)
+      }
+      if (audioIndex !== undefined) {
+        const currentSessionId = item.providerData.playSessionId || `otix-plex-${Date.now().toString(36)}`
+        const baseSessionId = currentSessionId.split('-a-')[0]
+        const audioTrack = (item.providerData.audioTracks || []).find((a: any) => a.index === audioIndex)
+        if (audioTrack?.id) {
+          item.providerData.playSessionId = `${baseSessionId}-a-${audioTrack.id}`
+        }
+      }
     }
 
-    return this.resolvePlayback(item, { audioIndex, subtitleIndex })
+    const resolved = await this.resolvePlayback(item, {
+      audioIndex,
+      subtitleIndex,
+      startPosition: currentPosition,
+    })
+
+    if (item.providerData) {
+      item.providerData.playbackMethod = resolved.playbackMethod
+      item.providerData.hlsUrl = resolved.hlsUrl
+      item.providerData.directUrl = resolved.directUrl
+      if (typeof currentPosition === 'number' && currentPosition > 0) {
+        item.providerData.startPositionMs = Math.round(currentPosition * 1000)
+      }
+    }
+
+    return resolved
   }
 
   async getNextItem(item: PlayableMediaItem): Promise<PlayableMediaItem | null> {

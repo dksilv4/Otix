@@ -55,7 +55,7 @@ export const NodeScanPathsCard = ({
     <>
       <div
         className={cn(
-          'rounded-2xl bg-[var(--dk-surface-glass)] backdrop-blur-2xl border border-white/[0.04] p-4 sm:p-5 shadow-[var(--dk-shadow-glass)] space-y-4 transition-all',
+          'rounded-2xl bg-[var(--dk-surface-glass)] backdrop-blur-2xl border border-white/[0.04] p-4 sm:p-5 shadow-[var(--dk-shadow-glass)] space-y-4 transition-colors',
           className,
         )}
       >
@@ -123,7 +123,7 @@ export const NodeScanPathsCard = ({
                   return (
                     <div
                       key={`${item.path}-${item.type}`}
-                      className="flex items-center justify-between gap-2.5 p-2.5 rounded-xl bg-[var(--dk-surface-ghost)] border border-white/[0.04] hover:bg-[var(--dk-surface-ghost-hover)] transition-all group"
+                      className="flex items-center justify-between gap-2.5 p-2.5 rounded-xl bg-[var(--dk-surface-ghost)] border border-white/[0.04] hover:bg-[var(--dk-surface-ghost-hover)] transition-colors group"
                     >
                       <div className="flex items-center gap-2.5 min-w-0">
                         <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--dk-surface-base)] text-muted-foreground shrink-0 group-hover:text-primary transition-colors">

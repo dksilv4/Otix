@@ -48,7 +48,7 @@ const SettingsNavGroups = ({
 }) => {
   const navLinkClass = (isActive: boolean) =>
     cn(
-      'flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs sm:text-sm font-medium transition-all duration-200 group',
+      'flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs sm:text-sm font-medium transition-colors duration-200 group',
       isActive ? 'bg-primary/10 text-primary shadow-xs font-semibold' : 'text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-ghost-hover)]',
     )
 
@@ -111,7 +111,7 @@ const SettingsNavGroups = ({
                       })}
                       {showLock && <Lock className="h-3 w-3 text-muted-foreground/50 shrink-0" />}
                       {item.isPage && (
-                        <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/40 group-hover:text-foreground group-hover:translate-x-0.5 transition-all shrink-0 ml-0.5" />
+                        <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/40 group-hover:text-foreground group-hover:translate-x-0.5 transition shrink-0 ml-0.5" />
                       )}
                     </>
                   )}
@@ -283,7 +283,7 @@ const SettingsLayoutInner = () => {
             <aside
               id="settings-sidebar"
               className={cn(
-                'hidden sm:block shrink-0 h-full relative z-20 transition-[width] duration-300 ease-in-out',
+                'hidden sm:block shrink-0 h-full relative z-20 transition-colors duration-300 ease-in-out',
                 collapsed ? 'w-16 lg:w-20' : 'w-56 lg:w-64',
                 desktop ? 'pt-24 sm:pt-28' : 'pt-16 sm:pt-20',
                 'pb-6',

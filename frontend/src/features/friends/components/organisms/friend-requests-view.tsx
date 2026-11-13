@@ -29,7 +29,7 @@ export const FriendRequestsView = ({
         <button
           type="button"
           onClick={() => setSubTab('incoming')}
-          className={`inline-flex items-center gap-2 rounded-xl px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer ${
+          className={`inline-flex items-center gap-2 rounded-xl px-3 py-1.5 text-xs font-semibold transition-colors cursor-pointer ${
             subTab === 'incoming'
               ? 'bg-primary text-primary-foreground shadow-sm'
               : 'text-muted-foreground hover:bg-[var(--dk-surface-ghost)] hover:text-foreground'
@@ -47,7 +47,7 @@ export const FriendRequestsView = ({
         <button
           type="button"
           onClick={() => setSubTab('outgoing')}
-          className={`inline-flex items-center gap-2 rounded-xl px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer ${
+          className={`inline-flex items-center gap-2 rounded-xl px-3 py-1.5 text-xs font-semibold transition-colors cursor-pointer ${
             subTab === 'outgoing'
               ? 'bg-primary text-primary-foreground shadow-sm'
               : 'text-muted-foreground hover:bg-[var(--dk-surface-ghost)] hover:text-foreground'

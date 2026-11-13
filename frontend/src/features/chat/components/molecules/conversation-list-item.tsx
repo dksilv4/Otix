@@ -27,7 +27,7 @@ export const ConversationListItem = ({
     : 'No messages yet'
 
   const baseClasses = floating
-    ? `w-full flex items-center gap-3 p-3 text-left transition-all rounded-2xl cursor-pointer border backdrop-blur-xl ${
+    ? `w-full flex items-center gap-3 p-3 text-left transition-colors rounded-2xl cursor-pointer border backdrop-blur-xl ${
         isSelected
           ? 'bg-primary/14 border-primary/35 shadow-[0_4px_16px_rgba(var(--primary-rgb),0.14)] ring-1 ring-primary/25'
           : 'bg-[var(--dk-surface-overlay)]/65 hover:bg-[var(--dk-surface-overlay)]/90 border-white/[0.05] hover:border-white/[0.12] shadow-[0_2px_8px_rgba(0,0,0,0.06)] hover:shadow-[var(--dk-shadow-glass)]'

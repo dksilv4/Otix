@@ -209,7 +209,7 @@ export const ShowSection = ({
  <div className="relative group/tabs px-6 sm:px-7">
  <button
  onClick={() => scrollTabs("left")}
- className={`glass-scroll-btn absolute top-1/2 z-20 flex w-7 h-7 items-center justify-center rounded-lg bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-base)] text-foreground -translate-y-1/2 left-7 transition-all duration-300 shadow-md ${canScrollTabsLeft ? "opacity-100" : "opacity-0 pointer-events-none"}`}
+ className={`glass-scroll-btn absolute top-1/2 z-20 flex w-7 h-7 items-center justify-center rounded-lg bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-base)] text-foreground -translate-y-1/2 left-7 transition-colors duration-300 shadow-md ${canScrollTabsLeft ? "opacity-100" : "opacity-0 pointer-events-none"}`}
  aria-label="Scroll left"
  >
  <ChevronLeft className="h-4 w-4" />
@@ -236,7 +236,7 @@ export const ShowSection = ({
    if (episodesRef.current) episodesRef.current.scrollLeft = 0
  }}
  className={cn(
-   "shrink-0 px-4 py-1.5 rounded-full text-sm font-medium transition-all snap-start",
+   "shrink-0 px-4 py-1.5 rounded-full text-sm font-medium transition-colors snap-start",
    isActive
      ? "bg-primary text-primary-foreground shadow-md shadow-primary/20 scale-105"
      : "glass-tab text-muted-foreground hover:text-foreground hover:scale-105"
@@ -250,7 +250,7 @@ export const ShowSection = ({
 
  <button
  onClick={() => scrollTabs("right")}
- className={`glass-scroll-btn absolute top-1/2 z-20 flex w-7 h-7 items-center justify-center rounded-lg bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-base)] text-foreground -translate-y-1/2 right-7 transition-all duration-300 shadow-md ${canScrollTabsRight ? "opacity-100" : "opacity-0 pointer-events-none"}`}
+ className={`glass-scroll-btn absolute top-1/2 z-20 flex w-7 h-7 items-center justify-center rounded-lg bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-base)] text-foreground -translate-y-1/2 right-7 transition-colors duration-300 shadow-md ${canScrollTabsRight ? "opacity-100" : "opacity-0 pointer-events-none"}`}
  aria-label="Scroll right"
  >
  <ChevronRight className="h-4 w-4" />
@@ -306,10 +306,11 @@ export const ShowSection = ({
                  seasonNumber: currentSeason.seasonNumber,
                  episodeNumber: firstPlayableEpisode.episodeNumber,
                  episodeTitle: firstPlayableEpisode.name || undefined,
+                 seasons,
                })
              }
              disabled={loadingKey === `${data?.id ? String(data.id) : mediaId}-s${currentSeason.seasonNumber}-e${firstPlayableEpisode.episodeNumber}`}
-             className="text-xs font-semibold transition-all text-primary-foreground flex items-center gap-1.5 bg-primary hover:bg-primary/90 active:scale-95 px-3.5 py-1.5 rounded-full shadow-sm hover:shadow-md hover:-translate-y-0.5 disabled:opacity-50"
+             className="text-xs font-semibold transition text-primary-foreground flex items-center gap-1.5 bg-primary hover:bg-primary/90 active:scale-95 px-3.5 py-1.5 rounded-full shadow-sm hover:shadow-md hover:-translate-y-0.5 disabled:opacity-50"
            >
              {loadingKey === `${data?.id ? String(data.id) : mediaId}-s${currentSeason.seasonNumber}-e${firstPlayableEpisode.episodeNumber}` ? (
                <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -323,7 +324,7 @@ export const ShowSection = ({
          {hasEpisodes && currentUnwatched > 0 && currentSeason.seasonNumber !== 0 && (
            <button
              onClick={handleMarkSeasonWatchedConfirm}
-             className="text-xs font-medium transition-all text-muted-foreground hover:text-[var(--status-online)] flex items-center gap-1.5 bg-[var(--dk-surface-glass)] px-3 py-1.5 rounded-full hover:bg-[var(--dk-surface-glass-hover)] shadow-sm hover:shadow-md hover:-translate-y-0.5"
+             className="text-xs font-medium transition-colors text-muted-foreground hover:text-[var(--status-online)] flex items-center gap-1.5 bg-[var(--dk-surface-glass)] px-3 py-1.5 rounded-full hover:bg-[var(--dk-surface-glass-hover)] shadow-sm hover:shadow-md hover:-translate-y-0.5"
            >
              <CheckCircle2 className="w-3.5 h-3.5" />
              Mark all as watched
@@ -332,7 +333,7 @@ export const ShowSection = ({
          {hasEpisodes && seasonProgress.watched === seasonProgress.total && seasonProgress.total > 0 && currentSeason.seasonNumber !== 0 && (
            <button
              onClick={() => onMarkSeasonWatched(currentSeason.seasonNumber, false)}
-             className="text-xs font-medium transition-all text-muted-foreground hover:text-destructive flex items-center gap-1.5 bg-[var(--dk-surface-glass)] px-3 py-1.5 rounded-full hover:bg-[var(--dk-surface-glass-hover)] shadow-sm hover:shadow-md hover:-translate-y-0.5"
+             className="text-xs font-medium transition-colors text-muted-foreground hover:text-destructive flex items-center gap-1.5 bg-[var(--dk-surface-glass)] px-3 py-1.5 rounded-full hover:bg-[var(--dk-surface-glass-hover)] shadow-sm hover:shadow-md hover:-translate-y-0.5"
            >
              <Circle className="w-3.5 h-3.5" />
              Mark all as unwatched
@@ -367,7 +368,7 @@ export const ShowSection = ({
            type="button"
            disabled={!canScrollEpLeft}
            onClick={() => scrollEpisodes("left")}
-           className="flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-base)] text-foreground disabled:opacity-25 transition-all"
+           className="flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-base)] text-foreground disabled:opacity-25 transition-colors"
            aria-label="Scroll episodes left"
          >
            <ChevronLeft className="h-4 w-4" />
@@ -376,7 +377,7 @@ export const ShowSection = ({
            type="button"
            disabled={!canScrollEpRight}
            onClick={() => scrollEpisodes("right")}
-           className="flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-base)] text-foreground disabled:opacity-25 transition-all"
+           className="flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-base)] text-foreground disabled:opacity-25 transition-colors"
            aria-label="Scroll episodes right"
          >
            <ChevronRight className="h-4 w-4" />
@@ -425,11 +426,12 @@ export const ShowSection = ({
                    showId={data?.id ? String(data.id) : mediaId}
                    showTitle={data?.title}
                    seasonNumber={currentSeason.seasonNumber}
+                   seasons={seasons}
                    onClose={() => close()}
                  />
                )
              }}
-             className={`glass-episode-card group shrink-0 flex flex-col w-[260px] text-left rounded-2xl overflow-hidden relative transition-all hover:-translate-y-0.5 hover:shadow-xl ${isActive ? "bg-[var(--dk-surface-glass-hover)] shadow-[var(--dk-shadow-glass)]" : ""}`}
+             className={`glass-episode-card group shrink-0 flex flex-col w-[260px] text-left rounded-2xl overflow-hidden relative transition hover:-translate-y-0.5 hover:shadow-xl ${isActive ? "bg-[var(--dk-surface-glass-hover)] shadow-[var(--dk-shadow-glass)]" : ""}`}
            >
              <div data-thumb className="relative aspect-video bg-black/10 overflow-hidden">
                <Image
@@ -457,6 +459,7 @@ export const ShowSection = ({
                        seasonNumber: currentSeason.seasonNumber,
                        episodeNumber: episode.episodeNumber,
                        episodeTitle: episode.name || undefined,
+                       seasons,
                      })
                    }}
                    className="pointer-events-auto w-9 h-9 rounded-full bg-foreground text-background flex items-center justify-center shadow-xl hover:scale-110 active:scale-95 transition-transform cursor-pointer"
@@ -480,7 +483,7 @@ export const ShowSection = ({
                {download && (
                   <div className="absolute inset-x-0 bottom-0 h-1 bg-black/60 z-20 overflow-hidden">
                     <div
-                      className="h-full bg-primary transition-all duration-300 ease-out"
+                      className="h-full bg-primary transition-colors duration-300 ease-out"
                       style={{ width: `${Math.min(100, Math.max(0, download.percentage))}%` }}
                     />
                   </div>
@@ -518,7 +521,7 @@ export const ShowSection = ({
                        onToggleEpisodeWatched(episode.id, !isWatched)
                      }
                    }}
-                   className={`absolute top-1.5 left-1.5 rounded-full p-1 transition-all cursor-pointer hover:scale-110 z-10 ${isWatched
+                   className={`absolute top-1.5 left-1.5 rounded-full p-1 transition cursor-pointer hover:scale-110 z-10 ${isWatched
                      ? "bg-[var(--status-online)] hover:opacity-90 text-primary-foreground shadow-md"
                      : "glass-badge text-muted-foreground hover:text-foreground"}`}
                  >

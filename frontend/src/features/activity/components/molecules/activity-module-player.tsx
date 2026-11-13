@@ -259,7 +259,7 @@ export const ActivityModulePlayer = () => {
           onClick={updateProgressFromEvent}
         >
           <div
-            className="h-full rounded-full transition-all"
+            className="h-full rounded-full transition-colors"
             style={{ width: `${progress * 100}%`, backgroundColor: accentColor }}
           />
         </div>
@@ -389,7 +389,7 @@ export const ActivityModulePlayer = () => {
 
                 <button
                   type="button" onClick={togglePlay}
-                  className="h-14 w-14 inline-flex items-center justify-center rounded-full transition-all duration-fast ease active:scale-95"
+                  className="h-14 w-14 inline-flex items-center justify-center rounded-full transition duration-fast ease active:scale-95"
                   style={{ backgroundColor: accentColor, color: palette.accentText }}
                   title={isPlaying ? 'Pause' : 'Play'}
                 >

@@ -54,7 +54,7 @@ export const WelcomeGettingStartedSteps = () => {
           return (
             <div
               key={item.step}
-              className="group relative flex flex-col justify-between rounded-2xl glass-inset p-5 transition-all duration-200 hover:bg-[var(--dk-surface-ghost-hover)]"
+              className="group relative flex flex-col justify-between rounded-2xl glass-inset p-5 transition-colors duration-200 hover:bg-[var(--dk-surface-ghost-hover)]"
             >
               <div className="space-y-3">
                 <div className="flex items-center justify-between">

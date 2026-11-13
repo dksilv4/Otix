@@ -18,18 +18,46 @@ const sizeClasses: Record<string, string> = {
   xl: 'h-16 w-16 text-lg',
 }
 
+const isKnownFailedUrl = (url: string): boolean => {
+  if (typeof window === 'undefined') return false
+  try {
+    const raw = sessionStorage.getItem('otix_failed_img_urls')
+    if (!raw) return false
+    const list = JSON.parse(raw)
+    return Array.isArray(list) && list.includes(url)
+  } catch {
+    return false
+  }
+}
+
+const markFailedUrl = (url: string): void => {
+  if (typeof window === 'undefined') return
+  try {
+    const raw = sessionStorage.getItem('otix_failed_img_urls')
+    const list = raw ? JSON.parse(raw) : []
+    if (Array.isArray(list) && !list.includes(url)) {
+      list.push(url)
+      sessionStorage.setItem('otix_failed_img_urls', JSON.stringify(list))
+    }
+  } catch {}
+}
+
 const DkAvatar = forwardRef<HTMLDivElement, DkAvatarProps>(
   ({ src, name, size = 'md', className, icon }, ref) => {
     const [imgError, setImgError] = useState(false)
     const cleanSrc = sanitizeImageUrl(src)
+    const isFailed = Boolean(cleanSrc && (imgError || isKnownFailedUrl(cleanSrc)))
 
-    if (cleanSrc && !imgError) {
+    if (cleanSrc && !isFailed) {
       return (
         <div ref={ref} className={cn('relative shrink-0', sizeClasses[size], className)}>
           <img
             src={cleanSrc}
             alt={name}
-            onError={() => setImgError(true)}
+            onError={() => {
+              if (cleanSrc) markFailedUrl(cleanSrc)
+              setImgError(true)
+            }}
             className="h-full w-full rounded-full object-cover shadow-sm"
           />
         </div>

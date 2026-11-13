@@ -94,7 +94,7 @@ export const MediaPlaySplitButton = ({
         onClick={handlePlayPrimary}
         disabled={busy != null}
         className={cn(
-          'relative overflow-hidden group/stream-btn transition-all duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed',
+          'relative overflow-hidden group/stream-btn transition-colors duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed',
           'inline-flex items-center gap-2 rounded-full h-10 px-4 sm:px-5 py-2 text-sm font-semibold shadow-lg backdrop-blur-md hover:scale-[1.02] active:scale-[0.98] [&_svg]:h-4 [&_svg]:w-4',
           theme.className,
         )}
@@ -117,7 +117,7 @@ export const MediaPlaySplitButton = ({
         {isResume && progressPercent > 0 && (
           <span className="absolute bottom-0 left-3 right-3 h-[2px] bg-foreground/20 rounded-full overflow-hidden">
             <span
-              className={cn('block h-full transition-all duration-300', theme.progressBarClassName)}
+              className={cn('block h-full transition-colors duration-300', theme.progressBarClassName)}
               style={{ width: `${progressPercent}%` }}
             />
           </span>
@@ -133,7 +133,7 @@ export const MediaPlaySplitButton = ({
         onClick={handlePlayPrimary}
         disabled={busy != null}
         className={cn(
-          'relative overflow-hidden inline-flex items-center gap-2 rounded-l-full h-10 px-4 sm:px-5 py-2 text-sm font-semibold transition-all duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed',
+          'relative overflow-hidden inline-flex items-center gap-2 rounded-l-full h-10 px-4 sm:px-5 py-2 text-sm font-semibold transition-colors duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed',
           theme.className,
         )}
         title={subText ? `${primaryText} (${subText})` : primaryText}
@@ -155,7 +155,7 @@ export const MediaPlaySplitButton = ({
         {isResume && progressPercent > 0 && (
           <span className="absolute bottom-0 left-3 right-3 h-[2px] bg-foreground/20 rounded-full overflow-hidden">
             <span
-              className={cn('block h-full transition-all duration-300', theme.progressBarClassName)}
+              className={cn('block h-full transition-colors duration-300', theme.progressBarClassName)}
               style={{ width: `${progressPercent}%` }}
             />
           </span>
@@ -171,7 +171,7 @@ export const MediaPlaySplitButton = ({
         aria-expanded={menuOpen}
         aria-controls={menuId}
         className={cn(
-          'inline-flex items-center justify-center rounded-r-full h-10 border-l border-primary-foreground/20 px-3 transition-all cursor-pointer',
+          'inline-flex items-center justify-center rounded-r-full h-10 border-l border-primary-foreground/20 px-3 transition-colors cursor-pointer',
           theme.className,
         )}
       >

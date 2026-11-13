@@ -21,6 +21,19 @@ import {
   savePlaybackSessionImmediate,
   clearPlaybackSession,
 } from '../utils/playback-persistence'
+import {
+  getSavedVisualizerParams,
+  saveVisualizerParams,
+  getSavedVisualizerMode,
+  saveVisualizerMode,
+  clearSavedVisualizerSettings,
+  applyPresetWithPersistentPreferences,
+} from '../utils/visualizer-persistence'
+import {
+  generateVisualizerSeed,
+  parseVisualizerSeed,
+  generateRandomVisualizerSeed,
+} from '../utils/visualizer-seed'
 import { WaveformScrubber } from '../components/waveform-scrubber'
 import { perlinNoise3D } from '../utils/perlin-noise'
 import {
@@ -853,6 +866,301 @@ describe('Music Visualizers & Helpers Suite', () => {
       expect(screen.getByLabelText(/Visualizer mode/i)).toBeInTheDocument()
 
       unmount()
+    })
+
+    it('renders Album Theme Persisted badge when useAlbumPalette is true', () => {
+      render(
+        <MeshGridControlsPanel
+          isOpen={true}
+          onClose={vi.fn()}
+          params={{ ...MESH_GRID_VARIANT_14_CONFIG, useAlbumPalette: true }}
+          onParamChange={vi.fn()}
+          onApplyPreset={vi.fn()}
+          onResetParams={vi.fn()}
+          onResetCamera={vi.fn()}
+          theme={mockTheme}
+        />,
+      )
+
+      expect(screen.getByText('Album Theme Persisted')).toBeInTheDocument()
+    })
+  })
+
+  // -------------------------------------------------------------------------
+  // Visualizer Persistence Suite
+  // -------------------------------------------------------------------------
+  describe('Visualizer Persistence (visualizer-persistence)', () => {
+    beforeEach(() => {
+      clearSavedVisualizerSettings()
+      localStorage.clear()
+    })
+
+    it('returns baseline Preset 14 defaults when no settings are saved', () => {
+      const params = getSavedVisualizerParams()
+      expect(params.gridSizeX).toBe(MESH_GRID_VARIANT_14_CONFIG.gridSizeX)
+      expect(params.waveHeight).toBe(MESH_GRID_VARIANT_14_CONFIG.waveHeight)
+      expect(params.flowDirection).toBe('radial')
+
+      const mode = getSavedVisualizerMode()
+      expect(mode).toBe('mesh-grid')
+    })
+
+    it('saves and restores custom visualizer parameters and mode', () => {
+      const customParams = {
+        ...MESH_GRID_VARIANT_14_CONFIG,
+        waveHeight: 2.4,
+        waveSpeed: 1.8,
+        sphereWrap: 180,
+        flowDirection: 'mountain-down' as const,
+      }
+
+      saveVisualizerParams(customParams)
+      saveVisualizerMode('spectrum-2d')
+
+      const restoredParams = getSavedVisualizerParams()
+      expect(restoredParams.waveHeight).toBe(2.4)
+      expect(restoredParams.waveSpeed).toBe(1.8)
+      expect(restoredParams.sphereWrap).toBe(180)
+      expect(restoredParams.flowDirection).toBe('mountain-down')
+
+      const restoredMode = getSavedVisualizerMode()
+      expect(restoredMode).toBe('spectrum-2d')
+    })
+
+    it('clears saved visualizer settings cleanly', () => {
+      saveVisualizerParams({ ...MESH_GRID_VARIANT_14_CONFIG, waveHeight: 3.0 })
+      saveVisualizerMode('spectrum-2d')
+
+      clearSavedVisualizerSettings()
+
+      expect(getSavedVisualizerMode()).toBe('mesh-grid')
+      expect(getSavedVisualizerParams().waveHeight).toBe(MESH_GRID_VARIANT_14_CONFIG.waveHeight)
+    })
+
+    it('persists useAlbumPalette across presets using applyPresetWithPersistentPreferences', () => {
+      const prev = {
+        ...MESH_GRID_VARIANT_14_CONFIG,
+        useAlbumPalette: true,
+      }
+      const preset = MESH_GRID_PRESETS[1] // cosmic-globe (has useAlbumPalette: false)
+      const next = applyPresetWithPersistentPreferences(prev, preset.params)
+
+      expect(next.useAlbumPalette).toBe(true)
+      expect(next.sphereWrap).toBe(preset.params.sphereWrap)
+    })
+
+    it('persists audio calibration settings across presets', () => {
+      const prev = {
+        ...MESH_GRID_VARIANT_14_CONFIG,
+        sensitivity: 2.5,
+        gain: 1.8,
+        smoothingTimeConstant: 0.9,
+        fftSize: 4096,
+      }
+      const preset = MESH_GRID_PRESETS[2] // calm-ocean
+      const next = applyPresetWithPersistentPreferences(prev, preset.params)
+
+      expect(next.sensitivity).toBe(2.5)
+      expect(next.gain).toBe(1.8)
+      expect(next.smoothingTimeConstant).toBe(0.9)
+      expect(next.fftSize).toBe(4096)
+      expect(next.waveHeight).toBe(preset.params.waveHeight)
+    })
+
+    it('persists camera settings when lockCameraOnPresetChange is true', () => {
+      const prev = {
+        ...MESH_GRID_VARIANT_14_CONFIG,
+        lockCameraOnPresetChange: true,
+        cameraPosition: { x: 12, y: 34, z: 56 },
+        cameraTarget: { x: 1, y: 2, z: 3 },
+        cameraFov: 90,
+      }
+      const preset = MESH_GRID_PRESETS[1]
+      const next = applyPresetWithPersistentPreferences(prev, preset.params)
+
+      expect(next.lockCameraOnPresetChange).toBe(true)
+      expect(next.cameraPosition).toEqual({ x: 12, y: 34, z: 56 })
+      expect(next.cameraTarget).toEqual({ x: 1, y: 2, z: 3 })
+      expect(next.cameraFov).toBe(90)
+    })
+
+    it('adopts preset camera when lockCameraOnPresetChange is false', () => {
+      const prev = {
+        ...MESH_GRID_VARIANT_14_CONFIG,
+        lockCameraOnPresetChange: false,
+        cameraPosition: { x: 12, y: 34, z: 56 },
+      }
+      const preset = MESH_GRID_PRESETS[1]
+      const next = applyPresetWithPersistentPreferences(prev, preset.params)
+
+      expect(next.cameraPosition).toEqual(preset.params.cameraPosition)
+    })
+  })
+
+  // -------------------------------------------------------------------------
+  // Visualizer Seed Generation & Sharing Suite
+  // -------------------------------------------------------------------------
+  describe('Visualizer Seed Generation & Sharing (visualizer-seed)', () => {
+    it('generates a valid shareable visualizer seed with prefix', () => {
+      const seed = generateVisualizerSeed(MESH_GRID_VARIANT_14_CONFIG)
+      expect(typeof seed).toBe('string')
+      expect(seed.startsWith('OTIX-VIZ-1:')).toBe(true)
+    })
+
+    it('parses and round-trips a seed back to exact parameter values', () => {
+      const customParams = {
+        ...MESH_GRID_VARIANT_14_CONFIG,
+        waveHeight: 1.95,
+        waveSpeed: 0.75,
+        sphereWrap: 360,
+        feedback_decay: 0.68,
+      }
+
+      const seed = generateVisualizerSeed(customParams)
+      const parsed = parseVisualizerSeed(seed)
+
+      expect(parsed).not.toBeNull()
+      expect(parsed?.waveHeight).toBe(1.95)
+      expect(parsed?.waveSpeed).toBe(0.75)
+      expect(parsed?.sphereWrap).toBe(360)
+      expect(parsed?.feedback_decay).toBe(0.68)
+    })
+
+    it('gracefully accepts raw JSON configuration strings as seed input', () => {
+      const rawJson = JSON.stringify({
+        waveHeight: 2.2,
+        flowDirection: 'top-down',
+      })
+
+      const parsed = parseVisualizerSeed(rawJson)
+      expect(parsed).not.toBeNull()
+      expect(parsed?.waveHeight).toBe(2.2)
+      expect(parsed?.flowDirection).toBe('top-down')
+      // Also preserves other defaults
+      expect(parsed?.gridSizeX).toBe(MESH_GRID_VARIANT_14_CONFIG.gridSizeX)
+    })
+
+    it('returns null on invalid seed input', () => {
+      expect(parseVisualizerSeed('')).toBeNull()
+      expect(parseVisualizerSeed('invalid-gibberish-string')).toBeNull()
+      expect(parseVisualizerSeed('OTIX-VIZ-1:not-a-valid-base64-json')).toBeNull()
+    })
+
+    it('generates random procedural visualizer seeds', () => {
+      const result = generateRandomVisualizerSeed()
+      expect(result.seed).toBeDefined()
+      expect(result.seed.startsWith('OTIX-VIZ-1:')).toBe(true)
+      expect(result.params).toBeDefined()
+      expect(result.params.waveHeight).toBeGreaterThanOrEqual(0.4)
+      expect(result.params.waveHeight).toBeLessThanOrEqual(2.0)
+
+      const roundTrip = parseVisualizerSeed(result.seed)
+      expect(roundTrip?.waveHeight).toBe(result.params.waveHeight)
+    })
+
+    it('generates random procedural seeds while respecting custom overrides like useAlbumPalette', () => {
+      const result = generateRandomVisualizerSeed({ useAlbumPalette: true })
+      expect(result.params.useAlbumPalette).toBe(true)
+
+      const resultFalse = generateRandomVisualizerSeed({ useAlbumPalette: false })
+      expect(resultFalse.params.useAlbumPalette).toBe(false)
+    })
+  })
+
+  // -------------------------------------------------------------------------
+  // MeshGridControlsPanel Seed & Sharing Interaction Suite
+  // -------------------------------------------------------------------------
+  describe('MeshGridControlsPanel Seed & Sharing UI', () => {
+    const mockTheme = {
+      palette: null,
+      accentRgb: 'rgb(0, 212, 170)',
+      accentRgba: (a: number) => `rgba(0, 212, 170, ${a})`,
+      textColor: 'rgb(255, 255, 255)',
+      subtextColor: 'rgb(160, 160, 160)',
+      iconColor: 'rgb(200, 200, 200)',
+      accentText: 'rgb(0, 0, 0)',
+      containerBackground: 'rgba(20, 20, 25, 0.7)',
+      podBackground: 'rgba(25, 25, 30, 0.8)',
+      dividerColor: 'rgba(255, 255, 255, 0.1)',
+      glowShadow: 'none',
+      hasArtwork: false,
+    }
+
+    it('renders Seed & Share section with current seed code and one-click copy button', () => {
+      render(
+        <MeshGridControlsPanel
+          isOpen={true}
+          onClose={vi.fn()}
+          params={MESH_GRID_VARIANT_14_CONFIG}
+          onParamChange={vi.fn()}
+          onApplyPreset={vi.fn()}
+          onResetParams={vi.fn()}
+          onResetCamera={vi.fn()}
+          theme={mockTheme}
+        />,
+      )
+
+      expect(screen.getByText('Visualizer Seed & Sharing')).toBeInTheDocument()
+      expect(screen.getByText('Current Seed Code')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /Copy Seed/i })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /Roll Random Seed/i })).toBeInTheDocument()
+    })
+
+    it('imports a valid friend seed and triggers onImportSeed', () => {
+      const onImportSeed = vi.fn()
+      const customParams = {
+        ...MESH_GRID_VARIANT_14_CONFIG,
+        waveHeight: 2.15,
+      }
+      const testSeed = generateVisualizerSeed(customParams)
+
+      render(
+        <MeshGridControlsPanel
+          isOpen={true}
+          onClose={vi.fn()}
+          params={MESH_GRID_VARIANT_14_CONFIG}
+          onParamChange={vi.fn()}
+          onApplyPreset={vi.fn()}
+          onResetParams={vi.fn()}
+          onResetCamera={vi.fn()}
+          onImportSeed={onImportSeed}
+          theme={mockTheme}
+        />,
+      )
+
+      const input = screen.getByLabelText('Paste visualizer seed')
+      fireEvent.change(input, { target: { value: testSeed } })
+
+      const applyBtn = screen.getByRole('button', { name: /Apply Seed/i })
+      fireEvent.click(applyBtn)
+
+      expect(onImportSeed).toHaveBeenCalledTimes(1)
+      expect(onImportSeed.mock.calls[0][0].waveHeight).toBe(2.15)
+    })
+
+    it('displays error message when attempting to apply an invalid seed', () => {
+      render(
+        <MeshGridControlsPanel
+          isOpen={true}
+          onClose={vi.fn()}
+          params={MESH_GRID_VARIANT_14_CONFIG}
+          onParamChange={vi.fn()}
+          onApplyPreset={vi.fn()}
+          onResetParams={vi.fn()}
+          onResetCamera={vi.fn()}
+          theme={mockTheme}
+        />,
+      )
+
+      const input = screen.getByLabelText('Paste visualizer seed')
+      fireEvent.change(input, { target: { value: 'invalid-seed-123' } })
+
+      const applyBtn = screen.getByRole('button', { name: /Apply Seed/i })
+      fireEvent.click(applyBtn)
+
+      expect(
+        screen.getByText('Invalid visualizer seed format. Please verify the code string.'),
+      ).toBeInTheDocument()
     })
   })
 })

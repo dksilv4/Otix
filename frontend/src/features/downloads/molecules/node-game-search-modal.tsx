@@ -1003,10 +1003,10 @@ const ReleaseRow = ({
               {/* Animated Progress Fill */}
               <span
                 className={cn(
-                  'absolute inset-y-0 left-0 transition-[width] duration-500 ease-out',
+                  'absolute inset-y-0 left-0 w-full origin-left transition-transform duration-500 ease-out',
                   isPaused ? 'bg-amber-500/35' : isExtracting ? 'bg-purple-500/35' : 'bg-blue-500/40',
                 )}
-                style={{ width: `${Math.max(4, pct)}%` }}
+                style={{ transform: `scaleX(${Math.max(0.04, pct / 100)})` }}
               />
               <span className="relative z-10 flex items-center gap-1.5">
                 {isPaused ? (

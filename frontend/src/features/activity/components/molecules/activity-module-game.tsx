@@ -59,7 +59,7 @@ export const ActivityModuleGame = ({ onClose }: ActivityModuleGameProps = {}) =>
           <button
             type="button"
             onClick={() => void cycleActiveGame()}
-            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium text-muted-foreground hover:text-foreground bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)] transition-all cursor-pointer shrink-0"
+            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium text-muted-foreground hover:text-foreground bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)] transition-colors cursor-pointer shrink-0"
             title="Cycle active game focus (Ctrl+Tab)"
           >
             <RotateCw className="h-2.5 w-2.5" />

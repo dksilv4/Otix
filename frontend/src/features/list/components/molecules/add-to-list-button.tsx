@@ -98,7 +98,7 @@ export const AddToListButton = ({ mediaItemId, className, variant = 'default' }:
         <button
           type="button"
           onClick={() => setOpen(!open)}
-          className="inline-flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-glass-hover)] transition-all hover:scale-110 active:scale-95"
+          className="inline-flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-glass-hover)] transition-colors hover:scale-110 active:scale-95"
           title="Add to list"
           aria-label="Add to list"
         >
@@ -108,7 +108,7 @@ export const AddToListButton = ({ mediaItemId, className, variant = 'default' }:
         <button
           type="button"
           onClick={() => setOpen(!open)}
-          className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs sm:text-sm font-medium bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-glass-hover)] text-foreground border border-[var(--dk-separator)] shadow-md backdrop-blur-md transition-all hover:scale-[1.02] active:scale-[0.98]"
+          className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs sm:text-sm font-medium bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-glass-hover)] text-foreground border border-[var(--dk-separator)] shadow-md backdrop-blur-md transition-colors hover:scale-[1.02] active:scale-[0.98]"
         >
           <ListIcon className="h-4 w-4 text-muted-foreground" />
           <span>List</span>
@@ -119,7 +119,7 @@ export const AddToListButton = ({ mediaItemId, className, variant = 'default' }:
           onClick={() => setOpen(!open)}
           className="dk-interaction__btn glass-inset flex flex-col items-center gap-1.5"
         >
-          <ListIcon className="relative h-5 w-5 text-muted-foreground transition-all duration-200" />
+          <ListIcon className="relative h-5 w-5 text-muted-foreground transition-colors duration-200" />
           <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
             List
           </span>

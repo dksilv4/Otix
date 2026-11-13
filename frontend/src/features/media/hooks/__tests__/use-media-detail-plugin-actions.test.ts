@@ -1,7 +1,19 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { renderHook, waitFor } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import React from 'react'
 import { useMediaDetailPluginActions } from '../use-media-detail-plugin-actions'
 import { apiClient } from '@/lib/api/client'
+
+const createWrapper = () => {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: { retry: false, gcTime: 0 },
+    },
+  })
+  return ({ children }: { children: React.ReactNode }) =>
+    React.createElement(QueryClientProvider, { client: queryClient }, children)
+}
 
 vi.mock('@/lib/api/client', () => ({
   apiClient: {
@@ -56,8 +68,9 @@ describe('useMediaDetailPluginActions', () => {
       },
     }
 
-    const { result } = renderHook(() =>
-      useMediaDetailPluginActions('game', '880', '1623730', true),
+    const { result } = renderHook(
+      () => useMediaDetailPluginActions('game', '880', '1623730', true),
+      { wrapper: createWrapper() },
     )
 
     await waitFor(() => {
@@ -82,8 +95,9 @@ describe('useMediaDetailPluginActions', () => {
       },
     })
 
-    const { result } = renderHook(() =>
-      useMediaDetailPluginActions('movie', '157336', '157336', true),
+    const { result } = renderHook(
+      () => useMediaDetailPluginActions('movie', '157336', '157336', true),
+      { wrapper: createWrapper() },
     )
 
     await waitFor(() => {
@@ -95,6 +109,42 @@ describe('useMediaDetailPluginActions', () => {
     })
     expect(result.current.playWidgets.length).toBe(1)
     expect(result.current.playWidgets[0].label).toBe('Plex')
+    expect(result.current.playWidgets[0].props.instances[0].streamSession).toBeDefined()
+  })
+
+  it('reactively updates playWidgets on refreshPlayWidgets when media becomes available on Plex', async () => {
+    // 1. Initial call: media not yet on Plex (returns 404 or empty)
+    vi.mocked(apiClient.get).mockRejectedValueOnce(new Error('Not found'))
+
+    const wrapper = createWrapper()
+    const { result } = renderHook(
+      () => useMediaDetailPluginActions('movie', '438631', '438631', true, 'Dune'),
+      { wrapper },
+    )
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false)
+    })
+    expect(result.current.playWidgets.length).toBe(0)
+
+    // 2. Media finishes download & Plex indexes: second call returns stream connection details
+    vi.mocked(apiClient.get).mockResolvedValueOnce({
+      data: {
+        ratingKey: '9999',
+        baseUrl: 'http://plex.local:32400',
+        token: 'plex-token-abc',
+        providerLabel: 'Plex',
+        title: 'Dune',
+      },
+    })
+
+    // Invalidate/refresh without page reload
+    await result.current.refreshPlayWidgets()
+
+    await waitFor(() => {
+      expect(result.current.playWidgets.length).toBe(1)
+    })
+    expect(result.current.playWidgets[0].props.instances[0].ratingKey).toBe('9999')
     expect(result.current.playWidgets[0].props.instances[0].streamSession).toBeDefined()
   })
 })

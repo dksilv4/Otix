@@ -228,8 +228,8 @@ export const MediaActivityModal = ({
             {/* Progress bar */}
             <div className="w-full h-2 rounded-full bg-white/10 overflow-hidden">
               <div
-                className="h-full rounded-full bg-primary transition-[width] duration-300 ease-out"
-                style={{ width: `${progress}%` }}
+                className="h-full w-full rounded-full bg-primary origin-left transition-transform duration-300 ease-out"
+                style={{ transform: `scaleX(${progress / 100})` }}
               />
             </div>
 
@@ -275,7 +275,7 @@ export const MediaActivityModal = ({
               <button
                 type="button"
                 onClick={handleNavigateDownloads}
-                className="px-3.5 py-1.5 rounded-full bg-white/10 hover:bg-white/15 text-foreground font-semibold text-xs transition-all active:scale-95 cursor-pointer"
+                className="px-3.5 py-1.5 rounded-full bg-white/10 hover:bg-white/15 text-foreground font-semibold text-xs transition active:scale-95 cursor-pointer"
               >
                 Downloads
               </button>
@@ -285,7 +285,7 @@ export const MediaActivityModal = ({
                   type="button"
                   onClick={handleCancelDownload}
                   disabled={isCancelling}
-                  className="px-3.5 py-1.5 rounded-full bg-destructive/15 hover:bg-destructive/25 text-destructive font-semibold text-xs transition-all active:scale-95 cursor-pointer disabled:opacity-50"
+                  className="px-3.5 py-1.5 rounded-full bg-destructive/15 hover:bg-destructive/25 text-destructive font-semibold text-xs transition active:scale-95 cursor-pointer disabled:opacity-50"
                 >
                   {isCancelling ? 'Cancelling…' : 'Cancel Download'}
                 </button>
@@ -298,7 +298,7 @@ export const MediaActivityModal = ({
               type="button"
               onClick={handleStreamClick}
               disabled={isStartingStream}
-              className="flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-xs transition-all active:scale-95 shadow-md cursor-pointer"
+              className="flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-xs transition active:scale-95 shadow-md cursor-pointer"
             >
               {isStartingStream ? (
                 <Loader2 className="h-3 w-3 animate-spin" />

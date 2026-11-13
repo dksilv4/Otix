@@ -31,6 +31,7 @@ export const XPProgressRing = ({
   return (
     <div className={`relative shrink-0 ${className ?? ''}`} style={{ width: size, height: size }}>
       <svg
+        aria-hidden="true"
         className="absolute inset-0 -rotate-90 pointer-events-none"
         width={size}
         height={size}

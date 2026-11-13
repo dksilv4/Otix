@@ -15,7 +15,7 @@ describe('API_BASE_URL', () => {
     const originalDev = import.meta.env.DEV
     try {
       import.meta.env.DEV = true
-      expect(resolveApiBaseUrl()).toBe('http://127.0.0.1:8000/api/v1')
+      expect(resolveApiBaseUrl()).toBe('http://localhost:8000/api/v1')
     } finally {
       import.meta.env.DEV = originalDev
       isDesktopSpy.mockRestore()

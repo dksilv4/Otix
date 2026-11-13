@@ -244,7 +244,7 @@ export const TelemetryTestPage = () => {
         <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-[var(--dk-surface-ghost)] backdrop-blur-xl shadow-xs self-start md:self-auto">
           <button
             onClick={() => setViewMode('gallery')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-medium text-xs transition-all ${
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-medium text-xs transition-colors ${
               viewMode === 'gallery'
                 ? 'bg-primary text-primary-foreground shadow-sm'
                 : 'text-muted-foreground hover:text-foreground'
@@ -255,7 +255,7 @@ export const TelemetryTestPage = () => {
           </button>
           <button
             onClick={() => setViewMode('focus')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-medium text-xs transition-all ${
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-medium text-xs transition-colors ${
               viewMode === 'focus'
                 ? 'bg-primary text-primary-foreground shadow-sm'
                 : 'text-muted-foreground hover:text-foreground'
@@ -281,7 +281,7 @@ export const TelemetryTestPage = () => {
         <div className="flex flex-wrap items-center gap-2 pt-1">
           <button
             onClick={() => setSelectedKey('cs2Match')}
-            className={`px-3 py-1.5 rounded-xl font-medium text-xs transition-all ${
+            className={`px-3 py-1.5 rounded-xl font-medium text-xs transition-colors ${
               selectedKey === 'cs2Match'
                 ? 'bg-primary text-primary-foreground shadow-sm'
                 : 'bg-[var(--dk-surface-field)] text-muted-foreground hover:text-foreground'
@@ -292,7 +292,7 @@ export const TelemetryTestPage = () => {
 
           <button
             onClick={() => setSelectedKey('cs2Defeat')}
-            className={`px-3 py-1.5 rounded-xl font-medium text-xs transition-all ${
+            className={`px-3 py-1.5 rounded-xl font-medium text-xs transition-colors ${
               selectedKey === 'cs2Defeat'
                 ? 'bg-primary text-primary-foreground shadow-sm'
                 : 'bg-[var(--dk-surface-field)] text-muted-foreground hover:text-foreground'
@@ -303,7 +303,7 @@ export const TelemetryTestPage = () => {
 
           <button
             onClick={() => setSelectedKey('cs2Spectating')}
-            className={`px-3 py-1.5 rounded-xl font-medium text-xs transition-all ${
+            className={`px-3 py-1.5 rounded-xl font-medium text-xs transition-colors ${
               selectedKey === 'cs2Spectating'
                 ? 'bg-primary text-primary-foreground shadow-sm'
                 : 'bg-[var(--dk-surface-field)] text-muted-foreground hover:text-foreground'
@@ -314,7 +314,7 @@ export const TelemetryTestPage = () => {
 
           <button
             onClick={() => setSelectedKey('cs2Victory')}
-            className={`px-3 py-1.5 rounded-xl font-medium text-xs transition-all ${
+            className={`px-3 py-1.5 rounded-xl font-medium text-xs transition-colors ${
               selectedKey === 'cs2Victory'
                 ? 'bg-primary text-primary-foreground shadow-sm'
                 : 'bg-[var(--dk-surface-field)] text-muted-foreground hover:text-foreground'
@@ -325,7 +325,7 @@ export const TelemetryTestPage = () => {
 
           <button
             onClick={() => setSelectedKey('cs2Lobby')}
-            className={`px-3 py-1.5 rounded-xl font-medium text-xs transition-all ${
+            className={`px-3 py-1.5 rounded-xl font-medium text-xs transition-colors ${
               selectedKey === 'cs2Lobby'
                 ? 'bg-primary text-primary-foreground shadow-sm'
                 : 'bg-[var(--dk-surface-field)] text-muted-foreground hover:text-foreground'
@@ -373,7 +373,7 @@ export const TelemetryTestPage = () => {
                 showXPToast(totalAwarded, subtitle)
               })
             }}
-            className="px-4 py-2 rounded-xl bg-primary text-primary-foreground font-semibold text-xs tracking-tight shadow-sm hover:opacity-90 active:scale-95 transition-all shrink-0"
+            className="px-4 py-2 rounded-xl bg-primary text-primary-foreground font-semibold text-xs tracking-tight shadow-sm hover:opacity-90 active:scale-95 transition shrink-0"
           >
             Simulate Awarding +{Math.round((20 + 50 + (currentTelemetry.matchResult.isWin ? 50 : 0)) * Math.max(1.0, Math.min(4.0, currentTelemetry.matchResult.kdr ?? 1.0)))} XP
           </button>
@@ -400,7 +400,7 @@ export const TelemetryTestPage = () => {
               return (
                 <div
                   key={design.id}
-                  className={`rounded-3xl p-5 bg-[var(--dk-surface-ghost)] backdrop-blur-2xl shadow-sm flex flex-col justify-between gap-4 transition-all ${
+                  className={`rounded-3xl p-5 bg-[var(--dk-surface-ghost)] backdrop-blur-2xl shadow-sm flex flex-col justify-between gap-4 transition-colors ${
                     isSelected ? 'ring-2 ring-primary/40' : ''
                   }`}
                 >
@@ -440,7 +440,7 @@ export const TelemetryTestPage = () => {
                         setActiveDesignId(design.id)
                         setViewMode('focus')
                       }}
-                      className="px-3 py-1.5 rounded-xl bg-[var(--dk-surface-field)] text-foreground hover:bg-primary hover:text-primary-foreground font-semibold text-xs tracking-tight transition-all"
+                      className="px-3 py-1.5 rounded-xl bg-[var(--dk-surface-field)] text-foreground hover:bg-primary hover:text-primary-foreground font-semibold text-xs tracking-tight transition-colors"
                     >
                       Inspect in Shelf View
                     </button>
@@ -461,7 +461,7 @@ export const TelemetryTestPage = () => {
               <button
                 key={d.id}
                 onClick={() => setActiveDesignId(d.id)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors ${
                   activeDesignId === d.id
                     ? 'bg-primary text-primary-foreground shadow-sm'
                     : 'text-muted-foreground hover:text-foreground'

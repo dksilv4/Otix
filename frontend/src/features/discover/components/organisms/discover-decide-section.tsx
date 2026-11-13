@@ -39,7 +39,7 @@ export const DiscoverDecideSection = ({ className }: DiscoverDecideSectionProps)
               <button
                 type="button"
                 onClick={() => openDecideWatch()}
-                className="flex items-center gap-2 px-5 sm:px-6 py-2.5 sm:py-3 rounded-2xl font-bold text-xs sm:text-sm bg-primary text-primary-foreground shadow-lg hover:opacity-95 transition-all cursor-pointer"
+                className="flex items-center gap-2 px-5 sm:px-6 py-2.5 sm:py-3 rounded-2xl font-bold text-xs sm:text-sm bg-primary text-primary-foreground shadow-lg hover:opacity-95 transition cursor-pointer"
               >
                 <Dices className="h-4 w-4" />
                 Roll the Dice
@@ -48,7 +48,7 @@ export const DiscoverDecideSection = ({ className }: DiscoverDecideSectionProps)
               <button
                 type="button"
                 onClick={() => openDecideWatch()}
-                className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-semibold bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)] text-foreground shadow-xs transition-all cursor-pointer"
+                className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-semibold bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)] text-foreground shadow-xs transition-colors cursor-pointer"
               >
                 <Film className="h-3.5 w-3.5 text-primary" />
                 Movie Night
@@ -57,7 +57,7 @@ export const DiscoverDecideSection = ({ className }: DiscoverDecideSectionProps)
               <button
                 type="button"
                 onClick={() => openDecideWatch()}
-                className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-semibold bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)] text-foreground shadow-xs transition-all cursor-pointer"
+                className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-semibold bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)] text-foreground shadow-xs transition-colors cursor-pointer"
               >
                 <Tv className="h-3.5 w-3.5 text-primary" />
                 Binge Series
@@ -66,7 +66,7 @@ export const DiscoverDecideSection = ({ className }: DiscoverDecideSectionProps)
               <button
                 type="button"
                 onClick={() => openDecideWatch()}
-                className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-semibold bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)] text-foreground shadow-xs transition-all cursor-pointer"
+                className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-semibold bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)] text-foreground shadow-xs transition-colors cursor-pointer"
               >
                 <Gamepad2 className="h-3.5 w-3.5 text-primary" />
                 Next Game
@@ -79,7 +79,7 @@ export const DiscoverDecideSection = ({ className }: DiscoverDecideSectionProps)
             <button
               type="button"
               onClick={() => openDecideWatch()}
-              className="group relative flex flex-col items-center justify-center p-8 rounded-3xl bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-glass-hover)] backdrop-blur-xl shadow-lg transition-all w-full max-w-xs cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
+              className="group relative flex flex-col items-center justify-center p-8 rounded-3xl bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-glass-hover)] backdrop-blur-xl shadow-lg transition-colors w-full max-w-xs cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
             >
               <div className="relative mb-3 flex items-center justify-center">
                 <div className="w-16 h-16 rounded-2xl bg-primary/20 flex items-center justify-center group-hover:scale-110 transition-transform shadow-inner">

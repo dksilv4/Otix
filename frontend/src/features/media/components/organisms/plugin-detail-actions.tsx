@@ -91,11 +91,11 @@ const RequestButton = ({
   const { label, glow, statusTone } = getButtonState(widget)
   const icon =
     statusTone === 'emerald' ? (
-      <Check className="relative h-5 w-5 transition-all duration-200 text-emerald-400 scale-110" />
+      <Check className="relative h-5 w-5 transition duration-200 text-emerald-400 scale-110" />
     ) : statusTone === 'amber' ? (
-      <Clock className="relative h-5 w-5 transition-all duration-200 text-amber-400 scale-110" />
+      <Clock className="relative h-5 w-5 transition duration-200 text-amber-400 scale-110" />
     ) : (
-      <ArrowDownToLine className="relative h-5 w-5 transition-all duration-200 text-primary scale-100" />
+      <ArrowDownToLine className="relative h-5 w-5 transition duration-200 text-primary scale-100" />
     )
   const requestable = (widget.props.instances || []).filter(i => REQUESTABLE.has(i.status))
 
@@ -177,7 +177,7 @@ const RequestButton = ({
         title={buttonTitle}
         className={cn(
           variant === 'pill'
-            ? 'inline-flex items-center gap-2 rounded-full h-10 px-4 sm:px-5 py-2 text-sm font-semibold bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-glass-hover)] text-foreground border border-[var(--dk-separator)] shadow-lg backdrop-blur-md transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed [&_svg]:h-4 [&_svg]:w-4 [&_svg]:scale-100'
+            ? 'inline-flex items-center gap-2 rounded-full h-10 px-4 sm:px-5 py-2 text-sm font-semibold bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-glass-hover)] text-foreground border border-[var(--dk-separator)] shadow-lg backdrop-blur-md transition-colors hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed [&_svg]:h-4 [&_svg]:w-4 [&_svg]:scale-100'
             : cn(
                 'dk-interaction__btn glass-inset disabled:cursor-not-allowed',
                 requesting && 'dk-interaction__btn--pending',
@@ -267,14 +267,14 @@ const StreamMediaButton = ({
         onClick={() => run(single)}
         disabled={busy != null}
         className={cn(
-          'relative overflow-hidden group/stream-btn transition-all duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed',
+          'relative overflow-hidden group/stream-btn transition-colors duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed',
           variant === 'pill'
             ? cn(
                 'inline-flex items-center gap-2 rounded-full h-10 px-4 sm:px-5 py-2 text-sm font-semibold shadow-lg backdrop-blur-md hover:scale-[1.02] active:scale-[0.98] [&_svg]:h-4 [&_svg]:w-4',
                 theme.className,
               )
             : cn(
-                'inline-flex items-center justify-center gap-1.5 rounded-xl px-4 h-9 text-sm font-semibold transition-all',
+                'inline-flex items-center justify-center gap-1.5 rounded-xl px-4 h-9 text-sm font-semibold transition-colors',
                 theme.className,
               ),
         )}
@@ -298,7 +298,7 @@ const StreamMediaButton = ({
         {isResume && progressPercent > 0 && (
           <span className="absolute bottom-0 left-3 right-3 h-[2px] bg-foreground/20 rounded-full overflow-hidden">
             <span
-              className={cn('block h-full transition-all duration-300', theme.progressBarClassName)}
+              className={cn('block h-full transition-colors duration-300', theme.progressBarClassName)}
               style={{ width: `${progressPercent}%` }}
             />
           </span>
@@ -321,14 +321,14 @@ const StreamMediaButton = ({
           setCoords({ top: rect.bottom + 6, left: rect.left, width: rect.width })
         }}
         className={cn(
-          'relative overflow-hidden group/stream-btn transition-all duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed',
+          'relative overflow-hidden group/stream-btn transition-colors duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed',
           variant === 'pill'
             ? cn(
                 'inline-flex items-center gap-2 rounded-full h-10 px-4 sm:px-5 py-2 text-sm font-semibold shadow-lg backdrop-blur-md hover:scale-[1.02] active:scale-[0.98] [&_svg]:h-4 [&_svg]:w-4',
                 theme.className,
               )
             : cn(
-                'inline-flex items-center justify-center gap-1.5 rounded-xl px-4 h-9 text-sm font-semibold transition-all',
+                'inline-flex items-center justify-center gap-1.5 rounded-xl px-4 h-9 text-sm font-semibold transition-colors',
                 theme.className,
               ),
         )}
@@ -370,7 +370,7 @@ const StreamMediaButton = ({
                     type="button"
                     disabled={busy != null}
                     onClick={() => run(inst)}
-                    className="flex w-full items-center justify-between gap-2 px-3 py-2.5 rounded-xl text-left text-xs text-foreground hover:bg-[var(--dk-surface-glass)] transition-all cursor-pointer disabled:opacity-50 group"
+                    className="flex w-full items-center justify-between gap-2 px-3 py-2.5 rounded-xl text-left text-xs text-foreground hover:bg-[var(--dk-surface-glass)] transition-colors cursor-pointer disabled:opacity-50 group"
                   >
                     <div className="flex items-center gap-2 min-w-0">
                       {busy === inst.id ? (

@@ -291,6 +291,7 @@ export const Simple2DVisualizerCanvas = ({
   return (
     <div className={cn('relative w-full h-full overflow-hidden select-none', className)}>
       <canvas
+        aria-hidden="true"
         ref={canvasRef}
         className="w-full h-full block pointer-events-none"
       />

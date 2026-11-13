@@ -1,6 +1,7 @@
 import type { RefObject } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Clapperboard, Play, Pause } from 'lucide-react'
+import { Logo } from '@ui/atoms/logo'
 import { cn } from '@/lib/utils'
 
 export interface PlayerVideoSurfaceProps {
@@ -13,8 +14,9 @@ export interface PlayerVideoSurfaceProps {
   iframeSrc: string
   onIframeLoad: () => void
   isZoomedOut: boolean
-  videoRef: RefObject<HTMLVideoElement | null>
+  videoRef: RefObject<HTMLVideoElement | null> | ((el: HTMLVideoElement | null) => void)
   activeSubtitle?: {
+    id?: string | number
     url?: string
     label?: string
     language?: string
@@ -25,11 +27,15 @@ export interface PlayerVideoSurfaceProps {
   onProgress: () => void
   onWaiting: () => void
   onPlaying: () => void
+  onPlay?: () => void
+  onPause?: () => void
   onError: () => void
+  onEnded?: () => void
   splashAction: 'play' | 'pause' | null
   onTogglePlay: () => void
   onDoubleTap: () => void
   effectiveIsPlaying: boolean
+  isBuffering?: boolean
 }
 
 export const PlayerVideoSurface = ({
@@ -50,11 +56,15 @@ export const PlayerVideoSurface = ({
   onProgress,
   onWaiting,
   onPlaying,
+  onPlay,
+  onPause,
   onError,
+  onEnded,
   splashAction,
   onTogglePlay,
   onDoubleTap,
   effectiveIsPlaying,
+  isBuffering = false,
 }: PlayerVideoSurfaceProps) => {
   return (
     <>
@@ -67,7 +77,7 @@ export const PlayerVideoSurface = ({
                 <Clapperboard className="h-6 w-6" />
               </div>
               <div className="space-y-1">
-                <h4 className="text-base font-semibold text-primary-foreground">Trailer Playback Restricted</h4>
+                <h4 className="text-base font-semibold text-foreground">Trailer Playback Restricted</h4>
                 <p className="text-xs sm:text-sm text-muted-foreground">
                   The video publisher has restricted third-party embedded playback for this trailer.
                 </p>
@@ -104,17 +114,24 @@ export const PlayerVideoSurface = ({
           ref={videoRef}
           playsInline
           disablePictureInPicture={false}
-          className="w-full h-full object-contain"
+          className={cn(
+            'w-full h-full transition-[object-fit] duration-300',
+            isZoomedOut ? 'object-cover' : 'object-contain',
+          )}
           onLoadedMetadata={onLoadedMetadata}
           onCanPlay={onCanPlay}
           onTimeUpdate={onTimeUpdate}
           onProgress={onProgress}
           onWaiting={onWaiting}
           onPlaying={onPlaying}
+          onPlay={onPlay}
+          onPause={onPause}
           onError={onError}
+          onEnded={onEnded}
         >
           {activeSubtitle?.url && (
             <track
+              key={activeSubtitle.id || activeSubtitle.url}
               kind="subtitles"
               src={activeSubtitle.url}
               label={activeSubtitle.label || 'Subtitles'}
@@ -138,6 +155,22 @@ export const PlayerVideoSurface = ({
         role="button"
         tabIndex={-1}
       >
+        {/* Buffering visual feedback indicator - pure Otix loading logo */}
+        <AnimatePresence>
+          {isBuffering && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.8 }}
+              transition={{ duration: 0.2 }}
+              className="absolute z-20 flex items-center justify-center p-3.5 rounded-full bg-black/45 backdrop-blur-xl text-primary shadow-2xl pointer-events-none border border-white/[0.04]"
+              aria-label="Buffering"
+            >
+              <Logo animateInfinity className="h-7 w-7 text-primary" />
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {/* Play/Pause center splash feedback animation */}
         <AnimatePresence>
           {splashAction && (
@@ -147,12 +180,12 @@ export const PlayerVideoSurface = ({
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 1.35 }}
               transition={{ duration: 0.35, ease: 'easeOut' }}
-              className="flex h-16 w-16 sm:h-20 sm:w-20 items-center justify-center rounded-full bg-black/65 backdrop-blur-md text-primary-foreground shadow-2xl pointer-events-none border-0"
+              className="flex h-16 w-16 sm:h-20 sm:w-20 items-center justify-center rounded-full bg-black/65 backdrop-blur-md text-foreground shadow-2xl pointer-events-none border-0"
             >
               {splashAction === 'play' ? (
-                <Play className="h-8 w-8 sm:h-10 sm:w-10 fill-current ml-1 text-primary-foreground" />
+                <Play className="h-8 w-8 sm:h-10 sm:w-10 fill-current ml-1 text-foreground" />
               ) : (
-                <Pause className="h-8 w-8 sm:h-10 sm:w-10 fill-current text-primary-foreground" />
+                <Pause className="h-8 w-8 sm:h-10 sm:w-10 fill-current text-foreground" />
               )}
             </motion.div>
           )}

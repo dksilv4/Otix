@@ -67,16 +67,15 @@ export const NavPillCenter = () => {
     <AnimatePresence>
       <motion.div
         key={`nav-center-${centerConfig.id ?? 'default'}-${layoutInfo.placement}`}
-        initial={{ opacity: 0, y: -14, scale: 0.96 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        exit={{ opacity: 0, y: -14, scale: 0.96 }}
+        initial={{ opacity: 0, y: -14, scale: 0.96, x: '-50%' }}
+        animate={{ opacity: 1, y: 0, scale: 1, x: '-50%' }}
+        exit={{ opacity: 0, y: -14, scale: 0.96, x: '-50%' }}
         transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
         data-nav-pill="center"
         data-placement={layoutInfo.placement}
         className={`fixed z-[9990] ${titleBarOffset} shadow-[var(--dk-shadow-glass)] backdrop-blur-[16px] overflow-hidden flex items-center rounded-[2rem] px-3.5 py-1.5 border border-white/[0.04]`}
         style={{
           left: `${layoutInfo.center}px`,
-          transform: 'translateX(-50%)',
           maxWidth: `${layoutInfo.maxWidth}px`,
           background: 'color-mix(in oklch, var(--dk-surface-raised) 25%, transparent)',
           backgroundImage:

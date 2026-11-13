@@ -431,6 +431,61 @@ describe('Milestone M1: Database Hardening, Transactions, Chunking & IPC Debounc
       expect(table.rows.get('steam_app_1499')?.title).toBe('Game 1499');
     });
 
+    it('safely handles games with missing or undefined installDir without throwing NOT NULL constraint', () => {
+      const gamesWithoutDir: GameRow[] = [
+        {
+          id: 'game_no_dir_1',
+          title: 'Game With Exe Only',
+          exePath: 'C:\\Games\\Title1\\game.exe',
+          platform: 'pc' as const,
+        } as any,
+        {
+          id: 'game_no_dir_2',
+          title: 'Game Without Any Paths',
+          platform: 'server' as const,
+        } as any,
+      ];
+
+      expect(() => upsertGames(gamesWithoutDir)).not.toThrow();
+
+      const table = mockDb.tables.get('scanned_games')!;
+      const row1 = table.rows.get('game_no_dir_1');
+      expect(row1).toBeDefined();
+      expect(row1?.install_dir).toBe('C:\\Games\\Title1');
+
+      const row2 = table.rows.get('game_no_dir_2');
+      expect(row2).toBeDefined();
+      expect(row2?.install_dir).toBe('');
+    });
+
+    it('preserves existing install_dir and exe_path when updating a game that omits them', () => {
+      const table = mockDb.tables.get('scanned_games')!;
+      table.rows.set('pc_file_existing', {
+        id: 'pc_file_existing',
+        title: 'Original Title',
+        exe_path: 'C:\\Games\\Original\\game.exe',
+        install_dir: 'C:\\Games\\Original',
+        platform: 'pc',
+      });
+
+      // Update with an incoming object lacking installDir and exePath (e.g. from acceptSuggestion/cloud match)
+      const updatePayload: GameRow[] = [
+        {
+          id: 'pc_file_existing',
+          title: 'Hydrated Title',
+          platform: 'pc' as const,
+        } as any,
+      ];
+
+      expect(() => upsertGames(updatePayload)).not.toThrow();
+
+      const updated = table.rows.get('pc_file_existing');
+      expect(updated).toBeDefined();
+      expect(updated?.install_dir).toBe('C:\\Games\\Original');
+      expect(updated?.exe_path).toBe('C:\\Games\\Original\\game.exe');
+      expect(updated?.title).toBe('Hydrated Title');
+    });
+
     it('deletes stale games using chunked queries on re-scan', () => {
       const table = mockDb.tables.get('scanned_games')!;
       // Initially 1,000 games exist in database

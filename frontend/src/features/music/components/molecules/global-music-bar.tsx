@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect } from 'react'
+import { useState, useRef, useCallback, useEffect, useContext } from 'react'
 import { useNavigate, useLocation } from '@tanstack/react-router'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
@@ -17,6 +17,7 @@ import {
 } from 'lucide-react'
 import { usePlayer } from '@/lib/player/use-player'
 import { usePlayerProgress } from '@/lib/player/use-player-progress'
+import { UniversalPlayerContext } from '@/features/player/core/universal-player-context'
 import { cn } from '@/lib/utils'
 import { useMusicPalette } from '../../hooks/use-music-palette'
 import { WaveformScrubber } from '../../visualizers/components/waveform-scrubber'
@@ -55,10 +56,14 @@ export const GlobalMusicBar = () => {
 
   const [isQueueOpen, setIsQueueOpen] = useState(false)
   const [isFullScreenOpen, setIsFullScreenOpen] = useState(false)
+  const [showSmallScreenVolume, setShowSmallScreenVolume] = useState(false)
   const [resumeToastMessage, setResumeToastMessage] = useState<string | null>(null)
   const [prevVolume, setPrevVolume] = useState(0.7)
+  const volumeRef = useRef<HTMLDivElement | null>(null)
 
-  const isVisible = source !== 'none' && currentTrack !== null
+  const universal = useContext(UniversalPlayerContext)
+  const isVideoActive = universal?.currentItem?.mediaType === 'video'
+  const isVisible = source !== 'none' && currentTrack !== null && !isVideoActive
   const theme = useMusicPalette(currentTrack?.albumArt)
 
   const rawQueue =
@@ -98,6 +103,18 @@ export const GlobalMusicBar = () => {
       window.removeEventListener('keydown', handleKeyDown)
     }
   }, [isVisible, isFullScreenOpen])
+
+  // Close small-screen volume popover when clicking outside
+  useEffect(() => {
+    if (!showSmallScreenVolume) return
+    const handleClickOutside = (e: MouseEvent) => {
+      if (volumeRef.current && !volumeRef.current.contains(e.target as Node)) {
+        setShowSmallScreenVolume(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [showSmallScreenVolume])
 
   const toggleMute = useCallback(() => {
     if (volume > 0) {
@@ -142,7 +159,7 @@ export const GlobalMusicBar = () => {
             </motion.div>
           )}
 
-          {/* 2-Pod Floating Architecture: Compact Left Pod + Dominant Waveform Right Pod */}
+          {/* 3-Pod Floating Architecture: Left Identity + Center Waveform + Right Controls */}
           <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[9990] flex items-center justify-center gap-2 sm:gap-2.5 w-[calc(100%-1.5rem)] max-w-5xl select-none">
             {/* Pod 1 (Left): Ultra-Compact Track Identity & Music Transport */}
             <motion.div
@@ -228,7 +245,7 @@ export const GlobalMusicBar = () => {
                   type="button"
                   onClick={() => void togglePlay()}
                   className={cn(
-                    'flex h-8 w-8 items-center justify-center rounded-full hover:scale-105 active:scale-95 transition-all shadow-none',
+                    'flex h-8 w-8 items-center justify-center rounded-full hover:scale-105 active:scale-95 transition-colors shadow-none',
                     !theme.hasArtwork && 'bg-primary text-primary-foreground',
                   )}
                   style={{
@@ -261,19 +278,18 @@ export const GlobalMusicBar = () => {
               </div>
             </motion.div>
 
-            {/* Pod 2 (Right): Dominant Expansive Waveform Scrubber & Studio Controls */}
+            {/* Pod 2 (Center): Dominant Expansive Waveform Scrubber in its own Pill */}
             <motion.div
               initial={{ opacity: 0, y: 20, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 20, scale: 0.95 }}
               transition={{ duration: 0.22, delay: 0.04, ease: [0.16, 1, 0.3, 1] }}
-              className="relative h-13 px-3 sm:px-4 rounded-2xl backdrop-blur-2xl flex items-center gap-2.5 sm:gap-3 shadow-xl flex-1 min-w-0 transition-[background,box-shadow] duration-500"
+              className="relative h-13 px-3 sm:px-4 rounded-2xl backdrop-blur-2xl flex items-center shadow-xl flex-1 min-w-0 transition-[background,box-shadow] duration-500"
               style={{
                 background: theme.containerBackground,
                 boxShadow: theme.glowShadow,
               }}
             >
-              {/* Expansive Dominant Waveform Scrubber */}
               <WaveformScrubber
                 positionMs={position}
                 durationMs={duration}
@@ -283,16 +299,26 @@ export const GlobalMusicBar = () => {
                 barCount={84}
                 className="flex-1 min-w-0"
               />
+            </motion.div>
 
-              {/* Divider */}
-              <div
-                className="h-4 w-px shrink-0 transition-colors"
-                style={{ backgroundColor: theme.dividerColor }}
-              />
-
+            {/* Pod 3 (Right): Studio & System Controls in its own Pill */}
+            <motion.div
+              initial={{ opacity: 0, y: 20, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 20, scale: 0.95 }}
+              transition={{ duration: 0.22, delay: 0.08, ease: [0.16, 1, 0.3, 1] }}
+              className="relative h-13 px-2.5 sm:px-3 rounded-2xl backdrop-blur-2xl flex items-center gap-1.5 sm:gap-2 shadow-xl shrink-0 transition-[background,box-shadow] duration-500"
+              style={{
+                background: theme.containerBackground,
+                boxShadow: theme.glowShadow,
+              }}
+            >
               {/* Volume */}
               <div
-                className="flex items-center group/volume shrink-0"
+                ref={volumeRef}
+                className="relative flex items-center group/volume shrink-0"
+                onMouseEnter={() => setShowSmallScreenVolume(true)}
+                onMouseLeave={() => setShowSmallScreenVolume(false)}
                 onWheel={(e) => {
                   e.preventDefault()
                   setVolume(Math.min(1, Math.max(0, volume + (e.deltaY < 0 ? 0.05 : -0.05))))
@@ -309,6 +335,7 @@ export const GlobalMusicBar = () => {
                   <VolumeIcon className="h-3.5 w-3.5" />
                 </button>
 
+                {/* Inline slider on desktop xl+ */}
                 <div className="hidden xl:flex items-center w-14 px-1">
                   <input
                     type="range"
@@ -322,6 +349,43 @@ export const GlobalMusicBar = () => {
                     style={theme.hasArtwork ? { accentColor: theme.accentRgb } : undefined}
                   />
                 </div>
+
+                {/* Small Screen Volume Popover (< xl) */}
+                <AnimatePresence>
+                  {showSmallScreenVolume && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 8, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 8, scale: 0.95 }}
+                      transition={{ duration: 0.15 }}
+                      className="xl:hidden absolute bottom-full right-0 mb-3 px-3 py-2.5 rounded-2xl bg-[var(--dk-surface-glass)] backdrop-blur-2xl shadow-2xl flex items-center gap-2.5 border border-white/[0.06] z-50 select-none"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <button
+                        type="button"
+                        onClick={toggleMute}
+                        className="text-muted-foreground hover:text-foreground transition-colors"
+                        aria-label="Mute / Unmute"
+                      >
+                        <VolumeIcon className="h-3.5 w-3.5" />
+                      </button>
+                      <input
+                        type="range"
+                        min={0}
+                        max={1}
+                        step={0.02}
+                        value={volume}
+                        onChange={(e) => setVolume(parseFloat(e.target.value))}
+                        aria-label="Small screen volume slider"
+                        className="w-24 h-1.5 accent-primary cursor-pointer rounded-full"
+                        style={theme.hasArtwork ? { accentColor: theme.accentRgb } : undefined}
+                      />
+                      <span className="text-[11px] font-mono text-muted-foreground w-8 text-right shrink-0">
+                        {Math.round(volume * 100)}%
+                      </span>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
 
               {/* Queue Button */}
@@ -367,7 +431,7 @@ export const GlobalMusicBar = () => {
                 </button>
               )}
 
-              {/* Anchored Floating Queue Popover (Anchored Above Pod 2) */}
+              {/* Anchored Floating Queue Popover (Anchored Above Pod 3) */}
               <AnchoredQueuePopover
                 isOpen={isQueueOpen}
                 onClose={() => setIsQueueOpen(false)}
@@ -389,6 +453,7 @@ export const GlobalMusicBar = () => {
       {/* Full Screen 3D/2D Visualizer Player Overlay: stays open regardless of active playback state */}
       {isFullScreenOpen && (
         <FullScreenMusicPlayer
+          key="full-screen-music-player-portal"
           isOpen={isFullScreenOpen}
           onClose={() => setIsFullScreenOpen(false)}
         />

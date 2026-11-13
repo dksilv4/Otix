@@ -121,7 +121,7 @@ export const UserMenuContent = ({ onClose }: UserMenuContentProps) => {
             <div className="mt-1 flex items-center gap-2">
               <div className="h-1.5 flex-1 rounded-full bg-[var(--dk-surface-ghost)] overflow-hidden">
                 <div
-                  className="h-full rounded-full transition-all duration-500"
+                  className="h-full rounded-full transition-colors duration-500"
                   style={{
                     width: `${Math.round(gamification.xpProgress * 100)}%`,
                     backgroundColor: tier.color,
@@ -146,7 +146,7 @@ export const UserMenuContent = ({ onClose }: UserMenuContentProps) => {
             to="/u/$username"
             params={{ username: user?.username || '' }}
             onClick={onClose}
-            className="flex h-8 items-center justify-center rounded-xl bg-[var(--dk-surface-overlay)]/70 text-muted-foreground transition-all hover:bg-[var(--dk-surface-overlay)] hover:text-foreground active:scale-95 border border-[var(--dk-separator)]"
+            className="flex h-8 items-center justify-center rounded-xl bg-[var(--dk-surface-overlay)]/70 text-muted-foreground transition-colors hover:bg-[var(--dk-surface-overlay)] hover:text-foreground active:scale-95 border border-[var(--dk-separator)]"
             title="Profile"
             aria-label="View Profile"
           >
@@ -156,7 +156,7 @@ export const UserMenuContent = ({ onClose }: UserMenuContentProps) => {
           <Link
             to="/settings/profile"
             onClick={onClose}
-            className="flex h-8 items-center justify-center rounded-xl bg-[var(--dk-surface-overlay)]/70 text-muted-foreground transition-all hover:bg-[var(--dk-surface-overlay)] hover:text-foreground active:scale-95 border border-[var(--dk-separator)]"
+            className="flex h-8 items-center justify-center rounded-xl bg-[var(--dk-surface-overlay)]/70 text-muted-foreground transition-colors hover:bg-[var(--dk-surface-overlay)] hover:text-foreground active:scale-95 border border-[var(--dk-separator)]"
             title="Settings"
             aria-label="Settings"
           >
@@ -166,7 +166,7 @@ export const UserMenuContent = ({ onClose }: UserMenuContentProps) => {
           <Link
             to="/welcome"
             onClick={onClose}
-            className="flex h-8 items-center justify-center rounded-xl bg-[var(--dk-surface-overlay)]/70 text-muted-foreground transition-all hover:bg-[var(--dk-surface-overlay)] hover:text-foreground active:scale-95 border border-[var(--dk-separator)]"
+            className="flex h-8 items-center justify-center rounded-xl bg-[var(--dk-surface-overlay)]/70 text-muted-foreground transition-colors hover:bg-[var(--dk-surface-overlay)] hover:text-foreground active:scale-95 border border-[var(--dk-separator)]"
             title="Welcome & Guide"
             aria-label="Welcome & Guide"
           >
@@ -179,7 +179,7 @@ export const UserMenuContent = ({ onClose }: UserMenuContentProps) => {
               onClose?.()
               openFeatureSpotlight()
             }}
-            className="flex h-8 items-center justify-center rounded-xl bg-[var(--dk-surface-overlay)]/70 text-muted-foreground transition-all hover:bg-[var(--dk-surface-overlay)] hover:text-foreground active:scale-95 cursor-pointer border border-[var(--dk-separator)]"
+            className="flex h-8 items-center justify-center rounded-xl bg-[var(--dk-surface-overlay)]/70 text-muted-foreground transition-colors hover:bg-[var(--dk-surface-overlay)] hover:text-foreground active:scale-95 cursor-pointer border border-[var(--dk-separator)]"
             title="Feature Tips & Tricks"
             aria-label="Feature Tips & Tricks"
           >
@@ -193,7 +193,7 @@ export const UserMenuContent = ({ onClose }: UserMenuContentProps) => {
               onClose?.()
               logout()
             }}
-            className="flex h-8 items-center justify-center rounded-xl bg-[var(--dk-surface-overlay)]/70 text-muted-foreground transition-all hover:bg-[var(--dk-surface-overlay)] hover:text-foreground active:scale-95 cursor-pointer border border-[var(--dk-separator)]"
+            className="flex h-8 items-center justify-center rounded-xl bg-[var(--dk-surface-overlay)]/70 text-muted-foreground transition-colors hover:bg-[var(--dk-surface-overlay)] hover:text-foreground active:scale-95 cursor-pointer border border-[var(--dk-separator)]"
             title="Sign Out"
             aria-label="Sign Out"
           >
@@ -218,7 +218,7 @@ export const UserMenuContent = ({ onClose }: UserMenuContentProps) => {
             <button
               type="button"
               onClick={() => setFriendsTab('active')}
-              className={`rounded-lg px-2.5 py-1 text-[11px] font-semibold transition-all cursor-pointer ${
+              className={`rounded-lg px-2.5 py-1 text-[11px] font-semibold transition-colors cursor-pointer ${
                 friendsTab === 'active'
                   ? 'bg-primary text-primary-foreground shadow-sm'
                   : 'text-muted-foreground hover:text-foreground'
@@ -229,7 +229,7 @@ export const UserMenuContent = ({ onClose }: UserMenuContentProps) => {
             <button
               type="button"
               onClick={() => setFriendsTab('all')}
-              className={`rounded-lg px-2.5 py-1 text-[11px] font-semibold transition-all cursor-pointer ${
+              className={`rounded-lg px-2.5 py-1 text-[11px] font-semibold transition-colors cursor-pointer ${
                 friendsTab === 'all'
                   ? 'bg-primary text-primary-foreground shadow-sm'
                   : 'text-muted-foreground hover:text-foreground'
@@ -241,7 +241,7 @@ export const UserMenuContent = ({ onClose }: UserMenuContentProps) => {
               <button
                 type="button"
                 onClick={() => setFriendsTab('requests')}
-                className={`relative rounded-lg px-2.5 py-1 text-[11px] font-semibold transition-all cursor-pointer ${
+                className={`relative rounded-lg px-2.5 py-1 text-[11px] font-semibold transition-colors cursor-pointer ${
                   friendsTab === 'requests'
                     ? 'bg-primary text-primary-foreground shadow-sm'
                     : 'text-primary font-bold hover:text-primary'
@@ -305,7 +305,7 @@ export const UserMenuContent = ({ onClose }: UserMenuContentProps) => {
                     to="/u/$username"
                     params={{ username: friend.username }}
                     onClick={onClose}
-                    className="group flex items-center justify-between gap-3 rounded-xl bg-[var(--dk-surface-raised)]/70 p-2.5 border border-[var(--dk-separator)] transition-all hover:bg-[var(--dk-surface-raised)]"
+                    className="group flex items-center justify-between gap-3 rounded-xl bg-[var(--dk-surface-raised)]/70 p-2.5 border border-[var(--dk-separator)] transition-colors hover:bg-[var(--dk-surface-raised)]"
                   >
                     <div className="flex items-center gap-2.5 min-w-0 flex-1">
                       <FriendAvatar
@@ -398,7 +398,7 @@ export const UserMenuContent = ({ onClose }: UserMenuContentProps) => {
                 value={friendSearchQuery}
                 onChange={(e) => setFriendSearchQuery(e.target.value)}
                 placeholder="Search friends..."
-                className="w-full rounded-xl bg-[var(--dk-surface-raised)]/90 py-1.5 pl-8 pr-3 text-xs text-foreground placeholder:text-muted-foreground outline-none transition-all focus:ring-1 focus:ring-primary border border-[var(--dk-separator)]"
+                className="w-full rounded-xl bg-[var(--dk-surface-raised)]/90 py-1.5 pl-8 pr-3 text-xs text-foreground placeholder:text-muted-foreground outline-none transition-colors focus:ring-1 focus:ring-primary border border-[var(--dk-separator)]"
               />
             </div>
 
@@ -609,7 +609,7 @@ export const UserMenu = ({ bare, triggerOnly, onToggle }: UserMenuProps) => {
         <Link
           to="/auth/login"
           search={redirectSearch}
-          className="flex items-center gap-1.5 rounded-full px-3.5 py-1 text-xs font-semibold text-foreground bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-glass-hover)] transition-all border border-[var(--dk-separator)] shadow-xs"
+          className="flex items-center gap-1.5 rounded-full px-3.5 py-1 text-xs font-semibold text-foreground bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-glass-hover)] transition-colors border border-[var(--dk-separator)] shadow-xs"
         >
           Sign In
         </Link>

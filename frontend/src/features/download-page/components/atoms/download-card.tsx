@@ -33,7 +33,7 @@ export const DownloadCard = ({ option, onDownload }: DownloadCardProps) => {
   return (
     <div
       className={
-        'group relative flex flex-col justify-between p-5 rounded-2xl backdrop-blur-xl transition-all duration-200 ' +
+        'group relative flex flex-col justify-between p-5 rounded-2xl backdrop-blur-xl transition-colors duration-200 ' +
         (option.isPrimary
           ? 'bg-[var(--dk-surface-raised)] shadow-[var(--dk-shadow-sm)] hover:shadow-[var(--dk-shadow-glass)]'
           : 'bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-ghost-hover)] shadow-[var(--dk-shadow-glass)]')

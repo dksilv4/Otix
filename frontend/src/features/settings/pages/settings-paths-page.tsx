@@ -90,7 +90,7 @@ export const SettingsPathsPage = ({
                 variant="ghost"
                 size="sm"
                 onClick={onNavigateToInfrastructure}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)] border border-white/[0.04] text-muted-foreground hover:text-foreground transition-all cursor-pointer shadow-xs h-8"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)] border border-white/[0.04] text-muted-foreground hover:text-foreground transition-colors cursor-pointer shadow-xs h-8"
               >
                 <Server className="h-3.5 w-3.5 text-primary" />
                 <span>Manage Nodes</span>
@@ -100,7 +100,7 @@ export const SettingsPathsPage = ({
               <Link
                 to="/settings/nodes"
                 hash="infrastructure"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)] border border-white/[0.04] text-muted-foreground hover:text-foreground transition-all cursor-pointer shadow-xs"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)] border border-white/[0.04] text-muted-foreground hover:text-foreground transition-colors cursor-pointer shadow-xs"
               >
                 <Server className="h-3.5 w-3.5 text-primary" />
                 <span>Manage Nodes</span>
@@ -130,7 +130,7 @@ export const SettingsPathsPage = ({
             type="button"
             onClick={() => setSelectedNodeId(0)}
             className={cn(
-              'flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer',
+              'flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer',
               activeNodeId === 0 || activeNodeId === GLOBAL_PROFILE_NODE_ID
                 ? 'bg-primary text-primary-foreground shadow-xs'
                 : 'text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-ghost-hover)]',
@@ -145,7 +145,7 @@ export const SettingsPathsPage = ({
               type="button"
               onClick={() => setSelectedNodeId(server.id)}
               className={cn(
-                'flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer',
+                'flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer',
                 activeNodeId === server.id
                   ? 'bg-primary text-primary-foreground shadow-xs'
                   : 'text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-ghost-hover)]',

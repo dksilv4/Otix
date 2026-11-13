@@ -100,7 +100,7 @@ export const NodesSecondarySettingsMenu = ({
 
   const navItemClass = (isActive: boolean) =>
     cn(
-      'flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs sm:text-sm font-medium transition-all duration-200 cursor-pointer w-full text-left',
+      'flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs sm:text-sm font-medium transition-colors duration-200 cursor-pointer w-full text-left',
       isActive
         ? 'bg-primary/10 text-primary shadow-xs font-semibold'
         : 'text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-ghost-hover)]',
@@ -116,7 +116,7 @@ export const NodesSecondarySettingsMenu = ({
           onClick={handleBack}
           title="Back to Settings"
           aria-label="Back to Settings"
-          className="flex h-8 w-8 items-center justify-center rounded-xl text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-ghost-hover)] transition-all cursor-pointer group shrink-0"
+          className="flex h-8 w-8 items-center justify-center rounded-xl text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-ghost-hover)] transition-colors cursor-pointer group shrink-0"
         >
           <ChevronLeft className="h-4 w-4 text-primary transition-transform group-hover:-translate-x-0.5 shrink-0" />
         </button>

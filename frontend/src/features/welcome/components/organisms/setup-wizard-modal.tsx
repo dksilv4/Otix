@@ -95,7 +95,7 @@ export const SetupWizardModal = ({
           {Array.from({ length: totalSteps }).map((_, idx) => (
             <div
               key={idx}
-              className={`h-1.5 flex-1 rounded-full transition-all duration-300 ${
+              className={`h-1.5 flex-1 rounded-full transition-colors duration-300 ${
                 idx + 1 === step
                   ? 'bg-primary shadow-[0_0_8px_var(--primary)]'
                   : idx + 1 < step

@@ -133,7 +133,7 @@ export const LauncherGameChangelog = ({ game }: LauncherGameChangelogProps) => {
                 {!/^https?:\/\//i.test(file.path) && (
                   <button
                     onClick={() => handleApplyUpdate(file.path)}
-                    className="px-3 py-1.5 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-xs transition-all cursor-pointer shrink-0 shadow-md"
+                    className="px-3 py-1.5 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-xs transition cursor-pointer shrink-0 shadow-md"
                   >
                     Apply Patch
                   </button>
@@ -153,7 +153,7 @@ export const LauncherGameChangelog = ({ game }: LauncherGameChangelogProps) => {
 
           <button
             onClick={() => setFilterPatchesOnly((prev) => !prev)}
-            className={`flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-lg border transition-all cursor-pointer ${
+            className={`flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-lg border transition-colors cursor-pointer ${
               filterPatchesOnly
                 ? 'bg-primary text-primary-foreground border-primary'
                 : 'bg-[var(--dk-surface-ghost)] text-muted-foreground hover:text-foreground border-[var(--dk-separator)]'

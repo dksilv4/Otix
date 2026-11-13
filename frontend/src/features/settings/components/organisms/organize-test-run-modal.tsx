@@ -70,7 +70,7 @@ export const OrganizeTestRunModal = (props: OrganizeTestRunModalProps) => {
 
           {/* Progress Bar Banner */}
           {state.execution.executing && state.execution.progress && (
-            <div className="p-3 sm:p-3.5 rounded-2xl bg-[var(--dk-surface-ghost)] border border-primary/20 space-y-2.5 transition-all">
+            <div className="p-3 sm:p-3.5 rounded-2xl bg-[var(--dk-surface-ghost)] border border-primary/20 space-y-2.5 transition-colors">
               <div className="flex items-center justify-between text-xs">
                 <div className="flex items-center gap-2 min-w-0">
                   <Loader2 size={13} className="animate-spin text-primary shrink-0" />
@@ -93,7 +93,7 @@ export const OrganizeTestRunModal = (props: OrganizeTestRunModalProps) => {
               {/* Progress Bar Track */}
               <div className="w-full h-2 rounded-full bg-white/[0.06] overflow-hidden p-0.5">
                 <div
-                  className="h-full rounded-full bg-primary transition-all duration-300 ease-out"
+                  className="h-full rounded-full bg-primary transition-colors duration-300 ease-out"
                   style={{ width: `${Math.max(2, Math.min(100, state.execution.progress.percent))}%` }}
                 />
               </div>

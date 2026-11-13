@@ -42,7 +42,7 @@ export const ActivityGameCard = ({
   const gamePlatform = game.game.platform ? game.game.platform.toUpperCase() : 'PC'
 
   return (
-    <ActivityModuleSection className={`relative overflow-hidden group transition-all ${isFocused ? 'ring-1 ring-primary/25' : 'opacity-90 hover:opacity-100'}`}>
+    <ActivityModuleSection className={`relative overflow-hidden group transition-colors ${isFocused ? 'ring-1 ring-primary/25' : 'opacity-90 hover:opacity-100'}`}>
       {/* Subtle ambient backdrop glow */}
       {posterUrl && (
         <div

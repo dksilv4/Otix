@@ -122,7 +122,7 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(({
   return (
     <div className={`relative w-full ${className}`}>
       <div
-        className="relative flex items-center gap-3 px-5 py-3 rounded-[2rem] backdrop-blur-xl border border-white/[0.04] transition-all duration-300 bg-[var(--dk-surface-glass)] shadow-[var(--dk-shadow-glass)] focus-within:scale-[1.01] focus-within:bg-[var(--dk-surface-glass-hover)]"
+        className="relative flex items-center gap-3 px-5 py-3 rounded-[2rem] backdrop-blur-xl border border-white/[0.04] transition-colors duration-300 bg-[var(--dk-surface-glass)] shadow-[var(--dk-shadow-glass)] focus-within:scale-[1.01] focus-within:bg-[var(--dk-surface-glass-hover)]"
       >
         <Search className="h-5 w-5 shrink-0 text-muted-foreground/50" />
 
@@ -154,7 +154,7 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(({
         {(inputValue || showSubmitWhenEmpty) && (
           <button
             onClick={inputValue ? flushAndSubmit : (onSubmit || handleClear)}
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/20 text-primary hover:bg-primary/30 hover:scale-105 active:scale-95 transition-all"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/20 text-primary hover:bg-primary/30 hover:scale-105 active:scale-95 transition"
             aria-label={submitLabel}
           >
             <ArrowRight className="h-5 w-5" />

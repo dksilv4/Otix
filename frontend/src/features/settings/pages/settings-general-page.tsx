@@ -547,7 +547,7 @@ export const SettingsGeneralPage = () => {
                 <div className="space-y-1.5 pt-1">
                   <div className="w-full bg-[var(--dk-surface-ghost)] rounded-full h-1.5 overflow-hidden">
                     <div
-                      className="bg-primary h-full transition-all duration-300 rounded-full"
+                      className="bg-primary h-full transition-colors duration-300 rounded-full"
                       style={{ width: `${Math.min(100, Math.max(0, updateProgress.percent))}%` }}
                     />
                   </div>

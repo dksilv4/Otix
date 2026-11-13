@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { Helmet } from 'react-helmet-async';
 import {
   Download,
@@ -13,6 +13,7 @@ import {
   BookmarkCheck,
   Tv,
   Film,
+  CheckCircle2,
 } from 'lucide-react';
 import { useAuth } from '@/lib/providers/auth';
 import { useFeature } from '@/features/_config';
@@ -72,7 +73,15 @@ export const DownloadQueuePage = () => {
   });
   const { openModal } = useModal();
 
-  const activeServer = serverData?.servers?.[0];
+  const onlineServers = useMemo(
+    () => serverData?.servers?.filter((s) => s.isOnline || s.isActive) ?? [],
+    [serverData?.servers],
+  );
+  const [selectedServerId, setSelectedServerId] = useState<number | undefined>(undefined);
+  const activeServer =
+    serverData?.servers?.find((s) => s.id === selectedServerId) ||
+    onlineServers[0] ||
+    serverData?.servers?.[0];
   const activeServerId = activeServer?.id;
   const { data: mediaRequestsData } = useMediaRequests();
   const mediaRequestsCount = mediaRequestsData?.items?.length ?? 0;
@@ -101,6 +110,56 @@ export const DownloadQueuePage = () => {
 
   const sonarrRecords = useMemo(() => sonarrQueueData?.records ?? [], [sonarrQueueData?.records]);
   const radarrRecords = useMemo(() => radarrQueueData?.records ?? [], [radarrQueueData?.records]);
+
+  // Grace window tracking for completed downloads to prevent UI flicker before Plex library refresh
+  interface GraceCompletedItem {
+    id: string | number;
+    title: string;
+    mediaType: 'movie' | 'episode';
+    completedAt: number;
+  }
+  const [graceCompletedItems, setGraceCompletedItems] = useState<GraceCompletedItem[]>([]);
+  const prevQueueSnapshotRef = useRef<Map<string | number, { title: string; mediaType: 'movie' | 'episode' }>>(new Map());
+
+  useEffect(() => {
+    const currentQueueMap = new Map<string | number, { title: string; mediaType: 'movie' | 'episode' }>();
+    for (const r of sonarrRecords) {
+      currentQueueMap.set(`sonarr-${r.id}`, { title: r.title, mediaType: 'episode' });
+    }
+    for (const r of radarrRecords) {
+      currentQueueMap.set(`radarr-${r.id}`, { title: r.title, mediaType: 'movie' });
+    }
+
+    const prevMap = prevQueueSnapshotRef.current;
+    if (prevMap.size > 0) {
+      const now = Date.now();
+      const newlyCompleted: GraceCompletedItem[] = [];
+      for (const [key, val] of prevMap.entries()) {
+        if (!currentQueueMap.has(key)) {
+          newlyCompleted.push({
+            id: key,
+            title: val.title,
+            mediaType: val.mediaType,
+            completedAt: now,
+          });
+        }
+      }
+      if (newlyCompleted.length > 0) {
+        setGraceCompletedItems((prev) => [...prev, ...newlyCompleted]);
+      }
+    }
+    prevQueueSnapshotRef.current = currentQueueMap;
+  }, [sonarrRecords, radarrRecords]);
+
+  // Clean up grace items older than 15 seconds
+  useEffect(() => {
+    if (graceCompletedItems.length === 0) return;
+    const interval = setInterval(() => {
+      const now = Date.now();
+      setGraceCompletedItems((prev) => prev.filter((item) => now - item.completedAt < 15_000));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [graceCompletedItems.length]);
 
   // Usenet live speed lookup map by nzo_id
   const usenetByNzoId = useMemo(() => {
@@ -192,7 +251,8 @@ export const DownloadQueuePage = () => {
     activeRemoteTransfers.length +
     standaloneUsenetItems.length +
     sonarrRecords.length +
-    radarrRecords.length;
+    radarrRecords.length +
+    graceCompletedItems.length;
 
   return (
     <div id="download-queue" className="dk-downloads__page">
@@ -211,6 +271,23 @@ export const DownloadQueuePage = () => {
           )}
         </div>
         <div className="flex items-center gap-2">
+          {hasGameServers && (serverData?.servers?.length ?? 0) > 1 && (
+            <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-muted/60 text-xs text-foreground">
+              <Server className="h-3.5 w-3.5 text-muted-foreground" />
+              <select
+                value={activeServerId}
+                onChange={(e) => setSelectedServerId(Number(e.target.value))}
+                className="bg-transparent text-xs font-semibold text-foreground focus:outline-none cursor-pointer"
+                aria-label="Select active server"
+              >
+                {serverData?.servers?.map((s) => (
+                  <option key={s.id} value={s.id} className="bg-background text-foreground">
+                    {s.name} {s.isOnline ? '(Online)' : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
           {hasGameServers && (
             <>
               <button
@@ -292,7 +369,7 @@ export const DownloadQueuePage = () => {
           type="button"
           onClick={() => setMainTab('active')}
           className={cn(
-            'flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all border border-white/[0.04]',
+            'flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-colors border border-white/[0.04]',
             mainTab === 'active'
               ? 'bg-primary text-primary-foreground shadow-sm'
               : 'text-muted-foreground hover:text-foreground hover:bg-muted/50',
@@ -318,7 +395,7 @@ export const DownloadQueuePage = () => {
           type="button"
           onClick={() => setMainTab('requests')}
           className={cn(
-            'flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all border border-white/[0.04]',
+            'flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-colors border border-white/[0.04]',
             mainTab === 'requests'
               ? 'bg-primary text-primary-foreground shadow-sm'
               : 'text-muted-foreground hover:text-foreground hover:bg-muted/50',
@@ -344,7 +421,7 @@ export const DownloadQueuePage = () => {
           type="button"
           onClick={() => setMainTab('history')}
           className={cn(
-            'flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all border border-white/[0.04]',
+            'flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-colors border border-white/[0.04]',
             mainTab === 'history'
               ? 'bg-primary text-primary-foreground shadow-sm'
               : 'text-muted-foreground hover:text-foreground hover:bg-muted/50',
@@ -473,6 +550,37 @@ export const DownloadQueuePage = () => {
               </a>
             </div>
           </div>
+
+          {/* ── Grace window completed items (syncing to Plex) ── */}
+          {graceCompletedItems.length > 0 && (
+            <div className="mb-5 space-y-2.5">
+              {graceCompletedItems.map((item) => (
+                <div
+                  key={`grace-${item.id}`}
+                  className="flex items-center justify-between p-3.5 rounded-2xl bg-[var(--dk-surface-glass)] backdrop-blur-xl shadow-[var(--dk-shadow-glass)] border border-white/[0.04] transition-colors"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="p-2 rounded-xl bg-primary/15 text-primary shrink-0">
+                      <CheckCircle2 className="h-4 w-4" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold text-foreground truncate">{item.title}</p>
+                      <p className="text-[11px] text-muted-foreground flex items-center gap-1.5">
+                        <span>Download complete</span>
+                        <span>&bull;</span>
+                        <span>Indexing in Plex library...</span>
+                      </p>
+                    </div>
+                  </div>
+                  <div className="shrink-0 flex items-center gap-2">
+                    <span className="text-[10px] font-semibold text-primary px-2.5 py-0.5 rounded-full bg-primary/10">
+                      Syncing
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
 
           {/* ── Active Sonarr TV Episode Downloads ── */}
           {sonarrRecords.length > 0 && (
@@ -632,7 +740,7 @@ export const DownloadQueuePage = () => {
 
                       <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
                         <div
-                          className="h-full bg-primary transition-all duration-300"
+                          className="h-full bg-primary transition-colors duration-300"
                           style={{ width: `${Math.max(2, item.percentage)}%` }}
                         />
                       </div>

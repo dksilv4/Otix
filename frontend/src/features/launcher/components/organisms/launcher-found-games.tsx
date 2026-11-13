@@ -153,7 +153,7 @@ const FoundGameRow = ({
         <button
           type="button"
           onClick={onMatch}
-          className="shrink-0 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider text-primary-foreground cursor-pointer bg-primary hover:bg-primary/90 active:scale-95 transition-all"
+          className="shrink-0 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider text-primary-foreground cursor-pointer bg-primary hover:bg-primary/90 active:scale-95 transition"
         >
           Match
         </button>

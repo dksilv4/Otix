@@ -24,7 +24,7 @@ export const MatchGameButton = ({ game }: Props) => {
   return (
     <button
       onClick={handleOpenMatchModal}
-      className="h-10 px-5 bg-primary hover:bg-primary/90 text-primary-foreground font-black rounded-xl text-xs uppercase tracking-wider flex items-center gap-2 transition-all cursor-pointer shadow-lg active:scale-95 shrink-0"
+      className="h-10 px-5 bg-primary hover:bg-primary/90 text-primary-foreground font-black rounded-xl text-xs uppercase tracking-wider flex items-center gap-2 transition cursor-pointer shadow-lg active:scale-95 shrink-0"
     >
       <Sparkles size={15} className="stroke-[2.5]" />
       <span>Match to Play</span>

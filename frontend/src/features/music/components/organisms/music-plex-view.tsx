@@ -94,7 +94,7 @@ export const MusicPlexView = () => {
             disabled={isDiscovering}
             title="Scan Plex servers for music libraries"
             aria-label="Scan Plex servers for music libraries"
-            className="flex h-8 w-8 items-center justify-center rounded-xl bg-[var(--dk-surface-glass)] text-muted-foreground hover:text-foreground transition-all border border-white/[0.04] active:scale-95 disabled:opacity-50"
+            className="flex h-8 w-8 items-center justify-center rounded-xl bg-[var(--dk-surface-glass)] text-muted-foreground hover:text-foreground transition-colors border border-white/[0.04] active:scale-95 disabled:opacity-50"
           >
             <RotateCw className={`h-3.5 w-3.5 ${isDiscovering ? 'animate-spin text-primary' : ''}`} />
           </button>
@@ -105,7 +105,7 @@ export const MusicPlexView = () => {
           <button
             type="button"
             onClick={() => setBrowseType('albums')}
-            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
+            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
               browseType === 'albums'
                 ? 'bg-[var(--dk-surface-glass-hover)] text-foreground shadow-sm'
                 : 'text-muted-foreground hover:text-foreground'
@@ -118,7 +118,7 @@ export const MusicPlexView = () => {
           <button
             type="button"
             onClick={() => setBrowseType('artists')}
-            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
+            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
               browseType === 'artists'
                 ? 'bg-[var(--dk-surface-glass-hover)] text-foreground shadow-sm'
                 : 'text-muted-foreground hover:text-foreground'
@@ -131,7 +131,7 @@ export const MusicPlexView = () => {
           <button
             type="button"
             onClick={() => setBrowseType('tracks')}
-            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
+            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
               browseType === 'tracks'
                 ? 'bg-[var(--dk-surface-glass-hover)] text-foreground shadow-sm'
                 : 'text-muted-foreground hover:text-foreground'
@@ -144,7 +144,7 @@ export const MusicPlexView = () => {
           <button
             type="button"
             onClick={() => setBrowseType('playlists')}
-            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
+            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
               browseType === 'playlists'
                 ? 'bg-[var(--dk-surface-glass-hover)] text-foreground shadow-sm'
                 : 'text-muted-foreground hover:text-foreground'
@@ -202,7 +202,7 @@ export const MusicPlexView = () => {
             type="button"
             onClick={() => void discoverSections()}
             disabled={isDiscovering}
-            className="mt-5 flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground shadow-sm transition-all hover:scale-105 active:scale-95 disabled:opacity-50"
+            className="mt-5 flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground shadow-sm transition hover:scale-105 active:scale-95 disabled:opacity-50"
           >
             {isDiscovering ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />

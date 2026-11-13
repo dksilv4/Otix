@@ -1,6 +1,6 @@
 import { useEffect, useRef, useCallback } from "react"
 import { Link, useLocation } from "@tanstack/react-router"
-import { motion, AnimatePresence, LayoutGroup } from "framer-motion"
+import { motion, AnimatePresence } from "framer-motion"
 import { DkLogo } from "@ui/atoms/logo"
 import { usePageMeta } from "@/lib/providers/page-context"
 import { useDesktopPlatform } from "@/lib/desktop/platform"
@@ -59,60 +59,72 @@ export const NavPillLeft = () => {
   }, [isOpen, handleClickOutside, handleKeyDown])
 
   return (
-    <LayoutGroup id="nav-pill-left-island">
-      <motion.div
-        ref={containerRef}
-        layout
-        transition={{
-          layout: { duration: 0.22, ease: "linear" },
-        }}
-        data-nav-pill="left"
-        data-menu-trigger
-        className={`fixed z-[9999] left-3 ${titleBarOffset} shadow-[var(--dk-shadow-glass)] backdrop-blur-[16px] overflow-hidden flex flex-col ${
-          isOpen
-            ? "w-[15rem] p-3 rounded-3xl gap-2"
-            : "w-auto px-2 py-1.5 rounded-[2rem] gap-0"
-        }`}
-        style={{
-          background: "color-mix(in oklch, var(--dk-surface-raised) 25%, transparent)",
-          backgroundImage:
-            "linear-gradient(to bottom right, var(--dk-surface-glass), var(--dk-surface-glass-hover))",
-        }}
-      >
-        {/* Top Controls Bar Row */}
-        <div className={`flex items-center w-full ${isOpen ? "justify-between" : "gap-1.5"}`}>
-          <div className="flex items-center gap-1.5">
-            {showBackButton && <BackButton />}
-            <MenuToggle />
-          </div>
-
-          <div className="flex items-center pr-1">
-            {navLogo ? (
-              <img src={navLogo} alt="" className="h-7 object-contain max-w-[120px] pr-2" />
-            ) : (
-              <Link to="/" className="flex items-center pr-1">
-                <DkLogo animateInfinity={false} />
-              </Link>
+    <motion.div
+      ref={containerRef}
+      animate={{
+        width: isOpen ? 240 : "auto",
+        borderRadius: isOpen ? 24 : 32,
+      }}
+      transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1] }}
+      data-nav-pill="left"
+      data-menu-trigger
+      className={`fixed z-[9999] left-3 ${titleBarOffset} shadow-[var(--dk-shadow-glass)] backdrop-blur-[16px] overflow-hidden flex flex-col ${
+        isOpen ? "p-3 gap-2" : "px-2 py-1.5 gap-0"
+      }`}
+      style={{
+        background: "color-mix(in oklch, var(--dk-surface-raised) 25%, transparent)",
+        backgroundImage:
+          "linear-gradient(to bottom right, var(--dk-surface-glass), var(--dk-surface-glass-hover))",
+      }}
+    >
+      {/* Top Controls Bar Row */}
+      <div className={`flex items-center w-full ${isOpen ? "justify-between" : "gap-1.5"}`}>
+        <div className="flex items-center gap-1.5">
+          <AnimatePresence initial={false}>
+            {showBackButton && (
+              <motion.div
+                key="back-button-wrapper"
+                initial={{ opacity: 0, width: 0, scale: 0.8 }}
+                animate={{ opacity: 1, width: "auto", scale: 1 }}
+                exit={{ opacity: 0, width: 0, scale: 0.8 }}
+                transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+                className="flex items-center overflow-hidden shrink-0"
+              >
+                <BackButton />
+              </motion.div>
             )}
-          </div>
+          </AnimatePresence>
+          <MenuToggle />
         </div>
 
-        {/* Dropdown Content appears smoothly in a clean transition without animating each child */}
-        <AnimatePresence mode="popLayout">
-          {isOpen && (
-            <motion.div
-              key="nav-left-dropdown-content"
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, transition: { duration: 0.12, ease: "linear" } }}
-              transition={{ duration: 0.2, ease: "linear" }}
-              className="w-full flex flex-col gap-0.5 pt-1.5 border-t border-[var(--dk-separator)]"
-            >
-              <MenuDropdownContent />
-            </motion.div>
+        <div className="flex items-center pr-1">
+          {navLogo ? (
+            <img src={navLogo} alt="" className="h-7 object-contain max-w-[120px] pr-2" />
+          ) : (
+            <Link to="/" aria-label="Otix Home" className="flex items-center pr-1">
+              <DkLogo animateInfinity={false} />
+            </Link>
           )}
-        </AnimatePresence>
-      </motion.div>
-    </LayoutGroup>
+        </div>
+      </div>
+
+      {/* Dropdown Content appears smoothly in a clean height/opacity transition without scale distortion */}
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            key="nav-left-dropdown-content"
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1] }}
+            className="w-full overflow-hidden"
+          >
+            <div className="w-full flex flex-col gap-0.5 pt-1.5 border-t border-[var(--dk-separator)]">
+              <MenuDropdownContent />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
   )
 };

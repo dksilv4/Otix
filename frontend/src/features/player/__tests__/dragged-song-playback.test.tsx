@@ -6,12 +6,12 @@ import { usePlayer } from '@/lib/player/use-player'
 import { universalPlayerEngine } from '@/features/player/core/universal-player-engine'
 import { handleDroppedMusic } from '@/features/drop/utils/drop-music-handler'
 import { useUnifiedMusic } from '@/features/music/hooks/use-unified-music'
-import { getSessionFile, clearSessionFiles } from '@/features/music/local/utils/session-file-map'
+import { clearSessionFiles } from '@/features/music/local/utils/session-file-map'
 import type { StoredLocalTrack } from '@/features/music/local/utils/local-music-db'
 
 let inMemoryDbTracks: StoredLocalTrack[] = []
 let inMemoryDbFolders: any[] = []
-let inMemoryDbBlobs = new Map<string, Blob>()
+const inMemoryDbBlobs = new Map<string, Blob>()
 
 vi.mock('@/features/music/local/utils/local-music-db', () => ({
   openLocalMusicDb: vi.fn(),
@@ -67,7 +67,6 @@ vi.mock('@/features/music/plex/hooks/use-plex-music', () => ({
 
 describe('Reproducing imported / dragged in song playback', () => {
   let playSpy: any
-  let pauseSpy: any
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -81,7 +80,7 @@ describe('Reproducing imported / dragged in song playback', () => {
       console.log('[HTMLMediaElement.play] called with src:', this.src)
       return Promise.resolve()
     })
-    pauseSpy = vi.spyOn(window.HTMLMediaElement.prototype, 'pause').mockImplementation(function (this: any) {
+    vi.spyOn(window.HTMLMediaElement.prototype, 'pause').mockImplementation(function (this: any) {
       console.log('[HTMLMediaElement.pause] called')
     })
   })

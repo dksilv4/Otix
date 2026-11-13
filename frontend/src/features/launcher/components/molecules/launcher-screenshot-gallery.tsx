@@ -85,7 +85,7 @@ const ScreenshotLightboxModal = ({ screenshots, initialIndex, onClose }: Screens
           <button
             key={i}
             onClick={(e) => { e.stopPropagation(); setLightboxIdx(i) }}
-            className={`w-2 h-2 rounded-full transition-all cursor-pointer ${
+            className={`w-2 h-2 rounded-full transition-colors cursor-pointer ${
               i === lightboxIdx ? 'bg-primary scale-125' : 'bg-muted-foreground/30 hover:bg-muted-foreground/50'
             }`}
           />
@@ -190,7 +190,7 @@ export const LauncherScreenshotGallery = ({ screenshots, onHoverScreenshot, auto
         {validScreenshots.length > 5 && (
           <button
             onClick={() => handleScroll('left')}
-            className="shrink-0 w-9 h-[72px] rounded-xl bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-field)] border border-[var(--dk-separator)] flex items-center justify-center transition-all cursor-pointer shadow-lg text-foreground"
+            className="shrink-0 w-9 h-[72px] rounded-xl bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-field)] border border-[var(--dk-separator)] flex items-center justify-center transition-colors cursor-pointer shadow-lg text-foreground"
           >
             <ChevronLeft size={16} />
           </button>
@@ -206,7 +206,7 @@ export const LauncherScreenshotGallery = ({ screenshots, onHoverScreenshot, auto
               onClick={() => handleOpenLightbox(idx)}
               onMouseEnter={() => handleThumbEnter(idx)}
               onMouseLeave={handleThumbLeave}
-              className={`shrink-0 rounded-xl overflow-hidden transition-all duration-300 cursor-pointer group relative shadow-md hover:shadow-[0_8px_24px_rgba(0,0,0,0.3)] hover:-translate-y-0.5 aspect-video snap-start ${
+              className={`shrink-0 rounded-xl overflow-hidden transition duration-300 cursor-pointer group relative shadow-md hover:shadow-xl hover:-translate-y-0.5 aspect-video snap-start ${
                 idx === activeIdx
                   ? 'border-2 border-primary shadow-[var(--dk-shadow-glass)]'
                   : 'border border-[var(--dk-separator)] hover:border-foreground/30'
@@ -228,7 +228,7 @@ export const LauncherScreenshotGallery = ({ screenshots, onHoverScreenshot, auto
         {validScreenshots.length > 5 && (
           <button
             onClick={() => handleScroll('right')}
-            className="shrink-0 w-9 h-[72px] rounded-xl bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-field)] border border-[var(--dk-separator)] flex items-center justify-center transition-all cursor-pointer shadow-lg text-foreground"
+            className="shrink-0 w-9 h-[72px] rounded-xl bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-field)] border border-[var(--dk-separator)] flex items-center justify-center transition-colors cursor-pointer shadow-lg text-foreground"
           >
             <ChevronRight size={16} />
           </button>

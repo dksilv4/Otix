@@ -70,7 +70,7 @@ export const AddPathFolderCard = ({
           type="button"
           onClick={onStartAdding}
           className={cn(
-            'w-full flex items-center justify-center gap-2 p-3 rounded-2xl transition-all duration-200 cursor-pointer group select-none',
+            'w-full flex items-center justify-center gap-2 p-3 rounded-2xl transition-colors duration-200 cursor-pointer group select-none',
             'border border-dashed border-white/[0.08] hover:border-primary/40',
             'bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)]',
             className,
@@ -90,7 +90,7 @@ export const AddPathFolderCard = ({
     return (
       <div
         className={cn(
-          'p-3.5 rounded-2xl bg-[var(--dk-surface-ghost)] border border-primary/25 shadow-[var(--dk-shadow-glass)] space-y-3 transition-all',
+          'p-3.5 rounded-2xl bg-[var(--dk-surface-ghost)] border border-primary/25 shadow-[var(--dk-shadow-glass)] space-y-3 transition-colors',
           className,
         )}
       >
@@ -164,7 +164,7 @@ export const AddPathFolderCard = ({
                     onDraftPathChange(s.path)
                     onSelectSuggestion?.(s.path)
                   }}
-                  className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg text-xs font-medium bg-[var(--dk-surface-base)] text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-ghost-hover)] border border-white/[0.04] transition-all cursor-pointer"
+                  className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg text-xs font-medium bg-[var(--dk-surface-base)] text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-ghost-hover)] border border-white/[0.04] transition-colors cursor-pointer"
                 >
                   <Plus className="h-3 w-3 text-primary" />
                   <span>{s.label}</span>
@@ -203,7 +203,7 @@ export const AddPathFolderCard = ({
                 aria-label="Assign installation on add"
                 onClick={() => onToggleDraftRole('installation')}
                 className={cn(
-                  'flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer border',
+                  'flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium transition-colors cursor-pointer border',
                   draftRoles.installation
                     ? 'bg-primary text-primary-foreground border-primary/20 shadow-xs'
                     : 'bg-[var(--dk-surface-base)] text-muted-foreground hover:text-foreground border-white/[0.04]',
@@ -217,7 +217,7 @@ export const AddPathFolderCard = ({
                 aria-label="Assign download on add"
                 onClick={() => onToggleDraftRole('download')}
                 className={cn(
-                  'flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer border',
+                  'flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium transition-colors cursor-pointer border',
                   draftRoles.download
                     ? 'bg-primary text-primary-foreground border-primary/20 shadow-xs'
                     : 'bg-[var(--dk-surface-base)] text-muted-foreground hover:text-foreground border-white/[0.04]',
@@ -231,7 +231,7 @@ export const AddPathFolderCard = ({
                 aria-label="Assign ISO on add"
                 onClick={() => onToggleDraftRole('iso')}
                 className={cn(
-                  'flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer border',
+                  'flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium transition-colors cursor-pointer border',
                   draftRoles.iso
                     ? 'bg-primary text-primary-foreground border-primary/20 shadow-xs'
                     : 'bg-[var(--dk-surface-base)] text-muted-foreground hover:text-foreground border-white/[0.04]',
@@ -254,7 +254,7 @@ export const AddPathFolderCard = ({
         type="button"
         onClick={onStartAdding}
         className={cn(
-          'group relative flex flex-col items-center justify-center min-h-[140px] p-5 rounded-2xl transition-all duration-200 cursor-pointer select-none text-center',
+          'group relative flex flex-col items-center justify-center min-h-[140px] p-5 rounded-2xl transition-colors duration-200 cursor-pointer select-none text-center',
           'border border-dashed border-white/[0.08] hover:border-primary/40',
           'bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)]',
           'hover:shadow-[var(--dk-shadow-sm)]',
@@ -262,7 +262,7 @@ export const AddPathFolderCard = ({
         )}
         aria-label="Add Folder"
       >
-        <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/10 text-primary group-hover:scale-105 group-hover:bg-primary group-hover:text-primary-foreground transition-all duration-200 mb-2 shadow-xs">
+        <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/10 text-primary group-hover:scale-105 group-hover:bg-primary group-hover:text-primary-foreground transition duration-200 mb-2 shadow-xs">
           <Plus className="h-5 w-5" />
         </div>
         <span className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors">
@@ -275,7 +275,7 @@ export const AddPathFolderCard = ({
   return (
     <div
       className={cn(
-        'group relative flex flex-col justify-between p-4 rounded-2xl transition-all duration-200',
+        'group relative flex flex-col justify-between p-4 rounded-2xl transition-colors duration-200',
         'bg-[var(--dk-surface-ghost)] border border-primary/30 shadow-[var(--dk-shadow-glass)]',
         'min-h-[140px] gap-3',
         className,
@@ -324,7 +324,7 @@ export const AddPathFolderCard = ({
                     onDraftPathChange(s.path)
                     onSelectSuggestion?.(s.path)
                   }}
-                  className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg text-xs font-medium bg-[var(--dk-surface-base)] text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-ghost-hover)] border border-white/[0.04] transition-all cursor-pointer"
+                  className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg text-xs font-medium bg-[var(--dk-surface-base)] text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-ghost-hover)] border border-white/[0.04] transition-colors cursor-pointer"
                 >
                   <Plus className="h-3 w-3 text-primary" />
                   <span>{s.label}</span>
@@ -363,7 +363,7 @@ export const AddPathFolderCard = ({
                 aria-label="Assign installation on add"
                 onClick={() => onToggleDraftRole('installation')}
                 className={cn(
-                  'flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-medium transition-all cursor-pointer border',
+                  'flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-medium transition-colors cursor-pointer border',
                   draftRoles.installation
                     ? 'bg-primary text-primary-foreground border-primary/20 shadow-xs'
                     : 'bg-[var(--dk-surface-base)] text-muted-foreground hover:text-foreground border-white/[0.04]',
@@ -377,7 +377,7 @@ export const AddPathFolderCard = ({
                 aria-label="Assign download on add"
                 onClick={() => onToggleDraftRole('download')}
                 className={cn(
-                  'flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-medium transition-all cursor-pointer border',
+                  'flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-medium transition-colors cursor-pointer border',
                   draftRoles.download
                     ? 'bg-primary text-primary-foreground border-primary/20 shadow-xs'
                     : 'bg-[var(--dk-surface-base)] text-muted-foreground hover:text-foreground border-white/[0.04]',
@@ -391,7 +391,7 @@ export const AddPathFolderCard = ({
                 aria-label="Assign ISO on add"
                 onClick={() => onToggleDraftRole('iso')}
                 className={cn(
-                  'flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-medium transition-all cursor-pointer border',
+                  'flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-medium transition-colors cursor-pointer border',
                   draftRoles.iso
                     ? 'bg-primary text-primary-foreground border-primary/20 shadow-xs'
                     : 'bg-[var(--dk-surface-base)] text-muted-foreground hover:text-foreground border-white/[0.04]',

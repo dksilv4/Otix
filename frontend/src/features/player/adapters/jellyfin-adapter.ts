@@ -4,6 +4,8 @@ import type {
   ResolvedPlayback,
   ProgressReport,
   PlaybackOptions,
+  SubtitleTrack,
+  AudioTrack,
 } from '../types'
 import { getJellyfinClientId } from '@/lib/player/utils'
 import { buildQualityOptions } from '@/features/media/utils/quality'
@@ -55,6 +57,27 @@ export class JellyfinSourceAdapter implements MediaSourceAdapter {
 
     const isDirect = options?.preferredQuality === 'original' || !options?.preferredQuality
 
+    const subtitleTracks: SubtitleTrack[] = (data.subtitles || []).map((s: any) => ({
+      id: String(s.id),
+      index: Number(s.index),
+      label: s.label || 'Subtitles',
+      language: s.language || 'und',
+      url: s.url,
+      format: s.format || 'vtt',
+      isExternal: Boolean(s.isExternal),
+      requiresBurnIn: Boolean(s.requiresBurnIn),
+    }))
+
+    const audioTracks: AudioTrack[] = (data.audioTracks || []).map((a: any) => ({
+      id: String(a.id),
+      index: Number(a.index),
+      label: a.label || 'Audio',
+      language: a.language || 'und',
+      codec: a.codec || 'aac',
+      channels: Number(a.channels) || 2,
+      isDefault: Boolean(a.isDefault),
+    }))
+
     return {
       engine: isDirect ? 'html5-video' : 'hls',
       playbackMethod: isDirect ? 'direct-play' : 'transcode',
@@ -62,7 +85,31 @@ export class JellyfinSourceAdapter implements MediaSourceAdapter {
       hlsUrl,
       streamUrl: isDirect ? directUrl : hlsUrl,
       availableQualities,
+      audioTracks,
+      subtitleTracks,
+      activeAudioIndex: options?.audioIndex ?? data.selectedAudioIndex,
+      activeSubtitleIndex: options?.subtitleIndex ?? data.selectedSubtitleIndex,
     }
+  }
+
+  async changeTracks(
+    item: PlayableMediaItem,
+    audioIndex?: number,
+    subtitleIndex?: number,
+    currentPosition?: number,
+  ): Promise<ResolvedPlayback> {
+    if (item.providerData) {
+      if (audioIndex !== undefined) item.providerData.selectedAudioIndex = audioIndex
+      if (subtitleIndex !== undefined) item.providerData.selectedSubtitleIndex = subtitleIndex
+      if (typeof currentPosition === 'number' && currentPosition > 0) {
+        item.providerData.startPositionMs = Math.round(currentPosition * 1000)
+      }
+    }
+    return this.resolvePlayback(item, {
+      audioIndex,
+      subtitleIndex,
+      startPosition: currentPosition,
+    })
   }
 
   async reportProgress(report: ProgressReport): Promise<void> {

@@ -49,7 +49,7 @@ export const ActivityModulePlex = () => {
         type="button"
         data-plex-trigger
         onClick={() => setOpen(!open)}
-        className={'flex items-center p-1.5 relative cursor-pointer rounded-[2rem] backdrop-blur-[16px]' + (count > 0 ? ' shadow-[0_0_0_1px_rgba(229,160,13,0.4)]' : '')}
+        className={'flex items-center p-1.5 relative cursor-pointer rounded-[2rem] backdrop-blur-[16px]' + (count > 0 ? ' ring-1 ring-amber-500/40' : '')}
         style={{
           background: 'linear-gradient(to bottom right, var(--dk-surface-glass), var(--dk-surface-glass-hover))',
           WebkitBackdropFilter: 'blur(16px)',
@@ -59,9 +59,9 @@ export const ActivityModulePlex = () => {
         }}
         aria-label="Plex now playing"
       >
-        <PlexIcon className={'h-5 w-5' + (count > 0 ? ' text-[#e5a00d]' : ' text-muted-foreground')} />
+        <PlexIcon className={'h-5 w-5' + (count > 0 ? ' text-amber-500' : ' text-muted-foreground')} />
         {count > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full px-1 font-bold leading-none text-[10px] text-black bg-[#e5a00d]">
+          <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full px-1 font-bold leading-none text-[10px] text-black bg-amber-500">
             {count > 9 ? '9+' : count}
           </span>
         )}

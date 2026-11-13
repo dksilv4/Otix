@@ -118,7 +118,7 @@ export const DiscoverTrailerHero = ({ className }: { className?: string }) => {
               <button
                 type="button"
                 onClick={() => setActiveTrailer(activeItem)}
-                className="flex items-center justify-center w-16 h-16 md:w-20 md:h-20 rounded-full bg-white/90 text-black opacity-0 group-hover:opacity-100 transition-all shadow-xl transform group-hover:scale-110"
+                className="flex items-center justify-center w-16 h-16 md:w-20 md:h-20 rounded-full bg-white/90 text-black opacity-0 group-hover:opacity-100 transition shadow-xl transform group-hover:scale-110"
                 aria-label={`Play trailer for ${activeItem.title}`}
               >
                 <Play className="h-7 w-7 md:h-8 w-8 fill-current ml-1" />
@@ -172,7 +172,7 @@ export const DiscoverTrailerHero = ({ className }: { className?: string }) => {
                     <button
                       type="button"
                       onClick={() => setActiveTrailer(activeItem)}
-                      className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-white/90 hover:bg-white text-black font-semibold text-sm transition-all"
+                      className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-white/90 hover:bg-white text-black font-semibold text-sm transition-colors"
                     >
                       <Play className="h-4 w-4 fill-current" />
                       Play Trailer
@@ -180,7 +180,7 @@ export const DiscoverTrailerHero = ({ className }: { className?: string }) => {
                     <Link
                       to="/media/$mediaType/$mediaId"
                       params={{ mediaType: activeItem.mediaType, mediaId: activeItem.id }}
-                      className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-white/20 hover:bg-white/30 text-white font-semibold text-sm backdrop-blur-sm transition-all"
+                      className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-white/20 hover:bg-white/30 text-white font-semibold text-sm backdrop-blur-sm transition-colors"
                     >
                       View Details
                     </Link>
@@ -195,7 +195,7 @@ export const DiscoverTrailerHero = ({ className }: { className?: string }) => {
                 <button
                   type="button"
                   onClick={goPrev}
-                  className="absolute left-4 top-1/2 -translate-y-1/2 z-20 flex items-center justify-center w-10 h-10 rounded-full bg-black/40 hover:bg-black/60 text-white transition-all"
+                  className="absolute left-4 top-1/2 -translate-y-1/2 z-20 flex items-center justify-center w-10 h-10 rounded-full bg-black/40 hover:bg-black/60 text-white transition"
                   aria-label="Previous trailer"
                 >
                   <ChevronLeft className="h-5 w-5" />
@@ -203,7 +203,7 @@ export const DiscoverTrailerHero = ({ className }: { className?: string }) => {
                 <button
                   type="button"
                   onClick={goNext}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 z-20 flex items-center justify-center w-10 h-10 rounded-full bg-black/40 hover:bg-black/60 text-white transition-all"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 z-20 flex items-center justify-center w-10 h-10 rounded-full bg-black/40 hover:bg-black/60 text-white transition"
                   aria-label="Next trailer"
                 >
                   <ChevronRight className="h-5 w-5" />
@@ -219,7 +219,7 @@ export const DiscoverTrailerHero = ({ className }: { className?: string }) => {
                     key={item.id}
                     type="button"
                     onClick={() => goTo(idx)}
-                    className={`h-1.5 rounded-full transition-all ${
+                    className={`h-1.5 rounded-full transition-colors ${
                       idx === activeIndex
                         ? 'w-6 bg-white'
                         : 'w-1.5 bg-white/40 hover:bg-white/60'

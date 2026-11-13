@@ -34,7 +34,7 @@ export const ContinueWatchingReel = () => {
           return (
             <div
               key={item.id}
-              className="group relative flex flex-col min-w-[260px] rounded-2xl overflow-hidden bg-[var(--dk-surface-glass)]/60 hover:bg-[var(--dk-surface-elevated)] backdrop-blur-xl border border-white/[0.04] shadow-sm transition-all duration-300"
+              className="group relative flex flex-col min-w-[260px] rounded-2xl overflow-hidden bg-[var(--dk-surface-glass)]/60 hover:bg-[var(--dk-surface-elevated)] backdrop-blur-xl border border-white/[0.04] shadow-sm transition-colors duration-300"
             >
               {/* Image banner */}
               <div
@@ -67,7 +67,7 @@ export const ContinueWatchingReel = () => {
                       title: item.title,
                     })
                   }}
-                  className="absolute bottom-3 right-3 flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg hover:scale-110 active:scale-95 transition-all"
+                  className="absolute bottom-3 right-3 flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg hover:scale-110 active:scale-95 transition"
                   aria-label={`Resume ${item.title}`}
                 >
                   <Play className="h-4 w-4 fill-current ml-0.5" />

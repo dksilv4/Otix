@@ -196,7 +196,7 @@ export const CompanyDetailPage = () => {
                   onClick={handleFollowToggle}
                   disabled={follow.isPending || unfollow.isPending}
                   className={cn(
-                    'inline-flex cursor-pointer items-center gap-1.5 rounded-full px-4 py-2 text-xs font-bold uppercase tracking-wider shadow-sm transition-all duration-200 active:scale-95',
+                    'inline-flex cursor-pointer items-center gap-1.5 rounded-full px-4 py-2 text-xs font-bold uppercase tracking-wider shadow-sm transition-colors duration-200 active:scale-95',
                     company.isFollowed
                       ? 'bg-[var(--dk-surface-glass-hover)] text-foreground hover:bg-[var(--dk-surface-ghost-active)] border border-[var(--dk-separator)]'
                       : 'bg-primary text-primary-foreground hover:bg-primary/90 hover:shadow-primary/20',
@@ -254,7 +254,7 @@ export const CompanyDetailPage = () => {
               <div className="mt-4 max-w-2xl text-sm leading-relaxed text-foreground/80 relative">
                 <div
                   className={cn(
-                    'relative overflow-hidden transition-all duration-500',
+                    'relative overflow-hidden transition-colors duration-500',
                     showDescExpand && !descExpanded ? 'max-h-24' : 'max-h-[1000px]',
                   )}
                 >

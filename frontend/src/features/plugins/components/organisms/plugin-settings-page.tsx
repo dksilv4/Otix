@@ -424,7 +424,7 @@ const SyncCard = ({ pluginId }: { pluginId: string }) => {
             <div className="pt-1">
               <div className="h-1.5 overflow-hidden rounded-full bg-[var(--dk-surface-field)] border border-[var(--dk-separator)]">
                 <div
-                  className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-indigo-500 transition-all duration-300"
+                  className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-indigo-500 transition-colors duration-300"
                   style={{ width: `${pct}%` }}
                 />
               </div>
@@ -1010,7 +1010,7 @@ const MoviesSection = ({ pluginId }: { pluginId?: string }) => {
                 <div className="absolute top-2 left-2 z-10" onClick={(e) => e.stopPropagation()}>
                   <MovieStatusBadge status={m.status} />
                 </div>
-                <div className="pointer-events-none absolute inset-0 rounded-2xl transition-all group-hover:ring-1 group-hover:ring-white/15" />
+                <div className="pointer-events-none absolute inset-0 rounded-2xl transition-colors group-hover:ring-1 group-hover:ring-white/15" />
               </div>
             ))}
           </div>
@@ -1469,7 +1469,7 @@ const PlaylistMappingForm = ({ pluginId }: { pluginId: string }) => {
           onChange={(e) => setManualId(e.target.value)}
           placeholder="…or paste a Spotify playlist URL / ID (optional)"
           aria-label="Spotify playlist URL or ID"
-          className="w-full h-9 rounded-xl bg-[var(--dk-surface-field)] border border-[var(--dk-separator)] px-3 text-sm text-foreground placeholder:text-muted-foreground outline-none transition-all focus:border-primary focus:ring-1 focus:ring-primary/30"
+          className="w-full h-9 rounded-xl bg-[var(--dk-surface-field)] border border-[var(--dk-separator)] px-3 text-sm text-foreground placeholder:text-muted-foreground outline-none transition-colors focus:border-primary focus:ring-1 focus:ring-primary/30"
         />
         <input
           type="text"
@@ -1477,7 +1477,7 @@ const PlaylistMappingForm = ({ pluginId }: { pluginId: string }) => {
           onChange={(e) => setYtTitle(e.target.value)}
           placeholder="YouTube Music playlist title"
           aria-label="YouTube Music playlist title"
-          className="w-full h-9 rounded-xl bg-[var(--dk-surface-field)] border border-[var(--dk-separator)] px-3 text-sm text-foreground placeholder:text-muted-foreground outline-none transition-all focus:border-primary focus:ring-1 focus:ring-primary/30"
+          className="w-full h-9 rounded-xl bg-[var(--dk-surface-field)] border border-[var(--dk-separator)] px-3 text-sm text-foreground placeholder:text-muted-foreground outline-none transition-colors focus:border-primary focus:ring-1 focus:ring-primary/30"
         />
         <Select
           value={matchMode}

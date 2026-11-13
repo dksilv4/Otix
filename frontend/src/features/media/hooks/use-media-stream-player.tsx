@@ -5,13 +5,14 @@ import type {
   StreamQualityOption,
   MediaStreamPlayerContextValue,
 } from '../types/stream-player'
+import type { PlayableMediaItem } from '@/features/player/types/item'
 
 export type { MediaStreamPlayerContextValue }
 import { determinePlaybackMethod } from '../utils/stream-compatibility'
 import { loadPlayerSettings, savePlayerSettings } from '@/features/discover/utils/trailer'
 import { apiClient } from '@/lib/api/client'
-import { getPluginApi, getPlexClientId } from '../utils/player'
-import { switchPlexSessionServer, updatePlexSessionQuality } from '../utils/plex-stream'
+import { getPluginApi, getPlexClientId, safePlay } from '../utils/player'
+import { switchPlexSessionServer, updatePlexSessionQuality, updatePlexSessionAudio } from '../utils/plex-stream'
 import { buildQualityOptions, DEFAULT_QUALITY_ID } from '../utils/quality'
 import {
   buildLocalMediaSession,
@@ -53,134 +54,142 @@ const UniversalStreamPlayerBridge = ({
   const isOpen = Boolean(isVideo && universal.status !== 'idle' && universal.viewMode !== 'hidden')
 
   const openStream = useCallback(
-    (newSession: StreamPlaybackSession) => {
-      void universal.play(streamSessionToPlayableItem(newSession))
+    (newSession: StreamPlaybackSession, queueItems?: PlayableMediaItem[]) => {
+      const mainItem = streamSessionToPlayableItem(newSession)
+      if (queueItems && queueItems.length > 0) {
+        void universalPlayerEngine.play([mainItem, ...queueItems])
+      } else {
+        void universalPlayerEngine.play(mainItem)
+      }
     },
-    [universal],
+    [],
   )
+
+  const onVideoEnded = useCallback(() => {
+    universalPlayerEngine.onVideoEnded()
+  }, [])
+
+  const onPlay = useCallback(() => {
+    universalPlayerEngine.onVideoPlay()
+  }, [])
+
+  const onPause = useCallback(() => {
+    universalPlayerEngine.onVideoPause()
+  }, [])
 
   const closeStream = useCallback(() => {
-    universal.stop()
-  }, [universal])
+    universalPlayerEngine.stop()
+  }, [])
 
-  const failoverToBaseUrl = useCallback(
-    (newBaseUrl: string) => {
-      void universal.failoverServer(newBaseUrl)
-    },
-    [universal],
-  )
+  const failoverToBaseUrl = useCallback((newBaseUrl: string) => {
+    void universalPlayerEngine.failoverServer(newBaseUrl)
+  }, [])
 
   const togglePlay = useCallback(() => {
-    void universal.togglePlay()
-  }, [universal])
+    void universalPlayerEngine.togglePlay()
+  }, [])
 
   const play = useCallback(() => {
-    universal.resume()
-  }, [universal])
+    universalPlayerEngine.resume()
+  }, [])
 
   const pause = useCallback(() => {
-    universal.pause()
-  }, [universal])
+    universalPlayerEngine.pause()
+  }, [])
 
-  const seek = useCallback(
-    (seconds: number) => {
-      universal.seek(seconds)
-    },
-    [universal],
-  )
+  const seek = useCallback((seconds: number) => {
+    const video = universalPlayerEngine.getVideoElement()
+    if (video) {
+      video.currentTime = seconds
+    }
+    universalPlayerEngine.seek(seconds)
+  }, [])
 
-  const setVolume = useCallback(
-    (v: number) => {
-      universal.setVolume(v)
-    },
-    [universal],
-  )
+  const setVolume = useCallback((v: number) => {
+    const video = universalPlayerEngine.getVideoElement()
+    if (video) {
+      video.volume = v
+      video.muted = v === 0
+    }
+    universalPlayerEngine.setVolume(v)
+  }, [])
 
-  const setPlaybackSpeed = useCallback(
-    (s: number) => {
-      universal.setPlaybackSpeed(s)
-    },
-    [universal],
-  )
+  const setPlaybackSpeed = useCallback((s: number) => {
+    universalPlayerEngine.setPlaybackSpeed(s)
+  }, [])
 
   const toggleMute = useCallback(() => {
-    universal.toggleMute()
-  }, [universal])
+    const video = universalPlayerEngine.getVideoElement()
+    if (video) {
+      video.muted = !video.muted
+    }
+    universalPlayerEngine.toggleMute()
+  }, [])
 
-  const setTheater = useCallback(
-    (t: boolean) => {
-      universal.setTheater(t)
-    },
-    [universal],
-  )
+  const setTheater = useCallback((t: boolean) => {
+    universalPlayerEngine.setTheater(t)
+  }, [])
 
-  const setZoomedOut = useCallback(
-    (z: boolean) => {
-      universal.setZoomedOut(z)
-    },
-    [universal],
-  )
+  const setZoomedOut = useCallback((z: boolean) => {
+    universalPlayerEngine.setZoomedOut(z)
+  }, [])
 
-  const setInAppPip = useCallback(
-    (pip: boolean) => {
-      universal.setInAppPip(pip)
-    },
-    [universal],
-  )
+  const setInAppPip = useCallback((pip: boolean) => {
+    universalPlayerEngine.setInAppPip(pip)
+  }, [])
 
   const toggleInAppPip = useCallback(() => {
-    universal.toggleInAppPip()
-  }, [universal])
+    universalPlayerEngine.toggleInAppPip()
+  }, [])
 
   const toggleOverallPip = useCallback(() => {
-    return universal.toggleOverallPip()
-  }, [universal])
+    return universalPlayerEngine.toggleOverallPip()
+  }, [])
 
   const registerVideoElement = useCallback((el: HTMLVideoElement | null) => {
     universalPlayerEngine.registerVideoElement(el)
   }, [])
 
-  const setActiveSubtitle = useCallback(
-    (id: string | null) => {
-      void universal.setActiveSubtitle(id)
-    },
-    [universal],
-  )
+  const setActiveSubtitle = useCallback((id: string | null) => {
+    void universalPlayerEngine.setActiveSubtitle(id)
+  }, [])
 
-  const setActiveAudio = useCallback(
-    (index: number | null) => {
-      void universal.setActiveAudio(index)
-    },
-    [universal],
-  )
+  const setActiveAudio = useCallback((index: number | null) => {
+    void universalPlayerEngine.setActiveAudio(index)
+  }, [])
 
-  const setQuality = useCallback(
-    (qualityId: string) => {
-      void universal.setQuality(qualityId)
-    },
-    [universal],
-  )
+  const setQuality = useCallback((qualityId: string) => {
+    void universalPlayerEngine.setQuality(qualityId)
+  }, [])
 
   const setAvailableQualities = useCallback((_q: StreamQualityOption[]) => {}, [])
   const setActiveLevelHeight = useCallback((_h: number | null) => {}, [])
-  const updateSessionQuality = useCallback(
-    (q: StreamQualityOption) => {
-      void universal.setQuality(q.id)
-    },
-    [universal],
-  )
+  const updateSessionQuality = useCallback((q: StreamQualityOption) => {
+    void universalPlayerEngine.setQuality(q.id)
+  }, [])
 
-  const onTimeUpdate = useCallback((_time: number, _duration: number) => {}, [])
-  const onBufferedUpdate = useCallback((_buffered: number) => {}, [])
-  const onBuffering = useCallback((_buffering: boolean) => {}, [])
+  const onTimeUpdate = useCallback((time: number, duration: number) => {
+    universalPlayerEngine.onVideoTimeUpdate(time, duration)
+  }, [])
+
+  const onBufferedUpdate = useCallback((buffered: number) => {
+    universalPlayerEngine.onVideoBufferedUpdate(buffered)
+  }, [])
+
+  const onBuffering = useCallback((buffering: boolean) => {
+    universalPlayerEngine.onVideoBuffering(buffering)
+  }, [])
+
   const onError = useCallback((_err: string | null) => {}, [])
-  const fallbackToHls = useCallback(() => {}, [])
+  const fallbackToHls = useCallback(() => {
+    universalPlayerEngine.fallbackToHls()
+  }, [])
 
-  const value: MediaStreamPlayerContextValue = {
+  const value: MediaStreamPlayerContextValue = useMemo(() => ({
     session,
     isOpen,
-    isPlaying: universal.status === 'playing',
-    isBuffering: universal.status === 'buffering',
+    isPlaying: universal.status === 'playing' || universal.status === 'buffering',
+    isBuffering: universal.status === 'buffering' || universal.status === 'loading',
     currentTime: universal.position,
     duration: universal.duration,
     bufferedTime: universal.buffered,
@@ -199,6 +208,10 @@ const UniversalStreamPlayerBridge = ({
     activeLevelHeight: universal.activeLevelHeight,
     playbackMethod: universal.playbackMethod,
     error: universal.error,
+    queue: universal.queue || [],
+    skipToIndex: universal.skipToIndex,
+    removeFromQueue: universal.removeFromQueue,
+    clearQueue: universal.clearQueue,
 
     openStream,
     closeStream,
@@ -229,8 +242,67 @@ const UniversalStreamPlayerBridge = ({
     onBufferedUpdate,
     onBuffering,
     onError,
+    onVideoEnded,
+    onPlay,
+    onPause,
     fallbackToHls,
-  }
+  }), [
+    session,
+    isOpen,
+    universal.status,
+    universal.position,
+    universal.duration,
+    universal.buffered,
+    universal.volume,
+    universal.playbackSpeed,
+    universal.isMuted,
+    universal.isTheater,
+    universal.isZoomedOut,
+    universal.isInAppPip,
+    universal.isOverallPip,
+    universal.isOverallPipSupported,
+    universal.activeSubtitle,
+    universal.activeAudio,
+    universal.currentQuality,
+    universal.availableQualities,
+    universal.activeLevelHeight,
+    universal.playbackMethod,
+    universal.error,
+    universal.queue,
+    universal.skipToIndex,
+    universal.removeFromQueue,
+    universal.clearQueue,
+    openStream,
+    closeStream,
+    failoverToBaseUrl,
+    togglePlay,
+    play,
+    pause,
+    seek,
+    setVolume,
+    setPlaybackSpeed,
+    toggleMute,
+    setTheater,
+    setZoomedOut,
+    setInAppPip,
+    toggleInAppPip,
+    toggleOverallPip,
+    registerVideoElement,
+    setActiveSubtitle,
+    setActiveAudio,
+    setQuality,
+    setAvailableQualities,
+    setActiveLevelHeight,
+    updateSessionQuality,
+    onTimeUpdate,
+    onBufferedUpdate,
+    onBuffering,
+    onError,
+    onVideoEnded,
+    onPlay,
+    onPause,
+    fallbackToHls,
+  ])
 
   return (
     <MediaStreamPlayerContext.Provider value={value}>
@@ -263,6 +335,7 @@ const LegacyMediaStreamPlayerProvider = ({ children }: { children: React.ReactNo
   const [activeLevelHeight, setActiveLevelHeightState] = useState<number | null>(null)
   const [playbackMethod, setPlaybackMethod] = useState<PlaybackMethod>('direct-play')
   const [error, setError] = useState<string | null>(null)
+  const [queue, setQueue] = useState<PlayableMediaItem[]>([])
 
   const sessionRef = useRef<StreamPlaybackSession | null>(null)
   const currentTimeRef = useRef(currentTime)
@@ -413,19 +486,23 @@ const LegacyMediaStreamPlayerProvider = ({ children }: { children: React.ReactNo
   }, [isOpen, session, isPlaying, sendProgressHeartbeat])
 
   // Open stream session
-  const openStream = useCallback((newSession: StreamPlaybackSession) => {
+  const openStream = useCallback((newSession: StreamPlaybackSession, queueItems?: PlayableMediaItem[]) => {
     // If a previous session was open, send a stop beacon
     if (sessionRef.current) {
       sendProgressHeartbeat(true)
     }
 
-    const method = newSession.source === 'local'
-      ? 'direct-play'
-      : determinePlaybackMethod(
-          newSession.container,
-          newSession.videoCodec,
-          newSession.audioCodec
-        )
+    setQueue(queueItems || [])
+
+    const method =
+      newSession.playbackMethod ||
+      (newSession.source === 'local'
+        ? 'direct-play'
+        : determinePlaybackMethod(
+            newSession.container,
+            newSession.videoCodec,
+            newSession.audioCodec
+          ))
 
     const initialQualities = buildQualityOptions({
       hasDirectPlay: Boolean(newSession.directUrl),
@@ -525,6 +602,13 @@ const LegacyMediaStreamPlayerProvider = ({ children }: { children: React.ReactNo
     setIsPlaying((prev: boolean) => {
       const next = !prev
       isPlayingRef.current = next
+      if (videoElementRef.current) {
+        if (next) {
+          safePlay(videoElementRef.current)
+        } else {
+          videoElementRef.current.pause()
+        }
+      }
       setTimeout(() => sendProgressHeartbeat(false), 50)
       return next
     })
@@ -533,18 +617,27 @@ const LegacyMediaStreamPlayerProvider = ({ children }: { children: React.ReactNo
   const play = useCallback(() => {
     setIsPlaying(true)
     isPlayingRef.current = true
+    if (videoElementRef.current) {
+      safePlay(videoElementRef.current)
+    }
     setTimeout(() => sendProgressHeartbeat(false), 50)
   }, [sendProgressHeartbeat])
 
   const pause = useCallback(() => {
     setIsPlaying(false)
     isPlayingRef.current = false
+    if (videoElementRef.current) {
+      videoElementRef.current.pause()
+    }
     setTimeout(() => sendProgressHeartbeat(false), 50)
   }, [sendProgressHeartbeat])
 
   const seek = useCallback((seconds: number) => {
     setCurrentTime(seconds)
     currentTimeRef.current = seconds
+    if (videoElementRef.current) {
+      videoElementRef.current.currentTime = seconds
+    }
     setTimeout(() => sendProgressHeartbeat(false), 50)
   }, [sendProgressHeartbeat])
 
@@ -626,8 +719,12 @@ const LegacyMediaStreamPlayerProvider = ({ children }: { children: React.ReactNo
 
   const toggleOverallPipAction = useCallback(async () => {
     if (videoElementRef.current) {
-      const entered = await toggleOverallPip(videoElementRef.current)
-      setIsOverallPipState(entered)
+      try {
+        const entered = await toggleOverallPip(videoElementRef.current)
+        setIsOverallPipState(entered)
+      } catch (err) {
+        console.warn('[toggleOverallPipAction]', err)
+      }
     }
   }, [])
 
@@ -647,14 +744,22 @@ const LegacyMediaStreamPlayerProvider = ({ children }: { children: React.ReactNo
 
   const setActiveAudio = useCallback((audioIdx: number | null) => {
     setActiveAudioIndex(audioIdx)
-  }, [])
-
-  const setQuality = useCallback((qualityId: string) => {
-    setCurrentQuality(qualityId)
-  }, [])
-
-  const setActiveLevelHeight = useCallback((height: number | null) => {
-    setActiveLevelHeightState(height)
+    if (audioIdx != null) {
+      const currentPos = videoElementRef.current?.currentTime ?? 0
+      setSession((prev) => {
+        if (!prev) return null
+        if (prev.source === 'plex') {
+          const track = prev.audioTracks.find((a) => a.index === audioIdx)
+          if (track) {
+            return updatePlexSessionAudio(prev, track, currentPos)
+          }
+        }
+        return {
+          ...prev,
+          selectedAudioIndex: audioIdx,
+        }
+      })
+    }
   }, [])
 
   const updateSessionQuality = useCallback((qualityOption: StreamQualityOption) => {
@@ -670,6 +775,21 @@ const LegacyMediaStreamPlayerProvider = ({ children }: { children: React.ReactNo
         videoResolution: qualityOption.videoResolution,
       }
     })
+  }, [])
+
+  const setQuality = useCallback(
+    (qualityId: string) => {
+      setCurrentQuality(qualityId)
+      const qual = availableQualities.find((q) => q.id === qualityId)
+      if (qual) {
+        updateSessionQuality(qual)
+      }
+    },
+    [availableQualities, updateSessionQuality],
+  )
+
+  const setActiveLevelHeight = useCallback((height: number | null) => {
+    setActiveLevelHeightState(height)
   }, [])
 
   const onTimeUpdate = useCallback((time: number, dur: number) => {
@@ -702,6 +822,31 @@ const LegacyMediaStreamPlayerProvider = ({ children }: { children: React.ReactNo
     return session.audioTracks.find((a) => a.index === activeAudioIndex) ?? null
   }, [session, activeAudioIndex])
 
+  const onVideoEnded = useCallback(() => {}, [])
+  const onPlay = useCallback(() => {
+    setIsPlaying(true)
+  }, [])
+  const onPause = useCallback(() => {
+    setIsPlaying(false)
+  }, [])
+
+  const skipToIndex = useCallback((index: number) => {
+    setQueue((prev) => {
+      if (index < 0 || index >= prev.length) return prev
+      const target = prev[index]
+      if (target.providerData) {
+        setSession(target.providerData as StreamPlaybackSession)
+      }
+      return prev.slice(index + 1)
+    })
+  }, [])
+
+  const removeFromQueue = useCallback((index: number) => {
+    setQueue((prev) => prev.filter((_, i) => i !== index))
+  }, [])
+
+  const clearQueue = useCallback(() => setQueue([]), [])
+
   const value: MediaStreamPlayerContextValue = {
     session,
     isOpen,
@@ -725,6 +870,10 @@ const LegacyMediaStreamPlayerProvider = ({ children }: { children: React.ReactNo
     activeLevelHeight,
     playbackMethod,
     error,
+    queue,
+    skipToIndex,
+    removeFromQueue,
+    clearQueue,
 
     openStream,
     closeStream,
@@ -755,6 +904,9 @@ const LegacyMediaStreamPlayerProvider = ({ children }: { children: React.ReactNo
     onBufferedUpdate,
     onBuffering,
     onError,
+    onVideoEnded,
+    onPlay,
+    onPause,
     fallbackToHls,
   }
 

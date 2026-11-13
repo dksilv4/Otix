@@ -4,6 +4,7 @@ import { useStreamAvailability } from '../use-stream-availability'
 import * as authHooks from '@auth/hooks/use-auth'
 import * as libraryQueries from '@/features/library/library-queries'
 import * as pluginApi from '@/features/plugins/api'
+import * as plexStreamUtils from '../../utils/plex-stream'
 
 vi.mock('@auth/hooks/use-auth')
 vi.mock('@/features/library/library-queries')
@@ -120,5 +121,51 @@ describe('useStreamAvailability & useStreamableCatalog', () => {
       expect(result.current.isStreamable).toBe(true)
     })
     expect(result.current.providerLabel).toBe('On Jellyfin')
+  })
+
+  it('prefetches Plex connect info in background when prefetch is true and catalog match is confirmed', async () => {
+    vi.mocked(authHooks.useAuth).mockReturnValue({
+      user: { id: 'u1', plexId: 'plex-123' } as any,
+      isAuthenticated: true,
+      isLoading: false,
+    } as any)
+
+    vi.mocked(libraryQueries.useLibraryTab).mockReturnValue({
+      data: {
+        pages: [
+          {
+            items: [
+              { id: '101', slug: 'fight-club-1999', tmdbId: '550', title: 'Fight Club' },
+            ],
+          },
+        ],
+      },
+      isLoading: false,
+      isError: false,
+    } as any)
+
+    vi.mocked(pluginApi.getPluginAPI).mockReturnValue(null)
+
+    const fetchSpy = vi.spyOn(plexStreamUtils, 'fetchPlexConnectInfoCached').mockResolvedValue({
+      ratingKey: 'rk-101',
+      title: 'Fight Club',
+    })
+
+    const { result } = renderHook(() =>
+      useStreamAvailability({
+        mediaId: '101',
+        tmdbId: '550',
+        mediaType: 'movie',
+        prefetch: true,
+      }),
+    )
+
+    expect(result.current.isStreamable).toBe(true)
+    await waitFor(() => {
+      expect(fetchSpy).toHaveBeenCalledWith('101', {
+        tmdbId: '550',
+        mediaType: 'movie',
+      })
+    })
   })
 })

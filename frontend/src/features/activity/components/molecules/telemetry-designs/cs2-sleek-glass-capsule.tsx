@@ -51,7 +51,7 @@ export const Cs2SleekGlassCapsule = ({ telemetry }: { telemetry: UniversalGameTe
   return (
     <div
       data-testid="cs2-live-telemetry"
-      className="w-full rounded-2xl bg-[var(--dk-surface-ghost)] backdrop-blur-2xl p-3.5 flex flex-col gap-2.5 shadow-sm text-xs transition-all"
+      className="w-full rounded-2xl bg-[var(--dk-surface-ghost)] backdrop-blur-2xl p-3.5 flex flex-col gap-2.5 shadow-sm text-xs transition-colors"
     >
       {/* 1st Row: Map + Round + Inline Alert + Cash/Equipment + Single-Div Team Capsules */}
       <div className="flex items-center justify-between gap-2">
@@ -87,7 +87,7 @@ export const Cs2SleekGlassCapsule = ({ telemetry }: { telemetry: UniversalGameTe
                 <Cs2RealC4Icon className="h-3.5 w-3.5" />
               </span>
             )}
-            <span className="font-mono font-black text-sm text-[#70b5e8] drop-shadow-[0_0_6px_rgba(112,181,232,0.45)]">
+            <span className="font-mono font-black text-sm text-cs2-ct drop-shadow-md">
               ${money.toLocaleString()}
             </span>
           </div>
@@ -96,7 +96,7 @@ export const Cs2SleekGlassCapsule = ({ telemetry }: { telemetry: UniversalGameTe
           {telemetry.scores && (
             <div className="flex items-center rounded-full overflow-hidden font-mono font-black text-xs shrink-0 shadow-xs">
               <div
-                className={`px-2 py-0.5 bg-cs2-ct text-white relative transition-all flex items-center gap-1 ${
+                className={`px-2 py-0.5 bg-cs2-ct text-white relative transition-colors flex items-center gap-1 ${
                   isCt ? 'opacity-100 ring-inset ring-1 ring-white/30 font-black' : 'opacity-70'
                 }`}
               >
@@ -108,7 +108,7 @@ export const Cs2SleekGlassCapsule = ({ telemetry }: { telemetry: UniversalGameTe
                 )}
               </div>
               <div
-                className={`px-2 py-0.5 bg-cs2-t text-white relative transition-all flex items-center gap-1 ${
+                className={`px-2 py-0.5 bg-cs2-t text-white relative transition-colors flex items-center gap-1 ${
                   !isCt ? 'opacity-100 ring-inset ring-1 ring-white/30 font-black' : 'opacity-70'
                 }`}
               >
@@ -161,7 +161,7 @@ export const Cs2SleekGlassCapsule = ({ telemetry }: { telemetry: UniversalGameTe
           {/* Health Bar */}
           <div className="w-full h-1.5 rounded-full bg-muted/30 overflow-hidden">
             <div
-              className={`h-full rounded-full transition-all duration-300 ${
+              className={`h-full rounded-full transition-colors duration-300 ${
                 isDead ? 'bg-destructive/20' : 'bg-destructive'
               }`}
               style={{ width: `${hpPercent}%` }}
@@ -195,7 +195,7 @@ export const Cs2SleekGlassCapsule = ({ telemetry }: { telemetry: UniversalGameTe
           {/* Armor Bar */}
           <div className="w-full h-1.5 rounded-full bg-muted/30 overflow-hidden">
             <div
-              className={`h-full rounded-full transition-all duration-300 ${
+              className={`h-full rounded-full transition-colors duration-300 ${
                 isDead ? 'bg-muted/30' : 'bg-chart-2'
               }`}
               style={{ width: `${apPercent}%` }}
@@ -207,9 +207,9 @@ export const Cs2SleekGlassCapsule = ({ telemetry }: { telemetry: UniversalGameTe
       {/* 3rd Row: Authentic CS2 3-Slot Vector Loadout (Underneath, Full Width) */}
       <div className="grid grid-cols-3 gap-3 w-full pt-2 border-t border-white/[0.04] items-center">
         {/* Slot 1: Active Primary */}
-        <div className={`flex items-center justify-between min-w-0 pr-1 transition-all ${
+        <div className={`flex items-center justify-between min-w-0 pr-1 transition-colors ${
           activeSlot === 1
-            ? 'text-[#70b5e8] drop-shadow-[0_0_6px_rgba(112,181,232,0.45)]'
+            ? 'text-cs2-ct drop-shadow-md'
             : 'text-white/60'
         }`}>
           <div className="flex flex-col min-w-0">
@@ -219,7 +219,7 @@ export const Cs2SleekGlassCapsule = ({ telemetry }: { telemetry: UniversalGameTe
                   weapon={primaryBase}
                   active={activeSlot === 1}
                   slot={1}
-                  className="h-5 w-auto max-w-[70px] object-contain drop-shadow-[0_0_6px_rgba(112,181,232,0.45)]"
+                  className="h-5 w-auto max-w-[70px] object-contain drop-shadow-md"
                 />
                 <span className="font-mono text-[9px] text-white/70 font-semibold truncate uppercase mt-0.5">
                   {primaryBase}
@@ -237,9 +237,9 @@ export const Cs2SleekGlassCapsule = ({ telemetry }: { telemetry: UniversalGameTe
         </div>
 
         {/* Slot 2: Secondary Pistol */}
-        <div className={`flex items-center justify-between min-w-0 pr-1 transition-all ${
+        <div className={`flex items-center justify-between min-w-0 pr-1 transition-colors ${
           activeSlot === 2
-            ? 'text-[#70b5e8] drop-shadow-[0_0_6px_rgba(112,181,232,0.45)]'
+            ? 'text-cs2-ct drop-shadow-md'
             : 'text-white/70'
         }`}>
           <div className="flex flex-col min-w-0">
@@ -267,9 +267,9 @@ export const Cs2SleekGlassCapsule = ({ telemetry }: { telemetry: UniversalGameTe
         </div>
 
         {/* Slot 3: Tactical Knife */}
-        <div className={`flex items-center justify-between min-w-0 transition-all ${
+        <div className={`flex items-center justify-between min-w-0 transition-colors ${
           activeSlot === 3
-            ? 'text-[#70b5e8] drop-shadow-[0_0_6px_rgba(112,181,232,0.45)]'
+            ? 'text-cs2-ct drop-shadow-md'
             : 'text-white/60'
         }`}>
           <div className="flex flex-col min-w-0">

@@ -79,7 +79,7 @@ export const SectionHeader = ({
             }}
             title={`Remove ${title} section`}
             aria-label={`Remove ${title} section`}
-            className="inline-flex items-center justify-center h-6 w-6 rounded-full text-muted-foreground/60 hover:text-destructive hover:bg-[var(--dk-surface-ghost-hover)] transition-all duration-200 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+            className="inline-flex items-center justify-center h-6 w-6 rounded-full text-muted-foreground/60 hover:text-destructive hover:bg-[var(--dk-surface-ghost-hover)] transition-colors duration-200 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {isRemoving ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />

@@ -159,7 +159,7 @@ export const MatchReviewCenterModal = ({
               type="button"
               onClick={() => setTab('needs_review')}
               className={cn(
-                'px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer',
+                'px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors cursor-pointer',
                 tab === 'needs_review'
                   ? 'bg-primary text-primary-foreground shadow-xs'
                   : 'text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-ghost)]',
@@ -171,7 +171,7 @@ export const MatchReviewCenterModal = ({
               type="button"
               onClick={() => setTab('unmatched')}
               className={cn(
-                'px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer',
+                'px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors cursor-pointer',
                 tab === 'unmatched'
                   ? 'bg-primary text-primary-foreground shadow-xs'
                   : 'text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-ghost)]',
@@ -183,7 +183,7 @@ export const MatchReviewCenterModal = ({
               type="button"
               onClick={() => setTab('matched')}
               className={cn(
-                'px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer',
+                'px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors cursor-pointer',
                 tab === 'matched'
                   ? 'bg-primary text-primary-foreground shadow-xs'
                   : 'text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-ghost)]',
@@ -195,7 +195,7 @@ export const MatchReviewCenterModal = ({
               type="button"
               onClick={() => setTab('all')}
               className={cn(
-                'px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer',
+                'px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors cursor-pointer',
                 tab === 'all'
                   ? 'bg-primary text-primary-foreground shadow-xs'
                   : 'text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-ghost)]',
@@ -274,7 +274,7 @@ export const MatchReviewCenterModal = ({
               return (
                 <div
                   key={record.id}
-                  className="p-4 rounded-2xl bg-[var(--dk-surface-ghost)] border border-white/[0.04] hover:border-white/[0.08] transition-all space-y-3"
+                  className="p-4 rounded-2xl bg-[var(--dk-surface-ghost)] border border-white/[0.04] hover:border-white/[0.08] transition-colors space-y-3"
                 >
                   {/* Top Bar: Title, Path, Badges */}
                   <div className="flex items-start justify-between gap-3">
@@ -394,7 +394,7 @@ export const MatchReviewCenterModal = ({
                         {record.candidates.map((cand) => (
                           <div
                             key={cand.mediaId}
-                            className="flex items-center gap-2.5 p-2 rounded-xl bg-[var(--dk-surface-base)] border border-white/[0.04] hover:border-white/[0.08] transition-all"
+                            className="flex items-center gap-2.5 p-2 rounded-xl bg-[var(--dk-surface-base)] border border-white/[0.04] hover:border-white/[0.08] transition-colors"
                           >
                             {cand.posterUrl || (cand as any).poster_url ? (
                               <img

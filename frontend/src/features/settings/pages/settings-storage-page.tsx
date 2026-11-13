@@ -308,12 +308,12 @@ const AutoMirrorControls = ({ masterEnabled }: { masterEnabled: boolean }) => {
             </div>
             <div className="h-1.5 w-full overflow-hidden rounded-full bg-[var(--dk-surface-overlay)]">
               <div
-                className="h-full rounded-full transition-all duration-500"
+                className="h-full rounded-full transition-colors duration-500"
                 style={{
                   width: `${budgetPct}%`,
                   backgroundColor:
                     overBudget || budgetPct > 95
-                      ? 'var(--dk-danger, #ef4444)'
+                      ? 'var(--destructive)'
                       : 'var(--primary)',
                 }}
               />
@@ -507,10 +507,10 @@ export const SettingsStoragePage = () => {
               </div>
               <div className="h-1.5 w-full overflow-hidden rounded-full bg-[var(--dk-surface-field)]">
                 <div
-                  className="h-full rounded-full transition-all duration-500"
+                  className="h-full rounded-full transition-colors duration-500"
                   style={{
                     width: `${usedPct}%`,
-                    backgroundColor: usedPct > 85 ? 'var(--dk-danger, #ef4444)' : 'var(--primary)',
+                    backgroundColor: usedPct > 85 ? 'var(--destructive)' : 'var(--primary)',
                   }}
                 />
               </div>
@@ -544,7 +544,7 @@ export const SettingsStoragePage = () => {
                 type="button"
                 disabled={purge.isPending || data.downloadedCount === 0}
                 onClick={() => setConfirmOpen(true)}
-                className="inline-flex items-center justify-center gap-2 self-start rounded-xl bg-destructive/15 px-4 py-2 text-xs font-semibold text-destructive transition-all hover:bg-destructive/25 disabled:cursor-not-allowed disabled:opacity-40 sm:self-auto"
+                className="inline-flex items-center justify-center gap-2 self-start rounded-xl bg-destructive/15 px-4 py-2 text-xs font-semibold text-destructive transition hover:bg-destructive/25 disabled:cursor-not-allowed disabled:opacity-40 sm:self-auto"
               >
                 <Trash2 className="h-4 w-4" />
                 {purge.isPending ? 'Deleting…' : 'Delete all'}
@@ -611,7 +611,7 @@ export const SettingsStoragePage = () => {
                 type="button"
                 onClick={() => setConfirmOpen(false)}
                 disabled={purge.isPending}
-                className="rounded-xl px-4 py-2 text-xs font-semibold text-muted-foreground transition-all hover:bg-[var(--dk-surface-hover)] disabled:opacity-50"
+                className="rounded-xl px-4 py-2 text-xs font-semibold text-muted-foreground transition-colors hover:bg-[var(--dk-surface-hover)] disabled:opacity-50"
               >
                 Cancel
               </button>
@@ -619,7 +619,7 @@ export const SettingsStoragePage = () => {
                 type="button"
                 onClick={deleteAllDownloaded}
                 disabled={purge.isPending}
-                className="inline-flex items-center gap-2 rounded-xl bg-destructive px-4 py-2 text-xs font-semibold text-destructive-foreground transition-all hover:bg-destructive/90 disabled:opacity-60"
+                className="inline-flex items-center gap-2 rounded-xl bg-destructive px-4 py-2 text-xs font-semibold text-destructive-foreground transition hover:bg-destructive/90 disabled:opacity-60"
               >
                 <Trash2 className="h-3.5 w-3.5" />
                 {purge.isPending ? 'Deleting…' : 'Delete'}

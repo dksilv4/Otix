@@ -141,7 +141,7 @@ export const OrganizeControlPanel = ({
             type="button"
             onClick={() => onFilterTabChange('all')}
             className={cn(
-              'px-2.5 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer whitespace-nowrap',
+              'px-2.5 py-1 rounded-lg text-xs font-medium transition-colors cursor-pointer whitespace-nowrap',
               filterTab === 'all'
                 ? 'bg-primary/20 text-primary font-semibold shadow-xs'
                 : 'text-muted-foreground hover:text-foreground hover:bg-white/[0.04]',
@@ -153,7 +153,7 @@ export const OrganizeControlPanel = ({
             type="button"
             onClick={() => onFilterTabChange('actionable')}
             className={cn(
-              'px-2.5 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer whitespace-nowrap',
+              'px-2.5 py-1 rounded-lg text-xs font-medium transition-colors cursor-pointer whitespace-nowrap',
               filterTab === 'actionable'
                 ? 'bg-primary/20 text-primary font-semibold shadow-xs'
                 : 'text-muted-foreground hover:text-foreground hover:bg-white/[0.04]',
@@ -165,7 +165,7 @@ export const OrganizeControlPanel = ({
             type="button"
             onClick={() => onFilterTabChange('subdirectories')}
             className={cn(
-              'px-2.5 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer whitespace-nowrap',
+              'px-2.5 py-1 rounded-lg text-xs font-medium transition-colors cursor-pointer whitespace-nowrap',
               filterTab === 'subdirectories'
                 ? 'bg-primary/20 text-primary font-semibold shadow-xs'
                 : 'text-muted-foreground hover:text-foreground hover:bg-white/[0.04]',
@@ -177,7 +177,7 @@ export const OrganizeControlPanel = ({
             type="button"
             onClick={() => onFilterTabChange('organized')}
             className={cn(
-              'px-2.5 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer whitespace-nowrap',
+              'px-2.5 py-1 rounded-lg text-xs font-medium transition-colors cursor-pointer whitespace-nowrap',
               filterTab === 'organized'
                 ? 'bg-primary/20 text-primary font-semibold shadow-xs'
                 : 'text-muted-foreground hover:text-foreground hover:bg-white/[0.04]',
@@ -218,7 +218,7 @@ export const OrganizeControlPanel = ({
             <button
               type="button"
               onClick={onToggleExpandCollapse}
-              className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-medium border border-white/[0.04] bg-white/[0.02] text-muted-foreground hover:text-foreground hover:bg-white/[0.04] transition-all cursor-pointer whitespace-nowrap"
+              className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-medium border border-white/[0.04] bg-white/[0.02] text-muted-foreground hover:text-foreground hover:bg-white/[0.04] transition-colors cursor-pointer whitespace-nowrap"
               title="Expand or collapse all directories"
             >
               <FolderTree size={12} />
@@ -231,7 +231,7 @@ export const OrganizeControlPanel = ({
             type="button"
             onClick={onToggleGroupByDir}
             className={cn(
-              'flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-medium border transition-all cursor-pointer',
+              'flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-medium border transition-colors cursor-pointer',
               groupByDir
                 ? 'bg-primary/15 text-primary border-primary/25 font-semibold'
                 : 'bg-white/[0.02] text-muted-foreground border-white/[0.04] hover:text-foreground hover:bg-white/[0.04]',

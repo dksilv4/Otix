@@ -125,7 +125,7 @@ export const AnchoredQueuePopover = ({
                 <div
                   key={`${item.id || idx}-${idx}`}
                   onClick={() => onSelectTrack(idx)}
-                  className="group flex items-center justify-between gap-2.5 p-2 rounded-xl hover:bg-[var(--dk-surface-ghost-hover)] transition-all cursor-pointer"
+                  className="group flex items-center justify-between gap-2.5 p-2 rounded-xl hover:bg-[var(--dk-surface-ghost-hover)] transition-colors cursor-pointer"
                 >
                   <div className="flex items-center gap-2.5 min-w-0 flex-1">
                     <span className="text-[11px] font-mono text-muted-foreground/50 w-4 text-right shrink-0">
@@ -162,7 +162,7 @@ export const AnchoredQueuePopover = ({
                         e.stopPropagation()
                         onRemoveTrack(idx)
                       }}
-                      className="opacity-0 group-hover:opacity-100 h-6 w-6 flex items-center justify-center rounded-lg text-muted-foreground hover:text-destructive hover:bg-[var(--dk-surface-ghost)] transition-all"
+                      className="opacity-0 group-hover:opacity-100 h-6 w-6 flex items-center justify-center rounded-lg text-muted-foreground hover:text-destructive hover:bg-[var(--dk-surface-ghost)] transition-colors"
                       title="Remove"
                       aria-label="Remove"
                     >

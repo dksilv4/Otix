@@ -112,8 +112,8 @@ describe('ActivityModuleCs2Telemetry', () => {
   it('renders team scoreboard with authentic CS side colours', () => {
     const { container } = render(<ActivityModuleCs2Telemetry state={baseState} />)
 
-    const ctSpan = container.querySelector('.text-cs2-ct')
-    const tSpan = container.querySelector('.text-cs2-t')
+    const ctSpan = container.querySelector('.bg-cs2-ct .text-cs2-ct')
+    const tSpan = container.querySelector('.bg-cs2-t .text-cs2-t')
 
     expect(ctSpan).toBeInTheDocument()
     expect(ctSpan?.textContent).toBe('CT 8')

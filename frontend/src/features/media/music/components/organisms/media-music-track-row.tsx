@@ -165,11 +165,11 @@ export const TrackRow = ({
       className={`inline-flex items-center justify-center h-7 w-7 rounded-full transition-colors ${isPlexPlaying ? 'bg-primary text-primary-foreground' : 'bg-primary/15 text-primary hover:bg-primary/25'}`}
     >
       {isPlexPlaying ? (
-        <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor">
+        <svg aria-hidden="true" className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor">
           <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
         </svg>
       ) : (
-        <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor">
+        <svg aria-hidden="true" className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor">
           <path d="M8 5.14v14.72a1 1 0 0 0 1.5.86l11-7.36a1 1 0 0 0 0-1.72l-11-7.36A1 1 0 0 0 8 5.14z" />
         </svg>
       )}

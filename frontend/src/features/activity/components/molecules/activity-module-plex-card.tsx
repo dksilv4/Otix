@@ -93,7 +93,7 @@ export const ActivityModulePlexCard = ({ s, onClose }: ActivityModulePlexCardPro
           handleClick()
         }
       }}
-      className="group relative flex flex-col gap-2.5 p-3 rounded-2xl bg-[var(--dk-surface-overlay)]/70 hover:bg-[var(--dk-surface-overlay)] border border-[var(--dk-separator)] transition-all duration-200 cursor-pointer shadow-sm hover:shadow-md text-left outline-none focus-visible:ring-2 focus-visible:ring-amber-400/50"
+      className="group relative flex flex-col gap-2.5 p-3 rounded-2xl bg-[var(--dk-surface-overlay)]/70 hover:bg-[var(--dk-surface-overlay)] border border-[var(--dk-separator)] transition-colors duration-200 cursor-pointer shadow-sm hover:shadow-md text-left outline-none focus-visible:ring-2 focus-visible:ring-amber-400/50"
       title={summary ?? undefined}
     >
       {/* Top row: User, Device, and Stream Status */}
@@ -204,7 +204,7 @@ export const ActivityModulePlexCard = ({ s, onClose }: ActivityModulePlexCardPro
         <div className="flex flex-col gap-1 pt-0.5">
           <div className="h-1 rounded-full overflow-hidden bg-muted relative">
             <motion.div
-              className="h-full rounded-full bg-gradient-to-r from-amber-500 to-[#e5a00d]"
+              className="h-full rounded-full bg-amber-500"
               initial={{ width: 0 }}
               animate={{ width: `${pct}%` }}
               transition={{ duration: 0.5, ease: 'easeOut' }}

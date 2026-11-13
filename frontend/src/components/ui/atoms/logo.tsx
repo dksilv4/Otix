@@ -28,7 +28,11 @@ const DkLogo = ({ className = 'h-7', color, animateInfinity = false }: DkLogoPro
 
   useEffect(() => {
     if (!animateInfinity) return
-    if (typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    if (
+      typeof window !== 'undefined' &&
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)')?.matches
+    ) {
       return
     }
 
@@ -55,6 +59,7 @@ const DkLogo = ({ className = 'h-7', color, animateInfinity = false }: DkLogoPro
 
       // Must be visible before measuring length (CSS hides these by default).
       body.style.visibility = 'visible'
+      if (typeof body.getTotalLength !== 'function') return
       const len = body.getTotalLength()
       if (!len) return
 

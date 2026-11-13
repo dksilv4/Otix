@@ -44,10 +44,10 @@ describe('RequestMediaButton', () => {
       instances: [],
     })
 
-    const { container } = render(<RequestMediaButton />)
+    render(<RequestMediaButton />)
 
-    expect(container).toBeEmptyDOMElement()
     expect(screen.queryByRole('button')).not.toBeInTheDocument()
+    expect(screen.getByText('Checking...')).toBeInTheDocument()
     expect(screen.queryByText('Checking Radarr…')).not.toBeInTheDocument()
   })
 

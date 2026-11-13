@@ -428,7 +428,7 @@ const SteamOverviewModule = ({ expanded, onToggle }: { expanded?: boolean; onTog
                     <img src={item.posterUrl} alt={item.title} className="dk-library-steam__carousel-img" loading="lazy" />
                   ) : (
                     <div className="dk-library-steam__carousel-placeholder">
-                      <SteamIcon className="h-8 w-8 text-[#66c0f4]/30" />
+                      <SteamIcon className="h-8 w-8 text-sky-400/30" />
                     </div>
                   )}
                   <div className="dk-library-steam__carousel-overlay">

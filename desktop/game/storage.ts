@@ -985,7 +985,7 @@ export function upsertGames(games: GameRow[], scopePaths?: string[]): void {
       for (const chunk of idChunks) {
         const placeholders = chunk.map(() => '?').join(',');
         const existingRows = __all(
-          `SELECT id, seeded, otix_media_id, otix_media_title, otix_match_suggestion, otix_data, otix_poster_url, otix_backdrop_url, otix_icon_url, otix_confidence, poster_url FROM scanned_games WHERE id IN (${placeholders})`,
+          `SELECT * FROM scanned_games WHERE id IN (${placeholders})`,
           ...chunk
         );
         for (const r of existingRows) {
@@ -1143,16 +1143,32 @@ export function upsertGames(games: GameRow[], scopePaths?: string[]): void {
         sourcesPayload = JSON.stringify([{ source: g.platform, id: g.id, isDlc: !!g.isDlc, dlcOf: g.dlcOf || null, isBeta: !!g.isBeta, betaOf: g.betaOf || null, isApp: !!g.isApp, gameType: g.gameType || null }]);
       }
 
-      const finalExePath = (g.exePath && path.extname(g.exePath) ? g.exePath : (resolvedLocalExePath || g.exePath));
-      const finalLocalExePath = resolvedLocalExePath || g.localExePath || null;
+            const rawExePath = g.exePath || (g as any).exe_path || (existing?.exe_path as string) || '';
+      const rawLocalExePath = g.localExePath || (g as any).local_exe_path || (existing?.local_exe_path as string) || null;
+      const finalLocalExePath = resolvedLocalExePath || rawLocalExePath || null;
+      const finalExePath = (rawExePath && path.extname(rawExePath) ? rawExePath : (finalLocalExePath || rawExePath)) || '';
+
+      const rawInstallDir = g.installDir ?? (g as any).install_dir ?? (existing?.install_dir as string);
+      let finalInstallDir = rawInstallDir || '';
+      if (!finalInstallDir && finalExePath && !finalExePath.startsWith('steam://')) {
+        try {
+          finalInstallDir = path.dirname(finalExePath);
+        } catch {
+          finalInstallDir = '';
+        }
+      }
+      finalInstallDir = finalInstallDir || '';
+
+      const resolvedTitle = g.title || (g as any).game_title || (existing?.title as string) || 'Untitled';
+      const resolvedPlatform = g.platform || (g as any).platform || (existing?.platform as GamePlatform) || 'pc';
 
       insertGame.run(
         g.id,
-        g.title,
+        resolvedTitle,
         finalExePath,
         finalLocalExePath,
-        g.installDir,
-        g.platform,
+        finalInstallDir,
+        resolvedPlatform,
         g.localIconUrl || null,
         iconUrl,
         posterUrl,
@@ -1230,13 +1246,24 @@ export function upsertGamesForPlatform(games: GameRow[], platform: string): void
         ? JSON.stringify(g.sources)
         : JSON.stringify([{ source: g.platform, id: g.id, isDlc: !!g.isDlc, dlcOf: g.dlcOf || null, isBeta: !!g.isBeta, betaOf: g.betaOf || null, isApp: !!g.isApp, gameType: g.gameType || null }]);
 
+            const rawExe = g.exePath || (g as any).exe_path || '';
+      const rawLocalExe = g.localExePath || (g as any).local_exe_path || null;
+      let rawDir = g.installDir ?? (g as any).install_dir ?? '';
+      if (!rawDir && rawExe && !rawExe.startsWith('steam://')) {
+        try {
+          rawDir = path.dirname(rawExe);
+        } catch {
+          rawDir = '';
+        }
+      }
+
       insertGame.run(
         g.id,
-        g.title,
-        g.exePath,
-        g.localExePath || null,
-        g.installDir,
-        g.platform,
+        g.title || (g as any).game_title || 'Untitled',
+        rawExe,
+        rawLocalExe,
+        rawDir || '',
+        g.platform || platform || 'pc',
         g.localIconUrl || null,
         g.iconUrl || null,
         g.posterUrl || null,

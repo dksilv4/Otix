@@ -29,7 +29,7 @@ export const LibraryPage = () => {
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
             className={cn(
-              'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all',
+              'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors',
               activeTab === tab.id
                 ? 'bg-primary text-primary-foreground font-semibold shadow-xs'
                 : 'text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-ghost-hover)]',
@@ -364,8 +364,8 @@ const DownloadsTab = () => {
             <div className="w-24">
               <div className="h-1.5 rounded-full overflow-hidden bg-[var(--dk-surface-ghost)]">
                 <div
-                  className="h-full rounded-full bg-gradient-to-r from-blue-500 to-indigo-500 transition-all duration-500"
-                  style={{ width: `${Math.min(dl.percentage, 100)}%` }}
+                  className="h-full w-full rounded-full bg-primary origin-left transition-transform duration-500"
+                  style={{ transform: `scaleX(${Math.min(dl.percentage, 100) / 100})` }}
                 />
               </div>
             </div>

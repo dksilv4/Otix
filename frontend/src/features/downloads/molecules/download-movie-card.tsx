@@ -36,7 +36,7 @@ export const DownloadMovieCard = ({
   return (
     <div
       data-testid={`download-movie-card-${item.id}`}
-      className="p-3.5 sm:p-4 rounded-2xl bg-[var(--dk-surface-glass)] backdrop-blur-xl border border-white/[0.04] shadow-[var(--dk-shadow-glass)] flex items-start sm:items-center gap-3.5 transition-all"
+      className="p-3.5 sm:p-4 rounded-2xl bg-[var(--dk-surface-glass)] backdrop-blur-xl border border-white/[0.04] shadow-[var(--dk-shadow-glass)] flex items-start sm:items-center gap-3.5 transition-colors"
     >
       {/* 2:3 Movie Poster Thumbnail */}
       <div className="relative shrink-0 w-14 h-20 sm:w-16 sm:h-24 rounded-xl overflow-hidden bg-muted/40 shadow-inner flex items-center justify-center">
@@ -102,7 +102,7 @@ export const DownloadMovieCard = ({
             <Link
               to="/media/$mediaType/$mediaId"
               params={{ mediaType: 'movie', mediaId: String(meta.mediaItemId) }}
-              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-all shadow-sm shrink-0"
+              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition shadow-sm shrink-0"
               title="Stream movie"
             >
               <Play className="h-3 w-3 fill-current" />
@@ -143,7 +143,7 @@ export const DownloadMovieCard = ({
         <div className="space-y-1">
           <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
             <div
-              className="h-full bg-primary transition-all duration-300"
+              className="h-full bg-primary transition-colors duration-300"
               style={{ width: `${Math.max(meta.percentage, 2)}%` }}
             />
           </div>

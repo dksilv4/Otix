@@ -5,7 +5,14 @@ import {
   buildPlexPlaybackSession,
   switchPlexSessionServer,
   updatePlexSessionQuality,
+  updatePlexSessionAudio,
+  selectPlexAudioStream,
 } from '../plex-stream'
+import {
+  formatAudioTrackLabel,
+  formatAudioTrackDetails,
+  getAudioBadgeLabel,
+} from '../player'
 
 describe('plex-stream utilities', () => {
   it('builds HLS URL with correct Plex client parameters', () => {
@@ -24,7 +31,7 @@ describe('plex-stream utilities', () => {
     const url = buildPlexDirectUrl('http://192.168.1.100:32400', '/library/parts/999/file.mp4', 'token-abc', 'session-1', 'client-xyz')
     expect(url).toContain('http://192.168.1.100:32400/library/parts/999/file.mp4?')
     expect(url).toContain('X-Plex-Token=token-abc')
-    expect(url).toContain('X-Plex-Session-Identifier=session-1')
+    expect(url).not.toContain('X-Plex-Session-Identifier=')
     expect(url).toContain('X-Plex-Client-Identifier=client-xyz')
   })
 
@@ -87,7 +94,7 @@ describe('plex-stream utilities', () => {
     expect(switched.serverUrl).toBe('https://remote.plex.direct:32400')
     expect(switched.directUrl).toContain('https://remote.plex.direct:32400/library/parts/1/file.mp4?')
     expect(switched.directUrl).toContain('X-Plex-Token=tok-123')
-    expect(switched.directUrl).toContain('X-Plex-Session-Identifier=')
+    expect(switched.directUrl).not.toContain('X-Plex-Session-Identifier=')
     expect(switched.hlsUrl).toContain('https://remote.plex.direct:32400/video/:/transcode')
     expect(switched.subtitles[0].url).toBe('https://remote.plex.direct:32400/sub.vtt')
   })
@@ -127,5 +134,96 @@ describe('plex-stream utilities', () => {
     expect(updated.videoResolution).toBe('1280x720')
     expect(updated.hlsUrl).toContain('maxVideoBitrate=4000')
     expect(updated.hlsUrl).toContain('videoResolution=1280x720')
+  })
+
+  it('updates audio stream via updatePlexSessionAudio', () => {
+    const initialSession = buildPlexPlaybackSession({
+      baseUrl: 'http://192.168.1.100:32400',
+      token: 'tok-123',
+      ratingKey: '555',
+      title: 'Demon Slayer',
+      hlsUrl: 'http://192.168.1.100:32400/video/:/transcode/start.m3u8',
+      directUrl: 'http://192.168.1.100:32400/library/parts/999/file.mkv',
+      audioTracks: [
+        { id: '101', index: 1, label: 'Japanese', language: 'ja', codec: 'aac', channels: 2, isDefault: true },
+        { id: '102', index: 2, label: 'English', language: 'en', codec: 'eac3', channels: 6, isDefault: false },
+      ],
+    })
+
+    const updated = updatePlexSessionAudio(initialSession, {
+      id: '102',
+      index: 2,
+      label: 'English',
+      language: 'en',
+      codec: 'eac3',
+      channels: 6,
+    })
+
+    expect(updated.selectedAudioIndex).toBe(2)
+    expect(updated.hlsUrl).toContain('audioStreamID=102')
+    expect(updated.playbackMethod).toBe('direct-stream')
+  })
+
+  it('appends offset and copyts=1 to HLS URL when offsetSeconds is specified', () => {
+    const url = buildPlexHlsUrl(
+      'http://192.168.1.100:32400',
+      '12345',
+      'token-abc',
+      'session-1',
+      'client-xyz',
+      { offsetSeconds: 154.8 },
+    )
+    expect(url).toContain('&offset=154&copyts=1')
+  })
+
+  it('does not append offset or copyts when offsetSeconds is 0 or undefined', () => {
+    const url = buildPlexHlsUrl(
+      'http://192.168.1.100:32400',
+      '12345',
+      'token-abc',
+      'session-1',
+      'client-xyz',
+    )
+    expect(url).not.toContain('&offset=')
+    expect(url).not.toContain('&copyts=1')
+  })
+
+  it('varies playSessionId by audioTrack.id and preserves offset during updatePlexSessionAudio', () => {
+    const initialSession = buildPlexPlaybackSession({
+      baseUrl: 'http://192.168.1.100:32400',
+      token: 'tok-123',
+      ratingKey: '555',
+      title: 'Interstellar',
+      hlsUrl: 'http://192.168.1.100:32400/video/:/transcode/start.m3u8',
+      audioTracks: [
+        { id: '101', index: 1, label: 'English', language: 'en', codec: 'aac', channels: 6, isDefault: true },
+        { id: '102', index: 2, label: 'French', language: 'fr', codec: 'ac3', channels: 6, isDefault: false },
+      ],
+    })
+
+    const updated = updatePlexSessionAudio(
+      initialSession,
+      { id: '102', index: 2, label: 'French', language: 'fr', codec: 'ac3', channels: 6 },
+      120.5,
+    )
+
+    expect(updated.playSessionId).toContain('-a-102')
+    expect(updated.selectedAudioIndex).toBe(2)
+    expect(updated.hlsUrl).toContain('audioStreamID=102')
+    expect(updated.hlsUrl).toContain('&offset=120&copyts=1')
+    expect(updated.hlsUrl).toContain(`session=${encodeURIComponent(updated.playSessionId)}`)
+    expect(updated.startPositionMs).toBe(120500)
+  })
+
+  it('formats audio track labels and details correctly', () => {
+    expect(formatAudioTrackLabel({ label: 'Japanese', language: 'ja', index: 1 })).toBe('Japanese')
+    expect(formatAudioTrackLabel({ label: 'Audio', language: 'ja', index: 1 })).toBe('JA')
+    expect(formatAudioTrackLabel({ label: 'Audio', language: 'und', index: 2 })).toBe('Track 2')
+
+    expect(formatAudioTrackDetails({ codec: 'eac3', channels: 6 })).toBe('EAC3 · 5.1')
+    expect(formatAudioTrackDetails({ codec: 'aac', channels: 2 })).toBe('AAC · 2ch')
+
+    expect(getAudioBadgeLabel({ label: 'Japanese', language: 'ja', index: 1 })).toBe('JA')
+    expect(getAudioBadgeLabel(null, [{ label: 'English', language: 'en', index: 1 }])).toBe('EN')
   })
 })

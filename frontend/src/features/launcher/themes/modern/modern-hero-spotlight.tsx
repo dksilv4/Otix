@@ -32,7 +32,7 @@ export const ModernHeroSpotlight = ({
   const screenshots = detail?.screenshots?.slice(0, 6) || []
 
   return (
-    <section className="relative w-full h-[520px] rounded-3xl overflow-hidden mb-8 border border-[var(--dk-separator)] shadow-[0_24px_70px_rgba(0,0,0,0.8)] group select-none">
+    <section className="relative w-full h-[520px] rounded-3xl overflow-hidden mb-8 border border-[var(--dk-separator)] shadow-2xl group select-none">
       {/* Dynamic Ambient Background */}
       <AnimatePresence initial={false}>
         <motion.div
@@ -90,13 +90,13 @@ export const ModernHeroSpotlight = ({
               <MediaLogo
                 src={logoUrl}
                 alt={title}
-                className="h-24 max-w-[360px] object-contain object-left drop-shadow-[0_12px_24px_rgba(0,0,0,0.9)]"
+                className="h-24 max-w-[360px] object-contain object-left drop-shadow-2xl"
                 background="dark"
                 onError={() => setLogoError(true)}
               />
             </div>
           ) : (
-            <h1 className="text-4xl lg:text-5xl font-black text-white tracking-tight uppercase drop-shadow-[0_4px_12px_rgba(0,0,0,0.8)]">
+            <h1 className="text-4xl lg:text-5xl font-black text-white tracking-tight uppercase drop-shadow-lg">
               {title}
             </h1>
           )}
@@ -129,7 +129,7 @@ export const ModernHeroSpotlight = ({
                   key={idx}
                   onMouseEnter={() => setHoveredScreenshot(s.url)}
                   onMouseLeave={() => setHoveredScreenshot(null)}
-                  className={`relative w-24 h-14 rounded-xl overflow-hidden cursor-pointer border transition-all duration-200 shrink-0 ${
+                  className={`relative w-24 h-14 rounded-xl overflow-hidden cursor-pointer border transition-colors duration-200 shrink-0 ${
                     hoveredScreenshot === s.url
                       ? "border-primary scale-105 shadow-lg shadow-black/80"
                       : "border-white/15 opacity-70 hover:opacity-100 hover:border-white/40"

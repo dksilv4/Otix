@@ -96,7 +96,7 @@ export const ModernHeader = ({
         <button
           onClick={() => navigate({ to: "/" })}
           title="Exit Launcher (Back to Otix)"
-          className="p-2 -ml-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-ghost-hover)] transition-all cursor-pointer"
+          className="p-2 -ml-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-ghost-hover)] transition-colors cursor-pointer"
         >
           <ArrowLeft size={16} />
         </button>
@@ -122,7 +122,7 @@ export const ModernHeader = ({
         <div className="flex items-center p-1 rounded-xl bg-[var(--dk-surface-ghost)] border border-[var(--dk-separator)]">
           <button
             onClick={() => setActiveTab("dashboard")}
-            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
               activeTab === "dashboard"
                 ? "bg-primary text-primary-foreground shadow-sm"
                 : "text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-ghost-hover)]"
@@ -133,7 +133,7 @@ export const ModernHeader = ({
           </button>
           <button
             onClick={() => setActiveTab("library")}
-            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
               activeTab === "library"
                 ? "bg-primary text-primary-foreground shadow-sm"
                 : "text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-ghost-hover)]"
@@ -183,7 +183,7 @@ export const ModernHeader = ({
           onClick={handleQuickScan}
           disabled={isScanning}
           title="Scan game libraries"
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)] text-foreground/80 hover:text-foreground border border-[var(--dk-separator)] text-xs font-semibold transition-all cursor-pointer disabled:opacity-50"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)] text-foreground/80 hover:text-foreground border border-[var(--dk-separator)] text-xs font-semibold transition-colors cursor-pointer disabled:opacity-50"
         >
           <RefreshCw size={13} className={isScanning ? "animate-spin text-primary" : ""} />
           <span className="hidden sm:inline">{isScanning ? "Scanning..." : "Scan"}</span>

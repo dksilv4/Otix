@@ -184,7 +184,7 @@ const JDownloaderForm = ({
             type="button"
             onClick={() => setMode('cloud')}
             className={cn(
-              'flex-1 flex items-center justify-center gap-1.5 py-1.5 text-xs font-semibold rounded-lg transition-all',
+              'flex-1 flex items-center justify-center gap-1.5 py-1.5 text-xs font-semibold rounded-lg transition-colors',
               mode === 'cloud'
                 ? 'bg-primary text-primary-foreground shadow-sm'
                 : 'text-muted-foreground hover:text-foreground'
@@ -197,7 +197,7 @@ const JDownloaderForm = ({
             type="button"
             onClick={() => setMode('direct')}
             className={cn(
-              'flex-1 flex items-center justify-center gap-1.5 py-1.5 text-xs font-semibold rounded-lg transition-all',
+              'flex-1 flex items-center justify-center gap-1.5 py-1.5 text-xs font-semibold rounded-lg transition-colors',
               mode === 'direct'
                 ? 'bg-primary text-primary-foreground shadow-sm'
                 : 'text-muted-foreground hover:text-foreground'

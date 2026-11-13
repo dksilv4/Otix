@@ -147,7 +147,7 @@ export const FullScreenQueuePanel = ({
             return (
               <div
                 key={`${item.id || idx}-${idx}`}
-                className="group flex items-center justify-between gap-3 p-2 rounded-xl hover:bg-[var(--dk-surface-ghost-hover)] transition-all cursor-pointer"
+                className="group flex items-center justify-between gap-3 p-2 rounded-xl hover:bg-[var(--dk-surface-ghost-hover)] transition-colors cursor-pointer"
                 onClick={() => onSelectTrack(idx)}
               >
                 <div className="flex items-center gap-3 min-w-0 flex-1">
@@ -185,7 +185,7 @@ export const FullScreenQueuePanel = ({
                       e.stopPropagation()
                       onRemoveTrack(idx)
                     }}
-                    className="opacity-0 group-hover:opacity-100 h-7 w-7 flex items-center justify-center rounded-lg text-muted-foreground hover:text-destructive hover:bg-[var(--dk-surface-ghost)] transition-all"
+                    className="opacity-0 group-hover:opacity-100 h-7 w-7 flex items-center justify-center rounded-lg text-muted-foreground hover:text-destructive hover:bg-[var(--dk-surface-ghost)] transition-colors"
                     title="Remove from queue"
                     aria-label="Remove from queue"
                   >

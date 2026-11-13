@@ -23,6 +23,7 @@ vi.mock('electron-updater', () => ({
 import { ipcMain } from 'electron';
 import { registerWindowIPC, notifyMaximizedChange } from '../ipc/window';
 import { registerUpdaterIPC, _setUpdateVerifiedForTest } from '../ipc/updater';
+import { registerPluginIPC } from '../plugin-runtime/ipc';
 
 describe('Adversarial Stress Test: Idempotent IPC Registration & Window Recreation', () => {
   // Map simulating native Electron registry with strict duplicate check
@@ -205,6 +206,68 @@ describe('Adversarial Stress Test: Idempotent IPC Registration & Window Recreati
         'updater:status-changed',
         expect.objectContaining({ status: 'checking' }),
       );
+    });
+  });
+
+  describe('Plugin IPC Idempotent Registration & Early Handlers', () => {
+    const createMockPluginManager = () =>
+      ({
+        getAllPluginsWithStatuses: vi.fn().mockResolvedValue([]),
+        getPlugin: vi.fn().mockReturnValue(null),
+        discoverPlugins: vi.fn().mockResolvedValue([]),
+        getConfig: vi.fn().mockResolvedValue({}),
+        getPluginStatus: vi.fn().mockResolvedValue({}),
+        getActivity: vi.fn().mockReturnValue([]),
+        getSlotData: vi.fn().mockResolvedValue([]),
+        getPageSlotData: vi.fn().mockResolvedValue([]),
+        getPluginTabs: vi.fn().mockReturnValue([]),
+        uninstall: vi.fn().mockResolvedValue(true),
+        enable: vi.fn().mockResolvedValue(true),
+        disable: vi.fn().mockResolvedValue(true),
+        reload: vi.fn().mockResolvedValue(undefined),
+        getAllPlugins: vi.fn().mockResolvedValue([]),
+        setConfig: vi.fn().mockResolvedValue(true),
+        setAuthToken: vi.fn(),
+        setApiBaseUrl: vi.fn(),
+        callPluginData: vi.fn().mockResolvedValue(null),
+        testInstance: vi.fn().mockResolvedValue({ success: true, message: 'ok' }),
+        testPluginConfig: vi.fn().mockResolvedValue({ success: true, message: 'ok' }),
+        getApiBaseUrl: vi.fn().mockReturnValue('https://otix.app/api'),
+        freeGames: {
+          getAll: vi.fn().mockResolvedValue([]),
+          refresh: vi.fn().mockResolvedValue([]),
+        },
+      }) as any;
+
+    it('survives stage4 early handler registration followed by stage5 registerPluginIPC without duplicate errors', async () => {
+      // Emulate Stage 4 early plugin registration
+      ipcMain.handle('plugin:set-auth-token', async () => {});
+      ipcMain.handle('plugin:get-api-base-url', async () => 'https://early.otix.app');
+
+      expect(activeHandlers.has('plugin:get-api-base-url')).toBe(true);
+      expect(activeHandlers.has('plugin:set-auth-token')).toBe(true);
+
+      const win = createMockWindow(1);
+      const pluginManager = createMockPluginManager();
+
+      // Emulate Stage 5 registerPluginIPC
+      expect(() => registerPluginIPC(pluginManager, win)).not.toThrow();
+
+      // Ensure plugin:get-api-base-url is registered and invokes properly
+      const getApiHandler = activeHandlers.get('plugin:get-api-base-url');
+      expect(getApiHandler).toBeDefined();
+      expect(await getApiHandler!()).toBe('https://otix.app/api');
+    });
+
+    it('survives repeated plugin IPC registrations across window recreations without duplicate handler errors', () => {
+      const win1 = createMockWindow(1);
+      const win2 = createMockWindow(2);
+      const win3 = createMockWindow(3);
+      const pluginManager = createMockPluginManager();
+
+      expect(() => registerPluginIPC(pluginManager, win1)).not.toThrow();
+      expect(() => registerPluginIPC(pluginManager, win2)).not.toThrow();
+      expect(() => registerPluginIPC(pluginManager, win3)).not.toThrow();
     });
   });
 });

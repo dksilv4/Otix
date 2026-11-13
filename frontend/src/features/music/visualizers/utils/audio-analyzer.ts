@@ -171,7 +171,7 @@ class AudioVisualizerEngine {
     if (this.analyser && isPlaying) {
       try {
         if (this.highResFreqData) {
-          this.analyser.getByteFrequencyData(this.highResFreqData)
+          this.analyser.getByteFrequencyData(this.highResFreqData as any)
           // Downsample high-res to standard 128 bins for rawFreqData
           const hrLen = this.highResFreqData.length
           const ratio = hrLen / BIN_COUNT

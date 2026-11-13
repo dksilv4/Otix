@@ -33,7 +33,7 @@ export const SlidePanel = ({ children, onClose, isExiting, navOffset = '17rem' }
 
       {/* Panel */}
       <div
-        className="w-full max-w-md my-8 mr-8 flex flex-col bg-white/5 backdrop-blur-xl rounded-3xl shadow-[var(--dk-shadow-glass)] overflow-hidden transition-all duration-300 ease-out"
+        className="w-full max-w-md my-8 mr-8 flex flex-col bg-white/5 backdrop-blur-xl rounded-3xl shadow-[var(--dk-shadow-glass)] overflow-hidden transition-colors duration-300 ease-out"
         style={{
           transform: visible ? 'translateX(0)' : 'translateX(100%)',
         }}

@@ -18,7 +18,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
           ref={ref}
           className={cn(
             'w-full h-9 rounded-xl bg-[var(--dk-surface-field)] border border-[var(--dk-separator)] pl-3 pr-9 text-sm text-foreground',
-            'appearance-none outline-none transition-all cursor-pointer',
+            'appearance-none outline-none transition-colors cursor-pointer',
             'focus:border-primary focus:ring-1 focus:ring-primary/30',
             invalid && 'border-destructive/60 focus:border-destructive',
             className,

@@ -409,7 +409,7 @@ const SpotlightCard = ({
                 target="_blank"
                 rel="noopener noreferrer"
                 className={cn(
-                  'inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold transition-all active:scale-[0.97]',
+                  'inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold transition-colors active:scale-[0.97]',
                   isClaimed
                     ? 'bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)] text-foreground/90 border border-[var(--dk-separator)]'
                     : isNow
@@ -430,7 +430,7 @@ const SpotlightCard = ({
               onClick={onToggleClaimed}
               aria-label={isClaimed ? `Mark ${title} as unclaimed` : `Mark ${title} as claimed`}
               className={cn(
-                'inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-semibold transition-all active:scale-[0.97] cursor-pointer',
+                'inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-semibold transition-colors active:scale-[0.97] cursor-pointer',
                 isClaimed
                   ? 'bg-primary/20 text-primary hover:bg-primary/30 border border-primary/30'
                   : 'text-foreground/80 hover:text-foreground bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)] border border-[var(--dk-separator)]',
@@ -443,7 +443,7 @@ const SpotlightCard = ({
               <Link
                 to="/media/$mediaType/$mediaId"
                 params={{ mediaType: 'game', mediaId: String(media.id) }}
-                className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-semibold text-foreground/80 hover:text-foreground bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)] border border-[var(--dk-separator)] transition-all active:scale-[0.97]"
+                className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-semibold text-foreground/80 hover:text-foreground bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)] border border-[var(--dk-separator)] transition-colors active:scale-[0.97]"
               >
                 <Gamepad2 className="h-3.5 w-3.5" />
                 {isDlcOrPack ? 'View Base Game' : 'Open in Otix'}
@@ -576,7 +576,7 @@ const FreeGameCard = ({
         aria-label={isClaimed ? `Mark ${displayTitle} as unclaimed` : `Mark ${displayTitle} as claimed`}
         className={cn(
           'absolute bottom-2 left-2 z-30 inline-flex items-center gap-1 rounded-md px-2 py-1',
-          'text-[10px] font-semibold shadow-md backdrop-blur-md transition-all active:scale-[0.96] cursor-pointer',
+          'text-[10px] font-semibold shadow-md backdrop-blur-md transition-colors active:scale-[0.96] cursor-pointer',
           isClaimed
             ? 'bg-primary text-primary-foreground border border-primary/40 opacity-95 group-hover/free:opacity-100'
             : 'bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-ghost-hover)] text-foreground/90 border border-white/[0.06] opacity-80 hover:opacity-100 group-hover/free:opacity-100',

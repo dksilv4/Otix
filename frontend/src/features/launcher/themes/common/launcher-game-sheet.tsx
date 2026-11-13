@@ -85,7 +85,7 @@ export const LauncherGameSheet = ({ game, onClose }: LauncherGameSheetProps) => 
             <button
               onClick={onClose}
               aria-label="Close sheet"
-              className="absolute top-4 right-4 z-20 w-9 h-9 rounded-full bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-glass-hover)] text-foreground flex items-center justify-center border border-white/[0.06] transition-all cursor-pointer backdrop-blur-md shadow-sm active:scale-95"
+              className="absolute top-4 right-4 z-20 w-9 h-9 rounded-full bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-glass-hover)] text-foreground flex items-center justify-center border border-white/[0.06] transition-colors cursor-pointer backdrop-blur-md shadow-sm active:scale-95"
             >
               <X size={18} />
             </button>
@@ -141,7 +141,7 @@ export const LauncherGameSheet = ({ game, onClose }: LauncherGameSheetProps) => 
           <div className="px-6 border-b border-[var(--dk-separator)] bg-[var(--dk-surface-ghost)]/50 flex gap-6 flex-none">
             <button
               onClick={() => setActiveTab("overview")}
-              className={`py-3 text-xs font-bold uppercase tracking-wider transition-all border-b-2 cursor-pointer flex items-center gap-1.5 ${
+              className={`py-3 text-xs font-bold uppercase tracking-wider transition-colors border-b-2 cursor-pointer flex items-center gap-1.5 ${
                 activeTab === "overview"
                   ? "border-primary text-foreground"
                   : "border-transparent text-muted-foreground hover:text-foreground"
@@ -152,7 +152,7 @@ export const LauncherGameSheet = ({ game, onClose }: LauncherGameSheetProps) => 
 
             <button
               onClick={() => setActiveTab("achievements")}
-              className={`py-3 text-xs font-bold uppercase tracking-wider transition-all border-b-2 cursor-pointer flex items-center gap-1.5 ${
+              className={`py-3 text-xs font-bold uppercase tracking-wider transition-colors border-b-2 cursor-pointer flex items-center gap-1.5 ${
                 activeTab === "achievements"
                   ? "border-primary text-foreground"
                   : "border-transparent text-muted-foreground hover:text-foreground"
@@ -163,7 +163,7 @@ export const LauncherGameSheet = ({ game, onClose }: LauncherGameSheetProps) => 
 
             <button
               onClick={() => setActiveTab("updates")}
-              className={`py-3 text-xs font-bold uppercase tracking-wider transition-all border-b-2 cursor-pointer flex items-center gap-1.5 ${
+              className={`py-3 text-xs font-bold uppercase tracking-wider transition-colors border-b-2 cursor-pointer flex items-center gap-1.5 ${
                 activeTab === "updates"
                   ? "border-primary text-foreground"
                   : "border-transparent text-muted-foreground hover:text-foreground"
@@ -180,7 +180,7 @@ export const LauncherGameSheet = ({ game, onClose }: LauncherGameSheetProps) => 
             {gameServers.length > 0 && (
               <button
                 onClick={() => setActiveTab("servers")}
-                className={`py-3 text-xs font-bold uppercase tracking-wider transition-all border-b-2 cursor-pointer flex items-center gap-1.5 ${
+                className={`py-3 text-xs font-bold uppercase tracking-wider transition-colors border-b-2 cursor-pointer flex items-center gap-1.5 ${
                   activeTab === "servers"
                     ? "border-primary text-foreground"
                     : "border-transparent text-muted-foreground hover:text-foreground"
@@ -307,7 +307,7 @@ export const LauncherGameSheet = ({ game, onClose }: LauncherGameSheetProps) => 
                         <div
                           key={idx}
                           onClick={() => setSelectedScreenshot(s.url)}
-                          className="relative aspect-video rounded-xl overflow-hidden cursor-pointer group border border-[var(--dk-separator)] hover:border-foreground/20 transition-all"
+                          className="relative aspect-video rounded-xl overflow-hidden cursor-pointer group border border-[var(--dk-separator)] hover:border-foreground/20 transition-colors"
                         >
                           <img
                             src={s.url}

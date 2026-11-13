@@ -436,7 +436,7 @@ export const MatchGameModal = ({ game, onClose, isExiting }: Props) => {
             <button
               onClick={handleAccept}
               disabled={isSaving}
-              className="w-full py-2.5 rounded-xl bg-primary hover:bg-primary/90 disabled:bg-primary/50 text-primary-foreground text-[11px] font-black flex items-center justify-center gap-2 transition-all cursor-pointer active:scale-[0.98]"
+              className="w-full py-2.5 rounded-xl bg-primary hover:bg-primary/90 disabled:bg-primary/50 text-primary-foreground text-[11px] font-black flex items-center justify-center gap-2 transition cursor-pointer active:scale-[0.98]"
             >
               {isSaving ? (
                 <><Loader2 size={14} className="animate-spin" /> Saving…</>
@@ -466,7 +466,7 @@ export const MatchGameModal = ({ game, onClose, isExiting }: Props) => {
               <button
                 onClick={handleAccept}
                 disabled={isSaving}
-                className="flex-1 py-2.5 rounded-xl bg-primary hover:bg-primary/90 disabled:bg-primary/50 text-primary-foreground text-[11px] font-black flex items-center justify-center gap-2 transition-all cursor-pointer active:scale-[0.98]"
+                className="flex-1 py-2.5 rounded-xl bg-primary hover:bg-primary/90 disabled:bg-primary/50 text-primary-foreground text-[11px] font-black flex items-center justify-center gap-2 transition cursor-pointer active:scale-[0.98]"
               >
                 {isSaving ? (
                   <><Loader2 size={14} className="animate-spin" /> Saving…</>
@@ -477,7 +477,7 @@ export const MatchGameModal = ({ game, onClose, isExiting }: Props) => {
               <button
                 onClick={() => setStep('no-match')}
                 disabled={isSaving}
-                className="px-4 py-2.5 rounded-xl bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-field)] text-muted-foreground hover:text-foreground border border-[var(--dk-separator)] text-[11px] font-semibold transition-all cursor-pointer active:scale-[0.98] disabled:opacity-30"
+                className="px-4 py-2.5 rounded-xl bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-field)] text-muted-foreground hover:text-foreground border border-[var(--dk-separator)] text-[11px] font-semibold transition-colors cursor-pointer active:scale-[0.98] disabled:opacity-30"
               >
                 Not Right
               </button>
@@ -502,7 +502,7 @@ export const MatchGameModal = ({ game, onClose, isExiting }: Props) => {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search catalog..."
-                className="w-full pl-9 pr-8 py-2.5 rounded-xl bg-[var(--dk-surface-field)] border border-[var(--dk-separator)] text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/40 focus:bg-[var(--dk-surface-field)] transition-all"
+                className="w-full pl-9 pr-8 py-2.5 rounded-xl bg-[var(--dk-surface-field)] border border-[var(--dk-separator)] text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary/40 focus:bg-[var(--dk-surface-field)] transition-colors"
                 autoFocus
               />
               {searchQuery && (
@@ -539,7 +539,7 @@ export const MatchGameModal = ({ game, onClose, isExiting }: Props) => {
                     key={result.id}
                     onClick={() => handleSelectSearchResult(result)}
                     disabled={isSaving}
-                    className="flex items-center gap-3 w-full text-left p-2.5 rounded-xl bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-field)] border border-[var(--dk-separator)] transition-all cursor-pointer disabled:opacity-50"
+                    className="flex items-center gap-3 w-full text-left p-2.5 rounded-xl bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-field)] border border-[var(--dk-separator)] transition-colors cursor-pointer disabled:opacity-50"
                   >
                     <div className="w-9 h-12 rounded-lg overflow-hidden shrink-0 bg-[var(--dk-surface-field)]">
                       {result.posterUrl ? (
@@ -580,7 +580,7 @@ export const MatchGameModal = ({ game, onClose, isExiting }: Props) => {
             {!debouncedQuery && !searchLoading && (
               <button
                 onClick={handleRetry}
-                className="w-full py-2 rounded-xl bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-field)] border border-[var(--dk-separator)] text-muted-foreground hover:text-foreground text-[11px] font-semibold flex items-center justify-center gap-2 transition-all cursor-pointer"
+                className="w-full py-2 rounded-xl bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-field)] border border-[var(--dk-separator)] text-muted-foreground hover:text-foreground text-[11px] font-semibold flex items-center justify-center gap-2 transition-colors cursor-pointer"
               >
                 <RefreshCw size={12} /> Re-match
               </button>
@@ -605,7 +605,7 @@ export const MatchGameModal = ({ game, onClose, isExiting }: Props) => {
         <button
           onClick={() => handleOpenChange(false)}
           disabled={isSaving}
-          className="px-4 py-2 rounded-xl bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-field)] text-muted-foreground hover:text-foreground border border-[var(--dk-separator)] text-[11px] font-semibold transition-all cursor-pointer disabled:opacity-30"
+          className="px-4 py-2 rounded-xl bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-field)] text-muted-foreground hover:text-foreground border border-[var(--dk-separator)] text-[11px] font-semibold transition-colors cursor-pointer disabled:opacity-30"
         >
           {step === 'matched' || step === 'suggestion' ? 'Cancel' : 'Close'}
         </button>

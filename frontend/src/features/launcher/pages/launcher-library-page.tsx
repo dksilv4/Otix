@@ -286,14 +286,14 @@ export const LauncherLibraryPage = () => {
 
                   <div className="flex items-center gap-3 shrink-0 ml-6">
                     <button
-                      className="flex items-center gap-2.5 px-6 py-3 rounded-xl text-[11px] font-black uppercase tracking-wider text-primary-foreground bg-primary hover:bg-primary/90 cursor-pointer transition-all active:scale-95 shadow-lg"
+                      className="flex items-center gap-2.5 px-6 py-3 rounded-xl text-[11px] font-black uppercase tracking-wider text-primary-foreground bg-primary hover:bg-primary/90 cursor-pointer transition active:scale-95 shadow-lg"
                       onClick={(e) => { e.stopPropagation(); openGame(featured.id) }}
                     >
                       <Play size={14} fill="currentColor" />
                       Launch
                     </button>
                     <button
-                      className="flex items-center gap-1.5 px-4 py-3 rounded-xl text-[11px] font-semibold text-foreground/80 cursor-pointer transition-all active:scale-95 bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-field)] border border-[var(--dk-separator)] backdrop-blur-md"
+                      className="flex items-center gap-1.5 px-4 py-3 rounded-xl text-[11px] font-semibold text-foreground/80 cursor-pointer transition active:scale-95 bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-field)] border border-[var(--dk-separator)] backdrop-blur-md"
                       onClick={(e) => { e.stopPropagation(); openGame(featured.id) }}
                     >
                       Details
@@ -309,7 +309,7 @@ export const LauncherLibraryPage = () => {
                     <button
                       key={i}
                       onClick={(e) => { e.stopPropagation(); setFeaturedIdx(i) }}
-                      className={`cursor-pointer transition-all h-1.5 rounded-full ${
+                      className={`cursor-pointer transition-colors h-1.5 rounded-full ${
                         i === featuredIdx ? 'w-5 bg-primary' : 'w-1.5 bg-foreground/30 hover:bg-foreground/50'
                       }`}
                     />
@@ -340,7 +340,7 @@ export const LauncherLibraryPage = () => {
                 <button
                   key={plat}
                   onClick={() => setSelectedPlatform(plat)}
-                  className={`glass-tab px-2.5 py-1 rounded-lg text-[9px] font-semibold uppercase tracking-wider cursor-pointer transition-all whitespace-nowrap ${
+                  className={`glass-tab px-2.5 py-1 rounded-lg text-[9px] font-semibold uppercase tracking-wider cursor-pointer transition-colors whitespace-nowrap ${
                     selectedPlatform === plat ? 'glass-tab-active bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
                   }`}
                 >
@@ -356,7 +356,7 @@ export const LauncherLibraryPage = () => {
                     <button
                       key={dev}
                       onClick={() => setSelectedDevice(dev)}
-                      className={`glass-tab px-2.5 py-1 rounded-lg text-[9px] font-semibold uppercase tracking-wider cursor-pointer transition-all whitespace-nowrap ${
+                      className={`glass-tab px-2.5 py-1 rounded-lg text-[9px] font-semibold uppercase tracking-wider cursor-pointer transition-colors whitespace-nowrap ${
                         selectedDevice === dev ? 'glass-tab-active bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
                       }`}
                     >
@@ -382,7 +382,7 @@ export const LauncherLibraryPage = () => {
             <div className="w-px self-stretch bg-[var(--dk-separator)]" />
             <button
               onClick={() => navigate({ to: '/settings/launcher' })}
-              className="flex items-center justify-center w-7 h-7 rounded-lg text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-field)] transition-all active:scale-95 cursor-pointer"
+              className="flex items-center justify-center w-7 h-7 rounded-lg text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-field)] transition-colors active:scale-95 cursor-pointer"
               title="Settings"
             >
               <Settings size={14} />
@@ -435,7 +435,7 @@ export const LauncherLibraryPage = () => {
               {rawGames.length === 0 ? (
                 <button
                   onClick={() => navigate({ to: '/settings/connections' })}
-                  className="flex items-center gap-2 mt-1 px-4 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider text-foreground cursor-pointer transition-all active:scale-95 bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-field)] border border-[var(--dk-separator)]"
+                  className="flex items-center gap-2 mt-1 px-4 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider text-foreground cursor-pointer transition active:scale-95 bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-field)] border border-[var(--dk-separator)]"
                 >
                   <Settings size={12} />
                   Open Connections
@@ -443,7 +443,7 @@ export const LauncherLibraryPage = () => {
               ) : (
                 <button
                   onClick={() => { setSearchQuery(''); setSelectedPlatform('all') }}
-                  className="flex items-center gap-2 mt-1 px-4 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider text-foreground cursor-pointer transition-all active:scale-95 bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-field)] border border-[var(--dk-separator)]"
+                  className="flex items-center gap-2 mt-1 px-4 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider text-foreground cursor-pointer transition active:scale-95 bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-field)] border border-[var(--dk-separator)]"
                 >
                   Clear Filters
                 </button>

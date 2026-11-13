@@ -1,9 +1,9 @@
 server:
-    name: Local Node
-    port: 8091
+    name: DK_GAMING_PC
+    port: 8090
     host: 0.0.0.0
-    auth_token: 4b8c39a3446b1bf87bb8019441c54573445bf3c1946012ab
-    registry_url: https://otix.app/api
+    auth_token: c4574089e3c7a35ac82e653a9c956277f92dee5cfa6964e5
+    registry_url: http://localhost:8000/api
     disable_tray: false
     enable_upnp: false
     enable_heartbeat: true

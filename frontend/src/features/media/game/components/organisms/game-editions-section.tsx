@@ -63,7 +63,7 @@ export const GameEditionsSection = ({
           }}
           className={cn(
             'group relative flex flex-col justify-between p-4 rounded-xl text-left cursor-pointer',
-            'bg-card/40 hover:bg-card/70 border border-white/[0.05] backdrop-blur-md transition-all duration-150',
+            'bg-card/40 hover:bg-card/70 border border-white/[0.05] backdrop-blur-md transition-colors duration-150',
             activeSelectedId === null && 'ring-1 ring-primary/60 bg-card/80 border-primary/30',
           )}
         >
@@ -122,7 +122,7 @@ export const GameEditionsSection = ({
               }}
               className={cn(
                 'group relative flex flex-col justify-between p-4 rounded-xl text-left cursor-pointer',
-                'bg-card/40 hover:bg-card/70 border border-white/[0.05] backdrop-blur-md transition-all duration-150',
+                'bg-card/40 hover:bg-card/70 border border-white/[0.05] backdrop-blur-md transition-colors duration-150',
                 isSelected && 'ring-1 ring-primary/60 bg-card/80 border-primary/30',
               )}
             >

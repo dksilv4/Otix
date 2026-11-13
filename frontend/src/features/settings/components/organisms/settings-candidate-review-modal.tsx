@@ -235,7 +235,7 @@ export const CandidateReviewModal = ({
                   type="button"
                   onClick={() => handleAcceptCandidate(candidates[selectedIdx])}
                   disabled={isAccepting}
-                  className="w-full py-2.5 rounded-xl bg-primary hover:bg-primary/90 disabled:opacity-50 text-primary-foreground text-xs font-bold flex items-center justify-center gap-2 transition-all active:scale-[0.98] cursor-pointer"
+                  className="w-full py-2.5 rounded-xl bg-primary hover:bg-primary/90 disabled:opacity-50 text-primary-foreground text-xs font-bold flex items-center justify-center gap-2 transition active:scale-[0.98] cursor-pointer"
                 >
                   {confirming ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
                   Accept Selected Match
@@ -249,7 +249,7 @@ export const CandidateReviewModal = ({
                     <X size={12} /> Never suggest
                   </button>
                   <div className="flex-1" />
-                  <button onClick={handleClose} className="px-4 py-2 rounded-xl bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-hover)] text-foreground border border-[var(--dk-separator)] text-[11px] font-semibold transition-all cursor-pointer">Close</button>
+                  <button onClick={handleClose} className="px-4 py-2 rounded-xl bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-hover)] text-foreground border border-[var(--dk-separator)] text-[11px] font-semibold transition-colors cursor-pointer">Close</button>
                 </div>
               </>
             )}

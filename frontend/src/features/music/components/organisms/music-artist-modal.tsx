@@ -180,7 +180,7 @@ export const MusicArtistModal = ({
                 type="button"
                 onClick={() => void handlePlayArtist()}
                 disabled={tracks.length === 0}
-                className="flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground shadow-sm transition-all hover:scale-105 active:scale-95 disabled:opacity-50"
+                className="flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground shadow-sm transition hover:scale-105 active:scale-95 disabled:opacity-50"
               >
                 <Play className="h-3.5 w-3.5 fill-current ml-0.5" />
                 <span>Play Artist</span>
@@ -241,7 +241,7 @@ export const MusicArtistModal = ({
                             year: typeof alb.year === 'number' ? alb.year : null,
                           })
                         }
-                        className="group flex flex-col gap-2 rounded-2xl p-2.5 bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-glass-hover)] border border-white/[0.04] transition-all cursor-pointer"
+                        className="group flex flex-col gap-2 rounded-2xl p-2.5 bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-glass-hover)] border border-white/[0.04] transition-colors cursor-pointer"
                       >
                         <div className="relative aspect-square w-full overflow-hidden rounded-xl bg-[var(--dk-surface-raised)]">
                           {alb.thumbUrl ? (

@@ -198,6 +198,10 @@ export const queryClient = new QueryClient({
   },
 })
 
+if (typeof window !== 'undefined') {
+  (window as any).__queryClient = queryClient
+}
+
 export function serializeQueryData(data: unknown): unknown {
   if (data && typeof data === 'object') {
     const record = data as Record<string, unknown>

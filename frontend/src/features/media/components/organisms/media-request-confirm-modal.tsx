@@ -351,7 +351,7 @@ export const MediaRequestConfirmModal = ({
         {/* Full-bleed Modal Background with Crisp Artwork (Reduced Blur) */}
         {state.posterUrl && (
           <div
-            className="absolute inset-0 bg-cover bg-center scale-105 filter blur-[3px] opacity-75 pointer-events-none transition-all duration-700"
+            className="absolute inset-0 bg-cover bg-center scale-105 filter blur-[3px] opacity-75 pointer-events-none transition duration-700"
             style={{ backgroundImage: `url(${state.posterUrl})` }}
             aria-hidden="true"
           />
@@ -483,7 +483,7 @@ export const MediaRequestConfirmModal = ({
                         </div>
                         <div className="h-2 w-full overflow-hidden rounded-full bg-white/[0.12]">
                           <div
-                            className="h-full bg-primary transition-all duration-300 rounded-full"
+                            className="h-full bg-primary transition-colors duration-300 rounded-full"
                             style={{ width: `${Math.min(100, Math.max(0, state.queuePercent))}%` }}
                           />
                         </div>
@@ -607,7 +607,7 @@ export const MediaRequestConfirmModal = ({
                           type="button"
                           onClick={handleSaveAsDefault}
                           disabled={savingDefault}
-                          className="inline-flex items-center gap-1.5 rounded-xl bg-white/[0.10] hover:bg-white/[0.16] px-3 py-1.5 text-[11px] font-medium text-foreground transition-all cursor-pointer disabled:opacity-50"
+                          className="inline-flex items-center gap-1.5 rounded-xl bg-white/[0.10] hover:bg-white/[0.16] px-3 py-1.5 text-[11px] font-medium text-foreground transition cursor-pointer disabled:opacity-50"
                         >
                           {savingDefault ? (
                             <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />

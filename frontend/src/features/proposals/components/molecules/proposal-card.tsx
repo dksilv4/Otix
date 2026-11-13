@@ -137,7 +137,7 @@ const MatchDetails = ({ proposal }: { proposal: Proposal }) => {
         <div className="mt-2 h-1.5 rounded-full bg-[var(--dk-surface-field)] border border-[var(--dk-separator)] overflow-hidden">
           <div
             className={cn(
-              'h-full rounded-full transition-all',
+              'h-full rounded-full transition-colors',
               level === 'high' && 'bg-emerald-500',
               level === 'medium' && 'bg-sky-500',
               level === 'low' && 'bg-amber-500',

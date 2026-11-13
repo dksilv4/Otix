@@ -118,7 +118,7 @@ export const MediaGallery = ({
                   if (scrollRef.current) scrollRef.current.scrollLeft = 0
                 }}
                 className={cn(
-                  'rounded-lg px-2.5 py-1 text-xs font-medium transition-all whitespace-nowrap',
+                  'rounded-lg px-2.5 py-1 text-xs font-medium transition-colors whitespace-nowrap',
                   activeTab === 'all'
                     ? 'bg-[var(--dk-surface-base)] text-foreground shadow-sm'
                     : 'text-muted-foreground hover:text-foreground',
@@ -137,7 +137,7 @@ export const MediaGallery = ({
                   if (scrollRef.current) scrollRef.current.scrollLeft = 0
                 }}
                 className={cn(
-                  'rounded-lg px-2.5 py-1 text-xs font-medium transition-all whitespace-nowrap',
+                  'rounded-lg px-2.5 py-1 text-xs font-medium transition-colors whitespace-nowrap',
                   activeTab === 'videos'
                     ? 'bg-[var(--dk-surface-base)] text-foreground shadow-sm'
                     : 'text-muted-foreground hover:text-foreground',
@@ -156,7 +156,7 @@ export const MediaGallery = ({
                   if (scrollRef.current) scrollRef.current.scrollLeft = 0
                 }}
                 className={cn(
-                  'rounded-lg px-2.5 py-1 text-xs font-medium transition-all whitespace-nowrap',
+                  'rounded-lg px-2.5 py-1 text-xs font-medium transition-colors whitespace-nowrap',
                   activeTab === 'screenshots'
                     ? 'bg-[var(--dk-surface-base)] text-foreground shadow-sm'
                     : 'text-muted-foreground hover:text-foreground',
@@ -173,7 +173,7 @@ export const MediaGallery = ({
               type="button"
               disabled={!canScrollLeft}
               onClick={() => scrollBy(-320)}
-              className="flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-base)] text-foreground disabled:opacity-25 transition-all"
+              className="flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-base)] text-foreground disabled:opacity-25 transition-colors"
               aria-label="Scroll media left"
             >
               <ChevronLeft className="h-4 w-4" />
@@ -182,7 +182,7 @@ export const MediaGallery = ({
               type="button"
               disabled={!canScrollRight}
               onClick={() => scrollBy(320)}
-              className="flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-base)] text-foreground disabled:opacity-25 transition-all"
+              className="flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-base)] text-foreground disabled:opacity-25 transition-colors"
               aria-label="Scroll media right"
             >
               <ChevronRight className="h-4 w-4" />
@@ -210,7 +210,7 @@ export const MediaGallery = ({
               <div
                 key={video.youtubeId}
                 onClick={() => handleOpenVideo(video.youtubeId, video.videoType)}
-                className="group relative aspect-video w-64 sm:w-72 shrink-0 cursor-pointer overflow-hidden rounded-2xl bg-black/40 shadow-sm transition-all duration-200 hover:scale-[1.02] hover:shadow-lg"
+                className="group relative aspect-video w-64 sm:w-72 shrink-0 cursor-pointer overflow-hidden rounded-2xl bg-black/40 shadow-sm transition duration-200 hover:scale-[1.02] hover:shadow-lg"
               >
                 <img
                   src={thumbUrl}
@@ -222,7 +222,7 @@ export const MediaGallery = ({
 
                 {/* Center Play Button */}
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-full bg-black/50 text-foreground backdrop-blur-md transition-all duration-200 group-hover:scale-110 group-hover:bg-primary group-hover:text-primary-foreground">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-full bg-black/50 text-foreground backdrop-blur-md transition duration-200 group-hover:scale-110 group-hover:bg-primary group-hover:text-primary-foreground">
                     <Play className="h-4 w-4 fill-current ml-0.5" />
                   </div>
                 </div>
@@ -243,7 +243,7 @@ export const MediaGallery = ({
             <div
               key={shot.id || shot.url}
               onClick={() => handleOpenScreenshot(idx)}
-              className="group relative aspect-video w-64 sm:w-72 shrink-0 cursor-pointer overflow-hidden rounded-2xl bg-black/40 shadow-sm transition-all duration-200 hover:scale-[1.02] hover:shadow-lg"
+              className="group relative aspect-video w-64 sm:w-72 shrink-0 cursor-pointer overflow-hidden rounded-2xl bg-black/40 shadow-sm transition duration-200 hover:scale-[1.02] hover:shadow-lg"
             >
               <img
                 src={shot.url}

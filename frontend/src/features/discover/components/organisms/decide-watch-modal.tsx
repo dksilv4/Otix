@@ -444,7 +444,7 @@ export const DecideWatchModal = ({ onClose, isExiting }: DecideWatchModalProps) 
                           e.stopPropagation()
                           handleBlock(item)
                         }}
-                        className="absolute right-2 top-2 z-10 flex h-7 w-7 items-center justify-center rounded-full bg-black/70 text-white/60 opacity-0 backdrop-blur-md transition-all hover:bg-red-500 hover:text-white group-hover:opacity-100 focus:opacity-100"
+                        className="absolute right-2 top-2 z-10 flex h-7 w-7 items-center justify-center rounded-full bg-black/70 text-white/60 opacity-0 backdrop-blur-md transition hover:bg-red-500 hover:text-white group-hover:opacity-100 focus:opacity-100"
                         title="Don't recommend this"
                       >
                         <Ban className="h-3.5 w-3.5" />

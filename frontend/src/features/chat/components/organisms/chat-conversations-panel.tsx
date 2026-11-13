@@ -78,7 +78,7 @@ export const ChatConversationsPanel = ({
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search conversations..."
-            className="w-full rounded-full bg-[var(--dk-surface-ghost)] pl-8.5 pr-3 py-1.5 text-xs text-foreground placeholder:text-muted-foreground/50 outline-none focus:ring-1 focus:ring-primary/40 transition-all border border-white/[0.04]"
+            className="w-full rounded-full bg-[var(--dk-surface-ghost)] pl-8.5 pr-3 py-1.5 text-xs text-foreground placeholder:text-muted-foreground/50 outline-none focus:ring-1 focus:ring-primary/40 transition-colors border border-white/[0.04]"
           />
         </div>
       </div>

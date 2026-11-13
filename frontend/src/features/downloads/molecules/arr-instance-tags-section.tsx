@@ -83,7 +83,7 @@ export const ArrInstanceTagsSection = ({
               key={popTag}
               type="button"
               onClick={() => handleAddTag(popTag)}
-              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)] text-foreground/80 hover:text-foreground transition-all border border-white/[0.04] cursor-pointer"
+              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)] text-foreground/80 hover:text-foreground transition-colors border border-white/[0.04] cursor-pointer"
             >
               <Plus className="h-2.5 w-2.5 text-primary" />
               <span>{popTag}</span>
@@ -107,7 +107,7 @@ export const ArrInstanceTagsSection = ({
           type="button"
           onClick={() => handleAddTag(newTagInput)}
           disabled={!newTagInput.trim()}
-          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
+          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
         >
           <Plus className="h-3.5 w-3.5" />
           <span>Add Tag</span>

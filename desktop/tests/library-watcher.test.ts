@@ -202,4 +202,82 @@ describe('LibraryWatcher - Automatic Game Detection & Folder Monitoring', () => 
     expect(scanCallCount).toBe(2);
     watcher.stop();
   });
+
+  it('detects Windows UNC paths and routes them to periodic polling without throwing or native watch errors', () => {
+    const mockScan = vi.fn().mockResolvedValue({ games: [], newGames: [] });
+    const uncPath = '\\\\192.168.1.58\\Games';
+    const mockWatch = vi.fn();
+
+    const mockFsLib = {
+      ...fs,
+      existsSync: vi.fn((p: any) => true),
+      statSync: vi.fn((p: any) => ({ isDirectory: () => true }) as any),
+      watch: mockWatch,
+    };
+
+    const watcher = new LibraryWatcher({
+      getScanPaths: () => [{ path: uncPath, type: 'game' }],
+      onPerformScan: mockScan,
+      debounceMs: 50,
+      pollingIntervalMs: 100,
+      fsLib: mockFsLib as any,
+    });
+
+    watcher.start();
+    const resolvedUnc = path.resolve(uncPath);
+
+    // On Windows, native fs.watch should NOT be called for UNC path
+    if (process.platform === 'win32') {
+      expect(mockWatch).not.toHaveBeenCalled();
+      expect(watcher.getPollingPaths()).toContain(resolvedUnc);
+      expect(watcher.getWatchedPaths()).not.toContain(resolvedUnc);
+    }
+    expect(watcher.getAllMonitoredPaths()).toContain(resolvedUnc);
+
+    watcher.stop();
+    expect(watcher.getPollingPaths()).toHaveLength(0);
+  });
+
+  it('falls back to polling gracefully when an active native watcher emits an asynchronous error', async () => {
+    const mockScan = vi.fn().mockResolvedValue({ games: [], newGames: [] });
+    const EventEmitter = require('events');
+    const mockWatcher = new EventEmitter();
+    mockWatcher.close = vi.fn();
+
+    const mockFsLib = {
+      ...fs,
+      existsSync: vi.fn(() => true),
+      statSync: vi.fn(() => ({ isDirectory: () => true }) as any),
+      watch: vi.fn().mockReturnValue(mockWatcher as any),
+    };
+
+    const watcher = new LibraryWatcher({
+      getScanPaths: () => [{ path: testGamesDir, type: 'game' }],
+      onPerformScan: mockScan,
+      debounceMs: 50,
+      pollingIntervalMs: 50,
+      fsLib: mockFsLib as any,
+    });
+
+    watcher.start();
+    const resolvedPath = path.resolve(testGamesDir);
+    expect(watcher.getWatchedPaths()).toContain(resolvedPath);
+
+    // Simulate asynchronous libuv UNKNOWN error (errno -4094)
+    const error: any = new Error('UNKNOWN: unknown error, watch');
+    error.errno = -4094;
+    error.code = 'UNKNOWN';
+    mockWatcher.emit('error', error);
+
+    // The watcher must have closed and migrated to polling paths
+    expect(mockWatcher.close).toHaveBeenCalled();
+    expect(watcher.getWatchedPaths()).not.toContain(resolvedPath);
+    expect(watcher.getPollingPaths()).toContain(resolvedPath);
+
+    // Polling triggers scan periodically
+    await new Promise((r) => setTimeout(r, 120));
+    expect(mockScan).toHaveBeenCalled();
+
+    watcher.stop();
+  });
 });

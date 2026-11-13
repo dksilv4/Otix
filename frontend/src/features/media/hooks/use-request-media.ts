@@ -91,20 +91,48 @@ export interface RequestMediaState {
   recentlyRequested?: boolean
 }
 
+const arrLookupCache = new Map<string, { timestamp: number; data: unknown[] }>()
+const arrLookupInFlight = new Map<string, Promise<unknown[]>>()
+const ARR_LOOKUP_CACHE_TTL_MS = 30_000
+
 async function lookupOnInstance(
   serverId: number,
   kind: 'radarr' | 'sonarr',
   term: string,
   instanceId: string,
 ) {
-  const path =
-    kind === 'radarr'
-      ? `/library/nodes/${serverId}/radarr/lookup`
-      : `/library/nodes/${serverId}/sonarr/lookup`
-  const { data } = await apiClient.get<unknown[]>(path, {
-    params: { term, instance_id: instanceId },
-  })
-  return data || []
+  const cacheKey = `${serverId}:${kind}:${instanceId}:${term}`
+  const cached = arrLookupCache.get(cacheKey)
+  if (cached && Date.now() - cached.timestamp < ARR_LOOKUP_CACHE_TTL_MS) {
+    return cached.data
+  }
+
+  const existing = arrLookupInFlight.get(cacheKey)
+  if (existing) {
+    return existing
+  }
+
+  const promise = (async () => {
+    try {
+      const path =
+        kind === 'radarr'
+          ? `/library/nodes/${serverId}/radarr/lookup`
+          : `/library/nodes/${serverId}/sonarr/lookup`
+      const { data } = await apiClient.get<unknown[]>(path, {
+        params: { term, instance_id: instanceId },
+      })
+      const results = data || []
+      arrLookupCache.set(cacheKey, { timestamp: Date.now(), data: results })
+      return results
+    } catch {
+      return []
+    } finally {
+      arrLookupInFlight.delete(cacheKey)
+    }
+  })()
+
+  arrLookupInFlight.set(cacheKey, promise)
+  return promise
 }
 
 export function useRequestMedia(): RequestMediaState {

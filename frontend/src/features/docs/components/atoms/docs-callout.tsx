@@ -32,7 +32,7 @@ export const DocsCallout = ({ kind, title, text }: DocsCalloutProps) => {
     <aside
       role="note"
       aria-label={title || defaultTitle}
-      className="rounded-2xl p-4 sm:p-5 backdrop-blur-xl border border-white/[0.05] transition-all duration-200"
+      className="rounded-2xl p-4 sm:p-5 backdrop-blur-xl border border-white/[0.05] transition-colors duration-200"
       style={{
         backgroundColor: isWarning
           ? 'var(--dk-surface-ghost)'

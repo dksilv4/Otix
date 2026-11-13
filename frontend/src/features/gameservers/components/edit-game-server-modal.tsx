@@ -304,7 +304,7 @@ export const EditGameServerModal = ({
                         type="button"
                         onClick={() => applyPreset(preset)}
                         className={cn(
-                          'flex items-center justify-between p-2.5 rounded-xl border text-left transition-all cursor-pointer',
+                          'flex items-center justify-between p-2.5 rounded-xl border text-left transition-colors cursor-pointer',
                           isSelected
                             ? 'bg-primary/10 border-primary/30 text-foreground'
                             : 'bg-[var(--dk-surface-ghost)] border-white/[0.04] text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-ghost-hover)]',
@@ -541,7 +541,7 @@ export const EditGameServerModal = ({
         {/* Live Verification Status Feedback (when re-verifying altered settings) */}
         {verifyResult && (
           <div
-            className={`p-3 rounded-2xl border text-xs flex items-center justify-between transition-all ${
+            className={`p-3 rounded-2xl border text-xs flex items-center justify-between transition-colors ${
               verifyResult.status === 'online'
                 ? 'bg-[var(--dk-surface-ghost)] border-white/[0.04] text-foreground'
                 : 'bg-destructive/10 border-destructive/20 text-destructive'

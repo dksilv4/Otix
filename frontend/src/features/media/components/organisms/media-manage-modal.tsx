@@ -494,7 +494,7 @@ export const MediaManageModal = ({
                           disabled={pinBusyForActive}
                           aria-label={`Set as ${selectedGroup.label}`}
                           className={cn(
-                            'inline-flex shrink-0 items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold transition-all',
+                            'inline-flex shrink-0 items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold transition-colors',
                             focusRing,
                             isGeneralActive
                               ? 'bg-primary/20 text-primary hover:bg-primary/30'
@@ -516,7 +516,7 @@ export const MediaManageModal = ({
                           disabled={pinBusyForActive}
                           aria-label="Clear pin and revert to automatic selection"
                           className={cn(
-                            'inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-primary/40 bg-primary/20 px-3 py-1.5 text-xs font-semibold text-primary transition-all hover:bg-primary/30 active:scale-95',
+                            'inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-primary/40 bg-primary/20 px-3 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/30 active:scale-95',
                             focusRing,
                             pinBusyForActive && 'opacity-50 pointer-events-none',
                           )}

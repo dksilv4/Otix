@@ -106,7 +106,7 @@ export const ModernLibrary = ({
         <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none">
           <button
             onClick={() => setSelectedPlatform("all")}
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors cursor-pointer whitespace-nowrap ${
               selectedPlatform === "all"
                 ? "bg-primary text-primary-foreground shadow-sm"
                 : "text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-ghost-hover)]"
@@ -118,7 +118,7 @@ export const ModernLibrary = ({
             <button
               key={plat}
               onClick={() => setSelectedPlatform(plat)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer whitespace-nowrap ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer whitespace-nowrap ${
                 selectedPlatform === plat
                   ? "bg-primary text-primary-foreground shadow-sm"
                   : "text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-ghost-hover)]"
@@ -134,7 +134,7 @@ export const ModernLibrary = ({
           {/* Installed Only Checkbox pill */}
           <button
             onClick={() => setInstalledOnly(!installedOnly)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-colors cursor-pointer ${
               installedOnly
                 ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
                 : "text-muted-foreground hover:text-foreground bg-[var(--dk-surface-ghost)] border border-white/[0.04]"
@@ -249,7 +249,7 @@ export const ModernLibrary = ({
               <div
                 key={game.id}
                 onClick={() => onOpenDetails(game)}
-                className="group relative h-48 rounded-2xl overflow-hidden bg-[var(--dk-surface-base)] border border-white/[0.04] transition-all duration-300 cursor-pointer shadow-lg hover:-translate-y-1"
+                className="group relative h-48 rounded-2xl overflow-hidden bg-[var(--dk-surface-base)] border border-white/[0.04] transition-colors duration-300 cursor-pointer shadow-lg hover:-translate-y-1"
               >
                 {backdrop ? (
                   <img

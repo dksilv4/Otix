@@ -52,7 +52,7 @@ export const PasswordField = ({
           aria-invalid={!!error}
           aria-describedby={error ? errorId : undefined}
           className={
-            'flex min-h-[52px] w-full rounded-xl px-5 pr-12 text-base outline-none transition-all placeholder:text-muted-foreground/50 text-foreground' +
+            'flex min-h-[52px] w-full rounded-xl px-5 pr-12 text-base outline-none transition-colors placeholder:text-muted-foreground/50 text-foreground' +
             (error
               ? ' ring-1 ring-destructive focus:ring-destructive'
               : ' border border-[var(--dk-separator)]')

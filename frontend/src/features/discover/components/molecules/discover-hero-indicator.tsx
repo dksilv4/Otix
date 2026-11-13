@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion'
+import { cn } from '@/lib/utils'
 
 interface HeroIndicatorProps {
   total: number
@@ -14,16 +15,14 @@ export const HeroIndicator = ({ total, activeIndex, onSelect }: HeroIndicatorPro
           key={i}
           type="button"
           onClick={() => onSelect(i)}
-          className="relative h-1.5 rounded-full transition-all duration-300 cursor-pointer"
-          style={{
-            width: i === activeIndex ? 24 : 6,
-            backgroundColor: i === activeIndex ? '#ffffff' : 'rgba(255,255,255,0.3)',
-          }}
+          className={cn(
+            'relative h-1.5 rounded-full transition-colors duration-300 cursor-pointer',
+            i === activeIndex ? 'w-6 bg-primary shadow-xs' : 'w-1.5 bg-muted-foreground/40 hover:bg-muted-foreground/60',
+          )}
         >
           {i === activeIndex && (
             <motion.div
-              className="absolute inset-0 rounded-full"
-              style={{ boxShadow: '0 0 8px #ffffff' }}
+              className="absolute inset-0 rounded-full shadow-xs"
               layoutId="active-indicator"
             />
           )}

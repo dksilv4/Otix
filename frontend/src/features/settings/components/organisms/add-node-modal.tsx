@@ -120,13 +120,13 @@ export const AddNodeModal = ({
               tabIndex={0}
               onClick={() => handleSelect('worker')}
               onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && handleSelect('worker')}
-              className="group p-3.5 rounded-2xl bg-[var(--dk-surface-field)] hover:bg-[var(--dk-surface-hover)] border border-[var(--dk-separator)] hover:border-primary/40 cursor-pointer transition-all duration-150 space-y-2 text-left"
+              className="group p-3.5 rounded-2xl bg-[var(--dk-surface-field)] hover:bg-[var(--dk-surface-hover)] border border-[var(--dk-separator)] hover:border-primary/40 cursor-pointer transition-colors duration-150 space-y-2 text-left"
             >
               <div className="flex items-center justify-between">
                 <div className="h-9 w-9 rounded-xl bg-primary/15 text-primary flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
                   <Cpu size={18} />
                 </div>
-                <ArrowRight size={13} className="text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
+                <ArrowRight size={13} className="text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 transition" />
               </div>
               <div>
                 <p className="text-xs font-bold text-foreground">Otix Worker Node</p>
@@ -142,13 +142,13 @@ export const AddNodeModal = ({
               tabIndex={0}
               onClick={() => handleSelect('server')}
               onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && handleSelect('server')}
-              className="group p-3.5 rounded-2xl bg-[var(--dk-surface-field)] hover:bg-[var(--dk-surface-hover)] border border-[var(--dk-separator)] hover:border-primary/40 cursor-pointer transition-all duration-150 space-y-2 text-left"
+              className="group p-3.5 rounded-2xl bg-[var(--dk-surface-field)] hover:bg-[var(--dk-surface-hover)] border border-[var(--dk-separator)] hover:border-primary/40 cursor-pointer transition-colors duration-150 space-y-2 text-left"
             >
               <div className="flex items-center justify-between">
                 <div className="h-9 w-9 rounded-xl bg-primary/15 text-primary flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
                   <Server size={18} />
                 </div>
-                <ArrowRight size={13} className="text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
+                <ArrowRight size={13} className="text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 transition" />
               </div>
               <div>
                 <p className="text-xs font-bold text-foreground">Machine</p>
@@ -164,13 +164,13 @@ export const AddNodeModal = ({
               tabIndex={0}
               onClick={() => handleSelect('home')}
               onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && handleSelect('home')}
-              className="group p-3.5 rounded-2xl bg-[var(--dk-surface-field)] hover:bg-[var(--dk-surface-hover)] border border-[var(--dk-separator)] hover:border-primary/40 cursor-pointer transition-all duration-150 space-y-2 text-left"
+              className="group p-3.5 rounded-2xl bg-[var(--dk-surface-field)] hover:bg-[var(--dk-surface-hover)] border border-[var(--dk-separator)] hover:border-primary/40 cursor-pointer transition-colors duration-150 space-y-2 text-left"
             >
               <div className="flex items-center justify-between">
                 <div className="h-9 w-9 rounded-xl bg-primary/15 text-primary flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
                   <HomeIcon size={18} />
                 </div>
-                <ArrowRight size={13} className="text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
+                <ArrowRight size={13} className="text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 transition" />
               </div>
               <div>
                 <p className="text-xs font-bold text-foreground">Home Environment</p>
@@ -186,13 +186,13 @@ export const AddNodeModal = ({
               tabIndex={0}
               onClick={() => handleSelect('samba')}
               onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && handleSelect('samba')}
-              className="group p-3.5 rounded-2xl bg-[var(--dk-surface-field)] hover:bg-[var(--dk-surface-hover)] border border-[var(--dk-separator)] hover:border-primary/40 cursor-pointer transition-all duration-150 space-y-2 text-left"
+              className="group p-3.5 rounded-2xl bg-[var(--dk-surface-field)] hover:bg-[var(--dk-surface-hover)] border border-[var(--dk-separator)] hover:border-primary/40 cursor-pointer transition-colors duration-150 space-y-2 text-left"
             >
               <div className="flex items-center justify-between">
                 <div className="h-9 w-9 rounded-xl bg-primary/15 text-primary flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
                   <FolderTree size={18} />
                 </div>
-                <ArrowRight size={13} className="text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
+                <ArrowRight size={13} className="text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 transition" />
               </div>
               <div>
                 <p className="text-xs font-bold text-foreground">Samba Share (SMB)</p>
@@ -208,13 +208,13 @@ export const AddNodeModal = ({
               tabIndex={0}
               onClick={() => handleSelect('game_server')}
               onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && handleSelect('game_server')}
-              className="group p-3.5 rounded-2xl bg-[var(--dk-surface-field)] hover:bg-[var(--dk-surface-hover)] border border-[var(--dk-separator)] hover:border-primary/40 cursor-pointer transition-all duration-150 space-y-2 text-left sm:col-span-2"
+              className="group p-3.5 rounded-2xl bg-[var(--dk-surface-field)] hover:bg-[var(--dk-surface-hover)] border border-[var(--dk-separator)] hover:border-primary/40 cursor-pointer transition-colors duration-150 space-y-2 text-left sm:col-span-2"
             >
               <div className="flex items-center justify-between">
                 <div className="h-9 w-9 rounded-xl bg-primary/15 text-primary flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
                   <Gamepad2 size={18} />
                 </div>
-                <ArrowRight size={13} className="text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
+                <ArrowRight size={13} className="text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 transition" />
               </div>
               <div>
                 <p className="text-xs font-bold text-foreground">Dedicated Game Server</p>

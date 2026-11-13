@@ -667,6 +667,8 @@ export function applyAutoMatchToGame(
   return {
     ...game,
     title,
+    installDir: game.installDir ?? (game.exePath && !game.exePath.startsWith('steam://') ? game.exePath.replace(/[/\\][^/\\]*$/, '') : ''),
+    exePath: game.exePath ?? '',
     posterUrl: match.posterUrl ?? game.posterUrl,
     otixMediaId: match.mediaItemId,
     otixMediaTitle: title,
@@ -709,10 +711,20 @@ export function persistableServerGames(
   if (files == null) return null
   const byId = new Map<string, LocalGame>()
   for (const game of serverGamesToPersist(mergeLocalAndServerGames(localGames, files))) {
-    byId.set(game.id, game)
+    byId.set(game.id, {
+      ...game,
+      installDir: game.installDir ?? '',
+      exePath: game.exePath ?? '',
+    })
   }
   for (const game of listUnmatchedServerGames(localGames, files)) {
-    if (!byId.has(game.id)) byId.set(game.id, game)
+    if (!byId.has(game.id)) {
+      byId.set(game.id, {
+        ...game,
+        installDir: game.installDir ?? '',
+        exePath: game.exePath ?? '',
+      })
+    }
   }
   return [...byId.values()]
 }

@@ -58,7 +58,7 @@ export const PathsToolbar = ({
           type="button"
           onClick={() => onFilterTabChange('all')}
           className={cn(
-            'px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer',
+            'px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors cursor-pointer',
             filterTab === 'all'
               ? 'bg-primary text-primary-foreground shadow-xs'
               : 'text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-ghost)]',
@@ -70,7 +70,7 @@ export const PathsToolbar = ({
           type="button"
           onClick={() => onFilterTabChange('installation')}
           className={cn(
-            'px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer',
+            'px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors cursor-pointer',
             filterTab === 'installation'
               ? 'bg-primary text-primary-foreground shadow-xs'
               : 'text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-ghost)]',
@@ -82,7 +82,7 @@ export const PathsToolbar = ({
           type="button"
           onClick={() => onFilterTabChange('download')}
           className={cn(
-            'px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer',
+            'px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors cursor-pointer',
             filterTab === 'download'
               ? 'bg-primary text-primary-foreground shadow-xs'
               : 'text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-ghost)]',
@@ -94,7 +94,7 @@ export const PathsToolbar = ({
           type="button"
           onClick={() => onFilterTabChange('iso')}
           className={cn(
-            'px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer',
+            'px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors cursor-pointer',
             filterTab === 'iso'
               ? 'bg-primary text-primary-foreground shadow-xs'
               : 'text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-ghost)]',
@@ -127,7 +127,7 @@ export const PathsToolbar = ({
             type="button"
             onClick={() => onViewModeChange('cards')}
             className={cn(
-              'flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer',
+              'flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors cursor-pointer',
               viewMode === 'cards'
                 ? 'bg-[var(--dk-surface-base)] text-foreground shadow-xs'
                 : 'text-muted-foreground hover:text-foreground',
@@ -143,7 +143,7 @@ export const PathsToolbar = ({
             type="button"
             onClick={() => onViewModeChange('list')}
             className={cn(
-              'flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer',
+              'flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors cursor-pointer',
               viewMode === 'list'
                 ? 'bg-[var(--dk-surface-base)] text-foreground shadow-xs'
                 : 'text-muted-foreground hover:text-foreground',

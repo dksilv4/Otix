@@ -296,7 +296,7 @@ export const NodeSabnzbdSettingsModal = ({
               type="button"
               onClick={() => setActiveTab('settings')}
               className={cn(
-                'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all border border-white/[0.04]',
+                'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors border border-white/[0.04]',
                 activeTab === 'settings'
                   ? 'bg-primary text-primary-foreground shadow-sm'
                   : 'bg-[var(--dk-surface-ghost)] text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-overlay)]',
@@ -309,7 +309,7 @@ export const NodeSabnzbdSettingsModal = ({
               type="button"
               onClick={() => setActiveTab('history')}
               className={cn(
-                'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all border border-white/[0.04]',
+                'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors border border-white/[0.04]',
                 activeTab === 'history'
                   ? 'bg-primary text-primary-foreground shadow-sm'
                   : 'bg-[var(--dk-surface-ghost)] text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-overlay)]',

@@ -170,7 +170,7 @@ export const NavSearch = () => {
     <div
       ref={containerRef}
       className={
-        'flex items-center overflow-visible transition-all duration-300 rounded-full ' +
+        'flex items-center overflow-visible transition-colors duration-250 ease-out rounded-full ' +
         (expanded
           ? 'w-64 sm:w-72 px-2.5 py-1.5 shadow-[var(--dk-shadow-glass)] backdrop-blur-[16px] bg-[var(--dk-surface-glass)] border border-white/[0.04]'
           : 'w-8 h-8 justify-center')
@@ -234,7 +234,7 @@ export const NavSearch = () => {
                             to={`/media/${item.mediaType}/${item.id}` as string}
                             onClick={() => collapse()}
                             className={
-                              'group flex items-center gap-3 p-2 rounded-xl select-none text-left w-full cursor-pointer transition-all ' +
+                              'group flex items-center gap-3 p-2 rounded-xl select-none text-left w-full cursor-pointer transition-colors ' +
                               (idx === activeIndex
                                 ? 'bg-[var(--dk-surface-raised)] ring-1 ring-primary/40 shadow-sm'
                                 : 'bg-[var(--dk-surface-raised)]/40 hover:bg-[var(--dk-surface-raised)] border border-white/[0.04]')
@@ -276,7 +276,7 @@ export const NavSearch = () => {
                                 )}
                               </div>
                             </div>
-                            <ChevronRight className="w-4 h-4 text-muted-foreground/30 group-hover:text-muted-foreground group-hover:translate-x-0.5 transition-all shrink-0 ml-1" />
+                            <ChevronRight className="w-4 h-4 text-muted-foreground/30 group-hover:text-muted-foreground group-hover:translate-x-0.5 transition shrink-0 ml-1" />
                           </Link>
                         )
                       })}

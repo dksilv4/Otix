@@ -312,7 +312,7 @@ export const CreateServerMachineModal = ({
                       type="button"
                       onClick={() => handleFieldChange('os', opt.value)}
                       className={cn(
-                        'p-2.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between',
+                        'p-2.5 rounded-xl border text-left transition-colors cursor-pointer flex flex-col justify-between',
                         selected
                           ? 'bg-primary/10 border-primary/40 shadow-sm'
                           : 'bg-white/[0.02] border-white/[0.04] hover:bg-white/[0.04] hover:border-white/[0.08]',

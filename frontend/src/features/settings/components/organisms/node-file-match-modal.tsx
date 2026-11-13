@@ -212,7 +212,7 @@ export const NodeFileMatchModal = ({
                 if (e.key === 'Enter') void handleSearch(query)
               }}
               placeholder="Search by game title, ID, or slug..."
-              className="w-full pl-9 pr-24 py-2 rounded-xl bg-[var(--dk-surface-field)] border border-white/[0.04] text-xs sm:text-sm text-foreground placeholder:text-muted-foreground outline-none focus:ring-1 focus:ring-primary/40 transition-all"
+              className="w-full pl-9 pr-24 py-2 rounded-xl bg-[var(--dk-surface-field)] border border-white/[0.04] text-xs sm:text-sm text-foreground placeholder:text-muted-foreground outline-none focus:ring-1 focus:ring-primary/40 transition-colors"
             />
             <DkButton
               type="button"
@@ -244,7 +244,7 @@ export const NodeFileMatchModal = ({
               return (
                 <div
                   key={candidate.id}
-                  className="flex items-center justify-between gap-3 p-2.5 rounded-xl bg-[var(--dk-surface-ghost)] border border-white/[0.04] hover:bg-[var(--dk-surface-ghost-hover)] transition-all"
+                  className="flex items-center justify-between gap-3 p-2.5 rounded-xl bg-[var(--dk-surface-ghost)] border border-white/[0.04] hover:bg-[var(--dk-surface-ghost-hover)] transition-colors"
                 >
                   <div className="flex items-center gap-3 min-w-0">
                     {candidate.posterUrl ? (

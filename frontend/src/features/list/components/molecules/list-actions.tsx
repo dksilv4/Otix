@@ -34,7 +34,7 @@ export const ListLikeButton = ({ list }: { list: UserListDetailOut }) => {
       type="button"
       onClick={() => (isLiked ? unlike.mutate() : like.mutate())}
       className={cn(
-        'flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-all active:scale-95',
+        'flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-colors active:scale-95',
         isLiked 
           ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400 hover:bg-rose-500/20' 
           : 'bg-[var(--dk-surface-ghost)] text-muted-foreground hover:bg-[var(--dk-surface-glass-hover)] hover:text-foreground'
@@ -134,7 +134,7 @@ export const ShareModal = ({ list, onClose, isExiting }: ShareModalProps) => {
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
       <div
         className={cn(
-          'relative w-full max-w-md overflow-hidden rounded-3xl bg-[var(--dk-surface-base)] border border-[var(--dk-separator)] shadow-[var(--dk-shadow-dialog)] transition-all duration-200 ease-out flex flex-col p-6 space-y-5',
+          'relative w-full max-w-md overflow-hidden rounded-3xl bg-[var(--dk-surface-base)] border border-[var(--dk-separator)] shadow-[var(--dk-shadow-dialog)] transition-colors duration-200 ease-out flex flex-col p-6 space-y-5',
           visible ? 'scale-100 translate-y-0' : 'scale-95 translate-y-4',
         )}
       >
@@ -151,7 +151,7 @@ export const ShareModal = ({ list, onClose, isExiting }: ShareModalProps) => {
           </div>
           <button
             onClick={onClose}
-            className="rounded-xl p-1.5 transition-all text-muted-foreground hover:bg-[var(--dk-surface-ghost-hover)] hover:text-foreground"
+            className="rounded-xl p-1.5 transition-colors text-muted-foreground hover:bg-[var(--dk-surface-ghost-hover)] hover:text-foreground"
             aria-label="Close"
           >
             <X className="h-4 w-4" />
@@ -254,7 +254,7 @@ export const ShareModal = ({ list, onClose, isExiting }: ShareModalProps) => {
           <button
             type="button"
             onClick={handleNativeShare}
-            className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-primary text-primary-foreground font-semibold text-sm transition-all hover:opacity-90 active:scale-[0.99] shadow-md shadow-primary/20"
+            className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-primary text-primary-foreground font-semibold text-sm transition hover:opacity-90 active:scale-[0.99] shadow-md shadow-primary/20"
           >
             <Send className="h-4 w-4" />
             Share via Apps...
@@ -410,10 +410,10 @@ export const CollaboratorsModal = ({ list, onClose, isExiting }: CollaboratorsMo
   return (
     <div className={cn("fixed inset-0 z-[var(--dk-z-modal)] flex items-center justify-center p-4 transition-opacity duration-200", visible ? "opacity-100" : "opacity-0")}>
       <div className="absolute inset-0 bg-black/60" onClick={onClose} />
-      <div className={cn("relative w-full max-w-md overflow-hidden rounded-3xl bg-[var(--dk-surface-overlay)] border border-[var(--dk-separator)] shadow-[var(--dk-shadow-dialog)] transition-all duration-200 ease-out flex flex-col p-6 space-y-6", visible ? "scale-100 translate-y-0" : "scale-95 translate-y-4")}>
+      <div className={cn("relative w-full max-w-md overflow-hidden rounded-3xl bg-[var(--dk-surface-overlay)] border border-[var(--dk-separator)] shadow-[var(--dk-shadow-dialog)] transition-colors duration-200 ease-out flex flex-col p-6 space-y-6", visible ? "scale-100 translate-y-0" : "scale-95 translate-y-4")}>
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-bold text-foreground">Collaborators</h3>
-          <button onClick={onClose} className="rounded-xl p-1.5 transition-all text-muted-foreground hover:bg-[var(--dk-surface-ghost-hover)] hover:text-foreground">
+          <button onClick={onClose} className="rounded-xl p-1.5 transition-colors text-muted-foreground hover:bg-[var(--dk-surface-ghost-hover)] hover:text-foreground">
             <X className="h-4 w-4" />
           </button>
         </div>
@@ -479,13 +479,13 @@ export const CollaboratorsModal = ({ list, onClose, isExiting }: CollaboratorsMo
                 value={inviteUsername}
                 onChange={(e) => { setInviteUsername(e.target.value); setLookupError(null) }}
                 placeholder="Username to invite..."
-                className="flex-1 bg-[var(--dk-surface-field)] border border-[var(--dk-separator)] rounded-xl px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
+                className="flex-1 bg-[var(--dk-surface-field)] border border-[var(--dk-separator)] rounded-xl px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 transition-colors"
                 onKeyDown={(e) => { if (e.key === 'Enter') handleInvite() }}
               />
               <select
                 value={permission}
                 onChange={(e) => setPermission(e.target.value)}
-                className="bg-[var(--dk-surface-field)] border border-[var(--dk-separator)] rounded-xl px-3 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 appearance-none transition-all"
+                className="bg-[var(--dk-surface-field)] border border-[var(--dk-separator)] rounded-xl px-3 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 appearance-none transition-colors"
               >
                 <option value="VIEW">View</option>
                 <option value="EDIT">Edit</option>
@@ -494,7 +494,7 @@ export const CollaboratorsModal = ({ list, onClose, isExiting }: CollaboratorsMo
               <button
                 onClick={handleInvite}
                 disabled={invite.isPending || isLookingUp || !inviteUsername.trim()}
-                className="flex items-center justify-center px-4 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-semibold transition-all disabled:opacity-50"
+                className="flex items-center justify-center px-4 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-semibold transition disabled:opacity-50"
               >
                 {isLookingUp || invite.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Invite'}
               </button>

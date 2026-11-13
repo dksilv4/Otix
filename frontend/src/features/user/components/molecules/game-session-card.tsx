@@ -26,7 +26,7 @@ export const GameSessionCard = ({
       type="button"
       data-testid={isLive ? 'user-profile-active-session' : 'user-profile-game-session-card'}
       onClick={onClick}
-      className={`group relative text-left rounded-2xl overflow-hidden border transition-all duration-300 hover:scale-[1.01] cursor-pointer flex flex-col justify-between p-4 sm:p-5 ${
+      className={`group relative text-left rounded-2xl overflow-hidden border transition duration-300 hover:scale-[1.01] cursor-pointer flex flex-col justify-between p-4 sm:p-5 ${
         featured ? 'min-h-[220px] sm:min-h-[250px]' : 'min-h-[190px] sm:min-h-[210px]'
       } ${
         isLive

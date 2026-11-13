@@ -208,7 +208,7 @@ export const JoinGameServerModal = ({ server, isOpen, onClose }: JoinGameServerM
                 href={steamJoinUrl}
                 onClick={handleSteamJoin}
                 title={steamAppId ? `Launch ${server.gameTitle || 'game'} via Steam` : 'Join via Steam'}
-                className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-bold transition-all shadow-md active:scale-95"
+                className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-bold transition shadow-md active:scale-95"
               >
                 <Play size={14} fill="currentColor" />
                 <span>1-Click Steam Join</span>

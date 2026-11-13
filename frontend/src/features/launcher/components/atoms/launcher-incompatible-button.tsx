@@ -1,3 +1,5 @@
+import { AlertTriangle } from 'lucide-react'
+
 interface IncompatibleButtonProps {
   label?: string
   title?: string
@@ -13,7 +15,7 @@ export const IncompatibleButton = ({
       disabled
       title={title}
     >
-      <span className="text-destructive/70">⚠</span> {label}
+      <AlertTriangle className="h-3.5 w-3.5 text-destructive/70" aria-hidden="true" /> {label}
     </button>
   )
 };

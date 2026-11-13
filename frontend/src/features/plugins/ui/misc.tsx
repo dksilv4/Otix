@@ -34,7 +34,7 @@ export const Progress = ({ value, tone = 'primary', className }: { value: number
   const color = tone === 'success' ? 'bg-emerald-500' : tone === 'error' ? 'bg-destructive' : 'bg-primary'
   return (
     <div className={cn('h-1.5 w-full rounded-full bg-[var(--dk-surface-field)] border border-[var(--dk-separator)] overflow-hidden', className)}>
-      <div className={cn('h-full rounded-full transition-all duration-500', color)} style={{ width: `${clamped}%` }} />
+      <div className={cn('h-full rounded-full transition-colors duration-500', color)} style={{ width: `${clamped}%` }} />
     </div>
   )
 };

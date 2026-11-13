@@ -44,7 +44,7 @@ export const NavDockPrototypePage = () => {
               <button
                 type="button"
                 onClick={() => setIsBookmarked((v) => !v)}
-                className={`inline-flex items-center justify-center h-7 w-7 rounded-full transition-all active:scale-95 ${
+                className={`inline-flex items-center justify-center h-7 w-7 rounded-full transition active:scale-95 ${
                   isBookmarked
                     ? 'bg-primary/20 text-primary'
                     : 'bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-glass-hover)] text-muted-foreground hover:text-foreground'
@@ -56,7 +56,7 @@ export const NavDockPrototypePage = () => {
               <button
                 type="button"
                 onClick={() => setIsLiked((v) => !v)}
-                className={`inline-flex items-center justify-center h-7 w-7 rounded-full transition-all active:scale-95 ${
+                className={`inline-flex items-center justify-center h-7 w-7 rounded-full transition active:scale-95 ${
                   isLiked
                     ? 'bg-rose-500/20 text-rose-500'
                     : 'bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-glass-hover)] text-muted-foreground hover:text-foreground'
@@ -84,7 +84,7 @@ export const NavDockPrototypePage = () => {
                 onClick={() => {
                   document.getElementById('content-details')?.scrollIntoView({ behavior: 'smooth' })
                 }}
-                className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-glass-hover)] text-muted-foreground hover:text-foreground text-xs font-medium transition-all"
+                className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-glass-hover)] text-muted-foreground hover:text-foreground text-xs font-medium transition-colors"
               >
                 <span>Jump to Specs</span>
                 <ArrowDown className="h-3 w-3 text-primary" />
@@ -141,7 +141,7 @@ export const NavDockPrototypePage = () => {
             <button
               type="button"
               onClick={() => setPreset('media')}
-              className={`px-3 py-1.5 rounded-xl font-medium transition-all ${
+              className={`px-3 py-1.5 rounded-xl font-medium transition-colors ${
                 preset === 'media'
                   ? 'bg-primary text-primary-foreground font-semibold shadow-sm'
                   : 'bg-[var(--dk-surface-base)] text-muted-foreground hover:text-foreground'
@@ -152,7 +152,7 @@ export const NavDockPrototypePage = () => {
             <button
               type="button"
               onClick={() => setPreset('compact')}
-              className={`px-3 py-1.5 rounded-xl font-medium transition-all ${
+              className={`px-3 py-1.5 rounded-xl font-medium transition-colors ${
                 preset === 'compact'
                   ? 'bg-primary text-primary-foreground font-semibold shadow-sm'
                   : 'bg-[var(--dk-surface-base)] text-muted-foreground hover:text-foreground'
@@ -163,7 +163,7 @@ export const NavDockPrototypePage = () => {
             <button
               type="button"
               onClick={() => setPreset('download')}
-              className={`px-3 py-1.5 rounded-xl font-medium transition-all ${
+              className={`px-3 py-1.5 rounded-xl font-medium transition-colors ${
                 preset === 'download'
                   ? 'bg-primary text-primary-foreground font-semibold shadow-sm'
                   : 'bg-[var(--dk-surface-base)] text-muted-foreground hover:text-foreground'
@@ -182,7 +182,7 @@ export const NavDockPrototypePage = () => {
               <button
                 type="button"
                 onClick={() => setTriggerMode('sentinel')}
-                className={`px-3 py-1.5 rounded-xl font-medium transition-all ${
+                className={`px-3 py-1.5 rounded-xl font-medium transition-colors ${
                   triggerMode === 'sentinel'
                     ? 'bg-primary text-primary-foreground font-semibold shadow-sm'
                     : 'bg-[var(--dk-surface-base)] text-muted-foreground hover:text-foreground'
@@ -193,7 +193,7 @@ export const NavDockPrototypePage = () => {
               <button
                 type="button"
                 onClick={() => setTriggerMode('threshold')}
-                className={`px-3 py-1.5 rounded-xl font-medium transition-all ${
+                className={`px-3 py-1.5 rounded-xl font-medium transition-colors ${
                   triggerMode === 'threshold'
                     ? 'bg-primary text-primary-foreground font-semibold shadow-sm'
                     : 'bg-[var(--dk-surface-base)] text-muted-foreground hover:text-foreground'
@@ -204,7 +204,7 @@ export const NavDockPrototypePage = () => {
               <button
                 type="button"
                 onClick={() => setTriggerMode('scrollUpOnly')}
-                className={`px-3 py-1.5 rounded-xl font-medium transition-all ${
+                className={`px-3 py-1.5 rounded-xl font-medium transition-colors ${
                   triggerMode === 'scrollUpOnly'
                     ? 'bg-primary text-primary-foreground font-semibold shadow-sm'
                     : 'bg-[var(--dk-surface-base)] text-muted-foreground hover:text-foreground'
@@ -221,7 +221,7 @@ export const NavDockPrototypePage = () => {
               <button
                 type="button"
                 onClick={() => setFallbackMode('sub-tier')}
-                className={`px-3 py-1.5 rounded-xl font-medium transition-all ${
+                className={`px-3 py-1.5 rounded-xl font-medium transition-colors ${
                   fallbackMode === 'sub-tier'
                     ? 'bg-primary text-primary-foreground font-semibold shadow-sm'
                     : 'bg-[var(--dk-surface-base)] text-muted-foreground hover:text-foreground'
@@ -232,7 +232,7 @@ export const NavDockPrototypePage = () => {
               <button
                 type="button"
                 onClick={() => setFallbackMode('hidden')}
-                className={`px-3 py-1.5 rounded-xl font-medium transition-all ${
+                className={`px-3 py-1.5 rounded-xl font-medium transition-colors ${
                   fallbackMode === 'hidden'
                     ? 'bg-primary text-primary-foreground font-semibold shadow-sm'
                     : 'bg-[var(--dk-surface-base)] text-muted-foreground hover:text-foreground'
@@ -277,7 +277,7 @@ export const NavDockPrototypePage = () => {
             onClick={() => {
               window.scrollBy({ top: 400, behavior: 'smooth' })
             }}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[var(--dk-surface-base)] hover:bg-[var(--dk-surface-raised)] text-xs font-medium text-foreground transition-all shadow-sm cursor-pointer"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[var(--dk-surface-base)] hover:bg-[var(--dk-surface-raised)] text-xs font-medium text-foreground transition-colors shadow-sm cursor-pointer"
           >
             <span>Scroll Past Hero to Trigger Nav Pill</span>
             <ArrowDown className="h-3.5 w-3.5 text-primary" />

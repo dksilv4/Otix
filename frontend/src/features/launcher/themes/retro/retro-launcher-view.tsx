@@ -61,7 +61,10 @@ export const RetroLauncherView = () => {
           backgroundSize: "100% 3px, 6px 100%",
         }}
       />
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_transparent_60%,_rgba(0,0,0,0.85)_100%)] pointer-events-none z-20" />
+      <div
+        className="absolute inset-0 pointer-events-none z-20"
+        style={{ backgroundImage: 'radial-gradient(circle at center, transparent 60%, rgba(0, 0, 0, 0.85) 100%)' }}
+      />
 
       {/* Top Cyberpunk Telemetry Terminal Header */}
       <header className="relative z-20 px-6 py-4 border-b border-white/[0.04] bg-[var(--dk-surface-overlay)]/90 flex items-center justify-between">
@@ -69,7 +72,7 @@ export const RetroLauncherView = () => {
           <button
             onClick={() => navigate({ to: "/" })}
             title="Disconnect Terminal (Return to Otix)"
-            className="flex items-center gap-2 px-2.5 py-1 rounded bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 transition-all cursor-pointer text-xs"
+            className="flex items-center gap-2 px-2.5 py-1 rounded bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 transition-colors cursor-pointer text-xs"
           >
             <ArrowLeft size={13} />
             <span>EXIT://OTIX</span>
@@ -134,7 +137,7 @@ export const RetroLauncherView = () => {
                 <div
                   key={game.id}
                   onClick={() => selectGame(game.id)}
-                  className={`px-3 py-2 rounded text-xs cursor-pointer flex items-center justify-between border transition-all ${
+                  className={`px-3 py-2 rounded text-xs cursor-pointer flex items-center justify-between border transition-colors ${
                     isSelected
                       ? "bg-primary/20 text-primary border-primary font-bold shadow-lg shadow-primary/25"
                       : "text-primary/70 border-transparent hover:bg-primary/10 hover:text-primary"
@@ -178,7 +181,7 @@ export const RetroLauncherView = () => {
                     <img
                       src={activeGame.otixBackdropUrl || activeGame.backdropUrl || activeGame.posterUrl || ""}
                       alt={activeGame.title}
-                      className="w-full h-full object-cover filter grayscale contrast-150 group-hover:filter-none transition-all duration-300"
+                      className="w-full h-full object-cover filter grayscale contrast-150 group-hover:filter-none transition duration-300"
                       loading="lazy"
                       decoding="async"
                     />
@@ -224,7 +227,7 @@ export const RetroLauncherView = () => {
               <div className="flex items-center gap-4 pt-2">
                 <button
                   onClick={() => handlePlayGame(activeGame)}
-                  className="flex items-center gap-2 px-8 py-3 rounded bg-primary hover:bg-primary/90 text-primary-foreground font-black text-xs uppercase tracking-widest cursor-pointer shadow-lg shadow-primary/25 active:scale-95 transition-all"
+                  className="flex items-center gap-2 px-8 py-3 rounded bg-primary hover:bg-primary/90 text-primary-foreground font-black text-xs uppercase tracking-widest cursor-pointer shadow-lg shadow-primary/25 active:scale-95 transition"
                 >
                   <Play size={14} fill="currentColor" />
                   <span>INITIALIZE PROCESS</span>

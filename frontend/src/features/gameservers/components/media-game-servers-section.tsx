@@ -69,7 +69,7 @@ export const MediaGameServersSection = ({
             return (
               <div
                 key={server.id}
-                className="p-4 rounded-2xl bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-hover)] border border-[var(--dk-separator)] transition-all flex flex-col justify-between gap-4 group"
+                className="p-4 rounded-2xl bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-hover)] border border-[var(--dk-separator)] transition-colors flex flex-col justify-between gap-4 group"
               >
                 <div className="space-y-2">
                   <div className="flex items-start justify-between gap-2">

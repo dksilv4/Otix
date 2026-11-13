@@ -8,6 +8,7 @@ export interface Toast {
   description?: string
   variant?: ToastVariant
   duration?: number
+  onClick?: () => void
 }
 
 export interface ToastContextValue {

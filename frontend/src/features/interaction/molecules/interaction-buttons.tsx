@@ -167,7 +167,7 @@ const InteractionButton = ({
 
  <Icon
  className={cn(
- 'relative h-5 w-5 transition-all duration-200',
+ 'relative h-5 w-5 transition-colors duration-200',
  isActive
  ? cn(activeColor, supportsFill && 'fill-current', 'scale-110')
  : 'text-muted-foreground scale-100',
@@ -258,14 +258,14 @@ const InteractionSection = ({
             to="/auth/login"
             search={{ redirect: location.href }}
             onClick={() => close()}
-            className="w-full sm:w-auto inline-flex items-center justify-center px-4 py-2 text-xs font-semibold rounded-xl bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-glass-hover)] text-foreground transition-all border border-[var(--dk-separator)]"
+            className="w-full sm:w-auto inline-flex items-center justify-center px-4 py-2 text-xs font-semibold rounded-xl bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-glass-hover)] text-foreground transition-colors border border-[var(--dk-separator)]"
           >
             Sign In
           </Link>
           <Link
             to="/auth/register"
             onClick={() => close()}
-            className="w-full sm:w-auto inline-flex items-center justify-center px-4 py-2 text-xs font-semibold rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 transition-all shadow-md"
+            className="w-full sm:w-auto inline-flex items-center justify-center px-4 py-2 text-xs font-semibold rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 transition shadow-md"
           >
             Create Account
           </Link>

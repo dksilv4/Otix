@@ -75,7 +75,7 @@ export const ListComposer = ({
       {/* Dialog */}
       <div
         className={cn(
-          "relative w-full max-w-lg overflow-hidden rounded-3xl bg-[var(--dk-surface-overlay)] border border-[var(--dk-separator)] shadow-[var(--dk-shadow-dialog)] transition-all duration-200 ease-out flex flex-col",
+          "relative w-full max-w-lg overflow-hidden rounded-3xl bg-[var(--dk-surface-overlay)] border border-[var(--dk-separator)] shadow-[var(--dk-shadow-dialog)] transition-colors duration-200 ease-out flex flex-col",
           visible ? "scale-100 translate-y-0" : "scale-95 translate-y-4"
         )}
       >
@@ -86,7 +86,7 @@ export const ListComposer = ({
           <button
             onClick={onClose}
             type="button"
-            className="shrink-0 rounded-xl p-1.5 transition-all text-muted-foreground hover:bg-[var(--dk-surface-ghost-hover)] hover:text-foreground"
+            className="shrink-0 rounded-xl p-1.5 transition-colors text-muted-foreground hover:bg-[var(--dk-surface-ghost-hover)] hover:text-foreground"
           >
             <XIcon size={16} />
           </button>
@@ -110,7 +110,7 @@ export const ListComposer = ({
               maxLength={200}
               required
               placeholder="My list name..."
-              className="w-full bg-[var(--dk-surface-field)] border border-[var(--dk-separator)] rounded-xl px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
+              className="w-full bg-[var(--dk-surface-field)] border border-[var(--dk-separator)] rounded-xl px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 transition-colors"
             />
           </div>
 
@@ -123,7 +123,7 @@ export const ListComposer = ({
               onChange={(e) => setDescription(e.target.value)}
               rows={3}
               placeholder="Optional description..."
-              className="w-full bg-[var(--dk-surface-field)] border border-[var(--dk-separator)] rounded-xl px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all resize-none"
+              className="w-full bg-[var(--dk-surface-field)] border border-[var(--dk-separator)] rounded-xl px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 transition-colors resize-none"
             />
           </div>
 
@@ -149,14 +149,14 @@ export const ListComposer = ({
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 rounded-xl bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)] text-muted-foreground hover:text-foreground text-sm font-semibold transition-all"
+              className="px-4 py-2 rounded-xl bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)] text-muted-foreground hover:text-foreground text-sm font-semibold transition-colors"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={!name.trim() || isSavingLocal}
-              className="px-5 py-2 rounded-xl bg-primary hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed text-primary-foreground text-sm font-bold flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
+              className="px-5 py-2 rounded-xl bg-primary hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed text-primary-foreground text-sm font-bold flex items-center justify-center gap-2 transition active:scale-[0.98]"
             >
               {isSavingLocal ? "Saving..." : initial ? "Save" : "Create"}
             </button>

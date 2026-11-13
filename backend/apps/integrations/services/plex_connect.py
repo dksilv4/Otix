@@ -502,7 +502,7 @@ def extract_stream_specs(
         hls_url = (
             f"{primary_url}/video/:/transcode/universal/start.m3u8?"
             f"path={encoded_path}&mediaIndex=0&partIndex=0&protocol=hls&fastSeek=1&directPlay=0&directStream=1&hasMDE=1&"
-            f"X-Plex-Client-Identifier=otix-web&X-Plex-Product=Otix&X-Plex-Platform=Web&"
+            f"X-Plex-Client-Identifier=otix-web&X-Plex-Product=Otix&X-Plex-Platform=Chrome&"
             f"X-Plex-Token={encoded_token}"
         )
 

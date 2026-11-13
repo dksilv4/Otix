@@ -63,11 +63,16 @@ export interface BuildPlexPlaybackOptions {
   episodeContext?: EpisodeContext
   customSessionId?: string
   clientId?: string
+  offsetSeconds?: number
 }
 
 export interface PlexHlsQualityOptions {
   maxVideoBitrate?: number
   videoResolution?: string
+  audioStreamID?: string | number
+  subtitleStreamID?: string | number
+  subtitles?: string
+  offsetSeconds?: number
 }
 
 export const buildPlexHlsUrl = (
@@ -80,9 +85,12 @@ export const buildPlexHlsUrl = (
 ): string => {
   const cleanBase = baseUrl.replace(/\/$/, '')
   const cid = clientId || getPlexClientId()
+  const subtitlesMode = qualityOptions?.subtitles || (qualityOptions?.subtitleStreamID ? 'sidecar' : 'none')
   let url = `${cleanBase}/video/:/transcode/universal/start.m3u8?path=${encodeURIComponent(
     '/library/metadata/' + ratingKey,
-  )}&mediaIndex=0&partIndex=0&protocol=hls&fastSeek=1&directPlay=0&directStream=1&hasMDE=1&session=${encodeURIComponent(
+  )}&mediaIndex=0&partIndex=0&protocol=hls&fastSeek=1&directPlay=0&directStream=1&hasMDE=1&subtitles=${encodeURIComponent(
+    subtitlesMode,
+  )}&session=${encodeURIComponent(
     playSessionId,
   )}&X-Plex-Client-Identifier=${encodeURIComponent(
     cid,
@@ -90,7 +98,7 @@ export const buildPlexHlsUrl = (
     playSessionId,
   )}&X-Plex-Playback-Session-Id=${encodeURIComponent(
     playSessionId,
-  )}&X-Plex-Product=Otix&X-Plex-Platform=Web&X-Plex-Token=${encodeURIComponent(
+  )}&X-Plex-Product=Otix&X-Plex-Platform=Chrome&X-Plex-Token=${encodeURIComponent(
     token,
   )}`
 
@@ -100,42 +108,138 @@ export const buildPlexHlsUrl = (
   if (qualityOptions?.videoResolution) {
     url += `&videoResolution=${encodeURIComponent(qualityOptions.videoResolution)}`
   }
+  if (qualityOptions?.audioStreamID != null) {
+    url += `&audioStreamID=${encodeURIComponent(String(qualityOptions.audioStreamID))}`
+  }
+  if (qualityOptions?.subtitleStreamID != null) {
+    url += `&subtitleStreamID=${encodeURIComponent(String(qualityOptions.subtitleStreamID))}`
+  }
+  if (qualityOptions?.offsetSeconds != null && qualityOptions.offsetSeconds > 0) {
+    url += `&offset=${Math.floor(qualityOptions.offsetSeconds)}&copyts=1`
+  }
 
   return url
+}
+
+export const buildPlexDecisionUrl = (
+  baseUrl: string,
+  ratingKey: string,
+  token: string,
+  playSessionId: string,
+  clientId?: string,
+  qualityOptions?: PlexHlsQualityOptions,
+): string => {
+  const cleanBase = baseUrl.replace(/\/$/, '')
+  const cid = clientId || getPlexClientId()
+  const subtitlesMode = qualityOptions?.subtitles || (qualityOptions?.subtitleStreamID ? 'sidecar' : 'none')
+  let url = `${cleanBase}/video/:/transcode/universal/decision?path=${encodeURIComponent(
+    '/library/metadata/' + ratingKey,
+  )}&mediaIndex=0&partIndex=0&protocol=hls&fastSeek=1&directPlay=0&directStream=1&hasMDE=1&subtitles=${encodeURIComponent(
+    subtitlesMode,
+  )}&session=${encodeURIComponent(
+    playSessionId,
+  )}&X-Plex-Client-Identifier=${encodeURIComponent(
+    cid,
+  )}&X-Plex-Session-Identifier=${encodeURIComponent(
+    playSessionId,
+  )}&X-Plex-Playback-Session-Id=${encodeURIComponent(
+    playSessionId,
+  )}&X-Plex-Product=Otix&X-Plex-Platform=Chrome&X-Plex-Token=${encodeURIComponent(
+    token,
+  )}`
+
+  if (qualityOptions?.maxVideoBitrate) {
+    url += `&maxVideoBitrate=${qualityOptions.maxVideoBitrate}`
+  }
+  if (qualityOptions?.videoResolution) {
+    url += `&videoResolution=${encodeURIComponent(qualityOptions.videoResolution)}`
+  }
+  if (qualityOptions?.audioStreamID != null) {
+    url += `&audioStreamID=${encodeURIComponent(String(qualityOptions.audioStreamID))}`
+  }
+  if (qualityOptions?.subtitleStreamID != null) {
+    url += `&subtitleStreamID=${encodeURIComponent(String(qualityOptions.subtitleStreamID))}`
+  }
+  if (qualityOptions?.offsetSeconds != null && qualityOptions.offsetSeconds > 0) {
+    url += `&offset=${Math.floor(qualityOptions.offsetSeconds)}&copyts=1`
+  }
+
+  return url
+}
+
+export const selectPlexAudioStream = async (
+  baseUrl: string,
+  partIdOrUrl: string,
+  audioStreamId: string | number,
+  token: string,
+): Promise<boolean> => {
+  if (!baseUrl || !partIdOrUrl || !audioStreamId || !token) return false
+  const cleanBase = baseUrl.replace(/\/$/, '')
+  const partIdMatch = String(partIdOrUrl).match(/\/library\/parts\/(\d+)/)
+  const partId = partIdMatch ? partIdMatch[1] : partIdOrUrl
+  try {
+    const res = await fetch(
+      `${cleanBase}/library/parts/${partId}?audioStreamID=${encodeURIComponent(String(audioStreamId))}&X-Plex-Token=${encodeURIComponent(token)}`,
+      { method: 'PUT' },
+    )
+    return res.ok
+  } catch (err) {
+    console.warn('[Plex] Failed to update selected audio stream on PMS:', err)
+    return false
+  }
+}
+
+export const triggerPlexDecision = async (
+  baseUrl: string,
+  ratingKey: string,
+  token: string,
+  playSessionId: string,
+  clientId?: string,
+  qualityOptions?: PlexHlsQualityOptions,
+): Promise<boolean> => {
+  if (!baseUrl || !ratingKey || !token) return false
+  try {
+    const decisionUrl = buildPlexDecisionUrl(
+      baseUrl,
+      ratingKey,
+      token,
+      playSessionId,
+      clientId,
+      qualityOptions,
+    )
+    const res = await fetch(decisionUrl, { method: 'GET' })
+    return res.ok
+  } catch (err) {
+    console.warn('[Plex] Failed to trigger transcode decision:', err)
+    return false
+  }
 }
 
 export const buildPlexDirectUrl = (
   baseUrl: string,
   partKeyOrUrl: string,
   token: string,
-  playSessionId?: string,
+  _playSessionId?: string,
   clientId?: string,
 ): string => {
   const cleanBase = baseUrl.replace(/\/$/, '')
   const cid = clientId || getPlexClientId()
-  const sid = playSessionId || ''
   if (partKeyOrUrl.startsWith('http://') || partKeyOrUrl.startsWith('https://')) {
     const url = new URL(partKeyOrUrl)
     url.searchParams.set('X-Plex-Token', token)
     if (cid) url.searchParams.set('X-Plex-Client-Identifier', cid)
-    if (sid) {
-      url.searchParams.set('X-Plex-Session-Identifier', sid)
-      url.searchParams.set('X-Plex-Playback-Session-Id', sid)
-    }
     url.searchParams.set('X-Plex-Product', 'Otix')
-    url.searchParams.set('X-Plex-Platform', 'Web')
+    url.searchParams.set('X-Plex-Platform', 'Chrome')
+    url.searchParams.delete('X-Plex-Session-Identifier')
+    url.searchParams.delete('X-Plex-Playback-Session-Id')
     return url.toString()
   }
   const cleanPart = partKeyOrUrl.startsWith('/') ? partKeyOrUrl : `/${partKeyOrUrl}`
   const params = new URLSearchParams()
   params.set('X-Plex-Token', token)
   if (cid) params.set('X-Plex-Client-Identifier', cid)
-  if (sid) {
-    params.set('X-Plex-Session-Identifier', sid)
-    params.set('X-Plex-Playback-Session-Id', sid)
-  }
   params.set('X-Plex-Product', 'Otix')
-  params.set('X-Plex-Platform', 'Web')
+  params.set('X-Plex-Platform', 'Chrome')
   return `${cleanBase}${cleanPart}?${params.toString()}`
 }
 
@@ -166,14 +270,43 @@ export const buildPlexPlaybackSession = (
     }
   }
 
-  const hlsUrl = buildPlexHlsUrl(baseUrl, ratingKey, token, playSessionId, clientId)
-
   const directPartKey = info.partKey || info.part_key
   const directUrl = directPartKey
     ? buildPlexDirectUrl(baseUrl, directPartKey, token, playSessionId, clientId)
     : info.directUrl || info.direct_url
       ? buildPlexDirectUrl(baseUrl, (info.directUrl || info.direct_url)!, token, playSessionId, clientId)
       : undefined
+
+  const viewOffset = Number(info.viewOffset ?? info.view_offset ?? 0)
+  const duration = Number(info.duration ?? 0)
+  const initialOffsetSeconds =
+    options?.offsetSeconds != null && options.offsetSeconds > 0
+      ? options.offsetSeconds
+      : viewOffset > 0
+      ? Math.floor(viewOffset / 1000)
+      : undefined
+  const initialQualityOpts: PlexHlsQualityOptions | undefined = initialOffsetSeconds
+    ? { offsetSeconds: initialOffsetSeconds }
+    : undefined
+
+  const hlsUrl = buildPlexHlsUrl(
+    baseUrl,
+    ratingKey,
+    token,
+    playSessionId,
+    clientId,
+    initialQualityOpts,
+  )
+  if (baseUrl && ratingKey && token && !directUrl) {
+    void triggerPlexDecision(
+      baseUrl,
+      ratingKey,
+      token,
+      playSessionId,
+      clientId,
+      initialQualityOpts,
+    )
+  }
 
   const audioTracks: AudioTrack[] = (info.audioTracks || info.audio_tracks || []).map((a) => ({
     id: String(a.id),
@@ -211,14 +344,22 @@ export const buildPlexPlaybackSession = (
         }
       : undefined)
 
-  const viewOffset = Number(info.viewOffset ?? info.view_offset ?? 0)
-  const duration = Number(info.duration ?? 0)
+  const rawContainer = info.container || ''
+  let detectedContainer = rawContainer
+  if (!detectedContainer) {
+    const rawPath = directPartKey || info.directUrl || info.direct_url || ''
+    const match = rawPath.match(/\.([a-z0-9]+)(?:[?#]|$)/i)
+    if (match) {
+      detectedContainer = match[1].toLowerCase()
+    }
+  }
 
   return {
     source: 'plex',
     serverUrl: baseUrl,
     token,
     itemId: ratingKey,
+    partKey: directPartKey,
     title: options?.title || info.title || (episodeContext ? episodeContext.seriesTitle : 'Movie'),
     subtitle:
       options?.subtitle ||
@@ -235,7 +376,7 @@ export const buildPlexPlaybackSession = (
     subtitles,
     startPositionMs: viewOffset,
     durationMs: duration,
-    container: info.container || 'mp4',
+    container: detectedContainer || 'mp4',
     videoCodec: info.videoCodec || info.video_codec || 'h264',
     audioCodec: info.audioCodec || info.audio_codec || 'aac',
     episodeContext,
@@ -298,26 +439,119 @@ export const updatePlexSessionQuality = (
   const maxVideoBitrate = isAutoOrOriginal ? undefined : qualityOption.maxVideoBitrate
   const videoResolution = isAutoOrOriginal ? undefined : qualityOption.videoResolution
 
+  const activeAudioTrack =
+    session.selectedAudioIndex != null
+      ? session.audioTracks.find((a) => a.index === session.selectedAudioIndex)
+      : undefined
+
+  const qualityOpts: PlexHlsQualityOptions = {
+    maxVideoBitrate,
+    videoResolution,
+    audioStreamID: activeAudioTrack?.id,
+  }
+
+  const baseSessionId = session.playSessionId.split('-q-')[0]
+  const newPlaySessionId = `${baseSessionId}-q-${qualityOption.id}`
+
   const newHlsUrl = buildPlexHlsUrl(
     session.serverUrl,
     session.itemId,
     session.token,
-    session.playSessionId,
+    newPlaySessionId,
     session.clientId,
-    maxVideoBitrate || videoResolution
-      ? {
-          maxVideoBitrate,
-          videoResolution,
-        }
-      : undefined,
+    qualityOpts,
   )
 
+  if (session.serverUrl && session.itemId && session.token) {
+    void triggerPlexDecision(
+      session.serverUrl,
+      session.itemId,
+      session.token,
+      newPlaySessionId,
+      session.clientId,
+      qualityOpts,
+    )
+  }
+
+  const isTranscode = !qualityOption.isAuto && !qualityOption.isOriginal
+  const isDefaultTrack = !activeAudioTrack || session.audioTracks[0]?.index === activeAudioTrack.index
   return {
     ...session,
+    playSessionId: newPlaySessionId,
     selectedQuality: qualityOption.id,
     maxVideoBitrate,
     videoResolution,
     hlsUrl: newHlsUrl,
+    playbackMethod: isTranscode || !isDefaultTrack ? 'transcode' : session.directUrl ? 'direct-play' : 'transcode',
+  }
+}
+
+export const updatePlexSessionAudio = (
+  session: StreamPlaybackSession,
+  audioTrack: AudioTrack,
+  currentPositionSeconds?: number,
+): StreamPlaybackSession => {
+  const partId = session.partKey || session.itemId
+  if (session.serverUrl && partId && session.token && audioTrack.id) {
+    void selectPlexAudioStream(session.serverUrl, partId, audioTrack.id, session.token)
+  }
+
+  // Derive dedicated playSessionId to avoid PMS worker concurrency deadlocks
+  const baseSessionId = session.playSessionId.split('-a-')[0]
+  const newPlaySessionId = `${baseSessionId}-a-${audioTrack.id}`
+
+  const isAutoOrOriginal =
+    !session.selectedQuality || session.selectedQuality === 'auto' || session.selectedQuality === 'original'
+
+  const offset =
+    currentPositionSeconds != null && currentPositionSeconds > 0
+      ? currentPositionSeconds
+      : session.startPositionMs
+        ? session.startPositionMs / 1000
+        : undefined
+
+  const qualityOpts: PlexHlsQualityOptions = {
+    maxVideoBitrate: isAutoOrOriginal ? undefined : session.maxVideoBitrate,
+    videoResolution: isAutoOrOriginal ? undefined : session.videoResolution,
+    audioStreamID: audioTrack.id,
+    offsetSeconds: offset,
+  }
+
+  const newHlsUrl = buildPlexHlsUrl(
+    session.serverUrl,
+    session.itemId,
+    session.token,
+    newPlaySessionId,
+    session.clientId,
+    qualityOpts,
+  )
+
+  if (session.serverUrl && session.itemId && session.token) {
+    void triggerPlexDecision(
+      session.serverUrl,
+      session.itemId,
+      session.token,
+      newPlaySessionId,
+      session.clientId,
+      qualityOpts,
+    )
+  }
+
+  const isDefaultTrack = session.audioTracks[0]?.index === audioTrack.index
+  const isTranscodeQuality =
+    Boolean(session.selectedQuality) &&
+    session.selectedQuality !== 'auto' &&
+    session.selectedQuality !== 'original' &&
+    !session.selectedQuality?.startsWith('hls-')
+  const canDirectPlay = isDefaultTrack && Boolean(session.directUrl) && !isTranscodeQuality
+
+  return {
+    ...session,
+    playSessionId: newPlaySessionId,
+    selectedAudioIndex: audioTrack.index,
+    hlsUrl: newHlsUrl,
+    startPositionMs: offset != null ? Math.round(offset * 1000) : session.startPositionMs,
+    playbackMethod: canDirectPlay ? 'direct-play' : 'direct-stream',
   }
 }
 
@@ -327,9 +561,10 @@ interface CachedConnectInfo {
 }
 
 const connectInfoCache = new Map<string, CachedConnectInfo>()
+const secondaryConnectInfoCache = new Map<string, CachedConnectInfo>()
 const connectInfoInFlight = new Map<string, Promise<PlexConnectInfoData | null>>()
 
-const CONNECT_INFO_CACHE_TTL_MS = 30_000
+const CONNECT_INFO_CACHE_TTL_MS = 300_000
 
 export interface FetchPlexConnectInfoParams {
   season?: number | string
@@ -360,6 +595,7 @@ export const fetchPlexConnectInfoCached = async (
   if (params?.mediaType) queryParams.mediaType = params.mediaType
 
   const cacheKey = `${ident}:${JSON.stringify(queryParams)}`
+  const itemKey = `${ident}:${params?.season ?? ''}:${params?.episode ?? ''}`
   const now = Date.now()
 
   const cached = connectInfoCache.get(cacheKey)
@@ -367,7 +603,12 @@ export const fetchPlexConnectInfoCached = async (
     return cached.data
   }
 
-  const existingPromise = connectInfoInFlight.get(cacheKey)
+  const secondaryCached = secondaryConnectInfoCache.get(itemKey)
+  if (secondaryCached && now - secondaryCached.timestamp < CONNECT_INFO_CACHE_TTL_MS) {
+    return secondaryCached.data
+  }
+
+  const existingPromise = connectInfoInFlight.get(cacheKey) || connectInfoInFlight.get(itemKey)
   if (existingPromise) {
     return existingPromise
   }
@@ -379,7 +620,9 @@ export const fetchPlexConnectInfoCached = async (
         { params: queryParams },
       )
       if (data && (data.ratingKey || data.rating_key)) {
-        connectInfoCache.set(cacheKey, { data, timestamp: Date.now() })
+        const entry: CachedConnectInfo = { data, timestamp: Date.now() }
+        connectInfoCache.set(cacheKey, entry)
+        secondaryConnectInfoCache.set(itemKey, entry)
         return data
       }
       return null
@@ -387,9 +630,17 @@ export const fetchPlexConnectInfoCached = async (
       return null
     } finally {
       connectInfoInFlight.delete(cacheKey)
+      connectInfoInFlight.delete(itemKey)
     }
   })()
 
   connectInfoInFlight.set(cacheKey, fetchPromise)
+  connectInfoInFlight.set(itemKey, fetchPromise)
   return fetchPromise
+}
+
+export const clearPlexConnectCache = () => {
+  connectInfoCache.clear()
+  secondaryConnectInfoCache.clear()
+  connectInfoInFlight.clear()
 }

@@ -1,4 +1,5 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiClient } from '@/lib/api/client'
 import { useHasSession } from '@/lib/providers/auth'
 import { useGameServers } from '@/features/downloads/use-server-downloads'
@@ -27,239 +28,257 @@ interface PluginApi {
   callData: (pluginId: string, method: string, ...args: unknown[]) => Promise<unknown>
 }
 
-function getPluginApi(): PluginApi | undefined {
+const getPluginApi = (): PluginApi | undefined => {
   return (window as Window & { desktopAPI?: { plugin?: PluginApi } }).desktopAPI?.plugin
 }
 
+export const mediaDetailPluginActionKeys = {
+  all: ['media-detail-actions'] as const,
+  detail: (mediaType: string, requestId: string, serverId?: number) =>
+    [...mediaDetailPluginActionKeys.all, mediaType, requestId, serverId] as const,
+}
+
 // Fetches the request/play widgets from the `media/detail/actions` slot and
-// exposes the shared state + handlers. Used once per detail surface; both the
-// inline action buttons and the library-status section read from the same
-// fetch. `enabled` defers the fetch until the detail (and thus the real TMDB
-// id) is available, so the plugins aren't asked to resolve an internal ULID.
-export function useMediaDetailPluginActions(
+// exposes the shared state + handlers backed by TanStack Query.
+export const useMediaDetailPluginActions = (
   mediaType: string,
   mediaId: string,
   tmdbId?: string | null,
   enabled = true,
   mediaTitle?: string | null,
-) {
+) => {
   // Radarr/other source services need the real TMDB id, not the internal ULID.
   const requestId = tmdbId || mediaId
   const hasSession = useHasSession()
   const { data: servers = [] } = useGameServers({ enabled: enabled && hasSession })
   const activeServer = servers.find((s) => s.isOnline || s.isActive) || servers[0]
+  const activeServerId = activeServer?.id
 
   const streamPlayer = useMediaStreamPlayer()
-  const [widgets, setWidgets] = useState<RequestWidget[]>([])
-  const [playWidgets, setPlayWidgets] = useState<PlayWidget[]>([])
-  const [loading, setLoading] = useState(true)
+  const queryClient = useQueryClient()
   const [requesting, setRequesting] = useState<string | null>(null)
 
-  const loadSlots = useCallback(async () => {
-    // Games must never query video media plugins or backend Plex servers
-    if (mediaType === 'game') {
-      setWidgets([])
-      setPlayWidgets([])
-      setLoading(false)
-      return
-    }
+  const queryResult = useQuery<{
+    widgets: RequestWidget[]
+    playWidgets: PlayWidget[]
+  }>({
+    queryKey: mediaDetailPluginActionKeys.detail(mediaType, requestId, activeServerId),
+    queryFn: async () => {
+      // Games must never query video media plugins or backend Plex servers
+      if (mediaType === 'game') {
+        return { widgets: [], playWidgets: [] }
+      }
 
-    const api = getPluginApi()
-    const requestWidgets: RequestWidget[] = []
-    const playList: PlayWidget[] = []
+      const api = getPluginApi()
+      const requestWidgets: RequestWidget[] = []
+      const playList: PlayWidget[] = []
 
-    if (api?.getSlotData) {
-      try {
-        const data = (await api.getSlotData('media/detail/actions', { mediaId: requestId, mediaType })) as Array<{
-          pluginId: string
-          label: string
-          data?: {
-            widgets?: Array<{
-              type: string
-              props: {
-                label?: string
-                mediaType: string
-                mediaId: string
-                instances: RequestInstance[] | PlayInstance[]
-              }
-            }>
-          }
-        }>
-        if (data) {
-          for (const entry of data) {
-            for (const widget of entry.data?.widgets || []) {
-              if (widget.type === 'request-button') {
-                requestWidgets.push({
-                  pluginId: entry.pluginId,
-                  label: entry.label,
-                  props: widget.props as RequestWidget['props'],
-                })
-              } else if (widget.type === 'play-button') {
-                playList.push({
-                  pluginId: entry.pluginId,
-                  label: entry.label,
-                  props: widget.props as PlayWidget['props'],
-                })
+      if (api?.getSlotData) {
+        try {
+          const data = (await api.getSlotData('media/detail/actions', { mediaId: requestId, mediaType })) as Array<{
+            pluginId: string
+            label: string
+            data?: {
+              widgets?: Array<{
+                type: string
+                props: {
+                  label?: string
+                  mediaType: string
+                  mediaId: string
+                  instances: RequestInstance[] | PlayInstance[]
+                }
+              }>
+            }
+          }>
+          if (data) {
+            for (const entry of data) {
+              for (const widget of entry.data?.widgets || []) {
+                if (widget.type === 'request-button') {
+                  requestWidgets.push({
+                    pluginId: entry.pluginId,
+                    label: entry.label,
+                    props: widget.props as RequestWidget['props'],
+                  })
+                } else if (widget.type === 'play-button') {
+                  playList.push({
+                    pluginId: entry.pluginId,
+                    label: entry.label,
+                    props: widget.props as PlayWidget['props'],
+                  })
+                }
               }
             }
           }
+        } catch (err) {
+          console.error('Failed to load plugin slots:', err)
         }
-      } catch (err) {
-        console.error('Failed to load plugin slots:', err)
       }
-    }
 
-    // Check connected Otix game server for targeted Radarr/Sonarr lookup if no request widgets
-    if (requestWidgets.length === 0 && activeServer) {
-      try {
-        const numId = Number(requestId)
-        const term = numId && !isNaN(numId) ? lookupTmdbTerm(numId) : (mediaTitle || requestId)
-        if (mediaType === 'movie') {
-          const { data } = await apiClient.get<ArrLookupItem[]>(
-            `/library/nodes/${activeServer.id}/radarr/lookup`,
-            { params: { term } },
-          )
-          const results = data || []
-          const match = numId && !isNaN(numId) ? matchLookupByTmdb(results, numId) : results[0] || null
-          const status = radarrStatusFromLookup(match)
-
-          requestWidgets.push({
-            pluginId: 'server-radarr',
-            label: `${activeServer.name} (Radarr)`,
-            props: {
-              label: 'Radarr',
-              mediaType: 'movie',
-              mediaId: requestId,
-              instances: [
-                {
-                  id: String(activeServer.id),
-                  name: `${activeServer.name} Radarr`,
-                  status,
-                },
-              ],
-            },
-          })
-        } else if (mediaType === 'show') {
-          const { data } = await apiClient.get<ArrLookupItem[]>(
-            `/library/nodes/${activeServer.id}/sonarr/lookup`,
-            { params: { term } },
-          )
-          const results = data || []
-          const match = numId && !isNaN(numId) ? matchLookupByTmdb(results, numId) : results[0] || null
-          const status = sonarrStatusFromLookup(match)
-
-          requestWidgets.push({
-            pluginId: 'server-sonarr',
-            label: `${activeServer.name} (Sonarr)`,
-            props: {
-              label: 'Sonarr',
-              mediaType: 'show',
-              mediaId: requestId,
-              instances: [
-                {
-                  id: String(activeServer.id),
-                  name: `${activeServer.name} Sonarr`,
-                  status,
-                },
-              ],
-            },
-          })
-        }
-      } catch (err) {
-        console.warn('Failed to query server arr media status:', err)
-      }
-    }
-
-    // Check backend Plex connect-info if no play widgets found yet
-    if (playList.length === 0) {
-      const primaryTarget = mediaId || requestId || tmdbId
-      if (primaryTarget) {
+      // Check connected Otix game server for targeted Radarr/Sonarr lookup if no request widgets
+      if (requestWidgets.length === 0 && activeServer) {
         try {
-          const numericTmdb = tmdbId || (requestId !== mediaId ? requestId : undefined)
-          const plexInfo = await fetchPlexConnectInfoCached(primaryTarget, {
-            tmdbId: numericTmdb ? String(numericTmdb) : undefined,
-            title: mediaTitle || undefined,
-            mediaType,
-          })
-          const ratingKey = String(plexInfo?.ratingKey || plexInfo?.rating_key || '')
-          const baseUrl = String(plexInfo?.baseUrl || plexInfo?.base_url || '')
-          const token = String(plexInfo?.token || '')
-          const provider = String(plexInfo?.provider || 'plex')
-          const providerLabel = String(plexInfo?.providerLabel || plexInfo?.provider_label || 'Plex')
-          const serverName = String(plexInfo?.serverName || plexInfo?.server_name || 'Plex')
-          const title = String(plexInfo?.title || '')
-          const mediaTypeVal = (plexInfo?.mediaType || plexInfo?.media_type || mediaType) as 'movie' | 'show' | 'episode'
-          const rawSeason = plexInfo?.seasonNumber ?? plexInfo?.season_number
-          const seasonNumber = rawSeason != null ? Number(rawSeason) : undefined
-          const rawEpisode = plexInfo?.episodeNumber ?? plexInfo?.episode_number
-          const episodeNumber = rawEpisode != null ? Number(rawEpisode) : undefined
-          const rawTitle = plexInfo?.episodeTitle ?? plexInfo?.episode_title
-          const episodeTitle = rawTitle ? String(rawTitle) : undefined
-          const viewOffset = Number(plexInfo?.viewOffset ?? plexInfo?.view_offset ?? 0)
-          const duration = Number(plexInfo?.duration ?? 0)
-          const progressPercent = Number(plexInfo?.progressPercent ?? plexInfo?.progress_percent ?? 0)
-          const viewed = Boolean(plexInfo?.viewed)
+          const numId = Number(requestId)
+          const term = numId && !isNaN(numId) ? lookupTmdbTerm(numId) : (mediaTitle || requestId)
+          if (mediaType === 'movie') {
+            const { data } = await apiClient.get<ArrLookupItem[]>(
+              `/library/nodes/${activeServer.id}/radarr/lookup`,
+              { params: { term } },
+            )
+            const results = data || []
+            const match = numId && !isNaN(numId) ? matchLookupByTmdb(results, numId) : results[0] || null
+            const status = radarrStatusFromLookup(match)
 
-          if (ratingKey && baseUrl && token && plexInfo) {
-            const streamSession = buildPlexPlaybackSession(plexInfo, {
-              title: title || (mediaTypeVal === 'movie' ? (mediaTitle || 'Movie') : 'Stream'),
-              subtitle: episodeTitle ? `S${seasonNumber}:E${episodeNumber} · ${episodeTitle}` : undefined,
-            })
-
-            playList.push({
-              pluginId: 'backend-plex',
-              label: providerLabel,
+            requestWidgets.push({
+              pluginId: 'server-radarr',
+              label: `${activeServer.name} (Radarr)`,
               props: {
-                mediaType: mediaType as 'movie' | 'show',
-                mediaId,
+                label: 'Radarr',
+                mediaType: 'movie',
+                mediaId: requestId,
                 instances: [
                   {
-                    id: `${provider}|${ratingKey}`,
-                    serverId: String(plexInfo?.serverId || plexInfo?.server_id || 'default'),
-                    name: serverName,
-                    ratingKey,
-                    baseUrl,
-                    token,
-                    provider,
-                    providerLabel,
-                    serverName,
-                    mediaType: mediaTypeVal,
-                    seasonNumber,
-                    episodeNumber,
-                    episodeTitle,
-                    viewOffset,
-                    duration,
-                    progressPercent,
-                    viewed,
-                    title: title || 'Stream',
-                    baseUrls: streamSession.baseUrls,
-                    directUrl: streamSession.directUrl,
-                    hlsUrl: streamSession.hlsUrl,
-                    audioTracks: streamSession.audioTracks,
-                    subtitles: streamSession.subtitles,
-                    streamSession,
+                    id: String(activeServer.id),
+                    name: `${activeServer.name} Radarr`,
+                    status,
+                  },
+                ],
+              },
+            })
+          } else if (mediaType === 'show') {
+            const { data } = await apiClient.get<ArrLookupItem[]>(
+              `/library/nodes/${activeServer.id}/sonarr/lookup`,
+              { params: { term } },
+            )
+            const results = data || []
+            const match = numId && !isNaN(numId) ? matchLookupByTmdb(results, numId) : results[0] || null
+            const status = sonarrStatusFromLookup(match)
+
+            requestWidgets.push({
+              pluginId: 'server-sonarr',
+              label: `${activeServer.name} (Sonarr)`,
+              props: {
+                label: 'Sonarr',
+                mediaType: 'show',
+                mediaId: requestId,
+                instances: [
+                  {
+                    id: String(activeServer.id),
+                    name: `${activeServer.name} Sonarr`,
+                    status,
                   },
                 ],
               },
             })
           }
-        } catch {
-          // Plex server connect-info not available for this media item
+        } catch (err) {
+          console.warn('Failed to query server arr media status:', err)
         }
       }
-    }
 
-    setWidgets(requestWidgets)
-    setPlayWidgets(playList)
-    setLoading(false)
-  }, [requestId, mediaType, mediaId, tmdbId, mediaTitle, activeServer])
+      // Check backend Plex connect-info if no play widgets found yet
+      if (playList.length === 0) {
+        const primaryTarget = mediaId || requestId || tmdbId
+        if (primaryTarget) {
+          try {
+            const numericTmdb = tmdbId || (requestId !== mediaId ? requestId : undefined)
+            const plexInfo = await fetchPlexConnectInfoCached(primaryTarget, {
+              tmdbId: numericTmdb ? String(numericTmdb) : undefined,
+              title: mediaTitle || undefined,
+              mediaType,
+            })
+            const ratingKey = String(plexInfo?.ratingKey || plexInfo?.rating_key || '')
+            const baseUrl = String(plexInfo?.baseUrl || plexInfo?.base_url || '')
+            const token = String(plexInfo?.token || '')
+            const provider = String(plexInfo?.provider || 'plex')
+            const providerLabel = String(plexInfo?.providerLabel || plexInfo?.provider_label || 'Plex')
+            const serverName = String(plexInfo?.serverName || plexInfo?.server_name || 'Plex')
+            const title = String(plexInfo?.title || '')
+            const mediaTypeVal = (plexInfo?.mediaType || plexInfo?.media_type || mediaType) as 'movie' | 'show' | 'episode'
+            const rawSeason = plexInfo?.seasonNumber ?? plexInfo?.season_number
+            const seasonNumber = rawSeason != null ? Number(rawSeason) : undefined
+            const rawEpisode = plexInfo?.episodeNumber ?? plexInfo?.episode_number
+            const episodeNumber = rawEpisode != null ? Number(rawEpisode) : undefined
+            const rawTitle = plexInfo?.episodeTitle ?? plexInfo?.episode_title
+            const episodeTitle = rawTitle ? String(rawTitle) : undefined
+            const viewOffset = Number(plexInfo?.viewOffset ?? plexInfo?.view_offset ?? 0)
+            const duration = Number(plexInfo?.duration ?? 0)
+            const progressPercent = Number(plexInfo?.progressPercent ?? plexInfo?.progress_percent ?? 0)
+            const viewed = Boolean(plexInfo?.viewed)
 
-  useEffect(() => {
-    if (!enabled) return
-    Promise.resolve().then(() => {
-      loadSlots()
+            if (ratingKey && baseUrl && token && plexInfo) {
+              const streamSession = buildPlexPlaybackSession(plexInfo, {
+                title: title || (mediaTypeVal === 'movie' ? (mediaTitle || 'Movie') : 'Stream'),
+                subtitle: episodeTitle ? `S${seasonNumber}:E${episodeNumber} · ${episodeTitle}` : undefined,
+              })
+
+              playList.push({
+                pluginId: 'backend-plex',
+                label: providerLabel,
+                props: {
+                  mediaType: mediaType as 'movie' | 'show',
+                  mediaId,
+                  instances: [
+                    {
+                      id: `${provider}|${ratingKey}`,
+                      serverId: String(plexInfo?.serverId || plexInfo?.server_id || 'default'),
+                      name: serverName,
+                      ratingKey,
+                      baseUrl,
+                      token,
+                      provider,
+                      providerLabel,
+                      serverName,
+                      mediaType: mediaTypeVal,
+                      seasonNumber,
+                      episodeNumber,
+                      episodeTitle,
+                      viewOffset,
+                      duration,
+                      progressPercent,
+                      viewed,
+                      title: title || 'Stream',
+                      baseUrls: streamSession.baseUrls,
+                      directUrl: streamSession.directUrl,
+                      hlsUrl: streamSession.hlsUrl,
+                      audioTracks: streamSession.audioTracks,
+                      subtitles: streamSession.subtitles,
+                      streamSession,
+                    },
+                  ],
+                },
+              })
+            }
+          } catch {
+            // Plex server connect-info not available for this media item
+          }
+        }
+      }
+
+      return { widgets: requestWidgets, playWidgets: playList }
+    },
+    enabled: enabled && mediaType !== 'game',
+    staleTime: 10_000,
+    refetchInterval: (query) => {
+      const qData = query.state.data
+      const hasPending = qData?.widgets.some((w) =>
+        w.props.instances.some(
+          (i) => i.status === 'requested' || (i as any).status === 'downloading',
+        ),
+      )
+      const hasPlay = (qData?.playWidgets.length ?? 0) > 0
+      return hasPending && !hasPlay ? 3500 : false
+    },
+  })
+
+  const widgets = queryResult.data?.widgets ?? []
+  const playWidgets = queryResult.data?.playWidgets ?? []
+  const loading = queryResult.isLoading && !queryResult.data
+
+  const refreshPlayWidgets = useCallback(async () => {
+    return queryClient.invalidateQueries({
+      queryKey: mediaDetailPluginActionKeys.detail(mediaType, requestId, activeServerId),
     })
-  }, [loadSlots, enabled])
+  }, [queryClient, mediaType, requestId, activeServerId])
 
   const handleRequest = async (pluginId: string, instanceId: string) => {
     setRequesting(instanceId)
@@ -289,7 +308,9 @@ export function useMediaDetailPluginActions(
             search_for_missing_episodes: true,
           })
         }
-        await loadSlots()
+        await queryClient.invalidateQueries({ queryKey: mediaDetailPluginActionKeys.all })
+        await queryClient.invalidateQueries({ queryKey: ['request-media'] })
+        await queryClient.invalidateQueries({ queryKey: ['media-activity'] })
       } catch (err) {
         alert(err instanceof Error ? err.message : 'Failed to send request to server')
       } finally {
@@ -306,13 +327,15 @@ export function useMediaDetailPluginActions(
 
     try {
       const method = mediaType === 'movie' ? 'request-movie' : 'request-series'
-      const res = await api.callData(pluginId, method, { instanceId, tmdbId: requestId }) as {
+      const res = (await api.callData(pluginId, method, { instanceId, tmdbId: requestId })) as {
         success?: boolean
         error?: string
         message?: string
       } | null
       if (res?.success) {
-        await loadSlots()
+        await queryClient.invalidateQueries({ queryKey: mediaDetailPluginActionKeys.all })
+        await queryClient.invalidateQueries({ queryKey: ['request-media'] })
+        await queryClient.invalidateQueries({ queryKey: ['media-activity'] })
       } else {
         alert(res?.error || 'Failed to request')
       }
@@ -452,8 +475,11 @@ export function useMediaDetailPluginActions(
     }
   }
 
-  const hasLibraryStatus = widgets.some(w =>
-    (w.props.instances || []).some(i => i.status === 'requested' || i.status === 'downloaded' || i.status === 'error'))
+  const hasLibraryStatus = widgets.some((w) =>
+    (w.props.instances || []).some(
+      (i) => i.status === 'requested' || i.status === 'downloaded' || i.status === 'error',
+    ),
+  )
 
   return {
     widgets,
@@ -463,6 +489,6 @@ export function useMediaDetailPluginActions(
     handleRequest,
     handlePlay,
     hasLibraryStatus,
-    refreshPlayWidgets: loadSlots,
+    refreshPlayWidgets,
   }
 }

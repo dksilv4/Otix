@@ -47,7 +47,7 @@ export const LibraryScanBar = ({
               onClick={triggerScan}
               disabled={isScanning}
               className={cn(
-                'inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer shadow-xs',
+                'inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-colors cursor-pointer shadow-xs',
                 isScanning
                   ? 'bg-primary/80 text-primary-foreground opacity-90'
                   : 'bg-primary hover:bg-primary/90 text-primary-foreground active:scale-95',
@@ -61,7 +61,7 @@ export const LibraryScanBar = ({
               <button
                 type="button"
                 onClick={() => setIsMatchCenterOpen(true)}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)] text-muted-foreground hover:text-foreground border border-white/[0.04] transition-all cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)] text-muted-foreground hover:text-foreground border border-white/[0.04] transition-colors cursor-pointer"
               >
                 <Sparkles className="h-3.5 w-3.5 text-primary" />
                 <span>Review Matches ({pendingCount})</span>
@@ -82,7 +82,7 @@ export const LibraryScanBar = ({
 
       {/* Results Summary Banner (soft glassmorphism, dismissible) */}
       {isBannerVisible && (
-        <div className="rounded-2xl bg-[var(--dk-surface-glass)]/60 backdrop-blur-xl border border-white/[0.04] p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-all animate-in fade-in duration-200">
+        <div className="rounded-2xl bg-[var(--dk-surface-glass)]/60 backdrop-blur-xl border border-white/[0.04] p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-colors animate-in fade-in duration-200">
           <div className="flex items-center gap-3 min-w-0">
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary shrink-0">
               <Gamepad2 className="h-4.5 w-4.5" />

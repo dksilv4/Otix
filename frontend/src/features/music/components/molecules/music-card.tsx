@@ -25,7 +25,7 @@ export const MusicCard = ({
   return (
     <div
       onClick={onClick}
-      className="group relative flex flex-col gap-2 rounded-2xl p-3 bg-[var(--dk-surface-glass)] shadow-[var(--dk-shadow-sm)] border border-white/[0.04] transition-all duration-300 hover:scale-[1.02] cursor-pointer"
+      className="group relative flex flex-col gap-2 rounded-2xl p-3 bg-[var(--dk-surface-glass)] shadow-[var(--dk-shadow-sm)] border border-white/[0.04] transition-colors duration-300 hover:scale-[1.02] cursor-pointer"
     >
       <div className="relative aspect-square w-full overflow-hidden rounded-xl bg-[var(--dk-surface-raised)]">
         {imageUrl ? (

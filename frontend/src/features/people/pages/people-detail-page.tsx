@@ -17,7 +17,7 @@ import { RatingsSection } from '@/features/review/organisms/ratings-section'
 
 const StatBox = ({ label, value }: { label: string; value: string | number }) => {
   return (
-    <div className="rounded-2xl bg-[var(--dk-surface-ghost)] px-4 py-3.5 text-center shadow-xs hover:bg-[var(--dk-surface-ghost-hover)] hover:-translate-y-0.5 transition-all duration-300 min-w-[110px] shrink-0">
+    <div className="rounded-2xl bg-[var(--dk-surface-ghost)] px-4 py-3.5 text-center shadow-xs hover:bg-[var(--dk-surface-ghost-hover)] hover:-translate-y-0.5 transition-colors duration-300 min-w-[110px] shrink-0">
       <div className="text-2xl font-black text-foreground tracking-tight whitespace-nowrap truncate">{value}</div>
       <div className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground mt-1 whitespace-nowrap truncate">{label}</div>
     </div>
@@ -168,7 +168,7 @@ export const PeopleDetailPage = () => {
         {person.photoUrl && (
           <>
             <div 
-              className="absolute inset-0 -z-10 bg-cover bg-center opacity-20 blur-[40px] scale-110 select-none pointer-events-none transition-all duration-700"
+              className="absolute inset-0 -z-10 bg-cover bg-center opacity-20 blur-[40px] scale-110 select-none pointer-events-none transition duration-700"
               style={{ backgroundImage: `url(${person.photoUrl})` }}
             />
             {/* Vignette overlay for depth */}
@@ -181,7 +181,7 @@ export const PeopleDetailPage = () => {
 
         <div className="flex flex-col items-center gap-8 sm:flex-row sm:items-start relative z-10">
           {/* Avatar Photo */}
-          <div className="w-36 sm:w-44 aspect-[2/3] shrink-0 overflow-hidden rounded-2xl shadow-2xl shadow-black/40 scale-[1.02] hover:scale-[1.04] transition-all duration-500 bg-muted">
+          <div className="w-36 sm:w-44 aspect-[2/3] shrink-0 overflow-hidden rounded-2xl shadow-2xl shadow-black/40 scale-[1.02] hover:scale-[1.04] transition duration-500 bg-muted">
             <Image
               src={person.photoUrl ?? undefined}
               alt={person.name}
@@ -211,7 +211,7 @@ export const PeopleDetailPage = () => {
                   onClick={handleFollowToggle}
                   disabled={follow.isPending || unfollow.isPending}
                   className={cn(
-                    'inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-bold uppercase tracking-wider transition-all duration-200 shadow-sm active:scale-95 cursor-pointer',
+                    'inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-bold uppercase tracking-wider transition-colors duration-200 shadow-sm active:scale-95 cursor-pointer',
                     person.isFollowed
                       ? 'bg-[var(--dk-surface-glass-hover)] text-foreground hover:bg-[var(--dk-surface-ghost-active)]'
                       : 'bg-primary text-primary-foreground hover:bg-primary/90 hover:shadow-primary/20',
@@ -260,7 +260,7 @@ export const PeopleDetailPage = () => {
             <div className="mt-4 flex flex-wrap justify-center gap-2.5 text-xs font-medium text-muted-foreground sm:justify-start">
               {person.birthday && (
                 <span className="flex items-center gap-1.5 bg-[var(--dk-surface-glass)] backdrop-blur-sm px-3 py-1.5 rounded-lg shadow-xs">
-                  <svg className="h-3.5 w-3.5 opacity-60" viewBox="0 0 20 20" fill="currentColor">
+                  <svg aria-hidden="true" className="h-3.5 w-3.5 opacity-60" viewBox="0 0 20 20" fill="currentColor">
                     <path fillRule="evenodd" d="M6 2a1 1 0 00-1-1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V4a2 2 0 00-2-2h-1V1a1 1 0 10-2 0v1H7V1a1 1 0 00-1-1zM4 5h12v2H4V5zm0 4h12v6H4V9z" clipRule="evenodd" />
                   </svg>
                   <span>Born: {formatDate(person.birthday)}</span>
@@ -268,7 +268,7 @@ export const PeopleDetailPage = () => {
               )}
               {person.deathday && (
                 <span className="flex items-center gap-1.5 bg-[var(--dk-surface-glass)] backdrop-blur-sm px-3 py-1.5 rounded-lg text-rose-500 dark:text-rose-400 shadow-xs">
-                  <svg className="h-3.5 w-3.5 opacity-60" viewBox="0 0 20 20" fill="currentColor">
+                  <svg aria-hidden="true" className="h-3.5 w-3.5 opacity-60" viewBox="0 0 20 20" fill="currentColor">
                     <path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd" />
                   </svg>
                   <span>Died: {formatDate(person.deathday)}</span>
@@ -276,7 +276,7 @@ export const PeopleDetailPage = () => {
               )}
               {person.placeOfBirth && (
                 <span className="flex items-center gap-1.5 bg-[var(--dk-surface-glass)] backdrop-blur-sm px-3 py-1.5 rounded-lg shadow-xs">
-                  <svg className="h-3.5 w-3.5 opacity-60" viewBox="0 0 20 20" fill="currentColor">
+                  <svg aria-hidden="true" className="h-3.5 w-3.5 opacity-60" viewBox="0 0 20 20" fill="currentColor">
                     <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
                   </svg>
                   <span>{person.placeOfBirth}</span>
@@ -288,7 +288,7 @@ export const PeopleDetailPage = () => {
             {person.biography && (
               <div className="mt-4 max-w-2xl text-sm leading-relaxed text-foreground/80 relative">
                 <div className={cn(
-                  "transition-all duration-500 overflow-hidden relative",
+                  "transition-colors duration-500 overflow-hidden relative",
                   showBioExpand && !bioExpanded ? "max-h-24" : "max-h-[1000px]"
                 )}>
                   <p className="whitespace-pre-line">{person.biography}</p>
@@ -303,7 +303,7 @@ export const PeopleDetailPage = () => {
                     className="mt-2 text-xs font-semibold text-primary hover:text-primary/80 uppercase tracking-wider flex items-center gap-1.5 transition-colors cursor-pointer"
                   >
                     <span>{bioExpanded ? 'Show less' : 'Read biography'}</span>
-                    <svg className={cn("h-3.5 w-3.5 transition-transform duration-300", bioExpanded ? "rotate-180" : "")} viewBox="0 0 20 20" fill="currentColor">
+                    <svg aria-hidden="true" className={cn("h-3.5 w-3.5 transition-transform duration-300", bioExpanded ? "rotate-180" : "")} viewBox="0 0 20 20" fill="currentColor">
                       <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
                     </svg>
                   </button>

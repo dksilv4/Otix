@@ -369,7 +369,7 @@ export const UserProfilePage = () => {
                 href={profile.steam.profileurl ?? '#'}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 bg-[var(--dk-surface-ghost)] text-muted-foreground hover:bg-[var(--dk-surface-ghost-hover)] hover:text-foreground shadow-xs"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors duration-200 bg-[var(--dk-surface-ghost)] text-muted-foreground hover:bg-[var(--dk-surface-ghost-hover)] hover:text-foreground shadow-xs"
               >
                 <SteamIcon className="h-3.5 w-3.5" />
                 Steam
@@ -380,9 +380,9 @@ export const UserProfilePage = () => {
                 href={profile.plex.username ? `https://app.plex.tv/desktop/#!/u/${profile.plex.username}` : '#'}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 bg-[var(--dk-surface-ghost)] text-muted-foreground hover:bg-[var(--dk-surface-ghost-hover)] hover:text-foreground shadow-xs"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors duration-200 bg-[var(--dk-surface-ghost)] text-muted-foreground hover:bg-[var(--dk-surface-ghost-hover)] hover:text-foreground shadow-xs"
               >
-                <PlexIcon className="h-3.5 w-3.5 text-[#e5a00d]" />
+                <PlexIcon className="h-3.5 w-3.5 text-amber-500" />
                 Plex
               </a>
             )}
@@ -391,9 +391,9 @@ export const UserProfilePage = () => {
                 href={`https://www.themoviedb.org/u/${profile.tmdbUsername}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 bg-[var(--dk-surface-ghost)] text-muted-foreground hover:bg-[var(--dk-surface-ghost-hover)] hover:text-foreground shadow-xs"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors duration-200 bg-[var(--dk-surface-ghost)] text-muted-foreground hover:bg-[var(--dk-surface-ghost-hover)] hover:text-foreground shadow-xs"
               >
-                <TmdbIcon className="h-3.5 w-3.5 text-[#01b4e4]" />
+                <TmdbIcon className="h-3.5 w-3.5 text-sky-400" />
                 TMDb
               </a>
             )}

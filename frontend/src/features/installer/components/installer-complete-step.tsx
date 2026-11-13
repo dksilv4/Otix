@@ -29,7 +29,7 @@ export const InstallerCompleteStep = ({
           className="relative flex items-center justify-center"
         >
           <div className="absolute -inset-4 w-28 h-28 rounded-full bg-emerald-500/25 blur-3xl animate-pulse" />
-          <div className="relative p-5 rounded-3xl bg-white/[0.04] shadow-[0_16px_48px_rgba(0,0,0,0.5)] text-emerald-400 backdrop-blur-2xl">
+          <div className="relative p-5 rounded-3xl bg-white/[0.04] shadow-2xl text-emerald-400 backdrop-blur-2xl">
             <CheckCircle2 className="h-12 w-12" />
           </div>
         </motion.div>
@@ -54,7 +54,7 @@ export const InstallerCompleteStep = ({
             variant="default"
             size="lg"
             onClick={onFinish}
-            className="w-full py-3.5 px-8 rounded-2xl text-sm font-semibold flex items-center justify-center gap-2 shadow-[0_0_36px_rgba(var(--primary-rgb),0.42)] active:scale-[0.98] transition-all cursor-pointer"
+            className="w-full py-3.5 px-8 rounded-2xl text-sm font-semibold flex items-center justify-center gap-2 shadow-[0_0_36px_rgba(var(--primary-rgb),0.42)] active:scale-[0.98] transition-colors cursor-pointer"
           >
             <Rocket className="h-4 w-4" />
             <span>Launch Otix</span>

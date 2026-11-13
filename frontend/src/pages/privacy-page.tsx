@@ -171,7 +171,7 @@ export const PrivacyPage = () => {
           Core Privacy Commitments At A Glance
         </h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="rounded-2xl p-5 bg-[var(--dk-surface-base)] backdrop-blur-xl border border-[var(--dk-separator)] shadow-[var(--dk-shadow-xs)] hover:shadow-[var(--dk-shadow-sm)] transition-all space-y-2.5">
+          <div className="rounded-2xl p-5 bg-[var(--dk-surface-base)] backdrop-blur-xl border border-[var(--dk-separator)] shadow-[var(--dk-shadow-xs)] hover:shadow-[var(--dk-shadow-sm)] transition-colors space-y-2.5">
             <div className="h-8 w-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
               <ShieldOff className="h-4 w-4" />
             </div>
@@ -181,7 +181,7 @@ export const PrivacyPage = () => {
             </p>
           </div>
 
-          <div className="rounded-2xl p-5 bg-[var(--dk-surface-base)] backdrop-blur-xl border border-[var(--dk-separator)] shadow-[var(--dk-shadow-xs)] hover:shadow-[var(--dk-shadow-sm)] transition-all space-y-2.5">
+          <div className="rounded-2xl p-5 bg-[var(--dk-surface-base)] backdrop-blur-xl border border-[var(--dk-separator)] shadow-[var(--dk-shadow-xs)] hover:shadow-[var(--dk-shadow-sm)] transition-colors space-y-2.5">
             <div className="h-8 w-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
               <Server className="h-4 w-4" />
             </div>
@@ -191,7 +191,7 @@ export const PrivacyPage = () => {
             </p>
           </div>
 
-          <div className="rounded-2xl p-5 bg-[var(--dk-surface-base)] backdrop-blur-xl border border-[var(--dk-separator)] shadow-[var(--dk-shadow-xs)] hover:shadow-[var(--dk-shadow-sm)] transition-all space-y-2.5">
+          <div className="rounded-2xl p-5 bg-[var(--dk-surface-base)] backdrop-blur-xl border border-[var(--dk-separator)] shadow-[var(--dk-shadow-xs)] hover:shadow-[var(--dk-shadow-sm)] transition-colors space-y-2.5">
             <div className="h-8 w-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
               <Lock className="h-4 w-4" />
             </div>
@@ -201,7 +201,7 @@ export const PrivacyPage = () => {
             </p>
           </div>
 
-          <div className="rounded-2xl p-5 bg-[var(--dk-surface-base)] backdrop-blur-xl border border-[var(--dk-separator)] shadow-[var(--dk-shadow-xs)] hover:shadow-[var(--dk-shadow-sm)] transition-all space-y-2.5">
+          <div className="rounded-2xl p-5 bg-[var(--dk-surface-base)] backdrop-blur-xl border border-[var(--dk-separator)] shadow-[var(--dk-shadow-xs)] hover:shadow-[var(--dk-shadow-sm)] transition-colors space-y-2.5">
             <div className="h-8 w-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
               <Trash2 className="h-4 w-4" />
             </div>
@@ -224,7 +224,7 @@ export const PrivacyPage = () => {
               key={sec.id}
               type="button"
               onClick={() => scrollToLegalSection(sec.id)}
-              className="shrink-0 text-xs px-2.5 py-1 rounded-lg bg-[var(--dk-surface-base)] text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-raised)] transition-all cursor-pointer font-medium"
+              className="shrink-0 text-xs px-2.5 py-1 rounded-lg bg-[var(--dk-surface-base)] text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-raised)] transition-colors cursor-pointer font-medium"
             >
               {sec.label}
             </button>

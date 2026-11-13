@@ -104,7 +104,7 @@ export const LauncherPerformanceDiagnosticsModal = ({
                 return (
                   <div
                     key={`fps-bar-${idx}`}
-                    className="flex-1 bg-primary/40 hover:bg-primary rounded-t-sm transition-all"
+                    className="flex-1 bg-primary/40 hover:bg-primary rounded-t-sm transition-colors"
                     style={{ height: `${heightPercent}%` }}
                     title={`${sample} FPS`}
                   />
@@ -253,7 +253,7 @@ export const LauncherPerformanceDiagnosticsModal = ({
           <button
             type="button"
             onClick={resetHistory}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)] text-xs font-medium text-muted-foreground hover:text-foreground transition-all cursor-pointer border border-white/[0.04]"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)] text-xs font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer border border-white/[0.04]"
           >
             <RotateCcw size={12} />
             <span>Reset Telemetry History</span>
@@ -262,7 +262,7 @@ export const LauncherPerformanceDiagnosticsModal = ({
           <button
             type="button"
             onClick={() => onOpenChange(false)}
-            className="px-5 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-bold hover:bg-primary/90 transition-all cursor-pointer shadow-sm"
+            className="px-5 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-bold hover:bg-primary/90 transition cursor-pointer shadow-sm"
           >
             Done
           </button>

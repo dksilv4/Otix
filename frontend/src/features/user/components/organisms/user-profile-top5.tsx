@@ -95,7 +95,7 @@ export const UserProfileTop5 = ({
             {items.slice(0, 5).map((item, idx) => (
               <div
                 key={item.id}
-                className="group relative flex flex-col rounded-2xl overflow-hidden bg-[var(--dk-surface-base)] border border-[var(--dk-separator)] hover:scale-[1.02] transition-all duration-200 shadow-sm"
+                className="group relative flex flex-col rounded-2xl overflow-hidden bg-[var(--dk-surface-base)] border border-[var(--dk-separator)] hover:scale-[1.02] transition-colors duration-200 shadow-sm"
               >
                 <div className="relative aspect-[2/3] w-full bg-[var(--dk-surface-ghost)] overflow-hidden">
                   {item.posterUrl ? (

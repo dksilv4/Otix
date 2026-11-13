@@ -55,7 +55,7 @@ export const Cs2SteamTacticalDock = ({ telemetry }: { telemetry: UniversalGameTe
   return (
     <div
       data-testid="cs2-live-telemetry"
-      className="w-full rounded-2xl bg-[#0c0e14]/90 border border-white/[0.08] backdrop-blur-2xl p-4 flex flex-col gap-3 shadow-[0_12px_40px_rgba(0,0,0,0.5)] text-xs transition-all font-sans relative overflow-hidden"
+      className="w-full rounded-2xl bg-background/90 border border-white/[0.08] backdrop-blur-2xl p-4 flex flex-col gap-3 shadow-2xl text-xs transition-colors font-sans relative overflow-hidden"
     >
       {/* 1st Row: Map + Round + Inline C4 Alert + Floating Cash + Connected Team Scores */}
       <div className="flex items-center justify-between gap-2">
@@ -73,7 +73,7 @@ export const Cs2SteamTacticalDock = ({ telemetry }: { telemetry: UniversalGameTe
 
           {/* Compact Inline Bomb Planted Tag */}
           {telemetry.alert && (
-            <span className="flex items-center gap-1 font-mono text-[11px] font-black uppercase tracking-wider text-rose-500 drop-shadow-[0_0_8px_rgba(244,63,94,0.6)] animate-pulse shrink-0">
+            <span className="flex items-center gap-1 font-mono text-[11px] font-black uppercase tracking-wider text-rose-500 drop-shadow-md animate-pulse shrink-0">
               <Flame className="h-3.5 w-3.5" />
               {telemetry.alert.text}
             </span>
@@ -93,7 +93,7 @@ export const Cs2SteamTacticalDock = ({ telemetry }: { telemetry: UniversalGameTe
                 <Cs2RealC4Icon className="h-3.5 w-3.5" />
               </span>
             )}
-            <span className="font-black text-sm text-[#70b5e8] drop-shadow-[0_0_8px_rgba(112,181,232,0.45)] tracking-tight">
+            <span className="font-black text-sm text-cs2-ct drop-shadow-md tracking-tight">
               ${money.toLocaleString()}
             </span>
           </div>
@@ -103,7 +103,7 @@ export const Cs2SteamTacticalDock = ({ telemetry }: { telemetry: UniversalGameTe
             <div className="flex items-center rounded-lg overflow-hidden font-mono text-sm font-black shrink-0 shadow-md">
               {/* CT Side */}
               <div
-                className={`px-2.5 py-1 bg-cs2-ct text-white relative transition-all flex items-center gap-1.5 ${
+                className={`px-2.5 py-1 bg-cs2-ct text-white relative transition-colors flex items-center gap-1.5 ${
                   isCt ? 'opacity-100' : 'opacity-70'
                 }`}
               >
@@ -111,13 +111,13 @@ export const Cs2SteamTacticalDock = ({ telemetry }: { telemetry: UniversalGameTe
                 <span className="text-cs2-ct sr-only">{labelA} {scoreA}</span>
                 <span aria-hidden="true">{labelA} {scoreA}</span>
                 {isCt && (
-                  <div className="absolute bottom-0 left-0 right-0 h-[2.5px] bg-white shadow-[0_0_8px_rgba(255,255,255,0.9)]" />
+                  <div className="absolute bottom-0 left-0 right-0 h-[2.5px] bg-white shadow-md" />
                 )}
               </div>
 
               {/* T Side */}
               <div
-                className={`px-2.5 py-1 bg-cs2-t text-white relative transition-all flex items-center gap-1.5 ${
+                className={`px-2.5 py-1 bg-cs2-t text-white relative transition-colors flex items-center gap-1.5 ${
                   !isCt ? 'opacity-100' : 'opacity-70'
                 }`}
               >
@@ -125,7 +125,7 @@ export const Cs2SteamTacticalDock = ({ telemetry }: { telemetry: UniversalGameTe
                 <span aria-hidden="true">{scoreB} {labelB}</span>
                 <Cs2TLogo className="h-3.5 w-3.5 shrink-0" />
                 {!isCt && (
-                  <div className="absolute bottom-0 left-0 right-0 h-[2.5px] bg-white shadow-[0_0_8px_rgba(255,255,255,0.9)]" />
+                  <div className="absolute bottom-0 left-0 right-0 h-[2.5px] bg-white shadow-md" />
                 )}
               </div>
 
@@ -167,7 +167,7 @@ export const Cs2SteamTacticalDock = ({ telemetry }: { telemetry: UniversalGameTe
               {isDead ? (
                 <Skull className="h-4 w-4 text-rose-500" />
               ) : (
-                <Cs2HealthCrossIcon className="h-4 w-4 shadow-[0_0_6px_rgba(239,68,68,0.5)]" />
+                <Cs2HealthCrossIcon className="h-4 w-4 shadow-md" />
               )}
             </span>
           </div>
@@ -179,9 +179,9 @@ export const Cs2SteamTacticalDock = ({ telemetry }: { telemetry: UniversalGameTe
               return (
                 <div
                   key={i}
-                  className={`h-full rounded-[1px] transition-all ${
+                  className={`h-full rounded-[1px] transition-colors ${
                     active
-                      ? 'bg-white shadow-[0_0_6px_rgba(255,255,255,0.8)]'
+                      ? 'bg-white shadow-md'
                       : isDead
                         ? 'bg-rose-500/20'
                         : 'bg-white/10'
@@ -217,7 +217,7 @@ export const Cs2SteamTacticalDock = ({ telemetry }: { telemetry: UniversalGameTe
             <span className="flex items-center">
               <Cs2HelmetIcon
                 className={`h-4 w-4 ${
-                  isDead ? 'text-muted-foreground' : 'text-cyan-300 drop-shadow-[0_0_6px_rgba(103,232,249,0.4)]'
+                  isDead ? 'text-muted-foreground' : 'text-cyan-300 drop-shadow-md'
                 }`}
               />
             </span>
@@ -226,8 +226,8 @@ export const Cs2SteamTacticalDock = ({ telemetry }: { telemetry: UniversalGameTe
           {/* Armor Progress Bar */}
           <div className="h-1.5 rounded-full bg-white/10 overflow-hidden">
             <div
-              className={`h-full transition-all duration-300 ${
-                isDead ? 'bg-white/10' : 'bg-cyan-400 shadow-[0_0_6px_rgba(103,232,249,0.4)]'
+              className={`h-full transition-colors duration-300 ${
+                isDead ? 'bg-white/10' : 'bg-cyan-400 shadow-md'
               }`}
               style={{ width: `${apPercent}%` }}
             />
@@ -238,9 +238,9 @@ export const Cs2SteamTacticalDock = ({ telemetry }: { telemetry: UniversalGameTe
       {/* 3rd Row: Authentic CS2 3-Slot Real Weapon Stack (Base Models, Underneath, Full Width) */}
       <div className="grid grid-cols-3 gap-3 w-full pt-2.5 pb-0.5 border-t border-white/[0.06] items-center">
         {/* Slot 1: Active Primary Real Weapon (Base Model) */}
-        <div className={`flex items-center justify-between min-w-0 pr-2 transition-all ${
+        <div className={`flex items-center justify-between min-w-0 pr-2 transition-colors ${
           activeSlot === 1
-            ? 'text-[#70b5e8] drop-shadow-[0_0_6px_rgba(112,181,232,0.45)]'
+            ? 'text-cs2-ct drop-shadow-md'
             : 'text-white/60'
         }`}>
           <div className="flex flex-col min-w-0">
@@ -268,9 +268,9 @@ export const Cs2SteamTacticalDock = ({ telemetry }: { telemetry: UniversalGameTe
         </div>
 
         {/* Slot 2: Secondary Pistol Real Icon (Base Model) */}
-        <div className={`flex items-center justify-between min-w-0 pr-2 transition-all ${
+        <div className={`flex items-center justify-between min-w-0 pr-2 transition-colors ${
           activeSlot === 2
-            ? 'text-[#70b5e8] drop-shadow-[0_0_6px_rgba(112,181,232,0.45)]'
+            ? 'text-cs2-ct drop-shadow-md'
             : 'text-white/70'
         }`}>
           <div className="flex flex-col min-w-0">
@@ -298,9 +298,9 @@ export const Cs2SteamTacticalDock = ({ telemetry }: { telemetry: UniversalGameTe
         </div>
 
         {/* Slot 3: Tactical Knife Real Icon (Base Model) */}
-        <div className={`flex items-center justify-between min-w-0 transition-all ${
+        <div className={`flex items-center justify-between min-w-0 transition-colors ${
           activeSlot === 3
-            ? 'text-[#70b5e8] drop-shadow-[0_0_6px_rgba(112,181,232,0.45)]'
+            ? 'text-cs2-ct drop-shadow-md'
             : 'text-white/60'
         }`}>
           <div className="flex flex-col min-w-0">
@@ -336,7 +336,7 @@ export const Cs2SteamTacticalDock = ({ telemetry }: { telemetry: UniversalGameTe
           {mvpsStat && (
             <span className="flex items-center gap-1 text-foreground">
               <strong className="text-foreground font-black">{mvpsStat.value}</strong> MVPs
-              <Trophy className="h-3.5 w-3.5 text-amber-400 drop-shadow-[0_0_6px_rgba(251,191,36,0.5)]" />
+              <Trophy className="h-3.5 w-3.5 text-amber-400 drop-shadow-md" />
             </span>
           )}
         </div>

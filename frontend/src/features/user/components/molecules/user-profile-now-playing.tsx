@@ -49,7 +49,7 @@ export const UserProfileNowPlaying = () => {
             void cycleActiveGame()
           }}
           title={`Running ${gamesToRender.length} games. Click or press Ctrl+Tab to cycle active game focus.`}
-          className="inline-flex items-center gap-1 text-[10px] font-semibold text-primary bg-primary/10 hover:bg-primary/20 active:scale-95 transition-all px-2 py-1 rounded-xl shrink-0 cursor-pointer"
+          className="inline-flex items-center gap-1 text-[10px] font-semibold text-primary bg-primary/10 hover:bg-primary/20 active:scale-95 transition px-2 py-1 rounded-xl shrink-0 cursor-pointer"
         >
           <RotateCw className="h-2.5 w-2.5" />
           <span>+{gamesToRender.length - 1} more</span>

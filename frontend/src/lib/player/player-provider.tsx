@@ -33,27 +33,33 @@ const UniversalPlayerBridge = ({
   universal: UniversalPlayerContextValue
   children: React.ReactNode
 }) => {
+  const isAudio = universal.currentItem?.mediaType === 'audio'
+
   const source: PlayerSource = useMemo((): PlayerSource => {
-    if (!universal.currentItem) return 'none'
+    if (!universal.currentItem || !isAudio) return 'none'
     const s = universal.currentItem.source
     if (s === 'local') return 'local'
     if (s === 'plex') return 'plex'
     if (s === 'jellyfin') return 'jellyfin'
     return 'none'
-  }, [universal.currentItem])
+  }, [universal.currentItem, isAudio])
 
   const currentTrack: PlayerTrackInfo | null = useMemo(() => {
-    if (!universal.currentItem) return null
+    if (!universal.currentItem || !isAudio) return null
     return playableItemToTrack(universal.currentItem)
-  }, [universal.currentItem])
+  }, [universal.currentItem, isAudio])
 
   // Sync playerProgressStore for high-frequency progress consumers (GlobalMusicBar, etc.)
   useEffect(() => {
-    playerProgressStore.setProgress(
-      Math.round(universal.position * 1000),
-      Math.round(universal.duration * 1000),
-    )
-  }, [universal.position, universal.duration])
+    if (isAudio) {
+      playerProgressStore.setProgress(
+        Math.round(universal.position * 1000),
+        Math.round(universal.duration * 1000),
+      )
+    } else {
+      playerProgressStore.setProgress(0, 0)
+    }
+  }, [universal.position, universal.duration, isAudio])
 
   const playPlexTrack = useCallback(
     async (track: PlexTrackInfo) => {
@@ -111,39 +117,57 @@ const UniversalPlayerBridge = ({
   )
 
   const plexQueue = useMemo(
-    () => universal.queue.filter((i) => i.source === 'plex').map(playableItemToPlexTrack),
+    () =>
+      universal.queue
+        .filter((i) => i.source === 'plex' && (i.mediaType === 'audio' || !i.mediaType))
+        .map(playableItemToPlexTrack),
     [universal.queue],
   )
   const plexPreviousTracks = useMemo(
-    () => universal.history.filter((i) => i.source === 'plex').map(playableItemToPlexTrack),
+    () =>
+      universal.history
+        .filter((i) => i.source === 'plex' && (i.mediaType === 'audio' || !i.mediaType))
+        .map(playableItemToPlexTrack),
     [universal.history],
   )
   const jellyfinQueue = useMemo(
-    () => universal.queue.filter((i) => i.source === 'jellyfin').map(playableItemToJellyfinTrack),
+    () =>
+      universal.queue
+        .filter((i) => i.source === 'jellyfin' && (i.mediaType === 'audio' || !i.mediaType))
+        .map(playableItemToJellyfinTrack),
     [universal.queue],
   )
   const jellyfinPreviousTracks = useMemo(
-    () => universal.history.filter((i) => i.source === 'jellyfin').map(playableItemToJellyfinTrack),
+    () =>
+      universal.history
+        .filter((i) => i.source === 'jellyfin' && (i.mediaType === 'audio' || !i.mediaType))
+        .map(playableItemToJellyfinTrack),
     [universal.history],
   )
   const localQueue = useMemo(
-    () => universal.queue.filter((i) => i.source === 'local').map(playableItemToLocalTrack),
+    () =>
+      universal.queue
+        .filter((i) => i.source === 'local' && (i.mediaType === 'audio' || !i.mediaType))
+        .map(playableItemToLocalTrack),
     [universal.queue],
   )
   const localPreviousTracks = useMemo(
-    () => universal.history.filter((i) => i.source === 'local').map(playableItemToLocalTrack),
+    () =>
+      universal.history
+        .filter((i) => i.source === 'local' && (i.mediaType === 'audio' || !i.mediaType))
+        .map(playableItemToLocalTrack),
     [universal.history],
   )
 
   const value: PlayerContextValue = useMemo(
     () => ({
       source,
-      isPlaying: universal.status === 'playing',
+      isPlaying: isAudio && universal.status === 'playing',
       currentTrack,
-      position: Math.round(universal.position * 1000),
-      duration: Math.round(universal.duration * 1000),
+      position: isAudio ? Math.round(universal.position * 1000) : 0,
+      duration: isAudio ? Math.round(universal.duration * 1000) : 0,
       volume: universal.volume,
-      error: universal.error,
+      error: isAudio ? universal.error : null,
       repeatMode: universal.repeatMode,
       isShuffled: universal.isShuffled,
       toggleShuffle: universal.toggleShuffle,
@@ -173,6 +197,7 @@ const UniversalPlayerBridge = ({
       localPreviousTracks,
     }),
     [
+      isAudio,
       source,
       universal.status,
       currentTrack,

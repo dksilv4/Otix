@@ -45,9 +45,7 @@ import { useToggleInteraction, useUserInteractions } from '@/features/interactio
 import { showXPToast } from '@ui/atoms/xp-toast'
 import { cn } from '@/lib/utils'
 
-const MediaHeroLibraryActions = safeLazy(() =>
-  import('./media-hero-library-actions').then((m) => ({ default: m.MediaHeroLibraryActions })),
-)
+import { MediaHeroLibraryActions } from './media-hero-library-actions'
 
 interface MediaHeroProps {
   className?: string
@@ -178,7 +176,7 @@ export const MediaHero = ({ className = '' }: MediaHeroProps) => {
   const trailerIsPrimary = !isAuthenticated
 
   return (
-    <header id="media-hero" className={`relative min-h-[46vh] lg:min-h-[50vh] pb-6 ${className}`}>
+    <header id="media-hero" className={`relative min-h-[46dvh] lg:min-h-[50dvh] pb-6 ${className}`}>
       {/* ── Fixed Backdrop with cinematic depth ── */}
       <div className="fixed pointer-events-none inset-0 z-0 overflow-hidden">
         {heroBackdrop ? (
@@ -221,7 +219,7 @@ export const MediaHero = ({ className = '' }: MediaHeroProps) => {
         <div className="max-w-7xl 2xl:max-w-[1600px] min-[2200px]:max-w-[2400px] min-[3400px]:max-w-[4600px] mx-auto flex flex-col items-center sm:flex-row sm:items-center lg:items-end gap-6 sm:gap-8 lg:gap-10">
           {/* Poster with subtle ambient glow */}
           <div className="w-32 shrink-0 sm:w-44 lg:w-56 xl:w-60 min-[2200px]:w-64 min-[3400px]:w-72 group">
-            <div className="overflow-hidden rounded-2xl shadow-2xl bg-[var(--dk-surface-glass)] transition-all duration-300 group-hover:scale-[1.02]">
+            <div className="overflow-hidden rounded-2xl shadow-2xl bg-[var(--dk-surface-glass)] transition-colors duration-300 group-hover:scale-[1.02]">
               {!posterUrl || posterFailed ? (
                 <div
                   className={`w-full flex flex-col items-center justify-center p-4 text-center bg-[var(--dk-surface-glass)] ${
@@ -415,7 +413,7 @@ export const MediaHero = ({ className = '' }: MediaHeroProps) => {
                   type="button"
                   onClick={openTrailer}
                   className={cn(
-                    'group relative inline-flex items-center gap-2 rounded-full h-10 px-4 sm:px-5 py-2 text-sm font-semibold transition-all hover:scale-[1.02] active:scale-[0.98] shadow-md backdrop-blur-xl',
+                    'group relative inline-flex items-center gap-2 rounded-full h-10 px-4 sm:px-5 py-2 text-sm font-semibold transition-colors hover:scale-[1.02] active:scale-[0.98] shadow-md backdrop-blur-xl',
                     trailerIsPrimary
                       ? 'bg-primary text-primary-foreground shadow-md'
                       : 'bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-base)] text-foreground',
@@ -436,7 +434,7 @@ export const MediaHero = ({ className = '' }: MediaHeroProps) => {
                     type="button"
                     onClick={() => handleToggle('watchlisted')}
                     className={cn(
-                      'inline-flex h-8 w-8 items-center justify-center rounded-full transition-all hover:scale-110 active:scale-95',
+                      'inline-flex h-8 w-8 items-center justify-center rounded-full transition-colors hover:scale-110 active:scale-95',
                       isWatchlisted
                         ? 'bg-primary/20 text-primary shadow-xs'
                         : 'text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-base)]',
@@ -454,7 +452,7 @@ export const MediaHero = ({ className = '' }: MediaHeroProps) => {
                     type="button"
                     onClick={() => handleToggle(watchedType)}
                     className={cn(
-                      'inline-flex h-8 w-8 items-center justify-center rounded-full transition-all hover:scale-110 active:scale-95',
+                      'inline-flex h-8 w-8 items-center justify-center rounded-full transition-colors hover:scale-110 active:scale-95',
                       isWatched
                         ? 'bg-primary text-primary-foreground shadow-sm'
                         : 'text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-base)]',
@@ -472,7 +470,7 @@ export const MediaHero = ({ className = '' }: MediaHeroProps) => {
                     type="button"
                     onClick={() => handleToggle('liked')}
                     className={cn(
-                      'inline-flex h-8 w-8 items-center justify-center rounded-full transition-all hover:scale-110 active:scale-95',
+                      'inline-flex h-8 w-8 items-center justify-center rounded-full transition-colors hover:scale-110 active:scale-95',
                       isLiked
                         ? 'bg-destructive/20 text-destructive shadow-xs'
                         : 'text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-base)]',

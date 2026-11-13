@@ -97,7 +97,20 @@ const RequestMediaButtonInner = ({
     }
   }, [instanceMenuOpen, qualityMenuOpen])
 
-  if (state.hidden || hideIfAvailable || state.loading) return null
+  if (state.hidden || hideIfAvailable) return null
+
+  if (state.loading) {
+    return (
+      <div
+        className="inline-flex items-center gap-2 rounded-full h-10 px-4 sm:px-5 py-2 text-sm font-semibold bg-[var(--dk-surface-glass)] text-muted-foreground border border-white/[0.04] shadow-lg animate-pulse"
+        aria-busy="true"
+        aria-label="Checking availability"
+      >
+        <Loader2 className="h-4 w-4 animate-spin text-primary" />
+        <span>Checking...</span>
+      </div>
+    )
+  }
 
   const openConfirm = (instanceId?: string) => {
     openRequestModal({
@@ -129,10 +142,10 @@ const RequestMediaButtonInner = ({
         <div className="relative inline-flex items-center gap-2 overflow-hidden rounded-full h-10 px-4 sm:px-5 py-2 text-sm font-semibold text-foreground bg-[var(--dk-surface-glass)] border border-white/[0.04] shadow-lg">
           <span
             className={cn(
-              'absolute inset-y-0 left-0 transition-[width] duration-500 ease-out',
+              'absolute inset-y-0 left-0 w-full origin-left transition-transform duration-500 ease-out',
               isPaused ? 'bg-primary/20' : 'bg-primary/30',
             )}
-            style={{ width: `${pct}%` }}
+            style={{ transform: `scaleX(${pct / 100})` }}
           />
           <span className="relative flex items-center gap-2">
             <Loader2 className={cn('h-4 w-4 text-primary', !isPaused && 'animate-spin')} />
@@ -150,7 +163,7 @@ const RequestMediaButtonInner = ({
         <button
           type="button"
           onClick={state.handleCancelQueue}
-          className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-[var(--dk-surface-glass)] text-destructive hover:bg-destructive/15 transition-all cursor-pointer opacity-0 group-hover/dl:opacity-100"
+          className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-[var(--dk-surface-glass)] text-destructive hover:bg-destructive/15 transition-colors cursor-pointer opacity-0 group-hover/dl:opacity-100"
           title="Cancel download"
         >
           <X className="h-4 w-4" />
@@ -172,7 +185,7 @@ const RequestMediaButtonInner = ({
           type="button"
           onClick={onWatch}
           aria-label="Stream · Available"
-          className="inline-flex items-center gap-2 rounded-full h-10 px-4 sm:px-5 py-2 text-sm font-semibold bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+          className="inline-flex items-center gap-2 rounded-full h-10 px-4 sm:px-5 py-2 text-sm font-semibold bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg transition hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
           title={downloadedInstances ? `Available in library on: ${downloadedInstances}. Click to watch/stream.` : 'Available in library. Click to watch/stream.'}
         >
           <Play className="h-4 w-4 fill-current text-current" />
@@ -247,7 +260,7 @@ const RequestMediaButtonInner = ({
             type="button"
             onClick={() => handleExecuteRequest(target?.id, defaultProfile?.id)}
             disabled={busy || !target}
-            className="inline-flex items-center gap-2 rounded-l-full h-10 px-4 sm:px-5 py-2 text-sm font-semibold bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg transition-all duration-200 active:scale-95 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            className="inline-flex items-center gap-2 rounded-l-full h-10 px-4 sm:px-5 py-2 text-sm font-semibold bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg transition duration-200 active:scale-95 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             title={`${buttonTitle} (${defaultProfile ? defaultProfile.name : 'Default Quality'})`}
           >
             {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowDownToLine className="h-4 w-4" />}
@@ -267,7 +280,7 @@ const RequestMediaButtonInner = ({
             aria-haspopup="menu"
             aria-expanded={qualityMenuOpen}
             aria-controls={qualityMenuId}
-            className="inline-flex items-center justify-center rounded-r-full h-10 border-l border-primary-foreground/20 bg-primary px-3 text-primary-foreground hover:bg-primary/90 transition-all cursor-pointer"
+            className="inline-flex items-center justify-center rounded-r-full h-10 border-l border-primary-foreground/20 bg-primary px-3 text-primary-foreground hover:bg-primary/90 transition-colors cursor-pointer"
             title="Choose quality profile"
           >
             <ChevronDown className={cn('h-4 w-4 transition-transform', qualityMenuOpen && 'rotate-180')} />
@@ -313,7 +326,7 @@ const RequestMediaButtonInner = ({
         type="button"
         onClick={() => handleExecuteRequest(target?.id, defaultProfile?.id)}
         disabled={busy || !target}
-        className="inline-flex items-center gap-2 rounded-full h-10 px-4 sm:px-5 py-2 text-sm font-semibold bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg transition-all duration-200 active:scale-95 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+        className="inline-flex items-center gap-2 rounded-full h-10 px-4 sm:px-5 py-2 text-sm font-semibold bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg transition duration-200 active:scale-95 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
         title={buttonTitle}
       >
         {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowDownToLine className="h-4 w-4" />}
@@ -332,7 +345,7 @@ const RequestMediaButtonInner = ({
         type="button"
         onClick={() => openConfirm(targets[0]?.id)}
         disabled={busy}
-        className="inline-flex items-center gap-2 rounded-l-full h-10 px-4 sm:px-5 py-2 text-sm font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-all duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+        className="inline-flex items-center gap-2 rounded-l-full h-10 px-4 sm:px-5 py-2 text-sm font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
         title={busy ? 'Request is in progress…' : `Request on ${targets[0]?.name || state.activeServerName}`}
       >
         {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowDownToLine className="h-4 w-4" />}
@@ -346,7 +359,7 @@ const RequestMediaButtonInner = ({
         aria-haspopup="menu"
         aria-expanded={instanceMenuOpen}
         aria-controls={instanceMenuId}
-        className="inline-flex items-center justify-center rounded-r-full h-10 border-l border-primary-foreground/20 bg-primary px-3 text-primary-foreground hover:bg-primary/90 transition-all cursor-pointer"
+        className="inline-flex items-center justify-center rounded-r-full h-10 border-l border-primary-foreground/20 bg-primary px-3 text-primary-foreground hover:bg-primary/90 transition-colors cursor-pointer"
       >
         <ChevronDown className={cn('h-4 w-4 transition-transform', instanceMenuOpen && 'rotate-180')} />
       </button>

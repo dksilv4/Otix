@@ -1,58 +1,56 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { savePlayerSettings } from '@/features/discover/utils/trailer'
+import { safePlay } from '../utils/player'
 import type { useMediaStreamPlayer } from './use-media-stream-player'
 import type { useUnifiedPlayerEngine } from './use-unified-player-engine'
+import type { SubtitleTrack } from '../types/stream-player'
 
 export interface UseUnifiedPlayerControlsProps {
   isTrailer: boolean
   streamPlayer: ReturnType<typeof useMediaStreamPlayer>
   engine: ReturnType<typeof useUnifiedPlayerEngine>
   effectiveIsPlaying: boolean
-  effectiveIsMuted: boolean
-  effectiveVolume: number
   effectiveDuration: number
   effectiveCurrentTime: number
   trailerVolume: number
   setTrailerVolumeState: (v: number) => void
   trailerIsMuted: boolean
   setTrailerIsMutedState: (m: boolean) => void
-  isZoomedOut: boolean
   setIsZoomedOutState: (updater: (prev: boolean) => boolean) => void
-  trailerIsTheater: boolean
   setTrailerIsTheaterState: (updater: (prev: boolean) => boolean) => void
   onClose?: () => void
   isVisible: boolean
   isDraggingProgress?: boolean
   setIsDraggingProgress?: (dragging: boolean) => void
+  subtitles?: SubtitleTrack[]
+  activeSubtitle?: SubtitleTrack | null
+  onSelectSubtitleTrack?: (id: string | null) => void
 }
 
 export const useUnifiedPlayerControls = ({
   isTrailer,
   streamPlayer,
   engine,
-  effectiveIsPlaying: _effectiveIsPlaying,
-  effectiveIsMuted: _effectiveIsMuted,
-  effectiveVolume: _effectiveVolume,
+  effectiveIsPlaying,
   effectiveDuration,
   trailerVolume,
   setTrailerVolumeState,
   trailerIsMuted,
   setTrailerIsMutedState,
-  isZoomedOut: _isZoomedOut,
   setIsZoomedOutState,
-  trailerIsTheater: _trailerIsTheater,
   setTrailerIsTheaterState,
   onClose,
   isVisible,
   isDraggingProgress: propIsDraggingProgress,
   setIsDraggingProgress: propSetIsDraggingProgress,
+  subtitles,
+  activeSubtitle,
+  onSelectSubtitleTrack,
 }: UseUnifiedPlayerControlsProps) => {
   const {
-    isPlaying: streamIsPlaying,
     isTheater: streamIsTheater,
     isInAppPip,
     closeStream,
-    togglePlay: streamTogglePlay,
     seek: streamSeek,
     setVolume: streamSetVolume,
     toggleMute: streamToggleMute,
@@ -72,6 +70,8 @@ export const useUnifiedPlayerControls = ({
   const [splashAction, setSplashAction] = useState<'play' | 'pause' | null>(null)
   const [showVolumeSlider, setShowVolumeSlider] = useState(false)
   const [showQualityMenu, setShowQualityMenu] = useState(false)
+  const [showAudioMenu, setShowAudioMenu] = useState(false)
+  const [showSubtitleMenu, setShowSubtitleMenu] = useState(false)
   const [showShortcutsModal, setShowShortcutsModal] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [localDraggingProgress, setLocalDraggingProgress] = useState(false)
@@ -84,14 +84,38 @@ export const useUnifiedPlayerControls = ({
   const splashTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const dragTimeRef = useRef<number>(0)
 
-  // Auto-hide controls
+  // Auto-hide controls (auto-hides on inactivity when playing, stays visible when paused)
   const showControls = useCallback(() => {
     setControlsVisible(true)
     if (hideTimerRef.current) clearTimeout(hideTimerRef.current)
+    if (
+      !effectiveIsPlaying ||
+      showVolumeSlider ||
+      showQualityMenu ||
+      showAudioMenu ||
+      showSubtitleMenu
+    ) {
+      return
+    }
     hideTimerRef.current = setTimeout(() => {
       setControlsVisible(false)
-    }, 3500)
-  }, [])
+    }, 2800)
+  }, [
+    effectiveIsPlaying,
+    showAudioMenu,
+    showQualityMenu,
+    showSubtitleMenu,
+    showVolumeSlider,
+  ])
+
+  useEffect(() => {
+    if (!effectiveIsPlaying) {
+      setControlsVisible(true)
+      if (hideTimerRef.current) clearTimeout(hideTimerRef.current)
+    } else {
+      showControls()
+    }
+  }, [effectiveIsPlaying, showControls])
 
   const handleMouseMove = useCallback(() => {
     showControls()
@@ -99,10 +123,12 @@ export const useUnifiedPlayerControls = ({
 
   const handleMouseLeave = useCallback(() => {
     if (hideTimerRef.current) clearTimeout(hideTimerRef.current)
-    hideTimerRef.current = setTimeout(() => {
-      setControlsVisible(false)
-    }, 1000)
-  }, [])
+    if (effectiveIsPlaying) {
+      hideTimerRef.current = setTimeout(() => {
+        setControlsVisible(false)
+      }, 1000)
+    }
+  }, [effectiveIsPlaying])
 
   // Splash animation trigger
   const triggerSplash = useCallback((action: 'play' | 'pause') => {
@@ -111,6 +137,13 @@ export const useUnifiedPlayerControls = ({
     splashTimeoutRef.current = setTimeout(() => {
       setSplashAction(null)
     }, 500)
+  }, [])
+
+  useEffect(() => {
+    return () => {
+      if (splashTimeoutRef.current) clearTimeout(splashTimeoutRef.current)
+      if (hideTimerRef.current) clearTimeout(hideTimerRef.current)
+    }
   }, [])
 
   // Zoom and theater persistence
@@ -156,10 +189,32 @@ export const useUnifiedPlayerControls = ({
         return next
       })
     } else {
-      streamTogglePlay()
-      triggerSplash(!streamIsPlaying ? 'play' : 'pause')
+      const video = engine.videoRef.current
+      if (effectiveIsPlaying) {
+        if (video && !video.paused) {
+          video.pause()
+        }
+        streamPlayer.pause()
+        triggerSplash('pause')
+      } else {
+        if (video && video.paused) {
+          safePlay(video)
+        }
+        streamPlayer.play()
+        triggerSplash('play')
+      }
     }
-  }, [isTrailer, lastUserActionRef, postToTrailer, setTrailerIsPlaying, showControls, streamIsPlaying, streamTogglePlay, triggerSplash])
+  }, [
+    effectiveIsPlaying,
+    engine.videoRef,
+    isTrailer,
+    lastUserActionRef,
+    postToTrailer,
+    setTrailerIsPlaying,
+    showControls,
+    streamPlayer,
+    triggerSplash,
+  ])
 
   // Volume & Mute handlers
   const handleToggleMute = useCallback(() => {
@@ -175,9 +230,23 @@ export const useUnifiedPlayerControls = ({
         postToTrailer('setVolume', [Math.round(trailerVolume * 100)])
       }
     } else {
+      const video = engine.videoRef.current
+      if (video) {
+        video.muted = !streamPlayer.isMuted
+      }
       streamToggleMute()
     }
-  }, [isTrailer, postToTrailer, setTrailerIsMutedState, showControls, streamToggleMute, trailerIsMuted, trailerVolume])
+  }, [
+    engine.videoRef,
+    isTrailer,
+    postToTrailer,
+    setTrailerIsMutedState,
+    showControls,
+    streamPlayer.isMuted,
+    streamToggleMute,
+    trailerIsMuted,
+    trailerVolume,
+  ])
 
   const handleVolumeChange = useCallback(
     (newVolume: number) => {
@@ -192,10 +261,32 @@ export const useUnifiedPlayerControls = ({
           postToTrailer('unMute')
         }
       } else {
+        const video = engine.videoRef.current
+        if (video) {
+          video.volume = clamped
+          if (clamped > 0 && streamPlayer.isMuted) {
+            video.muted = false
+            streamToggleMute()
+          } else {
+            video.muted = clamped === 0
+          }
+        }
         streamSetVolume(clamped)
+        savePlayerSettings({ volume: clamped, isMuted: clamped === 0 })
       }
     },
-    [isTrailer, postToTrailer, setTrailerIsMutedState, setTrailerVolumeState, showControls, streamSetVolume, trailerIsMuted],
+    [
+      engine.videoRef,
+      isTrailer,
+      postToTrailer,
+      setTrailerIsMutedState,
+      setTrailerVolumeState,
+      showControls,
+      streamPlayer.isMuted,
+      streamSetVolume,
+      streamToggleMute,
+      trailerIsMuted,
+    ],
   )
 
   const handleSeekRelative = useCallback(
@@ -208,10 +299,25 @@ export const useUnifiedPlayerControls = ({
           return next
         })
       } else {
-        streamSeek(Math.max(0, Math.min(effectiveDuration, streamPlayer.currentTime + seconds)))
+        const target = Math.max(0, Math.min(effectiveDuration, streamPlayer.currentTime + seconds))
+        const video = engine.videoRef.current
+        if (video) {
+          video.currentTime = target
+        }
+        streamSeek(target)
       }
     },
-    [engine.trailerDuration, isTrailer, postToTrailer, setTrailerCurrentTime, showControls, streamPlayer.currentTime, streamSeek, effectiveDuration],
+    [
+      effectiveDuration,
+      engine.trailerDuration,
+      engine.videoRef,
+      isTrailer,
+      postToTrailer,
+      setTrailerCurrentTime,
+      showControls,
+      streamPlayer.currentTime,
+      streamSeek,
+    ],
   )
 
   const handleClose = useCallback(() => {
@@ -249,6 +355,10 @@ export const useUnifiedPlayerControls = ({
       if (e.key === 'Escape') {
         if (showShortcutsModal) {
           setShowShortcutsModal(false)
+        } else if (showQualityMenu || showAudioMenu || showSubtitleMenu) {
+          setShowQualityMenu(false)
+          setShowAudioMenu(false)
+          setShowSubtitleMenu(false)
         } else {
           handleClose()
         }
@@ -266,11 +376,29 @@ export const useUnifiedPlayerControls = ({
       } else if (e.key === 'i' || e.key === 'I') {
         if (!isTrailer) toggleInAppPip()
       } else if (e.key === 'p' || e.key === 'P') {
-        if (!isTrailer) toggleOverallPip()
+        if (!isTrailer) void toggleOverallPip()?.catch?.(() => {})
+      } else if (e.key === 'c' || e.key === 'C') {
+        e.preventDefault()
+        if (!isTrailer && subtitles && subtitles.length > 0) {
+          if (activeSubtitle) {
+            onSelectSubtitleTrack?.(null)
+          } else {
+            onSelectSubtitleTrack?.(subtitles[0].id || String(subtitles[0].index))
+          }
+        }
       } else if (e.key === 'q' || e.key === 'Q') {
         e.preventDefault()
         if (!isTrailer) {
           setShowQualityMenu((prev) => !prev)
+          setShowAudioMenu(false)
+          setShowSubtitleMenu(false)
+        }
+      } else if (e.key === 'a' || e.key === 'A') {
+        e.preventDefault()
+        if (!isTrailer) {
+          setShowAudioMenu((prev) => !prev)
+          setShowQualityMenu(false)
+          setShowSubtitleMenu(false)
         }
       } else if (e.key === '?' || e.key === '/') {
         e.preventDefault()
@@ -284,13 +412,19 @@ export const useUnifiedPlayerControls = ({
       }
     },
     [
+      activeSubtitle,
       handleClose,
       handleSeekRelative,
       handleToggleMute,
       handleTogglePlay,
       isTrailer,
+      onSelectSubtitleTrack,
+      showAudioMenu,
       showControls,
+      showQualityMenu,
       showShortcutsModal,
+      showSubtitleMenu,
+      subtitles,
       toggleFullscreen,
       toggleInAppPip,
       toggleOverallPip,
@@ -344,15 +478,13 @@ export const useUnifiedPlayerControls = ({
     }
 
     const handleMouseMoveWindow = (moveEvent: MouseEvent) => {
-      if (!progressBarRef.current) return
+      if (!progressBarRef.current || effectiveDuration <= 0) return
       const moveRect = progressBarRef.current.getBoundingClientRect()
       const moveFraction = Math.min(1, Math.max(0, (moveEvent.clientX - moveRect.left) / moveRect.width))
       const moveTarget = moveFraction * effectiveDuration
       dragTimeRef.current = moveTarget
       if (isTrailer) {
         setTrailerCurrentTime(moveTarget)
-      } else {
-        streamSeek(moveTarget)
       }
     }
 
@@ -392,6 +524,10 @@ export const useUnifiedPlayerControls = ({
     setShowVolumeSlider,
     showQualityMenu,
     setShowQualityMenu,
+    showAudioMenu,
+    setShowAudioMenu,
+    showSubtitleMenu,
+    setShowSubtitleMenu,
     showShortcutsModal,
     setShowShortcutsModal,
     progressBarRef,

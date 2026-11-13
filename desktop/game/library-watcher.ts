@@ -9,20 +9,34 @@ export interface LibraryWatcherOptions {
   onPerformScan: (paths?: string[]) => Promise<{ games: LocalGame[]; newGames: LocalGame[] }>;
   onNewGamesDetected?: (newGames: LocalGame[]) => void;
   debounceMs?: number;
+  pollingIntervalMs?: number;
+  fsLib?: Partial<typeof fs>;
+}
+
+function isUncPath(targetPath: string): boolean {
+  return targetPath.startsWith('\\\\') || targetPath.startsWith('//');
 }
 
 export class LibraryWatcher {
   private watchers = new Map<string, fs.FSWatcher>();
+  private pollingPaths = new Set<string>();
+  private pollingTimer: NodeJS.Timeout | null = null;
   private debounceTimer: NodeJS.Timeout | null = null;
   private isScanning = false;
   private pendingRescan = false;
   private isStarted = false;
   private debounceMs = 2500;
+  private pollingIntervalMs = 60000;
   private mainWindow: BrowserWindow | null = null;
+  private fsLib: typeof fs;
 
   constructor(private options: LibraryWatcherOptions) {
+    this.fsLib = (options.fsLib as typeof fs) || fs;
     if (typeof options.debounceMs === 'number') {
       this.debounceMs = options.debounceMs;
+    }
+    if (typeof options.pollingIntervalMs === 'number') {
+      this.pollingIntervalMs = options.pollingIntervalMs;
     }
   }
 
@@ -46,6 +60,10 @@ export class LibraryWatcher {
       clearTimeout(this.debounceTimer);
       this.debounceTimer = null;
     }
+    if (this.pollingTimer !== null) {
+      clearInterval(this.pollingTimer);
+      this.pollingTimer = null;
+    }
     for (const watcher of this.watchers.values()) {
       try {
         watcher.close();
@@ -54,10 +72,19 @@ export class LibraryWatcher {
       }
     }
     this.watchers.clear();
+    this.pollingPaths.clear();
   }
 
   public getWatchedPaths(): string[] {
     return Array.from(this.watchers.keys());
+  }
+
+  public getPollingPaths(): string[] {
+    return Array.from(this.pollingPaths);
+  }
+
+  public getAllMonitoredPaths(): string[] {
+    return [...this.getWatchedPaths(), ...this.getPollingPaths()];
   }
 
   public updateWatches(): void {
@@ -84,49 +111,95 @@ export class LibraryWatcher {
       }
     }
 
+    // Stop polling for paths that were removed
+    for (const polledPath of this.pollingPaths) {
+      if (!validPaths.has(polledPath)) {
+        this.pollingPaths.delete(polledPath);
+      }
+    }
+    if (this.pollingPaths.size === 0 && this.pollingTimer !== null) {
+      clearInterval(this.pollingTimer);
+      this.pollingTimer = null;
+    }
+
     // Add watchers for newly added paths
     for (const targetPath of validPaths) {
-      if (!this.watchers.has(targetPath)) {
+      if (!this.watchers.has(targetPath) && !this.pollingPaths.has(targetPath)) {
         this.watchPath(targetPath);
+      }
+    }
+  }
+
+  private enablePollingForPath(targetPath: string): void {
+    this.pollingPaths.add(targetPath);
+    if (this.isStarted && this.pollingTimer === null) {
+      this.pollingTimer = setInterval(() => {
+        void this.triggerScan();
+      }, this.pollingIntervalMs);
+      if (typeof this.pollingTimer.unref === 'function') {
+        this.pollingTimer.unref();
       }
     }
   }
 
   private watchPath(targetPath: string): void {
     try {
-      if (!fs.existsSync(targetPath)) {
+      if (!this.fsLib.existsSync(targetPath)) {
         return;
       }
-      const stat = fs.statSync(targetPath);
+      const stat = this.fsLib.statSync(targetPath);
       if (!stat.isDirectory()) {
+        return;
+      }
+
+      // UNC / network shares on Windows do not support recursive filesystem change events (ReadDirectoryChangesW)
+      // and will fail with UNKNOWN (-4094). Fall back to periodic polling.
+      if (process.platform === 'win32' && isUncPath(targetPath)) {
+        console.info(`[LibraryWatcher] Network share detected for ${targetPath}. Using periodic polling instead of native filesystem watcher.`);
+        this.enablePollingForPath(targetPath);
         return;
       }
 
       let watcher: fs.FSWatcher;
       try {
-        watcher = fs.watch(targetPath, { recursive: true }, (eventType, filename) => {
+        watcher = this.fsLib.watch(targetPath, { recursive: true }, (eventType, filename) => {
           this.handleFsEvent(targetPath, eventType, filename);
         });
       } catch (recErr) {
         // Fallback to non-recursive if recursive watch is unsupported
         try {
-          watcher = fs.watch(targetPath, { recursive: false }, (eventType, filename) => {
+          watcher = this.fsLib.watch(targetPath, { recursive: false }, (eventType, filename) => {
             this.handleFsEvent(targetPath, eventType, filename);
           });
         } catch (fbErr) {
-          console.warn(`[LibraryWatcher] Failed to watch ${targetPath}:`, fbErr);
+          console.info(`[LibraryWatcher] Native filesystem watching unsupported on ${targetPath}. Falling back to periodic scan.`);
+          this.enablePollingForPath(targetPath);
           return;
         }
       }
 
-      watcher.on('error', (err) => {
-        console.warn(`[LibraryWatcher] Watcher error on ${targetPath}:`, err);
+      watcher.on('error', (err: any) => {
         try {
           watcher.close();
         } catch {
           // Ignore close error
         }
         this.watchers.delete(targetPath);
+
+        const isExpectedFsLimit =
+          err?.code === 'UNKNOWN' ||
+          err?.errno === -4094 ||
+          err?.code === 'ENOSYS' ||
+          err?.code === 'ENOTSUP' ||
+          err?.code === 'EPERM' ||
+          isUncPath(targetPath);
+
+        if (isExpectedFsLimit) {
+          console.info(`[LibraryWatcher] Native filesystem watching unsupported on ${targetPath} (${err?.code || err?.errno || 'unknown'}). Falling back to periodic scan.`);
+        } else {
+          console.warn(`[LibraryWatcher] Watcher error on ${targetPath}:`, err);
+        }
+        this.enablePollingForPath(targetPath);
       });
 
       this.watchers.set(targetPath, watcher);

@@ -14,7 +14,7 @@ export const DetailSkeleton = ({ mediaType }: { mediaType?: string } = {}) => {
       className={`animate-fade-in pb-28 ${isDesktop ? 'pt-[var(--title-bar-height,38px)]' : ''}`}
     >
       {/* ── Hero (mirrors MediaHero) ── */}
-      <header className="relative min-h-[46vh] lg:min-h-[50vh] pb-6">
+      <header className="relative min-h-[46dvh] lg:min-h-[50dvh] pb-6">
         <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
           <div className="h-full w-full animate-pulse bg-[var(--dk-surface-glass)]" />
           <div

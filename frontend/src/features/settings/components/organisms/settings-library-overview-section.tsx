@@ -86,7 +86,7 @@ const OverviewNavCard = ({
   children: ReactNode
 }) => {
   const className =
-    'group text-left w-full rounded-2xl sm:rounded-3xl p-5 sm:p-6 backdrop-blur-xl transition-all duration-200 hover:bg-[var(--dk-surface-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40'
+    'group text-left w-full rounded-2xl sm:rounded-3xl p-5 sm:p-6 backdrop-blur-xl transition-colors duration-200 hover:bg-[var(--dk-surface-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40'
   const style = {
     backgroundColor: 'var(--dk-surface-base)',
     boxShadow: 'var(--dk-shadow-card)',
@@ -103,7 +103,7 @@ const OverviewNavCard = ({
             <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{description}</p>
           </div>
         </div>
-        <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 transition-all shrink-0 mt-1" />
+        <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 transition shrink-0 mt-1" />
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">{children}</div>
     </>

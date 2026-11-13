@@ -209,7 +209,7 @@ export const NodeAddFolderModal = ({
               type="button"
               onClick={() => setDraftType('installed')}
               className={cn(
-                'flex items-start gap-2.5 p-3 rounded-xl border text-left transition-all cursor-pointer',
+                'flex items-start gap-2.5 p-3 rounded-xl border text-left transition-colors cursor-pointer',
                 isCurrentInstalled
                   ? 'bg-primary/10 border-primary/40 text-foreground font-semibold shadow-xs'
                   : 'bg-[var(--dk-surface-ghost)] border-white/[0.04] text-muted-foreground hover:text-foreground',
@@ -233,7 +233,7 @@ export const NodeAddFolderModal = ({
               type="button"
               onClick={() => setDraftType('provider')}
               className={cn(
-                'flex items-start gap-2.5 p-3 rounded-xl border text-left transition-all cursor-pointer',
+                'flex items-start gap-2.5 p-3 rounded-xl border text-left transition-colors cursor-pointer',
                 isCurrentProvider
                   ? 'bg-primary/10 border-primary/40 text-foreground font-semibold shadow-xs'
                   : 'bg-[var(--dk-surface-ghost)] border-white/[0.04] text-muted-foreground hover:text-foreground',

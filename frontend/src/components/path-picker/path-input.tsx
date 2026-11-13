@@ -108,7 +108,7 @@ export const PathInput = ({
             onKeyDown={handleKeyDown}
             onBlur={handleBlur}
             className={cn(
-              'h-9 w-full rounded-xl bg-[var(--dk-surface-field)] pl-3 pr-8 text-xs text-foreground outline-none placeholder:text-muted-foreground/50 focus:bg-[var(--dk-surface-ghost-hover)] transition-all duration-200',
+              'h-9 w-full rounded-xl bg-[var(--dk-surface-field)] pl-3 pr-8 text-xs text-foreground outline-none placeholder:text-muted-foreground/50 focus:bg-[var(--dk-surface-ghost-hover)] transition-colors duration-200',
               justConfirmed && 'bg-primary/15 text-primary',
               inputClassName,
             )}
@@ -145,7 +145,7 @@ export const PathInput = ({
             title={justConfirmed ? 'Path confirmed!' : (confirmLabel || 'Confirm path')}
             aria-label={confirmLabel || 'Confirm path'}
             className={cn(
-              'inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-xs font-semibold transition-all duration-200 cursor-pointer disabled:cursor-not-allowed disabled:opacity-40',
+              'inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-xs font-semibold transition-colors duration-200 cursor-pointer disabled:cursor-not-allowed disabled:opacity-40',
               justConfirmed
                 ? 'bg-primary/25 text-primary shadow-xs'
                 : 'bg-[var(--dk-surface-field)] text-foreground/80 hover:bg-primary/15 hover:text-primary active:scale-95',

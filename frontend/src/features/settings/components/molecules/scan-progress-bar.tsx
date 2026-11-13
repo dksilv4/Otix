@@ -37,7 +37,7 @@ export const ScanProgressBar = ({
     <div
       role="region"
       aria-label="Library scan progress"
-      className={cn('space-y-1.5 transition-all duration-200', className)}
+      className={cn('space-y-1.5 transition-colors duration-200', className)}
     >
       <div className="flex items-center justify-between text-[11px] gap-2">
         <div className="flex items-center gap-1.5 min-w-0">
@@ -66,7 +66,7 @@ export const ScanProgressBar = ({
       >
         <div
           className={cn(
-            'h-full rounded-full transition-all duration-300 ease-out',
+            'h-full rounded-full transition-colors duration-300 ease-out',
             isError ? 'bg-destructive' : 'bg-primary',
           )}
           style={{ width: `${Math.min(100, Math.max(0, progress))}%` }}

@@ -26,7 +26,7 @@ export const RegisterForm = ({ onSuccess }: RegisterFormProps) => {
   const firstInputRef = useRef<HTMLInputElement>(null)
 
   const inputClass = (hasError?: boolean) =>
-    'flex min-h-[52px] w-full rounded-xl px-5 text-base outline-none transition-all placeholder:text-muted-foreground/50 text-foreground' +
+    'flex min-h-[52px] w-full rounded-xl px-5 text-base outline-none transition-colors placeholder:text-muted-foreground/50 text-foreground' +
     (hasError ? ' ring-1 ring-destructive focus:ring-destructive' : ' border border-[var(--dk-separator)]')
 
   const handleSubmit = async (e: FormEvent) => {
@@ -242,7 +242,7 @@ export const RegisterForm = ({ onSuccess }: RegisterFormProps) => {
           id="register-submit"
           disabled={isSubmitting || showSuccess}
           className={
-            'cursor-pointer flex h-14 w-14 items-center justify-center rounded-full transition-all ' +
+            'cursor-pointer flex h-14 w-14 items-center justify-center rounded-full transition-colors ' +
             (showSuccess ? 'bg-emerald-500 text-primary-foreground' : 'bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-glass-hover)] border border-[var(--dk-separator)] text-foreground') +
             ' disabled:opacity-50'
           }

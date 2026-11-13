@@ -57,7 +57,7 @@ export const ActivityModuleFriends = ({ onClose }: ActivityModuleFriendsProps) =
             to="/u/$username"
             params={{ username: friend.username }}
             onClick={onClose}
-            className="group flex items-center justify-between gap-2.5 rounded-xl bg-[var(--dk-surface-overlay)]/60 hover:bg-[var(--dk-surface-overlay)] border border-[var(--dk-separator)] p-2 transition-all"
+            className="group flex items-center justify-between gap-2.5 rounded-xl bg-[var(--dk-surface-overlay)]/60 hover:bg-[var(--dk-surface-overlay)] border border-[var(--dk-separator)] p-2 transition-colors"
           >
             <div className="flex items-center gap-2.5 min-w-0 flex-1">
               <FriendAvatar

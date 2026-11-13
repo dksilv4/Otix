@@ -14,7 +14,7 @@ export const InstallerWindowFrame = ({
     <div
       className={cn(
         'installer-draggable-frame relative w-screen h-screen flex flex-col overflow-hidden select-none',
-        'bg-gradient-to-br from-[#07080a] via-[#0d0f17] to-[#08090d] text-foreground',
+        'bg-background text-foreground',
         className,
       )}
       style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}

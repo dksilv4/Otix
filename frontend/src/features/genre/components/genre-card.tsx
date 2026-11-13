@@ -46,8 +46,8 @@ export const GenreCard = memo(({
       className={cn(
         // Outer shell: no overflow clip so hover glow/shadow can breathe
         'group relative block select-none rounded-2xl',
-        'shadow-[0_4px_20px_-2px_rgba(0,0,0,0.45)]',
-        'hover:shadow-[0_18px_40px_-8px_rgba(0,0,0,0.65),0_0_28px_0_var(--genre-glow)]',
+        'shadow-lg',
+        'hover:shadow-2xl',
         'hover:-translate-y-1.5 active:scale-[0.98]',
         'transition-[transform,box-shadow] duration-300 ease-out',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background',
@@ -77,7 +77,7 @@ export const GenreCard = memo(({
 
         {/* Soft watermark — no hard mask edge */}
         <Icon
-          className="absolute right-3 bottom-3 h-16 w-16 text-white/[0.07] pointer-events-none select-none transition-all duration-500 ease-out group-hover:scale-105 group-hover:text-[var(--genre-accent)] group-hover:opacity-30"
+          className="absolute right-3 bottom-3 h-16 w-16 text-white/[0.07] pointer-events-none select-none transition duration-500 ease-out group-hover:scale-105 group-hover:text-[var(--genre-accent)] group-hover:opacity-30"
           aria-hidden
         />
 

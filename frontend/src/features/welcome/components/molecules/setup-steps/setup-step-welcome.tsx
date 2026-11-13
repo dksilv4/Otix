@@ -60,7 +60,7 @@ export const SetupStepWelcome = ({
               key={opt.id}
               type="button"
               onClick={() => onSelectMode(opt.id)}
-              className={`group relative flex items-start sm:items-center justify-between gap-4 rounded-2xl p-4 sm:p-5 text-left transition-all duration-200 glass-inset ${
+              className={`group relative flex items-start sm:items-center justify-between gap-4 rounded-2xl p-4 sm:p-5 text-left transition-colors duration-200 glass-inset ${
                 isSelected
                   ? 'ring-2 ring-primary/60 bg-[var(--dk-surface-ghost-hover)] shadow-[var(--dk-shadow-sm)]'
                   : 'hover:bg-[var(--dk-surface-ghost-hover)]'
@@ -114,7 +114,7 @@ export const SetupStepWelcome = ({
 
               <div className="pt-1 sm:pt-0 shrink-0 self-start sm:self-center">
                 <div
-                  className={`flex h-6 w-6 items-center justify-center rounded-full transition-all ${
+                  className={`flex h-6 w-6 items-center justify-center rounded-full transition-colors ${
                     isSelected
                       ? 'bg-primary text-primary-foreground shadow-sm'
                       : 'bg-[var(--dk-surface-ghost)] text-muted-foreground group-hover:bg-primary/20'

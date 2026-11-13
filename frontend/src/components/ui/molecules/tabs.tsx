@@ -50,7 +50,7 @@ const DkTab = ({ value, children, className }: { value: string; children: ReactN
       onClick={() => ctx.onChange(value)}
       className={cn(
         'rounded-xl px-4 py-2 text-sm font-medium',
-        'transition-all duration-[var(--dk-duration-fast)] ease-[var(--dk-ease-out)]',
+        'transition-colors duration-[var(--dk-duration-fast)] ease-[var(--dk-ease-out)]',
         isActive
           ? 'bg-[var(--dk-surface-base)] text-[var(--foreground)] shadow-[var(--dk-shadow-sm)]'
           : 'text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--dk-surface-ghost-hover)]',

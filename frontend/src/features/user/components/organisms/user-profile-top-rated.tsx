@@ -74,7 +74,7 @@ export const UserProfileTopRated = ({
             {items.slice(0, 6).map((item, idx) => (
               <div
                 key={item.mediaItem?.id || idx}
-                className="group relative flex flex-col rounded-xl overflow-hidden bg-[var(--dk-surface-base)] shadow-xs hover:scale-[1.02] transition-all duration-200"
+                className="group relative flex flex-col rounded-xl overflow-hidden bg-[var(--dk-surface-base)] shadow-xs hover:scale-[1.02] transition-colors duration-200"
               >
                 <div className="relative aspect-[2/3] w-full bg-[var(--dk-surface-ghost)] overflow-hidden">
                   {item.mediaItem?.posterUrl ? (

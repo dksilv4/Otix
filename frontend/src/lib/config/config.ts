@@ -13,6 +13,11 @@ export const IS_TEST = Boolean(import.meta.env?.TEST)
 export function resolveApiBaseUrl(): string {
   if (import.meta.env?.VITE_API_BASE_URL) return import.meta.env.VITE_API_BASE_URL
   const isPort5174 = typeof window !== 'undefined' && window.location.port === '5174'
+  const isPort5173 = typeof window !== 'undefined' && window.location.port === '5173'
+
+  if (isPort5173 || isPort5174) {
+    return '/api/v1'
+  }
 
   // Native Mobile (iOS & Android via Capacitor)
   if (isNativeMobile()) {
@@ -25,7 +30,7 @@ export function resolveApiBaseUrl(): string {
       // localStorage unavailable
     }
     if (import.meta.env?.DEV || import.meta.env?.VITE_LOCAL_BACKEND === 'true') {
-      return 'http://127.0.0.1:8000/api/v1'
+      return 'http://localhost:8000/api/v1'
     }
     return 'https://otix.app/api/v1'
   }
@@ -39,7 +44,7 @@ export function resolveApiBaseUrl(): string {
       return `${desktopBase.replace(/\/+$/, '')}/api/v1`
     }
     if (import.meta.env?.DEV || import.meta.env?.VITE_LOCAL_BACKEND === 'true' || isPort5174) {
-      return 'http://127.0.0.1:8000/api/v1'
+      return 'http://localhost:8000/api/v1'
     }
     return 'https://otix.app/api/v1'
   }

@@ -40,7 +40,7 @@ export const SectionPrivacyToggle = ({
       title={`${currentOption.tooltip} (click to change)`}
       aria-label={`Section privacy: ${currentOption.label}. Click to switch.`}
       className={cn(
-        'group inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium transition-all duration-200 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed border border-white/[0.06] bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)] text-foreground backdrop-blur-md shadow-xs',
+        'group inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium transition-colors duration-200 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed border border-white/[0.06] bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)] text-foreground backdrop-blur-md shadow-xs',
         className,
       )}
     >

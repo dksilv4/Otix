@@ -213,7 +213,7 @@ export const SettingsGameServersPage = () => {
             return (
               <SettingsCard
                 key={server.id}
-                className="p-5 flex flex-col justify-between gap-4 transition-all group"
+                className="p-5 flex flex-col justify-between gap-4 transition-colors group"
               >
                 <div className="space-y-3">
                   {/* Top Bar: Status, Name, Game Badge & Actions */}

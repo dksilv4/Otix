@@ -95,14 +95,14 @@ export const CastCrew = ({ credits = [], className = '' }: CastCrewProps) => {
                       if (scrollRef.current) scrollRef.current.scrollLeft = 0
                     }}
                     className={cn(
-                      'rounded-lg px-2.5 py-1 text-xs font-medium transition-all whitespace-nowrap',
+                      'rounded-lg px-2.5 py-1 text-xs font-medium transition-colors whitespace-nowrap',
                       isActive
                         ? 'bg-[var(--dk-surface-base)] text-foreground shadow-sm'
                         : 'text-muted-foreground hover:text-foreground',
                     )}
                   >
                     {cat.label}
-                    <span className="ml-1 text-[10px] opacity-60 tabular-nums">({cat.count})</span>
+                    <span className="ml-1 text-[10px] tabular-nums">({cat.count})</span>
                   </button>
                 )
               })}
@@ -114,10 +114,10 @@ export const CastCrew = ({ credits = [], className = '' }: CastCrewProps) => {
             <button
               type="button"
               onClick={() => setIsModalOpen(true)}
-              className="text-xs font-medium text-muted-foreground hover:text-foreground transition-all inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-base)] shadow-xs active:scale-95 cursor-pointer"
+              className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-base)] shadow-xs active:scale-95 cursor-pointer"
             >
               <span>View all</span>
-              <span className="text-[10px] opacity-70 font-semibold tabular-nums">({activeCategory.items.length})</span>
+              <span className="text-[10px] font-semibold tabular-nums">({activeCategory.items.length})</span>
             </button>
           )}
 
@@ -127,7 +127,7 @@ export const CastCrew = ({ credits = [], className = '' }: CastCrewProps) => {
               type="button"
               disabled={!canScrollLeft}
               onClick={() => scrollBy(-260)}
-              className="flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-base)] text-foreground disabled:opacity-25 transition-all"
+              className="flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-base)] text-foreground disabled:opacity-25 transition-colors"
               aria-label="Scroll left"
             >
               <ChevronLeft className="h-4 w-4" />
@@ -136,7 +136,7 @@ export const CastCrew = ({ credits = [], className = '' }: CastCrewProps) => {
               type="button"
               disabled={!canScrollRight}
               onClick={() => scrollBy(260)}
-              className="flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-base)] text-foreground disabled:opacity-25 transition-all"
+              className="flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--dk-surface-glass)] hover:bg-[var(--dk-surface-base)] text-foreground disabled:opacity-25 transition-colors"
               aria-label="Scroll right"
             >
               <ChevronRight className="h-4 w-4" />

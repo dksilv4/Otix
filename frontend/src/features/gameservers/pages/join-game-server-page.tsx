@@ -483,7 +483,7 @@ export const JoinGameServerPage = () => {
                 <a
                   href={steamInfo.steamJoinUrl}
                   onClick={handleSteamJoin}
-                  className="inline-flex items-center justify-center gap-2 w-full h-11 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-bold transition-all shadow-md active:scale-[0.98]"
+                  className="inline-flex items-center justify-center gap-2 w-full h-11 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-bold transition shadow-md active:scale-[0.98]"
                 >
                   <Play size={15} fill="currentColor" />
                   <span>1-Click Steam Join</span>

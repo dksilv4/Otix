@@ -73,7 +73,7 @@ export const MessagesPage = () => {
         }`}
       >
         {/* Floating Search Capsule Bar */}
-        <div className="relative rounded-2xl bg-[var(--dk-surface-overlay)]/75 backdrop-blur-2xl border border-white/[0.06] shadow-[var(--dk-shadow-glass)] px-3.5 py-2.5 mx-1 flex items-center gap-2.5 shrink-0 transition-all focus-within:ring-1 focus-within:ring-primary/40">
+        <div className="relative rounded-2xl bg-[var(--dk-surface-overlay)]/75 backdrop-blur-2xl border border-white/[0.06] shadow-[var(--dk-shadow-glass)] px-3.5 py-2.5 mx-1 flex items-center gap-2.5 shrink-0 transition-colors focus-within:ring-1 focus-within:ring-primary/40">
           <Search className="w-4 h-4 text-muted-foreground/60 shrink-0" />
           <input
             type="text"
@@ -117,7 +117,7 @@ export const MessagesPage = () => {
                     src={friend.avatarUrl}
                     name={friend.username}
                     size="sm"
-                    className="ring-1.5 ring-primary/40 group-hover:ring-primary transition-all !w-8 !h-8"
+                    className="ring-1.5 ring-primary/40 group-hover:ring-primary transition-colors !w-8 !h-8"
                   />
                   <span className="absolute bottom-0 right-0 h-2 w-2 rounded-full bg-primary ring-2 ring-[var(--dk-surface-base)]" />
                 </div>

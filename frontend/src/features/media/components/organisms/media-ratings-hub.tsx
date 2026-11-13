@@ -128,7 +128,7 @@ export const RatingsHub = ({
           <div className="flex items-center gap-3.5 min-w-0">
             <div
               className={cn(
-                'flex h-13 w-13 shrink-0 flex-col items-center justify-center rounded-xl font-black transition-all',
+                'flex h-13 w-13 shrink-0 flex-col items-center justify-center rounded-xl font-black transition-colors',
                 colors.bg,
                 colors.text,
                 colors.glow,
@@ -237,7 +237,7 @@ export const RatingsHub = ({
                         }}
                       >
                         <Star
-                          className="w-6 h-6 text-[var(--status-warning)] fill-[var(--status-warning)] drop-shadow-[0_0_8px_rgba(245,158,11,0.3)] transition-transform duration-150"
+                          className="w-6 h-6 text-[var(--status-warning)] fill-[var(--status-warning)] drop-shadow-md transition-transform duration-150"
                           strokeWidth={1.5}
                         />
                       </div>
@@ -306,7 +306,7 @@ export const RatingsHub = ({
           {review?.content ? (
             <div
               onClick={handleOpenComposer}
-              className="glass-inset p-4 rounded-2xl space-y-2 cursor-pointer hover:bg-[var(--dk-surface-glass)] transition-all group"
+              className="glass-inset p-4 rounded-2xl space-y-2 cursor-pointer hover:bg-[var(--dk-surface-glass)] transition-colors group"
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1.5 text-xs font-semibold text-primary">
@@ -328,11 +328,11 @@ export const RatingsHub = ({
             <button
               type="button"
               onClick={handleOpenComposer}
-              className="w-full text-left relative overflow-hidden rounded-2xl bg-[var(--dk-surface-glass)] p-4 transition-all duration-200 hover:bg-[var(--dk-surface-glass-hover)] hover:shadow-lg group cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              className="w-full text-left relative overflow-hidden rounded-2xl bg-[var(--dk-surface-glass)] p-4 transition-colors duration-200 hover:bg-[var(--dk-surface-glass-hover)] hover:shadow-lg group cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             >
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary transition-all duration-300 group-hover:scale-105 group-hover:bg-primary/20">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary transition duration-300 group-hover:scale-105 group-hover:bg-primary/20">
                     <Sparkles className="h-5 w-5" />
                   </div>
                   <div className="min-w-0">

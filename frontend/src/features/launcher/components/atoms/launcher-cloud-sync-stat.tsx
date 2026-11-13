@@ -39,7 +39,7 @@ export const LauncherCloudSyncStat = () => {
       <button
         onClick={sync.handleSyncNow}
         disabled={sync.syncing || !sync.cloudSettings?.isPathConfirmed}
-        className="flex items-center justify-center min-w-9 rounded-lg hover:bg-[var(--dk-surface-ghost)] text-muted-foreground hover:text-foreground transition-all cursor-pointer disabled:opacity-40 active:scale-95"
+        className="flex items-center justify-center min-w-9 rounded-lg hover:bg-[var(--dk-surface-ghost)] text-muted-foreground hover:text-foreground transition-colors cursor-pointer disabled:opacity-40 active:scale-95"
         title={cloudTitle}
       >
         {cloudIcon}

@@ -579,7 +579,7 @@ export const NodeMassMatchModal = ({
 
               <div className="w-full max-w-md mx-auto h-2 rounded-full bg-[var(--dk-surface-base)] overflow-hidden">
                 <div
-                  className="h-full bg-primary transition-all duration-300 rounded-full"
+                  className="h-full bg-primary transition-colors duration-300 rounded-full"
                   style={{
                     width: `${analysisProgress.total > 0 ? Math.max(5, Math.round((analysisProgress.processed / analysisProgress.total) * 100)) : 5}%`,
                   }}
@@ -779,7 +779,7 @@ export const NodeMassMatchModal = ({
 
               <div className="w-full max-w-md mx-auto h-2 rounded-full bg-[var(--dk-surface-base)] overflow-hidden">
                 <div
-                  className="h-full bg-primary transition-all duration-300 rounded-full"
+                  className="h-full bg-primary transition-colors duration-300 rounded-full"
                   style={{
                     width: `${applyProgress.total > 0 ? Math.max(5, Math.round((applyProgress.processed / applyProgress.total) * 100)) : 5}%`,
                   }}

@@ -108,7 +108,7 @@ export const GameSessionStatusIndicator = ({
           return (
             <div
               key={g.game.id}
-              className={`flex flex-col gap-2 rounded-2xl bg-[var(--dk-surface-glass)] backdrop-blur-xl border border-white/[0.05] p-3 text-xs shadow-sm transition-all ${
+              className={`flex flex-col gap-2 rounded-2xl bg-[var(--dk-surface-glass)] backdrop-blur-xl border border-white/[0.05] p-3 text-xs shadow-sm transition-colors ${
                 isCurrent ? 'ring-1 ring-primary/25' : 'opacity-90 hover:opacity-100'
               }`}
             >
@@ -238,7 +238,7 @@ export const GameSessionStatusIndicator = ({
             handleCycle()
           }}
           title={`Running ${allGames.length} games. Click or press Ctrl+Tab to cycle.`}
-          className="inline-flex items-center gap-1 pl-1.5 border-l border-primary/20 text-[10px] font-semibold text-primary hover:text-primary-foreground hover:bg-primary/20 rounded px-1.5 py-0.5 transition-all cursor-pointer"
+          className="inline-flex items-center gap-1 pl-1.5 border-l border-primary/20 text-[10px] font-semibold text-primary hover:text-primary-foreground hover:bg-primary/20 rounded px-1.5 py-0.5 transition-colors cursor-pointer"
         >
           <RotateCw className="h-2.5 w-2.5" />
           <span>+{allGames.length - 1}</span>

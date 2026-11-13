@@ -64,7 +64,7 @@ export const FriendsNavDropdown = ({ bare }: FriendsNavDropdownProps) => {
   if (!isAuthenticated) return null
 
   const triggerClasses = bare
-    ? 'relative flex h-8 w-8 items-center justify-center rounded-full transition-all hover:bg-[var(--dk-surface-ghost-hover)] active:bg-[var(--dk-surface-ghost-active)] cursor-pointer text-muted-foreground hover:text-foreground'
+    ? 'relative flex h-8 w-8 items-center justify-center rounded-full transition-colors hover:bg-[var(--dk-surface-ghost-hover)] active:bg-[var(--dk-surface-ghost-active)] cursor-pointer text-muted-foreground hover:text-foreground'
     : 'relative flex items-center rounded-full p-2 text-muted-foreground hover:text-foreground cursor-pointer'
 
   return (

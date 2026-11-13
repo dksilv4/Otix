@@ -110,7 +110,7 @@ export const DiscoverContinueWatchingCard = memo(
         className="group relative flex flex-col w-full text-left select-none cursor-pointer"
       >
         {/* 16:9 Thumbnail Pod with Soft Glassmorphic Tonal Surface */}
-        <div className="relative aspect-video w-full rounded-2xl overflow-hidden bg-card/60 shadow-md backdrop-blur-xl transition-all duration-300 group-hover:shadow-xl group-hover:-translate-y-0.5">
+        <div className="relative aspect-video w-full rounded-2xl overflow-hidden bg-card/60 shadow-md backdrop-blur-xl transition duration-300 group-hover:shadow-xl group-hover:-translate-y-0.5">
           {/* Edge-to-edge artwork */}
           <div className="absolute inset-0 scale-100 group-hover:scale-105 transition-transform duration-500">
             <DkImage
@@ -178,7 +178,7 @@ export const DiscoverContinueWatchingCard = memo(
                 className="h-2 w-full rounded-full bg-background/60 backdrop-blur-xl shadow-md overflow-hidden"
               >
                 <div
-                  className="h-full rounded-full bg-primary transition-all duration-500 shadow-[0_0_8px_var(--primary)]"
+                  className="h-full rounded-full bg-primary transition duration-500 shadow-[0_0_8px_var(--primary)]"
                   style={{ width: `${progressPercent}%` }}
                 />
               </div>

@@ -15,7 +15,16 @@ import {
   Unlock,
   Info,
   Compass,
+  Sparkles,
+  Share2,
+  Dices,
 } from 'lucide-react'
+import { showToast } from '@ui/molecules/toast'
+import {
+  generateVisualizerSeed,
+  parseVisualizerSeed,
+  generateRandomVisualizerSeed,
+} from '../utils/visualizer-seed'
 import type { MusicPlayerTheme } from '../../hooks/use-music-palette'
 import {
   type MeshGridParams,
@@ -45,6 +54,7 @@ export interface MeshGridControlsPanelProps {
   onResetParams: () => void
   onResetCamera: () => void
   onSnapCamera?: (presetId: CameraSnapPresetId) => void
+  onImportSeed?: (params: MeshGridParams) => void
   theme: MusicPlayerTheme
 }
 
@@ -57,6 +67,7 @@ export const MeshGridControlsPanel = ({
   onResetParams,
   onResetCamera,
   onSnapCamera,
+  onImportSeed,
   theme,
 }: MeshGridControlsPanelProps) => {
   const [activeTab, setActiveTab] = useState<string>('all')
@@ -64,6 +75,9 @@ export const MeshGridControlsPanel = ({
   const [searchQuery, setSearchQuery] = useState('')
   const [presetFilter, setPresetFilter] = useState<PresetGroupFilter>('all')
   const [copied, setCopied] = useState(false)
+  const [copiedSeed, setCopiedSeed] = useState(false)
+  const [importSeedInput, setImportSeedInput] = useState('')
+  const [seedError, setSeedError] = useState<string | null>(null)
 
   const isCameraLocked = Boolean(params.lockCameraOnPresetChange)
 
@@ -107,6 +121,74 @@ export const MeshGridControlsPanel = ({
     } catch {
       // Fallback
     }
+  }
+
+  const handleCopySeed = async () => {
+    try {
+      const seed = generateVisualizerSeed(params)
+      await navigator.clipboard.writeText(seed)
+      setCopiedSeed(true)
+      showToast({
+        title: 'Visualizer seed copied to clipboard',
+        description: 'Share this code with anyone to let them experience your exact visualizer setup.',
+        variant: 'success',
+      })
+      setTimeout(() => setCopiedSeed(false), 2000)
+    } catch {
+      showToast({
+        title: 'Unable to copy to clipboard',
+        description: 'Please copy the seed manually from the Seed & Share tab.',
+        variant: 'info',
+      })
+    }
+  }
+
+  const handleApplySeed = (seedToApply: string) => {
+    setSeedError(null)
+    const parsed = parseVisualizerSeed(seedToApply)
+    if (!parsed) {
+      setSeedError('Invalid visualizer seed format. Please verify the code string.')
+      return
+    }
+
+    if (onImportSeed) {
+      onImportSeed(parsed)
+    } else {
+      onApplyPreset({
+        id: 'imported-seed',
+        name: 'Imported Seed',
+        description: 'Custom community visualizer configuration',
+        params: parsed,
+      })
+    }
+
+    setImportSeedInput('')
+    showToast({
+      title: 'Visualizer seed applied!',
+      description: 'Your 3D visualizer settings have been updated and saved.',
+      variant: 'success',
+    })
+  }
+
+  const handleRollRandomSeed = () => {
+    const { params: randomParams } = generateRandomVisualizerSeed({
+      useAlbumPalette: params.useAlbumPalette,
+    })
+    if (onImportSeed) {
+      onImportSeed(randomParams)
+    } else {
+      onApplyPreset({
+        id: 'procedural-seed',
+        name: 'Procedural Seed',
+        description: 'Procedurally generated seed configuration',
+        params: randomParams,
+      })
+    }
+    showToast({
+      title: 'Generated new visualizer seed!',
+      description: 'Applied new unique procedural parameters.',
+      variant: 'success',
+    })
   }
 
   if (!isOpen) return null
@@ -175,6 +257,17 @@ export const MeshGridControlsPanel = ({
               <Camera className="h-4 w-4" />
             </button>
 
+            {/* Share / Copy Seed */}
+            <button
+              type="button"
+              onClick={handleCopySeed}
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-ghost)] transition-colors"
+              title="Share Visualizer Seed Code"
+              aria-label="Share Visualizer Seed"
+            >
+              {copiedSeed ? <Check className="h-4 w-4 text-primary" /> : <Share2 className="h-4 w-4" />}
+            </button>
+
             {/* Copy Config JSON */}
             <button
               type="button"
@@ -237,6 +330,19 @@ export const MeshGridControlsPanel = ({
             <span>Presets</span>
             <span className="text-[10px] font-mono text-primary">({MESH_GRID_PRESETS.length})</span>
           </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('seed')}
+            className={cn(
+              'px-2.5 py-1 text-[11px] font-medium rounded-lg transition-colors whitespace-nowrap flex items-center gap-1',
+              activeTab === 'seed'
+                ? 'bg-[var(--dk-surface-raised)] text-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-ghost)]',
+            )}
+          >
+            <Sparkles className="h-3 w-3 text-primary" />
+            <span>Seed & Share</span>
+          </button>
 
           {MESH_GRID_PARAM_CATEGORIES.map((category) => {
             const Icon = CATEGORY_ICONS[category.iconName] || Sliders
@@ -260,6 +366,103 @@ export const MeshGridControlsPanel = ({
           })}
         </div>
 
+        {/* Seed & Share Pod (visible in All or Seed & Share tab) */}
+        {(activeTab === 'seed' || activeTab === 'all') && !searchQuery && (
+          <div className="py-3 border-b border-white/[0.06] shrink-0 space-y-2.5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5">
+                <Sparkles className="h-3.5 w-3.5 text-primary" />
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  Visualizer Seed & Sharing
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={handleRollRandomSeed}
+                className="flex items-center gap-1 text-[10.5px] font-medium text-primary hover:underline cursor-pointer"
+                title="Procedurally randomize settings into a new seed"
+              >
+                <Dices className="h-3 w-3" />
+                <span>Roll Random Seed</span>
+              </button>
+            </div>
+
+            <div className="rounded-2xl bg-[var(--dk-surface-raised)]/40 p-3 space-y-3 border border-white/[0.04]">
+              {/* Share Current Seed */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-medium text-foreground">Current Seed Code</span>
+                  <button
+                    type="button"
+                    onClick={handleCopySeed}
+                    className="flex items-center gap-1 text-[11px] font-medium text-primary hover:text-primary/80 transition-colors cursor-pointer"
+                  >
+                    {copiedSeed ? (
+                      <>
+                        <Check className="h-3 w-3" />
+                        <span>Copied!</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="h-3 w-3" />
+                        <span>Copy Seed</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+                <div className="w-full bg-[var(--dk-surface-base)]/80 text-foreground font-mono text-[10px] p-2 rounded-xl border border-white/[0.04] break-all select-all max-h-14 overflow-y-auto no-scrollbar">
+                  {generateVisualizerSeed(params)}
+                </div>
+                <p className="text-[10px] text-muted-foreground leading-tight">
+                  Share this seed code with other people so they can load and see your exact visualizer!
+                </p>
+              </div>
+
+              {/* Import Seed */}
+              <div className="pt-2 border-t border-white/[0.04] space-y-1.5">
+                <span className="text-xs font-medium text-foreground block">Import Friend's Seed</span>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={importSeedInput}
+                    onChange={(e) => {
+                      setImportSeedInput(e.target.value)
+                      if (seedError) setSeedError(null)
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault()
+                        handleApplySeed(importSeedInput)
+                      }
+                    }}
+                    placeholder="Paste visualizer seed (OTIX-VIZ-1:...)"
+                    aria-label="Paste visualizer seed"
+                    className="flex-1 bg-[var(--dk-surface-base)]/80 text-foreground font-mono text-[11px] px-2.5 py-1.5 rounded-xl border border-white/[0.04] focus:outline-none focus:ring-1 focus:ring-primary/40 placeholder:text-muted-foreground/60"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => handleApplySeed(importSeedInput)}
+                    disabled={!importSeedInput.trim()}
+                    className={cn(
+                      'px-3 py-1.5 rounded-xl text-xs font-medium transition-colors shrink-0 cursor-pointer',
+                      importSeedInput.trim()
+                        ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+                        : 'bg-[var(--dk-surface-raised)] text-muted-foreground opacity-50 cursor-not-allowed',
+                    )}
+                  >
+                    Apply Seed
+                  </button>
+                </div>
+                {seedError && (
+                  <p className="text-[10.5px] text-destructive leading-tight font-medium">
+                    {seedError}
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Presets & Camera Hero Pod (visible in All or dedicated tabs) */}
         {(activeTab === 'all' || activeTab === 'presets') && !searchQuery && (
           <div className="py-3 border-b border-white/[0.06] shrink-0 space-y-2">
@@ -271,6 +474,11 @@ export const MeshGridControlsPanel = ({
                 {isCameraLocked && (
                   <span className="text-[10px] font-mono text-primary px-1.5 py-0.5 rounded-full bg-primary/10">
                     Camera Angle Preserved
+                  </span>
+                )}
+                {params.useAlbumPalette && (
+                  <span className="text-[10px] font-mono text-primary px-1.5 py-0.5 rounded-full bg-primary/10">
+                    Album Theme Persisted
                   </span>
                 )}
               </div>
@@ -322,7 +530,7 @@ export const MeshGridControlsPanel = ({
                     type="button"
                     onClick={() => onApplyPreset(preset)}
                     className={cn(
-                      'flex flex-col items-start px-2.5 py-1.5 rounded-xl text-left transition-all duration-200 border border-transparent',
+                      'flex flex-col items-start px-2.5 py-1.5 rounded-xl text-left transition-colors duration-200 border border-transparent',
                       active
                         ? 'bg-primary/10 hover:bg-primary/15 text-foreground border-primary/25 shadow-sm'
                         : 'bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)] text-muted-foreground hover:text-foreground',
@@ -370,7 +578,7 @@ export const MeshGridControlsPanel = ({
                   key={snap.id}
                   type="button"
                   onClick={() => onSnapCamera?.(snap.id)}
-                  className="flex flex-col items-center justify-center p-1.5 rounded-xl bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-raised)] border border-white/[0.04] transition-all text-center group"
+                  className="flex flex-col items-center justify-center p-1.5 rounded-xl bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-raised)] border border-white/[0.04] transition-colors text-center group"
                   title={snap.tip}
                 >
                   <span className="text-[11px] font-medium text-foreground group-hover:text-primary transition-colors truncate w-full">

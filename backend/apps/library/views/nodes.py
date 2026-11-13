@@ -12,7 +12,7 @@ import httpx
 from django.conf import settings
 from django.core.cache import cache
 from django.db.models import Q
-from django.db.utils import IntegrityError, OperationalError, ProgrammingError
+from django.db.utils import DatabaseError, IntegrityError, OperationalError, ProgrammingError
 from django.http import FileResponse, Http404
 from django.utils import timezone
 from rest_framework import permissions, status
@@ -502,8 +502,12 @@ class DesktopNodeHeartbeatView(APIView):
                     fields.append("storage_total_bytes")
                 except (ValueError, TypeError):
                     pass
-            node.save(update_fields=fields)
-        else:
+            try:
+                node.save(update_fields=fields)
+            except DatabaseError:
+                # Row was deleted or modified concurrently; fallback to create
+                node = None
+        if not node:
             tf = 0
             if total_files is not None:
                 try:

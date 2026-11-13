@@ -33,7 +33,7 @@ export const NotificationActions = ({ actions }: NotificationActionsProps) => {
             })
           }}
           className={cn(
-            'rounded-lg px-2.5 py-1 text-[11px] font-semibold transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed',
+            'rounded-lg px-2.5 py-1 text-[11px] font-semibold transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed',
             variants[action.variant],
           )}
         >

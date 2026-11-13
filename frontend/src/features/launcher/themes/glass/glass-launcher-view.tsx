@@ -159,7 +159,7 @@ export const GlassLauncherView = () => {
               {user?.avatarUrl ? (
                 <img src={user.avatarUrl} alt="" className="w-8 h-8 rounded-xl object-cover ring-1 ring-white/20" />
               ) : (
-                <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-purple-500 to-pink-500 flex items-center justify-center text-xs font-black text-white shadow-lg">
+                <div className="w-8 h-8 rounded-xl bg-primary flex items-center justify-center text-xs font-black text-primary-foreground shadow-lg">
                   {(user?.username?.[0] || "U").toUpperCase()}
                 </div>
               )}
@@ -176,7 +176,7 @@ export const GlassLauncherView = () => {
               key={activeGame.id}
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
-              className="p-8 rounded-3xl bg-white/[0.05] backdrop-blur-2xl border border-white/[0.12] shadow-[0_16px_50px_rgba(0,0,0,0.5)] space-y-4"
+              className="p-8 rounded-3xl bg-white/[0.05] backdrop-blur-2xl border border-white/[0.12] shadow-2xl space-y-4"
             >
               <div className="flex items-center gap-3">
                 <span className="px-3 py-1 rounded-full bg-primary/20 text-primary font-extrabold text-[10px] tracking-wider uppercase border border-primary/30">
@@ -208,7 +208,7 @@ export const GlassLauncherView = () => {
               <div className="flex items-center gap-3 pt-2">
                 <button
                   onClick={() => handlePlayGame(activeGame)}
-                  className="flex items-center gap-2 px-8 py-3 rounded-2xl bg-primary hover:bg-primary/90 text-primary-foreground font-extrabold text-xs uppercase tracking-wider shadow-lg shadow-primary/25 active:scale-95 transition-all cursor-pointer"
+                  className="flex items-center gap-2 px-8 py-3 rounded-2xl bg-primary hover:bg-primary/90 text-primary-foreground font-extrabold text-xs uppercase tracking-wider shadow-lg shadow-primary/25 active:scale-95 transition-colors cursor-pointer"
                 >
                   <Play size={14} className="fill-current" />
                   <span>Launch Title</span>
@@ -216,7 +216,7 @@ export const GlassLauncherView = () => {
 
                 <button
                   onClick={() => setDetailGame(activeGame)}
-                  className="flex items-center gap-2 px-5 py-3 rounded-2xl bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-field)] text-foreground font-bold text-xs uppercase tracking-wider border border-white/[0.04] transition-all cursor-pointer"
+                  className="flex items-center gap-2 px-5 py-3 rounded-2xl bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-field)] text-foreground font-bold text-xs uppercase tracking-wider border border-white/[0.04] transition cursor-pointer"
                 >
                   <Sliders size={13} />
                   <span>Settings</span>
@@ -243,7 +243,7 @@ export const GlassLauncherView = () => {
                 <div
                   key={game.id}
                   onClick={() => selectGame(game.id)}
-                  className={`relative shrink-0 rounded-2xl overflow-hidden cursor-pointer bg-[var(--dk-surface-glass)] border border-white/[0.04] transition-all duration-300 transform-gpu hover:-translate-y-1.5 hover:scale-[1.03] active:scale-[0.97] ${
+                  className={`relative shrink-0 rounded-2xl overflow-hidden cursor-pointer bg-[var(--dk-surface-glass)] border border-white/[0.04] transition-transform duration-300 motion-reduce:transition-none transform-gpu hover:-translate-y-1.5 hover:scale-[1.03] active:scale-[0.97] ${
                     isSelected
                       ? "w-36 sm:w-44 aspect-[3/4] ring-2 ring-primary shadow-lg shadow-primary/25"
                       : "w-28 sm:w-36 aspect-[3/4] opacity-70 hover:opacity-100 ring-1 ring-white/[0.06]"

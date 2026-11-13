@@ -642,7 +642,7 @@ export const SettingsAccountPage = () => {
               )}&body=${encodeURIComponent(
                 `Hello Otix Privacy Team,\n\nPlease permanently delete my account and all associated personal data associated with username "${user?.username || ''}" and email "${user?.email || ''}".\n\nThank you.`
               )}`}
-              className="inline-flex items-center gap-2 rounded-xl bg-destructive/15 hover:bg-destructive/25 px-3.5 py-2 text-xs font-semibold text-destructive transition-all active:scale-95"
+              className="inline-flex items-center gap-2 rounded-xl bg-destructive/15 hover:bg-destructive/25 px-3.5 py-2 text-xs font-semibold text-destructive transition active:scale-95"
             >
               <Trash2 className="h-3.5 w-3.5" />
               <span>Request Account &amp; Data Deletion</span>

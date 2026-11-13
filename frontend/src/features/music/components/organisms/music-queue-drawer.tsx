@@ -113,7 +113,7 @@ export const MusicQueueDrawer = ({ isOpen, onClose }: MusicQueueDrawerProps) => 
                       <img
                         src={currentTrack.albumArt}
                         alt={currentTrack.title}
-                        className="h-14 w-14 rounded-xl object-cover bg-[var(--dk-surface-glass)] transition-all"
+                        className="h-14 w-14 rounded-xl object-cover bg-[var(--dk-surface-glass)] transition-colors"
                       />
                     ) : (
                       <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-[var(--dk-surface-glass)] text-muted-foreground">
@@ -140,7 +140,7 @@ export const MusicQueueDrawer = ({ isOpen, onClose }: MusicQueueDrawerProps) => 
                   <div className="space-y-1">
                     <div className="h-1.5 w-full overflow-hidden rounded-full bg-[var(--dk-surface-raised)]">
                       <div
-                        className={cn('h-full transition-all duration-200', !theme.hasArtwork && 'bg-primary')}
+                        className={cn('h-full transition-colors duration-200', !theme.hasArtwork && 'bg-primary')}
                         style={{
                           width: `${progressPercent}%`,
                           ...(theme.hasArtwork
@@ -299,7 +299,7 @@ export const MusicQueueDrawer = ({ isOpen, onClose }: MusicQueueDrawerProps) => 
                           <button
                             type="button"
                             onClick={() => removeFromQueue(idx)}
-                            className="opacity-0 group-hover:opacity-100 p-1 text-muted-foreground hover:text-destructive transition-all"
+                            className="opacity-0 group-hover:opacity-100 p-1 text-muted-foreground hover:text-destructive transition"
                             aria-label={`Remove ${item.title} from queue`}
                           >
                             <X className="h-3.5 w-3.5" />

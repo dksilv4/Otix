@@ -112,7 +112,7 @@ export const NodeMapConnectDialog = ({
                 tabIndex={0}
                 onClick={() => setSelectedType('host')}
                 onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && setSelectedType('host')}
-                className={`p-3.5 rounded-xl cursor-pointer text-left transition-all border ${
+                className={`p-3.5 rounded-xl cursor-pointer text-left transition-colors border ${
                   selectedType === 'host'
                     ? 'bg-primary/10 border-primary/40 ring-1 ring-primary/20'
                     : 'bg-[var(--dk-surface-field)] border-[var(--dk-separator)] hover:bg-[var(--dk-surface-hover)]'
@@ -139,7 +139,7 @@ export const NodeMapConnectDialog = ({
                 tabIndex={0}
                 onClick={() => setSelectedType('smb')}
                 onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && setSelectedType('smb')}
-                className={`p-3.5 rounded-xl cursor-pointer text-left transition-all border ${
+                className={`p-3.5 rounded-xl cursor-pointer text-left transition-colors border ${
                   selectedType === 'smb'
                     ? 'bg-primary/10 border-primary/40 ring-1 ring-primary/20'
                     : 'bg-[var(--dk-surface-field)] border-[var(--dk-separator)] hover:bg-[var(--dk-surface-hover)]'

@@ -243,7 +243,7 @@ export const GameServersDrawer = ({
                     }}
                     className={cn(
                       'p-4 rounded-2xl bg-[var(--dk-surface-field)] border border-white/[0.04]',
-                      'hover:bg-[var(--dk-surface-field)]/80 transition-all space-y-3',
+                      'hover:bg-[var(--dk-surface-field)]/80 transition-colors space-y-3',
                       isFocused && 'ring-2 ring-primary/60 bg-primary/[0.04] shadow-md shadow-primary/10',
                     )}
                   >

@@ -48,7 +48,7 @@ export const SettingsNodeConnectionsPage = () => {
             <Link
               to="/settings/nodes/$nodeId"
               params={{ nodeId: String(activeServer.id) }}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium text-muted-foreground hover:text-foreground bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)] border border-white/[0.04] transition-all cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium text-muted-foreground hover:text-foreground bg-[var(--dk-surface-ghost)] hover:bg-[var(--dk-surface-ghost-hover)] border border-white/[0.04] transition-colors cursor-pointer"
               title="Inspect node infrastructure details"
             >
               <Server className="h-3.5 w-3.5 text-primary" />

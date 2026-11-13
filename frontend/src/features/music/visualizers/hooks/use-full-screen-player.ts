@@ -1,8 +1,12 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import type { VisualizerMode } from '../types'
 import { getNextVisualizerMode } from '../utils/visualizer-helpers'
+import {
+  VISUALIZER_MODE_KEY,
+  getSavedVisualizerMode,
+  saveVisualizerMode,
+} from '../utils/visualizer-persistence'
 
-const VISUALIZER_MODE_KEY = 'otix_visualizer_mode'
 const VISUALIZER_INTENSITY_KEY = 'otix_visualizer_intensity'
 
 export const useFullScreenPlayer = (
@@ -14,15 +18,9 @@ export const useFullScreenPlayer = (
   seek?: (ms: number) => void,
   positionMs = 0,
 ) => {
-  const [visualizerMode, setVisualizerModeState] = useState<VisualizerMode>(() => {
-    if (typeof localStorage !== 'undefined') {
-      const saved = localStorage.getItem(VISUALIZER_MODE_KEY) as VisualizerMode
-      if (saved && ['cosmic', 'cyber', 'waves', 'radial', 'monolith', 'ambient'].includes(saved)) {
-        return saved
-      }
-    }
-    return 'cosmic'
-  })
+  const [visualizerMode, setVisualizerModeState] = useState<VisualizerMode>(() =>
+    getSavedVisualizerMode(),
+  )
 
   const [intensity, setIntensityState] = useState<number>(() => {
     if (typeof localStorage !== 'undefined') {
@@ -42,9 +40,7 @@ export const useFullScreenPlayer = (
 
   const setVisualizerMode = useCallback((mode: VisualizerMode) => {
     setVisualizerModeState(mode)
-    if (typeof localStorage !== 'undefined') {
-      localStorage.setItem(VISUALIZER_MODE_KEY, mode)
-    }
+    saveVisualizerMode(mode)
   }, [])
 
   const setIntensity = useCallback((val: number) => {
@@ -57,9 +53,7 @@ export const useFullScreenPlayer = (
   const cycleVisualizer = useCallback(() => {
     setVisualizerModeState((curr) => {
       const next = getNextVisualizerMode(curr)
-      if (typeof localStorage !== 'undefined') {
-        localStorage.setItem(VISUALIZER_MODE_KEY, next)
-      }
+      saveVisualizerMode(next)
       return next
     })
   }, [])

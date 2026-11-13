@@ -31,7 +31,7 @@ export const ActiveFriendStrip = ({ activeFriends }: ActiveFriendStripProps) => 
               key={friend.id}
               to="/u/$username"
               params={{ username: friend.username }}
-              className="group flex min-w-[200px] max-w-[240px] shrink-0 items-center gap-3 rounded-xl bg-[var(--dk-surface-ghost)] p-2.5 transition-all duration-200 hover:bg-[var(--dk-surface-ghost-hover)]"
+              className="group flex min-w-[200px] max-w-[240px] shrink-0 items-center gap-3 rounded-xl bg-[var(--dk-surface-ghost)] p-2.5 transition-colors duration-200 hover:bg-[var(--dk-surface-ghost-hover)]"
             >
               <FriendAvatar
                 src={friend.avatarUrl}

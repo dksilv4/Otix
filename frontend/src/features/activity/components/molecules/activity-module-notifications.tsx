@@ -143,7 +143,7 @@ export const ActivityModuleNotifications = ({ onClose }: ActivityModuleNotificat
                 if (e.key === 'Enter' && isClickable) handleCardClick(n, link)
               }}
               className={
-                'group relative flex items-start gap-2.5 p-2.5 rounded-xl transition-all duration-150 ' +
+                'group relative flex items-start gap-2.5 p-2.5 rounded-xl transition-colors duration-150 ' +
                 (!n.isRead
                   ? 'bg-[var(--dk-surface-overlay)]/85 border border-[var(--dk-separator)]'
                   : 'bg-[var(--dk-surface-overlay)]/45 hover:bg-[var(--dk-surface-overlay)]/75 border border-transparent') +

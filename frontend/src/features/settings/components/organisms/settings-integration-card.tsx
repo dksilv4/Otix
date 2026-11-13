@@ -45,7 +45,7 @@ export const IntegrationCard = ({
     <>
       <div
         className={cn(
-          'rounded-2xl overflow-hidden backdrop-blur-xl transition-all duration-200',
+          'rounded-2xl overflow-hidden backdrop-blur-xl transition-colors duration-200',
           className,
         )}
         style={{

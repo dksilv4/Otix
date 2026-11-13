@@ -86,7 +86,7 @@ export const DownloadHistoryPanel = ({
                 type="button"
                 onClick={() => setFilter(tab)}
                 className={cn(
-                  'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all border border-white/[0.04]',
+                  'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors border border-white/[0.04]',
                   active
                     ? 'bg-primary text-primary-foreground shadow-sm'
                     : 'bg-[var(--dk-surface-ghost)] text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-overlay)]',
@@ -155,7 +155,7 @@ export const DownloadHistoryPanel = ({
             return (
               <div
                 key={nzoId || item.id}
-                className="p-4 rounded-2xl bg-[var(--dk-surface-glass)] backdrop-blur-xl shadow-[var(--dk-shadow-glass)] border border-white/[0.04] space-y-2 transition-all hover:bg-[var(--dk-surface-raised)]/60"
+                className="p-4 rounded-2xl bg-[var(--dk-surface-glass)] backdrop-blur-xl shadow-[var(--dk-shadow-glass)] border border-white/[0.04] space-y-2 transition-colors hover:bg-[var(--dk-surface-raised)]/60"
               >
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
                   <div className="flex items-start sm:items-center gap-3 min-w-0">

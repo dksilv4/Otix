@@ -143,7 +143,7 @@ export const MusicLocalView = () => {
           </div>
           <div className="h-1.5 w-full overflow-hidden rounded-full bg-[var(--dk-surface-raised)]">
             <div
-              className="h-full bg-primary transition-all duration-150"
+              className="h-full bg-primary transition-colors duration-150"
               style={{
                 width: `${scanProgress.total > 0 ? (scanProgress.current / scanProgress.total) * 100 : 0}%`,
               }}
@@ -158,7 +158,7 @@ export const MusicLocalView = () => {
           <button
             type="button"
             onClick={() => setViewMode('albums')}
-            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
+            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
               viewMode === 'albums'
                 ? 'bg-[var(--dk-surface-glass-hover)] text-foreground shadow-sm'
                 : 'text-muted-foreground hover:text-foreground'
@@ -170,7 +170,7 @@ export const MusicLocalView = () => {
           <button
             type="button"
             onClick={() => setViewMode('artists')}
-            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
+            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
               viewMode === 'artists'
                 ? 'bg-[var(--dk-surface-glass-hover)] text-foreground shadow-sm'
                 : 'text-muted-foreground hover:text-foreground'
@@ -182,7 +182,7 @@ export const MusicLocalView = () => {
           <button
             type="button"
             onClick={() => setViewMode('tracks')}
-            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
+            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
               viewMode === 'tracks'
                 ? 'bg-[var(--dk-surface-glass-hover)] text-foreground shadow-sm'
                 : 'text-muted-foreground hover:text-foreground'

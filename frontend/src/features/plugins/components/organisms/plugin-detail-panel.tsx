@@ -241,7 +241,7 @@ const PluginConnectionSection = ({ plugin, api }: { plugin: PluginInfo; api: Plu
                   {scanProgress.total > 0 && (
                     <div className="mt-1 h-0.5 overflow-hidden rounded-full bg-[var(--dk-surface-field)] border border-[var(--dk-separator)]">
                       <div
-                        className="h-full rounded-full bg-primary transition-all duration-300"
+                        className="h-full rounded-full bg-primary transition-colors duration-300"
                         style={{ width: `${Math.min(100, (scanProgress.current / scanProgress.total) * 100)}%` }}
                       />
                     </div>

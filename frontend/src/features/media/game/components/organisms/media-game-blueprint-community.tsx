@@ -106,7 +106,7 @@ export const BlueprintCommunity = ({ pluginId, onViewDetail }: Props) => {
             <button
               key={opt.value}
               onClick={() => { setSort(opt.value); setPage(1) }}
-              className={`px-2.5 py-1 text-[10px] font-medium rounded-lg transition-all ${
+              className={`px-2.5 py-1 text-[10px] font-medium rounded-lg transition-colors ${
                 sort === opt.value
                   ? 'bg-primary/10 text-primary'
                   : 'text-muted-foreground hover:text-foreground hover:bg-[var(--dk-surface-glass)]'
@@ -118,7 +118,7 @@ export const BlueprintCommunity = ({ pluginId, onViewDetail }: Props) => {
         </div>
         <button
           onClick={() => { setShowUpload(true); loadVaultForUpload() }}
-          className="flex items-center gap-1.5 h-8 px-3 text-xs font-medium rounded-lg bg-primary/15 text-primary hover:bg-primary/25 transition-all"
+          className="flex items-center gap-1.5 h-8 px-3 text-xs font-medium rounded-lg bg-primary/15 text-primary hover:bg-primary/25 transition-colors"
         >
           <Upload className="h-3.5 w-3.5" /> Share
         </button>
@@ -177,7 +177,7 @@ export const BlueprintCommunity = ({ pluginId, onViewDetail }: Props) => {
                     </span>
                     <button
                       onClick={(e) => { e.stopPropagation(); handleLike(bp.id) }}
-                      className={`flex items-center gap-1 transition-all ${
+                      className={`flex items-center gap-1 transition-colors ${
                         bp.user_has_liked ? 'text-destructive' : 'hover:text-foreground'
                       }`}
                     >
@@ -231,7 +231,7 @@ export const BlueprintCommunity = ({ pluginId, onViewDetail }: Props) => {
                   <button
                     key={bp.id}
                     onClick={() => handleUpload(bp.id, bp.parsed_data?.label || bp.label, '', [])}
-                    className="w-full text-left p-2.5 rounded-lg hover:bg-[var(--dk-surface-glass)] text-xs text-muted-foreground hover:text-foreground transition-all"
+                    className="w-full text-left p-2.5 rounded-lg hover:bg-[var(--dk-surface-glass)] text-xs text-muted-foreground hover:text-foreground transition-colors"
                   >
                     {bp.parsed_data?.label || bp.label}
                   </button>
@@ -241,7 +241,7 @@ export const BlueprintCommunity = ({ pluginId, onViewDetail }: Props) => {
             <div className="flex justify-end">
               <button
                 onClick={() => setShowUpload(false)}
-                className="px-4 py-2 text-xs rounded-lg hover:bg-[var(--dk-surface-glass)] text-muted-foreground hover:text-foreground transition-all"
+                className="px-4 py-2 text-xs rounded-lg hover:bg-[var(--dk-surface-glass)] text-muted-foreground hover:text-foreground transition-colors"
               >
                 Cancel
               </button>
