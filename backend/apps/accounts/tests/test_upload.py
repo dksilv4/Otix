@@ -183,6 +183,19 @@ class UploadSecurityTests(UploadTestCase):
         self.assertIn("archive container header detected", resp.json()["detail"])
         self.assertEqual(self.files(), [])
 
+    def test_accepts_realistic_compressed_image_without_false_positives(self):
+        # Generate an image with random entropy bytes that naturally contain byte sequences
+        # like '<%' or other 2-byte fragments that previously caused false-positive rejections.
+        import os
+        img = Image.frombytes("RGB", (300, 300), os.urandom(300 * 300 * 3))
+        buf = io.BytesIO()
+        img.save(buf, format="JPEG", quality=85)
+        realistic_jpeg = buf.getvalue()
+
+        resp = self.post(name="photo.jpg", ct="image/jpeg", body=realistic_jpeg)
+        self.assertEqual(resp.status_code, 201)
+        self.assertEqual(len(self.files()), 1)
+
     def test_rejects_decompression_bomb_dimensions(self):
         # Create an oversized 5000x5000 test image (exceeds MAX_IMAGE_DIMENSION 4096)
         buf = io.BytesIO()

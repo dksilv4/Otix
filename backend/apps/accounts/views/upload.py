@@ -53,11 +53,12 @@ MAX_IMAGE_DIMENSION = 4096
 # Configure Pillow internal pixel limit
 Image.MAX_IMAGE_PIXELS = MAX_IMAGE_PIXELS
 
-# Known malicious pattern signatures to detect polyglots, web shells, and injected scripts
+# Known malicious pattern signatures to detect polyglots, web shells, and injected scripts.
+# Patterns use syntactically meaningful sequences to avoid false-positive collisions
+# on arbitrary pseudo-random byte sequences naturally present in compressed image streams (JPEG/PNG/WebP).
 DANGEROUS_PATTERNS = [
     re.compile(rb"<\?php", re.IGNORECASE),
-    re.compile(rb"<\?=", re.IGNORECASE),
-    re.compile(rb"<%", re.IGNORECASE),
+    re.compile(rb"<\?=\s*[`\"'\$a-zA-Z]", re.IGNORECASE),
     re.compile(rb"<script[\s>]", re.IGNORECASE),
     re.compile(rb"javascript:", re.IGNORECASE),
     re.compile(rb"vbscript:", re.IGNORECASE),
@@ -69,7 +70,10 @@ DANGEROUS_PATTERNS = [
     re.compile(rb"<embed[\s>]", re.IGNORECASE),
     re.compile(rb"<!entity", re.IGNORECASE),
     re.compile(rb"<!doctype", re.IGNORECASE),
-    re.compile(rb"\b(eval|base64_decode|passthru|shell_exec|system)\s*\(", re.IGNORECASE),
+    re.compile(
+        rb"\b(eval|base64_decode|passthru|shell_exec|system)\s*\(\s*(\$|_GET|_POST|_COOKIE|_REQUEST|[`\"'])",
+        re.IGNORECASE,
+    ),
 ]
 
 
