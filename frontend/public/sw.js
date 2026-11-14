@@ -1,7 +1,132 @@
 /* global self, clients */
 
 const ORIGIN = self.location.origin
+const STATIC_CACHE = 'otix-static-v1'
+const MEDIA_CACHE = 'otix-media-v1'
+const CURRENT_CACHES = [STATIC_CACHE, MEDIA_CACHE]
+const MAX_MEDIA_ENTRIES = 250
 
+// Trusted image CDN hostnames for runtime media caching
+const MEDIA_HOSTS = new Set([
+  'image.tmdb.org',
+  'images.igdb.com',
+  'cdn.cloudflare.steamstatic.com',
+  'shared.cloudflare.steamstatic.com',
+  'steamcdn-a.akamaihd.net',
+])
+
+self.addEventListener('install', (event) => {
+  event.waitUntil(self.skipWaiting())
+})
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    Promise.all([
+      caches.keys().then((keys) =>
+        Promise.all(
+          keys
+            .filter((k) => !CURRENT_CACHES.includes(k))
+            .map((k) => caches.delete(k)),
+        ),
+      ),
+      clients.claim(),
+    ]),
+  )
+})
+
+// Prune media cache when it exceeds max entries to preserve storage quota
+async function trimMediaCache() {
+  try {
+    const cache = await caches.open(MEDIA_CACHE)
+    const keys = await cache.keys()
+    if (keys.length > MAX_MEDIA_ENTRIES) {
+      const deleteCount = keys.length - MAX_MEDIA_ENTRIES
+      for (let i = 0; i < deleteCount; i++) {
+        await cache.delete(keys[i])
+      }
+    }
+  } catch {
+    // Non-blocking cache trim error
+  }
+}
+
+self.addEventListener('fetch', (event) => {
+  const req = event.request
+  if (req.method !== 'GET') return
+
+  const url = new URL(req.url)
+
+  // 1. Never intercept /api/*, /auth/*, or websocket requests:
+  // TanStack Query persister has sole ownership of API state and caching.
+  if (
+    url.pathname.startsWith('/api/') ||
+    url.pathname.startsWith('/auth/') ||
+    url.pathname.startsWith('/ws/')
+  ) {
+    return
+  }
+
+  // 2. Runtime caching for immutable Media CDN images (TMDB, IGDB, Steam static)
+  if (MEDIA_HOSTS.has(url.hostname)) {
+    event.respondWith(
+      caches.match(req).then((cached) => {
+        if (cached) return cached
+
+        return fetch(req)
+          .then((res) => {
+            if (res && res.status === 200) {
+              const resClone = res.clone()
+              caches.open(MEDIA_CACHE).then((cache) => {
+                cache.put(req, resClone).then(trimMediaCache)
+              })
+            }
+            return res
+          })
+          .catch(() => cached || new Response('', { status: 408, statusText: 'Request Timeout' }))
+      }),
+    )
+    return
+  }
+
+  // 3. Cache-first strategy for versioned static application assets (JS, CSS, fonts, SVG)
+  const isStaticAsset =
+    url.origin === ORIGIN &&
+    (url.pathname.startsWith('/assets/') ||
+      url.pathname.startsWith('/icons/') ||
+      url.pathname.endsWith('.woff2') ||
+      url.pathname.endsWith('.woff') ||
+      url.pathname.endsWith('.svg') ||
+      url.pathname.endsWith('.png'))
+
+  if (isStaticAsset) {
+    event.respondWith(
+      caches.match(req).then((cached) => {
+        if (cached) return cached
+
+        return fetch(req).then((res) => {
+          if (res && res.status === 200) {
+            const resClone = res.clone()
+            caches.open(STATIC_CACHE).then((cache) => cache.put(req, resClone))
+          }
+          return res
+        })
+      }),
+    )
+    return
+  }
+
+  // 4. HTML navigations: Network-first with cache fallback to /index.html for SPA routing
+  if (req.mode === 'navigate') {
+    event.respondWith(
+      fetch(req).catch(async () => {
+        const cached = await caches.match('/index.html')
+        return cached || new Response('Offline', { status: 503, statusText: 'Offline' })
+      }),
+    )
+  }
+})
+
+// Web Push Notification Listeners (Preserved)
 self.addEventListener('push', (event) => {
   if (!event.data) return
 
@@ -31,7 +156,7 @@ self.addEventListener('push', (event) => {
         },
         tag: data.id || data.type || 'notification',
       })
-    })
+    }),
   )
 })
 
@@ -51,7 +176,7 @@ self.addEventListener('notificationclick', (event) => {
       if (clients.openWindow) {
         return clients.openWindow(ORIGIN + targetUrl)
       }
-    })
+    }),
   )
 })
 

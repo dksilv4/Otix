@@ -51,6 +51,22 @@ if (platformInfo.isNativeMobile) {
   void initMobileApp()
 }
 
+// Register Service Worker for app shell and media asset caching in production web
+if (
+  typeof window !== 'undefined' &&
+  'serviceWorker' in navigator &&
+  !platformInfo.isDesktop &&
+  import.meta.env.PROD
+) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker
+      .register('/sw.js', { scope: '/' })
+      .catch(() => {
+        // Non-blocking registration failure
+      })
+  })
+}
+
 // Vite preload error — fired when a dynamic import chunk fails to load after a deployment
 window.addEventListener('vite:preloadError', (event) => {
   event.preventDefault()
