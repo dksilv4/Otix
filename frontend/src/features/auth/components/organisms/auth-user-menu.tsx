@@ -533,7 +533,7 @@ export const UserMenu = ({ bare, triggerOnly, onToggle }: UserMenuProps) => {
   const [internalOpen, setInternalOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
 
-  const { incomingCount } = useFriendRequests({ enabled: isAuthenticated })
+  const { incomingCount } = useFriendRequests({ enabled: isAuthenticated, includeOutgoing: false })
   const totalXp = user?.totalXp ?? 0
   const gamification = useMemo(() => computeGamification(totalXp), [totalXp])
   const tier = useMemo(() => getLevelTier(gamification.level), [gamification.level])
@@ -626,9 +626,9 @@ export const UserMenu = ({ bare, triggerOnly, onToggle }: UserMenuProps) => {
       onClick={toggle}
       className={
         (bare
-          ? 'cursor-pointer rounded-full transition-colors flex h-8 w-8 items-center justify-center relative shrink-0'
+          ? 'cursor-pointer rounded-full transition-[transform,background-color,color] duration-100 ease-out flex h-8 w-8 items-center justify-center relative shrink-0 active:scale-[0.94] focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:outline-none'
           : pillClasses +
-            ' cursor-pointer rounded-full transition-colors relative shrink-0') +
+            ' cursor-pointer rounded-full transition-[transform,background-color,color] duration-100 ease-out relative shrink-0 active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:outline-none') +
         (isOpen
           ? ' bg-[var(--dk-surface-ghost-active)]'
           : ' hover:bg-[var(--dk-surface-ghost-hover)] active:bg-[var(--dk-surface-ghost-active)]')

@@ -37,7 +37,15 @@ vi.mock('@auth', () => ({
 }))
 
 vi.mock('@activity/components/atoms/activity-nav-button', () => ({
-  ActivityModuleButton: () => <div data-testid="activity-module-button">ActivityModuleButton</div>,
+  ActivityModuleButton: ({ onToggleSidebar, isSidebarOpen }: any) => (
+    <button
+      data-testid="activity-module-button"
+      data-open={isSidebarOpen ? 'true' : 'false'}
+      onClick={onToggleSidebar}
+    >
+      ActivityModuleButton
+    </button>
+  ),
 }))
 
 vi.mock('@activity/components/organisms/activity-panel', () => ({
@@ -50,7 +58,13 @@ vi.mock('@/features/chat', () => ({
 }))
 
 vi.mock('../navigation-search', () => ({
-  NavSearch: () => <div data-testid="nav-search">NavSearch</div>,
+  NavSearch: ({ isOpen, onOpenChange }: any) => (
+    <div data-testid="nav-search" data-open={isOpen ? 'true' : 'false'}>
+      <button data-testid="nav-search-trigger" onClick={() => onOpenChange?.(!isOpen)}>
+        NavSearch
+      </button>
+    </div>
+  ),
 }))
 
 const createQueryClient = () =>
@@ -142,5 +156,56 @@ describe('NavPillRight (Floating Navigation Island)', () => {
 
     fireEvent.mouseDown(document.body)
     expect(mockSetUserMenuOpen).toHaveBeenCalledWith(false)
+  })
+
+  it('allows search bar and activity panel to be open concurrently', () => {
+    renderWithContext({ isSidebarOpen: true })
+
+    // Activity panel is open
+    expect(screen.getByTestId('activity-panel-content')).toBeDefined()
+    expect(screen.getByRole('button', { name: /collapse menu/i })).toBeDefined()
+
+    // Open search bar
+    const searchTrigger = screen.getByTestId('nav-search-trigger')
+    fireEvent.click(searchTrigger)
+
+    // Both remain active concurrently
+    const searchContainer = screen.getByTestId('nav-search')
+    expect(searchContainer.getAttribute('data-open')).toBe('true')
+    expect(screen.getByTestId('activity-panel-content')).toBeDefined()
+  })
+
+  it('toggling activity button does not close search bar', () => {
+    renderWithContext({ isSidebarOpen: false })
+
+    // Open search
+    const searchTrigger = screen.getByTestId('nav-search-trigger')
+    fireEvent.click(searchTrigger)
+    expect(screen.getByTestId('nav-search').getAttribute('data-open')).toBe('true')
+
+    // Click activity module button
+    const activityBtn = screen.getByTestId('activity-module-button')
+    fireEvent.click(activityBtn)
+
+    // Sidebar was toggled, and search remains open
+    expect(mockToggleSidebar).toHaveBeenCalled()
+    expect(screen.getByTestId('nav-search').getAttribute('data-open')).toBe('true')
+  })
+
+  it('clicking collapse button closes activity panel while leaving search open', () => {
+    renderWithContext({ isSidebarOpen: true })
+
+    // Open search as well
+    const searchTrigger = screen.getByTestId('nav-search-trigger')
+    fireEvent.click(searchTrigger)
+    expect(screen.getByTestId('nav-search').getAttribute('data-open')).toBe('true')
+
+    // Click collapse button
+    const collapseBtn = screen.getByRole('button', { name: /collapse menu/i })
+    fireEvent.click(collapseBtn)
+
+    // Close callback called for panel, while search stays open
+    expect(mockCloseSidebar).toHaveBeenCalled()
+    expect(screen.getByTestId('nav-search').getAttribute('data-open')).toBe('true')
   })
 })

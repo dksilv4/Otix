@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { useNavigate, useLocation, Link } from '@tanstack/react-router'
-import { Search, Film, Tv, Gamepad2, Music, Star, ChevronRight, CornerDownLeft, Loader2 } from 'lucide-react'
+import { Search, Film, Tv, Gamepad2, Music, Star, ChevronRight, CornerDownLeft, Loader2, X } from 'lucide-react'
 import { apiClient } from '@/lib/api/client'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { MediaItemSummary } from '@media/queries/media-queries'
@@ -11,11 +11,35 @@ import {
   formatRating,
 } from '@/features/search/utils/search-helpers'
 
+export interface NavSearchProps {
+  isOpen?: boolean
+  onOpenChange?: (open: boolean) => void
+  placeholder?: string
+}
+
 /** Expandable search input with autocomplete suggestions for media across all types. */
-export const NavSearch = () => {
+export const NavSearch = ({
+  isOpen: controlledIsOpen,
+  onOpenChange,
+  placeholder = 'Search...',
+}: NavSearchProps = {}) => {
   const navigate = useNavigate()
   const location = useLocation()
-  const [expanded, setExpanded] = useState(false)
+  const [internalExpanded, setInternalExpanded] = useState(false)
+  const isControlled = controlledIsOpen !== undefined
+  const expanded = isControlled ? controlledIsOpen : internalExpanded
+
+  const setExpanded = useCallback(
+    (next: boolean | ((prev: boolean) => boolean)) => {
+      const resolved = typeof next === 'function' ? next(expanded) : next
+      if (!isControlled) {
+        setInternalExpanded(resolved)
+      }
+      onOpenChange?.(resolved)
+    },
+    [isControlled, expanded, onOpenChange],
+  )
+
   const [value, setValue] = useState('')
   const [suggestions, setSuggestions] = useState<MediaItemSummary[]>([])
   const [isLoading, setIsLoading] = useState(false)
@@ -35,7 +59,7 @@ export const NavSearch = () => {
     setSuggestions([])
     setIsLoading(false)
     setActiveIndex(-1)
-  }, [])
+  }, [setExpanded])
 
   useEffect(() => {
     if (expanded) {
@@ -47,13 +71,18 @@ export const NavSearch = () => {
   useEffect(() => {
     if (!expanded) return
     const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as HTMLElement
+      // If controlled by parent nav island, don't collapse if clicking inside the nav island
+      if (isControlled && target.closest?.('[data-nav-pill="right"]')) {
+        return
+      }
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
         collapse()
       }
     }
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [expanded, collapse])
+  }, [expanded, isControlled, collapse])
 
   // Global keyboard shortcut to expand search (skip on home page which has its own)
   useEffect(() => {
@@ -68,7 +97,7 @@ export const NavSearch = () => {
     }
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [location.pathname])
+  }, [location.pathname, setExpanded])
 
   // Fetch suggestions with 200ms debounce and AbortController cancellation
   useEffect(() => {
@@ -170,27 +199,42 @@ export const NavSearch = () => {
     <div
       ref={containerRef}
       className={
-        'flex items-center overflow-visible transition-colors duration-250 ease-out rounded-full ' +
+        'relative flex items-center transition-[background-color] duration-180 ease-[var(--dk-ease-out)] rounded-full ' +
         (expanded
-          ? 'w-64 sm:w-72 px-2.5 py-1.5 shadow-[var(--dk-shadow-glass)] backdrop-blur-[16px] bg-[var(--dk-surface-glass)] border border-white/[0.04]'
+          ? 'w-full px-3 h-8 bg-[var(--dk-surface-ghost)] border border-white/[0.06] shadow-xs'
           : 'w-8 h-8 justify-center')
       }
     >
       {expanded ? (
         <>
           {isLoading ? (
-            <Loader2 className="h-4 w-4 text-muted-foreground shrink-0 mr-1.5 animate-spin" />
+            <Loader2 className="h-4 w-4 text-muted-foreground shrink-0 mr-2 animate-spin" />
           ) : (
-            <Search className="h-4 w-4 text-muted-foreground shrink-0 mr-1.5" />
+            <Search className="h-4 w-4 text-muted-foreground shrink-0 mr-2" />
           )}
           <input
             ref={inputRef}
             value={value}
             onChange={handleInputChange}
             onKeyDown={handleKeyDown}
-            placeholder="Search..."
-            className="w-full bg-transparent border-0 outline-none shadow-none text-sm ring-0 focus:ring-0 focus:ring-offset-0 text-foreground placeholder:text-muted-foreground/50"
+            placeholder={placeholder}
+            className="w-full bg-transparent border-0 outline-none shadow-none text-sm ring-0 focus:ring-0 focus:ring-offset-0 text-foreground placeholder:text-muted-foreground/60"
           />
+
+          {value && (
+            <button
+              type="button"
+              onClick={() => {
+                setValue('')
+                setSuggestions([])
+                inputRef.current?.focus()
+              }}
+              className="h-4 w-4 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground mr-0.5 shrink-0 cursor-pointer"
+              aria-label="Clear search"
+            >
+              <X className="h-3 w-3" />
+            </button>
+          )}
 
           <AnimatePresence>
             {showDropdown && (
@@ -199,7 +243,7 @@ export const NavSearch = () => {
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: -6, scale: 0.98 }}
                 transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
-                className="absolute inset-x-0 z-[9999] top-[calc(100%+0.5rem)] w-full max-h-[26rem] overflow-y-auto scrollbar-thin p-2 rounded-2xl flex flex-col gap-1 bg-[var(--dk-surface-overlay)]/95 backdrop-blur-2xl shadow-[var(--dk-shadow-dialog)] border border-white/[0.06]"
+                className="absolute left-0 right-0 z-[9999] top-[calc(100%+0.5rem)] min-w-[260px] max-h-[26rem] overflow-y-auto scrollbar-thin p-2 rounded-2xl flex flex-col gap-1 bg-[var(--dk-surface-overlay)]/95 backdrop-blur-2xl shadow-[var(--dk-shadow-dialog)] border border-white/[0.06]"
                 role="listbox"
               >
                 {suggestions.length > 0 ? (
@@ -320,7 +364,7 @@ export const NavSearch = () => {
       ) : (
         <button
           onClick={() => setExpanded(true)}
-          className="rounded-full w-8 h-8 flex items-center justify-center transition-colors cursor-pointer hover:bg-[var(--dk-surface-ghost-hover)] active:bg-[var(--dk-surface-ghost-active)]"
+          className="rounded-full w-8 h-8 flex items-center justify-center transition-[transform,background-color,color] duration-100 ease-out cursor-pointer hover:bg-[var(--dk-surface-ghost-hover)] active:bg-[var(--dk-surface-ghost-active)] active:scale-[0.94] focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:outline-none"
           aria-label="Search"
         >
           <Search className="h-4 w-4 text-muted-foreground" />

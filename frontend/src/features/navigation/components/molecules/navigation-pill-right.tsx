@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from "react"
 import { X, ChevronUp } from "lucide-react"
-import { motion, AnimatePresence } from "framer-motion"
+import { motion, AnimatePresence, useReducedMotion, type Transition } from "framer-motion"
 import { DkButton } from "@ui/atoms/button"
 import { useModal } from "@/lib/modals"
 import { useDesktopPlatform } from "@/lib/desktop/platform"
@@ -35,8 +35,7 @@ export const NavPillRight = ({
   const { modals, closeAll } = useModal()
   const { isUserMenuOpen, setUserMenuOpen, isChatOpen, setChatOpen } = usePanelContext()
   const containerRef = useRef<HTMLDivElement>(null)
-
-  const isExpanded = isUserMenuOpen || isSidebarOpen || isChatOpen
+  const clusterRef = useRef<HTMLDivElement>(null)
 
   // Delay the close control so the opening click / gesture cannot land on it
   // the instant a modal mounts (nav sits above --dk-z-modal).
@@ -50,7 +49,25 @@ export const NavPillRight = ({
     return () => window.clearTimeout(timer)
   }, [modals.length])
 
-  const handleCollapse = useCallback(() => {
+  const [isSearchOpen, setIsSearchOpen] = useState(false)
+
+  const isDropdownExpanded = isUserMenuOpen || isSidebarOpen || isChatOpen
+  const isPillExpanded = isDropdownExpanded || isSearchOpen
+
+  // Retain the active panel during the exit animation so content stays rendered during dismiss
+  const activePanel = isChatOpen ? 'chat' : isUserMenuOpen ? 'user' : isSidebarOpen ? 'activity' : null
+  const [renderedPanel, setRenderedPanel] = useState<'chat' | 'user' | 'activity' | null>(null)
+
+  useEffect(() => {
+    if (activePanel) {
+      setRenderedPanel(activePanel)
+    }
+  }, [activePanel])
+
+  const displayedPanel = activePanel ?? renderedPanel
+
+  // Collapse only dropdown panels (e.g. when clicking collapse chevron button)
+  const handleCollapseDropdown = useCallback(() => {
     if (isUserMenuOpen) setUserMenuOpen(false)
     if (isChatOpen) setChatOpen(false)
     if (isSidebarOpen) {
@@ -62,6 +79,12 @@ export const NavPillRight = ({
     }
   }, [isUserMenuOpen, setUserMenuOpen, isChatOpen, setChatOpen, isSidebarOpen, onCloseSidebar, onToggleSidebar])
 
+  // Collapse all (click outside or escape)
+  const handleCollapseAll = useCallback(() => {
+    setIsSearchOpen(false)
+    handleCollapseDropdown()
+  }, [handleCollapseDropdown])
+
   // Click outside to collapse the unified right nav when expanded
   const handleClickOutside = useCallback(
     (e: MouseEvent) => {
@@ -69,43 +92,55 @@ export const NavPillRight = ({
       // Do not collapse if clicking inside a modal dialog or select popup
       if (target.closest('[role="dialog"]') || target.closest('[data-modal-portal]')) return
       if (containerRef.current && !containerRef.current.contains(target)) {
-        handleCollapse()
+        handleCollapseAll()
       }
     },
-    [handleCollapse],
+    [handleCollapseAll],
   )
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
-      if (e.key === "Escape" && isExpanded) {
-        handleCollapse()
+      if (e.key === "Escape" && isPillExpanded) {
+        handleCollapseAll()
       }
     },
-    [isExpanded, handleCollapse],
+    [isPillExpanded, handleCollapseAll],
   )
 
   useEffect(() => {
-    if (!isExpanded) return
+    if (!isPillExpanded) return
     document.addEventListener("mousedown", handleClickOutside)
     document.addEventListener("keydown", handleKeyDown)
     return () => {
       document.removeEventListener("mousedown", handleClickOutside)
       document.removeEventListener("keydown", handleKeyDown)
     }
-  }, [isExpanded, handleClickOutside, handleKeyDown])
+  }, [isPillExpanded, handleClickOutside, handleKeyDown])
+
+  const shouldReduceMotion = useReducedMotion()
+  const transition: Transition = shouldReduceMotion
+    ? { duration: 0 }
+    : { duration: isPillExpanded ? 0.2 : 0.16, ease: [0.16, 1, 0.3, 1] }
+
+  const baseCompactWidth = showCloseButton ? 200 : 162
+
+  const targetWidth = isSearchOpen
+    ? (showCloseButton ? 540 : 500)
+    : isDropdownExpanded
+    ? (showCloseButton ? 416 : 380)
+    : baseCompactWidth
 
   return (
     <motion.div
       ref={containerRef}
       animate={{
-        width: isExpanded ? 380 : "auto",
-        borderRadius: isExpanded ? 24 : 32,
+        width: targetWidth,
       }}
-      transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1] }}
+      transition={transition}
       data-nav-pill="right"
-      className={`fixed z-[9999] right-4 ${titleBarOffset} shadow-[var(--dk-shadow-glass)] backdrop-blur-[16px] flex flex-col overflow-hidden ${
-        isExpanded ? "p-3 gap-2" : "px-2 py-1.5 gap-0"
-      }`}
+      className={`fixed z-[9999] right-4 ${titleBarOffset} rounded-3xl shadow-[var(--dk-shadow-glass)] backdrop-blur-[16px] border border-white/[0.04] flex flex-col p-2 ${
+        isSearchOpen ? "overflow-visible" : "overflow-hidden"
+      } transform-gpu`}
       style={{
         background: "color-mix(in oklch, var(--dk-surface-raised) 25%, transparent)",
         backgroundImage:
@@ -113,136 +148,139 @@ export const NavPillRight = ({
       }}
     >
       {/* Top Controls Bar Row */}
-      <div className="flex items-center justify-end w-full overflow-visible">
-        {/* Collapse button when open */}
-        <AnimatePresence>
-          {isExpanded && (
+      <div
+        ref={clusterRef}
+        className="flex items-center justify-end w-full h-8 gap-1.5 overflow-visible"
+      >
+        {/* Collapse button when dropdown is expanded */}
+        <AnimatePresence initial={false}>
+          {isDropdownExpanded && (
             <motion.button
               key="collapse-button"
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.8 }}
-              transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+              initial={{ opacity: 0, width: 0, scale: 0.9 }}
+              animate={{ opacity: 1, width: 32, scale: 1 }}
+              exit={{ opacity: 0, width: 0, scale: 0.9 }}
+              transition={
+                shouldReduceMotion
+                  ? { duration: 0 }
+                  : {
+                      width: { duration: 0.16, ease: [0.16, 1, 0.3, 1] },
+                      opacity: { duration: 0.12, ease: "easeOut" },
+                      scale: { duration: 0.16, ease: [0.16, 1, 0.3, 1] },
+                    }
+              }
+              style={{ transformOrigin: "left center" }}
               type="button"
-              onClick={handleCollapse}
-              className="mr-auto flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:bg-[var(--dk-surface-ghost-hover)] hover:text-foreground transition-colors cursor-pointer shrink-0"
+              onClick={handleCollapseDropdown}
+              className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:bg-[var(--dk-surface-ghost-hover)] hover:text-foreground active:scale-[0.94] transition-colors duration-100 cursor-pointer shrink-0 overflow-hidden"
               title="Collapse menu"
               aria-label="Collapse menu"
             >
-              <ChevronUp className="h-4 w-4" />
+              <ChevronUp className="h-4 w-4 shrink-0" />
             </motion.button>
           )}
         </AnimatePresence>
 
-        <div className="flex items-center gap-1.5 overflow-visible">
-          {showCloseButton && (
-            <DkButton
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={closeAll}
-              className="w-8 h-8 rounded-full p-0 flex items-center justify-center text-muted-foreground hover:text-foreground mr-1"
-              aria-label="Close"
-            >
-              <X className="h-4.5 w-4.5" />
-            </DkButton>
-          )}
+        {showCloseButton && (
+          <DkButton
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={closeAll}
+            className="w-8 h-8 rounded-full p-0 flex items-center justify-center text-muted-foreground hover:text-foreground shrink-0"
+            aria-label="Close"
+          >
+            <X className="h-4.5 w-4.5" />
+          </DkButton>
+        )}
 
-          {/* Search Button */}
-          <div className="flex items-center overflow-visible">
-            <NavSearch />
-          </div>
+        {/* Spacer when dropdown is open but search is CLOSED: pushes right icons to right edge */}
+        {isDropdownExpanded && !isSearchOpen && <div className="flex-1 min-w-0" />}
 
-          {/* Chat Messages Button */}
-          <div className="flex items-center overflow-visible">
-            <ChatNavButton
-              onToggleChat={() => {
-                if (isUserMenuOpen) setUserMenuOpen(false)
+        {/* Search Bar: flex-1 when open, shrink-0 icon button when closed */}
+        <div
+          className={
+            isSearchOpen
+              ? "flex-1 min-w-0 flex items-center overflow-visible"
+              : "flex items-center shrink-0 overflow-visible"
+          }
+        >
+          <NavSearch
+            isOpen={isSearchOpen}
+            onOpenChange={(next) => {
+              setIsSearchOpen(next)
+            }}
+          />
+        </div>
+
+        {/* Right action icons cluster */}
+        <div className="flex items-center gap-1.5 shrink-0 overflow-visible">
+          <ChatNavButton
+            onToggleChat={() => {
+              if (isUserMenuOpen) setUserMenuOpen(false)
+              if (isSidebarOpen) {
+                if (onCloseSidebar) onCloseSidebar()
+                else onToggleSidebar()
+              }
+              setChatOpen(!isChatOpen)
+            }}
+          />
+
+          <UserMenu
+            bare
+            triggerOnly
+            onToggle={(next) => {
+              if (next) {
+                if (isChatOpen) setChatOpen(false)
                 if (isSidebarOpen) {
                   if (onCloseSidebar) onCloseSidebar()
                   else onToggleSidebar()
                 }
-                setChatOpen(!isChatOpen)
-              }}
-            />
-          </div>
+              }
+            }}
+          />
 
-          {/* User Profile / Menu Trigger */}
-          <div className="flex items-center overflow-visible">
-            <UserMenu
-              bare
-              triggerOnly
-              onToggle={(next) => {
-                if (next) {
-                  if (isChatOpen) setChatOpen(false)
-                  if (isSidebarOpen) {
-                    if (onCloseSidebar) onCloseSidebar()
-                    else onToggleSidebar()
-                  }
-                }
-              }}
-            />
-          </div>
-
-          {/* Activity Module Toggle Button */}
-          <div className="flex items-center overflow-visible">
-            <ActivityModuleButton
-              bare
-              isPinned={isPinned}
-              isSidebarOpen={isSidebarOpen}
-              onToggleSidebar={() => {
-                if (isUserMenuOpen) setUserMenuOpen(false)
-                if (isChatOpen) setChatOpen(false)
-                onToggleSidebar()
-              }}
-            />
-          </div>
+          <ActivityModuleButton
+            bare
+            isPinned={isPinned}
+            isSidebarOpen={isSidebarOpen}
+            onToggleSidebar={() => {
+              if (isUserMenuOpen) setUserMenuOpen(false)
+              if (isChatOpen) setChatOpen(false)
+              onToggleSidebar()
+            }}
+          />
         </div>
       </div>
 
-      {/* Dropdown Content appears smoothly without layout scale distortion */}
-      <AnimatePresence mode="wait">
-        {isChatOpen && (
+      {/* Dropdown Content appears smoothly without layout scale or text reflow */}
+      <AnimatePresence initial={false} onExitComplete={() => setRenderedPanel(null)}>
+        {isDropdownExpanded && (
           <motion.div
-            key="chat-dropdown-content"
+            key="nav-right-dropdown-content"
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1] }}
-            className="w-full overflow-hidden"
+            transition={
+              shouldReduceMotion
+                ? { duration: 0 }
+                : {
+                    height: { duration: 0.16, ease: [0.16, 1, 0.3, 1] },
+                    opacity: { duration: 0.12, ease: "easeOut" },
+                  }
+            }
+            className="w-full overflow-hidden rounded-b-2xl"
           >
-            <div className="w-full flex flex-col pt-1.5 border-t border-[var(--dk-separator)]">
-              <ChatNavPanelContent onClose={handleCollapse} />
+            {/* Top divider separating nav controls from panel content with balanced spacing */}
+            <div className="w-full pt-2 pb-2.5">
+              <div className="w-full border-t border-[var(--dk-separator)]" />
             </div>
-          </motion.div>
-        )}
 
-        {isUserMenuOpen && (
-          <motion.div
-            key="user-menu-dropdown-content"
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1] }}
-            className="w-full overflow-hidden"
-          >
-            <div className="w-full max-h-[calc(100vh-6rem)] overflow-y-auto scrollbar-none flex flex-col space-y-2 pt-1.5 border-t border-[var(--dk-separator)]">
-              <UserMenuContent onClose={handleCollapse} />
-            </div>
-          </motion.div>
-        )}
-
-        {isSidebarOpen && (
-          <motion.div
-            key="activity-dropdown-content"
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1] }}
-            className="w-full overflow-hidden"
-          >
-            <div className="w-full max-h-[calc(100vh-6rem)] overflow-y-auto scrollbar-none flex flex-col space-y-2 pt-1.5 border-t border-[var(--dk-separator)]">
-              <ActivityPanelContent onClose={handleCollapse} />
+            {/* Panel content scroll container */}
+            <div className="w-full max-h-[calc(100vh-6.5rem)] overflow-y-auto scrollbar-none flex flex-col pb-1">
+              {displayedPanel === 'chat' && <ChatNavPanelContent onClose={handleCollapseAll} />}
+              {displayedPanel === 'user' && <UserMenuContent onClose={handleCollapseAll} />}
+              {displayedPanel === 'activity' && <ActivityPanelContent onClose={handleCollapseAll} />}
             </div>
           </motion.div>
         )}

@@ -19,7 +19,7 @@ export const BackButton = () => {
       variant="ghost"
       size="sm"
       onClick={handleBack}
-      className="w-8 h-8 rounded-full p-0 flex items-center justify-center"
+      className="w-8 h-8 rounded-full p-0 flex items-center justify-center active:scale-[0.94] transition-[transform,background-color,color] duration-100 ease-out focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:outline-none"
       aria-label="Go back"
     >
       <ArrowLeft className="h-5 w-5" />

@@ -11,8 +11,8 @@ interface ChatNavButtonProps {
 export const ChatNavButton = ({ onToggleChat }: ChatNavButtonProps) => {
   const { isAuthenticated } = useAuth()
   const { isChatOpen, setChatOpen, isUserMenuOpen, setUserMenuOpen } = usePanelContext()
-  const { data: unreadData } = useChatUnreadCountQuery()
-  const { data: conversations = [] } = useConversationsQuery()
+  const { data: unreadData } = useChatUnreadCountQuery({ enabled: isAuthenticated })
+  const { data: conversations = [] } = useConversationsQuery({ enabled: isAuthenticated && isChatOpen })
 
   const totalUnread = useMemo(() => {
     if (unreadData?.count !== undefined) {
@@ -36,7 +36,7 @@ export const ChatNavButton = ({ onToggleChat }: ChatNavButtonProps) => {
     <button
       type="button"
       onClick={handleClick}
-      className={`relative flex h-8 w-8 items-center justify-center rounded-full transition-colors cursor-pointer ${
+      className={`relative flex h-8 w-8 items-center justify-center rounded-full active:scale-[0.94] transition-[transform,background-color,color] duration-100 ease-out cursor-pointer focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:outline-none ${
         isChatOpen
           ? 'bg-primary/20 text-primary'
           : 'text-muted-foreground hover:bg-[var(--dk-surface-ghost-hover)] hover:text-foreground'

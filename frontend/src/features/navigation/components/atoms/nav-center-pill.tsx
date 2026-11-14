@@ -42,36 +42,66 @@ export const NavCenterPill = ({
       )}
     >
       {/* ── Left Cluster: Thumbnail + Title + Subtitle ── */}
-      <div
-        onClick={onTitleClick}
-        className={cn(
-          'flex items-center gap-2 sm:gap-2.5 min-w-0 shrink',
-          onTitleClick && 'cursor-pointer hover:opacity-85 transition-opacity',
-        )}
-      >
-        {thumbnailUrl ? (
-          <img
-            src={thumbnailUrl}
-            alt=""
-            className="h-7 w-5 sm:h-7 sm:w-5 rounded-md object-cover shrink-0 shadow-sm border border-white/[0.04]"
-          />
-        ) : thumbnailPlaceholder ? (
-          <div className="h-7 w-6 rounded-md bg-primary/15 border border-primary/25 flex items-center justify-center text-[10px] font-bold text-primary shrink-0">
-            {thumbnailPlaceholder}
-          </div>
-        ) : null}
-
-        <div className="flex items-center gap-1.5 min-w-0">
-          <span className="truncate font-bold text-xs sm:text-sm text-foreground tracking-tight">
-            {title}
-          </span>
-          {subtitle && (
-            <span className="text-[11px] sm:text-xs text-muted-foreground shrink-0 font-medium hidden sm:inline">
-              ({subtitle})
-            </span>
+      {onTitleClick ? (
+        <button
+          type="button"
+          onClick={onTitleClick}
+          aria-label={subtitle ? `${title} (${subtitle})` : title}
+          className={cn(
+            'flex items-center gap-2 sm:gap-2.5 min-w-0 shrink text-left cursor-pointer',
+            'hover:opacity-90 active:scale-[0.98] transition-all rounded-lg',
+            'focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:outline-none'
           )}
+        >
+          {thumbnailUrl ? (
+            <img
+              src={thumbnailUrl}
+              alt=""
+              className="h-7 w-5 sm:h-7 sm:w-5 rounded-md object-cover shrink-0 shadow-sm border border-white/[0.04]"
+            />
+          ) : thumbnailPlaceholder ? (
+            <div className="h-7 w-6 rounded-md bg-primary/15 border border-primary/25 flex items-center justify-center text-[10px] font-bold text-primary shrink-0">
+              {thumbnailPlaceholder}
+            </div>
+          ) : null}
+
+          <div className="flex items-center gap-1.5 min-w-0">
+            <span className="truncate font-bold text-xs sm:text-sm text-foreground tracking-tight">
+              {title}
+            </span>
+            {subtitle && (
+              <span className="text-[11px] sm:text-xs text-muted-foreground shrink-0 font-medium hidden sm:inline">
+                ({subtitle})
+              </span>
+            )}
+          </div>
+        </button>
+      ) : (
+        <div className="flex items-center gap-2 sm:gap-2.5 min-w-0 shrink">
+          {thumbnailUrl ? (
+            <img
+              src={thumbnailUrl}
+              alt=""
+              className="h-7 w-5 sm:h-7 sm:w-5 rounded-md object-cover shrink-0 shadow-sm border border-white/[0.04]"
+            />
+          ) : thumbnailPlaceholder ? (
+            <div className="h-7 w-6 rounded-md bg-primary/15 border border-primary/25 flex items-center justify-center text-[10px] font-bold text-primary shrink-0">
+              {thumbnailPlaceholder}
+            </div>
+          ) : null}
+
+          <div className="flex items-center gap-1.5 min-w-0">
+            <span className="truncate font-bold text-xs sm:text-sm text-foreground tracking-tight">
+              {title}
+            </span>
+            {subtitle && (
+              <span className="text-[11px] sm:text-xs text-muted-foreground shrink-0 font-medium hidden sm:inline">
+                ({subtitle})
+              </span>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* ── Right Cluster: Optional Badge + Action Buttons ── */}
       <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 ml-auto">

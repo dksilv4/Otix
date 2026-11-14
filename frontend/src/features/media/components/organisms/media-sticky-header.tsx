@@ -83,13 +83,18 @@ export const MediaStickyHeader = ({ detail, mediaType }: MediaStickyHeaderProps)
 
    
   useEffect(() => {
-    updatePlacement()
-    window.addEventListener('resize', updatePlacement, { passive: true })
-    const interval = setInterval(updatePlacement, 1000)
+    let rAFId: number | null = null
 
+    const handleResize = () => {
+      if (rAFId !== null) cancelAnimationFrame(rAFId)
+      rAFId = requestAnimationFrame(updatePlacement)
+    }
+
+    updatePlacement()
+    window.addEventListener('resize', handleResize, { passive: true })
     return () => {
-      window.removeEventListener('resize', updatePlacement)
-      clearInterval(interval)
+      window.removeEventListener('resize', handleResize)
+      if (rAFId !== null) cancelAnimationFrame(rAFId)
     }
   }, [updatePlacement])
    
@@ -145,7 +150,7 @@ export const MediaStickyHeader = ({ detail, mediaType }: MediaStickyHeaderProps)
         transform: visible
           ? 'translate(-50%, 0) scale(1)'
           : 'translate(-50%, -2rem) scale(0.96)',
-        transition: 'all 300ms var(--dk-ease-out)',
+        transition: 'transform 200ms var(--dk-ease-out), opacity 150ms var(--dk-ease-out)',
         background: 'color-mix(in oklch, var(--dk-surface-raised) 25%, transparent)',
         backgroundImage:
           'linear-gradient(to bottom right, var(--dk-surface-glass), var(--dk-surface-glass-hover))',
@@ -160,7 +165,7 @@ export const MediaStickyHeader = ({ detail, mediaType }: MediaStickyHeaderProps)
       transform: visible
         ? 'translate(-50%, 0) scale(1)'
         : 'translate(-50%, -2rem) scale(0.96)',
-      transition: 'all 300ms var(--dk-ease-out)',
+      transition: 'transform 200ms var(--dk-ease-out), opacity 150ms var(--dk-ease-out)',
       background: 'color-mix(in oklch, var(--dk-surface-raised) 25%, transparent)',
       backgroundImage:
         'linear-gradient(to bottom right, var(--dk-surface-glass), var(--dk-surface-glass-hover))',
@@ -172,7 +177,7 @@ export const MediaStickyHeader = ({ detail, mediaType }: MediaStickyHeaderProps)
       data-testid="media-sticky-header"
       data-placement={placement}
       className={cn(
-        'fixed z-[9990] flex items-center gap-2 sm:gap-3 rounded-[2rem] px-2.5 sm:px-3.5 py-1.5 shadow-[var(--dk-shadow-glass)] backdrop-blur-[16px]',
+        'fixed z-[9990] flex items-center gap-2 sm:gap-3 rounded-[2rem] px-2.5 sm:px-3.5 py-1.5 shadow-[var(--dk-shadow-glass)] backdrop-blur-[16px] border border-white/[0.04] transform-gpu',
         visible ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none',
       )}
       style={getContainerStyles()}

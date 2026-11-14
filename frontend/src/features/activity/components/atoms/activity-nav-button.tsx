@@ -54,7 +54,8 @@ export const ActivityModuleButton = ({
   const { data: unreadNotifs } = useQuery({
     ...notificationQueries.unreadCount(),
     enabled: !!currentUser,
-    refetchInterval: 30000,
+    refetchInterval: 60000,
+    refetchIntervalInBackground: false,
   })
   const unreadCount = unreadNotifs?.count ?? 0
 
@@ -87,7 +88,7 @@ export const ActivityModuleButton = ({
         data-now-playing-trigger
         onClick={handleClick}
         className={
-          'relative gap-1 transition-colors flex items-center justify-center rounded-full outline-none focus:outline-none focus-visible:outline-none' +
+          'relative gap-1 transition-[transform,background-color,color] duration-100 ease-out flex items-center justify-center rounded-full active:scale-[0.94] focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:outline-none' +
           (!bare ? ' flex items-center p-1.5' : '') +
           (!isPinned ? ' cursor-pointer' : '') +
           (isSidebarOpen ? ' bg-[var(--dk-surface-ghost-active)] text-foreground' : '') +

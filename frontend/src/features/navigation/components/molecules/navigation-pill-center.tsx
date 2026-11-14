@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion, AnimatePresence, useReducedMotion, type Transition } from 'framer-motion'
 import { useDesktopPlatform } from '@/lib/desktop/platform'
 import { useNavCenterContext } from '../../hooks/use-nav-center'
 import { useNavPillsVisibility } from '../../hooks/use-nav-pills-visibility'
@@ -42,13 +42,24 @@ export const NavPillCenter = () => {
     setLayoutInfo(result)
   }, [showLeft, showRight])
 
+  const shouldReduceMotion = useReducedMotion()
+  const centerTransition: Transition = shouldReduceMotion
+    ? { duration: 0 }
+    : { duration: 0.18, ease: [0.16, 1, 0.3, 1] }
+
   useEffect(() => {
+    let rAFId: number | null = null
+
+    const handleResize = () => {
+      if (rAFId !== null) cancelAnimationFrame(rAFId)
+      rAFId = requestAnimationFrame(updateGeometry)
+    }
+
     updateGeometry()
-    window.addEventListener('resize', updateGeometry, { passive: true })
-    const timer = setInterval(updateGeometry, 800)
+    window.addEventListener('resize', handleResize, { passive: true })
     return () => {
-      window.removeEventListener('resize', updateGeometry)
-      clearInterval(timer)
+      window.removeEventListener('resize', handleResize)
+      if (rAFId !== null) cancelAnimationFrame(rAFId)
     }
   }, [updateGeometry])
 
@@ -67,16 +78,17 @@ export const NavPillCenter = () => {
     <AnimatePresence>
       <motion.div
         key={`nav-center-${centerConfig.id ?? 'default'}-${layoutInfo.placement}`}
-        initial={{ opacity: 0, y: -14, scale: 0.96, x: '-50%' }}
+        initial={{ opacity: 0, y: -8, scale: 0.98, x: '-50%' }}
         animate={{ opacity: 1, y: 0, scale: 1, x: '-50%' }}
-        exit={{ opacity: 0, y: -14, scale: 0.96, x: '-50%' }}
-        transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+        exit={{ opacity: 0, y: -8, scale: 0.98, x: '-50%' }}
+        transition={centerTransition}
         data-nav-pill="center"
         data-placement={layoutInfo.placement}
-        className={`fixed z-[9990] ${titleBarOffset} shadow-[var(--dk-shadow-glass)] backdrop-blur-[16px] overflow-hidden flex items-center rounded-[2rem] px-3.5 py-1.5 border border-white/[0.04]`}
+        className={`fixed z-[9990] ${titleBarOffset} shadow-[var(--dk-shadow-glass)] backdrop-blur-[16px] overflow-hidden flex items-center rounded-[2rem] px-3.5 py-2 border border-white/[0.04] transform-gpu`}
         style={{
           left: `${layoutInfo.center}px`,
           maxWidth: `${layoutInfo.maxWidth}px`,
+          transformOrigin: 'top center',
           background: 'color-mix(in oklch, var(--dk-surface-raised) 25%, transparent)',
           backgroundImage:
             'linear-gradient(to bottom right, var(--dk-surface-glass), var(--dk-surface-glass-hover))',

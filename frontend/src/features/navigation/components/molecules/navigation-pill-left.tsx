@@ -1,6 +1,6 @@
-import { useEffect, useRef, useCallback } from "react"
+import { useEffect, useRef, useCallback, useState } from "react"
 import { Link, useLocation } from "@tanstack/react-router"
-import { motion, AnimatePresence } from "framer-motion"
+import { motion, AnimatePresence, useReducedMotion, type Transition } from "framer-motion"
 import { DkLogo } from "@ui/atoms/logo"
 import { usePageMeta } from "@/lib/providers/page-context"
 import { useDesktopPlatform } from "@/lib/desktop/platform"
@@ -25,6 +25,9 @@ export const NavPillLeft = () => {
   const titleBarOffset = isDesktop ? "top-12" : "top-4"
   const isHomePage = location.pathname === "/"
   const showBackButton = !isHomePage
+
+  const [compactWidth, setCompactWidth] = useState<number>(showBackButton ? 138 : 108)
+  const [isRestingClosed, setIsRestingClosed] = useState(true)
 
   // Click outside to collapse the left nav dropdown when open
   const handleClickOutside = useCallback(
@@ -58,19 +61,47 @@ export const NavPillLeft = () => {
     }
   }, [isOpen, handleClickOutside, handleKeyDown])
 
+  // Measure compact width strictly when closed and idle
+  useEffect(() => {
+    if (!isOpen && isRestingClosed && containerRef.current) {
+      const measured = containerRef.current.offsetWidth
+      if (measured >= 80 && measured <= 180) {
+        setCompactWidth(measured)
+      }
+    }
+  }, [isOpen, isRestingClosed, showBackButton, navLogo])
+
+  // When isOpen changes, exit resting closed state so numeric width transition triggers
+  useEffect(() => {
+    if (isOpen) {
+      setIsRestingClosed(false)
+    }
+  }, [isOpen])
+
+  const shouldReduceMotion = useReducedMotion()
+  const transition: Transition = shouldReduceMotion
+    ? { duration: 0 }
+    : isRestingClosed
+    ? { duration: 0 }
+    : { duration: isOpen ? 0.2 : 0.16, ease: [0.16, 1, 0.3, 1] }
+
+  const targetWidth = isOpen ? 240 : isRestingClosed ? "auto" : compactWidth
+
   return (
     <motion.div
       ref={containerRef}
       animate={{
-        width: isOpen ? 240 : "auto",
-        borderRadius: isOpen ? 24 : 32,
+        width: targetWidth,
       }}
-      transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1] }}
+      transition={transition}
+      onAnimationComplete={() => {
+        if (!isOpen) {
+          setIsRestingClosed(true)
+        }
+      }}
       data-nav-pill="left"
       data-menu-trigger
-      className={`fixed z-[9999] left-3 ${titleBarOffset} shadow-[var(--dk-shadow-glass)] backdrop-blur-[16px] overflow-hidden flex flex-col ${
-        isOpen ? "p-3 gap-2" : "px-2 py-1.5 gap-0"
-      }`}
+      className={`fixed z-[9999] left-3 ${titleBarOffset} rounded-3xl shadow-[var(--dk-shadow-glass)] backdrop-blur-[16px] border border-white/[0.04] overflow-hidden flex flex-col p-2 transform-gpu`}
       style={{
         background: "color-mix(in oklch, var(--dk-surface-raised) 25%, transparent)",
         backgroundImage:
@@ -78,16 +109,17 @@ export const NavPillLeft = () => {
       }}
     >
       {/* Top Controls Bar Row */}
-      <div className={`flex items-center w-full ${isOpen ? "justify-between" : "gap-1.5"}`}>
+      <div className="flex items-center justify-between w-full h-8 gap-2">
         <div className="flex items-center gap-1.5">
           <AnimatePresence initial={false}>
             {showBackButton && (
               <motion.div
                 key="back-button-wrapper"
-                initial={{ opacity: 0, width: 0, scale: 0.8 }}
+                initial={{ opacity: 0, width: 0, scale: 0.94 }}
                 animate={{ opacity: 1, width: "auto", scale: 1 }}
-                exit={{ opacity: 0, width: 0, scale: 0.8 }}
-                transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+                exit={{ opacity: 0, width: 0, scale: 0.94 }}
+                transition={shouldReduceMotion ? { duration: 0 } : { duration: 0.16, ease: [0.16, 1, 0.3, 1] }}
+                style={{ transformOrigin: "left center" }}
                 className="flex items-center overflow-hidden shrink-0"
               >
                 <BackButton />
@@ -97,29 +129,41 @@ export const NavPillLeft = () => {
           <MenuToggle />
         </div>
 
-        <div className="flex items-center pr-1">
+        <div className="flex items-center shrink-0">
           {navLogo ? (
-            <img src={navLogo} alt="" className="h-7 object-contain max-w-[120px] pr-2" />
+            <img src={navLogo} alt="" className="h-7 object-contain max-w-[120px]" />
           ) : (
-            <Link to="/" aria-label="Otix Home" className="flex items-center pr-1">
+            <Link to="/" aria-label="Otix Home" className="flex items-center">
               <DkLogo animateInfinity={false} />
             </Link>
           )}
         </div>
       </div>
 
-      {/* Dropdown Content appears smoothly in a clean height/opacity transition without scale distortion */}
-      <AnimatePresence>
+      {/* Dropdown Content appears smoothly in a clean height/opacity transition without scale or text reflow */}
+      <AnimatePresence initial={false}>
         {isOpen && (
           <motion.div
             key="nav-left-dropdown-content"
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1] }}
+            transition={
+              shouldReduceMotion
+                ? { duration: 0 }
+                : {
+                    height: { duration: 0.16, ease: [0.16, 1, 0.3, 1] },
+                    opacity: { duration: 0.12, ease: "easeOut" },
+                  }
+            }
             className="w-full overflow-hidden"
           >
-            <div className="w-full flex flex-col gap-0.5 pt-1.5 border-t border-[var(--dk-separator)]">
+            {/* Top divider separating nav controls from menu content with balanced spacing */}
+            <div className="w-[224px] min-w-[224px] pt-2 pb-2">
+              <div className="w-full border-t border-[var(--dk-separator)]" />
+            </div>
+
+            <div className="w-[224px] min-w-[224px] flex flex-col gap-0.5 pb-1">
               <MenuDropdownContent />
             </div>
           </motion.div>

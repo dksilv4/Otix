@@ -11,7 +11,7 @@ export const MenuToggle = () => {
       variant="ghost"
       size="sm"
       onClick={toggle}
-      className="w-8 h-8 rounded-full p-0 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+      className="w-8 h-8 rounded-full p-0 flex items-center justify-center text-muted-foreground hover:text-foreground active:scale-[0.94] transition-[transform,background-color,color] duration-100 ease-out cursor-pointer focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:outline-none"
       aria-label={isOpen ? "Collapse menu" : "Toggle menu"}
       title={isOpen ? "Collapse menu" : "Open menu"}
     >
