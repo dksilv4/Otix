@@ -55,7 +55,17 @@ const DkImage = ({
   )
 };
 
-const DkImageInner = ({ src, alt, fallback, imgClassName, onError, onLoad, priority = false, ...props }: DkImageProps) => {
+const DkImageInner = ({
+  src,
+  alt,
+  fallback,
+  imgClassName,
+  onError,
+  onLoad,
+  priority = false,
+  referrerPolicy,
+  ...props
+}: DkImageProps) => {
   const imgRef = useRef<HTMLImageElement>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [hasError, setHasError] = useState(false)
@@ -77,6 +87,11 @@ const DkImageInner = ({ src, alt, fallback, imgClassName, onError, onLoad, prior
     )
   }
 
+  const isFandomCdn = typeof src === 'string' && (src.includes('wikia.nocookie.net') || src.includes('fandom.com'))
+  const effectiveReferrerPolicy = isFandomCdn
+    ? (referrerPolicy === 'no-referrer' ? 'strict-origin-when-cross-origin' : (referrerPolicy ?? 'strict-origin-when-cross-origin'))
+    : (referrerPolicy ?? 'strict-origin-when-cross-origin')
+
   return (
     <>
       {isLoading && <DkSkeleton className="absolute inset-0 rounded-none" />}
@@ -84,8 +99,8 @@ const DkImageInner = ({ src, alt, fallback, imgClassName, onError, onLoad, prior
         loading={priority ? 'eager' : (props.loading ?? 'lazy')}
         fetchPriority={priority ? 'high' : (props.fetchPriority ?? 'auto')}
         decoding="async"
-        referrerPolicy={props.referrerPolicy ?? 'no-referrer'}
         {...props}
+        referrerPolicy={effectiveReferrerPolicy}
         ref={imgRef}
         src={src}
         alt={alt}

@@ -210,7 +210,7 @@ export function usePalette(imageUrl: string | null | undefined) {
       img.crossOrigin = 'anonymous'
     }
     img.decoding = 'async'
-    img.referrerPolicy = 'no-referrer'
+    img.referrerPolicy = 'strict-origin-when-cross-origin'
 
     img.onload = () => {
       if (cancelled) return

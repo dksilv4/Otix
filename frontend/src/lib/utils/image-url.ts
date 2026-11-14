@@ -18,6 +18,9 @@ const HTTPS_CDNS = [
   'thetvdb.com',
   'tvdb.com',
   'otix.app',
+  'nocookie.net',
+  'fandom.com',
+  'wikimedia.org',
 ]
 
 /**
@@ -74,4 +77,22 @@ export function sanitizeImageUrl(url: string | null | undefined): string {
   }
 
   return trimmed
+}
+
+/**
+ * Downscales huge original images (such as TMDB /original/ or IGDB t_original)
+ * to crisp, lightweight card dimensions (w500 / t_cover_big) to prevent multi-megabyte payloads.
+ */
+export function optimizeCardImageUrl(url: string | null | undefined): string {
+  if (!url) return ''
+  let result = sanitizeImageUrl(url)
+  // TMDB — replace original with w500 for cards
+  if (result.includes('image.tmdb.org/t/p/original/')) {
+    result = result.replace('/t/p/original/', '/t/p/w500/')
+  }
+  // IGDB — replace t_original with t_cover_big for cards
+  if (result.includes('images.igdb.com/igdb/image/upload/t_original/')) {
+    result = result.replace('/t_original/', '/t_cover_big/')
+  }
+  return result
 }

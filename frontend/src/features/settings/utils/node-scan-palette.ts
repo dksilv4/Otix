@@ -245,7 +245,7 @@ export async function extractThemeFromImageUrl(
 
     const img = new Image()
     img.crossOrigin = 'anonymous'
-    img.referrerPolicy = 'no-referrer'
+    img.referrerPolicy = 'strict-origin-when-cross-origin'
     img.decoding = 'async'
 
     let resolved = false

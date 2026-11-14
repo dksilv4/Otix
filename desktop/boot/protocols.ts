@@ -42,28 +42,35 @@ const MIME_TYPES: Record<string, string> = {
 };
 
 /**
- * Configure SameSite cookies and YouTube embed headers on the session.
+ * Configure SameSite cookies, YouTube embed headers, and CDN referrers on the session.
  */
 export function setupSessionHeaders(targetSession: Electron.Session): void {
-  targetSession.webRequest.onHeadersReceived((details: any, callback: any) => {
-    const responseHeaders = details.responseHeaders || {};
-    const setCookie = responseHeaders['set-cookie'] || responseHeaders['Set-Cookie'];
-    if (setCookie) {
-      responseHeaders['set-cookie'] = setCookie.map((cookie: string) => {
-        let newCookie = cookie;
-        if (/SameSite=Lax/i.test(newCookie)) {
-          newCookie = newCookie.replace(/SameSite=Lax/gi, 'SameSite=None');
-        }
-        if (/SameSite=None/i.test(newCookie) && !/Secure/i.test(newCookie)) {
-          newCookie += '; Secure';
-        }
-        return newCookie;
-      });
-    }
-    callback({ cancel: false, responseHeaders });
-  });
+  const applyHeaderOverrides = (sess: Electron.Session) => {
+    sess.webRequest.onHeadersReceived((details: any, callback: any) => {
+      const responseHeaders = details.responseHeaders || {};
+      const setCookie = responseHeaders['set-cookie'] || responseHeaders['Set-Cookie'];
+      if (setCookie) {
+        responseHeaders['set-cookie'] = setCookie.map((cookie: string) => {
+          let newCookie = cookie;
+          if (/SameSite=Lax/i.test(newCookie)) {
+            newCookie = newCookie.replace(/SameSite=Lax/gi, 'SameSite=None');
+          }
+          if (/SameSite=None/i.test(newCookie) && !/Secure/i.test(newCookie)) {
+            newCookie += '; Secure';
+          }
+          return newCookie;
+        });
+      }
 
-  const applyYouTubeHeaderInterceptor = (sess: Electron.Session) => {
+      // Strip restrictive Cross-Origin-Resource-Policy from CDN images (e.g. Fandom/Wikia) to prevent CORP blocks
+      if (details.url && (details.url.includes('wikia.nocookie.net') || details.url.includes('fandom.com'))) {
+        delete responseHeaders['cross-origin-resource-policy'];
+        delete responseHeaders['Cross-Origin-Resource-Policy'];
+      }
+
+      callback({ cancel: false, responseHeaders });
+    });
+
     sess.webRequest.onBeforeSendHeaders(
       {
         urls: [
@@ -79,11 +86,27 @@ export function setupSessionHeaders(targetSession: Electron.Session): void {
         callback({ cancel: false, requestHeaders });
       }
     );
+
+    sess.webRequest.onBeforeSendHeaders(
+      {
+        urls: [
+          '*://*.wikia.nocookie.net/*',
+          '*://*.fandom.com/*',
+        ],
+      },
+      (details: any, callback: any) => {
+        const requestHeaders = details.requestHeaders || {};
+        if (!requestHeaders['Referer']) {
+          requestHeaders['Referer'] = 'https://fandom.com/';
+        }
+        callback({ cancel: false, requestHeaders });
+      }
+    );
   };
 
-  applyYouTubeHeaderInterceptor(targetSession);
+  applyHeaderOverrides(targetSession);
   if (electronSession.defaultSession && electronSession.defaultSession !== targetSession) {
-    applyYouTubeHeaderInterceptor(electronSession.defaultSession);
+    applyHeaderOverrides(electronSession.defaultSession);
   }
 }
 

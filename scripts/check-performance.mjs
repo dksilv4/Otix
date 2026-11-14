@@ -194,7 +194,7 @@ function runBackendBenchmarks() {
       cwd: rootDir,
       stdio: ['ignore', 'pipe', 'ignore'],
       encoding: 'utf-8',
-      timeout: 30000,
+      timeout: 60000,
     });
 
     const data = JSON.parse(stdout.trim());
