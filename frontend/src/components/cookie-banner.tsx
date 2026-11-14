@@ -29,7 +29,7 @@ export const CookieBanner = () => {
 
   return (
     <div
-      className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-6 sm:max-w-md z-[9999] rounded-2xl backdrop-blur-[24px] p-4 sm:p-5 shadow-[var(--dk-shadow-glass)] border border-[var(--dk-separator)] animate-in fade-in slide-in-from-bottom-4 duration-200"
+      className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-6 sm:max-w-md z-[9999] rounded-2xl backdrop-blur-md p-4 sm:p-5 shadow-[var(--dk-shadow-glass)] border border-white/[0.06]"
       style={{ backgroundColor: 'var(--dk-surface-overlay)' }}
       role="region"
       aria-label="Cookie preferences"
@@ -49,13 +49,13 @@ export const CookieBanner = () => {
             </button>
           </div>
 
-          <p className="mt-2 text-xs text-muted-foreground leading-relaxed">
-            We use strictly necessary cookies to keep you signed in and remember your media preferences. We do not use third-party advertising or cross-site tracking cookies.{' '}
+          <p className="mt-1.5 text-xs text-muted-foreground leading-normal">
+            We use essential cookies to keep you signed in and remember preferences.{' '}
             <Link
               to="/privacy"
               className="text-foreground hover:text-primary underline underline-offset-2 font-medium"
             >
-              Read our Privacy &amp; Cookie Policy
+              Privacy Policy
             </Link>
             .
           </p>

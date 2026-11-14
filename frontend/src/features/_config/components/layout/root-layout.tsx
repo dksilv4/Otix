@@ -14,44 +14,8 @@ import { CookieBanner } from "@/components/cookie-banner"
 import { AppMicroFooter } from "@/components/app-micro-footer"
 import { safeLazy } from "@/lib/utils/chunk-reload"
 
-const CommandPaletteMount = safeLazy(() =>
-  import("@/features/hub").then((m) => ({ default: m.CommandPaletteMount }))
-)
-const DecideWatchHost = safeLazy(() =>
-  import("@/features/discover/components/organisms/decide-watch-host").then((m) => ({
-    default: m.DecideWatchHost,
-  }))
-)
-const FeatureSpotlightHost = safeLazy(() =>
-  import("@/features/spotlight").then((m) => ({ default: m.FeatureSpotlightHost }))
-)
-const LevelUpHost = safeLazy(() =>
-  import("@user/components/organisms/level-up-host").then((m) => ({ default: m.LevelUpHost }))
-)
-const GamingXpHost = safeLazy(() =>
-  import("@/features/launcher").then((m) => ({ default: m.GamingXpHost }))
-)
-const IndexerSearchHost = safeLazy(() =>
-  import("@/features/downloads/molecules/indexer-search-host").then((m) => ({
-    default: m.IndexerSearchHost,
-  }))
-)
-const GlobalMusicBar = safeLazy(() =>
-  import("@/features/music/components/molecules/global-music-bar").then((m) => ({
-    default: m.GlobalMusicBar,
-  }))
-)
-const GlobalDropOverlay = safeLazy(() =>
-  import("@/features/drop").then((m) => ({ default: m.GlobalDropOverlay }))
-)
-const UpdateNotificationToast = safeLazy(() =>
-  import("@/features/updater").then((m) => ({ default: m.UpdateNotificationToast }))
-)
-const UpdateModal = safeLazy(() =>
-  import("@/features/updater").then((m) => ({ default: m.UpdateModal }))
-)
-const ReleaseNotesModal = safeLazy(() =>
-  import("@/features/updater").then((m) => ({ default: m.ReleaseNotesModal }))
+const DeferredHosts = safeLazy(() =>
+  import("./deferred-hosts").then((m) => ({ default: m.DeferredHosts }))
 )
 
 const PluginPermissionModal = safeLazy(() =>
@@ -156,17 +120,7 @@ export const RootLayout = () => {
       <ModalRoot />
       <CookieBanner />
       <Suspense fallback={null}>
-        <CommandPaletteMount />
-        <DecideWatchHost />
-        <FeatureSpotlightHost />
-        <LevelUpHost />
-        <GamingXpHost />
-        <IndexerSearchHost />
-        <GlobalMusicBar />
-        <GlobalDropOverlay />
-        <UpdateNotificationToast />
-        <UpdateModal />
-        <ReleaseNotesModal />
+        <DeferredHosts />
       </Suspense>
     </div>
   )

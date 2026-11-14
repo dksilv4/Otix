@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo, useCallback, Suspense } from 'react'
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion'
 import { Link } from '@tanstack/react-router'
-import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
+import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   Film,
   Tv,
@@ -30,6 +30,7 @@ import {
   formatAudienceMetric,
   extractTrailerYoutubeId,
   resolveHeroBackdropSource,
+  resolveHeroBackdropSrcSet,
 } from '@/features/discover/utils/hero'
 import {
   type HeroTab,
@@ -52,6 +53,7 @@ interface DiscoverHeroProps {
 
 export const DiscoverHero = ({ className }: DiscoverHeroProps) => {
   const prefersReducedMotion = useReducedMotion()
+  const queryClient = useQueryClient()
   const [selectedTab, setSelectedTab] = useState<HeroTab>('movie')
   const [activeSlideIndex, setActiveSlideIndex] = useState(0)
   const [isPaused, setIsPaused] = useState(false)
@@ -63,19 +65,13 @@ export const DiscoverHero = ({ className }: DiscoverHeroProps) => {
     discoverQueries.list('movie', 'trending'),
   )
 
-  const [hasDeferredLoaded, setHasDeferredLoaded] = useState(false)
-  useEffect(() => {
-    const timeout = setTimeout(() => setHasDeferredLoaded(true), 2500)
-    return () => clearTimeout(timeout)
-  }, [])
-
   const { data: showsData, isLoading: showsLoading } = useInfiniteQuery({
     ...discoverQueries.list('show', 'trending'),
-    enabled: selectedTab === 'show' || hasDeferredLoaded,
+    enabled: selectedTab === 'show',
   })
   const { data: gamesData, isLoading: gamesLoading } = useInfiniteQuery({
     ...discoverQueries.list('game', 'now_playing'),
-    enabled: selectedTab === 'game' || hasDeferredLoaded,
+    enabled: selectedTab === 'game',
   })
 
   // Filter so hero only surfaces trending and recent/viral media, strictly filtering out older catalog
@@ -165,7 +161,6 @@ export const DiscoverHero = ({ className }: DiscoverHeroProps) => {
   const handleTabClick = useCallback((tab: HeroTab) => {
     setSelectedTab(tab)
     setActiveSlideIndex(0)
-    setHasDeferredLoaded(true)
   }, [])
 
   const isLoading =
@@ -250,6 +245,10 @@ export const DiscoverHero = ({ className }: DiscoverHeroProps) => {
                       type="button"
                       aria-label={tab.ariaLabel}
                       onClick={() => handleTabClick(tab.id)}
+                      onPointerEnter={() => {
+                        if (tab.id === 'show') void queryClient.prefetchInfiniteQuery(discoverQueries.list('show', 'trending'))
+                        if (tab.id === 'game') void queryClient.prefetchInfiniteQuery(discoverQueries.list('game', 'now_playing'))
+                      }}
                       className={`relative flex items-center gap-1.5 px-3.5 sm:px-4 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap shrink-0 transition-colors duration-200 cursor-pointer ${
                         isSelected
                           ? 'text-primary-foreground'
@@ -408,7 +407,22 @@ export const DiscoverHero = ({ className }: DiscoverHeroProps) => {
                   )}
                 </div>
               </div>
-            ) : null}
+            ) : (
+              <div className="flex flex-col justify-center gap-3.5 my-auto animate-pulse">
+                <div className="h-4 w-24 rounded-full bg-[var(--dk-surface-field)]" />
+                <div className="w-full min-h-[100px] sm:min-h-[130px] flex items-center">
+                  <div className="h-14 sm:h-20 w-3/4 rounded-2xl bg-[var(--dk-surface-field)]" />
+                </div>
+                <div className="space-y-2 max-w-xl">
+                  <div className="h-4 w-full rounded bg-[var(--dk-surface-field)]" />
+                  <div className="h-4 w-2/3 rounded bg-[var(--dk-surface-field)]" />
+                </div>
+                <div className="flex items-center gap-3 pt-1">
+                  <div className="h-12 w-36 rounded-full bg-[var(--dk-surface-field)]" />
+                  <div className="h-12 w-32 rounded-full bg-[var(--dk-surface-ghost)]" />
+                </div>
+              </div>
+            )}
 
             {/* ── Desktop Inverted Fillet Curve: Seamlessly connects upper card to right panel ── */}
             <div className="absolute right-0 top-full w-10 h-10 pointer-events-none hidden lg:block z-20">
@@ -471,6 +485,8 @@ export const DiscoverHero = ({ className }: DiscoverHeroProps) => {
                   <motion.img
                     key={backdropSource}
                     src={backdropSource}
+                    srcSet={resolveHeroBackdropSrcSet(backdropSource)}
+                    sizes="(max-width: 1024px) 100vw, 54vw"
                     alt={activeMediaItem?.title}
                     fetchPriority="high"
                     decoding="async"
@@ -480,7 +496,9 @@ export const DiscoverHero = ({ className }: DiscoverHeroProps) => {
                     transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
                     className="w-full h-full object-cover object-center filter brightness-[0.95] dark:brightness-[0.85] scale-100 group-hover:scale-[1.03] transition-transform duration-700 ease-out"
                   />
-                ) : null}
+                ) : (
+                  <div className="w-full h-full bg-[var(--dk-surface-field)] animate-pulse" />
+                )}
               </AnimatePresence>
               {/* Soft cinematic vignette overlay */}
               <div className="absolute inset-0 bg-gradient-to-t from-[var(--dk-surface-root)]/60 via-transparent to-transparent z-10 pointer-events-none" />

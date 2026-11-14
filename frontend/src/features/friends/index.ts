@@ -1,5 +1,4 @@
 export { createFriendsRoutes } from './router'
-export { FriendsPage } from './pages/friends-page'
 export { AddFriendModal } from './components/modals/add-friend-modal'
 export { ManageFriendModal } from './components/modals/manage-friend-modal'
 export { FriendAvatar } from './components/atoms/friend-avatar'

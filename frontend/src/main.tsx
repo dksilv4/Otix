@@ -17,7 +17,7 @@ import { FeatureProvider } from '@/features/_config'
 import { PageMetaProvider } from '@/lib/providers/page-context'
 import { UniversalPlayerProvider } from '@/features/player'
 import { PlayerProvider } from '@/lib/player/player-provider'
-import { MediaStreamPlayerProvider } from '@/features/media/hooks/use-media-stream-player'
+import { MediaStreamPlayerProvider, useMediaStreamPlayer } from '@/features/media/hooks/use-media-stream-player'
 import { DkToastProvider, showErrorToast } from '@ui/molecules/toast'
 import { ModalProvider } from '@/lib/modals'
 import { ContextMenuProvider, ContextMenuPortal } from '@/features/_config/context-menu'
@@ -32,6 +32,16 @@ const MediaStreamPlayerModal = safeLazy(() =>
     default: m.MediaStreamPlayerModal,
   })),
 )
+
+const MediaStreamPlayerHost = () => {
+  const { isOpen } = useMediaStreamPlayer()
+  if (!isOpen) return null
+  return (
+    <Suspense fallback={null}>
+      <MediaStreamPlayerModal />
+    </Suspense>
+  )
+}
 
 // Clean up cache-busting reload query param if present
 if (typeof window !== 'undefined' && window.location.search.includes('otix_reload=')) {
@@ -140,9 +150,7 @@ const renderApp = () => {
                                       router={router}
                                       context={{ queryClient, isAuthenticated: false, isAuthLoaded: false }}
                                     />
-                                    <Suspense fallback={null}>
-                                      <MediaStreamPlayerModal />
-                                    </Suspense>
+                                    <MediaStreamPlayerHost />
                                   </ModalProvider>
                                   <ContextMenuPortal />
                                 </ContextMenuProvider>

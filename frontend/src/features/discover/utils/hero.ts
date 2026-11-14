@@ -28,21 +28,28 @@ export const resolveHeroBackdropSource = (
   const itemPoster = activeMediaItem?.posterUrl
   const itemTextless = activeMediaItem?.textlessPosterUrl
 
-  // Prefer non-fanart backdrop first, then non-fanart poster
+  // Prefer stable item backdrop first, then detail backdrop
   const candidate =
-    (!isFanartUrl(detailBackdrop) && detailBackdrop) ||
     (!isFanartUrl(itemBackdrop) && itemBackdrop) ||
-    (!isFanartUrl(detailPoster) && detailPoster) ||
+    (!isFanartUrl(detailBackdrop) && detailBackdrop) ||
     (!isFanartUrl(itemPoster) && itemPoster) ||
-    detailBackdrop ||
+    (!isFanartUrl(detailPoster) && detailPoster) ||
     itemBackdrop ||
+    detailBackdrop ||
     itemTextless ||
-    detailPoster ||
     itemPoster ||
+    detailPoster ||
     null
 
   if (!candidate) return undefined
   return candidate.replace(/\/original\//, '/w1280/')
+}
+
+export const resolveHeroBackdropSrcSet = (url?: string): string | undefined => {
+  if (!url || !url.includes('image.tmdb.org/t/p/')) return undefined
+  const w780 = url.replace(/\/w1280\/|\/original\//, '/w780/')
+  const w1280 = url.replace(/\/w780\/|\/original\//, '/w1280/')
+  return `${w780} 780w, ${w1280} 1280w`
 }
 
 export const CONTENT_FADE = {

@@ -124,6 +124,56 @@ export default defineConfig({
     },
   },
   build: {
+    modulePreload: {
+      resolveDependencies: (_filename, deps) => {
+        return deps.filter(
+          (dep) =>
+            !dep.includes('hls') &&
+            !dep.includes('three') &&
+            !dep.includes('media-stream-player') &&
+            !dep.includes('unified-media-player') &&
+            !dep.includes('trailer-video') &&
+            !dep.includes('show-episode') &&
+            !dep.includes('setup-wizard') &&
+            !dep.includes('chat-conversation') &&
+            !dep.includes('server-game-search') &&
+            !dep.includes('deferred-hosts') &&
+            !dep.includes('command-palette') &&
+            !dep.includes('decide-watch') &&
+            !dep.includes('feature-spotlight') &&
+            !dep.includes('level-up') &&
+            !dep.includes('gaming-xp') &&
+            !dep.includes('indexer-search') &&
+            !dep.includes('global-music-bar') &&
+            !dep.includes('global-drop') &&
+            !dep.includes('release-notes') &&
+            !dep.includes('update-modal') &&
+            !dep.includes('update-notification') &&
+            !dep.includes('activity-panel') &&
+            !dep.includes('chat-nav-panel') &&
+            !dep.includes('auth-user-menu') &&
+            !dep.includes('platform-icons') &&
+            !dep.includes('id3-parser') &&
+            !dep.includes('use-player') &&
+            !dep.includes('player') &&
+            !dep.includes('use-running-game') &&
+            !dep.includes('use-matched-running-game') &&
+            !dep.includes('game-queries') &&
+            !dep.includes('install-store') &&
+            !dep.includes('use-launcher-playtime') &&
+            !dep.includes('cs2-gsi') &&
+            !dep.includes('use-node-downloads') &&
+            !dep.includes('use-node-usenet') &&
+            !dep.includes('use-server-arr') &&
+            !dep.includes('use-downloads') &&
+            !dep.includes('share-entity-modal') &&
+            !dep.includes('scanned-summary') &&
+            !dep.includes('list-actions') &&
+            !dep.includes('episode-download') &&
+            !dep.includes('activity-module')
+        )
+      },
+    },
     rollupOptions: {
       output: {
         manualChunks(id: string) {
