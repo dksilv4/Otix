@@ -1,4 +1,4 @@
-import { StrictMode } from 'react'
+import { StrictMode, Suspense } from 'react'
 import { createRoot } from 'react-dom/client'
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client'
 import { RouterProvider } from '@tanstack/react-router'
@@ -18,7 +18,6 @@ import { PageMetaProvider } from '@/lib/providers/page-context'
 import { UniversalPlayerProvider } from '@/features/player'
 import { PlayerProvider } from '@/lib/player/player-provider'
 import { MediaStreamPlayerProvider } from '@/features/media/hooks/use-media-stream-player'
-import { MediaStreamPlayerModal } from '@/features/media/components/organisms/media-stream-player-modal'
 import { DkToastProvider, showErrorToast } from '@ui/molecules/toast'
 import { ModalProvider } from '@/lib/modals'
 import { ContextMenuProvider, ContextMenuPortal } from '@/features/_config/context-menu'
@@ -26,7 +25,13 @@ import { getPlatformInfo } from '@/lib/platform'
 import { initMobileApp } from '@/lib/mobile/init'
 import './index.css'
 
-import { isChunkLoadError, reloadForNewChunk } from '@/lib/utils/chunk-reload'
+import { isChunkLoadError, reloadForNewChunk, safeLazy } from '@/lib/utils/chunk-reload'
+
+const MediaStreamPlayerModal = safeLazy(() =>
+  import('@/features/media/components/organisms/media-stream-player-modal').then((m) => ({
+    default: m.MediaStreamPlayerModal,
+  })),
+)
 
 // Clean up cache-busting reload query param if present
 if (typeof window !== 'undefined' && window.location.search.includes('otix_reload=')) {
@@ -119,7 +124,9 @@ const renderApp = () => {
                                       router={router}
                                       context={{ queryClient, isAuthenticated: false, isAuthLoaded: false }}
                                     />
-                                    <MediaStreamPlayerModal />
+                                    <Suspense fallback={null}>
+                                      <MediaStreamPlayerModal />
+                                    </Suspense>
                                   </ModalProvider>
                                   <ContextMenuPortal />
                                 </ContextMenuProvider>
