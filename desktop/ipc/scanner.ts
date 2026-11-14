@@ -420,11 +420,14 @@ export async function executeScan(
       if (batch.length === 0) return;
       try {
         gameService.upsertGames(batch as any[], scope);
-        if (_orchestrator) {
-          if (typeof (_orchestrator as any).startBackgroundMatching === 'function') {
-            (_orchestrator as any).startBackgroundMatching().catch(() => {});
-          } else if (typeof (_orchestrator as any).startMatching === 'function') {
-            (_orchestrator as any).startMatching().catch(() => {});
+        if (_orchestrator && !_orchestrator.isMatching) {
+          const hasUnmatched = batch.some((g) => !g.isDlc && !(g as any).isApp && (!g.otixMediaId || g.otixMediaId === ''));
+          if (hasUnmatched) {
+            if (typeof (_orchestrator as any).startBackgroundMatching === 'function') {
+              (_orchestrator as any).startBackgroundMatching().catch(() => {});
+            } else if (typeof (_orchestrator as any).startMatching === 'function') {
+              (_orchestrator as any).startMatching().catch(() => {});
+            }
           }
         }
       } catch (err: any) {

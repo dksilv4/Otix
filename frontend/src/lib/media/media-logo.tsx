@@ -1,6 +1,6 @@
 import type { CSSProperties, SyntheticEvent } from 'react'
 import { useTheme } from '@/lib/providers/theme'
-import { sanitizeImageUrl } from '@/lib/utils/image-url'
+import { optimizeLogoImageUrl } from '@/lib/utils/image-url'
 import { DEFAULT_LOGO_FILTER, logoContrast } from './logo-style'
 import type { LogoBackground } from './types'
 
@@ -42,7 +42,17 @@ export const MediaLogo = ({
   const backdrop = background === 'theme' ? (theme ?? resolvedTheme) : background
   const contrast = background === 'none' ? '' : logoContrast(colorGuess, backdrop as 'light' | 'dark')
   const filter = contrast ? `${contrast} ${shadow}` : shadow
-  const cleanSrc = sanitizeImageUrl(src)
+  const cleanSrc = optimizeLogoImageUrl(src)
 
-  return <img src={cleanSrc} alt={alt} className={className} onError={onError} style={{ filter, ...style }} />
+  return (
+    <img
+      src={cleanSrc}
+      alt={alt}
+      className={className}
+      onError={onError}
+      loading="lazy"
+      decoding="async"
+      style={{ filter, ...style }}
+    />
+  )
 };

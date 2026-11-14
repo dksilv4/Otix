@@ -45,6 +45,9 @@ class ExternalID(TimestampedModel):
                 name="uq_external_id_content_provider_ext_media_type",
             )
         ]
+        indexes = [
+            models.Index(fields=["provider", "external_id"], name="ix_ext_id_provider_extid"),
+        ]
 
     def __str__(self) -> str:
         return f"{self.provider}:{self.external_id}"

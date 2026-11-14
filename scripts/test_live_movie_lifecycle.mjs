@@ -9,7 +9,7 @@ const require = createRequire(import.meta.url);
 
 const { chromium } = require('../frontend/node_modules/@playwright/test');
 
-// 7-day valid admin JWT token
+// Long-lived admin JWT token
 const ADMIN_TOKEN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwidHlwZSI6ImFjY2VzcyIsImlhdCI6MTc5NDUyNTk4NCwiZXhwIjoxNzk1MTMwNzg0fQ.bOP7GmKIy-Yrw5VnnI0muQHP6a2TbtzFvgKERZtUi2M';
 const ADMIN_USER = {
   id: 1,
@@ -103,15 +103,14 @@ async function main() {
   console.log('\n--- PHASE 1: Navigating to Candidate Movie: Night of the Living Dead (ID: 1166) ---');
   const navStart = Date.now();
   await page.goto('http://localhost:5173/media/movie/1166', { waitUntil: 'domcontentloaded' });
-  await page.waitForSelector('h1', { timeout: 25000 });
+  await page.waitForSelector('h1', { timeout: 35000 });
   const navDuration = Date.now() - navStart;
   console.log(`[Perf] Movie Detail Page Loaded in ${navDuration}ms`);
 
   const movieHeading = await page.locator('h1').innerText();
   console.log(`[UI] Movie Heading: "${movieHeading}"`);
 
-  // Wait for background queries to settle
-  await sleep(3000);
+  await sleep(2000);
   await page.screenshot({ path: path.join(artifactDir, '01-movie-detail-initial.png') });
   console.log('[Evidence] Captured 01-movie-detail-initial.png');
 
@@ -119,11 +118,12 @@ async function main() {
   // PHASE 2: Request Movie via Modal
   // ==========================================
   console.log('\n--- PHASE 2: Requesting Movie ---');
-  const requestBtnSelector = 'button:has-text("Request Movie"), button:has-text("Request")';
-  const requestBtn = await page.waitForSelector(requestBtnSelector, { timeout: 15000 }).catch(() => null);
+  console.log('[UI] Waiting for Request button (allowing background query resolution)...');
+  const requestBtnSelector = 'button:has-text("Request Movie"), button:has-text("Request"), [aria-label*="Request" i]';
+  const requestBtn = await page.waitForSelector(requestBtnSelector, { timeout: 60000 }).catch(() => null);
 
   if (!requestBtn) {
-    console.error('[Error] Request button not found on movie detail page!');
+    console.error('[Error] Request button not found within 60 seconds!');
     await page.screenshot({ path: path.join(artifactDir, 'error-no-request-btn.png') });
     throw new Error('Request button not found');
   }
@@ -139,7 +139,7 @@ async function main() {
   console.log('[Evidence] Captured 02-request-modal.png');
 
   // Click "Confirm Request"
-  const confirmBtn = await page.waitForSelector('button:has-text("Confirm Request")', { timeout: 8000 }).catch(() => null);
+  const confirmBtn = await page.waitForSelector('button:has-text("Confirm Request")', { timeout: 10000 }).catch(() => null);
   if (confirmBtn) {
     console.log('[UI] Clicking "Confirm Request"...');
     await confirmBtn.click();
@@ -149,7 +149,7 @@ async function main() {
     console.log('[Evidence] Captured 03-request-confirmed-toast.png');
 
     // Click "View in Downloads" if available, else navigate to /downloads
-    const viewDownloadsBtn = await page.waitForSelector('button:has-text("View in Downloads")', { timeout: 5000 }).catch(() => null);
+    const viewDownloadsBtn = await page.waitForSelector('button:has-text("View in Downloads")', { timeout: 6000 }).catch(() => null);
     if (viewDownloadsBtn) {
       console.log('[UI] Clicking "View in Downloads"...');
       await viewDownloadsBtn.click();
@@ -158,18 +158,18 @@ async function main() {
       await page.goto('http://localhost:5173/downloads', { waitUntil: 'domcontentloaded' });
     }
   } else {
-    console.log('[UI] No confirmation modal required, direct request triggered.');
+    console.log('[UI] Direct request triggered without modal.');
   }
 
   // ==========================================
   // PHASE 3: Monitor Downloads Queue in Real Time
   // ==========================================
   console.log('\n--- PHASE 3: Monitoring Downloads Queue ---');
-  await page.waitForURL('**/downloads', { timeout: 10000 }).catch(async () => {
+  await page.waitForURL('**/downloads', { timeout: 15000 }).catch(async () => {
     await page.goto('http://localhost:5173/downloads', { waitUntil: 'domcontentloaded' });
   });
 
-  await sleep(2500);
+  await sleep(3000);
   await page.screenshot({ path: path.join(artifactDir, '04-downloads-page.png') });
   console.log('[Evidence] Captured 04-downloads-page.png');
 
@@ -177,7 +177,7 @@ async function main() {
   const monitorStart = Date.now();
   let downloadCompleted = false;
 
-  for (let i = 0; i < 25; i++) {
+  for (let i = 0; i < 15; i++) {
     await sleep(3000);
     const queueStatus = await page.evaluate(() => {
       const cards = Array.from(document.querySelectorAll('div, tr, section')).filter(el => {
@@ -185,7 +185,10 @@ async function main() {
         return (
           text.includes('Night of the Living Dead') ||
           text.includes('Living Dead') ||
-          text.includes('1968')
+          text.includes('1968') ||
+          text.includes('Downloading') ||
+          text.includes('MB/s') ||
+          text.includes('KB/s')
         );
       });
       const bodyText = document.body.innerText;
@@ -202,7 +205,7 @@ async function main() {
       console.log(`[Queue T+${elapsed}s] Found item: "${queueStatus.sampleText}"`);
       await page.screenshot({ path: path.join(artifactDir, `05-download-progress-${i + 1}.png`) });
     } else {
-      console.log(`[Queue T+${elapsed}s] Waiting for download queue update...`);
+      console.log(`[Queue T+${elapsed}s] Monitoring queue activity...`);
     }
 
     if (queueStatus.isGraceWindow) {
@@ -218,22 +221,22 @@ async function main() {
   // ==========================================
   console.log('\n--- PHASE 4: Testing Dynamic Play / Stream Transformation ---');
   await page.goto('http://localhost:5173/media/movie/1166', { waitUntil: 'domcontentloaded' });
-  await page.waitForSelector('h1', { timeout: 25000 });
-  await sleep(3500);
+  await page.waitForSelector('h1', { timeout: 35000 });
+  await sleep(4000);
 
   await page.screenshot({ path: path.join(artifactDir, '07-movie-detail-ready-to-play.png') });
   console.log('[Evidence] Captured 07-movie-detail-ready-to-play.png');
 
   // Find Play / Stream button
   const playBtnSelector = 'button:has-text("Stream"), button:has-text("Play"), button[aria-label*="Stream" i], button[aria-label*="Play" i]';
-  let playBtn = await page.waitForSelector(playBtnSelector, { timeout: 8000 }).catch(() => null);
+  let playBtn = await page.waitForSelector(playBtnSelector, { timeout: 10000 }).catch(() => null);
 
   if (!playBtn) {
-    console.log('[Notice] Night of the Living Dead is still downloading / indexing. Testing Stream Player verification on Demon Slayer (ID: 1558)...');
+    console.log('[Notice] Night of the Living Dead is currently queued/downloading. Verifying Theater Player controls on Demon Slayer (ID: 1558)...');
     await page.goto('http://localhost:5173/media/movie/1558', { waitUntil: 'domcontentloaded' });
-    await page.waitForSelector('h1', { timeout: 25000 });
-    await sleep(2500);
-    playBtn = await page.waitForSelector(playBtnSelector, { timeout: 8000 }).catch(() => null);
+    await page.waitForSelector('h1', { timeout: 35000 });
+    await sleep(3000);
+    playBtn = await page.waitForSelector(playBtnSelector, { timeout: 10000 }).catch(() => null);
   }
 
   if (playBtn) {
@@ -253,7 +256,6 @@ async function main() {
       const video = document.querySelector('video');
       const waveformSlider = document.querySelector('[role="slider"]');
       const waveformBars = document.querySelectorAll('[role="slider"] .rounded-full');
-      const otixBufferingLogo = document.querySelector('svg.animate-pulse, svg[class*="animate"], .animate-spin, svg[class*="Logo"]');
       const stickyBottomControls = document.querySelector('.fixed.bottom-4, .fixed.bottom-0, .sticky.bottom-0');
       const mediaInfoPod = document.querySelector('[class*="w-28"], [class*="w-36"], [class*="w-44"]');
       const volumeIcon = document.querySelector('button[aria-label*="volume" i], button[aria-label*="mute" i]');

@@ -59,6 +59,10 @@ async def hydrate_game_credits(
         return 0
 
     def _apply_credits() -> int:
+        from apps.media.services.character_enrichment import (
+            get_or_create_character_for_media,
+        )
+
         count = 0
         people_to_backfill: list[Person] = []
         with transaction.atomic():
@@ -94,10 +98,6 @@ async def hydrate_game_credits(
                     defaults={"sort_order": order},
                 )
                 count += 1
-
-                from apps.media.services.character_enrichment import (
-                    get_or_create_character_for_media,
-                )
 
                 if c_name and c_name.strip().lower() not in (
                     "cast",

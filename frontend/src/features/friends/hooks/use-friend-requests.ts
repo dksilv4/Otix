@@ -7,17 +7,18 @@ import {
 
 interface UseFriendRequestsOptions {
   enabled?: boolean
+  includeOutgoing?: boolean
 }
 
 export const useFriendRequests = (options: UseFriendRequestsOptions = {}) => {
-  const { enabled = true } = options
+  const { enabled = true, includeOutgoing = true } = options
   const incomingQuery = useQuery({
     ...friendsQueries.incomingRequests(),
     enabled,
   })
   const outgoingQuery = useQuery({
     ...friendsQueries.outgoingRequests(),
-    enabled,
+    enabled: enabled && includeOutgoing,
   })
 
   const acceptMutation = useAcceptFriendRequest()

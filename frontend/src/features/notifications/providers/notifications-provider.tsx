@@ -18,6 +18,7 @@ import type {
 } from '../types'
 
 import { convertKeysToCamelCase } from '@/lib/api/client'
+import { API_BASE_URL } from '@/lib/config'
 import {
   isInQuietHours,
   appendNotificationToFeed,
@@ -134,7 +135,7 @@ export const NotificationsProvider = ({ children }: NotificationsProviderProps) 
   )
 
   useSseStream({
-    url: '/api/v1/notifications/stream',
+    url: `${API_BASE_URL.replace(/\/+$/, '')}/notifications/stream`,
     onMessage: handleMessage,
     enabled: isAuthenticated,
     reconnectDelays: SSE_RECONNECT_DELAYS,

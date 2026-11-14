@@ -3,7 +3,6 @@ import { Outlet, useLocation } from "@tanstack/react-router"
 import { NavShell } from "@navigation"
 import { TitleBar } from "./title-bar"
 import { XPToastContainer } from "@ui/atoms/xp-toast"
-import { CommandPaletteMount } from "@/features/hub"
 import { GlobalContextMenuListener } from "@/features/_config/context-menu"
 import { PanelProvider } from "@activity/providers/panel-context"
 import { NotificationsProvider } from "@/features/notifications/providers/notifications-provider"
@@ -11,17 +10,49 @@ import { CatalogStreamProvider } from "@/features/media/providers/catalog-stream
 import { ChatProvider } from "@/features/chat"
 import { usePluginPermissions } from "@/features/plugins/hooks/use-plugin-permissions"
 import { useModal, ModalRoot } from "@/lib/modals"
-import { DecideWatchHost } from "@/features/discover/components/organisms/decide-watch-host"
-import { FeatureSpotlightHost } from "@/features/spotlight"
-import { LevelUpHost } from "@user/components/organisms/level-up-host"
-import { GamingXpHost } from "@/features/launcher"
-import { IndexerSearchHost } from "@/features/downloads/molecules/indexer-search-host"
 import { CookieBanner } from "@/components/cookie-banner"
 import { AppMicroFooter } from "@/components/app-micro-footer"
-import { UpdateNotificationToast, UpdateModal, ReleaseNotesModal } from "@/features/updater"
-import { GlobalMusicBar } from "@/features/music/components/molecules/global-music-bar"
-import { GlobalDropOverlay } from "@/features/drop"
 import { safeLazy } from "@/lib/utils/chunk-reload"
+
+const CommandPaletteMount = safeLazy(() =>
+  import("@/features/hub").then((m) => ({ default: m.CommandPaletteMount }))
+)
+const DecideWatchHost = safeLazy(() =>
+  import("@/features/discover/components/organisms/decide-watch-host").then((m) => ({
+    default: m.DecideWatchHost,
+  }))
+)
+const FeatureSpotlightHost = safeLazy(() =>
+  import("@/features/spotlight").then((m) => ({ default: m.FeatureSpotlightHost }))
+)
+const LevelUpHost = safeLazy(() =>
+  import("@user/components/organisms/level-up-host").then((m) => ({ default: m.LevelUpHost }))
+)
+const GamingXpHost = safeLazy(() =>
+  import("@/features/launcher").then((m) => ({ default: m.GamingXpHost }))
+)
+const IndexerSearchHost = safeLazy(() =>
+  import("@/features/downloads/molecules/indexer-search-host").then((m) => ({
+    default: m.IndexerSearchHost,
+  }))
+)
+const GlobalMusicBar = safeLazy(() =>
+  import("@/features/music/components/molecules/global-music-bar").then((m) => ({
+    default: m.GlobalMusicBar,
+  }))
+)
+const GlobalDropOverlay = safeLazy(() =>
+  import("@/features/drop").then((m) => ({ default: m.GlobalDropOverlay }))
+)
+const UpdateNotificationToast = safeLazy(() =>
+  import("@/features/updater").then((m) => ({ default: m.UpdateNotificationToast }))
+)
+const UpdateModal = safeLazy(() =>
+  import("@/features/updater").then((m) => ({ default: m.UpdateModal }))
+)
+const ReleaseNotesModal = safeLazy(() =>
+  import("@/features/updater").then((m) => ({ default: m.ReleaseNotesModal }))
+)
 
 const PluginPermissionModal = safeLazy(() =>
   import("@/features/plugins/components/organisms/plugin-permission-modal").then((m) => ({
@@ -109,7 +140,7 @@ export const RootLayout = () => {
                 onCloseSidebar={handleCloseSidebar}
               >
                 <main className={isFullScreenPage ? "" : "pt-16 md:pt-20 flex flex-col min-h-screen"}>
-                  <div className="flex-1">
+                  <div className="flex-1 min-h-screen">
                     <Outlet />
                   </div>
                   {!isFullScreenPage && <AppMicroFooter />}
@@ -121,20 +152,22 @@ export const RootLayout = () => {
           </CatalogStreamProvider>
         </NotificationsProvider>
       </PanelProvider>
-      <CommandPaletteMount />
       <GlobalContextMenuListener />
-      <DecideWatchHost />
-      <FeatureSpotlightHost />
-      <LevelUpHost />
-      <GamingXpHost />
-      <IndexerSearchHost />
-      <GlobalMusicBar />
-      <GlobalDropOverlay />
       <ModalRoot />
       <CookieBanner />
-      <UpdateNotificationToast />
-      <UpdateModal />
-      <ReleaseNotesModal />
+      <Suspense fallback={null}>
+        <CommandPaletteMount />
+        <DecideWatchHost />
+        <FeatureSpotlightHost />
+        <LevelUpHost />
+        <GamingXpHost />
+        <IndexerSearchHost />
+        <GlobalMusicBar />
+        <GlobalDropOverlay />
+        <UpdateNotificationToast />
+        <UpdateModal />
+        <ReleaseNotesModal />
+      </Suspense>
     </div>
   )
 };

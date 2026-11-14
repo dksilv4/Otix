@@ -243,7 +243,12 @@ export function useNodeRadarrQueue(
       return data || { page: 1, pageSize: 50, totalRecords: 0, records: [] };
     },
     enabled: isValidNodeId(nodeId),
-    refetchInterval: pollingIntervalMs,
+    retry: false,
+    refetchInterval: (query) =>
+      query.state.status === 'error' || pollingIntervalMs === false
+        ? false
+        : pollingIntervalMs,
+    refetchIntervalInBackground: false,
     staleTime: 3000,
     meta: { suppressToast: true },
   });
@@ -481,7 +486,12 @@ export function useNodeSonarrQueue(
       return data || { page: 1, pageSize: 50, totalRecords: 0, records: [] };
     },
     enabled: isValidNodeId(nodeId),
-    refetchInterval: pollingIntervalMs,
+    retry: false,
+    refetchInterval: (query) =>
+      query.state.status === 'error' || pollingIntervalMs === false
+        ? false
+        : pollingIntervalMs,
+    refetchIntervalInBackground: false,
     staleTime: 3000,
     meta: { suppressToast: true },
   });

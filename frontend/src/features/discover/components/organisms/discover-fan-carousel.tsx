@@ -52,7 +52,7 @@ export const DiscoverFanCarousel = ({ className }: DiscoverFanCarouselProps) => 
   useEffect(() => {
     if (totalItems === 0) return
     const urls = new Set<string>()
-    for (let i = -5; i <= 5; i++) {
+    for (let i = -1; i <= 1; i++) {
       const idx = (activeIndex + i + totalItems) % totalItems
       const item = items[idx]
       if (!item) continue

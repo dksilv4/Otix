@@ -81,8 +81,15 @@ export function useMediaRequests(filters?: {
       return data || { items: [] }
     },
     enabled: hasSession,
-    staleTime: 10_000,
-    refetchInterval: 15_000,
+    staleTime: 30_000,
+    refetchInterval: (query) => {
+      const items = query.state.data?.items
+      const hasActive = Array.isArray(items) && items.some(
+        (i) => i.status === 'requested' || i.status === 'processing' || i.status === 'downloading',
+      )
+      return hasActive ? 15_000 : false
+    },
+    refetchIntervalInBackground: false,
   })
 }
 

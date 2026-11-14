@@ -26,7 +26,7 @@ export const friendsQueries = {
         const { data } = await apiClient.get<FriendRequest[]>('/friends/requests/incoming')
         return Array.isArray(data) ? data : []
       },
-      staleTime: 1000 * 20,
+      staleTime: 1000 * 60,
     }),
 
   outgoingRequests: () =>
@@ -36,7 +36,7 @@ export const friendsQueries = {
         const { data } = await apiClient.get<FriendRequest[]>('/friends/requests/outgoing')
         return Array.isArray(data) ? data : []
       },
-      staleTime: 1000 * 20,
+      staleTime: 1000 * 60,
     }),
 
   activity: (limit = 30) =>

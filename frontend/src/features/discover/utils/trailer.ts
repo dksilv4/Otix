@@ -49,7 +49,7 @@ export const formatTime = (seconds: number): string => {
 
 export const heroBackdrop = (url: string | null): string | undefined => {
   if (!url) return undefined
-  return url.replace(/\/w1280\//, '/original/')
+  return url.replace(/\/original\//, '/w1280/')
 }
 
 export interface YouTubeEmbedOptions {

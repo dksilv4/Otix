@@ -14,6 +14,7 @@ tables hold only subtype-specific columns.
 from django.contrib.contenttypes.fields import GenericRelation
 from django.contrib.postgres.indexes import GinIndex
 from django.db import models
+from django.db.models.functions import Upper
 from pgvector.django import HnswIndex, VectorField
 
 from core.models import TimestampedModel
@@ -95,6 +96,8 @@ class MediaItem(TimestampedModel):
                 name="media_items_title_trgm_gin",
                 opclasses=["gin_trgm_ops"],
             ),
+            models.Index(Upper("title"), name="ix_mi_upper_title"),
+            models.Index(Upper("title"), models.F("created_at").desc(), name="ix_mi_upper_title_created"),
         ]
 
     def __str__(self) -> str:

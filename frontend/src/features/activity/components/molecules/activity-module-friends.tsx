@@ -14,7 +14,7 @@ interface ActivityModuleFriendsProps {
 export const ActivityModuleFriends = ({ onClose }: ActivityModuleFriendsProps) => {
   const { user } = useAuth()
   const { activeNowFriends, activeCount } = useFriends({ enabled: !!user })
-  const { incomingCount } = useFriendRequests({ enabled: !!user })
+  const { incomingCount } = useFriendRequests({ enabled: !!user, includeOutgoing: false })
 
   if (activeNowFriends.length === 0 && incomingCount === 0) return null
 

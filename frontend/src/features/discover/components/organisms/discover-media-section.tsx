@@ -46,7 +46,7 @@ export const MediaSection = memo(({
   }, eager)
 
   const isStreamableIntent = activeIntent === 'streamable'
-  const { streamableIds, isLoading: isStreamCatalogLoading } = useStreamableCatalog()
+  const { streamableIds, isLoading: isStreamCatalogLoading } = useStreamableCatalog({ enabled: isStreamableIntent })
 
   const displayedItems = useMemo(() => {
     if (!isStreamableIntent) return items

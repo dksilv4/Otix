@@ -2,6 +2,8 @@ import { useRef, type ReactNode } from 'react'
 import { motion } from 'framer-motion'
 import { useCardTilt } from '@discover/hooks/use-card-tilt'
 import type { MediaItemSummary } from '@media/queries/media-queries'
+import { optimizeCardImageUrl } from '@/lib/utils/image-url'
+import { resolveHeroCardImage } from '@discover/utils/hero'
 
 interface HeroCardProps {
   item: MediaItemSummary
@@ -84,9 +86,9 @@ export const HeroCard = ({
           className="absolute inset-0 overflow-hidden"
           style={{ clipPath: 'inset(0 round 12px)' }}
         >
-          {(item.textlessPosterUrl || item.backdropUrl) ? (
+          {resolveHeroCardImage(item) ? (
             <img
-              src={item.textlessPosterUrl || item.backdropUrl!}
+              src={optimizeCardImageUrl(resolveHeroCardImage(item))}
               alt={item.title}
               className="w-full h-full object-cover"
               draggable={false}

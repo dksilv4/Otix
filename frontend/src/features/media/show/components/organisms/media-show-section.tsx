@@ -4,10 +4,11 @@ import { Image } from "@ui/atoms/image"
 import { DkDialog } from "@ui/molecules/dialog"
 import { SeasonProgressBar } from "./media-show-season-progress-bar"
 import { EpisodeModal } from "./media-show-episode-modal"
+import { MediaShowEpisodeCard } from "../molecules/media-show-episode-card"
 import { useQuery } from '@tanstack/react-query'
 import { useSearch } from '@tanstack/react-router'
 import { useAuth } from '@auth/hooks/use-auth'
-import { mediaQueries, formatDate, formatRuntime, getPreferredSeason, useMediaParams, type SeasonOut } from "@media"
+import { mediaQueries, formatDate, formatRuntime, getPreferredSeason, useMediaParams, type SeasonOut, type EpisodeOut } from "@media"
 import { useEpisodeInteractions, useToggleEpisodeWatched, useMarkSeasonWatched } from "@/features/interaction/episode-interaction-queries"
 import { useModal } from "@/lib/modals"
 import { useStreamEpisode } from "@/features/media/hooks/use-stream-episode"
@@ -203,6 +204,42 @@ export const ShowSection = ({
     )
   }
 
+ 
+  const handlePlayEpisode = useCallback(
+    (episode: EpisodeOut) => {
+      if (!currentSeason) return
+      streamEpisode({
+        showId: data?.id ? String(data.id) : mediaId,
+        showTitle: data?.title,
+        seasonNumber: currentSeason.seasonNumber,
+        episodeNumber: episode.episodeNumber,
+        episodeTitle: episode.name || undefined,
+        seasons,
+      })
+    },
+    [streamEpisode, data?.id, data?.title, mediaId, currentSeason, seasons],
+  )
+
+  const handleOpenEpisodeDetails = useCallback(
+    (episode: EpisodeOut, sourceRect: DOMRect | null) => {
+      if (!currentSeason) return
+      flipSourceRef.current = sourceRect
+      const close = openModal(
+        <EpisodeModal
+          episode={episode}
+          seasonPoster={seasonPoster}
+          sourceRect={flipSourceRef.current}
+          showId={data?.id ? String(data.id) : mediaId}
+          showTitle={data?.title}
+          seasonNumber={currentSeason.seasonNumber}
+          seasons={seasons}
+          onClose={() => close()}
+        />
+      )
+    },
+    [openModal, seasonPoster, data?.id, data?.title, mediaId, currentSeason, seasons],
+  )
+
  return (
  <section className={cn("space-y-4", className)}>
  {/* ── Season Tabs ── */}
@@ -386,179 +423,41 @@ export const ShowSection = ({
      </div>
 
      {/* ── Horizontal Carousel Track (Full-Bleed Across Card, No Padding Clipping, No Masking) ── */}
-     <div
-       ref={episodesRef}
-       className="flex gap-4 overflow-x-auto overscroll-x-contain scroll-smooth scrollbar-none px-6 sm:px-7 py-3.5 -my-2.5 [mask-image:none] [-webkit-mask-image:none]"
-       style={{ scrollPaddingInline: '1.5rem' }}
-       aria-label={`${currentSeason.name || `Season ${currentSeason.seasonNumber}`} episodes`}
-     >
-       {currentEpisodes.map((episode) => {
-         const isActive = false
-         const thumb = episode.stillUrl || seasonPoster
-         const runtime = formatRuntime(episode.runtime)
-         const isWatched = episodeInteractions?.[episode.id]?.watched ?? false
-         const epLoadingKey = `${data?.id ? String(data.id) : mediaId}-s${currentSeason.seasonNumber}-e${episode.episodeNumber}`
-         const isEpLoading = loadingKey === epLoadingKey
+      <div
+        ref={episodesRef}
+        className="flex gap-4 overflow-x-auto overscroll-x-contain scroll-smooth scrollbar-none px-6 sm:px-7 py-3.5 -my-2.5 [mask-image:none] [-webkit-mask-image:none]"
+        style={{ scrollPaddingInline: '1.5rem' }}
+        aria-label={`${currentSeason.name || `Season ${currentSeason.seasonNumber}`} episodes`}
+      >
+        {currentEpisodes.map((episode) => {
+          const isWatched = episodeInteractions?.[episode.id]?.watched ?? false
+          const epLoadingKey = `${data?.id ? String(data.id) : mediaId}-s${currentSeason.seasonNumber}-e${episode.episodeNumber}`
+          const isEpLoading = loadingKey === epLoadingKey
           const download = getEpisodeDownload(currentSeason.seasonNumber, episode.episodeNumber)
 
-         return (
-           <button
-             key={episode.id}
-              data-context-type="episode"
-              data-episode-id={episode.id}
-              data-episode-number={episode.episodeNumber}
-              data-season-number={currentSeason.seasonNumber}
-              data-episode-title={episode.name || `Episode ${episode.episodeNumber}`}
-              data-show-id={data?.id ? String(data.id) : mediaId}
-              data-show-title={data?.title}
-              data-episode-still={thumb || undefined}
-              data-episode-watched={isWatched ? "true" : "false"}
-             onClick={(e) => {
-               // Don't open modal if clicking the watch toggle or stream button
-               if ((e.target as HTMLElement).closest("[data-watch-toggle]") || (e.target as HTMLElement).closest("[data-stream-btn]")) return
-               const thumbEl = e.currentTarget.querySelector("[data-thumb]")
-               flipSourceRef.current = thumbEl?.getBoundingClientRect() ?? null
-               const close = openModal(
-                 <EpisodeModal
-                   episode={episode}
-                   seasonPoster={seasonPoster}
-                   sourceRect={flipSourceRef.current}
-                   showId={data?.id ? String(data.id) : mediaId}
-                   showTitle={data?.title}
-                   seasonNumber={currentSeason.seasonNumber}
-                   seasons={seasons}
-                   onClose={() => close()}
-                 />
-               )
-             }}
-             className={`glass-episode-card group shrink-0 flex flex-col w-[260px] text-left rounded-2xl overflow-hidden relative transition hover:-translate-y-0.5 hover:shadow-xl ${isActive ? "bg-[var(--dk-surface-glass-hover)] shadow-[var(--dk-shadow-glass)]" : ""}`}
-           >
-             <div data-thumb className="relative aspect-video bg-black/10 overflow-hidden">
-               <Image
-                 src={thumb || undefined}
-                 alt={episode.name || `Episode ${episode.episodeNumber}`}
-                 className="h-full w-full transition-transform duration-500 group-hover:scale-105"
-                 fallback={
-                   <div className="flex h-full w-full items-center justify-center text-muted-foreground/20 text-xs font-semibold">
-                     E{episode.episodeNumber}
-                   </div>
-                 }
-               />
-               <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
-               <div className="absolute inset-0 bg-black/35 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
-                 <span
-                   data-stream-btn
-                   role="button"
-                   tabIndex={0}
-                   aria-label={`Play ${episode.name || `Episode ${episode.episodeNumber}`}`}
-                   onClick={(e) => {
-                     e.stopPropagation()
-                     streamEpisode({
-                       showId: data?.id ? String(data.id) : mediaId,
-                       showTitle: data?.title,
-                       seasonNumber: currentSeason.seasonNumber,
-                       episodeNumber: episode.episodeNumber,
-                       episodeTitle: episode.name || undefined,
-                       seasons,
-                     })
-                   }}
-                   className="pointer-events-auto w-9 h-9 rounded-full bg-foreground text-background flex items-center justify-center shadow-xl hover:scale-110 active:scale-95 transition-transform cursor-pointer"
-                 >
-                   {isEpLoading ? (
-                     <Loader2 className="w-4 h-4 animate-spin text-primary" />
-                   ) : (
-                     <Play className="w-4 h-4 fill-current ml-0.5" />
-                   )}
-                 </span>
-               </div>
-               <span className="glass-badge absolute bottom-1.5 left-1.5 rounded-md px-1.5 py-0.5 font-semibold text-[10px] tabular-nums text-foreground/90 z-10">
-                 E{episode.episodeNumber}
-               </span>
-               {runtime && (
-                 <span className="glass-badge absolute bottom-1.5 right-1.5 rounded-md px-1.5 py-0.5 font-medium text-[10px] tabular-nums text-muted-foreground z-10">
-                   {runtime}
-                 </span>
-               )}
+          return (
+            <MediaShowEpisodeCard
+              key={episode.id}
+              episode={episode}
+              seasonNumber={currentSeason.seasonNumber}
+              showId={data?.id ? String(data.id) : mediaId}
+              showTitle={data?.title}
+              seasonPoster={seasonPoster}
+              seasons={seasons}
+              isWatched={isWatched}
+              isLoading={isEpLoading}
+              download={download}
+              onPlay={handlePlayEpisode}
+              onOpenDetails={handleOpenEpisodeDetails}
+              onToggleWatched={onToggleEpisodeWatched}
+            />
+          )
+        })}
+      </div>
+    </div>
+  )}
 
-               {download && (
-                  <div className="absolute inset-x-0 bottom-0 h-1 bg-black/60 z-20 overflow-hidden">
-                    <div
-                      className="h-full bg-primary transition-colors duration-300 ease-out"
-                      style={{ width: `${Math.min(100, Math.max(0, download.percentage))}%` }}
-                    />
-                  </div>
-                )}
-                {download && (
-                  <div className="absolute top-1.5 right-1.5 flex items-center gap-1 z-10">
-                    <span className="glass-badge inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 font-semibold text-[10px] tabular-nums bg-primary/20 text-primary border border-primary/25 backdrop-blur-md shadow-sm">
-                      <Loader2 className="h-2.5 w-2.5 animate-spin text-primary" />
-                      <span>{download.percentage.toFixed(0)}%</span>
-                    </span>
-                    {download.timeleft && download.timeleft !== '00:00:00' && (
-                      <span className="glass-badge hidden sm:inline-flex items-center rounded-md px-1.5 py-0.5 font-medium text-[9px] tabular-nums text-muted-foreground backdrop-blur-md">
-                        {download.timeleft}
-                      </span>
-                    )}
-                  </div>
-                )}
-
-                {/* Watch toggle */}
-               {onToggleEpisodeWatched && (
-                 <span
-                   data-watch-toggle
-                   role="button"
-                   tabIndex={0}
-                   aria-label={isWatched ? "Mark episode as unwatched" : "Mark episode as watched"}
-                   title={isWatched ? "Mark as unwatched" : "Mark as watched"}
-                   onClick={(e) => {
-                     e.stopPropagation()
-                     onToggleEpisodeWatched(episode.id, !isWatched)
-                   }}
-                   onKeyDown={(e) => {
-                     if (e.key === "Enter" || e.key === " ") {
-                       e.preventDefault()
-                       e.stopPropagation()
-                       onToggleEpisodeWatched(episode.id, !isWatched)
-                     }
-                   }}
-                   className={`absolute top-1.5 left-1.5 rounded-full p-1 transition cursor-pointer hover:scale-110 z-10 ${isWatched
-                     ? "bg-[var(--status-online)] hover:opacity-90 text-primary-foreground shadow-md"
-                     : "glass-badge text-muted-foreground hover:text-foreground"}`}
-                 >
-                   {isWatched ? (
-                     <Check className="h-3.5 w-3.5 stroke-[2.5]" />
-                   ) : (
-                     <Circle className="h-3.5 w-3.5" />
-                   )}
-                 </span>
-               )}
-             </div>
-             <div className="px-3 py-2">
-               <p className="text-xs font-medium truncate">
-                 {episode.name || `Episode ${episode.episodeNumber}`}
-               </p>
-               {download ? (
-                 <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground mt-0.5">
-                   <span className="text-primary font-medium">Downloading</span>
-                   {download.speed && <span>· {download.speed}</span>}
-                   {download.timeleft && download.timeleft !== '00:00:00' && (
-                     <span className="truncate">· {download.timeleft}</span>
-                   )}
-                 </div>
-               ) : episode.airDate ? (
-                 <p className="text-[10px] text-muted-foreground mt-0.5">
-                   {formatDate(episode.airDate)}
-                 </p>
-               ) : null}
-             </div>
-           </button>
-         )
-       })}
-     </div>
-   </div>
- )}
-
- {!hasEpisodes && (
+  {!hasEpisodes && (
    <div className="px-6 sm:px-7">
      <div className="rounded-xl px-4 py-6 text-center glass-inset">
        <p className="text-xs text-muted-foreground">No episode details available for this season.</p>

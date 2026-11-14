@@ -478,6 +478,19 @@ export class GameScanOrchestrator extends EventEmitter {
       const totalInLibrary = getGameCount();
       const totalMatched = totalInLibrary - eligibleGames.length;
 
+      if (eligibleGames.length === 0) {
+        this.matchingStats = {
+          isMatching: false,
+          totalUnmatched: 0,
+          totalInLibrary,
+          totalMatched,
+          processed: 0,
+          matched: 0,
+        };
+        this.emitComplete(0, totalInLibrary, 0, 0);
+        return;
+      }
+
       this.matchingStats = {
         isMatching: true,
         totalUnmatched: eligibleGames.length,
@@ -508,11 +521,6 @@ export class GameScanOrchestrator extends EventEmitter {
         totalGames: eligibleGames.length,
         ...initialPayload,
       });
-
-      if (eligibleGames.length === 0) {
-        this.emitComplete(0, totalInLibrary, 0, 0);
-        return;
-      }
 
       let processedCount = 0;
       let matchedCount = 0;

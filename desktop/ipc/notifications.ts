@@ -1,5 +1,19 @@
 import { Notification } from 'electron';
 import { ipcMain, BrowserWindow } from 'electron';
+import * as path from 'path';
+import * as fs from 'fs';
+
+function getDefaultNotificationIcon(): string | undefined {
+  const candidates = [
+    path.join(process.resourcesPath, 'assets', 'icon.png'),
+    path.join(__dirname, '..', 'assets', 'icon.png'),
+    path.join(__dirname, '../../assets/icon.png'),
+  ];
+  for (const c of candidates) {
+    if (fs.existsSync(c)) return c;
+  }
+  return undefined;
+}
 
 interface NotificationPayload {
   title: string;
@@ -19,7 +33,7 @@ export function registerNotificationIPC(mainWindow: BrowserWindow): void {
     const notification = new Notification({
       title: opts.title,
       body: opts.body,
-      icon: opts.icon,
+      icon: opts.icon || getDefaultNotificationIcon(),
     });
     notification.on('click', () => {
       if (!mainWindow || mainWindow.isDestroyed()) return;

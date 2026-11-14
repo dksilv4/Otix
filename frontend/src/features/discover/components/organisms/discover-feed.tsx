@@ -25,14 +25,14 @@ const EXTENDED_RAILS = [
 ] as const
 
 export const DiscoverFeed = () => {
-  const { data: heroData } = useInfiniteQuery(discoverQueries.hero())
+  const { data: moviesData } = useInfiniteQuery(discoverQueries.list('movie', 'trending'))
   const hasFeedContent = useMemo(() => {
-    const pages = heroData?.pages ?? []
+    const pages = moviesData?.pages ?? []
     return pages.some((p) => {
       const items = (p as { items?: unknown } | undefined)?.items
       return Array.isArray(items) && items.length > 0
     })
-  }, [heroData])
+  }, [moviesData])
 
   const {
     sections,
@@ -156,13 +156,12 @@ export const DiscoverFeed = () => {
                     title="Trending Shows"
                     mediaType="show"
                     listType="trending"
-                    eager
                     activeIntent={activeIntent}
                   />
                 )
 
               case 'trending_seasons':
-                return <TrendingSeasonsSection key={section.id} eager />
+                return <TrendingSeasonsSection key={section.id} />
 
               case 'free_games':
                 return <FreeGamesSection key={section.id} />
@@ -174,7 +173,6 @@ export const DiscoverFeed = () => {
                       title="Now Playing Games"
                       mediaType="game"
                       listType="now_playing"
-                      eager
                       activeIntent={activeIntent}
                     />
                     <MediaSection

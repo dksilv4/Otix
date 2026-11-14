@@ -133,7 +133,6 @@ export const discoverQueries = {
         return count === 0 ? 0 : 1000 * 60 * 15
       },
       gcTime: discoverGcTime,
-      refetchOnMount: 'always',
     }),
 
   trailers: () =>
@@ -155,8 +154,7 @@ export const discoverQueries = {
         )
         return Array.isArray(data?.items) ? data.items : []
       },
-      staleTime: 15000,
-      refetchInterval: (q) => (q.state.status === 'error' ? false : 30000),
+      staleTime: 1000 * 60 * 5,
     }),
 }
 

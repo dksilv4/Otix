@@ -121,9 +121,12 @@ export function useNodes(options?: { enabled?: boolean; refetchInterval?: number
       const cached = getCachedNodes()
       return cached.length > 0 ? cached : undefined
     },
-    initialDataUpdatedAt: 0,
-    staleTime: 5_000,
-    refetchInterval: options?.refetchInterval,
+    staleTime: 1000 * 60 * 5,
+    refetchInterval: (query) =>
+      query.state.status === 'error' || options?.refetchInterval === false
+        ? false
+        : options?.refetchInterval,
+    refetchIntervalInBackground: false,
     enabled: isEnabled,
     retry: (failureCount, error: any) => error?.response?.status !== 401 && failureCount < 2,
   })
@@ -200,14 +203,16 @@ export function useAutoClaimPendingServers(enabled: boolean) {
       return (data || []).map(mapPendingRow)
     },
     enabled: active,
-    refetchInterval: 15_000,
+    refetchInterval: (query) => (query.state.status === 'error' ? false : 15_000),
+    refetchIntervalInBackground: false,
   })
 
   const localProbe = useQuery({
     queryKey: [...nodeKeys.all, 'local-probe'],
     queryFn: () => probeLocalGameNode(),
     enabled: active,
-    refetchInterval: 15_000,
+    refetchInterval: (query) => (query.state.status === 'error' ? false : 15_000),
+    refetchIntervalInBackground: false,
     retry: false,
   })
 
@@ -467,7 +472,9 @@ export function usePendingNodes(options?: { enabled?: boolean }) {
     },
     enabled: options?.enabled ?? true,
     staleTime: 15_000,
-    refetchInterval: options?.enabled === false ? false : 15_000,
+    refetchInterval: (query) =>
+      query.state.status === 'error' || options?.enabled === false ? false : 15_000,
+    refetchIntervalInBackground: false,
   })
 }
 

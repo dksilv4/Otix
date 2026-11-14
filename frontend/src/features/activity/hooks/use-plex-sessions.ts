@@ -151,9 +151,14 @@ export function usePlexSessions() {
       const sessions = isAdmin ? normalized : []
       return { sessions, isAdmin }
     },
-    refetchInterval: (query) => (query.state.status === 'error' ? false : 15000),
+    refetchInterval: (query) => {
+      if (query.state.status === 'error') return false
+      if (query.state.data && !query.state.data.isAdmin) return false
+      const activeCount = query.state.data?.sessions?.length ?? 0
+      return activeCount > 0 ? 15000 : 60000
+    },
     refetchIntervalInBackground: false,
-    staleTime: 10000,
+    staleTime: 30000,
     retry: false,
     enabled: plexEnabled && hasPlexLinked,
     meta: { suppressToast: true },

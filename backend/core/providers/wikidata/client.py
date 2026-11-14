@@ -93,7 +93,7 @@ class WikidataProvider(BaseProviderClient):
                 return data.get("results", {}).get("bindings", [])
             return []
         except Exception as e:
-            logger.warning("Wikidata SPARQL query failed: %s", e)
+            logger.warning("Wikidata SPARQL query failed: %s: %s", type(e).__name__, e)
             return []
 
     async def find_entity_by_steam_id(self, steam_id: str) -> str | None:

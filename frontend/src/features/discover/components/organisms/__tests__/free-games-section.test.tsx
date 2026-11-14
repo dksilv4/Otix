@@ -18,6 +18,14 @@ beforeAll(() => {
   globalThis.IntersectionObserver = IntersectionObserverMock as any
 })
 
+vi.mock('framer-motion', async () => {
+  const actual = await vi.importActual('framer-motion')
+  return {
+    ...actual,
+    useInView: () => true,
+  }
+})
+
 vi.mock('@tanstack/react-router', () => ({
   Link: ({ children, to, ...props }: any) => (
     <a href={typeof to === 'string' ? to : '#'} {...props}>

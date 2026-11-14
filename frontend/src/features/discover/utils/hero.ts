@@ -1,5 +1,49 @@
 import type { CSSProperties } from 'react'
 import { getPlatformIconComponent, type SvgIconComponent } from '@media/game/utils/platform-icons'
+import type { MediaItemSummary } from '@media/queries/media-queries'
+
+export const isFanartUrl = (url?: string | null): boolean =>
+  !!url && url.includes('assets.fanart.tv')
+
+export const resolveHeroCardImage = (item: MediaItemSummary): string => {
+  if (!isFanartUrl(item.textlessPosterUrl) && item.textlessPosterUrl) {
+    return item.textlessPosterUrl
+  }
+  if (!isFanartUrl(item.posterUrl) && item.posterUrl) {
+    return item.posterUrl
+  }
+  if (!isFanartUrl(item.backdropUrl) && item.backdropUrl) {
+    return item.backdropUrl
+  }
+  return item.posterUrl || item.textlessPosterUrl || item.backdropUrl || ''
+}
+
+export const resolveHeroBackdropSource = (
+  activeDetail?: { backdropUrl?: string | null; posterUrl?: string | null } | null,
+  activeMediaItem?: MediaItemSummary | null,
+): string | undefined => {
+  const detailBackdrop = activeDetail?.backdropUrl
+  const detailPoster = activeDetail?.posterUrl
+  const itemBackdrop = activeMediaItem?.backdropUrl
+  const itemPoster = activeMediaItem?.posterUrl
+  const itemTextless = activeMediaItem?.textlessPosterUrl
+
+  // Prefer non-fanart backdrop first, then non-fanart poster
+  const candidate =
+    (!isFanartUrl(detailBackdrop) && detailBackdrop) ||
+    (!isFanartUrl(itemBackdrop) && itemBackdrop) ||
+    (!isFanartUrl(detailPoster) && detailPoster) ||
+    (!isFanartUrl(itemPoster) && itemPoster) ||
+    detailBackdrop ||
+    itemBackdrop ||
+    itemTextless ||
+    detailPoster ||
+    itemPoster ||
+    null
+
+  if (!candidate) return undefined
+  return candidate.replace(/\/original\//, '/w1280/')
+}
 
 export const CONTENT_FADE = {
   initial: { opacity: 0, y: 16 },

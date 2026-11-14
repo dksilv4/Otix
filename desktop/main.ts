@@ -7,6 +7,11 @@ import { getApiBaseUrl } from './config';
 import { loadDesktopSettings } from './desktop-settings';
 import type { StagedBootManager } from './boot/staged-boot';
 
+// ── Set AppUserModelId for Windows notifications ──────────────────────────────
+if (process.platform === 'win32') {
+  app.setAppUserModelId('com.otix.launcher');
+}
+
 // ── Fast Early Single-Instance Lock Check ─────────────────────────────────────
 const isSetupExe =
   path.basename(process.execPath).toLowerCase().includes('setup') ||

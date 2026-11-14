@@ -96,3 +96,16 @@ export function optimizeCardImageUrl(url: string | null | undefined): string {
   }
   return result
 }
+
+/**
+ * Downscales transparent logo images from TMDB (/original/ to /w300/)
+ * for crisp rendering without transferring high-resolution 4K/original assets.
+ */
+export function optimizeLogoImageUrl(url: string | null | undefined): string {
+  if (!url) return ''
+  let result = sanitizeImageUrl(url)
+  if (result.includes('image.tmdb.org/t/p/original/')) {
+    result = result.replace('/t/p/original/', '/t/p/w300/')
+  }
+  return result
+}

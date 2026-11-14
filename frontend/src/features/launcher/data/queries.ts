@@ -80,10 +80,9 @@ export const gameSearchOptions = (query: string) =>
     refetchInterval: (result) => {
       const data = result.state.data
       if (!data) return false
-      if (data.backfillPending) return 2000
-      if (data.items.some((item) => String(item.id).startsWith(IGDB_ID_PREFIX))) return 2000
-      return false
+      return data.backfillPending ? 2000 : false
     },
+    refetchIntervalInBackground: false,
   })
 
 export async function resolveCatalogGame(result: CatalogGame): Promise<CatalogGame> {

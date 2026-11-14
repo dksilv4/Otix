@@ -29,7 +29,7 @@ export const DiscoverPlayerActivitySection = () => {
     runningGame &&
       isCs2Game(runningGame.game.title || runningGame.game.exePath || runningGame.game.processName),
   )
-  const { gameState } = useCs2GameState({ enabled: isCs2FromRunningGame || !runningGame })
+  const { gameState } = useCs2GameState({ enabled: isCs2FromRunningGame })
   const hasActiveCs2Gsi = Boolean(gameState && (gameState.isInGame || gameState.activity === 'playing'))
   const { sessions: plexSessions = [] } = usePlexSessions()
   const { isPlaying: isMusicPlaying, currentTrack, source: musicSource } = usePlayer()

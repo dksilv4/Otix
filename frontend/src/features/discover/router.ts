@@ -10,17 +10,18 @@ const DiscoverRailPage = safeLazy(() => import('@discover/pages/discover-rail-pa
 
 function prefetchHeroSlideDetails(queryClient?: QueryClient) {
   if (!queryClient) return
-  void queryClient.prefetchInfiniteQuery(discoverQueries.hero()).then(() => {
-    const data = queryClient.getQueryData<InfiniteData<DiscoverListResponse>>(
-      discoverQueries.hero().queryKey,
-    )
-    const items = data?.pages?.[0]?.items ?? []
-    for (const item of items.slice(0, 2)) {
-      if (item?.id && item?.mediaType) {
-        void queryClient.prefetchQuery(mediaQueries.detail(item.mediaType, item.id))
+  void queryClient
+    .prefetchInfiniteQuery(discoverQueries.list('movie', 'trending'))
+    .then(() => {
+      const data = queryClient.getQueryData<InfiniteData<DiscoverListResponse>>(
+        discoverQueries.list('movie', 'trending').queryKey,
+      )
+      const items = data?.pages?.[0]?.items ?? []
+      const firstItem = items[0]
+      if (firstItem?.id && firstItem?.mediaType) {
+        void queryClient.prefetchQuery(mediaQueries.detail(firstItem.mediaType, firstItem.id))
       }
-    }
-  })
+    })
 }
 
 export function createDiscoverRoutes(rootRoute: AnyRoute) {
@@ -32,9 +33,6 @@ export function createDiscoverRoutes(rootRoute: AnyRoute) {
       safePrefetchChunk(() => import('@discover/pages/discover-page'))
       if (!context?.queryClient) return
       prefetchHeroSlideDetails(context.queryClient)
-      void context.queryClient.prefetchInfiniteQuery(discoverQueries.list('movie', 'trending'))
-      void context.queryClient.prefetchInfiniteQuery(discoverQueries.list('show', 'trending'))
-      void context.queryClient.prefetchInfiniteQuery(discoverQueries.trendingSeasons())
     },
   })
 

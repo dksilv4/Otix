@@ -18,7 +18,7 @@ export const chatQueries = {
         const { data } = await apiClient.get<ChatUnreadCount>('/chat/unread-count')
         return data ?? { count: 0 }
       },
-      staleTime: 1000 * 10,
+      staleTime: 1000 * 60,
     }),
 
   conversations: () =>
@@ -28,7 +28,7 @@ export const chatQueries = {
         const { data } = await apiClient.get<Conversation[]>('/chat/conversations')
         return Array.isArray(data) ? data : []
       },
-      staleTime: 1000 * 15,
+      staleTime: 1000 * 60,
     }),
 
   conversation: (conversationId: string) =>
@@ -39,7 +39,7 @@ export const chatQueries = {
         return data
       },
       enabled: Boolean(conversationId),
-      staleTime: 1000 * 30,
+      staleTime: 1000 * 60,
     }),
 
   messages: (conversationId: string, limit = 50, beforeId?: number) =>
@@ -53,7 +53,7 @@ export const chatQueries = {
         return Array.isArray(data) ? data : []
       },
       enabled: Boolean(conversationId),
-      staleTime: 1000 * 10,
+      staleTime: 1000 * 60,
     }),
 }
 

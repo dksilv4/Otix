@@ -21,7 +21,8 @@ export interface UseStreamAvailabilityParams {
   prefetch?: boolean
 }
 
-export const useStreamableCatalog = () => {
+export const useStreamableCatalog = (options?: { enabled?: boolean }) => {
+  const isEnabled = options?.enabled ?? true
   let plexId: string | null | undefined
   try {
     const auth = useAuth()
@@ -30,21 +31,22 @@ export const useStreamableCatalog = () => {
     plexId = undefined
   }
   const isPlexConnected = Boolean(plexId)
+  const shouldFetch = isPlexConnected && isEnabled
 
   // Query connected library items for streamable matching
-  const { data, isLoading, isError } = useLibraryTab('plex', { limit: '100' }, { enabled: isPlexConnected })
+  const { data, isLoading, isError } = useLibraryTab('plex', { limit: '100' }, { enabled: shouldFetch })
 
   // Query all streamable catalog media IDs from connected Plex library
-  const streamableIdsQuery = useStreamableMediaIds({ enabled: isPlexConnected })
+  const streamableIdsQuery = useStreamableMediaIds({ enabled: shouldFetch })
   const streamableIdsData = streamableIdsQuery?.data
   const idsLoading = Boolean(streamableIdsQuery?.isLoading)
 
   const items = useMemo<MediaItemSummary[]>(() => {
-    if (!isPlexConnected || !data?.pages) return []
+    if (!shouldFetch || !data?.pages) return []
     return (data.pages as Array<{ items?: unknown[] }>).flatMap((page) =>
       Array.isArray(page?.items) ? (page.items as unknown as MediaItemSummary[]) : [],
     )
-  }, [isPlexConnected, data])
+  }, [shouldFetch, data])
 
   const streamableIds = useMemo<Set<string>>(() => {
     const set = new Set<string>()
@@ -65,7 +67,7 @@ export const useStreamableCatalog = () => {
     isPlexConnected,
     items,
     streamableIds,
-    isLoading: isPlexConnected && (isLoading || idsLoading),
+    isLoading: shouldFetch && (isLoading || idsLoading),
     isError,
   }
 }

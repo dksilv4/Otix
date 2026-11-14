@@ -31,9 +31,10 @@ export const useMediaActivityCatalog = (options?: { enabled?: boolean }) => {
     enabled: isEnabled,
     refetchInterval: (query) => {
       const processing = query.state.data?.summary?.totalProcessing ?? 0
-      return processing > 0 ? 4000 : 45000
+      return processing > 0 ? 4000 : false
     },
-    staleTime: 3000,
+    refetchIntervalInBackground: false,
+    staleTime: 60_000,
   })
 }
 

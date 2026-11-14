@@ -1,6 +1,7 @@
 import { useCallback } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/lib/providers/auth'
+import { API_BASE_URL } from '@/lib/config'
 import { useSseStream } from '@/lib/hooks/use-sse-stream'
 import type { SseEvent } from '@/lib/api/sse-client'
 
@@ -24,7 +25,7 @@ export const CatalogStreamProvider = ({ children }: CatalogStreamProviderProps) 
   )
 
   useSseStream({
-    url: '/api/v1/media/stream',
+    url: `${API_BASE_URL.replace(/\/+$/, '')}/media/stream`,
     onMessage: handleMessage,
     enabled: isAuthenticated,
     reconnectDelays: SSE_RECONNECT_DELAYS,

@@ -1,5 +1,5 @@
-import type { CSSProperties } from 'react'
-import { motion } from 'framer-motion'
+import { useRef, type CSSProperties } from 'react'
+import { motion, useInView } from 'framer-motion'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
 import {
@@ -24,6 +24,7 @@ import { useCountdown } from '@/features/discover/hooks/use-countdown'
 import { useClaimedFreeGames } from '@/features/discover/hooks/use-claimed-free-games'
 import { storeLabel, formatDate, isEndingSoon, isSteamPackItem } from '@/features/discover/utils/free-games'
 import { cn } from '@/lib/utils'
+import { optimizeCardImageUrl } from '@/lib/utils/image-url'
 import './free-games-section.scss'
 
 // ── Helpers ────────────────────────────────────────────────────────────
@@ -43,16 +44,28 @@ const StoreIcon = ({ store, className }: { store: string; className?: string }) 
 
 // ── Main Section ──────────────────────────────────────────────────────
 
-export const FreeGamesSection = () => {
-  const { data, isLoading, error } = useQuery(discoverQueries.freeGames())
+interface FreeGamesSectionProps {
+  eager?: boolean
+}
+
+export const FreeGamesSection = ({ eager = false }: FreeGamesSectionProps) => {
+  const sectionRef = useRef<HTMLDivElement>(null)
+  const isInView = useInView(sectionRef, { once: true, margin: '0px 0px 200px 0px' })
+  const enabled = eager || isInView
+
+  const { data, isLoading, error } = useQuery({
+    ...discoverQueries.freeGames(),
+    enabled,
+  })
   const [showSteamPacks] = useSteamFreePacksSetting()
   const { isClaimed, toggleClaimed, hideClaimed, setHideClaimed } = useClaimedFreeGames()
 
-  // ── Loading ──
-  if (isLoading && !data) {
+  // ── Loading or Waiting to enter view ──
+  if ((!enabled || isLoading) && !data) {
     return (
       <motion.section
         id="discover-free-games"
+        ref={sectionRef}
         initial={{ opacity: 0, y: 16 }}
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true, margin: '-80px' }}
@@ -82,6 +95,7 @@ export const FreeGamesSection = () => {
     return (
       <motion.section
         id="discover-free-games"
+        ref={sectionRef}
         initial={{ opacity: 0, y: 16 }}
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true, margin: '-80px' }}
@@ -115,6 +129,7 @@ export const FreeGamesSection = () => {
     return (
       <motion.section
         id="discover-free-games"
+        ref={sectionRef}
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
         className="px-8"
@@ -143,6 +158,7 @@ export const FreeGamesSection = () => {
   return (
     <motion.section
       id="discover-free-games"
+      ref={sectionRef}
       initial={{ opacity: 0, y: 16 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: '-80px' }}
@@ -180,9 +196,11 @@ export const FreeGamesSection = () => {
           >
             {(featured.backdropUrl || featured.posterUrl) && (
               <img
-                src={featured.backdropUrl || featured.posterUrl || ''}
+                src={optimizeCardImageUrl(featured.backdropUrl || featured.posterUrl || '')}
                 alt=""
                 className="w-full h-full object-cover object-top opacity-[0.08] blur-sm"
+                loading="lazy"
+                decoding="async"
               />
             )}
             <div className="absolute inset-0 bg-gradient-to-b from-[var(--dk-surface-root)] via-transparent to-[var(--dk-surface-root)]" />
@@ -240,12 +258,13 @@ const SpotlightCard = ({
   const isDlcOrPack = item.itemType === 'dlc' || item.itemType === 'pack' || item.itemType === 'bundle'
   const typeLabel = item.itemType === 'bundle' ? 'Bundle' : item.itemType === 'pack' ? 'Pack' : 'DLC'
 
-  const imageUrl =
+  const imageUrl = optimizeCardImageUrl(
     (isDlcOrPack ? (item.backdropUrl || item.posterUrl) : null) ||
     media?.backdropUrl ||
     item.backdropUrl ||
     media?.posterUrl ||
     item.posterUrl
+  )
   const logoUrl = isDlcOrPack ? (item.logoUrl || null) : (media?.logoUrl || item.logoUrl)
   const logoColorGuess = media?.logoColorGuess ?? null
   const title = isDlcOrPack ? item.title : (media?.title || item.title)

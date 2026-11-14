@@ -124,7 +124,7 @@ export function useAddModularDownload(nodeId?: number) {
 export function useModularDownloadQueue(
   nodeId?: number,
   downloader?: string,
-  pollingIntervalMs: number = 3000
+  pollingIntervalMs: number | false = 3000
 ) {
   return useQuery<UnifiedDownloadQueue>({
     queryKey: providerKeys.queue(nodeId, downloader),
@@ -138,7 +138,12 @@ export function useModularDownloadQueue(
       return data;
     },
     enabled: isValidNodeId(nodeId),
-    refetchInterval: pollingIntervalMs,
+    retry: false,
+    refetchInterval: (query) =>
+      query.state.status === 'error' || pollingIntervalMs === false
+        ? false
+        : pollingIntervalMs,
+    refetchIntervalInBackground: false,
     staleTime: 2000,
   });
 }

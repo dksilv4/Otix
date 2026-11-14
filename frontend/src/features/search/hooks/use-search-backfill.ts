@@ -23,8 +23,9 @@ export function useSearchBackfill(
       type: searchType,
       knownIds: Array.from(currentIds).join(','),
     }),
-    enabled: !!query && (Boolean(backfillPending) || (currentIds.size > 0 && Boolean(hasMore))),
+    enabled: !!query && Boolean(backfillPending),
     refetchInterval: backfillPending ? 2000 : false,
+    refetchIntervalInBackground: false,
   })
 
   useEffect(() => {

@@ -12,7 +12,7 @@ export const DiscoverPage = () => {
           content="Discover movies, shows, games, and music on Otix."
         />
       </Helmet>
-      <div id="discover-page" className="relative">
+      <div id="discover-page" className="relative min-h-[1400px]">
         <DiscoverFeed />
       </div>
       <Outlet />

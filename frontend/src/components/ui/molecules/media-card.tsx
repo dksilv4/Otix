@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils'
 import { MediaLogo } from '@/lib/media/media-logo'
 import { MEDIA_TYPE_ICON, MEDIA_TYPE_COLOR } from '@/constants/media'
 import { parsePositionFromUrl, stripPositionFromUrl } from '@/lib/utils/image-position'
+import { optimizeCardImageUrl } from '@/lib/utils/image-url'
 import { formatSeasonBadgeText, resolveMediaCardRatingPosition } from '@/lib/utils/media-badge'
 import { useMediaActivity } from '@/features/media/hooks/use-media-activity'
 import { MediaActivityTag } from '@/features/media/components/molecules/media-activity-tag'
@@ -100,19 +101,29 @@ export const DkMediaCard = memo(({
   const { openModal } = useModal()
 
   // Card art resolution:
-  // 1. Textless poster (clean portrait art)
-  // 2. Poster / cover art (standard portrait art)
+  // 1. Textless poster (clean portrait art; prefer posterUrl when textless is an unoptimized host like fanart.tv)
+  // 2. Poster / cover art (standard portrait art; fallback to optimized backdrop if poster is unoptimized fanart.tv)
   // 3. Backdrop (fallback when no portrait poster exists)
+  const isUnoptimizedFanart = Boolean(textlessPosterUrl && textlessPosterUrl.includes('assets.fanart.tv'))
+  const isPosterFanart = Boolean(posterUrl && posterUrl.includes('assets.fanart.tv'))
+  const isLogoFanart = Boolean(logoUrl && logoUrl.includes('assets.fanart.tv'))
+  const preferredPoster = isPosterFanart && backdropUrl?.includes('tmdb.org') ? backdropUrl : posterUrl
+  // When logo is uncompressed fanart and an official poster exists, prefer official poster to eliminate heavy logo downloads
+  const preferOfficialPosterOverFanartLogo = isLogoFanart && Boolean(preferredPoster && !isPosterFanart)
+  const effectiveTextless =
+    (isUnoptimizedFanart || preferOfficialPosterOverFanartLogo) && preferredPoster
+      ? null
+      : textlessPosterUrl
   const imageUrl =
-    textlessPosterUrl ||
-    posterUrl ||
+    effectiveTextless ||
+    preferredPoster ||
     backdropUrl ||
     undefined
-  const hasCleanArt = Boolean(textlessPosterUrl || (!posterUrl && backdropUrl))
+  const hasCleanArt = Boolean(effectiveTextless || (!preferredPoster && backdropUrl))
   const [logoFailed, setLogoFailed] = useState(false)
   const showLogo = Boolean(logoUrl && hasCleanArt && !logoFailed)
   const position = imageUrl ? parsePositionFromUrl(imageUrl) : null
-  const cleanSrc = imageUrl ? stripPositionFromUrl(imageUrl) : undefined
+  const cleanSrc = imageUrl ? optimizeCardImageUrl(stripPositionFromUrl(imageUrl)) : undefined
   const TypeIcon = MEDIA_TYPE_ICON[mediaType]
 
   const linkProps = useMemo(() => ({

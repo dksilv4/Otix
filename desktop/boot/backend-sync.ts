@@ -7,6 +7,8 @@ import { saveDesktopSettings, getSettings } from '../desktop-settings';
 import type { RunningGame, PlaySession } from '../game/detector';
 import type { BootContext } from './types';
 
+let _lastHeartbeatError: string | null = null;
+
 /**
  * Synchronize currently active or stopped games with the Otix backend.
  */
@@ -57,8 +59,8 @@ export async function syncRunningGamesToBackend(ctx: BootContext, games: Running
       },
       body: JSON.stringify(payload),
     });
-  } catch (err) {
-    console.debug('[main:sync] Failed to sync running game to backend:', err);
+  } catch (err: any) {
+    console.debug('[main:sync] Failed to sync running game to backend:', err?.message || err);
   }
 }
 
@@ -82,8 +84,8 @@ export async function syncGameSessionToBackend(ctx: BootContext, sessions: PlayS
       },
       body: JSON.stringify(payload),
     });
-  } catch (err) {
-    console.debug('[main:sync] Failed to sync game session to backend:', err);
+  } catch (err: any) {
+    console.debug('[main:sync] Failed to sync game session to backend:', err?.message || err);
   }
 }
 
@@ -141,6 +143,7 @@ export async function syncDesktopNodeToBackend(ctx: BootContext, isOnline = true
       body: JSON.stringify(payload),
     });
     if (resp.ok) {
+      _lastHeartbeatError = null;
       void syncMachineMappingsFromBackend(apiBase, ctx.currentAuthToken);
       const data = (await resp.json().catch(() => null)) as any;
       if (data && Array.isArray(data.pending_updates) && data.pending_updates.length > 0 && data.id) {
@@ -181,7 +184,11 @@ export async function syncDesktopNodeToBackend(ctx: BootContext, isOnline = true
         }).catch(() => {});
       }
     }
-  } catch (err) {
-    console.debug('[main:sync] Failed to sync desktop node heartbeat to backend:', err);
+  } catch (err: any) {
+    const msg = err?.message || String(err);
+    if (msg !== _lastHeartbeatError) {
+      _lastHeartbeatError = msg;
+      console.debug('[main:sync] Failed to sync desktop node heartbeat to backend:', msg);
+    }
   }
 }

@@ -1,6 +1,5 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { Link } from '@tanstack/react-router'
-import { motion, AnimatePresence } from 'framer-motion'
 import { Cookie, X } from 'lucide-react'
 
 import {
@@ -9,17 +8,13 @@ import {
 } from '@/lib/utils/cookies'
 
 export const CookieBanner = () => {
-  const [visible, setVisible] = useState(false)
-
-  useEffect(() => {
-    // Only show if the user hasn't made a choice yet
-    const stored = getCookieConsent()
-    if (!stored) {
-      // Small delay for non-jarring appearance
-      const timer = setTimeout(() => setVisible(true), 800)
-      return () => clearTimeout(timer)
+  const [visible, setVisible] = useState(() => {
+    try {
+      return !getCookieConsent()
+    } catch {
+      return false
     }
-  }, [])
+  })
 
   const handleChoice = (choice: 'all' | 'necessary') => {
     try {
@@ -30,20 +25,15 @@ export const CookieBanner = () => {
     setVisible(false)
   }
 
+  if (!visible) return null
+
   return (
-    <AnimatePresence>
-      {visible && (
-        <motion.div
-          key="cookie-banner"
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: 30 }}
-          transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-          className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-6 sm:max-w-md z-[9999] rounded-2xl backdrop-blur-[24px] p-4 sm:p-5 shadow-[var(--dk-shadow-glass)] border border-[var(--dk-separator)]"
-          style={{ backgroundColor: 'var(--dk-surface-overlay)' }}
-          role="region"
-          aria-label="Cookie preferences"
-        >
+    <div
+      className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-6 sm:max-w-md z-[9999] rounded-2xl backdrop-blur-[24px] p-4 sm:p-5 shadow-[var(--dk-shadow-glass)] border border-[var(--dk-separator)] animate-in fade-in slide-in-from-bottom-4 duration-200"
+      style={{ backgroundColor: 'var(--dk-surface-overlay)' }}
+      role="region"
+      aria-label="Cookie preferences"
+    >
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-center gap-2.5 text-foreground font-semibold text-sm">
               <Cookie className="h-4 w-4 text-amber-500 shrink-0" />
@@ -86,8 +76,6 @@ export const CookieBanner = () => {
               Accept All
             </button>
           </div>
-        </motion.div>
-      )}
-    </AnimatePresence>
+        </div>
   )
 };

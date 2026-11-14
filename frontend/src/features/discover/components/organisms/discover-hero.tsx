@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion'
 import { Link } from '@tanstack/react-router'
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
 import {
@@ -29,6 +29,7 @@ import {
   formatMediaFormatLabel,
   formatAudienceMetric,
   extractTrailerYoutubeId,
+  resolveHeroBackdropSource,
 } from '@/features/discover/utils/hero'
 import {
   type HeroTab,
@@ -37,13 +38,14 @@ import {
   filterRecentTrendingMedia,
 } from '@/features/discover/utils/overview-features'
 
-const AUTO_ROTATE_MS = 8000
+const AUTO_ROTATE_MS = 10000
 
 interface DiscoverHeroProps {
   className?: string
 }
 
 export const DiscoverHero = ({ className }: DiscoverHeroProps) => {
+  const prefersReducedMotion = useReducedMotion()
   const [selectedTab, setSelectedTab] = useState<HeroTab>('movie')
   const [activeSlideIndex, setActiveSlideIndex] = useState(0)
   const [isPaused, setIsPaused] = useState(false)
@@ -54,12 +56,21 @@ export const DiscoverHero = ({ className }: DiscoverHeroProps) => {
   const { data: moviesData, isLoading: moviesLoading } = useInfiniteQuery(
     discoverQueries.list('movie', 'trending'),
   )
-  const { data: showsData, isLoading: showsLoading } = useInfiniteQuery(
-    discoverQueries.list('show', 'trending'),
-  )
-  const { data: gamesData, isLoading: gamesLoading } = useInfiniteQuery(
-    discoverQueries.list('game', 'now_playing'),
-  )
+
+  const [hasDeferredLoaded, setHasDeferredLoaded] = useState(false)
+  useEffect(() => {
+    const timeout = setTimeout(() => setHasDeferredLoaded(true), 2500)
+    return () => clearTimeout(timeout)
+  }, [])
+
+  const { data: showsData, isLoading: showsLoading } = useInfiniteQuery({
+    ...discoverQueries.list('show', 'trending'),
+    enabled: selectedTab === 'show' || hasDeferredLoaded,
+  })
+  const { data: gamesData, isLoading: gamesLoading } = useInfiniteQuery({
+    ...discoverQueries.list('game', 'now_playing'),
+    enabled: selectedTab === 'game' || hasDeferredLoaded,
+  })
 
   // Filter so hero only surfaces trending and recent/viral media, strictly filtering out older catalog
   const movieItems = useMemo<MediaItemSummary[]>(() => {
@@ -126,16 +137,29 @@ export const DiscoverHero = ({ className }: DiscoverHeroProps) => {
   }, [currentTabSlides.length, activeSlideIndex, selectedTab])
 
   useEffect(() => {
-    if (isPaused || currentTabSlides.length <= 1) return
+    if (isPaused || prefersReducedMotion || currentTabSlides.length <= 1) return
+
+    const handleVisibility = () => {
+      if (document.hidden && timerRef.current) {
+        clearInterval(timerRef.current)
+        timerRef.current = null
+      } else if (!document.hidden && !timerRef.current) {
+        timerRef.current = setInterval(advanceSlide, AUTO_ROTATE_MS)
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibility)
     timerRef.current = setInterval(advanceSlide, AUTO_ROTATE_MS)
     return () => {
+      document.removeEventListener('visibilitychange', handleVisibility)
       if (timerRef.current) clearInterval(timerRef.current)
     }
-  }, [isPaused, currentTabSlides.length, advanceSlide])
+  }, [isPaused, prefersReducedMotion, currentTabSlides.length, advanceSlide])
 
   const handleTabClick = useCallback((tab: HeroTab) => {
     setSelectedTab(tab)
     setActiveSlideIndex(0)
+    setHasDeferredLoaded(true)
   }, [])
 
   const isLoading =
@@ -150,7 +174,7 @@ export const DiscoverHero = ({ className }: DiscoverHeroProps) => {
           className || ''
         }`}
       >
-        <div className="relative w-full lg:h-[720px] xl:h-[760px] rounded-3xl bg-[var(--dk-surface-raised)] p-6 sm:p-8 lg:p-10 xl:p-12 flex flex-col lg:flex-row gap-8">
+        <div className="relative w-full min-h-[560px] lg:h-[720px] xl:h-[760px] rounded-3xl bg-[var(--dk-surface-raised)] p-6 sm:p-8 lg:p-10 xl:p-12 flex flex-col lg:flex-row gap-8">
           <div className="w-full lg:w-[48%] flex flex-col justify-between">
             <div>
               <Skeleton className="h-9 w-44 rounded-full mb-8" />
@@ -178,11 +202,7 @@ export const DiscoverHero = ({ className }: DiscoverHeroProps) => {
   }
 
   // Media calculations
-  const backdropSource =
-    activeDetail?.backdropUrl ||
-    activeMediaItem?.backdropUrl ||
-    activeMediaItem?.textlessPosterUrl ||
-    activeMediaItem?.posterUrl
+  const backdropSource = resolveHeroBackdropSource(activeDetail, activeMediaItem)
   const releaseYear = formatReleaseYear(activeDetail?.releaseDate || activeMediaItem?.releaseDate)
   const ratingScore = formatRatingPercent(activeDetail?.avgRating ?? activeMediaItem?.avgRating)
   const isGame = activeMediaItem?.mediaType === 'game'
@@ -206,7 +226,7 @@ export const DiscoverHero = ({ className }: DiscoverHeroProps) => {
       onMouseLeave={() => setIsPaused(false)}
     >
       {/* ── Main Container: Uniform Fixed Height on Desktop (720px / 760px), Stable Min-Height on Mobile ── */}
-      <div className="relative w-full lg:h-[720px] xl:h-[760px] flex flex-col lg:flex-row items-stretch gap-6 lg:gap-0">
+      <div className="relative w-full min-h-[560px] lg:h-[720px] xl:h-[760px] flex flex-col lg:flex-row items-stretch gap-6 lg:gap-0">
         {/* ── Left Column: Upper Sculpted Card + Left-Aligned Notched Stats ── */}
         <div className="w-full lg:w-[48%] xl:w-[46%] lg:h-full flex flex-col justify-between relative z-10">
           {/* Upper Left Card Panel */}
@@ -440,13 +460,18 @@ export const DiscoverHero = ({ className }: DiscoverHeroProps) => {
           <div className="relative w-full h-full rounded-2xl lg:rounded-3xl overflow-hidden shadow-2xl group flex flex-col justify-end p-5 sm:p-6 border border-white/[0.06] bg-[var(--dk-surface-base)]">
             {/* Visual Media Backdrop Artwork */}
             <div className="absolute inset-0 z-0 overflow-hidden">
-              <AnimatePresence mode="wait">
+              <AnimatePresence mode="wait" initial={false}>
                 {backdropSource ? (
                   <motion.img
                     key={backdropSource}
                     src={backdropSource}
                     alt={activeMediaItem?.title}
-                    {...HERO_STAGE_FADE}
+                    fetchPriority="high"
+                    decoding="async"
+                    initial={false}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 1.02 }}
+                    transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
                     className="w-full h-full object-cover object-center filter brightness-[0.95] dark:brightness-[0.85] scale-100 group-hover:scale-[1.03] transition-transform duration-700 ease-out"
                   />
                 ) : null}
