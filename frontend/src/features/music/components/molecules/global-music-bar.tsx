@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect, useContext } from 'react'
+import { useState, useRef, useCallback, useEffect, useContext, Suspense } from 'react'
 import { useNavigate, useLocation } from '@tanstack/react-router'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
@@ -19,12 +19,18 @@ import { usePlayer } from '@/lib/player/use-player'
 import { usePlayerProgress } from '@/lib/player/use-player-progress'
 import { UniversalPlayerContext } from '@/features/player/core/universal-player-context'
 import { cn } from '@/lib/utils'
+import { safeLazy } from '@/lib/utils/chunk-reload'
 import { useMusicPalette } from '../../hooks/use-music-palette'
 import { WaveformScrubber } from '../../visualizers/components/waveform-scrubber'
 import { AnchoredQueuePopover } from '../../visualizers/components/anchored-queue-popover'
-import { FullScreenMusicPlayer } from '../../visualizers/components/full-screen-music-player'
 import { getSavedPlaybackSession } from '../../visualizers/utils/playback-persistence'
 import { formatTrackDuration } from '../../utils/music-helpers'
+
+const FullScreenMusicPlayer = safeLazy(() =>
+  import('../../visualizers/components/full-screen-music-player').then((m) => ({
+    default: m.FullScreenMusicPlayer,
+  })),
+)
 
 export const GlobalMusicBar = () => {
   const navigate = useNavigate()
@@ -452,11 +458,13 @@ export const GlobalMusicBar = () => {
 
       {/* Full Screen 3D/2D Visualizer Player Overlay: stays open regardless of active playback state */}
       {isFullScreenOpen && (
-        <FullScreenMusicPlayer
-          key="full-screen-music-player-portal"
-          isOpen={isFullScreenOpen}
-          onClose={() => setIsFullScreenOpen(false)}
-        />
+        <Suspense fallback={null}>
+          <FullScreenMusicPlayer
+            key="full-screen-music-player-portal"
+            isOpen={isFullScreenOpen}
+            onClose={() => setIsFullScreenOpen(false)}
+          />
+        </Suspense>
       )}
     </AnimatePresence>
   )

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
+import { useState, useEffect, useRef, useMemo, useCallback, Suspense } from 'react'
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion'
 import { Link } from '@tanstack/react-router'
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
@@ -19,7 +19,7 @@ import { useQuickStream } from '@/features/media/hooks/use-quick-stream'
 import { useMediaActivity } from '@/features/media/hooks/use-media-activity'
 import { discoverQueries } from '@discover/queries/discover-queries'
 import { mediaQueries, type MediaItemSummary } from '@media/queries/media-queries'
-import { TrailerVideoModal } from '@discover/components/molecules/trailer-video-modal'
+import { safeLazy } from '@/lib/utils/chunk-reload'
 import {
   HERO_STAGE_FADE,
   formatRatingPercent,
@@ -37,6 +37,12 @@ import {
   getNextHeroTab,
   filterRecentTrendingMedia,
 } from '@/features/discover/utils/overview-features'
+
+const TrailerVideoModal = safeLazy(() =>
+  import('@discover/components/molecules/trailer-video-modal').then((m) => ({
+    default: m.TrailerVideoModal,
+  })),
+)
 
 const AUTO_ROTATE_MS = 10000
 
@@ -506,11 +512,13 @@ export const DiscoverHero = ({ className }: DiscoverHeroProps) => {
 
       {/* ── Trailer Video Modal ── */}
       {isTrailerOpen && trailerId && activeMediaItem && (
-        <TrailerVideoModal
-          youtubeId={trailerId}
-          title={activeMediaItem.title}
-          onClose={() => setIsTrailerOpen(false)}
-        />
+        <Suspense fallback={null}>
+          <TrailerVideoModal
+            youtubeId={trailerId}
+            title={activeMediaItem.title}
+            onClose={() => setIsTrailerOpen(false)}
+          />
+        </Suspense>
       )}
     </section>
   )

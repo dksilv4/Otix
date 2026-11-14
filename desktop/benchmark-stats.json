@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-11-14T05:58:46.215Z",
+  "timestamp": "2026-11-14T05:59:36.052Z",
   "suite": "Otix Launcher Performance Benchmark Suite",
   "nodeVersion": "v24.22.1",
   "electronModuleVersion": "137",
@@ -8,64 +8,64 @@
   "hydration500": {
     "itemCount": 500,
     "runs": 10,
-    "meanLatencyMs": 4.56,
-    "medianLatencyMs": 4.61,
-    "minLatencyMs": 3.9,
-    "maxLatencyMs": 5.38,
-    "p95LatencyMs": 5.38,
-    "throughputItemsPerSec": 109649,
+    "meanLatencyMs": 4.8,
+    "medianLatencyMs": 4.97,
+    "minLatencyMs": 3.69,
+    "maxLatencyMs": 5.46,
+    "p95LatencyMs": 5.46,
+    "throughputItemsPerSec": 104167,
     "slaMs": 300,
     "passed": true
   },
   "hydration1500": {
     "itemCount": 1500,
     "runs": 5,
-    "meanLatencyMs": 15.01,
-    "medianLatencyMs": 14.83,
-    "minLatencyMs": 13.09,
-    "maxLatencyMs": 16.37,
-    "p95LatencyMs": 16.37,
-    "throughputItemsPerSec": 99933,
+    "meanLatencyMs": 16.26,
+    "medianLatencyMs": 16.46,
+    "minLatencyMs": 14.96,
+    "maxLatencyMs": 18.28,
+    "p95LatencyMs": 18.28,
+    "throughputItemsPerSec": 92251,
     "slaMs": 300,
     "passed": true
   },
   "renderScroll": {
     "totalMockItems": 1500,
     "totalFrames": 120,
-    "meanFrameTimeMs": 0.018,
-    "medianFrameTimeMs": 0.005,
-    "p95FrameTimeMs": 0.011,
-    "p99FrameTimeMs": 0.126,
-    "maxFrameTimeMs": 1.467,
-    "effectiveFps": 55556,
+    "meanFrameTimeMs": 0.008,
+    "medianFrameTimeMs": 0.006,
+    "p95FrameTimeMs": 0.014,
+    "p99FrameTimeMs": 0.035,
+    "maxFrameTimeMs": 0.189,
+    "effectiveFps": 125000,
     "slaFrameTimeMs": 16.6,
     "passed": true
   },
   "scanThroughput": {
     "itemsScanned": 2000,
-    "durationMs": 24.9,
-    "itemsPerSecond": 80318,
+    "durationMs": 28.11,
+    "itemsPerSecond": 71149,
     "dlcCount": 0,
     "updateCount": 667,
     "sceneCount": 667
   },
   "memory": {
     "baseline": {
-      "rssMb": 60.14,
-      "heapUsedMb": 8.89,
+      "rssMb": 60.23,
+      "heapUsedMb": 8.88,
       "heapTotalMb": 12.55,
       "externalMb": 4.85
     },
     "peak": {
-      "rssMb": 108.13,
-      "heapUsedMb": 32.08,
-      "heapTotalMb": 80.8,
+      "rssMb": 107.91,
+      "heapUsedMb": 22.01,
+      "heapTotalMb": 84.3,
       "externalMb": 5.07
     },
     "final": {
-      "rssMb": 116.37,
-      "heapUsedMb": 34.55,
-      "heapTotalMb": 84.05,
+      "rssMb": 118.97,
+      "heapUsedMb": 46.33,
+      "heapTotalMb": 84.8,
       "externalMb": 5.07
     }
   }
